@@ -33,6 +33,7 @@ from tachi_parsers import (
     SEVERITY_ORDER,
     SEVERITY_ORDINAL,
     MAESTRO_LAYERS,
+    MAESTRO_LAYER_HEADING,
     parse_frontmatter,
     parse_baseline_frontmatter,
     parse_resolved_findings,
@@ -53,6 +54,7 @@ from tachi_parsers import (
     _empty_severity,
     parse_threats_findings,
     parse_risk_scores_findings,
+    composite_scores_by_id,
     parse_component_distribution,
     parse_scope_data,
     parse_compensating_controls_md,
@@ -304,11 +306,7 @@ def extract_severity(tier, threats_content, rs_content=None, cc_content=None):
         rs_row_count = None
         if rs_content:
             rs_findings = parse_risk_scores_findings(rs_content)
-            composites_by_id = {
-                f["id"]: parse_score(f["composite_score"])
-                for f in rs_findings
-                if f.get("id")
-            }
+            composites_by_id = composite_scores_by_id(rs_findings)
             if rs_findings:
                 rs_row_count = len(rs_findings)
         cc_data = parse_compensating_controls_md(cc_content, composites_by_id=composites_by_id)
@@ -1269,9 +1267,7 @@ def _build_executive_architecture_payload(tier, findings, scope_data, source_fil
         "fallback_used": fallback_used,
     }
     # K13-posture (T025, data-model.md §5): metadata.risk_posture_{level,label}
-    # on every infographic JSON, executive-architecture included. Kept apart
-    # from the `return` dict below, where T027's `allow_list` key will land,
-    # so a future K15 revert never touches these two lines (LOW-4).
+    # on every infographic JSON, executive-architecture included.
     if risk_posture_level is not None:
         metadata["risk_posture_level"] = risk_posture_level
         metadata["risk_posture_label"] = risk_posture_label
@@ -1286,10 +1282,7 @@ def _build_executive_architecture_payload(tier, findings, scope_data, source_fil
     flow_edges = _build_flow_edges(scope_data)
     clusters = _build_clusters(scope_data)
 
-    # K15 (T027, data-model.md §8): the top-level allow-list, added to the
-    # return dict below rather than near the K13-posture lines above this
-    # function's `metadata` block (LOW-4) — a TW-6 revert of this commit
-    # then applies cleanly on top of the K13-posture commit.
+    # K15 (T027, data-model.md §8): the top-level allow-list.
     allow_list = compute_allow_list(
         "executive-architecture", findings, scope_data, payload={"callouts": callouts}
     )
@@ -1408,7 +1401,7 @@ def _component_severity_color(comp_severity, component_name):
 # K11 Risk Funnel Computation (F-373 T021, data-model.md §4, D-2, PD-4/5/18)
 # =============================================================================
 
-def compute_risk_funnel(tier, threats_content, cc_data=None, rs_content=None, rs_findings=None):
+def compute_risk_funnel(tier, threats_content, cc_data=None, rs_findings=None):
     """Compute the 4-entry risk funnel per data-model.md §4 (K11, D-2).
 
     JSON tier k is funnel Tier k+1 (0 = Threats Identified through 3 =
@@ -1425,13 +1418,9 @@ def compute_risk_funnel(tier, threats_content, cc_data=None, rs_content=None, rs
         cc_data: Pre-parsed compensating-controls.md data (from
             extract_severity's tier==1 branch; the K11 inherent join is
             already applied there). Only consulted when tier == 1.
-        rs_content: Pre-read content of risk-scores.md. Only consulted when
-            tier == 2 and ``rs_findings`` is not supplied.
         rs_findings: Pre-parsed risk-scores.md findings (from
-            extract_severity's tier==2 branch, T036 L-3). Only consulted
-            when tier == 2; when ``None``, tier 2 falls back to parsing
-            ``rs_content`` itself, matching pre-L-3 behavior for any other
-            caller.
+            extract_severity's tier==2 branch, T036 L-3). Required when
+            tier == 2; not consulted otherwise.
 
     Returns:
         Dict with ``funnel_tiers`` (always 4 objects), ``reduction_percentages``
@@ -1455,7 +1444,7 @@ def compute_risk_funnel(tier, threats_content, cc_data=None, rs_content=None, rs
     if tier == 1:
         tiers, reductions, totals = _funnel_4tier_mode(cc_data)
     elif tier == 2:
-        tiers, reductions, totals = _funnel_3tier_mode(rs_content, rs_findings=rs_findings)
+        tiers, reductions, totals = _funnel_3tier_mode(rs_findings)
     else:
         tiers, reductions, totals = _funnel_threats_only_mode()
 
@@ -1652,7 +1641,7 @@ def _funnel_4tier_mode(cc_data):
     return tiers, reductions, totals
 
 
-def _funnel_3tier_mode(rs_content, rs_findings=None):
+def _funnel_3tier_mode(rs_findings):
     """JSON tiers 1-2 from risk-scores.md; JSON tier 3 is always ghost (3-tier mode).
 
     V2 = sum(composite scores). JSON tier 2 ("Unmitigated Risk") volume
@@ -1661,26 +1650,21 @@ def _funnel_3tier_mode(rs_content, rs_findings=None):
     that identity is in place. ``risk_reduction`` stays null: there is no
     residual data in 3-tier mode (data-model.md §4.4).
 
-    T036 L-3: ``rs_findings``, when supplied, is extract_severity's own
-    tier==2 parse of ``rs_content`` -- reusing it here means an unreadable
-    Scored Threat Table prints its "could not find" warning at most once
-    per run (RC-2 fixed the equivalent tier-1 double-parse; this closes the
-    tier-2 side). ``None`` falls back to parsing ``rs_content`` locally, so
-    any other caller keeps today's behavior.
+    T036 L-3: ``rs_findings`` is extract_severity's own tier==2 parse of
+    risk-scores.md, so an unreadable Scored Threat Table prints its "could
+    not find" warning at most once per run (RC-2 fixed the equivalent
+    tier-1 double-parse; this closes the tier-2 side).
     """
-    if rs_findings is None:
-        rs_findings = parse_risk_scores_findings(rs_content) if rs_content else []
     composites = [
         c for c in (parse_score(f.get("composite_score", "")) for f in rs_findings)
         if c is not None
     ]
 
-    v2 = v3 = None
+    v2 = None
     if composites:
         v2_candidate = _funnel_quantize(sum(composites))
         if v2_candidate != 0:
             v2 = v2_candidate
-            v3 = v2
             # AOD-SIMPLIFICATION: no dedicated warning on a degenerate
             # empty/zero-composite risk-scores.md in 3-tier mode — upgrade:
             # add a 3-tier-scoped warning stem if this proves common in the
@@ -1692,14 +1676,9 @@ def _funnel_3tier_mode(rs_content, rs_findings=None):
     tier1_mix = _funnel_severity_mix(f.get("severity", "") for f in rs_findings)
     tier2_mix = dict(tier1_mix)
 
+    # data-model.md §4.1: V3 == V2 in 3-tier mode, so the width clamp lands on the next STEP and the reduction is 0.0.
     w2 = 100 - int(_FUNNEL_STEP)
-    if volumes_available:
-        w3 = _funnel_width(
-            Decimal(w2) * v3 / v2,
-            _FUNNEL_FLOOR + _FUNNEL_STEP, Decimal(w2) - _FUNNEL_STEP,
-        )
-    else:
-        w3 = w2 - int(_FUNNEL_STEP)
+    w3 = w2 - int(_FUNNEL_STEP)
     w4 = w3 - int(_FUNNEL_STEP)  # JSON tier 3 has no residual data; always ghost.
 
     tiers = [
@@ -1713,7 +1692,7 @@ def _funnel_3tier_mode(rs_content, rs_findings=None):
             "tier": 2, "label": "Unmitigated Risk",
             "source": "risk-scores.md (no controls applied)",
             "ghost": False, "count": count,
-            "volume": float(v3) if v3 is not None else None,
+            "volume": float(v2) if v2 is not None else None,
             "severity_mix": tier2_mix, "width": w3,
         },
         {
@@ -1725,7 +1704,8 @@ def _funnel_3tier_mode(rs_content, rs_findings=None):
         {"from_tier": 0, "to_tier": 1, "percentage": 0.0},
         {
             "from_tier": 1, "to_tier": 2,
-            "percentage": float(_funnel_reduction_pct(v2, v3)) if volumes_available else None,
+            # Not the literal 0.0: a negative V2 (malformed composites) emits -0.0 today.
+            "percentage": float(_funnel_reduction_pct(v2, v2)) if volumes_available else None,
         },
         {"from_tier": 2, "to_tier": 3, "percentage": None},
     ]
@@ -1786,11 +1766,9 @@ def _compute_missing_enrichments(artifacts):
 # MAESTRO Layer Extraction (T003–T011)
 # =============================================================================
 
-# Alias for shared constant
+# Aliases for shared constants
 _MAESTRO_LAYERS = MAESTRO_LAYERS
-
-
-_MAESTRO_HEADING = r"^#{3,4}\s+Risk by MAESTRO Layer"
+_MAESTRO_HEADING = MAESTRO_LAYER_HEADING
 
 
 def parse_maestro_layer_distribution(threats_content):
@@ -2119,10 +2097,7 @@ def build_json_output(data, template):
         "heat_map": data["heat_map"],
         "top_findings": data["top_findings"],
         "template_data": data.get("template_data", {}),
-        # K15 (T027, data-model.md §8): the top-level allow-list. Placed in
-        # the initial literal, apart from the K13-posture lines below (LOW-4)
-        # — a TW-6 revert of this commit then applies cleanly on top of the
-        # K13-posture commit.
+        # K15 (T027, data-model.md §8): the top-level allow-list.
         "allow_list": data["allow_list"],
     }
 
@@ -2137,9 +2112,7 @@ def build_json_output(data, template):
     # Add template to metadata
     output["metadata"]["template"] = template
     # K13-posture (T025, data-model.md §5): risk_posture_{level,label} in
-    # every infographic JSON. Kept apart from where T027's top-level
-    # `allow_list` key will land (near the `output = {...}` literal above),
-    # so a future K15 revert never touches these two lines (LOW-4).
+    # every infographic JSON.
     output["metadata"]["risk_posture_level"] = data["risk_posture_level"]
     output["metadata"]["risk_posture_label"] = data["risk_posture_label"]
 
@@ -2304,12 +2277,12 @@ def main():
     # prints exactly once per run. Guarded to the two templates that need it.
     funnel = None
     if args.template in ("baseball-card", "risk-funnel"):
-        # T036 L-3: reuse extract_severity's own tier==2 parse (`findings`)
-        # rather than letting _funnel_3tier_mode re-parse rs_content; a
-        # `None` on tiers 1/3 is harmless since _funnel_3tier_mode only
-        # runs for tier == 2.
+        # T036 L-3: _funnel_3tier_mode works from extract_severity's own
+        # tier==2 parse (`findings`), so risk-scores.md is parsed once per
+        # run; a `None` on tiers 1/3 is harmless since _funnel_3tier_mode
+        # only runs for tier == 2.
         funnel = compute_risk_funnel(
-            tier, threats_content, cc_data=cc_data, rs_content=rs_content,
+            tier, threats_content, cc_data=cc_data,
             rs_findings=findings if tier == 2 else None,
         )
 
@@ -2466,10 +2439,11 @@ def main():
 
     # Compute delta counts when baseline present. Counted over the
     # normalized Section 7 map (K12, FR-K12.1/K12.2), never over `findings`,
-    # which has no delta_status key at all on Tier 1/2 and an unnormalized
-    # one on Tier 3 (architect re-review NM-1). `status_by_id` was computed
-    # once above, alongside the top_findings stamping and the scope warning
-    # (T017); this call site reuses that same map for the counts.
+    # which has no delta_status key at all on Tier 1/2; the map also excludes
+    # placeholder and duplicate Section 7 rows and spans IDs outside the tier
+    # (architect re-review NM-1). `status_by_id` was computed once above,
+    # alongside the top_findings stamping and the scope warning (T017); this
+    # call site reuses that same map for the counts.
     delta_data = None
     if has_baseline:
         resolved = parse_resolved_findings(threats_content)

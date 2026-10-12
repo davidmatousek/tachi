@@ -44,6 +44,9 @@ SEVERITY_ORDINAL = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1, "Note": 0}
 # Canonical MAESTRO layer ordering (L1 through L7)
 MAESTRO_LAYERS = ["L1", "L2", "L3", "L4", "L5", "L6", "L7"]
 
+# K10 (FR-K10.1): the "Risk by MAESTRO Layer" heading at level 3 or 4 (some inputs render "###", not "####").
+MAESTRO_LAYER_HEADING = r"^#{3,4}\s+Risk by MAESTRO Layer"
+
 # Canonical CSA MAESTRO agentic pattern enum values (Feature 142, schema 1.4).
 # Ordering mirrors schemas/finding.yaml agentic_pattern.enum. The first six are
 # the canonical CSA patterns; "none" is the sentinel for findings without
@@ -130,6 +133,12 @@ def parse_score(s) -> "Decimal | None":
     if not d.is_finite():
         return None
     return d
+
+
+def _warn_aggregated(ids, what, consequence):
+    """One stderr line per warning class: the count plus the first five IDs (R-P6, data-model.md §3); silent when empty."""
+    if ids:
+        print(f"Warning: {len(ids)} {what} (first: {', '.join(ids[:5])}); {consequence}", file=sys.stderr)
 
 
 # Alias table for Coverage Matrix headers (FR-K9.1, data-model.md §3). Built
@@ -348,9 +357,8 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
         start_line: A 0-indexed line number to start scanning from directly —
             typically the return value of :func:`match_heading` — so a regex
             match never falls back to a substring re-search (data-model.md §3,
-            rev. 1). Exactly one of ``section_header`` or ``start_line`` must
-            be usable; when both are omitted or ``section_header`` matches
-            nothing, an empty list is returned.
+            rev. 1). Callers must pass ``section_header`` or ``start_line``;
+            ``[]`` is returned when ``section_header`` matches nothing.
 
     Returns:
         List of dicts, one per row, with keys from the header row.
@@ -896,8 +904,9 @@ def compute_delta_counts(status_by_id: dict, resolved: list) -> dict:
 
     Counts over the normalized map only (FR-K12.1/K12.2, data-model.md §6),
     identically regardless of data tier — never over a tier's ``findings``
-    list, which may have no ``delta_status`` key at all (Tier 1/2) or an
-    unnormalized one (Tier 3). ``resolved`` is the placeholder-filtered list
+    list, which may have no ``delta_status`` key at all (Tier 1/2); the map
+    also excludes placeholder and duplicate Section 7 rows and spans IDs
+    outside the tier. ``resolved`` is the placeholder-filtered list
     from :func:`parse_resolved_findings`; its length becomes ``resolved``.
     A status that normalizes to anything other than NEW/UPDATED/UNCHANGED
     does not add to a bucket — the caller aggregates that as a warning via
@@ -956,16 +965,12 @@ def warn_delta_scope(has_baseline, has_status_column, status_by_id, row_count, t
             )
         return
 
-    unknown = [(fid, status) for fid, status in status_by_id.items()
-               if status not in _DELTA_STATUS_COUNTED_VALUES]
-    if unknown:
-        first_five = ", ".join(f"{fid}='{status}'" for fid, status in unknown[:5])
-        print(
-            f"Warning: {len(unknown)} Section 7 statuses are not "
-            f"NEW/UPDATED/UNCHANGED after normalization (first: {first_five}); "
-            "not counted",
-            file=sys.stderr,
-        )
+    _warn_aggregated(
+        [f"{fid}='{status}'" for fid, status in status_by_id.items()
+         if status not in _DELTA_STATUS_COUNTED_VALUES],
+        "Section 7 statuses are not NEW/UPDATED/UNCHANGED after normalization",
+        "not counted",
+    )
 
     map_ids = set(status_by_id.keys())
     tier_id_set = set(tier_ids or ())
@@ -1315,6 +1320,11 @@ def parse_risk_scores_findings(content: str) -> list:
     return findings
 
 
+def composite_scores_by_id(rs_findings):
+    """K11 join map ``{id: Decimal | None}`` from :func:`parse_risk_scores_findings` rows (data-model.md §3)."""
+    return {f["id"]: parse_score(f["composite_score"]) for f in rs_findings if f.get("id")}
+
+
 # =============================================================================
 # Component Distribution
 # =============================================================================
@@ -1413,8 +1423,8 @@ def parse_compensating_controls_md(content: str, composites_by_id: dict = None) 
             composite scores (K11, data-model.md §3), used to fill a row's
             ``inherent`` when the Coverage Matrix has no Inherent Score/
             Inherent column, or the cell is unparseable. Typically built by
-            the caller from ``parse_risk_scores_findings``'s
-            ``composite_score`` through :func:`parse_score`.
+            :func:`composite_scores_by_id` from
+            :func:`parse_risk_scores_findings`'s rows.
 
     Each finding dict additionally carries (K11):
         status_class: "found" | "partial" | "none", from
@@ -1507,15 +1517,6 @@ def parse_compensating_controls_md(content: str, composites_by_id: dict = None) 
                 return band
         return "Low"
 
-    def _score_to_band(score_str):
-        """Map a residual score string to its severity band, or None if unparseable.
-
-        Delegates parsing to the shared :func:`parse_score` (K9), which
-        rejects non-finite values (``NaN``, ``Infinity``) that ``float()``
-        would otherwise have silently let fall through to "Low".
-        """
-        return _band_from_score(parse_score(score_str))
-
     # Aggregated-warning collectors (data-model.md §3; R-P6: one line per
     # class, count plus the first five IDs in first-seen order).
     _unrecognized_status_ids = []
@@ -1549,9 +1550,7 @@ def parse_compensating_controls_md(content: str, composites_by_id: dict = None) 
             if inherent is None and inherent_text:
                 _unparseable_score_refs.append(f"{threat_id}:Inherent Score")
             if inherent is None and composites_by_id:
-                joined = composites_by_id.get(threat_id)
-                if joined is not None:
-                    inherent = joined
+                inherent = composites_by_id.get(threat_id)
             if inherent is None:
                 _missing_inherent_ids.append(threat_id)
 
@@ -1592,33 +1591,15 @@ def parse_compensating_controls_md(content: str, composites_by_id: dict = None) 
                 "recommendation": recommendations.get(threat_id, ""),
             })
 
-    def _warn_aggregated(ids, stem_fn):
-        if not ids:
-            return
-        print(stem_fn(len(ids), ", ".join(ids[:5])), file=sys.stderr)
-
-    _warn_aggregated(_unrecognized_status_ids, lambda n, ids: (
-        f"Warning: {n} controls rows have an unrecognized or empty status "
-        f"(first: {ids}); counted as no control"
-    ))
-    if _unparseable_score_refs:
-        print(
-            f"Warning: {len(_unparseable_score_refs)} unparseable scores "
-            f"(first: {', '.join(_unparseable_score_refs[:5])}); treated as missing",
-            file=sys.stderr,
-        )
-    _warn_aggregated(_clamped_ids, lambda n, ids: (
-        f"Warning: {n} controls rows have a residual above the inherent score "
-        f"(first: {ids}); clamped"
-    ))
-    _warn_aggregated(_missing_residual_ids, lambda n, ids: (
-        f"Warning: {n} controls rows have no residual score (first: {ids}); "
-        f"defaulted to the inherent score (no credit)"
-    ))
-    _warn_aggregated(_missing_inherent_ids, lambda n, ids: (
-        f"Warning: {n} controls rows have no inherent score (first: {ids}); "
-        f"excluded from funnel volumes"
-    ))
+    _warn_aggregated(_unrecognized_status_ids,
+                     "controls rows have an unrecognized or empty status", "counted as no control")
+    _warn_aggregated(_unparseable_score_refs, "unparseable scores", "treated as missing")
+    _warn_aggregated(_clamped_ids,
+                     "controls rows have a residual above the inherent score", "clamped")
+    _warn_aggregated(_missing_residual_ids, "controls rows have no residual score",
+                     "defaulted to the inherent score (no credit)")
+    _warn_aggregated(_missing_inherent_ids, "controls rows have no inherent score",
+                     "excluded from funnel volumes")
 
     # ---- Dedupe cross-listed findings by threat ID ----
     # control-analyzer cross-lists findings under both their original band and

@@ -19,23 +19,14 @@ against the raw fixture files below):
                                      Coverage Matrix joined to risk-scores.md by ID
                                      (tier 1, architect finding F2)
 
-tasks.md T019 assigns the funnel_join_inherent_less/ case to K11's own carve
-unit, so it lands in its own K11-only commit rather than the rest of this
-module's fixtures (which are US-3a's).
-
 Posture-level/label emission (``metadata.risk_posture_{level,label}`` on the
 infographic side, ``#let risk-posture-level``/``#let risk-posture-label`` on
-the report side) is tasks.md T025 (Lane B2a + B2b, W2). As of this commit
-neither lane has landed it, so ``test_posture_level_label_agree_posture_mmdc_free``
-is written to the contract and is expected to fail red until T025 lands on
-both sides -- per the "never bend a test to match an implementation that
-contradicts the contract" rule it is not weakened, skipped, or xfail-marked.
+the report side) is tasks.md T025 (Lane B2a + B2b). The two posture tests pin
+each surface to the contract's expected level and label, and to each other.
 The severity-count, delta-count and MAESTRO parity tests below exercise
-shared tachi_parsers.py logic that shipped in W1 (T016/T020/T024) and are
-expected green independent of T025.
+shared tachi_parsers.py logic (T016/T020/T024).
 """
 
-import importlib.util
 import json
 import os
 import re
@@ -131,30 +122,6 @@ def _typst_let_int(content, name):
 
 
 # --------------------------------------------------------------------------- #
-# Module loaders for the MAESTRO case (pure-function comparison, mirroring
-# _load_extract_report_module() in test_maestro_cross_surface_consistency.py).
-# --------------------------------------------------------------------------- #
-def _load_infographic_module():
-    """Import the hyphenated extract-infographic-data.py as a module."""
-    if str(SCRIPTS_DIR) not in sys.path:
-        sys.path.insert(0, str(SCRIPTS_DIR))
-    spec = importlib.util.spec_from_file_location("extract_infographic_data", EXTRACT_INFOGRAPHIC)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def _load_report_module():
-    """Import the hyphenated extract-report-data.py as a module."""
-    if str(SCRIPTS_DIR) not in sys.path:
-        sys.path.insert(0, str(SCRIPTS_DIR))
-    spec = importlib.util.spec_from_file_location("extract_report_data", EXTRACT_REPORT)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-# --------------------------------------------------------------------------- #
 # posture_mmdc_free/ (tier 1: threats.md + risk-scores.md + compensating-
 # controls.md, no baseline). Residual severity counts {critical:0, high:1,
 # medium:1, low:1} -> posture "high"/"HIGH RISK" (data-model.md §5).
@@ -173,9 +140,8 @@ def posture_mmdc_free_outputs():
 def test_posture_level_label_agree_posture_mmdc_free(posture_mmdc_free_outputs):
     """metadata.risk_posture_{level,label} == #let risk-posture-level/-label (T025).
 
-    EXPECTED RED until tasks.md T025 lands on both Lane B2a (infographic) and
-    Lane B2b (report) -- see the module docstring. Written to the contract
-    regardless of today's implementation state.
+    Pins Lane B2a (infographic) and Lane B2b (report) to the contract's
+    "high"/"HIGH RISK" for this fixture (data-model.md §5), and to each other.
     """
     ig_payload, rp_content = posture_mmdc_free_outputs
 
@@ -296,15 +262,17 @@ def test_delta_counts_agree_id_mismatch_baseline():
 # the precedented approach (see _pdf_state() in
 # test_maestro_cross_surface_consistency.py).
 # --------------------------------------------------------------------------- #
-def test_maestro_layer_distribution_and_most_exposed_agree_h3_heading():
+def test_maestro_layer_distribution_and_most_exposed_agree_h3_heading(
+    extract_infographic_data, extract_report_data
+):
     """MAESTRO layer distribution and most-exposed layer agree across surfaces
     for a threats.md whose Section 6 heading is ### instead of #### (K10)."""
     content = (FIDELITY_FIXTURES_DIR / "maestro_heading_h3" / "threats.md").read_text(
         encoding="utf-8"
     )
 
-    ig = _load_infographic_module().extract_maestro_data(content)
-    rp = _load_report_module().parse_maestro_data(content)
+    ig = extract_infographic_data.extract_maestro_data(content)
+    rp = extract_report_data.parse_maestro_data(content)
 
     assert ig["has_maestro_data"] is True
     assert rp["has_maestro_data"] is True
@@ -341,7 +309,7 @@ def test_maestro_layer_distribution_and_most_exposed_agree_h3_heading():
 
 # --------------------------------------------------------------------------- #
 # funnel_join_inherent_less/ (tier 1: threats.md + risk-scores.md +
-# compensating-controls.md). K11 carve unit / architect finding F2: the
+# compensating-controls.md). K11 / architect finding F2: the
 # Coverage Matrix has no Inherent Score/Inherent column at all, so both
 # rows' inherent scores come only from the sibling risk-scores.md
 # composites, joined by ID (T-1=8.0, T-2=7.0). Both extractors' tier-1 call
@@ -404,10 +372,8 @@ def test_posture_agrees_funnel_join_inherent_less(funnel_join_inherent_less_outp
 
     The highest non-zero band in {critical:0, high:1, medium:1, low:0} is
     High (data-model.md §5), over the SAME joined, clamp-processed severity
-    counts the previous test pins. EXPECTED RED until tasks.md T025 lands on
-    both Lane B2a (infographic) and Lane B2b (report) -- see
-    test_posture_level_label_agree_posture_mmdc_free and the module
-    docstring; not weakened, skipped, or xfail-marked.
+    counts the previous test pins. Both surfaces must report "high"/"HIGH RISK"
+    (tasks.md T025) and agree with each other.
     """
     ig_payload, rp_content = funnel_join_inherent_less_outputs
 

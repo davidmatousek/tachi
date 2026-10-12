@@ -999,11 +999,10 @@ def test_k12_id_mismatch_absolute_tallies_and_one_warning_via_cli():
     # US-3a #7 (first half); architect F1/NM-1: both surfaces must report
     # the Section 7 tallies as absolute values (the normalized map's own
     # counts, not restricted to the tier's finding-ID set) and emit
-    # exactly one ID-set warning. EXPECTED RED until Lane B2b's T017 wires
-    # warn_delta_scope with this tier's finding IDs at this call site --
-    # at T019 time nothing in extract-report-data.py calls warn_delta_scope
-    # yet (the parser-level function is already fully pinned in
-    # test_tachi_parsers.py; this is the wiring gap).
+    # exactly one ID-set warning. This pins the extractor's own
+    # warn_delta_scope call (Lane B2b's T017), which passes this tier's
+    # finding IDs; the parser-level function itself is pinned in
+    # test_tachi_parsers.py.
     returncode, _stdout, stderr, content = run_extract(
         FIDELITY_FIXTURES_DIR / "baseline_status_id_mismatch"
     )
@@ -1105,9 +1104,9 @@ def test_k131_roadmap_matches_card_recommendation_tier1_via_cli():
 
 def test_k131_roadmap_tier2_empty_threat_falls_back_to_placeholder():
     # data-model.md §7 tier 2 row: today's threat text; REC_PLACEHOLDER
-    # only when that resolves empty. EXPECTED RED until Lane B2b's T017
-    # adds this guard -- today build_remediation_actions emits "" verbatim
-    # for an empty threat (scripts/extract-report-data.py:211-213).
+    # only when that resolves empty. build_remediation_actions applies
+    # this guard itself (Lane B2b's T017), so an empty threat yields the
+    # placeholder, never "".
     extract = _load_extract_module()
     findings = [{"id": "T-2", "threat": "", "severity": "Medium"}]
     actions = extract.build_remediation_actions(

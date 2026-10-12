@@ -1,16 +1,17 @@
-"""Symlink sandbox builders for `scripts/install.sh` tests (Feature 373, K3).
+"""Sandbox builders and harness runner for `scripts/install.sh` tests (Feature 373, K3).
 
-Scope (tasks.md T003): this module holds only the BUILDERS that construct
-synthetic project ("target") and source ("tachi clone") directory trees at
-test time, inside a caller-given ``tmp_path``. It covers every symlink class
-the K3 pre-flight (`contracts/installer-cli.md` Sec. "Pre-flight algorithm",
-data-model.md Sec. 2) needs a fixture for.
-
-Out of scope, added later by Lane A' (tasks.md T008, W1): the harness
-RUNNER — pinning `/bin/bash`, stripping ANSI codes, the `/bin/sh` git shim
-for the forced ref-restore failure, before/after tree snapshots, and the
-throwaway `--version` git repos. Those consume the trees this module builds;
-they do not belong here.
+Scope: this module holds both halves of the K3 test harness
+(`contracts/installer-cli.md` Sec. "Test harness contract"):
+- the BUILDERS (tasks.md T003), which construct synthetic project
+  ("target") and source ("tachi clone") directory trees at test time,
+  inside a caller-given ``tmp_path``. They cover every symlink class the
+  K3 pre-flight (`contracts/installer-cli.md` Sec. "Pre-flight algorithm",
+  data-model.md Sec. 2) needs a fixture for;
+- the harness RUNNER (tasks.md T008, Lane A', W1), in the "Harness runner"
+  section below: pinning `/bin/bash`, stripping ANSI codes, before/after
+  tree snapshots, the throwaway `--version` git repos, and the `/bin/sh`
+  git shim for the forced ref-restore failure. It runs a real install.sh
+  against the trees the builders make.
 
 Hard constraints (tasks.md T003 standing rules):
 - stdlib only, importable with no side effects;
@@ -31,51 +32,6 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-
-__all__ = [
-    "DEPRECATED_COMMANDS",
-    "MANIFEST_BEGIN_MARKER",
-    "MANIFEST_END_MARKER",
-    "DEFAULT_MANIFEST_ENTRIES",
-    "make_symlink",
-    "build_source_tree",
-    "build_project_tree",
-    "add_symlink",
-    "add_nested_symlink",
-    "add_dangling_symlink",
-    "add_looping_symlink",
-    "build_symlink_chain",
-    "add_wrong_type_symlink",
-    "add_symlink_into_source_clone",
-    "add_symlink_to_source_clone_parent",
-    "filesystem_is_case_sensitive",
-    "case_variant_path",
-    "add_case_variant_symlink_to_source_clone",
-    "vendor_source_tree_inside_project",
-    "add_dangling_deprecated_command_link",
-    # --- harness runner (T008, W1) ---
-    "REPO_ROOT",
-    "WORKING_TREE_INSTALL_SH",
-    "BASH_BIN",
-    "strip_ansi",
-    "drop_mmdc_courtesy_warning",
-    "clean_output",
-    "InstallResult",
-    "copy_working_tree_install_sh",
-    "run_install_sh",
-    "PathSnapshot",
-    "snapshot_path",
-    "snapshot_tree",
-    "diff_snapshots",
-    "assert_no_tree_changes",
-    "GIT_ISOLATION_ENV",
-    "build_version_tagged_source_repo",
-    "current_ref",
-    "detach_head",
-    "GIT_SHIM_REAL_GIT_ENV",
-    "GIT_SHIM_FAIL_REF_ENV",
-    "build_forced_checkout_failure_git_shim",
-]
 
 # Mirrors scripts/install.sh's own DEPRECATED_COMMANDS array verbatim (the
 # five pre-namespace command files a target project may still have lying
@@ -111,7 +67,7 @@ DEFAULT_MANIFEST_ENTRIES = (
 # ---------------------------------------------------------------------------
 
 
-def make_symlink(link_path: Path, target: Path, *, relative: bool = False) -> Path:
+def make_symlink(link_path: Path, target: Path) -> Path:
     """Create (or replace) a symlink at ``link_path`` pointing at ``target``.
 
     Creates ``link_path``'s parent directories first. Removes anything
@@ -121,15 +77,9 @@ def make_symlink(link_path: Path, target: Path, *, relative: bool = False) -> Pa
 
     Args:
         link_path: absolute path where the symlink is created.
-        target: absolute path the link should point at (or, with
-            ``relative=True``, a path to render relative to ``link_path``'s
-            parent directory before writing it into the link).
-        relative: write a relative link (as ``os.symlink`` would with a
-            relative ``target`` argument) instead of an absolute one.
-            Default is ``False`` -- bash's ``resolve()`` in
-            contracts/installer-cli.md handles both forms, but an absolute
-            link is easier to reason about across fixtures moved between
-            tmp dirs.
+        target: absolute path the link should point at, written into the
+            link as given (an absolute link is easier to reason about
+            across fixtures moved between tmp dirs).
 
     Returns:
         ``link_path``, for chaining.
@@ -142,12 +92,7 @@ def make_symlink(link_path: Path, target: Path, *, relative: bool = False) -> Pa
         else:
             link_path.unlink()
 
-    if relative:
-        target_text = os.path.relpath(Path(target), start=link_path.parent)
-    else:
-        target_text = str(target)
-
-    os.symlink(target_text, link_path)
+    os.symlink(str(target), link_path)
     return link_path
 
 
@@ -249,14 +194,7 @@ def build_project_tree(root: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def add_symlink(
-    project_root: Path,
-    relpath: str,
-    target: Path,
-    *,
-    target_is_dir: bool = True,
-    relative: bool = False,
-) -> Path:
+def add_symlink(project_root: Path, relpath: str, target: Path) -> Path:
     """Make ``project_root/relpath`` a symlink to ``target``.
 
     Covers two of the data-model.md Sec. 2.1 origin classes with one
@@ -272,8 +210,7 @@ def add_symlink(
     the same project tree, or a sibling tmp directory) if the link should
     resolve.
     """
-    del target_is_dir  # documents intent only; the target's real type governs resolution
-    return make_symlink(Path(project_root) / relpath, Path(target), relative=relative)
+    return make_symlink(Path(project_root) / relpath, Path(target))
 
 
 def add_nested_symlink(
@@ -281,8 +218,6 @@ def add_nested_symlink(
     dir_entry_relpath: str,
     inner_relpath: str,
     target: Path,
-    *,
-    target_is_dir: bool = True,
 ) -> Path:
     """Make a directory entry real, then link to something INSIDE it.
 
@@ -294,7 +229,6 @@ def add_nested_symlink(
     write through a symlinked subdirectory or file nested inside a copied
     tree (spec ruling S-6).
     """
-    del target_is_dir  # documents intent only; see add_symlink
     dir_entry = Path(project_root) / dir_entry_relpath
     dir_entry.mkdir(parents=True, exist_ok=True)
     return make_symlink(dir_entry / inner_relpath, Path(target))
@@ -398,21 +332,15 @@ def add_symlink_into_source_clone(
     project_root: Path,
     relpath: str,
     source_root: Path,
-    *,
-    subpath: str = "",
 ) -> Path:
     """Make ``project_root/relpath`` a symlink straight into the source clone.
 
-    Per data-model.md Sec. 2.2, this is ``source-tree``: refused regardless
-    of ``--follow-symlinks``, because the destination physically resolves
+    The link points at the clone root, ``source_root``, itself. Per
+    data-model.md Sec. 2.2, this is ``source-tree``: refused regardless of
+    ``--follow-symlinks``, because the destination physically resolves
     inside ``SRC_P``.
-
-    Args:
-        subpath: optional path inside ``source_root`` to point at (default:
-            the clone root itself).
     """
-    target = Path(source_root) / subpath if subpath else Path(source_root)
-    return make_symlink(Path(project_root) / relpath, target)
+    return make_symlink(Path(project_root) / relpath, Path(source_root))
 
 
 def add_symlink_to_source_clone_parent(
@@ -532,20 +460,17 @@ def vendor_source_tree_inside_project(
     return build_source_tree(nested_root, **source_tree_kwargs)
 
 
-def add_dangling_deprecated_command_link(project_root: Path, *, which: int = 0) -> Path:
-    """Make one of the five real deprecated-command files a dangling symlink.
+def add_dangling_deprecated_command_link(project_root: Path) -> Path:
+    """Make the first real deprecated-command file a dangling symlink.
 
-    Uses :data:`DEPRECATED_COMMANDS` (mirrors ``install.sh``'s own array),
-    so the path is exactly one ``install.sh`` already knows to clean up.
-    Without ``--follow-symlinks`` the cleanup is refused and the link
-    survives; with the flag, the cleanup is skipped (listed as skipped) and
-    the link still survives -- ``install.sh`` never deletes through a link.
-
-    Args:
-        which: index into :data:`DEPRECATED_COMMANDS` (default: the first,
-            ``threat-model.md``).
+    Uses ``DEPRECATED_COMMANDS[0]`` (``threat-model.md``; the tuple mirrors
+    ``install.sh``'s own array), so the path is exactly one ``install.sh``
+    already knows to clean up. Without ``--follow-symlinks`` the cleanup is
+    refused and the link survives; with the flag, the cleanup is skipped
+    (listed as skipped) and the link still survives -- ``install.sh`` never
+    deletes through a link.
     """
-    return add_dangling_symlink(project_root, DEPRECATED_COMMANDS[which])
+    return add_dangling_symlink(project_root, DEPRECATED_COMMANDS[0])
 
 
 # ---------------------------------------------------------------------------
@@ -653,7 +578,6 @@ def run_install_sh(
     *,
     cwd: Path,
     args: tuple[str, ...] = (),
-    env: dict[str, str] | None = None,
     pwd_override: str | None = None,
     path_prepend: tuple[Path, ...] = (),
     extra_env: dict[str, str] | None = None,
@@ -664,7 +588,8 @@ def run_install_sh(
     Pins the shell to :data:`BASH_BIN` (never an exported ``BASH`` -- N12)
     and always sets ``LC_ALL=C`` (spec ruling S-7), so the strict leg stays
     on bash 3.2 on a dev Mac even with a newer Homebrew bash first on the
-    caller's own ``PATH``.
+    caller's own ``PATH``. The child's environment starts as a copy of the
+    caller's ``os.environ``, adjusted as described below.
 
     Args:
         script_path: the install.sh COPY to run (normally
@@ -676,8 +601,6 @@ def run_install_sh(
             regardless of which spelling is given.
         args: extra argv, e.g. ``("--source", str(source_root))`` or
             ``("--follow-symlinks",)``.
-        env: a full replacement environment (default: a copy of the
-            caller's ``os.environ``).
         pwd_override: when given, sets ``$PWD`` in the child's environment
             to this LOGICAL path string, so bash's ``pwd`` builtin (which
             install.sh's own ``TARGET_DIR="$(pwd)"`` calls) echoes it back
@@ -689,11 +612,12 @@ def run_install_sh(
             directory), with the rest of the inherited ``$PATH`` kept
             after them so real ``git``, ``cp``, ``find``, etc. stay
             reachable.
-        extra_env: additional env vars merged in on top of ``env``/PWD/PATH
-            (e.g. the git-shim selector vars).
+        extra_env: additional env vars merged in on top of the copied
+            environment and the PWD/PATH adjustments above (e.g. the
+            git-shim selector vars).
         timeout: seconds before the subprocess is killed.
     """
-    run_env = dict(env) if env is not None else dict(os.environ)
+    run_env = dict(os.environ)
     run_env["LC_ALL"] = "C"
     if pwd_override is not None:
         run_env["PWD"] = pwd_override
@@ -838,11 +762,10 @@ def build_version_tagged_source_repo(
     *,
     tag: str,
     tagged_entries: tuple[str, ...] = DEFAULT_MANIFEST_ENTRIES,
-    head_entries: tuple[str, ...] | None = None,
     remove_from_tagged: tuple[str, ...] = (),
 ) -> Path:
     """Build a throwaway git repo at ``root``: a tagged commit, then a
-    second (HEAD) commit that differs only in manifest/source content.
+    second (HEAD) commit that only adds a ``HEAD_MARKER.txt`` content file.
 
     ``scripts/install.sh`` is copied from the WORKING TREE identically into
     BOTH commits: the running script must never change under bash mid-run
@@ -853,13 +776,8 @@ def build_version_tagged_source_repo(
 
     Args:
         tag: the version tag to create at the first commit.
-        tagged_entries: manifest entries at the tagged commit.
-        head_entries: manifest entries at the HEAD commit. Defaults to
-            ``tagged_entries`` unchanged (only a content marker file
-            differs between the two commits then). Pass a distinct tuple
-            to make a manifest ENTRY itself differ between tag and HEAD --
-            for example, a "fails" (COPY_FAIL) scenario wants a HEAD-only
-            entry the TAGGED source tree lacks.
+        tagged_entries: manifest entries at the tagged commit (the HEAD
+            commit keeps the same manifest).
         remove_from_tagged: relative paths to delete from the source tree
             AFTER ``tagged_entries``' backing content is built but BEFORE
             the tagged commit is made -- so the tag's own manifest lists an
@@ -887,13 +805,9 @@ def build_version_tagged_source_repo(
     _git(*_GIT_IDENTITY_ARGS, "commit", "--quiet", "-m", "tagged commit", cwd=root)
     _git("tag", tag, cwd=root)
 
-    effective_head_entries = tagged_entries if head_entries is None else head_entries
-    if effective_head_entries != tagged_entries:
-        build_source_tree(root, entries=effective_head_entries)
-    else:
-        (root / "HEAD_MARKER.txt").write_text(
-            "head commit marker (F-373 K3 fixture)\n", encoding="utf-8"
-        )
+    (root / "HEAD_MARKER.txt").write_text(
+        "head commit marker (F-373 K3 fixture)\n", encoding="utf-8"
+    )
     copy_working_tree_install_sh(root)  # stays byte-identical at both commits
     _git("add", "-A", cwd=root)
     _git(*_GIT_IDENTITY_ARGS, "commit", "--quiet", "-m", "head commit", cwd=root)

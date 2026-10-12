@@ -145,12 +145,14 @@ def _generate_report_data(
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
 
 
-def _compile(template_dir: Path, pdf_out: Path) -> subprocess.CompletedProcess:
+def _compile(
+    template_dir: Path, pdf_out: Path, entry: str = "main.typ"
+) -> subprocess.CompletedProcess:
     env = {**os.environ, "SOURCE_DATE_EPOCH": SOURCE_DATE_EPOCH}
     cmd = [
         "typst",
         "compile",
-        str(template_dir / "main.typ"),
+        str(template_dir / entry),
         str(pdf_out),
         "--root",
         str(template_dir),
@@ -290,11 +292,8 @@ def _compile_cover_harness(template_dir: Path, harness_source: str, pdf_out: Pat
     it directly is a faithful stand-in for "any caller that reaches
     cover-page without going through main.typ's guard."
     """
-    harness_path = template_dir / "harness.typ"
-    harness_path.write_text(harness_source)
-    env = {**os.environ, "SOURCE_DATE_EPOCH": SOURCE_DATE_EPOCH}
-    cmd = ["typst", "compile", str(harness_path), str(pdf_out), "--root", str(template_dir)]
-    return subprocess.run(cmd, cwd=template_dir, env=env, capture_output=True, text=True)
+    (template_dir / "harness.typ").write_text(harness_source)
+    return _compile(template_dir, pdf_out, entry="harness.typ")
 
 
 def test_cover_page_panics_with_no_posture_arguments(template_copy, tmp_path):
