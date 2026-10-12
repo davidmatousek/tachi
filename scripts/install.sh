@@ -10,7 +10,7 @@
 #
 # Options:
 #   --source <path>  Path to tachi source directory (auto-detected if omitted)
-#   --version <tag>  Install files from a specific tagged version (e.g., v4.48.0) # x-release-please-version
+#   --version <tag>  Install files from a specific tagged version (e.g., v4.48.1) # x-release-please-version
 #   --follow-symlinks  Install through symlinked destinations (for example a linked
 #                      `.claude/skills`). Without it, install.sh stops before writing
 #                      anything when a destination is a symlink. With it, install.sh
@@ -25,7 +25,7 @@
 # Examples:
 #   cd ~/Projects/my-app && ~/Projects/tachi/scripts/install.sh
 #   ./install.sh --source ~/Projects/tachi
-#   ./install.sh --version v4.48.0 # x-release-please-version
+#   ./install.sh --version v4.48.1 # x-release-please-version
 
 set -euo pipefail
 
@@ -54,7 +54,7 @@ usage() {
   echo ""
   echo "Options:"
   echo "  --source <path>  Path to tachi source directory (auto-detected if omitted)"
-  echo "  --version <tag>  Install files from a specific tagged version (e.g., v4.48.0)" # x-release-please-version
+  echo "  --version <tag>  Install files from a specific tagged version (e.g., v4.48.1)" # x-release-please-version
   echo "  --follow-symlinks  Install through symlinked destinations (for example a linked \`.claude/skills\`)."
   echo "                     Without it, install.sh stops before writing anything when a destination is a symlink."
   echo "                     With it, install.sh follows links at or above each installed path, names every"
