@@ -710,12 +710,12 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 - **Problem**: The same class of defect turned up three times:
   - **N1 (architect re-review of the plan).** The K3 pre-flight's first design tested containment with a string prefix (`case "$X/" in "$SRC_P"/*)`). Builtin `pwd -P` and Python `realpath` keep the case the user typed. A firmlink keeps its own spelling while naming the same directory. So on macOS's default case-insensitive APFS, a case variant or a firmlink slipped past the check.
-  - **SEC-K3-07 (final security review).** A tab or newline byte in the project or source path desynced the pre-flight's tab-delimited, newline-separated checked set and hid nested links from it. That failed open even without `--follow-symlinks`.
+  - **SEC-K3-07 (final security review).** A tab or newline byte in the project or source path desynced the pre-flight's tab-delimited, newline-separated checked set, so its classification saw none of the links it should have refused. That failed open even without `--follow-symlinks`.
   - **T036 H-1 (code review).** A backslash in a physical path corrupted an `awk -v` value, causing a partial install under `--follow-symlinks`.
 - **What we learned**:
   1. **Identity is the only reliable test for "same" or "inside".**
      - The fix is `under()` in `scripts/install.sh` (ruling AR-1). It first walks up past any tail components that don't exist yet. Then it walks the parent chain, comparing each ancestor with `[ "$x" -ef "$root" ]`, which tests for the same device and inode and is a bash 3.2 builtin.
-     - It is ten lines and passed 17/17 cases on bash 3.2.57 and 5.3.9.
+     - It is nine lines and passed 17/17 cases on bash 3.2.57 and 5.3.9.
   2. **Every place a path is serialized is a second trust boundary.** That includes a tab-separated row, a newline-separated list and an `awk -v` assignment.
      - Refuse delimiter bytes before building the structure: fail closed, write nothing.
      - Pass values to `awk` through `ENVIRON`, which takes them verbatim.
@@ -725,6 +725,7 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
     - In shell, use a `[ -ef ]` walk.
     - In Python, compare `st_dev` and `st_ino` (`os.path.samefile`) up the ancestor chain. A string comparison after `resolve()` is not an identity check on a case-insensitive volume.
     - In both, walk up to the first existing ancestor when the tail doesn't exist yet.
+    - A string test such as `resolve().is_relative_to(base)` is acceptable only when a mismatch refuses, as in the CWE-22 backstop below (write only if inside). Never let one decide a refusal (refuse if inside): a spelling mismatch then lets the path through, which is how N1 failed.
   - **Validate early.** Reject control bytes (`\t`, `\n`) in paths at the trust boundary, before any delimited serialization.
   - **Never pass path values through `awk -v`.**
   - **For identifiers that become file names**, validate against an allow-list pattern where they are parsed. Then assert the resolved write path stays under its base directory as a backstop. This is how the CWE-22 fix works: `_SAFE_FINDING_ID_RE` plus the `is_relative_to` checks in `scripts/extract-report-data.py`.
