@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-11-16T22:17:01Z.
+> Auto-generated from GitHub Issues on 2026-11-16T23:49:52Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -33,7 +33,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #391 | Isolated and auditable operation: egress disclosure, agent permission matrix, and run provenance (CVP mapping) | — | 2026-11-16 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -65,6 +65,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #391 | Isolated and auditable operation: egress disclosure, agent permission matrix, and run provenance (CVP mapping) | OPEN | 2026-11-16 |
 | #370 | Covering test for the FR-012b form-drift guard in extract-report-data.py | CLOSED | 2026-10-10 |
 | #369 | CI manifest-integrity check for adapter VERSION attestations (+ copilot-aware generator) | OPEN | 2026-08-12 |
 | #368 | check-catalog-drift: _canonical() widening — decided DEFER with rationale; plus false-docstring defect (docstring :95 vs fail-closed fallback :105) | OPEN | 2026-08-12 |

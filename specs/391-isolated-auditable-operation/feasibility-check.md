@@ -35,7 +35,7 @@ estimate:
   - Per-agent attribution is a join on fields Claude Code already writes: a per-subagent sidecar with the agent type, and the served model on every assistant turn.
 - **One Part B risk measured larger.** No retained local transcript contains a tachi orchestrator run, so nobody has observed how its 14 threat-agent dispatches are recorded. The transcript layout also changed between sessions only weeks apart. This is the Part B honest-stop trip-wire (TW-B1). It can be tested cheaply before any Part B code is written.
 - **Calendar is set by three gates outside this feature.**
-  - The build starts only after the infographic key-handling patch merges.
+  - The build starts only after the key-handling patch merges.
   - The merge waits on #364, which is still unscheduled.
   - OpenClaw Phase B cannot be SC-A1's vehicle: in the maintainer's run plan it follows #374.
 
@@ -123,7 +123,7 @@ estimate:
 
 | Dependency | Role | Status (2026-11-16) | Effect |
 |---|---|---|---|
-| Infographic key-handling patch | **start gate** | not shipped (latest tag v4.48.1) | Branch the build from `main` after it merges. The plan stage and the spike can run now |
+| The key-handling patch | **start gate** | not shipped (latest tag v4.48.1) | Branch the build from `main` after it merges. The plan stage and the spike can run now |
 | #364 | **merge gate** | Discover, unscheduled | `feat(391)` is a minor release, and #364 blocks the next minor. TW-A2 is the escape hatch. If examples stay at 1.4, B2 shares no files with #364 |
 | #374 | coordinate | Discover | Overlaps B2 on `output-schemas.md` and the orchestrator, so whichever merges second rebases. It also gates OpenClaw Phase B |
 | #365 | pre-state | open | 6 byte-identity reds already exist (see C-7). Run everything in scratch clones only |
