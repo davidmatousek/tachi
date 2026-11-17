@@ -22,9 +22,9 @@ Declared keys after reconciliation: `schema_version` ("1.5"), `date`, `input_for
 | `transcripts[]` | {`path`, `bytes`, `sha256`} | every archived file |
 | `main` | {`served_model_histogram`: {model: int}, `turns`: int, `synthetic_turns`: int, `tool_calls_by_tool`: {tool: int}} | main session; no `pinned_model` |
 | `subagents[]` | {`agent_id`, `agent_type`, `attribution_agent`, `spawn_depth`, `parent_tool_use_id`, `pinned_model`, `served_model_histogram`, `synthetic_turns`, `turns`, `tool_calls_by_tool`, `unknown_meta_keys`: [string]} | one per recorded subagent instance; `pinned_model` from the agent file matched by `agent_type` or `null` |
-| `dispatches[]` | {`agent`, `tool_use_id`, `dispatched_from`: "main" or `<agent_id>`, `depth`, `status`: recorded|dispatch-failed|not-recorded} | every `Agent`/`Task` `tool_use` naming a tachi agent, in any transcript at any depth |
+| `dispatches[]` | {`agent`, `tool_use_id`, `dispatched_from`: "main" or `<agent_id>`, `spawn_depth`, `status`: recorded|dispatch-failed|not-recorded} | every `Agent`/`Task` `tool_use` naming a tachi agent, in any transcript at any depth, failed ones included |
 | `tachi_agents_not_recorded[]` | {`agent`, `tool_use_id`, `dispatched_from`, `reason`: no-transcript|dispatch-failed} | successful dispatches with no matching meta (`no-transcript`, trips TW-B1) and errored dispatches (`dispatch-failed`, listed only); never inferred |
-| `tachi_agents_not_dispatched` | [string] | installed tachi agents (matrix roster) with neither a recorded instance nor a dispatch, so an inline-analysing orchestrator never yields an empty listing |
+| `tachi_agents_not_dispatched` | [string] | installed tachi agents (roster = the `name:` values of the installed `.claude/agents/tachi/*.md`; the matrix is not installed and its absence never exits 2) with neither a recorded instance nor a dispatch, so an inline-analysing orchestrator never yields an empty listing |
 | `permission_modes_seen` | [string] | distinct values |
 | `egress_observed[]` | {`host`, `tool`, `count`} | hostnames only (no userinfo, query, fragment); unparsable → `<unparseable>` |
 | `egress_unparsed_count` | int | |
