@@ -87,9 +87,18 @@ on:
       #     covered by report_data/** and fidelity_373/** since A-2 (C-1) ---
       - tests/scripts/test_extraction_sibling_parity.py
       # --- W2: K13-posture (report-posture job). Stand-alone: dropped
-      #     together with the job below if K13-posture is carved (PD-8) ---
+      #     together with its module in the job's pytest line if K13-posture
+      #     is carved (PD-8) ---
       - templates/tachi/security-report/**
       - tests/scripts/test_report_posture_contract.py
+      # --- F-391 (T015): write confinement of the report build path. Runs
+      #     in the report-posture job (Typst-gated). Its other inputs already
+      #     match entries above: scripts/*.py (the extractor and
+      #     tachi_parsers.py), schemas/**, templates/tachi/**,
+      #     tests/scripts/fixtures/fidelity_373/** (posture_mmdc_free) and
+      #     the five recipe documents it scans (.claude/agents/tachi/**,
+      #     .claude/commands/tachi.*.md, .claude/skills/**) ---
+      - tests/scripts/test_write_confinement.py       # F-391 (T015) — AR-1, SC-005
   push:
     branches: [main]
     paths: *fidelity_paths
@@ -162,12 +171,17 @@ jobs:
             tests/scripts/test_extraction_sibling_parity.py \
             -v
 
-  # W2, K13-posture only (PD-8): this job is Typst-gated and stands alone —
-  # if K13-posture is ever carved, this job and its paths: entries above are
-  # the only things to drop, and the revert stays mechanical. Typst comes
+  # W2, K13-posture (PD-8) plus F-391 T015: this job is Typst-gated and runs
+  # two modules in one pytest session: the K13-posture stale-data gate
+  # (test_report_posture_contract.py) and the F-391 write-confinement suite
+  # (test_write_confinement.py). If K13-posture is ever carved, drop its
+  # module from the invocation below and its paths: entries above; the job
+  # stays for the F-391 suite, and the revert stays mechanical. Typst comes
   # from typst-community/setup-typst@v5, unpinned to a compiler version,
   # mirroring tachi-mmdc-preflight.yml's precedent. TACHI_REQUIRE_TYPST=1
-  # makes the stale-data test fail (not skip) when Typst is missing.
+  # makes the stale-data test and the write-confinement tests that compile
+  # fail (not skip) when Typst is missing; the rest of the write-confinement
+  # suite needs no Typst.
   report-posture:
     name: report-posture
     runs-on: ubuntu-latest
@@ -189,6 +203,15 @@ jobs:
       - name: Install pytest + pytest-timeout + PyYAML
         run: pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
 
-      - name: Run report-posture stale-data gate (K13-posture)
+      # One pytest session for both modules, so a failure in one cannot hide
+      # the other. test_write_confinement.py runs the three report-assembler
+      # commands (extract --build-dir, typst compile, extract
+      # --remove-build-dir) in a throwaway adopter project and fails on any
+      # write outside {out} and $TMPDIR (F-391 T015, SC-005). Keep both
+      # modules here in lock-step with the `paths:` list above (F-250 rule).
+      - name: Run report-posture suite (K13 stale-data gate + F-391 write confinement)
         run: |
-          python3 -m pytest tests/scripts/test_report_posture_contract.py -v
+          python3 -m pytest \
+            tests/scripts/test_report_posture_contract.py \
+            tests/scripts/test_write_confinement.py \
+            -v
