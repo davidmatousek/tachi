@@ -1,0 +1,423 @@
+# Run Manifest Schema
+#
+# Documents run-manifest.json: the structured provenance record that
+# scripts/archive-run-transcripts.py writes next to an archived Claude Code
+# session. It says which model served each agent, which tachi agents were
+# dispatched at any depth and what became of each dispatch, which hosts the
+# tool calls named, which calls were denied, and a hash of every archived file
+# and of every file in the run's output directory.
+#
+# The manifest holds structure only: identifiers, counts, hostnames, hashes.
+# It never holds message text, tool input or output, command lines, URLs,
+# metadata descriptions or denial messages. The ARCHIVE written beside it is
+# different: it is a verbatim, unredacted copy of the session and holds your
+# architecture, code and findings. Keep it where no commit can reach it.
+#
+# Producers: scripts/archive-run-transcripts.py (run by the operator from a
+#            plain shell after the session)
+# Consumers: operators and auditors comparing a threat model with how it was
+#            produced; later tooling that reads the manifest instead of the
+#            transcripts
+#
+# Version: 1.0
+
+schema_version: "1.0"
+
+run_manifest:
+  file: run-manifest.json
+  encoding: "UTF-8 JSON, keys sorted, two-space indent, trailing newline"
+  mode: "0600"
+  manifest_version: 1
+  description: >
+    One manifest per archived session. It is written last, after the verbatim
+    copy and the parse, and only if the final secret scan finds nothing. A
+    destination that holds a copy but no run-manifest.json is an incomplete
+    archive: the archiver refuses to reuse it and exits 1.
+
+  # ---------------------------------------------------------------------------
+  # Fields
+  # ---------------------------------------------------------------------------
+  fields:
+    manifest_version:
+      type: integer
+      value: 1
+
+    tachi_version:
+      type: string
+      description: >
+        The value on the single line "tachi_version: <value>" of
+        templates/tachi/VERSION under --project-dir, or "unknown" when the file
+        is absent or malformed. It describes the install at ARCHIVE time, so
+        archive right after the session. The archiver reads no other file for it.
+
+    session_id:
+      type: string
+      description: The main transcript's file stem.
+
+    claude_code_versions:
+      type: list[string]
+      description: >
+        Distinct top-level "version" values seen in every archived transcript,
+        main and subagent, sorted by numeric components.
+
+    started_at:
+      type: string
+      format: "YYYY-MM-DDTHH:MM:SSZ (UTC)"
+      description: The earliest top-level "timestamp" across every transcript.
+
+    ended_at:
+      type: string
+      format: "YYYY-MM-DDTHH:MM:SSZ (UTC)"
+      description: The latest top-level "timestamp" across every transcript.
+
+    archived_at:
+      type: string
+      format: "YYYY-MM-DDTHH:MM:SSZ (UTC)"
+      description: When the archiver ran.
+
+    transcripts:
+      type: list[object]
+      description: >
+        Every archived file except run-manifest.json: the main transcript, each
+        subagent transcript and metadata file, and every persisted tool-result
+        file. Sorted by path.
+      item_schema:
+        path:
+          type: string
+          description: Relative to the archive root, forward slashes.
+        bytes:
+          type: integer
+        sha256:
+          type: string
+          description: Lower-case hex SHA-256 of the archived file, equal to the source file's.
+
+    main:
+      type: object
+      description: The main session. It carries no pinned model.
+      fields:
+        served_model_histogram:
+          type: "map[string, integer]"
+          description: >
+            Served model id (message.model) to the number of turns it served.
+            Synthetic turns are never counted here. Never empty.
+        turns:
+          type: integer
+          description: Sum of the histogram plus synthetic_turns.
+        synthetic_turns:
+          type: integer
+          description: Assistant lines whose message.model is "<synthetic>", one turn each.
+        tool_calls_by_tool:
+          type: "map[string, integer]"
+          description: >
+            Distinct tool_use ids by tool name. The dispatching agent counts its
+            own Agent (or legacy Task) calls here.
+
+    dispatches:
+      type: list[object]
+      description: >
+        Every Agent (legacy Task) tool_use whose input.subagent_type names a
+        tachi agent, in any archived transcript, main or subagent, at any depth,
+        failed ones included. A dispatch of any other type (for example the
+        built-in general-purpose agent) is not a dispatch here. Sorted by
+        spawn_depth, then dispatcher, then tool_use_id.
+      item_schema:
+        agent: {type: string, description: "The dispatched tachi agent name."}
+        tool_use_id: {type: string}
+        dispatched_from:
+          type: string
+          description: '"main", or the agent_id of the instance whose transcript holds the call.'
+        spawn_depth:
+          type: integer
+          description: "Depth of the dispatched instance: its dispatcher's depth plus one (main is depth 0)."
+        status:
+          type: string
+          enum: [recorded, dispatch-failed, not-recorded]
+          description: See the dispatch_states section.
+
+    subagents:
+      type: list[object]
+      description: >
+        One entry for every subagent instance in the archive that ran, whatever
+        its agent type: each subagents/*.meta.json together with its transcript.
+        Built-in and project-defined agents are listed too (pinned_model null).
+        An instance that never ran because its dispatch failed is not listed
+        (its files are still archived and hashed). Sorted by spawn_depth, then
+        agent_id.
+      item_schema:
+        agent_id: {type: string, description: "From the file name subagents/agent-<id>.jsonl."}
+        agent_type: {type: string, description: "The metadata agentType."}
+        attribution_agent:
+          type: string
+          description: The attributionAgent carried by the instance's non-synthetic assistant lines.
+        spawn_depth:
+          type: integer
+          description: >
+            From the dispatch chain, not from the metadata: main is 0 and an
+            instance is one deeper than the transcript that holds its dispatch.
+        parent_tool_use_id: {type: string, description: "The metadata toolUseId."}
+        pinned_model:
+          type: "string | null"
+          description: >
+            The model: alias exactly as the installed agent file writes it, for
+            an agent type that starts with "tachi-" and has a file under
+            .claude/agents/tachi/; null for every other type. The archiver never
+            resolves the alias and never compares it with the served model.
+            The alias is resolved by Claude Code; the histogram records the
+            model ids that actually served. The manifest does not show that the
+            pin was honoured, only what served.
+        served_model_histogram: {type: "map[string, integer]", description: "Never empty."}
+        synthetic_turns: {type: integer}
+        turns:
+          type: integer
+          description: Sum of the histogram plus synthetic_turns.
+        tool_calls_by_tool: {type: "map[string, integer]"}
+        unknown_meta_keys:
+          type: list[string]
+          description: >
+            Key NAMES in the metadata file outside the twelve known at Claude
+            Code 2.1.328 (agentType, description, finished, isBuiltIn,
+            launchedWithDefaults, model, parentAgentId, pickedEffortModel,
+            requestNonInteractive, requestShape, spawnDepth, toolUseId). Never
+            values. Empty is normal; anything else suggests layout drift.
+
+    tachi_agents_not_recorded:
+      type: list[object]
+      description: >
+        The dispatches whose status is not "recorded", so a dispatch that left
+        no transcript is listed rather than inferred. Sorted by dispatcher,
+        then tool_use_id.
+      item_schema:
+        agent: {type: string}
+        tool_use_id: {type: string}
+        dispatched_from: {type: string}
+        reason:
+          type: string
+          enum: [no-transcript, dispatch-failed]
+          description: >
+            "no-transcript": the dispatch succeeded (or was never answered) and
+            no subagent metadata matches it. Attribution is incomplete for that
+            dispatch; this is the one condition that stops the archiver's
+            attribution claim (TW-B1). "dispatch-failed": the tool_result was an
+            error (or the call was denied); listed only.
+
+    tachi_agents_not_dispatched:
+      type: list[string]
+      description: >
+        Installed tachi agents (the name: values of .claude/agents/tachi/*.md
+        under --project-dir) with neither a recorded instance nor a dispatch, so
+        an orchestrator that analysed inline never yields an empty listing.
+        Sorted. The permissions matrix is not installed and is not read.
+
+    permission_modes_seen:
+      type: list[string]
+      description: >
+        Distinct permission modes from the permission-mode entries of every
+        archived transcript, sorted. At Claude Code 2.1.328 only the main
+        transcript carries them. Empty when there are none.
+
+    egress_observed:
+      type: list[object]
+      description: >
+        Hosts named by URLs in Bash commands and WebFetch URLs of calls that were
+        not denied, per tool. A host counts once per call. Only URLs are seen: a
+        command that reaches a host without naming a URL (for example ssh host)
+        is not. This records what the session asked for, not what the network
+        did, and it cannot see traffic from child processes of a tool (a
+        diagram renderer, a headless browser). Sorted by host, then tool.
+      item_schema:
+        host:
+          type: string
+          description: >
+            A bare, lower-case hostname or IP literal: userinfo, port, path,
+            query and fragment are stripped. "<unparseable>" when no host can be
+            read.
+        tool: {type: string, description: '"Bash" or "WebFetch".'}
+        count: {type: integer}
+
+    egress_unparsed_count:
+      type: integer
+      description: >
+        The sum of count over entries whose host is "<unparseable>" in
+        egress_observed and egress_denied.
+
+    egress_denied:
+      type: list[object]
+      description: >
+        Calls a denial marker names, by host and kind. A denied call is not also
+        listed in egress_observed. A denial whose call names no host (a denied
+        Read, a write blocked by the sandbox, or a marker that names no call)
+        is listed with host "<unparseable>" rather than dropped. Only the kinds
+        below are recorded; a marker of any other kind is counted in the run
+        summary and forces denial_detection.status to "not-validated".
+        An empty list means "none seen" only when denial_detection.status is
+        "validated". Sorted by host, then kind.
+      item_schema:
+        host: {type: string}
+        kind: {type: string, enum: [sandbox, classifier, permission-rule]}
+        count: {type: integer}
+
+    denial_detection:
+      type: object
+      description: >
+        Fails closed. The denial markers were checked against a RECORDED run for
+        some Claude Code versions only; for every other version an empty
+        egress_denied does not mean that nothing was denied.
+      fields:
+        status:
+          type: string
+          enum: [validated, not-validated]
+          description: >
+            "validated" only when claude_code_versions is not empty, every
+            version in it is in validated_claude_code_versions, and no denial
+            marker of an unrecognised kind was seen. Otherwise "not-validated".
+        validated_claude_code_versions:
+          type: list[string]
+          description: >
+            The versions in claude_code_versions whose denial markers were
+            checked against a recorded run. The synthetic test fixtures never
+            populate it, so it is empty until a recorded run is added.
+
+    artifacts:
+      type: "list[object] | null"
+      description: >
+        A hash of every regular file under --output-dir, sorted by path; null
+        when --output-dir was not given (then artifacts_reason is present).
+        Symbolic links are not followed.
+      item_schema:
+        path: {type: string, description: "Relative to --output-dir, forward slashes."}
+        bytes: {type: integer}
+        sha256: {type: string}
+
+    artifacts_reason:
+      type: string
+      enum: [no-output-dir]
+      description: Present only when artifacts is null.
+
+  # ---------------------------------------------------------------------------
+  # Definitions
+  # ---------------------------------------------------------------------------
+  definitions:
+    turn: >
+      One model response. Non-synthetic assistant lines are grouped by
+      message.id (a response can span several lines); a line without a
+      message.id is its own turn; each "<synthetic>" line is one synthetic turn.
+      Lines that share a message.id must agree on message.model or the run
+      fails. In every object, turns equals the histogram's total plus
+      synthetic_turns.
+    dispatch: >
+      An Agent (legacy Task) tool_use whose input.subagent_type starts with
+      "tachi-", in any archived transcript at any depth. The archiver indexes
+      every Agent and Task call, whatever it names, to build the topology.
+    spawn_depth: >
+      The main session is depth 0; an instance is its dispatcher's depth plus 1.
+      A dispatch that left no transcript still gets the depth the chain gives it.
+
+  dispatch_states:
+    recorded: >
+      A subagent metadata file's toolUseId equals the call's id, its agentType
+      equals the dispatched subagent_type, and its transcript has at least one
+      assistant turn. The tool_result does not matter.
+    dispatch-failed: >
+      The call's tool_result is an error (or the call was denied) and either no
+      metadata matches it, or the matching instance has zero assistant turns.
+      Listed in tachi_agents_not_recorded with reason dispatch-failed. A
+      zero-turn instance of this kind is not listed in subagents.
+    not-recorded: >
+      No metadata matches the call and its tool_result succeeded, or no
+      tool_result exists anywhere in the archive (an interrupted or live
+      session; an unknown outcome is never filed as a failure). Listed with
+      reason no-transcript.
+
+  # ---------------------------------------------------------------------------
+  # Parse contract (a violation exits 1 and writes no manifest)
+  # ---------------------------------------------------------------------------
+  parse_contract:
+    unparseable: "Invalid JSON on a line (or in a metadata file) and nothing else."
+    required:
+      - "Every assistant line has message.model, and lines of one response agree on it."
+      - "Every subagent metadata file has agentType and toolUseId."
+      - "Every subagent transcript has a metadata file, and every metadata file's toolUseId matches an Agent or Task call in some archived transcript."
+      - "A metadata agentType equal to the dispatched subagent_type, for a dispatch that names a tachi agent."
+      - "Every assistant line that carries attributionAgent carries the metadata agentType (a <synthetic> line is exempt), and at least one non-synthetic line carries it."
+      - "At least one assistant turn and a non-empty histogram, for main and for every instance that ran."
+      - "A tool_use id appears in one transcript only, and the dispatch chain does not loop."
+      - "At least one parseable timestamp."
+    tolerated:
+      - "Entry types and keys the archiver does not know (the api-request entries among them): counted in the run summary, never in the manifest."
+      - "Extra metadata keys: their names are listed in unknown_meta_keys."
+      - "Timestamps that do not parse, blank lines, and lines that are valid JSON but not objects: counted in the run summary."
+
+  # ---------------------------------------------------------------------------
+  # Redaction
+  # ---------------------------------------------------------------------------
+  redaction:
+    structural: >
+      The manifest carries identifiers, counts, bare hostnames and hashes only.
+      A value copied from a transcript must be one short token (no whitespace,
+      at most 128 characters) or the run fails. Hosts are reduced to the
+      hostname before they are recorded.
+    final_scan: >
+      Before anything is written, every string in the manifest (hash fields
+      excluded) is checked against known key formats, case-insensitively, and
+      against the values of environment variables whose names contain KEY,
+      TOKEN, SECRET, PASSWORD or CREDENTIAL. Values shorter than 8 characters,
+      and boolean or numeric literals, are skipped. A hit exits 1, writes no
+      manifest, and names the rule or the variable, never the value. The scan
+      sees only the archiver's own environment, so run it under the same
+      secret-injection wrapper as the session.
+
+  archive_layout: >
+    The archive root holds <session>.jsonl, the whole <session>/ directory
+    (subagents/agent-<id>.jsonl, subagents/agent-<id>.meta.json, tool-results/),
+    and run-manifest.json. Directories are mode 0700 and files 0600. Files are
+    created exclusively, symbolic links are never followed, and a source tree
+    that holds a symbolic link is refused.
+
+  # ---------------------------------------------------------------------------
+  # Example (abridged; the numbers are internally consistent)
+  # ---------------------------------------------------------------------------
+  example:
+    manifest_version: 1
+    tachi_version: "v4.49.0-3-gabc1234"
+    session_id: "3f1c0000-0000-4000-8000-000000000001"
+    claude_code_versions: ["2.1.328"]
+    started_at: "2026-11-20T14:02:11Z"
+    ended_at: "2026-11-20T14:31:40Z"
+    archived_at: "2026-11-20T15:00:02Z"
+    transcripts:
+      - {path: "3f1c0000-0000-4000-8000-000000000001.jsonl", bytes: 812345, sha256: "<64 hex digits>"}
+    main:
+      served_model_histogram: {"claude-opus-5-5": 41}
+      turns: 42
+      synthetic_turns: 1
+      tool_calls_by_tool: {"Agent": 1, "Bash": 3}
+    dispatches:
+      - {agent: "tachi-orchestrator", tool_use_id: "toolu_01", dispatched_from: "main", spawn_depth: 1, status: "recorded"}
+      - {agent: "tachi-spoofing", tool_use_id: "toolu_17", dispatched_from: "a9000000000000001", spawn_depth: 2, status: "recorded"}
+      - {agent: "tachi-tool-abuse", tool_use_id: "toolu_22", dispatched_from: "a9000000000000001", spawn_depth: 2, status: "dispatch-failed"}
+    subagents:
+      - agent_id: "a9000000000000001"
+        agent_type: "tachi-orchestrator"
+        attribution_agent: "tachi-orchestrator"
+        spawn_depth: 1
+        parent_tool_use_id: "toolu_01"
+        pinned_model: "sonnet"
+        served_model_histogram: {"claude-sonnet-5-5": 58}
+        synthetic_turns: 1
+        turns: 59
+        tool_calls_by_tool: {"Agent": 15, "Read": 9, "Bash": 1, "Write": 2}
+        unknown_meta_keys: []
+    tachi_agents_not_recorded:
+      - {agent: "tachi-tool-abuse", tool_use_id: "toolu_22", dispatched_from: "a9000000000000001", reason: "dispatch-failed"}
+    tachi_agents_not_dispatched: ["tachi-misinformation"]
+    permission_modes_seen: ["auto"]
+    egress_observed:
+      - {host: "generativelanguage.googleapis.com", tool: "Bash", count: 1}
+    egress_unparsed_count: 0
+    egress_denied:
+      - {host: "example.com", kind: "sandbox", count: 1}
+    denial_detection:
+      status: "not-validated"
+      validated_claude_code_versions: []
+    artifacts: null
+    artifacts_reason: "no-output-dir"
