@@ -8,7 +8,9 @@ variable bindings needed by the security report templates.
 Modes:
   --target-dir DIR --output FILE --template-dir DIR
       Write report-data.typ to FILE; image and brand paths are computed relative
-      to the template directory.
+      to the template directory. Rendered diagrams (attack-trees/,
+      attack-chains/) and corrected infographic copies are written next to the
+      artifacts in DIR.
   --target-dir DIR --build-dir PATH [--template-dir DIR]
       Build-directory mode (isolated operation). The extractor owns PATH, a
       throwaway copy of the report template, so a run never writes under
@@ -17,6 +19,13 @@ Modes:
       the template's default when present, writes report-data.typ there and
       computes every image and brand path relative to PATH. Compile with:
         typst compile PATH/main.typ OUT/security-report.pdf --root .
+      OUT is the output directory: the directory that contains PATH's
+      .tachi-build/. In this mode the extractor writes only under OUT and the
+      system temp directory, and only reads DIR: report-data.typ and the
+      template copy in PATH, the attack-tree and attack-chain PNGs in
+      OUT/attack-trees/ and OUT/attack-chains/, and a corrected copy of a
+      mislabeled infographic in OUT. --cleanup-mislabeled-images deletes a
+      file only when it lies in OUT.
   --remove-build-dir PATH
       Remove a build directory (use it after a verified compile).
 
@@ -1024,7 +1033,12 @@ def _render_single(entry, tmp_path):
         return (entry, False, _build_error_record(fid, "timeout", e.stderr))
 
 
-def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Path):
+def render_mermaid_to_png(
+    attack_trees: list,
+    target_dir: Path,
+    template_dir: Path,
+    image_dir: "Path | None" = None,
+):
     """Render Mermaid code blocks to PNG images via mmdc.
 
     Modifies attack_trees entries in-place, setting has_image and image_path.
@@ -1034,8 +1048,12 @@ def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Pa
 
     Args:
         attack_trees: List of attack tree dicts (must have id, mermaid_code keys).
-        target_dir: Directory containing the attack-trees/ subdirectory.
+        target_dir: Directory containing the attack-trees/ subdirectory; it
+            receives the rendered PNGs unless ``image_dir`` is given.
         template_dir: Typst template directory (for relative path calculation).
+        image_dir: Directory that receives the attack-trees/ PNG directory.
+            None (legacy mode) means ``target_dir``. Build mode passes the
+            output directory so that ``target_dir`` is only ever read.
     """
     if not attack_trees:
         return
@@ -1048,14 +1066,16 @@ def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Pa
         )
     _mmdc_puppeteer_args()  # fail loud on a bad TACHI_MMDC_PUPPETEER_CONFIG before any render starts
 
-    # Compute relative path from template_dir to target_dir
+    # Compute relative path from template_dir to the directory that receives
+    # the PNGs (target_dir in legacy mode, the output directory in build mode)
+    png_base = target_dir if image_dir is None else image_dir
     try:
-        rel_target = os.path.relpath(str(target_dir), str(template_dir))
+        rel_target = os.path.relpath(str(png_base), str(template_dir))
     except ValueError:
-        rel_target = str(target_dir)
+        rel_target = str(png_base)
 
-    attack_trees_dir = target_dir / "attack-trees"
-    attack_trees_dir.mkdir(exist_ok=True)
+    attack_trees_dir = png_base / "attack-trees"
+    attack_trees_dir.mkdir(parents=True, exist_ok=True)
 
     global _render_attack_trees_dir, _render_rel_target
     _render_attack_trees_dir = attack_trees_dir
@@ -1167,7 +1187,12 @@ def generate_chain_mermaid(chain: dict) -> str:
     return "\n".join(lines)
 
 
-def prepare_attack_chains(target_dir: Path, findings: list, template_dir: Path) -> tuple:
+def prepare_attack_chains(
+    target_dir: Path,
+    findings: list,
+    template_dir: Path,
+    image_dir: "Path | None" = None,
+) -> tuple:
     """Parse attack chains, generate Mermaid diagrams, and render to PNG.
 
     Follows the same pattern as parse_attack_trees + render_mermaid_to_png
@@ -1177,6 +1202,9 @@ def prepare_attack_chains(target_dir: Path, findings: list, template_dir: Path) 
         target_dir: Directory containing attack-chains.md artifact.
         findings: Parsed findings list for cross-referencing.
         template_dir: Typst template directory (for relative path calculation).
+        image_dir: Directory that receives the attack-chains/ PNG directory.
+            None (legacy mode) means ``target_dir``; build mode passes the
+            output directory.
 
     Returns:
         (has_attack_chains: bool, chains: list of chain dicts with rendering data)
@@ -1211,7 +1239,7 @@ def prepare_attack_chains(target_dir: Path, findings: list, template_dir: Path) 
             })
 
     if render_entries:
-        _render_chain_diagrams(render_entries, target_dir, template_dir)
+        _render_chain_diagrams(render_entries, target_dir, template_dir, image_dir=image_dir)
         # Map rendered paths back to chains
         rendered_map = {e["id"]: e for e in render_entries}
         for chain in surfaced:
@@ -1598,10 +1626,16 @@ def build_per_finding_rows(findings: list) -> list:
     return rows
 
 
-def _render_chain_diagrams(entries: list, target_dir: Path, template_dir: Path):
+def _render_chain_diagrams(
+    entries: list,
+    target_dir: Path,
+    template_dir: Path,
+    image_dir: "Path | None" = None,
+):
     """Render chain Mermaid diagrams to PNG, following render_mermaid_to_png pattern.
 
-    Writes PNGs to {target_dir}/attack-chains/ directory.
+    Writes PNGs to {image_dir}/attack-chains/; ``image_dir`` None (legacy mode)
+    means {target_dir}/attack-chains/.
     """
     if not entries:
         return
@@ -1614,13 +1648,14 @@ def _render_chain_diagrams(entries: list, target_dir: Path, template_dir: Path):
         )
     _mmdc_puppeteer_args()  # fail loud on a bad TACHI_MMDC_PUPPETEER_CONFIG before any render starts
 
+    png_base = target_dir if image_dir is None else image_dir
     try:
-        rel_target = os.path.relpath(str(target_dir), str(template_dir))
+        rel_target = os.path.relpath(str(png_base), str(template_dir))
     except ValueError:
-        rel_target = str(target_dir)
+        rel_target = str(png_base)
 
-    chains_dir = target_dir / "attack-chains"
-    chains_dir.mkdir(exist_ok=True)
+    chains_dir = png_base / "attack-chains"
+    chains_dir.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
@@ -1737,7 +1772,23 @@ def _file_format(path: Path) -> "str | None":
     return None
 
 
-def _maybe_delete_mislabeled(mislabeled_fp: Path, counterpart_fp: Path) -> bool:
+def _lies_in(entry: Path, directory: Path) -> bool:
+    """True when the directory entry ``entry`` sits in ``directory`` or below it.
+
+    Both sides are resolved. The entry's parent is resolved rather than the
+    entry itself: unlinking a symlink removes the link where it lives and never
+    touches its target.
+    """
+    base = Path(os.path.realpath(directory))
+    parent = Path(os.path.realpath(entry.parent))
+    return parent == base or base in parent.parents
+
+
+def _maybe_delete_mislabeled(
+    mislabeled_fp: Path,
+    counterpart_fp: Path,
+    confine_to: "Path | None" = None,
+) -> bool:
     """Delete ``mislabeled_fp`` iff ``counterpart_fp`` is a verified byte-identical
     survivor (gate 2 of the double-gated cleanup; the --cleanup-mislabeled-images
     flag is gate 1, checked by the caller). The entire attempt — existence/size
@@ -1746,8 +1797,19 @@ def _maybe_delete_mislabeled(mislabeled_fp: Path, counterpart_fp: Path) -> bool:
     extraction (FR-005/INV-3). Returns whether the deletion happened. This is
     the sole deletion primitive in the module (INV-1: both wiring moments call
     it, so the predicate cannot drift between them).
+
+    ``confine_to`` (build mode: the output directory) adds a location gate that
+    runs first: a file that does not lie in that directory is never touched, and
+    one stderr line says so. Legacy mode passes None and is unaffected.
     """
     try:
+        if confine_to is not None and not _lies_in(mislabeled_fp, confine_to):
+            print(
+                f"Cleanup skipped for {mislabeled_fp}: it lies outside the output "
+                f"directory {confine_to}, and build mode deletes only inside it",
+                file=sys.stderr,
+            )
+            return False
         if not counterpart_fp.exists() or counterpart_fp.stat().st_size == 0:
             return False
         if not filecmp.cmp(mislabeled_fp, counterpart_fp, shallow=False):
@@ -1764,7 +1826,12 @@ def _maybe_delete_mislabeled(mislabeled_fp: Path, counterpart_fp: Path) -> bool:
         return False
 
 
-def detect_images(target_dir: Path, template_dir: Path, cleanup: bool = False) -> dict:
+def detect_images(
+    target_dir: Path,
+    template_dir: Path,
+    cleanup: bool = False,
+    image_dir: "Path | None" = None,
+) -> dict:
     """Compute image paths relative to template directory.
 
     The infographic agent writes images whose extension is supposed to match
@@ -1781,14 +1848,28 @@ def detect_images(target_dir: Path, template_dir: Path, cleanup: bool = False) -
     Cleanup never changes which file is chosen/emitted (INV-2): the chosen
     file is always self-consistent by construction, so it can never itself
     satisfy the mislabeled predicate.
+
+    ``image_dir`` is the build-mode output directory. Candidates are always
+    read from ``target_dir``; the corrected sibling is written to ``image_dir``
+    and cleanup deletes only a file that lies in it (so with an output
+    directory other than ``target_dir`` nothing is deleted). None (legacy
+    mode) means ``target_dir`` for all of it.
     """
     if cleanup:
         filecmp.clear_cache()
 
+    write_dir = target_dir if image_dir is None else image_dir
     try:
         rel_target = os.path.relpath(str(target_dir), str(template_dir))
     except ValueError:
         rel_target = str(target_dir)
+    if image_dir is None:
+        rel_write = rel_target
+    else:
+        try:
+            rel_write = os.path.relpath(str(write_dir), str(template_dir))
+        except ValueError:
+            rel_write = str(write_dir)
 
     images = {
         "funnel_image_path": "",
@@ -1818,6 +1899,7 @@ def detect_images(target_dir: Path, template_dir: Path, cleanup: bool = False) -
             continue
 
         chosen = None
+        chosen_base = rel_target
         for ext, fp in candidates:
             if _IMAGE_FORMAT_TO_EXT.get(_file_format(fp)) == ext:
                 chosen = fp
@@ -1838,33 +1920,37 @@ def detect_images(target_dir: Path, template_dir: Path, cleanup: bool = False) -
                     continue
                 canonical_ext = _IMAGE_FORMAT_TO_EXT.get(_file_format(fp))
                 if canonical_ext is not None and canonical_ext != ext:
-                    _maybe_delete_mislabeled(fp, chosen)
+                    _maybe_delete_mislabeled(fp, chosen, confine_to=image_dir)
 
         if chosen is None:
             for ext, fp in candidates:
                 fmt = _file_format(fp)
                 if fmt is None:
                     continue
-                target_path = target_dir / f"{stem}{_IMAGE_FORMAT_TO_EXT[fmt]}"
+                target_path = write_dir / f"{stem}{_IMAGE_FORMAT_TO_EXT[fmt]}"
                 print(
                     f"Image format mismatch: {fp.name} contains {fmt.upper()} bytes; "
-                    f"writing corrected sibling {target_path.name}",
+                    f"writing corrected sibling {target_path.name}"
+                    + (f" in {write_dir}" if image_dir is not None else ""),
                     file=sys.stderr,
                 )
                 # Moment B — recovery write: record pre-existence BEFORE the
                 # copy so a cross-swapped sibling (overwritten, not created)
                 # never gets deleted (AC-1g guard).
                 pre_existed = target_path.exists()
+                if image_dir is not None:
+                    write_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(fp, target_path)
                 chosen = target_path
+                chosen_base = rel_write
 
                 if cleanup and not pre_existed:
-                    _maybe_delete_mislabeled(fp, target_path)
+                    _maybe_delete_mislabeled(fp, target_path, confine_to=image_dir)
 
                 break
 
         if chosen is not None:
-            images[key] = rel_target + "/" + chosen.name
+            images[key] = chosen_base + "/" + chosen.name
 
     return images
 
@@ -2511,6 +2597,14 @@ build directory (--build-dir / --remove-build-dir):
   (not the directory itself or a parent), stay clear of the template directory
   and TARGET_DIR, and contain no symlink below the working directory; otherwise
   the extractor exits 2 before touching anything.
+  In this mode the extractor writes only under the output directory (the
+  directory that contains PATH's .tachi-build/) and the system temp directory,
+  and only reads TARGET_DIR: the attack-tree and attack-chain PNGs go to
+  OUT/attack-trees/ and OUT/attack-chains/, a corrected copy of a mislabeled
+  infographic to OUT/, and --cleanup-mislabeled-images deletes a file only when
+  it lies in OUT (with OUT other than TARGET_DIR nothing is deleted and one line
+  on stderr says so). Without --build-dir these all stay next to the artifacts
+  in TARGET_DIR, as before.
 
 environment:
   TACHI_MMDC_PUPPETEER_CONFIG  absolute path to a regular file; when set, both mmdc
@@ -2560,7 +2654,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--cleanup-mislabeled-images",
         action="store_true",
-        help="Opt-in: delete a mislabeled duplicate image once a byte-identical, correctly-labeled counterpart is confirmed",
+        help="Opt-in: delete a mislabeled duplicate image once a byte-identical, correctly-labeled counterpart is confirmed "
+             "(with --build-dir, only a file that lies in the output directory)",
     )
     parser.add_argument(
         "--build-dir",
@@ -2668,9 +2763,14 @@ def main():
         # however the caller spelled them, for example /tmp for /private/tmp.
         template_dir = Path(build_real)
         target_dir = Path(os.path.realpath(target_dir))
+        # The output directory is the build directory's grandparent (the guard
+        # pins the ".tachi-build/security-report" suffix). Everything this run
+        # renders or corrects lands there, never in target_dir (AR-1).
+        image_dir = Path(build_real).parent.parent
     else:
         output_path = Path(args.output)
         template_dir = Path(args.template_dir)
+        image_dir = None  # legacy mode: diagrams and corrected images go next to the artifacts
 
     # Artifact detection
     artifacts = detect_artifacts(target_dir)
@@ -2809,7 +2909,9 @@ def main():
     )
 
     # Image paths (relative from template dir to target dir)
-    images = detect_images(target_dir, template_dir, cleanup=args.cleanup_mislabeled_images)
+    images = detect_images(
+        target_dir, template_dir, cleanup=args.cleanup_mislabeled_images, image_dir=image_dir
+    )
     data["funnel_image_path"] = images["funnel_image_path"]
     data["baseball_image_path"] = images["baseball_image_path"]
     data["architecture_image_path"] = images["architecture_image_path"]
@@ -2827,7 +2929,7 @@ def main():
     # Attack tree data — try standalone files first, fall back to inline in threat-report.md
     if artifacts.get("has_attack_trees") or artifacts.get("threat_report_md"):
         attack_trees = parse_attack_trees(target_dir, data["findings"], tr_content=tr_content)
-        render_mermaid_to_png(attack_trees, target_dir, template_dir)
+        render_mermaid_to_png(attack_trees, target_dir, template_dir, image_dir=image_dir)
         data["has_attack_trees"] = len(attack_trees) > 0
         data["attack_trees"] = attack_trees
         if attack_trees:
@@ -2838,7 +2940,9 @@ def main():
 
     # Attack chain data (cross-layer correlation)
     if artifacts.get("has_attack_chains"):
-        has_chains, chains = prepare_attack_chains(target_dir, data["findings"], template_dir)
+        has_chains, chains = prepare_attack_chains(
+            target_dir, data["findings"], template_dir, image_dir=image_dir
+        )
         data["has_attack_chains"] = has_chains
         data["attack_chains"] = chains
         surfaced = [c for c in chains if c.get("surfaced", False)]

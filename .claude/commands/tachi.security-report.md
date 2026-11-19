@@ -14,8 +14,9 @@ Consider user input before proceeding (if not empty).
 
 1. If `$ARGUMENTS` contains `--output-dir <path>`:
    - Set `output_dir` to the specified path
+   - Precondition: `output_dir` must lie under the current working directory. The report is compiled from a throwaway copy of the template at `{output_dir}/.tachi-build/security-report/`, and the extractor exits 2 for a build directory outside the working directory. A run writes only under `output_dir` and the system temp directory (the template copy, `attack-trees/`, `attack-chains/`, any corrected infographic copy and the PDF); `target_dir` is only read.
    - Strip `--output-dir <path>` from `$ARGUMENTS` (trim extra whitespace)
-2. Default: `output_dir = null` (resolved in Step 1 based on target directory)
+2. Default: `output_dir = null` (resolved in Step 1 based on target directory; the same precondition applies to the resolved directory)
 
 3. If `$ARGUMENTS` contains `--title <value>`:
    - Set `title_override` to the specified value (may be quoted: `--title "Custom Project Name"`)

@@ -1610,7 +1610,7 @@ The report auto-detects available artifacts and includes pages accordingly:
 # 2. Parse threats.md for scope data (components, data flows, trust boundaries)
 # 3. Detect brand assets in brand/final/
 # 4. Generate report-data.typ and report-config.typ
-# 5. Compile via: typst compile templates/tachi/security-report/main.typ security-report.pdf --root .
+# 5. Compile via: typst compile {output_dir}/.tachi-build/security-report/main.typ {output_dir}/security-report.pdf --root .  (the build directory is a throwaway copy of the template)
 ```
 
 ### Report Pages
@@ -1998,7 +1998,7 @@ SARIF 2.1.0 JSON file extending `risk-scores.sarif` with control analysis. Each 
 | Control Coverage | Only if `compensating-controls.md` exists | Coverage matrix, control statistics |
 | Infographic (full-bleed) | Only if `threat-*.jpg` files exist | One landscape page per image |
 
-The report-assembler agent parses artifacts, generates `report-data.typ` (extracted data) and `report-config.typ` (page toggles), then invokes `typst compile templates/tachi/security-report/main.typ security-report.pdf --root .`.
+The report-assembler agent parses artifacts, generates `report-data.typ` (extracted data) and `report-config.typ` (page toggles) in a throwaway copy of the template at `{output_dir}/.tachi-build/security-report/`, then invokes `typst compile {output_dir}/.tachi-build/security-report/main.typ {output_dir}/security-report.pdf --root .`.
 
 ### Infographic Spec Sections (Both Templates)
 

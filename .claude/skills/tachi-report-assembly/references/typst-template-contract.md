@@ -19,7 +19,7 @@ The Typst template system uses a data injection pattern:
 - `shared.typ` -- shared design tokens (colors, fonts, page geometry)
 - Page templates (`cover.typ`, `executive-summary.typ`, etc.) -- each renders one page type
 
-The agent generates `report-data.typ` in `templates/tachi/security-report/`. The extraction script writes it to the same location.
+The extraction script generates `report-data.typ` (the agent invokes it with `--build-dir {output_path}/.tachi-build/security-report`). It writes the file into that build directory, a throwaway copy of `templates/tachi/security-report/`, and `main.typ` is compiled from the copy. The installed template directory is read (copied), never written. Every relative path in `report-data.typ` is computed from the build directory.
 
 ---
 
@@ -102,13 +102,19 @@ Integer value matching the selected tier from artifact detection.
 ### Image Paths
 
 ```typst
-// --- Image Paths (relative to templates/tachi/security-report/) --------------------
-#let funnel-image-path = "../../{target_dir}/threat-risk-funnel.jpg"
-#let baseball-image-path = "../../{target_dir}/threat-baseball-card.jpg"
-#let architecture-image-path = "../../{target_dir}/threat-system-architecture.jpg"
+// --- Image Paths (relative to the build directory that holds main.typ) -------------
+#let funnel-image-path = "{rel_target}/threat-risk-funnel.jpg"
+#let baseball-image-path = "{rel_target}/threat-baseball-card.jpg"
+#let architecture-image-path = "{rel_target}/threat-system-architecture.jpg"
 ```
 
-**Path resolution**: Typst resolves `#image()` paths relative to the `.typ` file that calls it (which is `full-bleed.typ` in `templates/tachi/security-report/`), NOT relative to the `--root` flag. Use `../../` to navigate from the template directory back to the project root, then append the path to the target directory.
+**Path resolution**: Typst resolves `#image()` paths relative to the `.typ` file that calls it (which is `full-bleed.typ` in the build directory `{output_path}/.tachi-build/security-report/`), NOT relative to the `--root` flag. The extractor computes every path with `os.path.relpath` from the build directory; there is no fixed `../../` prefix. Three relative bases occur:
+
+- `{rel_target}`: from the build directory to `{target_dir}`, where a correctly-labeled infographic is read from.
+- `{rel_out}`: from the build directory to `{out}`, the output directory that holds `.tachi-build/` (`../..` by construction, because the build directory is `{out}/.tachi-build/security-report`). The attack-tree and attack-chain PNGs live in `{out}/attack-trees/` and `{out}/attack-chains/`, and a corrected copy of a mislabeled infographic is written to `{out}`, so those paths use `{rel_out}`.
+- `{rel_brand}`: from the build directory to `brand/final/` under the working directory.
+
+Every file a path names must lie under the Typst root (`--root .`, the working directory). In legacy mode (`--output`) the PNGs and corrected copies sit next to the artifacts in `{target_dir}` and `{rel_out}` equals `{rel_target}`.
 
 If an image does not exist, set the path to an empty string `""`. The `#if has-*-image` guards in `main.typ` prevent these from being used. Legacy directories may hold a mislabeled duplicate of the source image alongside it; see `typst-artifacts.md`'s Legacy Duplicate Pairs & Sanctioned Cleanup note for cleanup guidance.
 
@@ -257,7 +263,7 @@ If no scope data extracted, set arrays to empty `()` and counts to `0`.
 #let logo-horizontal-path = {path_or_none}
 ```
 
-Paths use the `../../brand/final/` relative path pattern, or `none` if not found. See `brand-asset-guidelines.md` for detection and resolution details.
+Paths are `{rel_brand}/<file>`, relative from the build directory to `brand/final/` under the working directory, or `none` if not found. See `brand-asset-guidelines.md` for detection and resolution details.
 
 ### Page Visibility Flags
 
@@ -291,9 +297,9 @@ These are fallback defaults. The user's `report-config.typ` takes precedence whe
   // ... one entry per layer group containing findings
 )
 #let has-maestro-stack-image = {true/false}
-#let maestro-stack-image-path = "../../{target_dir}/threat-maestro-stack.jpg"
+#let maestro-stack-image-path = "{rel_target}/threat-maestro-stack.jpg"
 #let has-maestro-heatmap-image = {true/false}
-#let maestro-heatmap-image-path = "../../{target_dir}/threat-maestro-heatmap.jpg"
+#let maestro-heatmap-image-path = "{rel_target}/threat-maestro-heatmap.jpg"
 ```
 
 | Variable | Type | Source | Default | Description |
@@ -303,11 +309,11 @@ These are fallback defaults. The user's `report-config.typ` takes precedence whe
 | `most-exposed-layer` | string | Computed from layer distribution | `""` | Layer with highest finding count, formatted as "L2 --- Data Operations" |
 | `maestro-findings-by-layer` | array of layer groups | Section 3/4 agent tables grouped by layer | `()` | Each group: `layer-id` (str), `layer-name` (str), `findings` (array of finding dicts). Each finding: `id` (str), `component` (str), `severity` (str), `threat` (str) |
 | `has-maestro-stack-image` | boolean | File detection | `false` | Gates MAESTRO stack infographic page |
-| `maestro-stack-image-path` | string | File path relative to template dir | `""` | Path to `threat-maestro-stack.jpg` |
+| `maestro-stack-image-path` | string | File path relative to the build directory | `""` | Path to `threat-maestro-stack.jpg` |
 | `has-maestro-heatmap-image` | boolean | File detection | `false` | Gates MAESTRO heatmap infographic page |
-| `maestro-heatmap-image-path` | string | File path relative to template dir | `""` | Path to `threat-maestro-heatmap.jpg` |
+| `maestro-heatmap-image-path` | string | File path relative to the build directory | `""` | Path to `threat-maestro-heatmap.jpg` |
 
-**Path resolution**: Same as existing image paths --- relative from `templates/tachi/security-report/` to the target directory using `../../{target_dir}/` prefix.
+**Path resolution**: Same as existing image paths --- relative from the build directory to the target directory (`{rel_target}/` prefix).
 
 **Backward compatibility**: `main.typ` provides fallback defaults for all 8 variables. If `report-data.typ` is generated by an older extraction script that omits MAESTRO variables, the defaults gate all MAESTRO pages off (`false` / empty arrays).
 
@@ -323,7 +329,7 @@ Two new variables for attack path page generation. Gated by `has-attack-trees` b
 #let attack-trees = (
   (id: "E-3", component: "MCP Tool Server", severity: "Critical",
    title: "Administrative Tool Access via Parameter Manipulation",
-   image-path: "../../{target_dir}/attack-trees/E-3-attack-tree.png",
+   image-path: "{rel_out}/attack-trees/E-3-attack-tree.png",
    has-image: true,
    mermaid-text: "flowchart TD\n    ...",
    narrative: "An attacker targets MCP Tool Server by...",
@@ -339,7 +345,7 @@ Two new variables for attack path page generation. Gated by `has-attack-trees` b
 
 **Entry dict keys**: `id` (string), `component` (string), `severity` (string), `title` (string), `image-path` (string, relative path to PNG or empty), `has-image` (boolean), `mermaid-text` (string, escaped Mermaid source), `narrative` (string, 2-4 sentences), `remediation` (array of strings).
 
-**Image path resolution**: Same as existing image paths --- relative from `templates/tachi/security-report/` to `{target_dir}/attack-trees/{id}-attack-tree.png`. When `mmdc` is unavailable, `has-image` is `false` and the Typst template renders `mermaid-text` as preformatted fallback.
+**Image path resolution**: Same base as existing image paths --- relative from the build directory to `{out}/attack-trees/{id}-attack-tree.png` (the `{rel_out}/` prefix). The extractor renders the PNGs into the output directory, never into `{target_dir}`. When `mmdc` is unavailable, `has-image` is `false` and the Typst template renders `mermaid-text` as preformatted fallback.
 
 **Backward compatibility**: `main.typ` provides fallback defaults. Older `report-data.typ` files without attack tree variables will have `has-attack-trees = false` and `attack-trees = ()`.
 
@@ -403,7 +409,7 @@ MAESTRO image file names follow the existing `threat-{template-name}.jpg` patter
 - `threat-maestro-stack.jpg` — MAESTRO layer stack diagram
 - `threat-maestro-heatmap.jpg` — MAESTRO component-layer heatmap
 
-Paths are relative from the Typst template directory: `../../{target_dir}/threat-maestro-stack.jpg`
+Paths are relative from the build directory: `{rel_target}/threat-maestro-stack.jpg`
 
 ---
 

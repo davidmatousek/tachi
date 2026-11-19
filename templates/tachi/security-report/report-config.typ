@@ -4,9 +4,12 @@
 // User-configurable overrides for report generation. Edit this file to
 // customize the report without modifying any template files.
 //
-// The report assembler copies a user-provided report-config.typ from the
-// target directory into templates/tachi/security-report/ before compilation.
-// If no user config exists, this default file is used.
+// The report extractor copies a user-provided report-config.typ from the
+// target directory over this default inside the report build directory (a
+// throwaway copy of this template directory at
+// {output}/.tachi-build/security-report/) before compilation. If no user
+// config exists, this default file is used. A run never modifies this
+// installed copy.
 //
 // Variables:
 //   show-disclaimer       — boolean; include the disclaimer page (default: true)
