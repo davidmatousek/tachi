@@ -50,7 +50,7 @@ Map each finding's `risk_level` to SARIF severity using this CVSS alignment tabl
 Populate the `tool.driver` object at the top of the SARIF file with the following fields:
 
 - `name`: `"Tachi"`
-- `semanticVersion`: Use the `schema_version` value from `../../../schemas/output.yaml` (currently `"1.1"`)
+- `semanticVersion`: Use the `schema_version` value from `../../../schemas/output.yaml` (currently `"1.5"`)
 - `informationUri`: Use the repository URL (e.g., `"https://github.com/{owner}/{repo}"`)
 - `rules`: An array of `reportingDescriptor` objects — one per threat category that produced findings in the current run. See Rule Definition Templates below.
 

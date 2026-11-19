@@ -13,6 +13,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -24,10 +25,38 @@ from sarif_common import (
     parse_affected_assets,
     parse_component_metadata,
 )
+# Deliberately the parsers' own frontmatter splitter, so ``semanticVersion`` is read
+# from exactly the block parse_frontmatter() reads (standard and code-fenced forms).
+from tachi_parsers import _extract_frontmatter_text
 
 # Pre-FR-014 emission, preserved as the omitted-arg seam: callers that do not
 # pass source_uri (the pre-existing SC-006 suite) keep this uri byte-for-byte.
 DEFAULT_SOURCE_URI = "examples/agentic-app/sample-report/threats.md"
+
+# Feature 391 (AD-7, PM L-5): ``semanticVersion`` is the threats.md schema
+# version, not a constant. A regenerated SARIF must agree with the frontmatter
+# of the file it was generated from, so the input's own ``schema_version`` wins;
+# schemas/output.yaml, the single source of the schema version, is the fallback
+# (an input that declares none, or a caller that passes no input).
+OUTPUT_SCHEMA_PATH = REPO_ROOT / "schemas" / "output.yaml"
+_SCHEMA_VERSION_LINE = re.compile(
+    r'^schema_version:[ \t]*"?([^"\s#]+)"?[ \t\r]*(?:#.*)?$', re.MULTILINE
+)
+
+
+def input_schema_version(threats_md: str) -> Optional[str]:
+    """The ``schema_version`` the input's frontmatter declares, or None if it declares none."""
+    frontmatter = _extract_frontmatter_text(threats_md)
+    match = _SCHEMA_VERSION_LINE.search(frontmatter) if frontmatter else None
+    return match.group(1) if match else None
+
+
+def output_schema_version() -> str:
+    """The top-level ``schema_version`` of schemas/output.yaml (stdlib parse, no PyYAML)."""
+    match = _SCHEMA_VERSION_LINE.search(OUTPUT_SCHEMA_PATH.read_text(encoding="utf-8"))
+    if match is None:
+        raise RuntimeError(f"no top-level schema_version in {OUTPUT_SCHEMA_PATH}")
+    return match.group(1)
 
 
 def artifact_uri_for(input_path: Path) -> str:
@@ -544,6 +573,7 @@ def build_sarif(
     component_meta: dict[str, dict[str, str]],
     affected_assets_by_id: dict[str, list[str]],
     source_uri: str = DEFAULT_SOURCE_URI,
+    semantic_version: Optional[str] = None,
 ) -> dict:
     results = [
         build_result(f, component_meta, affected_assets_by_id, source_uri)
@@ -551,7 +581,7 @@ def build_sarif(
     ]
     driver = {
         "name": "Tachi",
-        "semanticVersion": "1.7",
+        "semanticVersion": semantic_version or output_schema_version(),
         "informationUri": "https://github.com/davidmatousek/tachi",
         "supportedTaxonomies": [
             {"name": "OWASP", "index": 0},
@@ -577,7 +607,13 @@ def main() -> int:
     affected_assets_by_id = parse_affected_assets(threats_md)
     findings = parse_findings(args.input)
     source_uri = artifact_uri_for(args.input)
-    sarif = build_sarif(findings, component_meta, affected_assets_by_id, source_uri)
+    sarif = build_sarif(
+        findings,
+        component_meta,
+        affected_assets_by_id,
+        source_uri,
+        input_schema_version(threats_md),
+    )
 
     args.output.write_text(json.dumps(sarif, indent=2) + "\n", encoding="utf-8")
 
