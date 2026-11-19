@@ -24,6 +24,9 @@ What each group proves:
   ``{out}/attack-chains/``. No CI workflow installs ``mmdc``, so this stub is
   the only CI evidence for W17 and W18. Typst-gated for the compile.
 - legacy mode (``--output``) still writes next to the artifacts, as before.
+- AR-14: a stock ``python3 scripts/<entry> --help`` of each of the three
+  installed scripts that import ``tachi_parsers`` leaves no bytecode cache, in
+  the project or under a test-owned ``PYTHONPYCACHEPREFIX``.
 - AR-1 case 4 and the T015 static assertion: no fenced block in the five
   recipe documents names ``templates/tachi/`` as a write target or uses ``/tmp``.
 
@@ -31,10 +34,13 @@ Typst gating: tests that compile are skipped when ``typst`` is not on PATH,
 UNLESS ``TACHI_REQUIRE_TYPST=1`` is set (the ``report-posture`` CI job), in
 which case a missing Typst FAILS rather than skips. The rest needs no Typst.
 
-Interpreter note: every child runs with ``-B`` and ``PYTHONDONTWRITEBYTECODE=1``.
-Without them CPython writes ``scripts/__pycache__/tachi_parsers.*.pyc`` into the
-project. That write belongs to the interpreter, not to the extractor, and it
-falls outside ``{out}`` and ``$TMPDIR``; this module measures the extractor.
+Interpreter note: every child runs the stock invocation, as a recipe or a person
+runs it: no ``-B``, and ``PYTHONDONTWRITEBYTECODE`` is removed from the child's
+environment so that a developer's shell setting cannot mask a regression. The
+installed scripts turn bytecode writing off themselves when run as a script
+(AR-14), so CPython caches no ``tachi_parsers`` and the snapshots stay exact.
+The AR-14 cases also set a ``PYTHONPYCACHEPREFIX``, because an interpreter such
+as macOS's ``/usr/bin/python3`` keeps its cache outside the project.
 
 Layout under ``tmp_path`` (``harness/`` is excluded from every snapshot)::
 
@@ -346,10 +352,10 @@ class Project:
         env.update(
             {
                 "TMPDIR": str(self.systmp),
-                "PYTHONDONTWRITEBYTECODE": "1",
                 "SOURCE_DATE_EPOCH": "1700000000",
             }
         )
+        env.pop("PYTHONDONTWRITEBYTECODE", None)  # stock run: a developer's setting must not mask a regression (AR-14)
         env.pop("TACHI_MMDC_PUPPETEER_CONFIG", None)  # a developer's sandbox config must not leak in
         if stub_mmdc:
             env["PATH"] = str(self.bin) + os.pathsep + env.get("PATH", "")
@@ -368,7 +374,7 @@ class Project:
     ) -> "subprocess.CompletedProcess":
         """``python3 scripts/extract-report-data.py --target-dir T --build-dir B``."""
         argv = [
-            sys.executable, "-B", "scripts/extract-report-data.py",
+            sys.executable, "scripts/extract-report-data.py",
             "--target-dir", self.rel(self.target),
             "--build-dir", build if build is not None else self.rel(self.build),
         ] + list(extra)
@@ -377,7 +383,7 @@ class Project:
     def extract_legacy(self, output: Path, *extra: str) -> "subprocess.CompletedProcess":
         """The pre-391 form: ``--output FILE --template-dir DIR``."""
         argv = [
-            sys.executable, "-B", "scripts/extract-report-data.py",
+            sys.executable, "scripts/extract-report-data.py",
             "--target-dir", self.rel(self.target),
             "--output", self.rel(output),
             "--template-dir", self.rel(self.templates),
@@ -397,7 +403,7 @@ class Project:
     def remove(self, path: Optional[str] = None) -> "subprocess.CompletedProcess":
         """``python3 scripts/extract-report-data.py --remove-build-dir PATH``."""
         argv = [
-            sys.executable, "-B", "scripts/extract-report-data.py",
+            sys.executable, "scripts/extract-report-data.py",
             "--remove-build-dir", path if path is not None else self.rel(self.build),
         ]
         return self._run(argv)
@@ -808,6 +814,63 @@ def test_legacy_mode_still_writes_next_to_the_artifacts(tmp_path: Path):
     assert not (p.target / "threat-baseball-card.jpg").exists()
     assert (p.target / "threat-baseball-card.png").read_bytes() == mislabeled
     assert "Cleanup: deleted mislabeled duplicate" in again.stderr, _describe(again)
+
+
+# =============================================================================
+# AR-14: a stock run of each installed entry script leaves no bytecode cache
+# =============================================================================
+
+# The installed scripts that import the sibling ``tachi_parsers`` at module level.
+# Each turns bytecode writing off itself when run as a script, before that import.
+ENTRY_SCRIPTS_IMPORTING_PARSERS = (
+    "extract-report-data.py",
+    "extract-infographic-data.py",
+    "populate-affected-assets.py",
+)
+
+
+@pytest.mark.parametrize("entry", ENTRY_SCRIPTS_IMPORTING_PARSERS)
+def test_a_stock_run_of_each_entry_script_leaves_no_bytecode_cache(tmp_path: Path, entry: str):
+    """AR-14: ``python3 scripts/<entry> --help``, with no ``-B`` and no
+    ``PYTHONDONTWRITEBYTECODE``, caches none of the project's own modules.
+
+    A stock run would cache the imported ``tachi_parsers`` in ``scripts/__pycache__/``,
+    or, on an interpreter with a default cache prefix (macOS's ``/usr/bin/python3``),
+    outside the project. A test-owned ``PYTHONPYCACHEPREFIX`` sends every cache to a
+    directory this test reads, on any interpreter, so the case fails whenever the
+    script's guard is missing. The interpreter caches the standard library under
+    the prefix too; only the project's own modules are checked.
+    """
+    project = tmp_path / "project"
+    scripts = project / "scripts"
+    scripts.mkdir(parents=True)
+    for name in (entry, "tachi_parsers.py"):
+        shutil.copy2(str(SCRIPTS_DIR / name), str(scripts / name))
+    prefix = tmp_path / "pycache-prefix"
+    prefix.mkdir()
+
+    env = dict(os.environ)
+    env["PYTHONPYCACHEPREFIX"] = str(prefix)
+    env.pop("PYTHONDONTWRITEBYTECODE", None)  # a developer's setting must not mask a regression
+    proc = subprocess.run(
+        [sys.executable, "scripts/" + entry, "--help"],
+        cwd=str(project),
+        env=env,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=SUBPROCESS_TIMEOUT,
+    )
+
+    # Exit 0 also proves the module-level ``tachi_parsers`` import ran.
+    assert proc.returncode == 0, _describe(proc)
+    assert not (scripts / "__pycache__").exists(), "a stock run wrote scripts/__pycache__/"
+    cached = sorted(
+        path.relative_to(prefix).as_posix()
+        for module in scripts.glob("*.py")
+        for path in prefix.rglob(module.stem + ".cpython-*.pyc")
+    )
+    assert not cached, "a stock run cached the project's own modules under the prefix: %s" % cached
 
 
 # =============================================================================

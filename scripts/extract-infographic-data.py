@@ -24,6 +24,8 @@ from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 
+if __name__ == "__main__":
+    sys.dont_write_bytecode = True  # no bytecode cache for the import below (feature 391, FR-007)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tachi_parsers import (
