@@ -71,6 +71,18 @@
 # block) plus the inputs F-373's wiring did not already list
 # (`templates/tachi/VERSION`, `INSTALL_MANIFEST.md`) — wired through both paths
 # and invocation in lock-step, and through the `py39-floor` job's module list.
+# F-391 (T039) added the threats.md schema-contract suite
+# (`test_threats_schema_contract.py`: schema 1.5 declarations, the
+# `tachi_version` stamp, parsers unchanged) plus the files a traced full run
+# reads beyond the pytest scaffolding all modules here share: the stamp script,
+# `schemas/output.yaml`, the output template, the two orchestration references,
+# the command file, the extractor and `tachi_parsers.py`; the four taxonomy
+# catalogs the extractor loads beyond `owasp.yaml` (`ORDERED_FRAMEWORKS`; a
+# catalog that will not load fails the suite); and the sample data it sweeps,
+# every tracked `threats.md` under `examples/` and `tests/scripts/fixtures/`
+# (one that gains an undeclared frontmatter key fails the suite, so an edit to
+# only those files must run it) — wired through both paths and invocation in
+# lock-step, and through the `py39-floor` job's module list.
 #
 # References:
 #   - specs/248-substitution-surface-hardening/spec.md (FR-001..FR-011, NFR-001)
@@ -142,6 +154,21 @@ on:
       - tests/scripts/test_tachi_version_marker.py             # F-391 (T037) — installed-version marker suite (install.sh marker block)
       - templates/tachi/VERSION                                # F-391 (T037) — tracked placeholder the suite asserts on and the installer overwrites (input)
       - INSTALL_MANIFEST.md                                    # F-391 (T037) — case 7 reads the `templates/tachi/` manifest entry (input)
+      - tests/scripts/test_threats_schema_contract.py          # F-391 (T039) — threats.md schema 1.5 + tachi_version stamp contract suite
+      - scripts/stamp-tachi-version.py                         # F-391 (T039) — the stamp CLI the suite runs (input)
+      - schemas/output.yaml                                    # F-391 (T039) — single source of the schema version and the declared keys (input)
+      - templates/tachi/output-schemas/threats.md              # F-391 (T039) — output template whose version and key table must match (input)
+      - .claude/skills/tachi-orchestration/references/output-schemas.md   # F-391 (T039) — reference: example, checklist, consumer guidance (input)
+      - .claude/skills/tachi-orchestration/references/sarif-specification.md   # F-391 (T039) — SARIF semanticVersion rule and example (input)
+      - .claude/commands/tachi.threat-model.md                 # F-391 (T039) — Step 2.6 text and placement (input)
+      - scripts/extract-report-data.py                         # F-391 (T039) — extractor, run on 1.4 versus 1.5 inputs (input)
+      - scripts/tachi_parsers.py                               # F-391 (T039) — frontmatter and body parsers, unchanged by tachi_version (input)
+      - schemas/taxonomy/cwe.yaml                              # F-391 (T039) — extractor catalog; one that will not load fails the suite (input)
+      - schemas/taxonomy/mitre-atlas.yaml                      # F-391 (T039) — extractor catalog, as cwe.yaml (input)
+      - schemas/taxonomy/mitre-attack.yaml                     # F-391 (T039) — extractor catalog, as cwe.yaml (input)
+      - schemas/taxonomy/nist-ai-rmf.yaml                      # F-391 (T039) — extractor catalog, as cwe.yaml (input)
+      - examples/**/threats.md                                 # F-391 (T039) — swept sample data: an undeclared frontmatter key fails the suite (input)
+      - tests/scripts/fixtures/**/threats.md                   # F-391 (T039) — swept sample data, same sweep (input)
       - tests/scripts/init_sh_helpers.py
       - tests/scripts/conftest.py
       - tests/fixtures/init-baseline-tree/**
@@ -221,8 +248,9 @@ jobs:
         #   test_template_git_clone_timeout.py      — Stream 4 watchdog + AOD_FETCH_TIMEOUT
         #   test_template_substitute_lint_no_eval.py — eval-removal lint guard
         #
-        # F-391 module added (also run under Python 3.9 by the `py39-floor` job):
+        # F-391 modules added (also run under Python 3.9 by the `py39-floor` job):
         #   test_tachi_version_marker.py            — installed-version marker written by install.sh
+        #   test_threats_schema_contract.py         — threats.md schema 1.5 + tachi_version stamp contract
         run: |
           python -m pytest \
             tests/scripts/test_init_sh_substitution.py \
@@ -245,6 +273,7 @@ jobs:
             tests/scripts/test_install_sh_ref_restore.py \
             tests/scripts/test_gemini_key_env_only.py \
             tests/scripts/test_tachi_version_marker.py \
+            tests/scripts/test_threats_schema_contract.py \
             -v --timeout=1080
 
   py39-floor:
@@ -280,12 +309,12 @@ jobs:
       - name: Run the F-391 modules under Python 3.9
         # The module list is the F-391 subset of the matrix step's list, in the
         # same order. Extend it in lock-step with that list and with `paths:`
-        # (see the header): T033 appends test_archive_run_transcripts.py and
-        # T039 appends test_threats_schema_contract.py, each after the last
-        # module below and before `-v`. `--timeout=600`: ubuntu only and no
-        # init.sh subprocess (the matrix step's 1080 is sized for macOS
+        # (see the header): T033 appends test_archive_run_transcripts.py after
+        # the last module below and before `-v`. `--timeout=600`: ubuntu only
+        # and no init.sh subprocess (the matrix step's 1080 is sized for macOS
         # cold-cache init.sh runs).
         run: |
           python -m pytest \
             tests/scripts/test_tachi_version_marker.py \
+            tests/scripts/test_threats_schema_contract.py \
             -v --timeout=600
