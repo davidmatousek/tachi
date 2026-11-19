@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fix 393 — Read GEMINI_API_KEY from the environment only (#393) — fix(393)
+
+**Changed**
+- The infographic image step reads `GEMINI_API_KEY` from the process environment only. The
+  `.env` fallback that the agent used when the variable was unset is removed; a project `.env`
+  now works only through a loader outside tachi (VS Code's env loading, direnv, `op run`, a CI
+  secret). README, the developer guide and `.env.example` say so.
+- The Gemini request form is pinned in the infographics skill reference: the body comes from a
+  file and the key header from a curl config read on standard input, so neither appears on the
+  command line, in a query string, or under a verbose flag.
+
+**Added**
+- A gated test (`tests/scripts/test_gemini_key_env_only.py`) asserts the environment-only read
+  in the agent and the adapter reference, and the pinned request form.
+
 ### Feature 373 — Adopter Install + Output Fidelity Fixes (#373) — fix(373)
 
 Fixes a set of install-reliability and report/infographic output-fidelity defects, and moves
@@ -930,6 +945,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 * **219:** asi07 tool-abuse agent enrichment — first execution of Heuristic A enrichment branch (BLP-01 Tier 1, third feature after F-1 + F-2 new-agent branch). Enriches the existing `tool-abuse` threat agent with OWASP ASI07:2026 (Insecure Inter-Agent Communication) coverage WITHOUT spawning a new agent. **Two new Pattern Categories** appended to `.claude/skills/tachi-tool-abuse/references/detection-patterns.md`: Category 9 "Insecure Inter-Agent Communication (A2A)" (multi-agent topologies — direct RPC, message bus, shared queue, MCP-to-MCP bridge — without declared mutual authentication, message signing, replay protection, or taint propagation) and Category 10 "MCP-to-MCP Trust Propagation" (multi-hop trust chains without per-hop attestation, signed-capability handoff, or trust-chain validator). Both include ≥4 indicators, anti-indicators, worked examples, and primary/related citations (`OWASP ASI07:2026`, `CWE-287`, `CWE-345`, `MITRE ATLAS AML.T0060`, `OWASP LLM03:2025`). **Three additive edits** to `.claude/agents/tachi/tool-abuse.md` (metadata `owasp_references += ASI-07`; `## Purpose` 1-line A2A/MCP-to-MCP surface naming extension; Detection Workflow Step 5 references list extension); line count 98 → 100 (well under 150 cap). **5/5-dimension reduction** vs. F-2 new-agent branch: zero new agent file, zero new skill directory, zero schema bump (first BLP-01 detection feature reusing existing `AG-{N}` ID space — explicit asymmetry from ADR-031 D8 regex-alternation rule), zero consumers-list edit, zero functional orchestrator edit. **Wave 3 pipeline regen** on `examples/agentic-app/` surfaces AG-8 [NEW] finding on Inter-Agent Communication Channel component citing `OWASP ASI07:2026` + `CWE-287` + `MITRE ATLAS AML.T0060`; renders cohesively in `threat-report.md` §3.7 alongside Categories 1-8 findings (no fragmentation across artificial sub-section headings). **24-file zero-edit invariant preserved** per ADR-032 D2 (22 original + F-1 + F-2 additions; F-3 modifies only host files). 21 functional requirements (FR-219-1 through FR-219-21) all PASS; 30/31 tests pass (1 pre-existing F-142 known-limitation skip on `mermaid-agentic-app` unrelated to F-3); ADR-032 (Status: Accepted) with 7 numbered Decisions documenting the Heuristic A consolidation rationale and ADR-031 D8 asymmetry; new pytest suite `tests/scripts/test_tool_abuse_enrichment.py` (385 lines) covering structural invariants and F-A2 referential-integrity validation on Cat-9/10 fixtures. KB-039 captures the 5/5-dimension cost reducer pattern as Tier 2 ML+Mobile guidance for F-6/F-7. Build envelope held: <24h clock vs PRD's 1-day target. OWASP Agentic Top 10:2026 framework coverage advances 5/10 → 6/10 (ASI07 joins ASI-01, ASI-02, ASI-04, MCP-03, MCP-05). See `specs/219-asi07-tool-abuse-enrichment/` for spec/plan/tasks/delivery.
 
 ---
+
+## [4.48.2](https://github.com/davidmatousek/tachi/compare/v4.48.1...v4.48.2) (2026-11-19)
+
+
+### Bug Fixes
+
+* **393:** read GEMINI_API_KEY from the environment only ([#394](https://github.com/davidmatousek/tachi/issues/394)) ([1c03746](https://github.com/davidmatousek/tachi/commit/1c03746fdc521b1e5c6ca08b4252035a6b5d8f2e))
 
 ## [4.48.1](https://github.com/davidmatousek/tachi/compare/v4.48.0...v4.48.1) (2026-10-10)
 

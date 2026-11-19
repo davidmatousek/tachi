@@ -117,7 +117,7 @@ From your project root:
 To install a specific version:
 
 ```bash
-~/Projects/tachi/scripts/install.sh --version v4.48.1 # x-release-please-version
+~/Projects/tachi/scripts/install.sh --version v4.48.2 # x-release-please-version
 ```
 
 If tachi is cloned to a non-default location:
@@ -161,7 +161,7 @@ See [`INSTALL_MANIFEST.md`](INSTALL_MANIFEST.md) for the full list of distributa
 
 After copying the files, **restart Claude Code** (close and reopen the VS Code window, or start a new CLI session) so it picks up the new agents and commands.
 
-If you want infographic images (`.jpg`), set the `GEMINI_API_KEY` environment variable with a key from [Google AI Studio](https://aistudio.google.com/apikey). This is optional — all text-based outputs work without it.
+If you want infographic images (`.jpg`), set the `GEMINI_API_KEY` environment variable with a key from [Google AI Studio](https://aistudio.google.com/apikey). This is optional — all text-based outputs work without it. tachi reads the key from the process environment only and never from a file: export it in your shell, inject it through your secret manager (for example `op run`), or let VS Code load your `.env` at launch.
 
 ### 4. Create your architecture file (or let Claude Code do it)
 
@@ -470,7 +470,7 @@ tachi is built with the [Agentic Oriented Development Kit (AOD Kit)](https://git
 
 Releases are automated via [release-please](https://github.com/googleapis/release-please). When conventional commits (`feat:`, `fix:`, `docs:`, etc.) are merged to `main`, release-please creates a **Release PR** with auto-generated CHANGELOG entries and the next semantic version. Merging the Release PR creates the git tag and GitHub Release.
 
-To install a specific version: `install.sh --version v4.48.1` <!-- x-release-please-version -->
+To install a specific version: `install.sh --version v4.48.2` <!-- x-release-please-version -->
 
 ---
 

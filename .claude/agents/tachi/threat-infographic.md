@@ -343,13 +343,12 @@ Before constructing the request body, read the *active template's* configuration
 
 Before attempting image generation:
 
-1. Check for the `GEMINI_API_KEY` environment variable. If not set, check for a `.env` file in the project root and source it:
+1. Read `GEMINI_API_KEY` from the process environment only. tachi never reads the key from a file: a project `.env` is honoured only when something outside tachi (VS Code's env loading, direnv, `op run`, a CI secret) exported it before the session started. Check presence without printing the value:
    ```bash
-   if [ -z "$GEMINI_API_KEY" ] && [ -f .env ]; then
-     export $(grep -v '^#' .env | grep GEMINI_API_KEY | xargs)
-   fi
+   if [ -z "${GEMINI_API_KEY:-}" ]; then echo "GEMINI_API_KEY is not set in the environment"; fi
    ```
-2. If the variable is **still not set or empty** after both checks: skip image generation entirely. Save the infographic specification as a standalone deliverable. Log: "Gemini API key not configured -- infographic image generation skipped. Specification saved as standalone deliverable." Set `image_generated: false` in the specification frontmatter. Continue the pipeline.
+   Never run `export`, `source` or `set -a` to load it, never print it, and never put it on a command line.
+2. If the variable is **not set or empty**: skip image generation entirely. Save the infographic specification as a standalone deliverable. Log: "Gemini API key not configured -- infographic image generation skipped. Specification saved as standalone deliverable." Set `image_generated: false` in the specification frontmatter. Continue the pipeline.
 3. If the variable **is set**: proceed with the API call.
 
 ---
