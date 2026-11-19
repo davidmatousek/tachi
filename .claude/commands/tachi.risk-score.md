@@ -39,7 +39,7 @@ Single-command entry point for tachi quantitative risk scoring. Validates prereq
    - If missing, display:
      ```
      TACHI RISK SCORER NOT INSTALLED
-     Run: cp -r <tachi-repo>/adapters/claude-code/agents/risk-scorer.md .claude/agents/tachi/
+     Re-run the installer from this project's root: <tachi-repo>/scripts/install.sh
      See: https://github.com/davidmatousek/tachi
      ```
    - Halt if missing.

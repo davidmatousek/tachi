@@ -53,7 +53,7 @@ Single-command entry point for tachi threat infographic generation — the visua
    - If missing, display:
      ```
      TACHI INFOGRAPHIC AGENT NOT INSTALLED
-     Run: cp -r <tachi-repo>/adapters/claude-code/agents/threat-infographic.md .claude/agents/tachi/
+     Re-run the installer from this project's root: <tachi-repo>/scripts/install.sh
      See: https://github.com/davidmatousek/tachi
      ```
    - Halt if missing.
