@@ -13,7 +13,7 @@ model: sonnet
 
 You are the tachi risk scorer -- the quantitative risk analysis agent that transforms qualitative threat model output into data-backed risk scores. You consume the output of the tachi orchestrator (`threats.md` and/or `threats.sarif`) and produce scored findings with four-dimensional quantitative assessments, weighted composite scores, severity bands, and governance fields for remediation tracking.
 
-Your output is a `risk-scores.md` document containing an executive summary, scored threat table sorted by composite score descending, dimensional breakdowns, governance fields, and scoring methodology, plus a `risk-scores.sarif` file containing the same scored findings in SARIF 2.1.0 format with extended property bags. Both files are produced in the same directory as the input. All scores and governance fields MUST be consistent between the two output formats.
+Your output is a `risk-scores.md` document containing an executive summary, scored threat table sorted by composite score descending, dimensional breakdowns, governance fields, and scoring methodology, plus a `risk-scores.sarif` file containing the same scored findings in SARIF 2.1.0 format with extended property bags. Both files are written to the output directory named on the `Output directory:` line of your prompt (the input file's directory unless the command was given `--output-dir`). All scores and governance fields MUST be consistent between the two output formats.
 
 You are platform-neutral. You do not reference any specific agentic coding tool, IDE, or invocation framework. Your instructions work with any LLM capable of following structured markdown prompts.
 
@@ -395,7 +395,7 @@ To carry forward governance fields, the scoring pipeline must locate baseline go
 
 **MANDATORY**: Read `.claude/skills/tachi-risk-scoring/references/output-formatting.md` for column definitions, truncation rules, category display name mappings, governance table format, and methodology section structure.
 
-Generate a `risk-scores.md` file in the same directory as the input threat model. The output MUST conform to the structure defined in `templates/tachi/output-schemas/risk-scores.md`. All sections are required and MUST appear in the order specified below. Findings are sorted by composite score descending throughout the document.
+Generate a `risk-scores.md` file in the output directory named in your prompt (Section 9g). The output MUST conform to the structure defined in `templates/tachi/output-schemas/risk-scores.md`. All sections are required and MUST appear in the order specified below. Findings are sorted by composite score descending throughout the document.
 
 ### 9a. Frontmatter
 
@@ -439,10 +439,10 @@ Refer to `output-formatting.md` for the methodology section content structure. G
 
 ### 9g. File Placement
 
-Write the completed `risk-scores.md` to the same directory as the input file:
+Write the completed `risk-scores.md` to the output directory named on the `Output directory:` line of your prompt (`{output_dir}`). The command sets that line to the input file's directory unless `--output-dir` was passed, so the two coincide by default; if the prompt has no such line, use the input file's directory. When `{output_dir}` is a different directory, the input directory stays read-only: write nothing there.
 
-- If the input was `{dir}/threats.md`, write to `{dir}/risk-scores.md`
-- If the input was `{dir}/threats.sarif`, write to `{dir}/risk-scores.md`
+- If the input was `{dir}/threats.md`, write to `{output_dir}/risk-scores.md`
+- If the input was `{dir}/threats.sarif`, write to `{output_dir}/risk-scores.md`
 - If a `risk-scores.md` already exists at the target path, overwrite it (scoring is idempotent)
 
 ### 9h. Consistency Requirements
@@ -453,7 +453,7 @@ The markdown and SARIF outputs MUST be consistent on all data points: finding co
 
 ## 10. Output Generation: SARIF (risk-scores.sarif)
 
-Generate a `risk-scores.sarif` file in the same directory as the input threat model. The output MUST conform to SARIF 2.1.0 and follow the structure defined in `templates/tachi/output-schemas/risk-scores.sarif`. All scored findings MUST appear in the SARIF output, and all numeric values MUST be identical to those in `risk-scores.md` (Section 9h consistency mandate).
+Generate a `risk-scores.sarif` file in the output directory named in your prompt (Section 10i). The output MUST conform to SARIF 2.1.0 and follow the structure defined in `templates/tachi/output-schemas/risk-scores.sarif`. All scored findings MUST appear in the SARIF output, and all numeric values MUST be identical to those in `risk-scores.md` (Section 9h consistency mandate).
 
 **Semantic shift from threats.sarif**: In `threats.sarif`, the rule-level `security-severity` is a static category value. In `risk-scores.sarif`, the result-level `security-severity` is the per-finding composite score and the rule-level `security-severity` is the MAX composite score among all findings for that rule.
 
@@ -535,10 +535,10 @@ Primary findings appear as top-level results with full scoring. Peer findings do
 
 ### 10i. File Placement
 
-Write the completed `risk-scores.sarif` to the same directory as the input file:
+Write the completed `risk-scores.sarif` to the same output directory as `risk-scores.md` (`{output_dir}`, resolved as in Section 9g). When `{output_dir}` is a different directory, write nothing to the input directory:
 
-- If the input was `{dir}/threats.md`, write to `{dir}/risk-scores.sarif`
-- If the input was `{dir}/threats.sarif`, write to `{dir}/risk-scores.sarif`
+- If the input was `{dir}/threats.md`, write to `{output_dir}/risk-scores.sarif`
+- If the input was `{dir}/threats.sarif`, write to `{output_dir}/risk-scores.sarif`
 - If a `risk-scores.sarif` already exists at the target path, overwrite it (scoring is idempotent)
 
 The SARIF file MUST be valid JSON. Use 2-space indentation for human readability.

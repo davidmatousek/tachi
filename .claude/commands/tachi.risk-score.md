@@ -90,8 +90,9 @@ block is replaced, not duplicated), and records provenance only — it never
 re-scores (§3.5 + the 9.2 ceiling are untouched).
 
 1. Run this step ONLY when `input_format == markdown` AND `architecture_path` was
-   resolved (Step 1 item 5) — the populator upserts a markdown `threats.md` from
-   the architecture's inline `[asset:...]` tags:
+   resolved (Step 1 item 5) AND `output_dir` (Step 1 item 4) is the input
+   directory — the populator upserts a markdown `threats.md` in place from the
+   architecture's inline `[asset:...]` tags:
 
 ```bash
 # Re-assert the deterministic affected_assets block (idempotent, byte-stable)
@@ -101,10 +102,14 @@ python3 scripts/populate-affected-assets.py \
 ```
 
 2. Skip this step (do NOT fail) when `input_format == sarif` (no markdown
-   `threats.md` to populate) or when `architecture_path == null` (no architecture
-   snapshot to source tags from). In both cases the block written by the prior
-   `/threat-model` run is already present in `threats.md`/`threats.sarif` for the
-   risk-scorer to copy. Proceed to Step 2.
+   `threats.md` to populate), when `architecture_path == null` (no architecture
+   snapshot to source tags from), or when `--output-dir` names a directory other
+   than the input directory (the populator rewrites `threats.md` in place, and
+   the input directory stays read-only when the outputs go elsewhere). In all
+   three cases the block written by the prior `/threat-model` run is already
+   present in `threats.md`/`threats.sarif`, and the risk-scorer copies it as it
+   stands. To refresh the block in place, run without `--output-dir`. Proceed to
+   Step 2.
 
 ## Step 2: Run Risk Scoring
 
