@@ -946,6 +946,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.48.2](https://github.com/davidmatousek/tachi/compare/v4.48.1...v4.48.2) (2026-11-19)
+
+
+### Bug Fixes
+
+* **393:** read GEMINI_API_KEY from the environment only ([#394](https://github.com/davidmatousek/tachi/issues/394)) ([1c03746](https://github.com/davidmatousek/tachi/commit/1c03746fdc521b1e5c6ca08b4252035a6b5d8f2e))
+
 ## [4.48.1](https://github.com/davidmatousek/tachi/compare/v4.48.0...v4.48.1) (2026-10-10)
 
 
