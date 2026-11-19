@@ -5,10 +5,39 @@ Reads threats.md, risk-scores.md, compensating-controls.md, and threat-report.md
 from a target directory and writes a Typst data file (report-data.typ) with all
 variable bindings needed by the security report templates.
 
+Modes:
+  --target-dir DIR --output FILE --template-dir DIR
+      Write report-data.typ to FILE; image and brand paths are computed relative
+      to the template directory.
+  --target-dir DIR --build-dir PATH [--template-dir DIR]
+      Build-directory mode (isolated operation). The extractor owns PATH, a
+      throwaway copy of the report template, so a run never writes under
+      templates/. It removes any existing PATH, copies the template (default
+      templates/tachi/security-report/) into it, lays DIR/report-config.typ over
+      the template's default when present, writes report-data.typ there and
+      computes every image and brand path relative to PATH. Compile with:
+        typst compile PATH/main.typ OUT/security-report.pdf --root .
+  --remove-build-dir PATH
+      Remove a build directory (use it after a verified compile).
+
+Build-directory guard (--build-dir and --remove-build-dir; exit 2 when it fails):
+the resolved path must lie below the resolved working directory (never the
+working directory itself or a parent of it), must end in
+.tachi-build/security-report, must not overlap the template directory or contain
+--target-dir, and neither it nor any component below the working directory may
+be a symlink.
+
+Environment:
+  TACHI_MMDC_PUPPETEER_CONFIG  absolute path to a regular file. When set, both
+                               mmdc invocations get "-p <path>" (Linux/WSL2
+                               sandboxed sessions). Any other value fails loud.
+
 Exit codes:
   0 — success
   1 — missing required artifact (threats.md)
-  2 — validation failure (severity sum mismatch, duplicate IDs, etc.)
+  2 — validation failure (severity sum mismatch, duplicate IDs, etc.), or a
+      --build-dir / --remove-build-dir path that fails the guard or cannot be
+      prepared
 """
 
 import argparse
@@ -897,6 +926,41 @@ def _build_error_record(fid: str, failure_class: str, stderr_bytes, subdir: str 
     }
 
 
+# Optional puppeteer launch config for mmdc (AD-9). Sandboxed Linux/WSL2
+# sessions need a Chromium launch flag that only a puppeteer config file can
+# carry; the operator provisions that file and this script only forwards its
+# path, so the flag is never baked into the code.
+MMDC_PUPPETEER_CONFIG_ENV = "TACHI_MMDC_PUPPETEER_CONFIG"
+
+
+def _mmdc_puppeteer_args() -> list:
+    """Return ``["-p", <path>]`` when TACHI_MMDC_PUPPETEER_CONFIG is set, else ``[]``.
+
+    The value must be an absolute path to a regular file. Anything else --
+    empty, relative, missing, a directory -- raises RuntimeError (the same
+    fail-loud channel as the mmdc preflight) instead of being ignored, so a
+    misconfigured sandbox fix cannot pass unnoticed.
+    """
+    value = os.environ.get(MMDC_PUPPETEER_CONFIG_ENV)
+    if value is None:
+        return []
+    if value == "":
+        problem = "is set but empty"
+    elif not os.path.isabs(value):
+        problem = f"must be an absolute path (got {value!r})"
+    elif not os.path.exists(value):
+        problem = f"does not exist ({value!r})"
+    elif not os.path.isfile(value):
+        problem = f"is not a regular file ({value!r})"
+    else:
+        return ["-p", value]
+    raise RuntimeError(
+        f"{MMDC_PUPPETEER_CONFIG_ENV} {problem}.\n"
+        "Set it to the absolute path of an existing puppeteer config file, "
+        "or unset it."
+    )
+
+
 def _render_single(entry, tmp_path):
     """Render one Mermaid entry to PNG. Returns ``(entry, success, value)``.
 
@@ -937,7 +1001,8 @@ def _render_single(entry, tmp_path):
 
     try:
         subprocess.run(
-            ["mmdc", "-i", str(mmd_file), "-o", str(png_file), "-s", "2", "-b", "transparent"],
+            ["mmdc", "-i", str(mmd_file), "-o", str(png_file), "-s", "2", "-b", "transparent"]
+            + _mmdc_puppeteer_args(),
             capture_output=True,
             timeout=30,
             check=True,
@@ -981,6 +1046,7 @@ def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Pa
             "Install with: npm install -g @mermaid-js/mermaid-cli\n"
             "Then re-run /tachi.security-report."
         )
+    _mmdc_puppeteer_args()  # fail loud on a bad TACHI_MMDC_PUPPETEER_CONFIG before any render starts
 
     # Compute relative path from template_dir to target_dir
     try:
@@ -1546,6 +1612,7 @@ def _render_chain_diagrams(entries: list, target_dir: Path, template_dir: Path):
             "Install with: npm install -g @mermaid-js/mermaid-cli\n"
             "Then re-run /tachi.security-report."
         )
+    _mmdc_puppeteer_args()  # fail loud on a bad TACHI_MMDC_PUPPETEER_CONFIG before any render starts
 
     try:
         rel_target = os.path.relpath(str(target_dir), str(template_dir))
@@ -1597,7 +1664,8 @@ def _render_chain_single(entry, tmp_path, chains_dir, rel_target):
 
     try:
         subprocess.run(
-            ["mmdc", "-i", str(mmd_file), "-o", str(png_file), "-s", "2", "-b", "transparent"],
+            ["mmdc", "-i", str(mmd_file), "-o", str(png_file), "-s", "2", "-b", "transparent"]
+            + _mmdc_puppeteer_args(),
             capture_output=True,
             timeout=30,
             check=True,
@@ -2292,27 +2360,197 @@ def _append_scope_array(lines: list, var_name: str, items: list, keys: list):
 
 
 # =============================================================================
+# Build Directory (isolated operation)
+# =============================================================================
+
+# The report compiles from a throwaway copy of the template, so a run never
+# writes under templates/ (AD-4). The extractor owns that copy's whole
+# lifecycle: --build-dir and --remove-build-dir are the only places this script
+# deletes a directory tree, and both go through _guard_build_dir() first.
+BUILD_DIR_SUFFIX = (".tachi-build", "security-report")
+DEFAULT_TEMPLATE_DIR = "templates/tachi/security-report"
+
+
+class BuildDirError(Exception):
+    """A build directory failed the path-shape guard or could not be prepared."""
+
+
+def _guard_build_dir(raw: str, template_dirs, target_dir=None) -> str:
+    """Check that ``raw`` is a build directory this script may delete and recreate.
+
+    Returns its fully resolved path, the only path ever handed to a filesystem
+    operation. No side effects. Raises BuildDirError naming the first rule
+    broken, unless:
+
+    * the resolved path lies strictly below the resolved working directory;
+    * neither it nor any component below the working directory is a symlink (a
+      prefix that merely spells the working directory differently, such as /tmp
+      for /private/tmp, is fine);
+    * it does not overlap a template directory (equal, inside it, or containing
+      it) and does not contain ``target_dir`` (deleting it would destroy the
+      input artifacts);
+    * its last two components are exactly ``.tachi-build/security-report``;
+    * if it exists, it is a directory.
+    """
+    cwd = os.path.realpath(os.getcwd())
+    lexical = os.path.abspath(raw)  # '..' collapsed lexically; the path as given is never used again
+    real = os.path.realpath(lexical)
+    cwd_p, real_p = Path(cwd), Path(real)
+
+    # Symlink walk over the lexical path: once a prefix resolves to the working
+    # directory, every component below it must be a real directory entry.
+    anchored = False
+    probe = Path(lexical).anchor
+    for part in Path(lexical).parts[1:]:
+        probe = os.path.join(probe, part)
+        if anchored:
+            if os.path.islink(probe):
+                raise BuildDirError(f"{probe} is a symlink; symlinks are never followed")
+        elif os.path.realpath(probe) == cwd:
+            anchored = True
+
+    if real_p == cwd_p:
+        raise BuildDirError("it is the working directory itself")
+    if real_p in cwd_p.parents:
+        raise BuildDirError("it is a parent of the working directory")
+    if cwd_p not in real_p.parents:
+        raise BuildDirError(f"it resolves outside the working directory ({cwd})")
+    if not anchored:
+        raise BuildDirError("it reaches the working directory only through a symlink")
+
+    for template in template_dirs:
+        template_p = Path(os.path.realpath(template))
+        if real_p == template_p or real_p in template_p.parents or template_p in real_p.parents:
+            raise BuildDirError(f"it overlaps the template directory {template}")
+    if target_dir is not None:
+        target_p = Path(os.path.realpath(target_dir))
+        if real_p == target_p or real_p in target_p.parents:
+            raise BuildDirError(f"it contains the target directory {target_dir}")
+
+    if real_p.parts[-2:] != BUILD_DIR_SUFFIX:
+        raise BuildDirError("it must end in .tachi-build/security-report")
+    if os.path.lexists(real) and not os.path.isdir(real):
+        raise BuildDirError("it exists and is not a directory")
+    return real
+
+
+def _materialize_build_dir(raw: str, template_src, target_dir) -> str:
+    """Recreate the build directory and return its resolved path.
+
+    Removes any existing directory, copies the template in, then lays
+    ``{target_dir}/report-config.typ`` over the template's default when present.
+    The guard runs again here, immediately before the first deletion, so a path
+    swapped for a symlink after the early check is still refused. The template
+    is checked before anything is deleted.
+    """
+    real = _guard_build_dir(raw, (template_src, DEFAULT_TEMPLATE_DIR), target_dir)
+    if not os.path.isdir(template_src):
+        raise BuildDirError(f"template directory not found: {template_src}")
+    try:
+        if os.path.lexists(real):
+            shutil.rmtree(real)
+        shutil.copytree(template_src, real)
+        custom_config = Path(target_dir) / "report-config.typ"
+        if custom_config.is_file():
+            shutil.copyfile(custom_config, os.path.join(real, "report-config.typ"))
+            print(f"Using custom report-config.typ from {target_dir}", file=sys.stderr)
+        else:
+            print("Using default report configuration", file=sys.stderr)
+    except OSError as exc:  # shutil.Error is an OSError
+        raise BuildDirError(f"could not prepare the build directory: {exc}") from exc
+    print(f"Build directory ready: {raw}", file=sys.stderr)
+    return real
+
+
+def _remove_build_dir(raw: str) -> None:
+    """Remove the build directory ``raw`` (same guard as --build-dir).
+
+    Idempotent: a directory that is already gone is reported, not an error.
+    Only the build directory itself goes; its parent .tachi-build/ stays.
+    """
+    real = _guard_build_dir(raw, (DEFAULT_TEMPLATE_DIR,))
+    if not os.path.lexists(real):
+        print(f"Build directory not present, nothing to remove: {raw}", file=sys.stderr)
+        return
+    try:
+        shutil.rmtree(real)
+    except OSError as exc:
+        raise BuildDirError(f"could not remove the build directory: {exc}") from exc
+    print(f"Removed build directory: {raw}", file=sys.stderr)
+
+
+def _exit_build_dir_error(flag: str, raw: str, exc: BuildDirError) -> None:
+    """Print a one-line reason on stderr and exit 2 (EXIT_VALIDATION_FAILURE)."""
+    print(f"Error: {flag} {raw!r}: {exc}", file=sys.stderr)
+    sys.exit(EXIT_VALIDATION_FAILURE)
+
+
+# =============================================================================
 # CLI Entry Point
 # =============================================================================
 
+_USAGE = (
+    "%(prog)s [-h] --target-dir TARGET_DIR --output OUTPUT\n"
+    "                              --template-dir TEMPLATE_DIR [--title TITLE]\n"
+    "                              [--cleanup-mislabeled-images]\n"
+    "       %(prog)s [-h] --target-dir TARGET_DIR --build-dir PATH\n"
+    "                              [--template-dir TEMPLATE_DIR] [--title TITLE]\n"
+    "                              [--cleanup-mislabeled-images]\n"
+    "       %(prog)s [-h] --remove-build-dir PATH"
+)
+
+_EPILOG = """\
+build directory (--build-dir / --remove-build-dir):
+  The extractor owns PATH, a throwaway copy of the report template, so a run
+  never writes under templates/. --build-dir removes any existing PATH, copies
+  the template into it, lays TARGET_DIR/report-config.typ over the template's
+  default when present, writes report-data.typ there and computes every image
+  and brand path relative to PATH. Compile with:
+    typst compile PATH/main.typ OUT/security-report.pdf --root .
+  PATH must end in .tachi-build/security-report, lie below the working directory
+  (not the directory itself or a parent), stay clear of the template directory
+  and TARGET_DIR, and contain no symlink below the working directory; otherwise
+  the extractor exits 2 before touching anything.
+
+environment:
+  TACHI_MMDC_PUPPETEER_CONFIG  absolute path to a regular file; when set, both mmdc
+                               invocations get "-p <path>". Any other value fails loud.
+
+exit codes:
+  0 success; 1 missing required artifact (threats.md); 2 validation failure, or a
+  build directory that fails the guard or cannot be prepared.
+"""
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Extract structured data from tachi pipeline artifacts into a Typst data file."
+        description="Extract structured data from tachi pipeline artifacts into a Typst data file.",
+        usage=_USAGE,
+        epilog=_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    # --target-dir / --output / --template-dir are enforced in _resolve_cli_mode,
+    # not by argparse: --remove-build-dir needs none of them and --build-dir
+    # replaces --output (and, optionally, --template-dir).
     parser.add_argument(
         "--target-dir",
-        required=True,
-        help="Directory containing tachi pipeline artifacts (threats.md, etc.)",
+        default=None,
+        help="Directory containing tachi pipeline artifacts (threats.md, etc.). "
+             "Required unless --remove-build-dir is given",
     )
     parser.add_argument(
         "--output",
-        required=True,
-        help="Output path for the generated report-data.typ file",
+        default=None,
+        help="Output path for the generated report-data.typ file. "
+             "Required unless --build-dir or --remove-build-dir is given",
     )
     parser.add_argument(
         "--template-dir",
-        required=True,
-        help="Path to templates/tachi/security-report/ directory",
+        default=None,
+        help="Path to templates/tachi/security-report/ directory. Required unless "
+             "--build-dir or --remove-build-dir is given; with --build-dir it is the "
+             "template copied into the build directory "
+             "(default: templates/tachi/security-report)",
     )
     parser.add_argument(
         "--title",
@@ -2324,20 +2562,115 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Opt-in: delete a mislabeled duplicate image once a byte-identical, correctly-labeled counterpart is confirmed",
     )
+    parser.add_argument(
+        "--build-dir",
+        default=None,
+        metavar="PATH",
+        help="Recreate PATH as a copy of the template and write report-data.typ into it "
+             "instead of using --output; image and brand paths are computed relative to "
+             "PATH (shape rules below)",
+    )
+    parser.add_argument(
+        "--remove-build-dir",
+        default=None,
+        metavar="PATH",
+        help="Remove the build directory PATH (same path guard as --build-dir) and "
+             "exit; takes no other option",
+    )
     return parser
+
+
+def _resolve_cli_mode(parser: argparse.ArgumentParser, args) -> str:
+    """Return "remove", "build" or "legacy"; exit 2 via parser.error() on a bad combination.
+
+    The legacy requirement (--target-dir, --output and --template-dir) is
+    re-imposed here with argparse's own message, so an invocation that uses only
+    the original flags fails or succeeds exactly as before.
+    """
+    if args.remove_build_dir is not None:
+        clashes = [
+            flag
+            for flag, given in (
+                ("--target-dir", args.target_dir is not None),
+                ("--output", args.output is not None),
+                ("--template-dir", args.template_dir is not None),
+                ("--build-dir", args.build_dir is not None),
+                ("--title", args.title is not None),
+                ("--cleanup-mislabeled-images", args.cleanup_mislabeled_images),
+            )
+            if given
+        ]
+        if clashes:
+            parser.error("--remove-build-dir cannot be combined with " + ", ".join(clashes))
+        return "remove"
+    if args.build_dir is not None:
+        if args.target_dir is None:
+            parser.error("the following arguments are required: --target-dir")
+        if args.output is not None:
+            parser.error(
+                "--output cannot be combined with --build-dir: "
+                "report-data.typ is written inside the build directory"
+            )
+        return "build"
+    missing = [
+        flag
+        for flag, value in (
+            ("--target-dir", args.target_dir),
+            ("--output", args.output),
+            ("--template-dir", args.template_dir),
+        )
+        if value is None
+    ]
+    if missing:
+        parser.error("the following arguments are required: " + ", ".join(missing))
+    return "legacy"
 
 
 def main():
     """CLI entrypoint: detect artifacts in --target-dir, select the richest
-    data tier, and write the Typst data file to --output. Non-fatal issues
-    log to stderr; exit codes are documented in the module docstring.
+    data tier, and write the Typst data file to --output (or into the build
+    directory with --build-dir; --remove-build-dir only removes one). Non-fatal
+    issues log to stderr; exit codes are documented in the module docstring.
     """
     parser = build_parser()
-    args = parser.parse_args()
+    # parse_known_args plus the explicit error below is what parse_args() does,
+    # but it lets a missing required flag (checked in _resolve_cli_mode) be
+    # reported before an unrecognized one, as argparse's own check always did.
+    args, unrecognized = parser.parse_known_args()
+    mode = _resolve_cli_mode(parser, args)
+    if unrecognized:
+        parser.error("unrecognized arguments: " + " ".join(unrecognized))
+
+    if mode == "remove":
+        try:
+            _remove_build_dir(args.remove_build_dir)
+        except BuildDirError as exc:
+            _exit_build_dir_error("--remove-build-dir", args.remove_build_dir, exc)
+        sys.exit(EXIT_SUCCESS)
 
     target_dir = Path(args.target_dir)
-    output_path = Path(args.output)
-    template_dir = Path(args.template_dir)
+    if mode == "build":
+        # The template to copy. Guard the path now (no side effects) so a bad
+        # --build-dir fails before any artifact parsing or mmdc rendering; the
+        # guard runs again right before the build directory is recreated.
+        template_src = Path(
+            args.template_dir if args.template_dir is not None else DEFAULT_TEMPLATE_DIR
+        )
+        try:
+            build_real = _guard_build_dir(
+                args.build_dir, (template_src, DEFAULT_TEMPLATE_DIR), target_dir
+            )
+        except BuildDirError as exc:
+            _exit_build_dir_error("--build-dir", args.build_dir, exc)
+        # Every image, attack-tree and brand path is computed relative to the
+        # build directory. Both ends are spelled in resolved form so the
+        # relative paths stay inside the project root (which Typst enforces)
+        # however the caller spelled them, for example /tmp for /private/tmp.
+        template_dir = Path(build_real)
+        target_dir = Path(os.path.realpath(target_dir))
+    else:
+        output_path = Path(args.output)
+        template_dir = Path(args.template_dir)
 
     # Artifact detection
     artifacts = detect_artifacts(target_dir)
@@ -2570,6 +2903,15 @@ def main():
 
     # Generate Typst output
     typst_output = generate_report_data_typ(data)
+
+    if mode == "build":
+        # Recreate the build directory only now that extraction has succeeded,
+        # so a failed run never disturbs the previous one.
+        try:
+            build_real = _materialize_build_dir(args.build_dir, template_src, target_dir)
+        except BuildDirError as exc:
+            _exit_build_dir_error("--build-dir", args.build_dir, exc)
+        output_path = Path(build_real) / "report-data.typ"
 
     # Write output
     output_path.parent.mkdir(parents=True, exist_ok=True)
