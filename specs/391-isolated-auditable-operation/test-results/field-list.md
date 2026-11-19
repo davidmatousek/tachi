@@ -165,3 +165,132 @@ R-8's parenthetical has seven items; the labels item is split by label type. The
 - Skill references: `.claude/skills/tachi-infographics/references/gemini-prompt-construction.md`, `executive-architecture.md`, `infographic-specifications.md`, `template-specific-formats.md`.
 - Agent and command: `.claude/agents/tachi/threat-infographic.md`; `.claude/commands/tachi.infographic.md`.
 - Code, read and not run: `scripts/extract-infographic-data.py`; `scripts/tachi_parsers.py`; `tests/scripts/test_gemini_request_contract.py` (class at line 608).
+
+## 10. PM ruling (T005, part 2)
+
+Product manager, 2026-11-19. This section rules on sections 5 to 8 under R-8's escalation rule (`tasks.md` T005; `agent-assignments.md` §9). It is recorded as PRD v1.4 (D-3, §1 item 2, the FR-6 audiences, and the version history). The wording is PM-owned and needs no Triad re-review, as with v1.3.
+
+**Decision: Option A, refined.** The full list stays inline in the sentence, corrected for the defects listed in 10.4. Lane D writes 10.1 and 10.3 verbatim. Any other change to either text comes back to the PM, except the one pre-ruled fallback in 10.1. The runbook pointer sentence (10.1) is in Lane D's own words, within the content stated there.
+
+### 10.1 Approved D-3 sentence (verbatim, ready to paste)
+
+> Your Claude Code model provider receives the architecture description, the files tachi reads and the findings on every run. If you set `GEMINI_API_KEY` and run `/tachi.infographic`, Google's Gemini API (`generativelanguage.googleapis.com`) also receives image prompts made of tachi's fixed layout instructions and derived threat-model content, including names and descriptions taken from your architecture (the project name and assessment date; the names, types and short descriptions of components, trust zones, trust boundaries and data flows; finding IDs, descriptions, severities and risk scores; correlation groups of related findings and their descriptions; finding counts, severities and analysis coverage, overall and by component, zone, boundary, flow, threat category and MAESTRO layer; the overall risk posture; control-coverage and risk-reduction figures from compensating-control runs; counts of new, updated, unchanged and resolved findings since a baseline, with new findings marked; and, if a template cannot be loaded, a one-line system description). By design, tachi sends nothing else, but an AI agent following tachi's templates writes each prompt, and no code checks it against this list before it is sent. Claude Code's own operational traffic, such as usage metrics, error reports and feature-flag fetches, is separate from tachi; it is governed by Claude Code's privacy and telemetry settings, and setting `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` turns these off.
+
+How Lane D uses it:
+
+- **Every document.** Use the same text in all six documents. As in v1.3, "privacy and telemetry settings" links to the public Claude Code docs page that Lane D cites at the W1 re-read.
+- **Sweep anchor.** SC-A2's presence check can anchor on the substring "By design, tachi sends nothing else".
+- **Pre-ruled fallback (no PM round trip).** The switch is named on the basis of `plan.md:162` and the session profile's `env` key. If the W1 docs re-read shows that `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` does not turn off one of the three named examples:
+  - Lane D removes that example from the "such as" list;
+  - the runbook names that example's own switch;
+  - the sweep record notes the change.
+- **Runbook only (FR-4).** One pointer sentence follows the D-3 text. It says the field-level specification is the installed prompt sources:
+  - `templates/tachi/infographics/` (the five scaffolded templates);
+  - `.claude/skills/tachi-infographics/references/executive-architecture.md` (the executive-architecture prompt);
+  - `.claude/skills/tachi-infographics/references/gemini-prompt-construction.md` (the request form and the fallback prompt);
+  - `.claude/commands/tachi.infographic.md` (the baseline instruction).
+
+  It is a pointer, not a copied table, so it cannot drift from the prompts it describes. All four paths are installed (`INSTALL_MANIFEST.md:13, 16, 30`).
+
+### 10.2 Approved parenthetical alone
+
+(the project name and assessment date; the names, types and short descriptions of components, trust zones, trust boundaries and data flows; finding IDs, descriptions, severities and risk scores; correlation groups of related findings and their descriptions; finding counts, severities and analysis coverage, overall and by component, zone, boundary, flow, threat category and MAESTRO layer; the overall risk posture; control-coverage and risk-reduction figures from compensating-control runs; counts of new, updated, unchanged and resolved findings since a baseline, with new findings marked; and, if a template cannot be loaded, a one-line system description)
+
+How it covers sections 4 and 5:
+
+| Field-list items | Clause |
+|---|---|
+| R-8 project name; R-8 assessment date | "the project name and assessment date" |
+| R-8 component, trust-zone, trust-boundary and data-flow labels with short descriptions; X-8 | "the names, types and short descriptions of components, trust zones, trust boundaries and data flows" |
+| R-8 finding IDs with threat descriptions; X-2 (per-finding severity); X-7; X-9 | "finding IDs, descriptions, severities and risk scores". The word is "descriptions", not "threat descriptions" or "one-line". The executive-architecture callouts send the full text, which Gemini shortens at render time (`executive-architecture.md:131`), and X-9 sends mitigation text |
+| X-5 | "correlation groups of related findings and their descriptions" |
+| R-8 severity counts; X-1; X-2 (component, zone and flow severity; zone and boundary counts); X-3 | "finding counts, severities and analysis coverage, overall and by component, zone, boundary, flow, threat category and MAESTRO layer". "Analysis coverage" covers the grid's analysed-with-no-findings and not-applicable cells and the MAESTRO coverage states |
+| R-8 overall risk posture | "the overall risk posture" |
+| X-4 (figures) | "control-coverage and risk-reduction figures from compensating-control runs" |
+| X-6 | "counts of new, updated, unchanged and resolved findings since a baseline, with new findings marked" |
+| R-8 one-line system description | "and, if a template cannot be loaded, a one-line system description" (note 4: normal runs send none) |
+| X-4 funnel stage labels; ghost-tier text; the MAESTRO layer key; footers and badges | Fixed template text, not project data. Covered by "tachi's fixed layout instructions" in the lead-in |
+| Section 3.5 JSON fields that no placeholder names, including `metadata.source_file` and `delta.baseline_source` | Not listed, because the design does not send them. The residual risk is covered by the agent disclosure in sentence 3 |
+
+### 10.3 Audiences text for the profile's `autoMode.environment` entry
+
+The audiences sentence:
+
+> Audiences: the security team; Google's Gemini API for the derived infographic prompt only (the project name and assessment date; the names, types and short descriptions of components, trust zones, trust boundaries and data flows; finding IDs, descriptions, severities and risk scores; correlation groups of related findings and their descriptions; finding counts, severities and analysis coverage, overall and by component, zone, boundary, flow, threat category and MAESTRO layer; the overall risk posture; control-coverage and risk-reduction figures from compensating-control runs; counts of new, updated, unchanged and resolved findings since a baseline, with new findings marked; and, if a template cannot be loaded, a one-line system description).
+
+The whole entry, which replaces `contracts/session-profile.md:31`. Its first sentence is unchanged.
+
+```text
+"Sensitive data locations & audiences: the run's output directory and the architecture file hold confidential threat models. Audiences: the security team; Google's Gemini API for the derived infographic prompt only (the project name and assessment date; the names, types and short descriptions of components, trust zones, trust boundaries and data flows; finding IDs, descriptions, severities and risk scores; correlation groups of related findings and their descriptions; finding counts, severities and analysis coverage, overall and by component, zone, boundary, flow, threat category and MAESTRO layer; the overall risk posture; control-coverage and risk-reduction figures from compensating-control runs; counts of new, updated, unchanged and resolved findings since a baseline, with new findings marked; and, if a template cannot be loaded, a one-line system description).",
+```
+
+- The `hard_deny` sentence is unchanged and stays byte-exact against PRD FR-6. Its phrase "the derived infographic prompt" now means this list.
+- The contract line is updated before T006 pre-stages the profile. T016 ships it in the runbook's profile block.
+
+### 10.4 Rulings
+
+1. **Option A, refined, rather than Option A as drafted.** Option A as drafted (section 6) has five defects. Each would make the published sentence untrue or misleading:
+   - "finding IDs with threat descriptions" is false where X-9 sends mitigation text;
+   - "correlation-group labels" leaves out the free-text descriptions that X-5 sends;
+   - an unconditioned "one-line system description" implies that every run sends one (note 4);
+   - "funnel stage labels" lists fixed template text beside project data, which blurs what is sensitive;
+   - nothing tells the reader that names and descriptions come from their own architecture (note 2).
+
+   The refined list runs to about 90 words, against about 115.
+2. **Option B is not acceptable for the six-document sweep.**
+   - At the decision point (README's key instruction, AC-A1.2), the reader would get a pointer rather than a statement of what is sent.
+   - Five documents would depend for their truth on a hand-maintained runbook table that no guard checks.
+   - "The labels" invites the "labels only" reading.
+
+   With the refined Option A, the runbook needs no field table, only the pointer sentence in 10.1.
+3. **"tachi sends nothing else": qualified, not dropped.**
+   - G1 requires every such statement to say that tachi sends nothing else, so the claim stays, as "By design, tachi sends nothing else". The same sentence then states the mechanism: an AI agent following tachi's templates writes each prompt, and no code checks it against the list.
+   - I rejected "as specified by its templates" on two grounds. The baseline instruction lives in the command and the executive-architecture prompt in a skill reference, so "templates" alone is not accurate. It would also hide the residual risk that a security reader needs to know.
+   - The host half of the claim (no other host) is also by design. The runbook's sandbox allow-list enforces it when the profile is used. Nothing enforces the content half, hence the disclosure.
+4. **Mechanical request check: yes, as a follow-up (FU-1), not in 391.** A data-handling claim that adopters rely on should not rest on a model following its instructions. tachi already uses deterministic steps for claims like this: D-9's version stamp, and the SHA-256 pin on the executive-architecture block in test A10. Building the check now would add code to a feature whose docs lane is waiting only on wording.
+5. **The host is named in the sentence** (`generativelanguage.googleapis.com`), so the D-3 sentence itself meets AC-A1.2's "to which host".
+6. **Claude Code's switch is named in the sentence**: `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`, per `plan.md:162` and the profile's `env` key, with the pre-ruled fallback in 10.1.
+
+### 10.5 Dispositions: section 7 notes
+
+| Note | Disposition |
+|---|---|
+| 1. "tachi sends nothing else" | Ruled in 10.4, item 3. Follow-up FU-1 |
+| 2. Free-text provenance | Accepted. The lead-in says "including names and descriptions taken from your architecture", and the list says "names" and "descriptions", not "labels". Lane D must not paraphrase the list as labels anywhere (the README key instruction, `scope.md`, `SECURITY.md`) |
+| 3. R-8 citation | Accepted and checked. `{description}` is at `gemini-prompt-construction.md:343`, in the generic fallback prompt, not the baseball card. R-8's ":330" is an error in the PM's local review file, which stays as written. Lane D cites :343 |
+| 4. Normal runs | Accepted. The list says the system description is sent only "if a template cannot be loaded". No document may say that every run sends one |
+
+### 10.6 Dispositions: section 8 observations
+
+| Observation | Product-relevant? | Disposition |
+|---|---|---|
+| `/tmp/infographic-{template_name}.json` (command) vs `/tmp/infographic-data.json` (agent example) | Yes, through FR-7's write claim | T004 audits both names, and the FR-7a relocation covers both. The runbook's write claim ships only once neither name writes to the shared `/tmp`. The architect owns this |
+| The request and response files written "beside its other intermediates" (`gemini-prompt-construction.md:266`) | Yes: auditability and write confinement | T004 includes both files in the write-set audit. After FR-7a they must sit under the output directory or the per-user temp directory. If W2's write listing shows the request file kept in the output directory, the runbook may add one sentence naming it as the record of what was sent. The key is not in that file: it travels in a curl config on standard input (`:253-263`, `:266`). If the file is not kept, the runbook says nothing, and retention joins FU-1. No build work is added to 391 |
+| The ALLOWED line sends component names on the risk-funnel, which draws none | Yes: data minimisation | D-3 stays true, because component names are on the list. The fix is FU-3 |
+| Placeholder-name drift in `INFOGRAPHIC_TEMPLATES.md`; the three-template list in `threat-infographic.md:33-35` | No, for 391 | The D-3 list covers all six templates the command routes (`tachi.infographic.md:166-169`). `all` runs baseball-card, system-architecture, risk-funnel and executive-architecture, plus maestro-stack and maestro-heatmap when threats.md has MAESTRO data. The drift goes into FU-3 |
+
+### 10.7 Other copies of the v1.3 wording
+
+| Location | Action |
+|---|---|
+| `contracts/session-profile.md:31` | **Required.** Replace it with 10.3 before T006 pre-stages the profile |
+| `quickstart.md:5` ("tachi sends nothing else.") | Align it with sentence 3 of 10.1 when the file is next edited. It is not on the Wording Rules surface and does not block Lane D |
+| `plan.md:184` (AD-15 quotes the v1.3 list) | A historical decision record, superseded by PRD v1.4. No edit |
+| `spec.md:34` (US1 narrative); `tasks.md:75` (quotes R-8); PRD G1 (`:67`) | Consistent summaries or historical quotes; the PRD governs (`spec.md:18`). No edit |
+
+### 10.8 Follow-up issue titles (not created here; filed at delivery, T045)
+
+- **FU-1: "Check the Gemini infographic request against its documented field list before sending".** This makes "nothing else" mechanical. Its own PRD chooses between two approaches:
+  - build DATA CONTENT by script from the extractor output (the executive-architecture locked-block pattern);
+  - validate the request file against the extractor JSON and the allow-list before `curl`, failing closed.
+
+  Either way, the request file stays in the output directory as the record of what was sent.
+- **FU-2: "Executive-architecture callouts send mitigation text when a finding's threat text is empty".** Defect X-9 (`scripts/extract-infographic-data.py:896-902`; `scripts/tachi_parsers.py:1225`).
+- **FU-3: "Give every infographic placeholder a defined source and send only what each template draws".** It covers:
+  - the placeholders with no JSON source: `{correlation_annotations}`, the fallback `{description}`, and the baseball `{zone_names}` and `{flow_annotations}`;
+  - the risk-funnel's ALLOWED line;
+  - the drift in `INFOGRAPHIC_TEMPLATES.md` and `threat-infographic.md:33-35`.
+
+### 10.9 Wording check
+
+10.1 to 10.3 have zero Pattern A hits and zero Pattern B hits, and do not name the unreleased fix.
