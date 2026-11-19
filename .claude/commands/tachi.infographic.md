@@ -160,10 +160,10 @@ Single-command entry point for tachi threat infographic generation — the visua
      python3 scripts/extract-infographic-data.py \
        --target-dir {data_source_dir} \
        --template {template_name} \
-       --output /tmp/infographic-{template_name}.json
+       --output {output_dir}/.tachi-build/infographic-{template_name}.json
 
    Template expansion:
-   - "all" expands to: baseball-card, system-architecture, risk-funnel, executive-architecture. Then check if threats.md contains MAESTRO layer data by grepping for actual layer values (NOT column headers): `grep -P 'L[1-7] [—–-]' {data_source_dir}/threats.md` — match any of em-dash, en-dash, or hyphen after L1-L7. If the pattern matches at least one data row (not just a header), also append maestro-stack and maestro-heatmap (up to 6 runs total). IMPORTANT: always check threats.md for MAESTRO detection regardless of which file is the richest data source — MAESTRO layer assignments are in the threats.md component table and findings tables, not in risk-scores.md or compensating-controls.md.
+   - "all" expands to: baseball-card, system-architecture, risk-funnel, executive-architecture. Then check if threats.md contains MAESTRO layer data by grepping for actual layer values (NOT column headers): `grep -E 'L[1-7] (—|–|-)' {data_source_dir}/threats.md` — match any of em-dash, en-dash, or hyphen after L1-L7. If the pattern matches at least one data row (not just a header), also append maestro-stack and maestro-heatmap (up to 6 runs total). IMPORTANT: always check threats.md for MAESTRO detection regardless of which file is the richest data source — MAESTRO layer assignments are in the threats.md component table and findings tables, not in risk-scores.md or compensating-controls.md.
    - "maestro" expands to: maestro-stack, maestro-heatmap (2 runs, sequential)
    - "exec" resolves to: executive-architecture (alias, 1 run)
    - Individual templates (baseball-card, system-architecture, risk-funnel, maestro-stack, maestro-heatmap, executive-architecture): 1 run
