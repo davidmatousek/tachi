@@ -8,6 +8,7 @@
 | Tree | HEAD `b39b767`. T014 (`a580e45`), T022 (`c068ddc`) and T024 (`cae659a`) landed while this ruling was written, so the extractor change in AR-1 goes into T012's commit, not T014's. Line numbers are at `b39b767`; agents, commands and skills are unchanged from `46aec8d` apart from the one-line T022 and T024 edits |
 | Date | 2026-11-19 |
 | Escalations | PM: none (no spec or PRD wording change). User: none blocking; three FYI items in section 4 |
+| Addendum | AR-15 to AR-20: T016's profile review (architect, 2026-11-19, tree `3da1ec4`), against `contracts/session-profile.md` as amended at T006 and the public Claude Code docs read that day. Detail in sections 2.6 to 2.11; escalations in 2.12 |
 
 ## 1. Rulings
 
@@ -27,6 +28,12 @@
 | AR-12 | D-13: gaps in the Architect's baseline | Accept, with the AR-1 and AR-2 tokens | T023 | The orchestrator also writes `{out}/attack-chains.md` (conditional); `tachi-attack-tree-delta` also writes `.manifest.json`; no `{target_dir}` write remains (section 3); the infographic Bash set includes `[` and `echo` and no `.env` sourcing; after T012 the report assembler names no deletion command (the extractor's `--remove-build-dir` removes the build directory) |
 | AR-13 | D-1: `/tachi.security-report` dispatched `senior-backend-engineer` | Closed by T022 (`c068ddc`) | none | §8 commands table, Dispatches cell: `tachi-report-assembler` |
 | AR-14 | T015 finding (no audit row): a stock `python3 scripts/<entry>.py` makes CPython cache the imported `tachi_parsers` as bytecode, in `scripts/__pycache__/` or under the interpreter's cache prefix. That write lies outside `{out}` and `$TMPDIR` | Option (d), none of (a) to (c): each installed entry script turns bytecode writing off when run as a script, before its sibling import. No recipe, profile, §8 or runbook text changes | T015: one follow-on commit on `1be9716` (SBE-D the three scripts, SBE-TA the module); T015 closes with it | `scripts/extract-report-data.py` before :64, `scripts/extract-infographic-data.py` before :27, `scripts/populate-affected-assets.py` before :59, two lines each; `tests/scripts/test_write_confinement.py` :34-37, :349, :371, :380, :400, plus three cases. T023 and T016: no follow-up. Detail in 2.5 |
+| AR-15 | T049 placement (`test-results/security-a.md` §5.5; no audit row): do `Read(//proc/**)`, `Read(~/.claude/.credentials.json)` and the matching `credentials.files` entry join the baseline profile or only the runbook's extension note? | **Baseline.** All three join the block; `Read(~/.claude.json)` and the `CLAUDE_CONFIG_DIR` caveat stay in the extension note. A pre-ruled Linux fallback ladder replaces another architect round trip | T016 (first commit copies the block; second commit: §5.6 claim text and the note), T017 (pins the lists), T020 (re-extracted profile; stage A as SEC-A §6 with the three strings removed), T021 (ladder) | `contracts/session-profile.md` block and disclosures; `data-model.md` SessionProfile. No new key path. The pre-staged W2 profile is replaced before T020. Detail in 2.6 |
+| AR-16 | Profile defect: `sandbox.autoAllowBashIfSandboxed` is unset. Its default was `true` before v2.1.324 (runbook minimum v2.1.285), and a repository's value still applies under an admin-required sandbox, so whether auto mode's classifier and the FR-6 `hard_deny` see sandboxed Bash depends on the version and on other files | Pin `"autoAllowBashIfSandboxed": false` | T016, T017 (one key path, value pinned), T020 (one Manual-mode check) | Block +1 key path (19); disclosure "Classifier coverage". Detail in 2.7 |
+| AR-17 | Profile defect: nothing in the profile acts on MCP. FR-005 has the profile cover MCP servers, yet coverage rested on an adopter step that no test pins. The claude.ai connectors that a claude.ai-authenticated session fetches by default are model-invocable egress that the sandbox does not reach | Add `"mcp__*"` to `permissions.deny`; keep the `deniedMcpServers` instruction for the process residual | T016, T017 | `permissions.deny` +1 rule. No new key path. Detail in 2.8 |
+| AR-18 | Profile defect: the contract had adopters check the effective configuration on the `/sandbox` Config tab, but `/sandbox` does not open while `--settings` sets `sandbox.enabled` or `allowUnsandboxedCommands`. On Linux and WSL2 the optional seccomp filter, which blocks Unix sockets, can be missing without any profile-visible sign | Re-route the check: the other scopes from a session without the profile; `/status`, `/permissions` and `auto-mode config` inside it; a proxied-`curl` probe for `strictAllowlist`; a Linux/WSL2 seccomp-filter step | T016 (second commit), T020 (two steps change) | Disclosures "Effective configuration" and "Linux and WSL2"; probe table +1 row. Detail in 2.9 |
+| AR-19 | Profile defect (LOW): the named negatives missed documented weakening keys (`allowAppleEvents` is the one gap in the docs' own list of six); the test pinned key paths but not the values or the members of the security lists | 21 named negatives in full key-path form; scalar values and list members pinned | T017 | Contract-test paragraph; `data-model.md`. Detail in 2.10 |
+| AR-20 | Profile defect (LOW): prose items in the contract were inaccurate, incomplete or Part B text: the `--setting-sources` costs, the list of what runs outside the sandbox, the model-selection and retention sentences (both named Part B tools), the probe table's pass criteria, and four missing disclosures | Corrected in the contract | T016 (second commit), T048 (the two Part B clauses) | Contract prose only; the block's `autoMode` entries are unchanged. Detail in 2.11 |
 
 ## 2. Detail
 
@@ -191,6 +198,179 @@ Effort: SBE-D +0.02 d and SBE-TA +0.03 d, inside the W1 window. No trip-wire thr
 - In a scratch clone, T015 is green with no bytecode suppression and with the three cases, and its non-vacuity run is recorded. T043 runs it on both tips.
 - T020's listing shows no Python cache path.
 
+### 2.6 AR-15 (T049): the SEC-A rules go in the baseline
+
+The docs cited in 2.6 to 2.11 are the public Claude Code pages under `https://code.claude.com/docs/en/`, read as raw Markdown on 2026-11-19, named here by page and section.
+
+**Why baseline and not the extension note.**
+- The exposure comes from the profile's own key route. The runbook provisions `GEMINI_API_KEY` into the Claude Code process environment, and the Read tool runs in that process, outside the sandbox (SEC-A D1, D2). The same rule covers adopters who authenticate through `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`, so it matters in key-less sessions too. It is not an extra store that an adopter chose to keep.
+- The block is the only text that T017 pins and T020 runs. A note marked "required" is neither tested nor present in a copied profile.
+- The anchoring is right. In a permission rule `//proc/**` is absolute, while `/proc/**` would anchor at the profile file's directory and match nothing (SEC-A §5.3; permissions, "Where a pattern anchors").
+- No key path is added.
+- The cost is bounded. On macOS, `Read(//proc/**)` and its merged sandbox read deny name a path that does not exist. On Linux, the merge's effect on sandboxed tools is the one open question (SEC-A N8), and the ladder below settles it without another review.
+
+**The `credentials.files` entry stays, although it duplicates the merge.** Within the profile, a `deny` file entry and a merged Read deny give the same sandbox read block (settings reference, `sandbox.credentials.files`). The entry is kept for two documented reasons:
+- The runbook offers an always-on copy of the `sandbox` block for user settings. That copy carries `credentials.files` but not `permissions`, so without the entry the login file would stay readable to sandboxed commands in those sessions.
+- With `--setting-sources` excluding `user`, Claude Code still applies the user file's credential `deny` entries but ignores its Read deny rules when it builds the sandbox (sandboxing, "Protect credentials" and "Configure sandboxing"). The always-on copy then keeps the login file denied.
+
+No `/proc` line goes under `sandbox.*`. SEC-A §5.4 holds, and `/proc` is not a credential file.
+
+**`~/.claude.json` stays in the extension note**, with `~/.netrc`, `~/.git-credentials`, `~/.kube`, `~/.docker/config.json` and cloud-CLI configs. It holds account details and personal MCP server definitions, which are adopter configuration rather than an exposure the profile creates. For `CLAUDE_CONFIG_DIR`, SEC-A §5.2 applies.
+
+**Claim text.** Because the rules are in the baseline, the runbook uses SEC-A §5.6 as written (T016's second commit, or T021) and keeps "can" in the hooks clause.
+
+**Linux fallback ladder.** It is pre-ruled: T021 applies it from T020's stage C without another architect review. In every row, T021 changes the contract, the runbook block and T017's pinned deny list in one commit, then re-runs B1 to B3 and C on Linux.
+
+| Stage C on Linux | Disposition |
+|---|---|
+| Passes with `Read(//proc/**)` | Keep it |
+| Fails with it | Swap it for `Read(//proc/*/environ)` and `Read(//proc/*/task/*/environ)` (SEC-A §5.2). Record how long one sandboxed command takes to start, because the per-thread pattern expands to one entry per thread |
+| C1 to C3 pass with both forms, and only C4 (diagram rendering) fails | Keep `Read(//proc/**)`. Scope Linux attack-tree and attack-chain rendering out under the profile through the AD-9 platform statement. A credential leak would be silent, while a missing image is visible |
+| C1, C2 or C3 fails with both forms | Remove the `/proc` rules. The runbook says that on Linux the Read tool can read the Claude Code process environment, so key-ful operation and environment-variable authentication are not claimed protected there (SEC-A §5.8, row 1). It recommends `/login`, whose credentials file the profile denies, and names `permissions.blockReadsOutsideWorkingDirectories` as the documented opt-in where toolchains live outside the home directory |
+| T020 runs on macOS only | The Linux rules ship unchecked, and the header says so (SEC-A §5.8, last row) |
+
+**For T020.** SEC-A §6 stands, with three changes:
+- Stage A uses a scratch copy of the re-extracted profile with the three SEC-A strings removed. It keeps the AR-16 and AR-17 changes.
+- SEC-A §6.1's step "open the `/sandbox` Config tab" cannot run under the profile (AR-18). Record the message `/sandbox` prints instead.
+- On Linux, show the OS-level merge with a read that the permission layer cannot analyse. Run it only in the key-less session with the cleaned environment: `python3 -c "print(open('/proc/self/environ','rb').read().count(b'TACHI_SEC_A_PROBE='))"`. Stage B expects an error from the sandbox (permission denied, or no such file where `/proc` is hidden); `1` means the merge did not reach the sandbox, which is recorded (the content is the dummy). In stage B, A3's `tr … < /proc/<pid>/environ` names its input as a redirection, which the permission layer now refuses, so A3 there uses the same `python3` form with `<CLAUDE_PID>`.
+
+**T017** pins `permissions.deny` and `credentials.files` by member, as sets (AR-19). That answers SEC-A's hand-off, which asked whether the test pins the deny array or the files length: it pins both.
+
+**Public probe table.** Adopters check the SEC-A rules by configuration (`/permissions` lists them and no startup warning names them), never by reading `/proc` or the login file. A probe that fails open writes the secret into a plaintext transcript (SEC-A D7, §6.0), so the live probes stay in the maintainer's run.
+
+### 2.7 AR-16: pin `autoAllowBashIfSandboxed` to `false`
+
+**What the docs state.**
+- Auto-allow "approves a command automatically, with no prompt, when the command runs inside the sandbox". It "works independently of your permission mode setting, with three exceptions: plan mode, an auto mode command that carries per-command allowed domains, and server-side classifier review of sandboxed commands in auto mode" (sandboxing, "Sandbox modes"). In auto mode without server-side review, a sandboxed command under auto-allow never reaches the classifier.
+- For `sandbox.autoAllowBashIfSandboxed`: "Default: `false`. Before v2.1.324, the default was `true`" (settings reference). The runbook's minimum is v2.1.285.
+- Under an admin-required sandbox, "deny entries and the `autoAllowBashIfSandboxed` value" in a repository's files still apply (sandboxing, "Repository settings under an admin-required sandbox"). Picking a mode in `/sandbox` writes the key to the project's `.claude/settings.local.json` (sandboxing, "Get started").
+- A key set with `--settings` "overrides the same key in your project and user settings files, and a key you leave out keeps its value from those files" (settings, "Settings precedence").
+
+**Why it is a defect.** Three statements depend on the classifier seeing sandboxed commands:
+- FR-006's `hard_deny` names Bash.
+- The runbook must say that the classifier reads commands.
+- D-6 says that `allowUnsandboxedCommands: false` from `--settings` stops a repository's settings from loosening the sandbox.
+
+Without the pin, all three fail in one documented combination: no server-side review, together with auto-allow on. Server-side review is absent behind an LLM gateway or proxy that drops it, on a platform without it, or with `CLAUDE_CODE_AUTO_MODE_SERVER=0`. Auto-allow is on under a pre-v2.1.324 default, a user file or a repository file. In that combination sandboxed Bash runs without classifier review, including a `curl` that sends arbitrary content to the Gemini host, which the allowlist admits. The pin makes all three statements hold again.
+
+With server-side review on, sandboxed commands are reviewed either way. The profile's non-essential-traffic switch makes that review the default from v2.1.282, so T020's likely configuration behaves the same, and the PRD's R-1 test (whether auto mode lets the Gemini request through) still holds.
+
+**Cost.** In Manual mode, the pre-ruled fallback, each sandboxed command outside the read-only set prompts. That gives a person the review in the one mode that has no classifier, which suits an isolated session. The always-on copy carries the key, and the disclosure says that the adopter may leave it out of that copy.
+
+**Not adopted.**
+- `autoMode.classifyAllShell: true`, which would suspend narrow Bash allow rules from other scopes in auto mode. Sandboxed commands stay bound by the one-host allowlist, the effective-config check now names narrow Bash allow rules, and the spec does not require it.
+- Pinning the weakening switches to `false` to override a user-scope `true`. FR-005's AC requires a profile text with no excluded-commands, write-allowance or nested-user-namespaces entry. These keys stay named negatives, and the effective-config check covers them.
+
+**For T020.** One check of a few minutes, run before the write listing: start the profile once with `--permission-mode default` and ask Claude to run `touch ./tachi-mode-probe` in the scratch project. A prompt confirms the regular permission flow. Delete the file afterwards. Under the profile, `/sandbox` cannot show the mode (AR-18).
+
+### 2.8 AR-17: deny every MCP tool in the profile
+
+**What the docs state.**
+- `"mcp__*"` "matches every MCP tool across all servers", and "A tool matched by a bare-name glob deny rule is removed from Claude's context" (permissions, "Tool name wildcards"). Deny rules apply before the classifier, in every mode.
+- Connectors that Claude Code fetches itself appear as `mcp__claude_ai_<server>__<tool>` (permissions, "MCP"). Claude Code fetches them unless a setting turns them off (settings reference, `disableClaudeAiConnectors`, default `false`).
+- Local MCP servers run outside the sandbox with full access (sandboxing, "What runs outside the sandbox"). `deniedMcpServers` stops a matching server from loading (settings reference).
+
+**Why it is a defect.**
+- FR-005 makes MCP part of what the profile covers, and the `hard_deny` names "an MCP server" among the tools.
+- The contract's only MCP control was a runbook instruction. A copy-paste adopter can skip it, and no test pins it.
+- In a claude.ai-authenticated session, every connector (mail, documents, chat) is a route off the machine that the model can invoke, and neither the sandbox nor `allowedDomains` reaches it.
+
+One deny entry closes the tool route in every mode. No tachi agent or command uses an MCP tool (the Tools column in §8.3).
+
+**What stays.** The runbook keeps "list each configured server in `deniedMcpServers`, or confirm there are none". The instruction now addresses the remaining residual: a local server process still starts and runs outside the sandbox. The rule's name contains `_` and `*`, so the startup check for unknown tool names exempts it (permissions, "Tool name wildcards").
+
+**Not adopted.**
+- `allowedMcpServers: []`. An empty list blocks servers only while no other file sets the key, so its effect would depend on other files.
+- `disableClaudeAiConnectors`. The deny already covers the connectors' tools, and the spec asks for no more.
+
+### 2.9 AR-18: the effective-configuration check, and the Linux seccomp filter
+
+**What the docs state.**
+- "When `sandbox.enabled`, `sandbox.autoAllowBashIfSandboxed`, or `sandbox.allowUnsandboxedCommands` is set above the local settings level, `/sandbox` prints `Sandbox settings can't be changed here. Higher-priority settings override them.` and its panel stays closed". The docs add: "Managed settings and `--settings` rank above local settings" (sandboxing, troubleshooting). The profile set two of these keys before AR-16, so its Config tab was never reachable.
+- With `strictAllowlist` on, "Claude Code refuses per-command lists", and the proxy refuses an unlisted host in every permission mode (sandboxing, "Per-command allowed domains in auto mode" and "Hosts outside your allowed domains").
+- The seccomp filter "is optional and adds Unix domain socket blocking". The sandbox starts without it, and only the Dependencies tab of `/sandbox` reports that it is missing (sandboxing, "Set up Linux and WSL2"). Without it the sandbox does not block Unix-socket calls (settings reference, `sandbox.network.allowAllUnixSockets`). On WSL2, the launch of a Windows program goes over a Unix socket (same Linux section).
+
+**Why it is a defect.**
+- FR-005 requires the runbook to have adopters check the effective configuration. As written, the instruction pointed at a view that the profile itself closes.
+- AD-12's step "confirm `--settings` honours `strictAllowlist` from a file" relied on the same view (`test-results/profile-prestage.md` §7, last paragraph).
+- On Linux and WSL2, the isolation claim also depends on the seccomp filter, which nothing in the profile or the probe table checks. Without the filter, sockets such as a container runtime's are open to sandboxed commands.
+
+**Fix** (contract disclosures and probe table):
+- Read the other scopes from a session in the same project started without the profile. Its `/sandbox` Config tab shows what those files add, which is the part of the union that the profile cannot remove.
+- In the profile session, read `/status`, `/permissions` and `auto-mode config`.
+- Confirm `strictAllowlist` with the new `curl -sS https://example.com` row.
+- Confirm `tlsTerminate` with the key-ful run. Without it the sentinel reaches the server unchanged and authentication fails (sandboxing, "Mask credentials"). `claude doctor` reports `TLS termination is unavailable` for that misconfiguration; the docs do not say whether it reads a `--settings` file, so T020 records what it shows.
+- On Linux and WSL2, install the filter and check the Dependencies tab before the first session with the profile.
+
+**For T020.** Record the `/sandbox` message, whose text also confirms that the profile ranks above local settings. Run the new probe row. On the Linux VM, record whether the filter was present.
+
+### 2.10 AR-19: named negatives and pinned values
+
+The closed key set already rejects every key outside the 19 paths. The named negatives are the non-vacuity cases that prove it.
+
+The contract named 13 keys and left out `sandbox.allowAppleEvents`, the one key missing from the docs' own list of six weakening keys; the docs say it "removes code-execution isolation". The list now holds 21 keys, in full key-path form:
+- every key that the sandboxing page names as weakening or loosening the sandbox: the list of six, and the table of loosening settings that an admin-required sandbox ignores in repository files;
+- `sandbox.credentials.allowPlaintextInject`, which would let the proxy put the real image key into a plain-HTTP request;
+- the profile's own forbidden keys: `permissions.allow`, `permissions.defaultMode`, `autoMode.allow` and `autoMode.soft_deny`.
+
+Short forms such as `defaultMode` become `permissions.defaultMode`; the meaning is unchanged.
+
+**Values.** A set of key paths says nothing about `"enabled": false` or an extra deny rule. T017 therefore also pins the seven scalars and the members of the three security lists, compared as sets. That answers SEC-A's hand-off to T017. T017's task text lists 13 negatives, but the contract's list governs, because T017 asserts "the exact key paths of `contracts/session-profile.md`".
+
+### 2.11 AR-20: contract prose corrections
+
+Each item changes the contract's prose, which T016's second commit copies.
+
+1. **`--setting-sources` costs** (T006 §3.2 and §10, item 2):
+   - "retention default" becomes "the retention sweep pauses when no enabled source sets `cleanupPeriodDays`";
+   - "auto-mode re-prompt" becomes "a mode dialog that the user file suppressed can appear again (documented for the bypass-permissions warning)";
+   - "user-scope masks" becomes "user-scope environment-variable masks".
+2. **What runs outside the sandbox.** The docs list command hooks, local MCP servers, plugin monitors, LSP servers, mods, and helper commands such as the status line and `apiKeyHelper` (sandboxing, "What runs outside the sandbox"). The contract named three of them.
+3. **Part B text in Part A (AD-14).**
+   - The model-selection sentence said "the manifest or transcripts", and the retention sentence said "archive with B1". The Part A forms now say "the session transcripts" and "raise it again, or copy the transcripts you need out of `~/.claude/projects/`". The Part B forms are T048's.
+   - The model-selection statement also takes T006 §2.2's `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` caveat, so it agrees with §8.1 of `CLAUDE_PERMISSIONS.md` (T023). The words "states only" no longer rule that caveat out.
+4. **Probe table.**
+   - The expected outputs come from the docs ("Confirm commands run inside the sandbox").
+   - Claude runs each line; a line typed at `!` runs outside the sandbox.
+   - A permission-rule or classifier refusal of `touch` or `curl` is not a sandbox result.
+   - It gains the `strictAllowlist` row (AR-18), and the SEC-A rules are checked by configuration (AR-15).
+5. **Four new disclosures.**
+   - `strictAllowlist` also refuses auto mode's per-command host lists.
+   - `WebFetch(domain:*)` in `deny` is no substitute for the bare `WebFetch` deny, because it also denies every host to sandboxed commands, the Gemini host included (permissions, "Allow or deny every fetch").
+   - The profile is for local sessions. An Anthropic-hosted cloud session starts with a warning and does not enforce the `sandbox.filesystem` and `sandbox.network` rules (settings reference, `sandbox.failIfUnavailable`).
+   - The `env` key keeps artifact publishing off (artifacts, "Availability"). Without it, FR-004's two-host statement would also have to name claude.ai as a destination.
+6. **The audiences sentence** now records the T005 ruling as done.
+
+Considered and left as written:
+- The primary-use entry's "writes only under the run's output directory" leaves out `$TMPDIR` and the `/tachi.architecture` carve-out. It is PRD FR-6's passivity wording, and the classifier allows file operations in the working directory by default, so it should cause no denial. If T020 records a denial traced to this entry, T021 takes a wording change to the PM.
+- The `environment` slot names ("Primary use", "Data retention") are cosmetic (T006 §10, item 3).
+- No byte of the `hard_deny` sentence or of the audiences entry changed. Both still match PRD FR-6 and `field-list.md` §10.3, checked by script.
+
+### 2.12 AR-15 to AR-20: escalations, effects and the runbook's write table
+
+**PM: FYI, no wording change.** PRD FR-5 lists the deny rules and the sandbox keys. The contract now adds `mcp__*`, the two SEC-A Read denies, the credentials-file entry and `autoAllowBashIfSandboxed: false`. FR-005's text already covers each addition: MCP servers in the deny list, read denies for secret paths, and the classifier statements of FR-006. D-6 is the architect's decision, and T049 already routed the key set to this review. A PRD sync at delivery is optional.
+
+**User: nothing blocking.** FYI:
+1. The pre-staged `~/.tachi/391-w2/session-profile.json` (SHA-256 `e3fdf5bf…`, 2658 bytes) no longer matches the contract. Before T020 it must be replaced by the block extracted from the runbook (`test-results/profile-prestage.md` §8). The amended block, extracted the same way with its trailing newline, is 2908 bytes with SHA-256 `43496fb7d4fca098983a70648def8f1da2a2d1843528b5ca4c14444e32564279`. The GL diff should reproduce that value once T016 lands, if the runbook keeps the block's bytes.
+2. T020 gains a Manual-mode check (AR-16), a probe row (AR-18) and one Linux `python3` probe (AR-15), and one existing step changes. That is about 0.03 d inside TW-A1.
+
+**Runbook §5 (review item 3).** T016's first commit copies §8.5 of `CLAUDE_PERMISSIONS.md` exactly:
+- the heading `## 5. Write locations`;
+- the header row `| Path | Written by | Condition |`;
+- the 21 rows, verbatim.
+
+The rows reflect the earlier rulings:
+- AR-1: the attack-tree and attack-chain PNGs and the corrected image copy under `{out}`, and the deletion limited to `{out}`.
+- AR-2: `risk-scores.{md,sarif}` always under `{out}`, and `threats.md` rewritten in place only when `{out}` is the input directory.
+- AR-3: the two Gemini intermediates under `{out}/.tachi-build/`, kept, and the decode with `python3`.
+- AR-14: no bytecode-cache row.
+
+A script check found that the 21 path tokens equal the union of the Writes cells in §8.3 and §8.4, and that none names `__pycache__`, `templates/` or `/tmp`. C7 is therefore green on a verbatim copy. AR-8's precondition sentence and the `/tachi.architecture` carve-out go beside the table.
+
+**No effect on** §8 of `CLAUDE_PERMISSIONS.md`, T023, T025, T026 or ADR-049.
+
+Effort: T016 none beyond the copy; T017 +0.02 d (values, members, eight more negatives); T020 +0.03 d.
+
 ## 3. Write rows after the rulings (for T016 and T023)
 
 T016 and T023 take audit §5's rows with the rows below in their place. Tokens are as in audit §2: §8 and the runbook use `{template}`, while the agent and reference text say `{template_name}`.
@@ -250,3 +430,9 @@ ADR-049 adds one clause: in build mode the extractor only reads `--target-dir`.
 | AR-4 | C6 is green on the live tree with the three day-one sets |
 | AR-5 | The legend has the Dispatch paragraph, and the agents table shape matches the contract |
 | AR-8, AR-10, AR-12 | The runbook states the precondition, T012's path text matches 2.1 (c), and the §8 corrections are applied |
+| AR-15 | The runbook block carries both SEC-A Read denies and the credentials-file entry. The second commit carries SEC-A §5.6 and the extension note. T020's stage B and C results are recorded, and any ladder row that fired (2.6) is applied in the contract, the runbook and T017 together |
+| AR-16 | `autoAllowBashIfSandboxed` is `false` in the block, and T020's Manual-mode check is recorded |
+| AR-17 | `mcp__*` is in the block, and the runbook keeps the `deniedMcpServers` instruction for the process residual |
+| AR-18 | The runbook's effective-config check names no `/sandbox` view inside the profile session. The `strictAllowlist` probe row and the Linux and WSL2 seccomp step are present. T020 recorded the `/sandbox` message |
+| AR-19 | T017 asserts the 19 paths, the scalar values, the three member sets and the 21 negatives, and goes red on a mutated copy |
+| AR-20 | The second commit's prose matches 2.11. The runbook's Part A text names neither the manifest nor the archiver |
