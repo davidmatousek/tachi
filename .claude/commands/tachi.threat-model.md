@@ -192,6 +192,35 @@ python3 scripts/populate-affected-assets.py \
 > before scoring). This keeps the deterministic populator the single value
 > authority across `threats.md` and every SARIF surface (plan AD-1; NFR-3).
 
+## Step 2.6: Stamp tachi_version (deterministic)
+
+`threats.md` records which tachi release wrote it in a `tachi_version`
+frontmatter field. The model never authors that field (the output schema tells
+it not to). This command-level step writes it from the one-line version marker
+the installer recorded at `templates/tachi/VERSION`, after Step 2.5 and before
+the results are reported.
+
+1. Stamp the field into the frontmatter of the `threats.md` that Step 2
+   produced, in place:
+
+```bash
+python3 scripts/stamp-tachi-version.py --threats {output_dir}/threats.md
+```
+
+2. The script is deterministic and idempotent. It inserts `tachi_version` right
+   after `schema_version` (or updates the field where it stands), writes
+   `unknown` when the marker is missing or malformed (an install that skipped
+   the marker line), changes no other line and no other key, and leaves the file
+   byte-identical when re-run. `schema_version` stays what the orchestrator
+   declared.
+
+3. If the script exits non-zero (a missing script, no frontmatter in
+   `threats.md`, or an I/O error): do not retry, do not stop the run, keep every
+   output, and never write or edit `tachi_version` yourself. Add the line
+   `tachi_version not stamped (exit N)` to the Step 3 summary, with the exit code
+   in place of `N`. A `threats.md` without the field is the documented legacy
+   case: consumers feature-detect the key.
+
 ## Step 3: Report Results
 
 Display summary (output_dir now includes the timestamped subfolder):
