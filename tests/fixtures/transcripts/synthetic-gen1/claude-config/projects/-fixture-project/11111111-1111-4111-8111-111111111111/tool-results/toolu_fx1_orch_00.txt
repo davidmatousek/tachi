@@ -1,0 +1,1 @@
+FIXTURE persisted tool output (architecture text placeholder)

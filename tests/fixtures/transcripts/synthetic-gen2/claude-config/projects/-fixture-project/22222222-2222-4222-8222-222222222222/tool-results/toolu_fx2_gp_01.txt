@@ -1,0 +1,2 @@
+FIXTURE persisted tool output
+request failed for key __DUMMY_KEY__
