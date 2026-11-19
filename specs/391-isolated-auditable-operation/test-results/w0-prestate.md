@@ -129,3 +129,26 @@ Notes for later tasks:
 | The scratch clone path is set | Yes: `$SCRATCH/prestate-{A,B,C}` |
 
 **G0: PASS.** W1 may start. B1 launches once P0-B0 passes (R-6).
+
+## Census (clone C, fresh tree)
+
+`python3 -m pytest tests/scripts tests/schemas` at `46aec8d`: **1229 passed, 27 failed, 8 errors, 5 skipped, 1 xfailed** (1270 collected, 796 s). Running `pytest tests/` as a whole stops at collection, because it picks up `tests/fixtures/init-baseline-tree/tests/scripts/test_init_sh_adversarial.py`, which cannot import `init_sh_helpers`. Collection is scoped to the two directories for that reason.
+
+All 35 failures and errors are outside every gate, and all of them predate 391: the feature has changed no code yet. The node ids are in `wave-01/census-failing.txt`.
+
+| Module | Failures + errors |
+|---|---|
+| `test_backward_compatibility` | 6 (the #365 set above) |
+| `test_human_trust_exploitation` | 9 (8 of them are errors in the `test_wave5_*` cases) |
+| `test_mobile_top_10_coverage_bundle_enrichment` | 6 |
+| `test_coverage_attestation_in_scope` | 3 |
+| `test_tool_abuse_enrichment` | 3 |
+| `test_coverage_attestation_audit` | 2 |
+| `test_llm10_unbounded_consumption_enrichment` | 2 |
+| `test_ml_top_10_coverage_bundle_enrichment` | 2 |
+| `test_pdf_page_positioning` | 1 |
+| `test_pyyaml_deferred_import` | 1 |
+
+The census also left 36 modified PNGs in clone C: 15 under `examples/agentic-app/sample-report/attack-{trees,chains}/`, 9 under `examples/maestro-reference/`, and 12 under `examples/mermaid-agentic-app/`. That is more evidence for the #365 rule.
+
+A later wave's run counts as a regression only when a node id that passes here fails.
