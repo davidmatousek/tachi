@@ -159,7 +159,7 @@ Single-command entry point for tachi security assessment PDF generation — the 
 
 Invoke the report-assembler agent to parse artifacts, generate Typst data, and compile the PDF.
 
-1. **Invoke agent**: Use the Agent tool with `subagent_type: "senior-backend-engineer"` and the following prompt:
+1. **Invoke agent**: Use the Agent tool with `subagent_type: "tachi-report-assembler"` and the following prompt:
 
    ```
    You are the tachi report-assembler agent. Read your full instructions at `.claude/agents/tachi/report-assembler.md` and execute all 4 steps.
