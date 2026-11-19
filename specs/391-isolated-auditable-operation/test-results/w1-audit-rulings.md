@@ -26,6 +26,7 @@
 | AR-11 | D-12: argparse `required=True` would trip the new recipes | Closed by T014 (`a580e45`) | none (T040 checks; T043 runs) | `_resolve_cli_mode` re-imposes the legacy flag triple with argparse's own message; `--build-dir` needs only `--target-dir` and refuses `--output`; `--remove-build-dir` takes no other flag. T043 runs the legacy-form callers (`test_extract_report_data.py`, `test_report_posture_contract.py`, `test_backward_compatibility.py`) in a scratch clone |
 | AR-12 | D-13: gaps in the Architect's baseline | Accept, with the AR-1 and AR-2 tokens | T023 | The orchestrator also writes `{out}/attack-chains.md` (conditional); `tachi-attack-tree-delta` also writes `.manifest.json`; no `{target_dir}` write remains (section 3); the infographic Bash set includes `[` and `echo` and no `.env` sourcing; after T012 the report assembler names no deletion command (the extractor's `--remove-build-dir` removes the build directory) |
 | AR-13 | D-1: `/tachi.security-report` dispatched `senior-backend-engineer` | Closed by T022 (`c068ddc`) | none | §8 commands table, Dispatches cell: `tachi-report-assembler` |
+| AR-14 | T015 finding (no audit row): a stock `python3 scripts/<entry>.py` makes CPython cache the imported `tachi_parsers` as bytecode, in `scripts/__pycache__/` or under the interpreter's cache prefix. That write lies outside `{out}` and `$TMPDIR` | Option (d), none of (a) to (c): each installed entry script turns bytecode writing off when run as a script, before its sibling import. No recipe, profile, §8 or runbook text changes | T015: one follow-on commit on `1be9716` (SBE-D the three scripts, SBE-TA the module); T015 closes with it | `scripts/extract-report-data.py` before :64, `scripts/extract-infographic-data.py` before :27, `scripts/populate-affected-assets.py` before :59, two lines each; `tests/scripts/test_write_confinement.py` :34-37, :349, :371, :380, :400, plus three cases. T023 and T016: no follow-up. Detail in 2.5 |
 
 ## 2. Detail
 
@@ -113,6 +114,82 @@ T023:
 - No static check can bound a choice made at run time.
 
 B1 is already covered by `test-results/p0-b0-precheck.md` P0B0-1: a non-tachi instance is a recorded subagent with `pinned_model` null, never a dispatch. The W2 record (T020) notes the built-in subagent types seen, by type and count. The existing write listing already covers their writes.
+
+### 2.5 AR-14 (T015 finding): tachi's scripts write no bytecode cache
+
+Lines are at `1be9716`.
+
+**What happens today.** This was reproduced in scratch copies of the four installed scripts. Each entry script ran from the project root with `--help` and with `PYTHONDONTWRITEBYTECODE` unset:
+- **The import.** The three installed entry scripts import `tachi_parsers` at module level (`extract-report-data.py:66`, `extract-infographic-data.py:29`, `populate-affected-assets.py:61`), so every run of any of them caches it. CPython never caches the script it runs as `__main__`, so `tachi_parsers` is the only module concerned.
+- **Python 3.12** wrote `scripts/__pycache__/tachi_parsers.cpython-312.pyc` for each script.
+- **macOS's own `/usr/bin/python3`** (3.9.6, the floor the plan cites) wrote nothing under `scripts/`. Its `sys.pycache_prefix` is `~/Library/Caches/com.apple.python`, so the cache went there, under the project's absolute path. `PYTHONPYCACHEPREFIX` can move it anywhere.
+- **The callers.** The recipes run these three scripts in 10 fenced lines across 7 files:
+  - `orchestrator.md:685`;
+  - `report-assembler.md:158` and `:218`;
+  - `threat-infographic.md:169`;
+  - `tachi.threat-model.md:126` (inside the orchestrator's dispatch prompt) and `:170`;
+  - `tachi.risk-score.md:99`;
+  - `tachi.infographic.md:160` (inside the dispatch prompt);
+  - `typst-artifacts.md:119` and `:123`.
+
+  `tachi.security-report.md` runs no script.
+- **No change elsewhere:**
+  - `generate-threats-sarif.py`, `generate-risk-scores-sarif.py`, `populate-maestro-coverage.py` and `sarif_common.py` also import a sibling. They are not installed (`INSTALL_MANIFEST.md:77`), and no recipe runs them.
+  - On part-b (`ceea019`), `stamp-tachi-version.py` and `archive-run-transcripts.py` import only the standard library. Step 2.6 (`tachi.threat-model.md:207` there) therefore stays as written, and AD-14 is not touched.
+
+**Ruling.** In each of the three installed entry scripts, insert two lines immediately before `sys.path.insert(0, str(Path(__file__).resolve().parent))` (`extract-report-data.py:64`, `extract-infographic-data.py:27`, `populate-affected-assets.py:59`):
+
+```python
+if __name__ == "__main__":
+    sys.dont_write_bytecode = True  # no bytecode cache for the import below (feature 391, FR-007)
+```
+
+- **Mechanism.** `sys.dont_write_bytecode` is the documented, settable form of `-B`. Set before the import, it stops both kinds of cache. Reproduced on both interpreters: with the two lines, no cache of `tachi_parsers` was written, neither in the project nor under a cache prefix.
+- **The `__main__` condition** keeps the flag out of processes that load a script by path, as the tests do (`importlib.util.spec_from_file_location` with a module name). The scripts start no Python child (the extractor's pools are thread pools), so nothing escapes the condition.
+- **Nothing else changes:** no flag, output or exit code, and `tachi_parsers.py` stays untouched. AR-1's sentence in the extractor's docstring and epilog (`extract-report-data.py:23-24`, `:2600-2602`) becomes true as written.
+
+**Why not the listed options.**
+- **(a) `python3 -B` in the recipes.** That is 10 lines in 7 files, two of them inside dispatch prompts. The property would hold only while every agent and main session copies the flag on every run, and T020 can only sample that. (d) holds for every invocation form, including a paraphrased command and a person running a script by hand. Neither (a) nor (d) touches C6 (the family stays `python3`) or C7.
+- **(b) `PYTHONDONTWRITEBYTECODE=1` in the profile's `env`.** It covers only sessions started with the profile, so FR-007 and SC-005 stay false for every other run. It also adds a key path to the closed set (`contracts/session-profile.md`, T017).
+- **(c) Disclosure.**
+  - FR-007 and SC-005 would need a qualifier, which is a PM wording change. Section 3's "without a qualifier" would no longer hold.
+  - No fixed C7 row can name a location that depends on the interpreter, and one form of that location lies in the home directory.
+  - tachi's own `.gitignore:217` ignores `__pycache__/`, but `scripts/install.sh` writes no `.gitignore`. In an adopter project the cache would show up as untracked files in a `scripts/` directory the adopter may share.
+- **Precedent.** (d) follows the same principle as the H-3 fix (`test-results/security-b1.md`): the script guarantees the property, not its invocation.
+- **No `-I`.** `-I` is not added anywhere. It addresses import shadowing (H-3), and the three scripts put their own directory back at the front of `sys.path` before the sibling import anyway.
+
+**Out of scope.** The interpreter's own standard-library cache lies outside the project and serves every Python program. T020 observes it live, as it does Typst's and Chromium's own caches (decision 5 of the T015 result).
+
+**T015 follow-on.** One commit on `1be9716`: SBE-D writes the three scripts and SBE-TA the module. The wiring is unchanged, because the scripts match `scripts/*.py` in `&fidelity_paths` (`tachi-install-fidelity.yml:60`). T015 is marked complete only once this commit lands.
+1. **Children run the recipe form.** Drop `"-B"` at `:371`, `:380` and `:400`. At `:349`, remove `PYTHONDONTWRITEBYTECODE` from the child environment with `env.pop`, so that a developer's shell setting cannot mask a regression. Rewrite the interpreter note at `:34-37` to match.
+2. **Three new cases**, one per installed entry script. In a project that holds a copy of that script and `tachi_parsers.py`:
+   - Run `scripts/<entry> --help` from the project root, with `PYTHONPYCACHEPREFIX` set to a test-owned directory.
+   - Assert exit 0, no `scripts/__pycache__/`, and no `<stem>.cpython-*.pyc` under that directory for any module in the project's `scripts/`.
+   - Do not assert on the standard library, which the interpreter also caches under the prefix (the dry run showed this with and without the two lines).
+
+   With the prefix set, the case fails on any interpreter when the two lines are missing. That includes macOS's `/usr/bin/python3`, whose default cache lies outside `tmp_path`.
+3. **Non-vacuity**, recorded in the T015 result. Remove the two lines from one script in the scratch clone. That script's case goes red. On an interpreter without a cache prefix, the nine snapshot tests that needed the suppression also go red. Then restore the lines.
+
+Effort: SBE-D +0.02 d and SBE-TA +0.03 d, inside the W1 window. No trip-wire threshold is crossed.
+
+**Other tasks.**
+- **T023: no follow-up edit.**
+  - The Writes column gets no `__pycache__` entry, the Bash families stay as AR-4 set them, and the commands table keeps the recipe forms.
+  - If the in-flight draft already lists `scripts/__pycache__/` (the third option in T015's finding), drop it before the commit.
+- **T016: no follow-up.** §5 states the confinement sentence without a qualifier and gets no extra row. "No write allowances are needed" stands.
+- **T017, T025, T026: none.** The key set, C6 and C7 are unchanged.
+- **T029** (ADR-049, not yet written): one clause in the write-confinement section saying that the installed scripts write no bytecode cache when run as scripts, whatever cache location the interpreter uses.
+- **T020:** the existing write listing is the live check, and it must show no `scripts/__pycache__/`. A Python cache path in the denial record means an unguarded Python run; record it as a finding.
+- **T045** (optional; the PM sets the wording): "tachi's scripts no longer leave a `scripts/__pycache__/` directory in the project."
+
+**Escalations.**
+- **PM:** none. FR-007, FR-008 and SC-005 hold as written.
+- **User:** nothing blocking. FYI: `scripts/extract-infographic-data.py` and `scripts/populate-affected-assets.py` join Lane D's change set, which the plan does not list, as AR-2 did for `risk-scorer.md`.
+
+**Check for T040.**
+- The two lines precede `sys.path.insert` in the three installed entry scripts.
+- In a scratch clone, T015 is green with no bytecode suppression and with the three cases, and its non-vacuity run is recorded. T043 runs it on both tips.
+- T020's listing shows no Python cache path.
 
 ## 3. Write rows after the rulings (for T016 and T023)
 
