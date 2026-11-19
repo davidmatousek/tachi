@@ -161,7 +161,7 @@ See [`INSTALL_MANIFEST.md`](INSTALL_MANIFEST.md) for the full list of distributa
 
 After copying the files, **restart Claude Code** (close and reopen the VS Code window, or start a new CLI session) so it picks up the new agents and commands.
 
-If you want infographic images (`.jpg`), set the `GEMINI_API_KEY` environment variable with a key from [Google AI Studio](https://aistudio.google.com/apikey). This is optional — all text-based outputs work without it.
+If you want infographic images (`.jpg`), set the `GEMINI_API_KEY` environment variable with a key from [Google AI Studio](https://aistudio.google.com/apikey). This is optional — all text-based outputs work without it. tachi reads the key from the process environment only and never from a file: export it in your shell, inject it through your secret manager (for example `op run`), or let VS Code load your `.env` at launch.
 
 ### 4. Create your architecture file (or let Claude Code do it)
 

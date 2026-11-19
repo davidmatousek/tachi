@@ -250,7 +250,20 @@ Content-Type: application/json
 x-goog-api-key: {GEMINI_API_KEY}
 ```
 
-The key is read from the environment and sent only as this header — never as a `?key=` query parameter, never echoed, and never passed to a verbose/trace flag.
+**Request form (pinned)**: send the request with `curl`. The body comes from a file and the key header comes from a curl config read on standard input, so neither the body nor the key appears on the command line:
+
+```bash
+curl --silent --show-error --fail-with-body \
+  --config - \
+  --request POST "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent" \
+  --header "Content-Type: application/json" \
+  --data @"{request_file}" \
+  --output "{response_file}" <<EOF
+header = "x-goog-api-key: $GEMINI_API_KEY"
+EOF
+```
+
+`{request_file}` and `{response_file}` are files the agent writes beside its other intermediates. Add `--write-out '\n%{http_code}'` when the status code is needed for the error table. The key is read from the environment only (the agent's "API Key Check"), it is sent only as this header, delivered through `--config -`; it is never passed as `--header "x-goog-api-key: …"` on the command line, never as a `?key=` query parameter, never echoed, and never passed to a verbose/trace flag.
 
 **Request Body**:
 ```json

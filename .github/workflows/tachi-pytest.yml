@@ -118,6 +118,10 @@ on:
       - tests/scripts/test_install_sh_symlink_preflight.py     # F-373 (T009/T010) — K3 destination-containment + classification suite
       - tests/scripts/test_install_sh_ref_restore.py           # F-373 (T009/T010) — K3 ref-restore trap suite
       - tests/scripts/install_sh_helpers.py                    # F-373 (T009/T010) — install.sh sandbox builders
+      - tests/scripts/test_gemini_key_env_only.py              # F-393 — env-only key read + pinned request form
+      - .claude/agents/tachi/threat-infographic.md              # F-393 — API Key Check (input)
+      - adapters/claude-code/agents/references/infographic-gemini-api.md   # F-393 — adapter copy (input)
+      - .claude/skills/tachi-infographics/references/gemini-prompt-construction.md   # F-393 — pinned request form (input)
       - tests/scripts/init_sh_helpers.py
       - tests/scripts/conftest.py
       - tests/fixtures/init-baseline-tree/**
@@ -216,4 +220,5 @@ jobs:
             tests/scripts/test_owasp_2026_contract.py \
             tests/scripts/test_install_sh_symlink_preflight.py \
             tests/scripts/test_install_sh_ref_restore.py \
+            tests/scripts/test_gemini_key_env_only.py \
             -v --timeout=1080

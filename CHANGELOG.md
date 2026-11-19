@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fix 393 — Read GEMINI_API_KEY from the environment only (#393) — fix(393)
+
+**Changed**
+- The infographic image step reads `GEMINI_API_KEY` from the process environment only. The
+  `.env` fallback that the agent used when the variable was unset is removed; a project `.env`
+  now works only through a loader outside tachi (VS Code's env loading, direnv, `op run`, a CI
+  secret). README, the developer guide and `.env.example` say so.
+- The Gemini request form is pinned in the infographics skill reference: the body comes from a
+  file and the key header from a curl config read on standard input, so neither appears on the
+  command line, in a query string, or under a verbose flag.
+
+**Added**
+- A gated test (`tests/scripts/test_gemini_key_env_only.py`) asserts the environment-only read
+  in the agent and the adapter reference, and the pinned request form.
+
 ### Feature 373 — Adopter Install + Output Fidelity Fixes (#373) — fix(373)
 
 Fixes a set of install-reliability and report/infographic output-fidelity defects, and moves

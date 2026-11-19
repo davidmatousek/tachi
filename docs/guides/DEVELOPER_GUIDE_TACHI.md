@@ -61,7 +61,7 @@ The Gemini key is only needed for generating infographic images (`.jpg`). All te
 
 | Method | Best For | Setup |
 |--------|----------|-------|
-| `.env` file | Quick start | `cp .env.example .env` and edit with your key. File is gitignored. |
+| `.env` file via a loader | Quick start | `cp .env.example .env` and edit with your key (gitignored). Your tool must export it at launch: VS Code loads `.env` into its integrated terminal, and direnv or `op run` do the same. tachi never reads `.env` itself. |
 | 1Password CLI | Security-conscious devs | Store key in 1Password, create `~/.claude/.env.tpl` with `op://` reference, launch VS Code via `op run`. See `.env.example` for details. |
 | Shell export | Simple, no file on disk | Add `export GEMINI_API_KEY=your_key` to `~/.zshrc` or `~/.bashrc`. |
 | CI/CD secret | GitHub Actions | Add `GEMINI_API_KEY` to repo secrets. The workflow reads it via `${{ secrets.GEMINI_API_KEY }}`. |
@@ -1714,7 +1714,8 @@ Tachi generates two infographic images by default using the Google Gemini API: a
 **Secure key storage**:
 
 ```bash
-# Option 1: .env file in your project root (recommended)
+# Option 1: .env file in your project root, exported by your tool at launch
+# (VS Code integrated terminal, direnv or `op run`). tachi reads the environment only.
 echo "GEMINI_API_KEY=your-key-here" >> .env
 echo ".env" >> .gitignore
 
@@ -1727,7 +1728,7 @@ source ~/.zshrc
 # The key is injected as an environment variable during the workflow run
 ```
 
-**After adding to `.env`**: Restart VS Code for it to pick up the new environment variable. VS Code loads `.env` into its integrated terminal on startup.
+**After adding to `.env`**: Restart VS Code for it to pick up the new environment variable. VS Code loads `.env` into its integrated terminal on startup. tachi itself never reads `.env`; if `GEMINI_API_KEY` is not in the environment when a command runs, image generation is skipped and every other output is produced.
 
 Never hardcode API keys in source files. Never commit API keys to version control. If the key is not set, Tachi skips image generation and produces all other outputs normally.
 
