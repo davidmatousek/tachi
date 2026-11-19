@@ -7,28 +7,51 @@ transcripts verbatim to a location that cannot be committed, then writes
 agent, which tachi agents were dispatched at any depth, which hosts the tool
 calls named, which calls were denied, and the hash of every file in the run's
 output directory. The archive is SENSITIVE: it holds your architecture, code and
-findings unredacted. The manifest is not: its fields are structural, and a final
-scan refuses to write it when a secret-shaped value reached it.
+findings unredacted. The manifest holds no secrets and no message text: its
+fields are structural, and a final scan refuses to write it when a secret-shaped
+value reached it. It still names hosts, file names and session ids, so read it
+before you share it.
 
-Usage::
+Usage (recommended: isolated mode, so no file beside this script can shadow the
+standard library; a plain ``python3`` start re-executes itself under ``-I -B``)::
 
-    python3 scripts/archive-run-transcripts.py (--session SESSION_ID | --latest)
+    python3 -I -B scripts/archive-run-transcripts.py (--session SESSION_ID | --latest)
         [--project-dir PATH] [--dest PATH] [--output-dir PATH]
         [--allow-live] [--live-window-seconds 120] [--json]
 
-Constraints: Python >= 3.9, stdlib only (no PyYAML). Run it under the same
-secret-injection wrapper as the session, so the final scan sees the same
-secret-named environment values the session did. The manifest fields are
-documented in ``schemas/run-manifest.yaml``.
+Constraints: Python >= 3.9, stdlib only (no PyYAML). Archive after the session
+has ended, under the same secret-injection wrapper as the session, so the final
+scan sees the same secret-named environment values the session did; it prints
+how many it checked. The manifest fields are documented in
+``schemas/run-manifest.yaml``.
+
+Archive layout and invariant: ``<dest>/.gitignore`` (the single line ``*``,
+written first so the archive ignores itself in any git work tree that sees it),
+then ``<session>.jsonl``, the whole ``<session>/`` directory and
+``run-manifest.json``. Every copied source file is hash-equal to its source; the
+archiver's own ``.gitignore`` and ``run-manifest.json`` are the only other
+files and are left out of that comparison and out of ``transcripts[]``.
+
+Destination rule: when the destination lies in a git work tree, git must ignore
+EVERY path the run writes there (the transcripts, the manifest and its temporary
+file), asked in one batched ``git check-ignore`` call over the real paths, not a
+probe file. ``git`` runs with ``-c core.fsmonitor=false`` and an allowlisted
+environment, never the repository's own programs and never your secrets. The
+repository named by your own ``GIT_DIR`` / ``GIT_WORK_TREE`` is asked too.
+Mercurial, Subversion and Jujutsu work trees are not recognised: choose a
+``--dest`` outside them.
 
 Exit codes:
     0  archived and manifest written, or an identical finished archive already
        exists (no-op).
-    1  refused or failed: destination refusals (inside a git work tree and not
-       ignored, non-empty, symlink into a work tree, live session), a parse
-       failure against the minimal contract, a source tree that holds a symlink,
-       or a secret-scan hit. No manifest is written on a parse failure or a scan
-       hit; the verbatim copy that preceded it is kept for inspection.
+    1  refused or failed: destination refusals (inside a git work tree and any
+       path the run writes is not ignored there, non-empty, a symbolic link in
+       the path, under the Claude Code projects directory, live session), a
+       parse failure against the minimal contract (invalid JSON, a line nested
+       too deeply to read, a non-ASCII version, a timestamp out of range), a
+       source tree that holds a symlink, or a secret-scan hit. No manifest is
+       written on a parse failure or a scan hit; the verbatim copy that preceded
+       it is kept for inspection.
     2  infrastructure: no Claude Code projects directory, no transcript matching
        the project, no installed tachi agents, an unreadable file, ``git``
        absent when a work-tree check is needed, or a bad argument.
@@ -40,19 +63,38 @@ secret values.
 
 from __future__ import annotations
 
+import os
+import sys
+
+# Isolation guard (T034 H-3). Started as ``python3 scripts/archive-run-transcripts.py``
+# this script's own directory is first on ``sys.path`` and a file named like a
+# standard-library module (``ipaddress.py``) planted beside it would run, here, in
+# the operator's unsandboxed shell with the secret-bearing environment. Restart
+# once under ``-I -B``; ``sys.flags.isolated`` is then set, so this cannot loop.
+# ``os`` and ``sys`` are already loaded at interpreter start-up and cannot be
+# shadowed by the script directory. Importing this file as a module skips it.
+if __name__ == "__main__" and not sys.flags.isolated and sys.executable:
+    try:
+        os.execv(sys.executable, [sys.executable, "-I", "-B"] + sys.argv)
+    except OSError as _exc:
+        sys.stderr.write("[391] cannot restart under isolated mode (%s); run: python3 -I -B %s\n"
+                         % (_exc.strerror or type(_exc).__name__, sys.argv[0]))
+        raise SystemExit(2)
+
 import argparse
+import base64
+import binascii
 import datetime
 import hashlib
 import ipaddress
 import json
-import os
 import re
 import shutil
 import stat
 import subprocess
-import sys
 import time
 import traceback
+import urllib.parse
 from collections import Counter
 
 # =============================================================================
@@ -62,6 +104,7 @@ from collections import Counter
 MANIFEST_VERSION = 1
 MANIFEST_NAME = "run-manifest.json"
 MANIFEST_TMP_NAME = ".run-manifest.json.tmp"
+MANIFEST_READ_LIMIT = 64 * 1024 * 1024  # a larger "manifest" is never a finished archive
 
 DEFAULT_LIVE_WINDOW_SECONDS = 120
 DIR_MODE = 0o700
@@ -118,41 +161,69 @@ _SESSION_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}\Z")
 _MARKER_RE = re.compile(r"tachi_version:[ \t]*([A-Za-z0-9][A-Za-z0-9._+~-]{0,127})[ \t]*\r?\Z")
 _TS_RE = re.compile(
     r"(\d{4})-(\d{2})-(\d{2})[Tt ](\d{2}):(\d{2}):(\d{2})(?:[.,](\d{1,9}))?"
-    r"[ ]?(Z|z|[+-]\d{2}(?::?\d{2})?)?\Z"
+    r"[ ]?(Z|z|[+-]\d{2}(?::?\d{2})?)?\Z", re.ASCII
 )
 _URL_RE = re.compile(r"""\b([A-Za-z][A-Za-z0-9+.\-]{1,15})://([^\s'"<>`\\|^{}]+)""")
 _HOST_LABEL_RE = re.compile(r"[a-z0-9_]([a-z0-9_-]{0,61}[a-z0-9_])?\Z")
 
-# Environment variables that locate a git repository must not steer the
-# destination check (it has to see the real work tree around the destination).
-_GIT_LOCATION_VARS = (
-    "GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
-    "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_COMMON_DIR", "GIT_PREFIX",
-    "GIT_CEILING_DIRECTORIES", "GIT_NAMESPACE",
-)
+# git runs with this environment only (T034 H-2): the operator's secret-named
+# variables never reach a program that git itself starts. ``LC_*`` is added too.
+# The variables that locate a repository (GIT_DIR, GIT_WORK_TREE ...) are left
+# out on purpose: the destination check must see the real work tree around the
+# destination, and only the operator's own GIT_DIR / GIT_WORK_TREE are passed on
+# for the one extra query that asks about the repository they name (M-4).
+_GIT_ENV_ALLOW = frozenset({"PATH", "HOME", "LANG", "TMPDIR", "XDG_CONFIG_HOME"})
+_GIT_OPERATOR_VARS = ("GIT_DIR", "GIT_WORK_TREE")
 
-# Final secret scan: known key formats (matched at any length, case-insensitively
-# because hostnames are lower-cased before they reach the manifest) ...
+# The archive's own ignore file: the single rule ``*`` ignores everything below it,
+# itself included, in any git work tree that can see it (T034 H-1, M-4).
+ARCHIVE_GITIGNORE_NAME = ".gitignore"
+ARCHIVE_GITIGNORE_TEXT = ("# Written by archive-run-transcripts.py (feature 391): this archive holds "
+                          "unredacted transcripts. Never commit it.\n*\n")
+
+# Final secret scan: known key formats, matched at any length and case-insensitively
+# (hostnames are lower-cased before they reach the manifest). Every pattern has a
+# left boundary, so a word that merely ends in a prefix (``risk-``, ``task-`` and
+# ``disk-`` against ``sk-``) does not match, and the fixed-length formats a right
+# boundary, so a longer lower-cased word that starts like a key id does not either.
+_LB = r"(?<![A-Za-z0-9])"
 _KEY_PATTERNS = (
-    ("google-api-key", re.compile(r"AIza[0-9A-Za-z_\-]{35}")),
-    ("anthropic-api-key", re.compile(r"sk-ant-[A-Za-z0-9_\-]{20,}")),
-    ("openai-api-key", re.compile(r"sk-(?:proj-)?[A-Za-z0-9_\-]{32,}")),
-    ("github-token", re.compile(r"gh[pousr]_[A-Za-z0-9]{36,}")),
-    ("github-fine-grained-token", re.compile(r"github_pat_[A-Za-z0-9_]{22,}")),
-    ("aws-access-key-id", re.compile(r"(?:AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA)[0-9A-Z]{16}")),
-    ("slack-token", re.compile(r"xox[abprs]-[A-Za-z0-9\-]{10,}")),
-    ("stripe-key", re.compile(r"[sr]k_(?:live|test)_[A-Za-z0-9]{16,}")),
-    ("private-key-block", re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----")),
-    ("json-web-token", re.compile(r"eyJ[A-Za-z0-9_\-]{8,}\.eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}")),
-    ("service-account-token", re.compile(r"ops_[A-Za-z0-9+/=_\-]{40,}")),
-    ("bearer-credential", re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/\-]{20,}")),
-    ("url-userinfo-password", re.compile(r"[A-Za-z][A-Za-z0-9+.\-]*://[^/\s:@]+:[^/\s@]+@")),
+    ("google-api-key", _LB + r"AIza[0-9A-Za-z_\-]{35}(?![0-9A-Za-z_\-])"),
+    ("anthropic-api-key", _LB + r"sk-ant-[A-Za-z0-9_\-]{20,}"),
+    ("openai-api-key", _LB + r"sk-(?:proj-)?[A-Za-z0-9_\-]{32,}"),
+    ("github-token", _LB + r"gh[pousr]_[A-Za-z0-9]{36,}"),
+    ("github-fine-grained-token", _LB + r"github_pat_[A-Za-z0-9_]{22,}"),
+    ("aws-access-key-id", _LB + r"(?:AKIA|ASIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA)[0-9A-Z]{16}(?![0-9A-Za-z])"),
+    ("slack-token", _LB + r"xox[abprs]-[A-Za-z0-9\-]{10,}"),
+    ("stripe-key", _LB + r"[sr]k_(?:live|test)_[A-Za-z0-9]{16,}"),
+    ("private-key-block", _LB + r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----"),
+    ("json-web-token", _LB + r"eyJ[A-Za-z0-9_\-]{8,}\.eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}"),
+    ("service-account-token", _LB + r"ops_[A-Za-z0-9+/=_\-]{40,}"),
+    ("bearer-credential", r"\bbearer\s+[A-Za-z0-9._~+/\-]{20,}"),
+    ("url-userinfo-password", r"[A-Za-z][A-Za-z0-9+.\-]*://[^/\s:@]+:[^/\s@]+@"),
+    ("huggingface-token", _LB + r"hf_[A-Za-z0-9]{30,}"),
+    ("gitlab-token", _LB + r"glpat-[A-Za-z0-9_\-]{20,}"),
+    ("npm-token", _LB + r"npm_[A-Za-z0-9]{36}(?![0-9A-Za-z])"),
+    ("google-oauth-token", _LB + r"ya29\.[A-Za-z0-9_\-]{20,}"),
+    ("supabase-key", _LB + r"(?:sbp_[0-9a-f]{40}(?![0-9A-Za-z])|sb_secret_[A-Za-z0-9_\-]{20,})"),
+    ("xai-key", _LB + r"xai-[A-Za-z0-9]{20,}"),
+    ("groq-key", _LB + r"gsk_[A-Za-z0-9]{40,}"),
 )
-_KEY_PATTERNS = tuple((rule, re.compile(rx.pattern, re.IGNORECASE)) for rule, rx in _KEY_PATTERNS)
-# ... and the VALUES of environment variables whose NAMES say they are secrets.
-_SECRET_NAME_RE = re.compile(r"KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL", re.IGNORECASE)
-_SECRET_VALUE_FLOOR = 8  # shorter values collide with counts, mode names and ids
-_NOT_SECRET_LITERALS = frozenset({"true", "false", "yes", "no", "on", "off", "null", "none"})
+_KEY_PATTERNS = tuple((rule, re.compile(rx, re.IGNORECASE)) for rule, rx in _KEY_PATTERNS)
+# ... and the VALUES of environment variables whose NAMES say they are secrets,
+# each scanned raw and in its encoded forms (P0B0-11, amended at T034).
+_SECRET_NAME_RE = re.compile(
+    r"KEY|TOKEN|SECRET|PASSWORD|PASSWD|PASSPHRASE|PWD|CREDENTIAL|PRIVATE|AUTH|DSN|DATABASE_URL", re.IGNORECASE)
+_NOT_SECRET_NAMES = frozenset({"PWD", "OLDPWD", "SSH_AUTH_SOCK"})  # shell state and a socket path
+_SECRET_VALUE_FLOOR = 8  # a shorter value collides with counts, mode names and ids
+# A value shaped like a date, a timestamp, a dotted version or an IP literal can equal
+# a manifest string by chance and is skipped. Any other numeric value is scanned: a
+# run of 8 or more digits cannot be mistaken for a count or a mode name.
+_BENIGN_VALUE_RE = re.compile(
+    r"(?:\d{4}-\d{2}-\d{2}(?:[Tt ]\d{2}:\d{2}(?::\d{2}(?:[.,]\d+)?)?(?:[Zz]|[+-]\d{2}:?\d{2})?)?"
+    r"|\d+(?:\.\d+)+)\Z")
+_URL_PASSWORD_RE = re.compile(r"://[^/\s:@]*:([^/\s@]+)@")
+_FRAGMENT_STRIP = "\"'`,;{}[]()<>"
 
 
 # =============================================================================
@@ -214,14 +285,17 @@ def _posix(*parts):
 
 
 def _utc_stamp(dt):
-    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Explicit fields: ``strftime`` does not zero-pad a year below 1000 on every platform.
+    return "%04d-%02d-%02dT%02d:%02d:%02dZ" % (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
 
 
 def _parse_timestamp(text):
     """Parse an ISO-8601 timestamp to an aware UTC datetime, or None.
 
     Hand-parsed on purpose: ``datetime.fromisoformat`` rejects a ``Z`` suffix
-    before Python 3.11, and ``%f`` cannot take nanosecond fractions.
+    before Python 3.11, and ``%f`` cannot take nanosecond fractions. Raises
+    ``OverflowError`` when the zone offset moves the instant outside the range a
+    ``datetime`` can hold (``0001-01-01T00:00:00+01:00``); each caller decides.
     """
     m = _TS_RE.match(text)
     if m is None:
@@ -243,8 +317,24 @@ def _parse_timestamp(text):
 
 
 def _version_key(version):
-    """Sort Claude Code versions by their numeric components (2.1.9 before 2.1.10)."""
-    return (tuple(int(p) if p.isdigit() else -1 for p in re.split(r"[.\-]", version)), version)
+    """Sort Claude Code versions by their numeric components (2.1.9 before 2.1.10).
+
+    Only ASCII digits count as numeric: ``"\u00b2".isdigit()`` is true and ``int("\u00b2")`` fails.
+    """
+    return (tuple(int(p) if p.isascii() and p.isdigit() else -1 for p in re.split(r"[.\-]", version)), version)
+
+
+class _TooDeep(ValueError):
+    """A JSON document nested deeper than the parser's recursion limit allows."""
+
+
+def _loads(raw):
+    """``json.loads`` for untrusted input: a document nested too deeply to parse is a ``ValueError``
+    of its own (``_TooDeep``), never a ``RecursionError`` that would end the run as an internal error."""
+    try:
+        return json.loads(raw)
+    except RecursionError:
+        raise _TooDeep("nested too deeply") from None
 
 
 def _hash_open_file(fh):
@@ -366,7 +456,7 @@ def _first_cwd(path):
                 if b'"cwd"' not in raw:
                     continue
                 try:
-                    obj = json.loads(raw)
+                    obj = _loads(raw)
                 except ValueError:
                     continue
                 if isinstance(obj, dict) and isinstance(obj.get("cwd"), str) and obj["cwd"]:
@@ -392,7 +482,9 @@ def _discover(projects_dir, project_real, session_id, latest, warnings):
         except OSError:
             continue
         for name in names:
-            if not name.endswith(".jsonl"):
+            # A stem that is not a plain session id never becomes a session id, a path or
+            # a manifest value, in --latest mode as well as with --session (T034 L-3).
+            if not name.endswith(".jsonl") or not _SESSION_ID_RE.match(name[:-len(".jsonl")]):
                 continue
             path = os.path.join(slug_dir, name)
             try:
@@ -460,11 +552,14 @@ def _first_timestamp(path):
                 if b'"timestamp"' not in raw:
                     continue
                 try:
-                    obj = json.loads(raw)
+                    obj = _loads(raw)
                 except ValueError:
                     continue
                 if isinstance(obj, dict) and isinstance(obj.get("timestamp"), str):
-                    dt = _parse_timestamp(obj["timestamp"])
+                    try:
+                        dt = _parse_timestamp(obj["timestamp"])
+                    except OverflowError:
+                        dt = None
                     if dt is not None:
                         return dt
     except OSError:
@@ -503,28 +598,91 @@ def _git_marker_above(real_path):
         current = parent
 
 
-def _git_env():
-    env = {k: v for k, v in os.environ.items() if k not in _GIT_LOCATION_VARS}
+def _git_env(location=None):
+    """The environment git is started with: an allowlist, never the whole environment (T034 H-2)."""
+    env = {k: v for k, v in os.environ.items() if k in _GIT_ENV_ALLOW or k.startswith("LC_")}
     env["GIT_DISCOVERY_ACROSS_FILESYSTEM"] = "1"
     env["GIT_OPTIONAL_LOCKS"] = "0"
+    if location:
+        env.update(location)
     return env
 
 
-def _run_git(args, cwd):
+def _run_git(args, cwd, location=None, stdin_bytes=None):
     git = shutil.which("git")
     if git is None:
         raise InfraError("git is required for the destination work-tree check but was not found")
+    # Command-line configuration outranks the repository's own: core.fsmonitor names a
+    # program that ``git check-ignore`` would otherwise run (T034 H-2).
+    cmd = [git, "-c", "core.fsmonitor=false"] + args
+    feed = {"input": stdin_bytes} if stdin_bytes is not None else {"stdin": subprocess.DEVNULL}
     try:
-        return subprocess.run([git] + args, cwd=cwd, env=_git_env(), stdin=subprocess.DEVNULL,
-                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              timeout=GIT_TIMEOUT_SECONDS)
+        return subprocess.run(cmd, cwd=cwd, env=_git_env(location), stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, timeout=GIT_TIMEOUT_SECONDS, **feed)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise InfraError("git could not be run for the destination check (%s)" % type(exc).__name__)
 
 
-def _check_destination(dest_abs):
-    """Deny by default: refuse a destination a later commit could pick up."""
-    # 1. A symbolic link in the destination path that resolves into a work tree.
+def _git_toplevel(cwd, location=None):
+    """Real path of the work tree git names for ``cwd``, or None when it names none."""
+    top = _run_git(["rev-parse", "--show-toplevel"], cwd, location)
+    text = os.fsdecode(top.stdout).rstrip("\r\n") if top.returncode == 0 else ""
+    return os.path.realpath(text) if text else None
+
+
+def _is_within(path, root):
+    """True when the real path ``path`` is ``root`` or lies below it."""
+    return path == root or path.startswith(root.rstrip(os.sep) + os.sep)
+
+
+def _operator_git_location():
+    """The operator's own GIT_DIR / GIT_WORK_TREE as absolute paths ({} when unset). T034 M-4."""
+    location = {}
+    for name in _GIT_OPERATOR_VARS:
+        value = os.environ.get(name)
+        if value:
+            location[name] = os.path.abspath(value)
+    return location
+
+
+def _require_ignored(paths, toplevel, location=None):
+    """Refuse unless git names a matching ignore rule for EVERY one of ``paths`` (deny by default).
+
+    One batched query over the paths the run will really write (T034 H-1): an ignore
+    rule that happens to match a probe file (``.*``, ``.probe``) says nothing about
+    ``<dest>/<session>.jsonl``. A path git reports without a rule, or with a negated
+    rule, is not ignored; anything git does not answer clearly is a refusal.
+    """
+    payload = b"".join(os.fsencode(path) + b"\0" for path in paths)
+    res = _run_git(["check-ignore", "--stdin", "-z", "-n", "-v"], toplevel, location, payload)
+    if res.returncode not in (0, 1):
+        raise Refusal("cannot tell whether git ignores the destination (git check-ignore exit %d); refusing" % res.returncode)
+    fields = res.stdout.split(b"\0")
+    if fields and fields[-1] == b"":
+        fields.pop()
+    if len(fields) != 4 * len(paths):
+        raise Refusal("cannot tell whether git ignores the destination (unexpected git check-ignore output); refusing")
+    unignored = False
+    for index, path in enumerate(paths):
+        _source, _line, pattern, name = fields[4 * index:4 * index + 4]
+        if name != os.fsencode(path):
+            raise Refusal("cannot tell whether git ignores the destination (unexpected git check-ignore output); refusing")
+        if not pattern or pattern.startswith(b"!"):
+            unignored = True
+    if unignored:
+        raise Refusal("the destination is inside a git work tree and is not ignored there: git does not ignore every "
+                      "path the run writes (git check-ignore); choose a --dest outside any work tree or ignore the runs directory")
+
+
+def _check_destination(dest_abs, rels=()):
+    """Deny by default: refuse a destination a later commit could pick up.
+
+    ``rels`` are the archive files the run will write (the manifest and its temporary
+    file are added here). Returns the real path the destination resolves to, which
+    ``_prepare_destination`` compares with the path it ends up on.
+    """
+    # 1. A symbolic link in the destination path that resolves into a work tree, and a
+    #    destination that is itself a link (chmod and mkdir would follow it).
     prefix = os.sep
     for part in dest_abs.split(os.sep):
         if not part:
@@ -534,37 +692,90 @@ def _check_destination(dest_abs):
             break
         if os.path.islink(prefix) and _git_marker_above(os.path.realpath(prefix)) is not None:
             raise Refusal("a symbolic link in the destination path resolves into a git work tree; refusing to follow it")
-    # 2. The nearest existing ancestor (real path) inside a work tree, unless the
-    #    work tree ignores a path inside the destination.
+    if os.path.islink(dest_abs):
+        raise Refusal("the destination is a symbolic link; refusing to follow it")
     ancestor, missing = _nearest_existing(dest_abs)
     real_ancestor = os.path.realpath(ancestor)
-    if _git_marker_above(real_ancestor) is None:
-        return
-    cwd = real_ancestor if os.path.isdir(real_ancestor) else os.path.dirname(real_ancestor)
-    top = _run_git(["rev-parse", "--show-toplevel"], cwd)
-    if top.returncode != 0 or not top.stdout.strip():
-        raise Refusal("the destination lies where git cannot name the enclosing work tree; refusing (deny by default)")
-    toplevel = os.path.realpath(top.stdout.decode("utf-8", "replace").strip())
-    probe = os.path.join(real_ancestor, *(missing + [".probe"]))
-    ignored = _run_git(["check-ignore", "-q", "--", probe], toplevel)
-    if ignored.returncode == 0:
-        return
-    if ignored.returncode == 1:
-        raise Refusal("the destination is inside a git work tree and is not ignored there (git check-ignore); "
-                      "choose a --dest outside any work tree or ignore the runs directory")
-    raise Refusal("cannot tell whether git ignores the destination (git check-ignore exit %d); refusing" % ignored.returncode)
+    real_dest = os.path.join(real_ancestor, *missing)
+    paths = [os.path.join(real_dest, *rel.split("/")) for rel in list(rels) + [MANIFEST_NAME, MANIFEST_TMP_NAME]]
+    # 2. The work tree git finds around the destination (it has a .git entry): git has to
+    #    ignore every path the run writes.
+    if _git_marker_above(real_ancestor) is not None:
+        cwd = real_ancestor if os.path.isdir(real_ancestor) else os.path.dirname(real_ancestor)
+        toplevel = _git_toplevel(cwd)
+        if toplevel is None:
+            raise Refusal("the destination lies where git cannot name the enclosing work tree; refusing (deny by default)")
+        _require_ignored(paths, toplevel)
+    # 3. The repository the operator's own GIT_DIR / GIT_WORK_TREE name, which has no .git
+    #    entry for step 2 to find and which the allowlisted git environment cannot see.
+    location = _operator_git_location()
+    if location:
+        toplevel = _git_toplevel(os.getcwd(), location)
+        if toplevel is None:
+            raise Refusal("GIT_DIR or GIT_WORK_TREE is set but git cannot name a work tree from it; "
+                          "unset them or point them at a work tree (deny by default)")
+        if _is_within(real_dest, toplevel):
+            _require_ignored(paths, toplevel, location)
+    return real_dest
 
 
-def _existing_archive_is_identical(dest_abs, source_files):
-    """Refuse unless dest holds an identical, FINISHED archive; True means no-op."""
+def _read_manifest(path):
+    """The manifest at ``path`` as a dict, or None (absent, not a regular file, too big, not a JSON object)."""
+    try:
+        fd = os.open(path, os.O_RDONLY | _NOFOLLOW | _CLOEXEC)
+    except OSError:
+        return None
+    with os.fdopen(fd, "rb") as fh:
+        if not stat.S_ISREG(os.fstat(fh.fileno()).st_mode):
+            return None
+        data = fh.read(MANIFEST_READ_LIMIT + 1)
+    if len(data) > MANIFEST_READ_LIMIT:
+        return None
+    try:
+        doc = _loads(data)
+    except ValueError:
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def _count_unexpected(dest_abs, expected_rels):
+    """How many files or directories under ``dest_abs`` are neither archive content nor the archiver's own."""
+    files = set(expected_rels) | {MANIFEST_NAME, ARCHIVE_GITIGNORE_NAME}
+    dirs = set()
+    for rel in expected_rels:
+        parts = rel.split("/")[:-1]
+        dirs.update("/".join(parts[:i]) for i in range(1, len(parts) + 1))
+    extra = 0
+    for root, dnames, fnames in os.walk(dest_abs, topdown=True, followlinks=False):
+        rel_root = os.path.relpath(root, dest_abs).replace(os.sep, "/")
+        rel_root = "" if rel_root == "." else rel_root
+        for dname in dnames:
+            if (_posix(rel_root, dname) if rel_root else dname) not in dirs:
+                extra += 1
+        for fname in fnames:
+            if (_posix(rel_root, fname) if rel_root else fname) not in files:
+                extra += 1
+    return extra
+
+
+def _existing_archive_is_identical(dest_abs, source_files, warnings=None):
+    """Refuse unless dest holds an identical, FINISHED archive; True means no-op.
+
+    Finished means a manifest that parses, names this session and lists the hash of every
+    source file (T034 L-1); a manifest that was replaced or emptied is not one.
+    """
+    session_id = source_files[0][0][:-len(".jsonl")]  # the main transcript comes first
+    expected = {}
     for rel, src in source_files:
         archived = os.path.join(dest_abs, *rel.split("/"))
         try:
-            same = _hash_regular_file(archived)[0] == _hash_regular_file(src)[0]
+            digest, size = _hash_regular_file(src)
+            same = _hash_regular_file(archived)[0] == digest
         except OSError:
             same = False
         if not same:
             raise Refusal("the destination is not empty and does not hold an identical archive of this session; use a new --dest")
+        expected[rel] = (size, digest)
     manifest = os.path.join(dest_abs, MANIFEST_NAME)
     try:
         finished = stat.S_ISREG(os.lstat(manifest).st_mode)
@@ -572,39 +783,83 @@ def _existing_archive_is_identical(dest_abs, source_files):
         finished = False
     if not finished:
         raise Refusal("incomplete archive: run-manifest.json absent; use a new --dest")
+    doc = _read_manifest(manifest)
+    listed = {}
+    if doc is not None and doc.get("session_id") == session_id and isinstance(doc.get("transcripts"), list):
+        for item in doc["transcripts"]:
+            if isinstance(item, dict):
+                listed[item.get("path")] = (item.get("bytes"), item.get("sha256"))
+    if listed != expected:
+        raise Refusal("the destination holds a run-manifest.json that does not match this session's files "
+                      "(altered, replaced or incomplete); use a new --dest")
+    extra = _count_unexpected(dest_abs, expected)
+    if extra and warnings is not None:
+        warnings.append("the destination holds %d file(s) or directories that are not part of the archive" % extra)
     return True
 
 
-def _check_live(source_files, window, allow_live):
+def _check_live(source_files, window, allow_live, summary=None):
+    """Refuse a session that looks live. Every file of the session tree counts, not the
+    ``.jsonl`` transcripts alone (T034 L-5); the age of the newest change is reported."""
+    now = time.time()
+    ages = [(rel, now - os.lstat(src).st_mtime) for rel, src in source_files]
+    if summary is not None and ages:
+        summary["newest_change_age_seconds"] = max(0, int(min(age for _rel, age in ages)))
     if allow_live:
         return
-    now = time.time()
-    live = []
-    for rel, src in source_files:
-        if rel.endswith(".jsonl") and now - os.lstat(src).st_mtime < window:
-            live.append(rel)
+    live = [rel for rel, age in ages if age < window]
     if live:
-        raise Refusal("the session looks live: %d transcript(s) changed within the last %d s; "
+        raise Refusal("the session looks live: %d file(s) changed within the last %d s; "
                       "wait for it to finish or pass --allow-live" % (len(live), window))
 
 
-def _prepare_destination(dest_abs):
-    """Create the destination and any missing parents, directories owner-only."""
+def _prepare_destination(dest_abs, expected_real=None):
+    """Create the destination and any missing parents, directories owner-only.
+
+    ``expected_real`` is the real path ``_check_destination`` validated. With the
+    directories in place the destination must still resolve there: a parent swapped for
+    a symbolic link in between (T034 L-2) is refused, and only what this run created
+    is removed again.
+    """
     ancestor, missing = _nearest_existing(dest_abs)
+    created = []
     current = ancestor
     try:
         for part in missing:
             current = os.path.join(current, part)
             os.mkdir(current, DIR_MODE)
+            created.append(current)
             os.chmod(current, DIR_MODE)
-        st = os.stat(dest_abs)
+        st = os.lstat(dest_abs)
     except OSError as exc:
         raise InfraError("cannot create the destination directory (%s)" % (exc.strerror or type(exc).__name__))
+    if stat.S_ISLNK(st.st_mode) or not stat.S_ISDIR(st.st_mode) \
+            or (expected_real is not None and os.path.realpath(dest_abs) != expected_real):
+        for path in reversed(created):
+            try:
+                os.rmdir(path)
+            except OSError:
+                pass
+        raise Refusal("the destination path changed while the archive was being prepared; nothing was written")
     if not missing:  # a pre-existing empty destination: it must be ours and owner-only
         if hasattr(os, "geteuid") and st.st_uid != os.geteuid():
             raise Refusal("the destination directory is owned by another user")
         if st.st_mode & 0o077:
             os.chmod(dest_abs, DIR_MODE)
+
+
+def _write_archive_gitignore(dest_abs):
+    """The archive's own ignore file, written before anything else: its ``*`` ignores the
+    whole archive in any git work tree that can see it, whatever the outer rules say."""
+    path = os.path.join(dest_abs, ARCHIVE_GITIGNORE_NAME)
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | _NOFOLLOW | _CLOEXEC, FILE_MODE)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(ARCHIVE_GITIGNORE_TEXT)
+            fh.flush()
+            os.fchmod(fh.fileno(), FILE_MODE)
+    except OSError as exc:
+        raise InfraError("cannot write %s in the archive (%s)" % (ARCHIVE_GITIGNORE_NAME, exc.strerror or type(exc).__name__))
 
 
 # =============================================================================
@@ -766,7 +1021,9 @@ class _Scan(object):
                         self.blank_lines += 1
                         continue
                     try:
-                        obj = json.loads(raw)
+                        obj = _loads(raw)
+                    except _TooDeep:
+                        self._fail(lineno, "nested too deeply to read")
                     except ValueError:
                         self._fail(lineno, "not valid JSON")
                     self._entry(obj, lineno)
@@ -781,10 +1038,16 @@ class _Scan(object):
         self.type_counts[_label(etype)] += 1
         version = obj.get("version")
         if isinstance(version, str):
-            self.versions.add(_token(version, "version (%s line %d)" % (self.rel, lineno)))
+            _token(version, "version (%s line %d)" % (self.rel, lineno))
+            if not version.isascii():  # the numeric sort of versions reads ASCII digits only
+                self._fail(lineno, "version holds a non-ASCII character")
+            self.versions.add(version)
         stamp = obj.get("timestamp")
         if isinstance(stamp, str):
-            dt = _parse_timestamp(stamp)
+            try:
+                dt = _parse_timestamp(stamp)
+            except OverflowError:
+                self._fail(lineno, "timestamp is out of range once its UTC offset is applied")
             if dt is None:
                 self.ts_unparsed += 1
             else:
@@ -918,9 +1181,11 @@ def _load_meta(dest_abs, instance):
     path = os.path.join(dest_abs, *instance.meta_rel.split("/"))
     try:
         with open(path, "rb") as fh:
-            meta = json.loads(fh.read())
+            meta = _loads(fh.read())
     except OSError as exc:
         raise InfraError("cannot read %s (%s)" % (instance.meta_rel, exc.strerror or type(exc).__name__))
+    except _TooDeep:
+        raise ParseFailure("%s: nested too deeply to read" % instance.meta_rel)
     except ValueError:
         raise ParseFailure("%s: not valid JSON" % instance.meta_rel)
     if not isinstance(meta, dict):
@@ -1213,15 +1478,110 @@ def _hash_artifacts(output_dir, warnings):
 # =============================================================================
 
 
-def _secret_env_values():
+def _secret_env_values(environ=None):
+    """[(name, value)] the final scan compares against: variables whose NAME says secret.
+
+    The value is stripped, then must have at least ``_SECRET_VALUE_FLOOR`` characters and must not
+    be shaped like a date, timestamp, version or IP literal. There is no entropy gate: a hit means
+    the literal value is in the manifest, which is the case to refuse (P0B0-11 as amended at T034).
+    """
     values = []
-    for name, value in os.environ.items():
-        if not _SECRET_NAME_RE.search(name) or len(value) < _SECRET_VALUE_FLOOR:
+    for name, value in sorted((os.environ if environ is None else environ).items()):
+        if name in _NOT_SECRET_NAMES or not _SECRET_NAME_RE.search(name):
             continue
-        if value.lower() in _NOT_SECRET_LITERALS or re.match(r"[0-9.+\-]+\Z", value):
-            continue
-        values.append((name, value))
+        value = value.strip()
+        if len(value) >= _SECRET_VALUE_FLOOR and not _BENIGN_VALUE_RE.match(value):
+            values.append((name, value))
     return values
+
+
+def _json_strings(node):
+    """Every string VALUE (never a key) in a parsed JSON document."""
+    if isinstance(node, str):
+        yield node
+    elif isinstance(node, dict):
+        for value in node.values():
+            for text in _json_strings(value):
+                yield text
+    elif isinstance(node, list):
+        for value in node:
+            for text in _json_strings(value):
+                yield text
+
+
+def _value_fragments(value):
+    """Strings to look for for one secret-named value: itself and, when it holds several tokens
+    (a JSON document, a PEM block, ``KEY=value`` lines, a URL with a password), each piece of it.
+    Pieces under the floor, or date or version shaped, are dropped (T034 M-2)."""
+    found = {value}
+    if re.search(r"\s", value) or value[:1] in "{[":
+        try:
+            found.update(_json_strings(json.loads(value)))
+        except (ValueError, RecursionError):
+            pass
+        for piece in re.split(r"\s+", value):
+            piece = piece.strip(_FRAGMENT_STRIP)
+            found.add(piece)
+            if "=" in piece:
+                found.add(piece.split("=", 1)[1].strip(_FRAGMENT_STRIP))
+    match = _URL_PASSWORD_RE.search(value)
+    if match:
+        found.add(match.group(1))
+    return sorted(t for t in found if len(t) >= _SECRET_VALUE_FLOOR and not _BENIGN_VALUE_RE.match(t))
+
+
+def _encoded_forms(text):
+    """[(needle, label)]: ``text`` lower-cased, and its hex, base32, base64, base64url (no padding),
+    percent- and JSON-escaped forms, so a secret that was re-encoded into a host label, a name or a
+    file name is still found (T034 M-1). Every needle is lower-case: hostnames are lower-cased."""
+    try:
+        raw = text.encode("utf-8", "surrogateescape")
+    except UnicodeEncodeError:
+        raw = text.encode("utf-8", "replace")
+    candidates = (
+        (text.lower(), "raw"),
+        (binascii.hexlify(raw).decode("ascii"), "hex"),
+        (base64.b32encode(raw).decode("ascii").rstrip("=").lower(), "base32"),
+        (base64.b64encode(raw).decode("ascii").rstrip("=").lower(), "base64"),
+        (base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=").lower(), "base64url"),
+        (urllib.parse.quote(text, safe="", errors="replace").lower(), "percent"),
+        (json.dumps(text)[1:-1].lower(), "json"),
+    )
+    seen = set()
+    forms = []
+    for needle, label in candidates:
+        if needle not in seen:
+            seen.add(needle)
+            forms.append((needle, label))
+    return forms
+
+
+def _secret_scan_plan(environ=None):
+    """What the final scan compares with, and the coverage that is reported (T034 M-3)."""
+    env = os.environ if environ is None else environ
+    values = _secret_env_values(env)
+    named = sum(1 for name in env if name not in _NOT_SECRET_NAMES and _SECRET_NAME_RE.search(name))
+    needles = []
+    for name, value in values:
+        for fragment in _value_fragments(value):
+            for needle, label in _encoded_forms(fragment):
+                needles.append((name, label, needle))
+    return {
+        "needles": needles,
+        "checked": [name for name, _value in values],
+        "skipped": max(0, named - len(values)),
+        "rules": len(_KEY_PATTERNS),
+    }
+
+
+def _coverage(plan):
+    """The scan coverage for the run summary: counts and variable NAMES, never a value."""
+    return {
+        "environment_values_checked": len(plan["checked"]),
+        "environment_variables_checked": list(plan["checked"]),
+        "environment_values_skipped": plan["skipped"],
+        "format_rules": plan["rules"],
+    }
 
 
 def _iter_strings(node):
@@ -1239,23 +1599,38 @@ def _iter_strings(node):
                 yield text
 
 
-def _scan_manifest(manifest):
+def _scan_text(text, where, plan):
+    """Hits (field, rule) for one string: a key format, or a secret-named variable's value."""
+    lowered = text.lower()
+    found = [(where, rule) for rule, pattern in _KEY_PATTERNS if pattern.search(text)]
+    for name, label, needle in plan["needles"]:
+        if needle in lowered:
+            found.append((where, "environment variable " + name + ("" if label == "raw" else " (%s form)" % label)))
+    return found
+
+
+def _scan_manifest(manifest, plan=None):
     """Hits as (field, rule). Field names are structural positions, never values."""
-    secrets = _secret_env_values()
+    plan = _secret_scan_plan() if plan is None else plan
     hits = set()
     for top, value in manifest.items():
         items = list(enumerate(value)) if isinstance(value, list) else [(None, value)]
         for index, item in items:
             where = top if index is None else "%s[%d]" % (top, index)
             for text in _iter_strings(item):
-                for rule, pattern in _KEY_PATTERNS:
-                    if pattern.search(text):
-                        hits.add((where, rule))
-                lowered = text.lower()
-                for name, secret in secrets:
-                    if secret.lower() in lowered:
-                        hits.add((where, "environment variable " + name))
+                hits.update(_scan_text(text, where, plan))
     return sorted(hits)
+
+
+def _clean_labels(counts, plan):
+    """The run summary's label -> count maps are outside the manifest scan: a label that
+    would hit it is shown as ``<unparseable>`` instead (T034 L-4)."""
+    out = {}
+    for label, count in counts.items():
+        if _scan_text(label, "summary", plan):
+            label = UNPARSEABLE
+        out[label] = out.get(label, 0) + count
+    return out
 
 
 def _write_manifest(dest_abs, manifest):
@@ -1291,7 +1666,7 @@ def _resolve_destination(args, project_real, session_id, main_path):
     if first is None:
         raise ParseFailure("%s.jsonl: no parseable timestamp; pass --dest" % session_id)
     name = re.sub(r"[^A-Za-z0-9._-]", "_", os.path.basename(project_real)) or "project"
-    return os.path.join(home, ".tachi", "runs", name, "%s-%s" % (first.strftime("%Y-%m-%d"), session_id))
+    return os.path.join(home, ".tachi", "runs", name, "%04d-%02d-%02d-%s" % (first.year, first.month, first.day, session_id))
 
 
 def _run(args, summary, warnings):
@@ -1321,24 +1696,40 @@ def _run(args, summary, warnings):
 
     dest_abs = _resolve_destination(args, project_real, session_id, main_path)
     summary["archive_dir"] = dest_abs
-    _check_destination(dest_abs)
+    real_dest = _check_destination(dest_abs, [rel for rel, _src in source_files])
+    # Claude Code can sweep its projects directory, and --latest could later pick the
+    # archived copy up as the newest session (T034 L-6).
+    if _is_within(real_dest, os.path.realpath(projects_dir)):
+        raise Refusal("the destination is inside the Claude Code projects directory; choose another --dest")
+    if _is_within(real_dest, os.path.realpath(_config_dir())):
+        warnings.append("the destination is inside the Claude Code configuration directory")
     if os.path.lexists(dest_abs):
         if not os.path.isdir(dest_abs):
             raise Refusal("the destination exists and is not a directory")
         if os.listdir(dest_abs):
-            _existing_archive_is_identical(dest_abs, source_files)
+            _existing_archive_is_identical(dest_abs, source_files, warnings)
             summary["status"] = "no-op"
             return
-    _check_live(source_files, args.live_window_seconds, args.allow_live)
+    _check_live(source_files, args.live_window_seconds, args.allow_live, summary)
 
-    _prepare_destination(dest_abs)
+    _prepare_destination(dest_abs, real_dest)
+    _write_archive_gitignore(dest_abs)
     copied = _copy_session(dest_abs, source_files, source_dirs)
     summary["files"] = len(copied)
     summary["bytes"] = sum(size for _rel, size, _digest in copied)
 
+    plan = _secret_scan_plan()
+    summary["secret_scan"] = _coverage(plan)
     archived_at = datetime.datetime.now(datetime.timezone.utc)
     manifest = _analyse(dest_abs, session_id, copied, roster, marker_version, archived_at, output_dir, warnings, summary)
-    hits = _scan_manifest(manifest)
+    if not plan["checked"]:
+        warnings.append("secret scan: no secret-named environment value was available, so only the %d key-format "
+                        "rules ran; run the archiver under the same secret-injection wrapper as the session"
+                        % plan["rules"])
+    for key in ("entry_types", "unknown_entry_types", "assistant_keys", "unknown_assistant_keys",
+                "unrecognised_denial_kinds"):
+        summary[key] = _clean_labels(summary[key], plan)
+    hits = _scan_manifest(manifest, plan)
     if hits:
         raise ParseFailure("final secret scan hit in the manifest (%s); no manifest written"
                            % "; ".join("%s: %s" % hit for hit in hits[:10]))
@@ -1372,6 +1763,15 @@ def _build_arg_parser():
     return parser
 
 
+def _coverage_line(cov):
+    """One line saying how much the final secret scan compared with: counts and variable names."""
+    names = " (%s)" % ", ".join(cov["environment_variables_checked"]) if cov["environment_variables_checked"] else ""
+    skipped = ", %d secret-named variable(s) skipped (under %d characters, or date or version shaped)" \
+        % (cov["environment_values_skipped"], _SECRET_VALUE_FLOOR) if cov["environment_values_skipped"] else ""
+    return "secret scan: %d environment value(s) checked%s%s, %d key-format rules" \
+        % (cov["environment_values_checked"], names, skipped, cov["format_rules"])
+
+
 def main(argv=None) -> int:
     args = _build_arg_parser().parse_args(argv)
     summary = {"status": "failed", "session_id": None, "warnings": []}
@@ -1391,11 +1791,16 @@ def main(argv=None) -> int:
         print("[391] %s" % summary["reason"], file=sys.stderr)
     for text in warnings:
         print("[391] warning: %s" % text, file=sys.stderr)
+    if "secret_scan" in summary:
+        print("[391] %s" % _coverage_line(summary["secret_scan"]), file=sys.stderr)
     if args.json:
         print(json.dumps(summary, sort_keys=True, indent=2))
     elif code == 0 and summary["status"] == "archived":
         print("[391] archived session %s to %s (%d files, %d bytes)"
               % (summary["session_id"], summary["archive_dir"], summary["files"], summary["bytes"]))
+        if "newest_change_age_seconds" in summary:
+            print("[391] the newest file of the session had changed %d s before this run"
+                  % summary["newest_change_age_seconds"])
     elif code == 0:
         print("[391] session %s is already archived at %s; nothing to do" % (summary["session_id"], summary["archive_dir"]))
     return code

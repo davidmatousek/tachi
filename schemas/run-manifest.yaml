@@ -9,7 +9,8 @@
 #
 # The manifest holds structure only: identifiers, counts, hostnames, hashes.
 # It never holds message text, tool input or output, command lines, URLs,
-# metadata descriptions or denial messages. The ARCHIVE written beside it is
+# metadata descriptions or denial messages. It does name hosts, file names and
+# session ids, so read it before you share it. The ARCHIVE written beside it is
 # different: it is a verbatim, unredacted copy of the session and holds your
 # architecture, code and findings. Keep it where no commit can reach it.
 #
@@ -78,9 +79,10 @@ run_manifest:
     transcripts:
       type: list[object]
       description: >
-        Every archived file except run-manifest.json: the main transcript, each
-        subagent transcript and metadata file, and every persisted tool-result
-        file. Sorted by path.
+        Every copied source file: the main transcript, each subagent transcript
+        and metadata file, and every persisted tool-result file. Sorted by path.
+        The archiver's own files, run-manifest.json and .gitignore, are not
+        listed. Every listed file is hash-equal to its source.
       item_schema:
         path:
           type: string
@@ -332,7 +334,9 @@ run_manifest:
   # Parse contract (a violation exits 1 and writes no manifest)
   # ---------------------------------------------------------------------------
   parse_contract:
-    unparseable: "Invalid JSON on a line (or in a metadata file) and nothing else."
+    unparseable: >
+      Invalid JSON on a line (or in a metadata file), or a document nested too
+      deeply for the parser to read (it cannot be read, so it is not skipped).
     required:
       - "Every assistant line has message.model, and lines of one response agree on it."
       - "Every subagent metadata file has agentType and toolUseId."
@@ -342,10 +346,11 @@ run_manifest:
       - "At least one assistant turn and a non-empty histogram, for main and for every instance that ran."
       - "A tool_use id appears in one transcript only, and the dispatch chain does not loop."
       - "At least one parseable timestamp."
+      - "Every top-level version is one short ASCII token (no whitespace, no non-ASCII character), and every timestamp stays inside the range a datetime can hold once its UTC offset is applied; either failure exits 1 with the line number, never as an internal error."
     tolerated:
       - "Entry types and keys the archiver does not know (the api-request entries among them): counted in the run summary, never in the manifest."
       - "Extra metadata keys: their names are listed in unknown_meta_keys."
-      - "Timestamps that do not parse, blank lines, and lines that are valid JSON but not objects: counted in the run summary."
+      - "Timestamps that do not parse (including one written with non-ASCII digits), blank lines, and lines that are valid JSON but not objects: counted in the run summary."
 
   # ---------------------------------------------------------------------------
   # Redaction
@@ -358,20 +363,47 @@ run_manifest:
       hostname before they are recorded.
     final_scan: >
       Before anything is written, every string in the manifest (hash fields
-      excluded) is checked against known key formats, case-insensitively, and
+      excluded) is checked against known key formats (20 rules, matched at any
+      length, case-insensitively, with a boundary before each one so that an
+      ordinary name that merely ends in a key prefix does not match), and
       against the values of environment variables whose names contain KEY,
-      TOKEN, SECRET, PASSWORD or CREDENTIAL. Values shorter than 8 characters,
-      and boolean or numeric literals, are skipped. A hit exits 1, writes no
-      manifest, and names the rule or the variable, never the value. The scan
-      sees only the archiver's own environment, so run it under the same
-      secret-injection wrapper as the session.
+      TOKEN, SECRET, PASSWORD, PASSWD, PASSPHRASE, PWD, CREDENTIAL, PRIVATE,
+      AUTH, DSN or DATABASE_URL (the shell variables PWD, OLDPWD and
+      SSH_AUTH_SOCK are not secrets). Each value is stripped; a value that holds
+      whitespace, a JSON document or a URL with a password is also checked piece
+      by piece (JSON strings, whitespace-delimited pieces, the part after "=",
+      the URL password). Each value and piece is checked raw and re-encoded:
+      hex, base32, base64 and base64url without padding, percent-encoded and
+      JSON-escaped, all lower-case, because a secret can be re-encoded into a
+      host label, a name or a file name. Values and pieces shorter than 8
+      characters are skipped, and so are values shaped like a date, a timestamp,
+      a dotted version or an IP literal (a numeric value of 8 or more digits is
+      checked). There is no entropy gate: a hit means the literal value is in
+      the manifest. A hit exits 1, writes no manifest, and names the rule or the
+      variable (and the encoding), never the value. The scan sees only the
+      archiver's own environment, so run it under the same secret-injection
+      wrapper as the session. Every run prints how many variables it checked
+      (their names, never values), how many it skipped and how many format rules
+      ran, warns when that count is 0, and puts the same figures in the --json
+      summary as secret_scan. The summary's own label counts (entry types and
+      key names) go through the same scan before they are printed.
 
   archive_layout: >
-    The archive root holds <session>.jsonl, the whole <session>/ directory
-    (subagents/agent-<id>.jsonl, subagents/agent-<id>.meta.json, tool-results/),
-    and run-manifest.json. Directories are mode 0700 and files 0600. Files are
-    created exclusively, symbolic links are never followed, and a source tree
-    that holds a symbolic link is refused.
+    The archive root holds .gitignore (the archiver's own file: one comment line
+    and the rule "*", so the archive ignores itself in any git work tree that
+    sees it; written first, and not listed in transcripts), <session>.jsonl, the
+    whole <session>/ directory (subagents/agent-<id>.jsonl,
+    subagents/agent-<id>.meta.json, tool-results/), and run-manifest.json.
+    Directories are mode 0700 and files 0600. Files are created exclusively,
+    symbolic links are never followed, and a source tree that holds a symbolic
+    link is refused. Invariant: every copied source file is hash-equal to its
+    source; .gitignore and run-manifest.json are the only other files and are
+    excluded from that comparison. Inside a git work tree the archiver first
+    requires git to ignore every path it will write there (one batched git
+    check-ignore over the real paths), so the .gitignore is a second layer, not
+    the check. A destination under the Claude Code projects directory, a
+    destination that is itself a symbolic link, and a repeat run whose manifest
+    does not name this session's files are refused.
 
   # ---------------------------------------------------------------------------
   # Example (abridged; the numbers are internally consistent)
