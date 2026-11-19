@@ -28,6 +28,16 @@
 #      on the pytest step below)
 #   5. Both matrix legs MUST pass green
 #
+# Python floor (F-391): the scripts the installer ships to adopters are stdlib
+# Python >= 3.9 (`pyproject.toml` declares `requires-python = ">=3.9"`; stock
+# macOS ships 3.9.6), but the matrix above runs 3.11, where a 3.10+ API would
+# pass unnoticed. The `py39-floor` job re-runs the F-391 modules under
+# `setup-python` 3.9 on ubuntu-latest only: the floor is an interpreter
+# question, so the macOS bash-3.2 leg adds nothing. It is a job of its own, not
+# `if: matrix.os == 'ubuntu-latest'` steps, so it runs in parallel, still
+# reports when the 3.11 suite fails, and cannot be moved off ubuntu-latest by a
+# matrix edit. Its module list is a subset of the matrix list below.
+#
 # Path filter (NFR-005 alignment + scope discipline): the workflow ONLY
 # fires when files in the F-248 + F-256 hardening surfaces change. Pure
 # docs edits, ADR text, or unrelated agent-tier changes do NOT trigger
@@ -56,6 +66,11 @@
 # covering `scripts/install.sh`'s destination-containment pre-flight and its
 # ref-restore trap fix, plus `tests/scripts/install_sh_helpers.py`'s sandbox
 # builders — wired through both paths and invocation in lock-step.
+# F-391 (T037) added the installed-version marker suite
+# (`test_tachi_version_marker.py`, covering the `scripts/install.sh` marker
+# block) plus the inputs F-373's wiring did not already list
+# (`templates/tachi/VERSION`, `INSTALL_MANIFEST.md`) — wired through both paths
+# and invocation in lock-step, and through the `py39-floor` job's module list.
 #
 # References:
 #   - specs/248-substitution-surface-hardening/spec.md (FR-001..FR-011, NFR-001)
@@ -69,6 +84,8 @@
 #     §Test Coverage (F-248)
 #   - docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md
 #     §Test Coverage (F-256)
+#   - specs/391-isolated-auditable-operation/plan.md § AD-3 + Testing Strategy
+#     (the F-391 modules and the Python 3.9 floor run)
 # =============================================================================
 
 name: tachi pytest
@@ -122,6 +139,9 @@ on:
       - .claude/agents/tachi/threat-infographic.md              # F-393 — API Key Check (input)
       - adapters/claude-code/agents/references/infographic-gemini-api.md   # F-393 — adapter copy (input)
       - .claude/skills/tachi-infographics/references/gemini-prompt-construction.md   # F-393 — pinned request form (input)
+      - tests/scripts/test_tachi_version_marker.py             # F-391 (T037) — installed-version marker suite (install.sh marker block)
+      - templates/tachi/VERSION                                # F-391 (T037) — tracked placeholder the suite asserts on and the installer overwrites (input)
+      - INSTALL_MANIFEST.md                                    # F-391 (T037) — case 7 reads the `templates/tachi/` manifest entry (input)
       - tests/scripts/init_sh_helpers.py
       - tests/scripts/conftest.py
       - tests/fixtures/init-baseline-tree/**
@@ -200,6 +220,9 @@ jobs:
         #   test_template_config_load_integration.py — full library round-trip
         #   test_template_git_clone_timeout.py      — Stream 4 watchdog + AOD_FETCH_TIMEOUT
         #   test_template_substitute_lint_no_eval.py — eval-removal lint guard
+        #
+        # F-391 module added (also run under Python 3.9 by the `py39-floor` job):
+        #   test_tachi_version_marker.py            — installed-version marker written by install.sh
         run: |
           python -m pytest \
             tests/scripts/test_init_sh_substitution.py \
@@ -221,4 +244,48 @@ jobs:
             tests/scripts/test_install_sh_symlink_preflight.py \
             tests/scripts/test_install_sh_ref_restore.py \
             tests/scripts/test_gemini_key_env_only.py \
+            tests/scripts/test_tachi_version_marker.py \
             -v --timeout=1080
+
+  py39-floor:
+    name: pytest Python 3.9 floor — ubuntu-latest
+    # Pinned to ubuntu-latest, no OS matrix (see "Python floor" in the header).
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install pytest + pytest-timeout + pyyaml
+        # The same three packages as the matrix job (conftest.py imports `yaml`
+        # at module scope). `pytest<9` only states what the resolver would pick
+        # anyway: pytest 9 requires Python >= 3.10, and 8.4.x is the last line
+        # that runs on 3.9.
+        run: |
+          python -m pip install 'pytest>=8,<9' 'pytest-timeout>=2' 'pyyaml>=6'
+
+      - name: Diagnostic — assert the interpreter is the 3.9 floor
+        # A floor gate only gates if it runs on the floor: fail loudly instead
+        # of passing on whatever `python` resolves to.
+        run: |
+          python --version
+          python -c 'import sys; assert sys.version_info[:2] == (3, 9), sys.version'
+          python -m pytest --version
+
+      - name: Run the F-391 modules under Python 3.9
+        # The module list is the F-391 subset of the matrix step's list, in the
+        # same order. Extend it in lock-step with that list and with `paths:`
+        # (see the header): T033 appends test_archive_run_transcripts.py and
+        # T039 appends test_threats_schema_contract.py, each after the last
+        # module below and before `-v`. `--timeout=600`: ubuntu only and no
+        # init.sh subprocess (the matrix step's 1080 is sized for macOS
+        # cold-cache init.sh runs).
+        run: |
+          python -m pytest \
+            tests/scripts/test_tachi_version_marker.py \
+            -v --timeout=600
