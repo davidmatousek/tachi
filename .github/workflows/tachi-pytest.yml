@@ -122,6 +122,10 @@ on:
       - docs/guides/ISOLATED_OPERATION_TACHI.md                # F-391 (T017) — marked session-profile block + matrix-link line (input)
       - docs/standards/CLAUDE_PERMISSIONS.md                   # F-391 (T017) — section 8 heading behind the matrix-link anchor (input)
       - docs/product/02_PRD/391-isolated-auditable-operation-2026-11-16.md   # F-391 (T017) — PRD FR-6: hard_deny sentence + audiences list (input)
+      - tests/scripts/test_agent_privilege_guard.py            # F-391 (T026) — privilege-guard suite: live tree green, one red case per check, exit codes, --json
+      - scripts/check-agent-privileges.py                      # F-391 (T026) — the guard; the suite runs it as a subprocess on every case (input)
+      - .claude/agents/tachi/**                                # F-391 (T026) — agent roster, tools:/model:/key set, Bash fences; copied into each case (input)
+      - .claude/commands/tachi.*.md                            # F-391 (T026) — command frontmatter keys; copied into each case (input)
       - tests/scripts/test_gemini_key_env_only.py              # F-393 — env-only key read + pinned request form
       - .claude/agents/tachi/threat-infographic.md              # F-393 — API Key Check (input)
       - adapters/claude-code/agents/references/infographic-gemini-api.md   # F-393 — adapter copy (input)
@@ -225,5 +229,6 @@ jobs:
             tests/scripts/test_install_sh_symlink_preflight.py \
             tests/scripts/test_install_sh_ref_restore.py \
             tests/scripts/test_isolated_profile_contract.py \
+            tests/scripts/test_agent_privilege_guard.py \
             tests/scripts/test_gemini_key_env_only.py \
             -v --timeout=1080
