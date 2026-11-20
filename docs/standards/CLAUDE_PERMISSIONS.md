@@ -374,7 +374,7 @@ The guard reads the tables in this section, and the runbook's write-locations ta
 
 | Command | Frontmatter keys | Dispatches | Bash it instructs | Writes | Child processes |
 |---|---|---|---|---|---|
-| `/tachi.threat-model` | `description` | `tachi-orchestrator` | `python3` | `{out}/`, `{out}/architecture.md`, `{out}/threats.md`, `{out}/threats.sarif`, `{out}/attack-chains.md`, `{out}/threat-report.md`, `{out}/attack-trees/` | `python3` |
+| `/tachi.threat-model` | `description` | `tachi-orchestrator` | `python3`, `python3 scripts/stamp-tachi-version.py` | `{out}/`, `{out}/architecture.md`, `{out}/threats.md`, `{out}/threats.sarif`, `{out}/attack-chains.md`, `{out}/threat-report.md`, `{out}/attack-trees/` | `python3` |
 | `/tachi.risk-score` | `description` | `tachi-risk-scorer` | `python3` | `{out}/`, `{out}/threats.md`, `{out}/risk-scores.{md,sarif}` | `python3` |
 | `/tachi.compensating-controls` | `description` | `tachi-control-analyzer` | — | `{out}/`, `{out}/compensating-controls.{md,sarif}` | — |
 | `/tachi.infographic` | `description` | `tachi-threat-infographic` | `python3`, `grep` | `{out}/`, `{out}/threat-{template}-spec.md`, `{out}/threat-{template}.{jpg,png}`, `{out}/.tachi-build/infographic-{template}.json`, `{out}/.tachi-build/gemini-{template}-request.json`, `{out}/.tachi-build/gemini-{template}-response.json` | `python3`, `curl` |
