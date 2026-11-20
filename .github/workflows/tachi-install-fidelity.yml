@@ -99,6 +99,14 @@ on:
       #     the five recipe documents it scans (.claude/agents/tachi/**,
       #     .claude/commands/tachi.*.md, .claude/skills/**) ---
       - tests/scripts/test_write_confinement.py       # F-391 (T015) — AR-1, SC-005
+      # --- F-391 (T028): new cases in test_install_manifest_completeness.py,
+      #     run by manifest-completeness: the runbook's manifest entries and
+      #     SC-A4 (the installed agents' tools equal section 8 of the
+      #     matrix). They read two files no entry above covers, listed below.
+      #     The guard script whose parsers they load matches scripts/*.py,
+      #     and the agents they compare match .claude/agents/tachi/** ---
+      - docs/standards/CLAUDE_PERMISSIONS.md          # F-391 (T028) — SC-A4: section 8, expected tools
+      - docs/guides/ISOLATED_OPERATION_TACHI.md       # F-391 (T028) — FR-011a: the installed runbook
   push:
     branches: [main]
     paths: *fidelity_paths
