@@ -368,8 +368,9 @@ run_manifest:
       ordinary name that merely ends in a key prefix does not match), and
       against the values of environment variables whose names contain KEY,
       TOKEN, SECRET, PASSWORD, PASSWD, PASSPHRASE, PWD, CREDENTIAL, PRIVATE,
-      AUTH, DSN or DATABASE_URL (the shell variables PWD, OLDPWD and
-      SSH_AUTH_SOCK are not secrets). Each value is stripped; a value that holds
+      AUTH, DSN or DATABASE_URL. PWD, OLDPWD, SSH_AUTH_SOCK, XAUTHORITY and
+      the git identity names (GIT_AUTHOR_*, GIT_COMMITTER_*) are excluded by
+      name; they are not secrets. Each value is stripped; a value that holds
       whitespace, a JSON document or a URL with a password is also checked piece
       by piece (JSON strings, whitespace-delimited pieces, the part after "=",
       the URL password). Each value and piece is checked raw and re-encoded:

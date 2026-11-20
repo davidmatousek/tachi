@@ -3694,6 +3694,57 @@ def test_t034_m2_shell_state_and_a_socket_path_are_not_secrets_by_name(world, ru
     assert cov["environment_values_checked"] == 0 and cov["environment_values_skipped"] == 0
 
 
+# -- X-8 (T040): the git identity and the X authority file are not secrets by name ----------------------------------------
+#
+# ``AUTH`` also matches GIT_AUTHOR_NAME, _EMAIL and _DATE (through AUTHOR) and XAUTHORITY. Each holds an identity or a file
+# path, never a credential, yet a fragment of 8 or more characters of one that also appeared in a manifest string refused a
+# clean run, and a refusal costs the operator a new --dest (P0B0-5). The archiver now leaves out GIT_AUTHOR_*, GIT_COMMITTER_*
+# and XAUTHORITY, by exact name and exact prefix. No secret-name token matches GIT_COMMITTER_* today, so those two variables
+# pass before and after; they stay in the case to keep the pair alike. Nothing else is loosened: the case ends by checking
+# that a real secret-shaped name, and a near miss of each exclusion, are still compared.
+
+X8_NOT_SECRETS = [
+    # (variable, a value as the real variable could hold it, the string of it that reaches the manifest). The scan splits a
+    # value at its spaces, so a name or a raw git date is carried by its longest piece. Every carrier is 8 or more characters.
+    ("GIT_AUTHOR_NAME", "Pat Quillfeather", "Quillfeather"),
+    ("GIT_AUTHOR_EMAIL", "pat@brightwater.example.test", "pat@brightwater.example.test"),
+    ("GIT_AUTHOR_DATE", "1700000000 +0100", "1700000000"),
+    ("GIT_COMMITTER_NAME", "Sam Longfellow-Ash", "Longfellow-Ash"),
+    ("GIT_COMMITTER_EMAIL", "sam@longfellow.example.test", "sam@longfellow.example.test"),
+    ("XAUTHORITY", "/run/user/1000/gdm/Xauthority", "/run/user/1000/gdm/Xauthority"),
+]
+# Still scanned: a real secret-shaped name, and a near miss of each exclusion (GIT_AUTH_ is not the prefix GIT_AUTHOR_, the
+# prefix needs its underscore, and XAUTHORITY is an exact name).
+X8_STILL_SCANNED = ["TACHI_TEST_API_KEY", "GIT_AUTH_TOKEN", "GIT_AUTHORIZATION", "XAUTHORITY_TOKEN"]
+
+
+def test_t040_x8_the_git_identity_and_the_x_authority_file_are_not_secrets_by_name(world, run, tmp_path):
+    scanned = [(name, "fixture-" + _filler(24, salt=index)) for index, name in enumerate(X8_STILL_SCANNED)]
+    scanned_values = [value for _name, value in scanned]
+    excluded = dict((name, value) for name, value, _carrier in X8_NOT_SECRETS)
+    carriers = [carrier for _name, _value, carrier in X8_NOT_SECRETS] + scanned_values
+    for index, carrier in enumerate(carriers):
+        append_tool_call(world, "main", carrier, "toolu_tb_x8_%02d" % index, {"x": 1})
+
+    # Every excluded variable is set and its value is in the manifest: the run succeeds and writes its manifest.
+    out = run(world, env=excluded)
+    manifest = assert_ok(out)
+    strings = [text.lower() for text in all_strings(manifest)]
+    for carrier in carriers:
+        assert any(carrier.lower() in text for text in strings), "a carrier did not reach the manifest"
+    cov = out.summary["secret_scan"]
+    assert cov["environment_values_checked"] == 0 and cov["environment_values_skipped"] == 0, cov
+
+    # The same session with the still-scanned names set too: refused, naming exactly those and none of the excluded ones.
+    env = dict(excluded)
+    env.update(scanned)
+    control = run(world, env=env, dest=tmp_path / "control" / "archive")
+    assert_failed(control, mentions=("secret scan",) + tuple("environment variable " + name for name, _value in scanned))
+    assert control.summary["secret_scan"]["environment_variables_checked"] == sorted(name for name, _value in scanned)
+    for value in list(excluded.values()) + scanned_values:
+        assert value not in control.text, "a value reached the output"
+
+
 # -- M-3: the run says how much the scan checked -------------------------------------------------------------------------
 
 

@@ -214,7 +214,12 @@ _KEY_PATTERNS = tuple((rule, re.compile(rx, re.IGNORECASE)) for rule, rx in _KEY
 # each scanned raw and in its encoded forms (P0B0-11, amended at T034).
 _SECRET_NAME_RE = re.compile(
     r"KEY|TOKEN|SECRET|PASSWORD|PASSWD|PASSPHRASE|PWD|CREDENTIAL|PRIVATE|AUTH|DSN|DATABASE_URL", re.IGNORECASE)
-_NOT_SECRET_NAMES = frozenset({"PWD", "OLDPWD", "SSH_AUTH_SOCK"})  # shell state and a socket path
+# Excluded by name, never by loosening ``AUTH`` (T040 X-8): shell state, a socket path, an X authority file
+# path, and the git identity (``AUTH`` matches GIT_AUTHOR_NAME, _EMAIL and _DATE through AUTHOR; no token
+# above matches GIT_COMMITTER_*, which is listed so the pair stays alike). Exact names and exact prefixes,
+# case-sensitive: GIT_AUTH_TOKEN, GIT_AUTHORIZATION and XAUTHORITY_TOKEN are still scanned.
+_NOT_SECRET_NAMES = frozenset({"PWD", "OLDPWD", "SSH_AUTH_SOCK", "XAUTHORITY"})
+_NOT_SECRET_PREFIXES = ("GIT_AUTHOR_", "GIT_COMMITTER_")
 _SECRET_VALUE_FLOOR = 8  # a shorter value collides with counts, mode names and ids
 # A value shaped like a date, a timestamp, a dotted version or an IP literal can equal
 # a manifest string by chance and is skipped. Any other numeric value is scanned: a
@@ -1478,6 +1483,14 @@ def _hash_artifacts(output_dir, warnings):
 # =============================================================================
 
 
+def _secret_named(name):
+    """True when an environment variable's NAME says secret: it matches the name list and is not
+    excluded by name. The one place that rule lives, so the values compared and the count of
+    secret-named variables (the coverage figures) cannot disagree."""
+    return (name not in _NOT_SECRET_NAMES and not name.startswith(_NOT_SECRET_PREFIXES)
+            and _SECRET_NAME_RE.search(name) is not None)
+
+
 def _secret_env_values(environ=None):
     """[(name, value)] the final scan compares against: variables whose NAME says secret.
 
@@ -1487,7 +1500,7 @@ def _secret_env_values(environ=None):
     """
     values = []
     for name, value in sorted((os.environ if environ is None else environ).items()):
-        if name in _NOT_SECRET_NAMES or not _SECRET_NAME_RE.search(name):
+        if not _secret_named(name):
             continue
         value = value.strip()
         if len(value) >= _SECRET_VALUE_FLOOR and not _BENIGN_VALUE_RE.match(value):
@@ -1560,7 +1573,7 @@ def _secret_scan_plan(environ=None):
     """What the final scan compares with, and the coverage that is reported (T034 M-3)."""
     env = os.environ if environ is None else environ
     values = _secret_env_values(env)
-    named = sum(1 for name in env if name not in _NOT_SECRET_NAMES and _SECRET_NAME_RE.search(name))
+    named = sum(1 for name in env if _secret_named(name))
     needles = []
     for name, value in values:
         for fragment in _value_fragments(value):
