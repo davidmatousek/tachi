@@ -11,8 +11,12 @@
 # GitHub-web-UI edit to `.claude/settings.json` could land on `main`
 # unchecked. It runs, in order: (1) a jq-presence guard, (2) a JSON-validity
 # check on `.claude/settings.json`, (3) the delivered #280 AC-2 cross-check
-# script, and (4) a doc-presence check for the two interactive-only-covering
-# sections of `CLAUDE_PERMISSIONS.md`.
+# script, (4) a doc-presence check for the two interactive-only-covering
+# sections of `CLAUDE_PERMISSIONS.md`, (5) a python3-presence guard, and (6)
+# the Feature 391 agent-privilege guard (plan AD-3),
+# `scripts/check-agent-privileges.py --self-test`: the tachi agents and
+# commands, and the runbook's write-path table, against the §8 privilege
+# matrix in `CLAUDE_PERMISSIONS.md`, then its own planted-mutation self-test.
 #
 # Dual trigger (PR + push:[main]): a settings.json or doc edit can reach
 # `main` via a direct push that bypasses the pull_request trigger — the
@@ -63,6 +67,10 @@ on:
       - .claude/settings.json
       - docs/standards/CLAUDE_PERMISSIONS.md
       - .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh
+      - .claude/agents/tachi/**                   # F-391 (T027) — guard input: agent roster, tools:/model:/key set, Bash fences
+      - .claude/commands/tachi.*.md               # F-391 (T027) — guard input: command frontmatter keys
+      - scripts/check-agent-privileges.py         # F-391 (T027) — the guard itself
+      - docs/guides/ISOLATED_OPERATION_TACHI.md   # F-391 (T027) — guard input: runbook §5 write-path table
       - .github/workflows/tachi-permissions-verify.yml
   push:
     branches: [main]
@@ -110,3 +118,23 @@ jobs:
         run: |
           grep -qE '^## 3\. Settings precedence' docs/standards/CLAUDE_PERMISSIONS.md || { echo "::error::§3 missing"; exit 1; }
           grep -qE '^## 4\. Per-rule rationale table' docs/standards/CLAUDE_PERMISSIONS.md || { echo "::error::§4 missing"; exit 1; }
+
+      - name: Assert python3 is present
+        # Guards BEFORE the python3-dependent step below, mirroring the jq
+        # guard above, so a runner-image change that drops python3 fails
+        # loudly here rather than as an ambiguous "command not found" inside
+        # the privilege guard (F-391 AD-3). No actions/setup-python: the guard
+        # is stdlib-only (>= 3.9) and the runner's system python3 is newer.
+        run: command -v python3 >/dev/null || { echo "::error::python3 missing on runner"; exit 1; }
+
+      - name: Run agent privilege guard (live tree + mutation self-test)
+        # F-391 AD-3 (D-4b) / ADR-049. `--self-test` runs the live-tree checks
+        # (roster, tools:, model:, key set, command frontmatter keys, Bash
+        # families, runbook write paths vs the §8 matrix), then proves the
+        # guard can still go red via five planted mutations in a temp copy.
+        # The job MUST fail on ANY non-zero exit (1 drift; 2 infrastructure
+        # or a mutation that fails to fail): no continue-on-error, exit code
+        # not swallowed. Relies on `git` and the default full checkout's
+        # `.git` (`git ls-files` decides which non-.md agent-dir files are
+        # tracked); no network, no installs.
+        run: python3 scripts/check-agent-privileges.py --self-test

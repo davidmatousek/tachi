@@ -111,19 +111,20 @@ Where `{N}` is the count of artifacts with their flag set to `true` (including `
 
 ## Legacy Duplicate Pairs & Sanctioned Cleanup
 
-Legacy assessment directories from the `gemini-2.5-flash-image` fallback era can contain an infographic image saved under the wrong extension -- typically a `.jpg` file holding PNG bytes. Since #215, `scripts/extract-report-data.py` self-heals this at read time by writing a corrected, correctly-labeled sibling non-destructively; the mislabeled original is left in place. Legacy directories can therefore hold both the mislabeled original and its byte-identical corrected sibling for the same stem -- this is expected, and report generation is unaffected because the corrected sibling is always the file selected for emission.
+Legacy assessment directories from the `gemini-2.5-flash-image` fallback era can contain an infographic image saved under the wrong extension -- typically a `.jpg` file holding PNG bytes. Since #215, `scripts/extract-report-data.py` self-heals this at read time by writing a corrected, correctly-labeled sibling non-destructively; the mislabeled original is left in place. The corrected sibling goes to the output directory `{out}` (the directory that holds `.tachi-build/`), which is `{target_dir}` unless the command was given a different `--output-dir`; the mislabeled original is read from `{target_dir}` and never written. Legacy directories can therefore hold both the mislabeled original and its byte-identical corrected sibling for the same stem -- this is expected, and report generation is unaffected because the corrected sibling is always the file selected for emission.
 
-Reclaim the duplicate storage with the extraction script's opt-in flag:
+Reclaim the duplicate storage with the extraction script's opt-in flag. The extractor works in its build directory, so run it with `--build-dir` and remove that directory afterwards; here `{out}` is the target directory, so the cleanup behaves exactly as it always has:
 
 ```bash
 python3 scripts/extract-report-data.py \
   --target-dir {target_dir} \
-  --output templates/tachi/security-report/report-data.typ \
-  --template-dir templates/tachi/security-report/ \
+  --build-dir {target_dir}/.tachi-build/security-report \
   --cleanup-mislabeled-images
+python3 scripts/extract-report-data.py \
+  --remove-build-dir {target_dir}/.tachi-build/security-report
 ```
 
-Deletion is double-gated -- it fires only when **(1)** the flag is passed **and** **(2)** a correctly-labeled counterpart exists that is byte-identical to the mislabeled file. The rule is direction-agnostic (a `.png` holding JPEG bytes is treated the same as a `.jpg` holding PNG bytes) and best-effort: a per-file deletion failure logs to stderr and never fails the run. Each successful deletion emits exactly one stderr record naming the removed path.
+Deletion is double-gated -- it fires only when **(1)** the flag is passed **and** **(2)** a correctly-labeled counterpart exists that is byte-identical to the mislabeled file. Build mode adds a location rule on top of the two gates: the mislabeled file must lie in the output directory `{out}`. With `{out}` equal to `{target_dir}` (the recipe above) the rule never blocks. A run whose `--build-dir` sits under a different output directory deletes nothing and logs one stderr line per skipped file, so the only copy of an infographic is never removed from outside `{out}`. The rule is direction-agnostic (a `.png` holding JPEG bytes is treated the same as a `.jpg` holding PNG bytes) and best-effort: a per-file deletion failure logs to stderr and never fails the run. Each successful deletion emits exactly one stderr record naming the removed path.
 
 **Do not** clean up these pairs with a raw `find … rm` one-liner -- it cannot verify byte-identity before deleting and risks removing the wrong file. `--cleanup-mislabeled-images` is the only sanctioned cleanup path.
 

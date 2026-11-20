@@ -45,18 +45,19 @@ Note: `logo-primary-dark-path` shares the `has-logo-primary` flag. If the primar
 
 ## Path Resolution for Typst
 
-Compute relative paths using the `../../brand/final/` pattern. This follows the same relative path strategy as infographic images -- relative from `templates/tachi/security-report/`.
+Compute each path with `os.path.relpath` from the build directory (`{output_path}/.tachi-build/security-report/`, the throwaway template copy that holds `main.typ`) to `brand/final/` under the working directory. The number of `..` segments depends on where `{output_path}` sits, so there is no fixed `../../brand/final/` prefix. This is the same strategy as for infographic images -- relative from the build directory.
 
 ### Why Relative Paths
 
-Typst resolves `#image()` paths relative to the `.typ` file that calls it, NOT relative to the `--root` flag. Since logo images are referenced from template files in `templates/tachi/security-report/`, paths must navigate up to the project root first.
+Typst resolves `#image()` paths relative to the `.typ` file that calls it, NOT relative to the `--root` flag. Since logo images are referenced from template files in the build directory, paths must navigate up to the working directory first. Typst only reads files under its root (`--root .`, the working directory), so `brand/final/` has to sit under it.
 
 ### Path Examples
 
 ```typst
-#let logo-primary-path = "../../brand/final/tachi-logo-primary.png"
-#let logo-primary-dark-path = "../../brand/final/tachi-logo-primary-dark.png"
-#let logo-horizontal-path = "../../brand/final/tachi-logo-horizontal.png"
+// {rel_brand} = relative path from the build directory to brand/final/
+#let logo-primary-path = "{rel_brand}/tachi-logo-primary.png"
+#let logo-primary-dark-path = "{rel_brand}/tachi-logo-primary-dark.png"
+#let logo-horizontal-path = "{rel_brand}/tachi-logo-horizontal.png"
 ```
 
 When a logo is not found, set its path to `none` (Typst keyword, not a string):
@@ -75,7 +76,7 @@ The dark variant (`tachi-logo-primary-dark.png`) is specifically designed for th
 
 ```
 if dark variant exists and is non-zero:
-    logo-primary-dark-path = "../../brand/final/tachi-logo-primary-dark.png"
+    logo-primary-dark-path = "{rel_brand}/tachi-logo-primary-dark.png"
 else:
     logo-primary-dark-path = none
     # Template falls back to primary logo or text-only branding

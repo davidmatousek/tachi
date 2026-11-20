@@ -17,6 +17,7 @@ Canonical list of files and directories that must be copied when installing tach
 | `adapters/claude-code/agents/references/` | SARIF generation and validation guides | risk-scorer, control-analyzer |
 | `brand/` | Logo assets for branded PDF reports | report-assembler |
 | `docs/guides/DEVELOPER_GUIDE_TACHI.md` | Full walkthrough with worked examples | User reference |
+| `docs/guides/ISOLATED_OPERATION_TACHI.md` | Isolated-operation runbook: egress profile, session profile, probes, write locations | User reference |
 
 ## Command Files
 
@@ -136,6 +137,7 @@ scripts/stamp-tachi-version.py
 adapters/claude-code/agents/references/
 brand/
 docs/guides/DEVELOPER_GUIDE_TACHI.md
+docs/guides/ISOLATED_OPERATION_TACHI.md
 <!-- END MANIFEST -->
 
 ## Maintenance Checklist

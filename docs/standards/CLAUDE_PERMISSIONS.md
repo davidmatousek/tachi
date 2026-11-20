@@ -1,6 +1,13 @@
 # Claude Code Permissions Baseline
 
-**Status**: Active (BLP-02 Wave 4, F-4) | **Source of truth**: [`.claude/settings.json`](../../.claude/settings.json) | **Architecture decision**: [ADR-041](../architecture/02_ADRs/ADR-041-claude-permissions-baseline.md) | **Last updated**: 2026-05-08
+**Status**: Active (BLP-02 Wave 4, F-4; §8 added by Feature 391) | **Source of truth**: [`.claude/settings.json`](../../.claude/settings.json) (§1–§7) and the agent and command files (§8) | **Architecture decision**: [ADR-041](../architecture/02_ADRs/ADR-041-claude-permissions-baseline.md) | **Last updated**: 2026-11-19
+
+**Scope.** §1–§7 describe the development-time settings of this repository (`.claude/settings.json`). Those settings are not installed: the installer (`scripts/install.sh`) copies no `.claude/settings.json` (see the component list in [`INSTALL_MANIFEST.md`](../../INSTALL_MANIFEST.md)), so an adopter who installs tachi receives no settings from this project. [§8](#8-agent-and-command-privilege-matrix) is the adopter-facing matrix: what each tachi agent and command can do, which parts Claude Code enforces, and which parts are declarations.
+
+**Two coverage gaps.** Both hold for the baseline described in §1–§7. They were checked against `.claude/settings.json` and the [Claude Code permissions documentation](https://code.claude.com/docs/en/permissions) on 2026-11-19.
+
+1. **A web fetch outside the allow list is not denied.** The 19 `WebFetch(domain:<host>)` rules (Category 4 in §2, rows in §4) only pre-approve hosts. A fetch to any other host, apart from Claude Code's built-in set of preapproved documentation domains, falls to "ask" in the `default` permission mode (labeled Manual in the CLI), not to "deny". Other modes decide differently: `dontAsk` denies, and in `auto` mode, the built-in starting mode of an interactive session on Claude Code v2.1.283 or later, a classifier reviews the action instead of a prompt ([permission modes](https://code.claude.com/docs/en/permission-modes)).
+2. **Shell `curl` is not covered.** Apart from the four pipe-to-shell deny patterns in §4, no rule allows, asks about or denies `curl` or `wget`, and a `WebFetch` allow list does not govern a command that runs through Bash. The documentation says so: "Note that using WebFetch alone doesn't prevent network access. If Bash is allowed, Claude can still use `curl`, `wget`, or other tools to reach any URL."
 
 ---
 
@@ -8,7 +15,7 @@
 
 Tachi's pre-F-4 `.claude/settings.json` was a 26-rule allow-only file accumulated organically over the project's lifetime. The 2026-05-02 Daniel Wood LinkedIn thread named the resulting posture as a load-bearing gap for enterprise-developer adoption: the file lacked `deny` rules for catastrophic-irreversible operations, lacked `ask` rules for the gray zone, lacked a network host allowlist, lacked per-rule rationale, and matched both `git push` and `git push --force` under a single `Bash(git push:*)` allow rule.
 
-F-4 replaces that file with a curated four-category baseline (this document is its policy decision log) and accepts [ADR-041](../architecture/02_ADRs/ADR-041-claude-permissions-baseline.md) as the architecture-decision artifact. The baseline is **default-secure** for tachi's own development AND for adopters consuming tachi as a scanner. Adopters who need to override a rule have three documented paths (§6).
+F-4 replaces that file with a curated four-category baseline (this document is its policy decision log) and accepts [ADR-041](../architecture/02_ADRs/ADR-041-claude-permissions-baseline.md) as the architecture-decision artifact. The baseline governs tachi's own development and is calibrated against the casual-typo case (§7); the two coverage gaps stated at the top of this document apply to it. It is not installed, so it does not protect an adopter's project; [§8](#8-agent-and-command-privilege-matrix) is the section written for adopters. Anyone working in a checkout of this repository who needs to override a rule has three documented paths (§6).
 
 This document is **self-contained** — a SecOps reviewer auditing tachi's AI-agent permission posture can read this single file end-to-end and produce an audit report without reverse-engineering rule names or maintainer intent. Per-rule rationale lives in §4 and is one-to-one cross-checked against `.claude/settings.json` via the AC-2 verification script (FR-002 in the F-4 spec).
 
@@ -20,7 +27,7 @@ The baseline organizes rules into four logical categories. The committed JSON ha
 
 ### Category 1 — Read-only auto-approve
 
-**Safety promise**: non-mutating, no network egress, no shell-out to mutating commands.
+**Safety promise**: non-mutating, no shell-out to mutating commands. Read-only does not mean offline: the `gh` query rules in this category (`gh issue view`, `gh pr list` and the other `gh` rows in §4) call the GitHub API.
 **JSON array**: `permissions.allow`.
 **Scope**: only **non-built-in** read-only commands appear here. Claude Code's built-in read-only set (`ls`, `cat`, `head`, `tail`, `grep`, `find`, `wc`, `diff`, `stat`, `du`, `cd`, read-only `git` forms — see §5) runs without prompt regardless of `permissions.allow` content; listing those commands here is no-op.
 **Failure mode (R-10)**: a future Claude Code update may add a new built-in that shadows an explicit allow rule, making it silently no-op. Mitigation: §5 maintenance note; re-verify the built-in set on each `/aod.update` cycle.
@@ -40,10 +47,10 @@ The baseline organizes rules into four logical categories. The committed JSON ha
 
 ### Category 4 — Network host-allowlist
 
-**Safety promise**: default-deny on outbound network egress; allowlist covers tachi's documented network dependencies after a command-surface egress audit (GitHub family + Anthropic family + OWASP family + MITRE family + NIST).
+**Safety promise**: pre-approves `WebFetch` for tachi's documented network dependencies, chosen after a command-surface egress audit (GitHub family + Anthropic family + OWASP family + MITRE family + NIST), so routine fetches of those hosts do not prompt. This is an allow list, not a default-deny egress control: a fetch to any other host falls to "ask" in the `default` permission mode, and shell `curl` is not covered (the two coverage gaps stated at the top of this document).
 **JSON array**: `permissions.allow` (`WebFetch(domain:<host>)` patterns).
 **Scope**: 19 explicit per-subdomain entries — see §4 table.
-**Failure mode**: subdomain matching is **not transitive**. `WebFetch(domain:github.com)` does NOT match `api.github.com`; `WebFetch(domain:*)` wildcard does NOT work as a permissive default. Citations: Claude Code Issues [#15260](https://github.com/anthropics/claude-code/issues/15260), [#11972](https://github.com/anthropics/claude-code/issues/11972), [#1217](https://github.com/anthropics/claude-code/issues/1217). The 19-domain list is the correct posture given upstream behavior. AC-7 retains a manual probe as adversarial verification (FR-007).
+**Failure mode**: subdomain matching is **not transitive**. `WebFetch(domain:github.com)` does NOT match `api.github.com`. §7.4 records what the current Claude Code documentation says about wildcards, which this baseline originally assumed did not work. The 19-domain list stays explicit and unchanged. AC-7 retains a manual probe as adversarial verification (FR-007).
 
 ---
 
@@ -228,23 +235,25 @@ The current built-in set (verified at the F-4 merge SHA via Claude Code document
 
 ## 6. Opt-out paths
 
-Adopters who need behavior different from the baseline have three documented override paths. Every legitimate adopter scenario maps to one of these three.
+The baseline (`.claude/settings.json`) exists only in a checkout of this repository, such as a fork or a clone. An adopter who installs tachi with `scripts/install.sh` does not receive that file (see the scope statement at the top of this document), so an installed project has no tachi baseline to override: its own user, project, local or managed settings and the CLI flags govern it, and [§8](#8-agent-and-command-privilege-matrix) lists what tachi's agents and commands need.
+
+Three override paths exist for the repository baseline. Every legitimate scenario maps to one of these three. Path 1 is a CLI flag and works in any session.
 
 ### Path 1 — Per-tool disable via Claude Code CLI flag
 
-For short-term sandbox sessions where the adopter does not want any Bash invocations (or any specific tool surface), use the Claude Code CLI flag where applicable. Example: `claude --deny-tool Bash` for fully disabling Bash within the session. Use case: one-shot sandbox where the operation set is intentionally narrow.
+For short-term sandbox sessions where the adopter does not want any Bash invocations (or any specific tool surface), use the Claude Code CLI flag where applicable. Example: `claude --disallowedTools "Bash"` for fully disabling Bash within the session; a bare tool name in `--disallowedTools` removes the tool from Claude's context ([CLI reference](https://code.claude.com/docs/en/cli-reference#cli-flags)). Use case: one-shot sandbox where the operation set is intentionally narrow.
 
 ### Path 2 — Fork-and-edit `.claude/settings.json` directly (the load-bearing override path)
 
-For adopters wishing to permit a baseline-denied operation, the **only** working override path is to edit `.claude/settings.json` directly — either by modifying their fork of tachi or by removing the deny rule from their copy of the file. Per §3.2 cross-file deny precedence, adding the same pattern to `.claude/settings.local.json` `permissions.allow` does NOT override the project-level deny.
+For anyone working in a fork or clone who wants to permit a baseline-denied operation, the **only** working override path is to edit `.claude/settings.json` directly — either by modifying the fork or by removing the deny rule from the local copy of the file. Per §3.2 cross-file deny precedence, adding the same pattern to `.claude/settings.local.json` `permissions.allow` does NOT override the project-level deny.
 
-**Use case**: a personal-fork workflow where the adopter accepts the risk of the denied operation in their controlled environment. The editing should be deliberate and reviewed; commit messages should cite the rationale.
+**Use case**: a personal-fork workflow where the person editing the file accepts the risk of the denied operation in a controlled environment. The editing should be deliberate and reviewed; commit messages should cite the rationale.
 
 **This is the path the SecOps reviewer asks about** when they ask "what overrides this baseline?" — Path 2 is the answer for permissive-override-of-deny.
 
 ### Path 3 — `.claude/settings.local.json` for *adding* personal allows (NOT overriding denies)
 
-For adopters who want to add personal allow rules for operations not denied at the project level — e.g., `Bash(my-deploy-tool:*)` for an internal-only tool — `.claude/settings.local.json` is the supported surface. The file is gitignored by Claude Code convention; it survives `git pull` of baseline updates without manual reconciliation (FR-003).
+For anyone who wants to add personal allow rules for operations not denied at the project level — e.g., `Bash(my-deploy-tool:*)` for an internal-only tool — `.claude/settings.local.json` is the supported surface. The file is gitignored by Claude Code convention; it survives `git pull` of baseline updates without manual reconciliation (FR-003).
 
 **Path 3 cannot override a project-level deny** — for that, use Path 2. Path 3 is for the additive permissive-extension case only.
 
@@ -260,7 +269,7 @@ Per Claude Code documentation: *"Bash permission patterns that try to constrain 
 
 ### 7.2 R-9 — Process-wrapper bypass
 
-Modern dev-environment runners — `npx`, `docker exec`, `devbox run`, `mise exec`, `direnv exec` — re-shell-out commands; the literal-string match against `Bash(rm -rf:*)` does not transit the wrapper. An adopter running `Bash(docker exec my-container rm -rf /workspace)` matches the broader docker-exec invocation but bypasses the inner `Bash(rm -rf:*)` deny. Same calibration as R-8 (casual-typo, not adversarial). Adopters running tachi inside Docker/devbox/mise environments lose the destructive-deny baseline for wrapper-issued commands.
+Modern dev-environment runners — `npx`, `docker exec`, `devbox run`, `mise exec`, `direnv exec` — re-shell-out commands; the literal-string match against `Bash(rm -rf:*)` does not transit the wrapper. An adopter running `Bash(docker exec my-container rm -rf /workspace)` matches the broader docker-exec invocation but bypasses the inner `Bash(rm -rf:*)` deny. Same calibration as R-8 (casual-typo, not adversarial). Anyone working in a checkout of this repository inside Docker/devbox/mise environments loses the destructive-deny baseline for wrapper-issued commands.
 
 ### 7.3 R-10 — Read-only built-in shadow
 
@@ -268,7 +277,15 @@ A future Claude Code update may add a new built-in command that shadows an exist
 
 ### 7.4 Subdomain matching is not transitive
 
-`WebFetch(domain:github.com)` does NOT match `api.github.com`; `WebFetch(domain:*)` wildcard does NOT work. Citations: Claude Code Issues [#15260](https://github.com/anthropics/claude-code/issues/15260), [#11972](https://github.com/anthropics/claude-code/issues/11972), [#1217](https://github.com/anthropics/claude-code/issues/1217). The 19-domain explicit list (§4 Category 4 rows) is the correct posture given upstream behavior. If upstream behavior changes to support subdomain collapse, the list MAY be reviewed for compaction in a follow-up Issue (no behavior regression occurs from the explicit-list-too-long case; the regression direction is the explicit-list-too-short case).
+`WebFetch(domain:github.com)` does NOT match `api.github.com`: a rule without a wildcard matches the named host only. This section was re-checked against the current Claude Code documentation on 2026-11-19 ([permissions: WebFetch](https://code.claude.com/docs/en/permissions#webfetch); [sandboxing: network isolation](https://code.claude.com/docs/en/sandboxing#network-isolation)). Its earlier claim that the `WebFetch(domain:*)` wildcard does not work is out of date for Claude Code v2.1.172 and later. What the documentation confirms:
+
+- `WebFetch` rules match the hostname of the requested URL, case-insensitively, and support `*` wildcards; wildcards in these rules need Claude Code v2.1.172 or later.
+- `WebFetch(domain:example.com)` matches requests to `example.com` only. `WebFetch(domain:*.example.com)` matches a subdomain at any depth but not `example.com` itself, so covering both takes two rules.
+- `WebFetch(domain:*)` matches every domain. It differs from a bare `WebFetch` rule: as an allow rule it also lets sandboxed commands reach any host, and as a deny rule it refuses each fetch and blocks every host for sandboxed commands. This baseline uses neither form.
+- The sandbox honors two wildcard forms in a `WebFetch(domain:<host>)` rule, a leading `*.` and a bare `*`; the bare `*` form needs Claude Code v2.1.186 or later. A wildcard in any other position still matches fetches but has no effect on sandboxed commands.
+- A bare `*` in the tool-name position of a `deny` or `ask` rule matches every tool; an unanchored `*` in an `allow` rule is skipped and approves nothing ([permissions: tool name wildcards](https://code.claude.com/docs/en/permissions#tool-name-wildcards)). `Bash(*)` is equivalent to `Bash` ([permissions: match all uses of a tool](https://code.claude.com/docs/en/permissions#match-all-uses-of-a-tool)).
+
+This section previously cited Claude Code Issues [#15260](https://github.com/anthropics/claude-code/issues/15260), [#11972](https://github.com/anthropics/claude-code/issues/11972) and [#1217](https://github.com/anthropics/claude-code/issues/1217) for the wildcard claim; the documentation above supersedes it. The 19-domain explicit list (§4 Category 4 rows) is unchanged by this re-check. Because subdomain wildcards now exist, the list MAY be reviewed for compaction in a follow-up Issue; a wildcard pre-approves more hosts than the entries it replaces, so that review would weigh the wider allowance (no behavior regression occurs from the explicit-list-too-long case; the regression direction is the explicit-list-too-short case).
 
 ### 7.5 What this baseline does NOT protect against
 
@@ -276,6 +293,145 @@ A future Claude Code update may add a new built-in command that shadows an exist
 - **Third-party MCP servers with their own permission scopes** — MCP server permissions are governed by the MCP server's own configuration, not by `.claude/settings.json`.
 - **The `--dangerously-skip-permissions` flag** — when invoked with this flag, Claude Code bypasses the entire permissions surface. The flag is an explicit opt-out at the session level; baseline rules do not apply.
 - **Adversarial bypass via R-8/R-9** — see §7.1, §7.2.
+
+---
+
+## 8. Agent and command privilege matrix
+
+This section is the adopter-facing matrix. For the 21 tachi agents and the 6 tachi commands it lists the tier, tools, model, shell command families, paths written, hosts reached, child processes and dispatches. It describes what `scripts/install.sh` installs into a project; it is not a settings file and it changes no permission. This file is not installed with tachi: the installed isolated-operation runbook ([`docs/guides/ISOLATED_OPERATION_TACHI.md`](../guides/ISOLATED_OPERATION_TACHI.md)) links to this section at a URL pinned to the release.
+
+### 8.1 Enforced and declared
+
+**Enforced by Claude Code at runtime**
+
+- **Tools.** `tools:` in an agent's frontmatter is an allowlist that Claude Code applies to the subagent ([subagents: restrict which tools a subagent can use](https://code.claude.com/docs/en/sub-agents#restrict-which-tools-a-subagent-can-use)). An agent that holds only `Read`, `Glob` and `Grep` can neither write a file nor run a command.
+- **Model.** `model:` applies unless the invocation passes a `model` parameter, which takes precedence; no tachi command, agent or skill text passes one. `CLAUDE_CODE_SUBAGENT_MODEL` ranks below the `model:` field and below a passed `model` parameter, so setting it alone does not change a tachi agent's model; only `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` (Claude Code v2.1.257 or later) overrides them ([subagents: choose a model](https://code.claude.com/docs/en/sub-agents#choose-a-model); [model configuration: environment variables](https://code.claude.com/docs/en/model-config#environment-variables)). `ANTHROPIC_DEFAULT_SONNET_MODEL` sets which model the `sonnet` alias resolves to; a subagent pinned to a family alias runs on its parent conversation's model when that model is in the same family ([subagents: which version a model alias selects](https://code.claude.com/docs/en/sub-agents#which-version-a-model-alias-selects)). The Model column records the pin, not the model that served a request: an organization's model allowlist and Claude Code's model fallback can run a request on another model ([subagents: when an allowlist blocks a subagent model](https://code.claude.com/docs/en/sub-agents#when-an-allowlist-blocks-a-subagent-model); [model configuration: fallback model chains](https://code.claude.com/docs/en/model-config#fallback-model-chains)). Claude Code's session transcripts record the model that served each turn.
+
+**Declared, not enforced by Claude Code**
+
+- **Bash families, Writes and Hosts** declare what an agent's instructions do. Only the adopter's sandbox and permission rules enforce them; the Tools column bounds them as described above.
+- **Commands.** A tachi command declares no `allowed-tools`, so it runs in the main session with that session's tools and permission rules. In the commands table, Frontmatter keys records what each command file declares; Dispatches, Bash it instructs, Writes and Child processes record what the command text instructs, which Claude Code does not enforce.
+
+**Tier.** The highest capability the Tools cell grants: `read-only` (`Read`, `Glob`, `Grep`), `writer` (adds `Write`) or `Bash` (adds `Bash`). `Agent` does not change the tier; see Dispatch.
+
+**Dispatch.** `Agent` is transitive. An agent that holds it can start any subagent type available in the session, not only the tachi agents it names, so its Tools cell understates what its run can do. A started subagent has the tools its own definition gives it, not the dispatcher's; its model follows the Model rules above. Declared targets: `tachi-orchestrator` starts the 14 threat agents and `tachi-threat-report`; `tachi-threat-report` starts `tachi-attack-tree-delta`. Observed: in a recorded run, `tachi-threat-report` also started built-in `general-purpose` subagents, which ran Bash and Write; no tachi file instructs this ([run record](../../specs/391-isolated-auditable-operation/test-results/w0-spike.md)). Claude Code limits nesting to three layers below the main conversation by default ([subagents: let subagents spawn their own subagents](https://code.claude.com/docs/en/sub-agents#let-subagents-spawn-their-own-subagents)). The guard pins which agents hold `Agent`; it does not check which types they start, and tachi does not restrict them. The commands' own dispatches are in the Dispatches column of the commands table.
+
+**Hosts.** `model-provider` is the provider Claude Code is configured to use; every agent's turns go there. `generativelanguage.googleapis.com` is Google's Gemini API, which only `tachi-threat-infographic` reaches, and only when `GEMINI_API_KEY` is set and an image is requested through `/tachi.infographic`. The column is a declaration: Claude Code does not enforce it, and an adopter's sandbox network allow list and permission rules do. What the two hosts receive:
+
+> Your Claude Code model provider receives the architecture description, the files tachi reads and the findings on every run. If you set `GEMINI_API_KEY` and run `/tachi.infographic`, Google's Gemini API (`generativelanguage.googleapis.com`) also receives image prompts made of tachi's fixed layout instructions and derived threat-model content, including names and descriptions taken from your architecture (the project name and assessment date; the names, types and short descriptions of components, trust zones, trust boundaries and data flows; finding IDs, descriptions, severities and risk scores; correlation groups of related findings and their descriptions; finding counts, severities and analysis coverage, overall and by component, zone, boundary, flow, threat category and MAESTRO layer; the overall risk posture; control-coverage and risk-reduction figures from compensating-control runs; counts of new, updated, unchanged and resolved findings since a baseline, with new findings marked; and, if a template cannot be loaded, a one-line system description). By design, tachi sends nothing else, but an AI agent following tachi's templates writes each prompt, and no code checks it against this list before it is sent. Claude Code's own operational traffic, such as usage metrics, error reports and feature-flag fetches, is separate from tachi; it is governed by Claude Code's [privacy and telemetry settings](https://code.claude.com/docs/en/data-usage#telemetry-services), and setting `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` turns these off.
+
+### 8.2 Cell syntax
+
+The guard reads the tables in this section, and the runbook's write-locations table must match them, so the cells follow one syntax.
+
+- **Set-valued cells** are the Tools, Bash families, Writes and Hosts cells of the agents table and the Frontmatter keys, Dispatches, Bash it instructs, Writes and Child processes cells of the commands table. A set-valued cell lists backticked tokens separated by a comma and a space, as in `` `Read`, `Glob`, `Grep` ``. A set with no members is a single em dash, `—`. Nothing else appears in the cell, and a token contains no backtick and no pipe.
+- **Single-token cells** are the Agent and Model cells, the Command cell and the Path cell of the write-locations table. Each holds exactly one backticked token. The Tier cell is one plain word.
+- **Tokens are opaque strings.** The guard compares them exactly and expands nothing: the braces in `{out}/threat-{template}.{jpg,png}` are notation, not two tokens.
+- **Order.** Tools are written in the order Read, Glob, Grep, Write, Bash, Agent. The guard compares them as sets, so order is not checked.
+- **Row identity.** An Agent cell is the agent's `name:` value. A Command cell `/tachi.<x>` stands for `.claude/commands/tachi.<x>.md`.
+- **Table identity.** The guard finds each table by its header row, copied exactly from the tables below. The runbook's table uses the header row of section 8.5.
+- **Path notation** (a closed set; the runbook uses the same tokens):
+  - `{out}` is the run's output directory, the command's `output_dir` (the report assembler calls it `{output_path}`). For `/tachi.threat-model` it is `{output_dir}/{timestamp}/`, by default `docs/security/{timestamp}/`. `/tachi.security-report` requires it to lie under the working directory, because the report build directory is created there.
+  - `$TMPDIR` is the sandbox's per-user temporary directory.
+  - `{arch_path}` is the file `/tachi.architecture` writes (by default `docs/security/architecture.md`, or the `--output` path) and `{arch_dir}` is the directory that contains it.
+  - `{template}`, `{stem}`, `{finding-id}`, `{chain-id}` and `{N}` are placeholders filled in at run time.
+- **Host tokens** are `model-provider` and `generativelanguage.googleapis.com`. **Child-process tokens** are program names as run; a token in capitals is an environment variable that configures a child process.
+
+### 8.3 Agents
+
+| Agent | Tier | Tools | Model | Bash families | Writes | Hosts |
+|---|---|---|---|---|---|---|
+| `tachi-agent-autonomy` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-attack-tree-delta` | writer | `Read`, `Glob`, `Grep`, `Write` | `sonnet` | — | `{out}/attack-trees/` | `model-provider` |
+| `tachi-control-analyzer` | writer | `Read`, `Glob`, `Grep`, `Write` | `sonnet` | — | `{out}/compensating-controls.{md,sarif}` | `model-provider` |
+| `tachi-data-poisoning` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-denial-of-service` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-human-trust-exploitation` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-info-disclosure` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-misinformation` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-model-theft` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-orchestrator` | Bash | `Read`, `Glob`, `Grep`, `Write`, `Bash`, `Agent` | `sonnet` | `python3` | `{out}/threats.md`, `{out}/threats.sarif`, `{out}/attack-chains.md` | `model-provider` |
+| `tachi-output-integrity` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-privilege-escalation` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-prompt-injection` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-report-assembler` | Bash | `Read`, `Glob`, `Grep`, `Write`, `Bash` | `sonnet` | `python3`, `test`, `typst` | `{out}/security-report.pdf`, `{out}/.tachi-build/security-report/`, `{out}/attack-trees/`, `{out}/attack-chains/`, `{out}/threat-{stem}.{jpg,png}`, `$TMPDIR` | `model-provider` |
+| `tachi-repudiation` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-risk-scorer` | writer | `Read`, `Glob`, `Grep`, `Write` | `sonnet` | — | `{out}/risk-scores.{md,sarif}` | `model-provider` |
+| `tachi-spoofing` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-tampering` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+| `tachi-threat-infographic` | Bash | `Read`, `Glob`, `Grep`, `Write`, `Bash` | `sonnet` | `[`, `echo`, `python3`, `test` | `{out}/threat-{template}-spec.md`, `{out}/threat-{template}.{jpg,png}`, `{out}/.tachi-build/infographic-{template}.json`, `{out}/.tachi-build/gemini-{template}-request.json`, `{out}/.tachi-build/gemini-{template}-response.json` | `model-provider`, `generativelanguage.googleapis.com` |
+| `tachi-threat-report` | writer | `Read`, `Glob`, `Grep`, `Write`, `Agent` | `sonnet` | — | `{out}/threat-report.md` | `model-provider` |
+| `tachi-tool-abuse` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
+
+- **Bash families are the fenced ones.** The column holds only the command families that the guard extracts from labeled shell fences in the agent files, and only the three Bash-capable agents (`tachi-orchestrator`, `tachi-report-assembler`, `tachi-threat-infographic`) have any. A command that a model builds at run time is not visible to the guard. Four items sit outside the fences and are declared here instead:
+  - `tachi-threat-infographic`'s `curl` request to the Gemini host, in the pinned form of [`gemini-prompt-construction.md`](../../.claude/skills/tachi-infographics/references/gemini-prompt-construction.md) (the key is read from the environment and delivered through `--config -`, never on the command line), and its decode of the response with `python3` using the standard library.
+  - The extractor cleanup recipe in [`typst-artifacts.md`](../../.claude/skills/tachi-report-assembly/references/typst-artifacts.md) (`--cleanup-mislabeled-images`, then `--remove-build-dir`), which treats the target directory as `{out}`.
+  - `tachi-report-assembler`'s check that the PDF exists and is not empty (Step 3c), which names no command.
+  - Searches that run as `find` and `grep` through the Bash tool. On macOS, Linux and WSL the documentation says Claude Code leaves the Glob and Grep tools out of the default tool set and brings them back for a subagent that lists them and leaves out `Bash` ([tools reference: Glob tool behavior](https://code.claude.com/docs/en/tools-reference#glob-tool-behavior)), so searches by the three Bash-capable agents can appear as Bash calls that this column does not list.
+- **Writes.** Every Writes token in this table is under `{out}` or is `$TMPDIR`. The only paths outside those two locations are the two `/tachi.architecture` entries in the commands table. Section 8.5 gives the writer and the condition for each path.
+
+### 8.4 Commands
+
+| Command | Frontmatter keys | Dispatches | Bash it instructs | Writes | Child processes |
+|---|---|---|---|---|---|
+| `/tachi.threat-model` | `description` | `tachi-orchestrator` | `python3` | `{out}/`, `{out}/architecture.md`, `{out}/threats.md`, `{out}/threats.sarif`, `{out}/attack-chains.md`, `{out}/threat-report.md`, `{out}/attack-trees/` | `python3` |
+| `/tachi.risk-score` | `description` | `tachi-risk-scorer` | `python3` | `{out}/`, `{out}/threats.md`, `{out}/risk-scores.{md,sarif}` | `python3` |
+| `/tachi.compensating-controls` | `description` | `tachi-control-analyzer` | — | `{out}/`, `{out}/compensating-controls.{md,sarif}` | — |
+| `/tachi.infographic` | `description` | `tachi-threat-infographic` | `python3`, `grep` | `{out}/`, `{out}/threat-{template}-spec.md`, `{out}/threat-{template}.{jpg,png}`, `{out}/.tachi-build/infographic-{template}.json`, `{out}/.tachi-build/gemini-{template}-request.json`, `{out}/.tachi-build/gemini-{template}-response.json` | `python3`, `curl` |
+| `/tachi.security-report` | `description` | `tachi-report-assembler` | `which`, `ls`, `head`, `test`, `command` | `{out}/`, `{out}/security-report.pdf`, `{out}/.tachi-build/security-report/`, `{out}/attack-trees/`, `{out}/attack-chains/`, `{out}/threat-{stem}.{jpg,png}`, `$TMPDIR` | `python3`, `typst`, `mmdc`, `chromium`, `TACHI_MMDC_PUPPETEER_CONFIG` |
+| `/tachi.architecture` | `description` | — | `mkdir`, `shasum` | `{arch_path}`, `{arch_dir}/.archive/v{N}/` | — |
+
+- **Frontmatter keys.** Each command declares only `description`: no `allowed-tools` and no `model`. A value for either key is recorded here when it is set.
+- **Dispatches** lists the tachi agent the command starts. `/tachi.threat-model` starts `tachi-orchestrator`, which starts the 14 threat agents and `tachi-threat-report` one level down (see Dispatch). `/tachi.architecture` runs in the main session and starts no agent.
+- **Bash it instructs** is declared only. The commands also tell the main session, in prose that names no command, to create `{out}/`; `/tachi.threat-model` tells it to copy the architecture file into `{out}/`, and `/tachi.architecture` tells it to copy the previous file into its archive directory. Those writes are listed under Writes.
+- **Writes** is the command's whole footprint: its own writes plus those of the agents it starts. `/tachi.risk-score` runs the populate script on its input file only when `{out}` is the input directory; with `--output-dir` set to another directory, the input directory stays read-only.
+
+### 8.5 Write locations (canonical list)
+
+The runbook states the same write set in its section 5. The table below is the source: the runbook copies it exactly, and the guard fails when the set of paths in the runbook's table differs from the set of tokens in the Writes cells of the two tables above.
+
+- **Heading.** The runbook heading is `## 5. Write locations`.
+- **Table.** One table under that heading has the header row shown below, which is how the guard finds it, and one row per distinct path token. The Path cell holds exactly one backticked token in the notation of section 8.2; the other two cells are free text.
+
+| Path | Written by | Condition |
+|---|---|---|
+| `{out}/` | the main session of each run command (`/tachi.threat-model`, `/tachi.risk-score`, `/tachi.compensating-controls`, `/tachi.infographic`, `/tachi.security-report`) | the directory does not exist yet |
+| `{out}/architecture.md` | the main session of `/tachi.threat-model` (verbatim copy of the architecture file) | the architecture file exists |
+| `{out}/threats.md` | `tachi-orchestrator`; updated in place by `scripts/populate-affected-assets.py`, which the orchestrator and `/tachi.threat-model` run and which `/tachi.risk-score` runs on its input file | always for `/tachi.threat-model`; for `/tachi.risk-score` only when the input is markdown, an architecture file is found and `{out}` is the input directory |
+| `{out}/threats.sarif` | `tachi-orchestrator` | always |
+| `{out}/attack-chains.md` | `tachi-orchestrator` | at least one cross-layer chain passes the filter |
+| `{out}/threat-report.md` | `tachi-threat-report` | the report phase runs (the default; the orchestrator's `--skip-report` opt-out skips it) |
+| `{out}/attack-trees/` | `tachi-attack-tree-delta` (`{finding-id}-attack-tree.md` and `.manifest.json`); `scripts/extract-report-data.py` (`{finding-id}-attack-tree.png`) | Critical or High findings exist (the manifest is written either way); the PNGs only when `mmdc` is on `PATH` |
+| `{out}/attack-chains/` | `scripts/extract-report-data.py` (`{chain-id}-attack-chain.png`) | an attack chain is surfaced and `mmdc` is on `PATH` |
+| `{out}/risk-scores.{md,sarif}` | `tachi-risk-scorer` | always |
+| `{out}/compensating-controls.{md,sarif}` | `tachi-control-analyzer` | always |
+| `{out}/threat-{template}-spec.md` | `tachi-threat-infographic` | each requested template |
+| `{out}/threat-{template}.{jpg,png}` | `tachi-threat-infographic`, decoding the response with `python3` | `GEMINI_API_KEY` is set and the API returns an image |
+| `{out}/.tachi-build/infographic-{template}.json` | `scripts/extract-infographic-data.py --output` | each template extraction; kept |
+| `{out}/.tachi-build/gemini-{template}-request.json` | `tachi-threat-infographic` (Write tool) | `GEMINI_API_KEY` is set; kept (it is the exact payload sent to the Gemini host) |
+| `{out}/.tachi-build/gemini-{template}-response.json` | `curl --output`, run by `tachi-threat-infographic` | `GEMINI_API_KEY` is set; kept |
+| `{out}/security-report.pdf` | `typst compile`, run by `tachi-report-assembler` | the compile succeeds |
+| `{out}/.tachi-build/security-report/` | `scripts/extract-report-data.py --build-dir` (a copy of `templates/tachi/security-report/`, a custom `report-config.typ` when one exists, and `report-data.typ`); removed by `--remove-build-dir` | every report run; removed after a successful compile and kept after a failed one (the parent `{out}/.tachi-build/` stays) |
+| `{out}/threat-{stem}.{jpg,png}` | `scripts/extract-report-data.py`: a corrected copy of an infographic image whose bytes do not match its extension; with `--cleanup-mislabeled-images`, which no run recipe passes, it also deletes a redundant file that lies in `{out}` | such an image exists |
+| `$TMPDIR` | `scripts/extract-report-data.py` (Python `tempfile`: Mermaid sources and rendered PNGs, removed on exit); headless Chromium started by `mmdc` (profile and caches) | attack trees or attack chains are rendered |
+| `{arch_path}` | the main session of `/tachi.architecture` | always, unless a guided update ends with no changes |
+| `{arch_dir}/.archive/v{N}/` | the main session of `/tachi.architecture` | an existing architecture file was found |
+
+### 8.6 Child processes, checks and scope
+
+**Child processes.** `mmdc` and headless Chromium are spawned by `scripts/extract-report-data.py` when the report assembler renders attack trees and attack chains. They are invisible to session transcripts and to permission rules. Python's `tempfile` and Chromium write to `$TMPDIR`. When `TACHI_MMDC_PUPPETEER_CONFIG` is set, it must be the absolute path of an existing regular file; the extractor then passes it to both `mmdc` invocations as `-p <path>`, and any other value stops the run with an error. The variable exists for sandboxed Linux and WSL2 sessions, where Chromium needs a launch flag that only a puppeteer config file can carry; the runbook covers its use.
+
+**What CI checks.** The guard (`scripts/check-agent-privileges.py`, run by the `tachi-permissions-verify.yml` workflow on pull requests and on pushes to the default branch) fails when:
+
+- an agent's `tools:` or `model:` differs from its row, or its frontmatter has a key outside `name`, `description`, `tools` and `model`;
+- a command's frontmatter keys differ from its row;
+- a fenced shell block in one of the three Bash-capable agents uses a command family that is not in that agent's Bash families cell;
+- a file in `.claude/agents/tachi/` is neither a listed agent nor an allow-listed non-agent document;
+- the runbook's write-locations table differs from the Writes cells.
+
+It does not check Tier, Hosts, Dispatches, Bash it instructs or Child processes.
+
+**Scope.** The guard covers `.claude/agents/tachi/**` and `.claude/commands/tachi.*.md`. It does not cover the copies under `adapters/claude-code/agents/`: their 15 files carry no `tools:` and no `model:` key, and by the Claude Code documentation a subagent definition without `tools` inherits every tool available to subagents, while one without `model` runs on the model of the conversation that starts it unless `CLAUDE_CODE_SUBAGENT_MODEL` is set ([subagents: supported frontmatter fields](https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields)). Six agents have no adapter copy: `tachi-attack-tree-delta`, `tachi-control-analyzer`, `tachi-human-trust-exploitation`, `tachi-misinformation`, `tachi-output-integrity` and `tachi-report-assembler`. To install or repair agents, re-run `scripts/install.sh`; do not copy files from the adapter directory. Refreshing the adapter roster is tracked separately (#369). The guard does not cover the skills (`.claude/skills/tachi-*/SKILL.md`) either; none of them sets `allowed-tools`, `model` or `tools` at the time of writing.
 
 ---
 
@@ -287,3 +443,10 @@ A future Claude Code update may add a new built-in command that shadows an exist
 - Companion BLP-02 Wave 4 docs feature: [specs/272-security-md-and-private-disclosure-channel/spec.md](../../specs/272-security-md-and-private-disclosure-channel/spec.md) (F-3 — disclosure-channel half of the same Daniel Wood thread)
 - Claude Code permissions docs: `https://code.claude.com/docs/en/permissions`
 - Claude Code settings docs (cross-file precedence): `https://code.claude.com/docs/en/settings`
+- Claude Code subagents docs (`tools:`, model order, nesting): `https://code.claude.com/docs/en/sub-agents`
+- Claude Code model configuration docs (alias and subagent model variables): `https://code.claude.com/docs/en/model-config`
+- Claude Code permission modes docs: `https://code.claude.com/docs/en/permission-modes`
+- Claude Code sandboxing docs (network isolation): `https://code.claude.com/docs/en/sandboxing`
+- Claude Code CLI reference (`--disallowedTools`): `https://code.claude.com/docs/en/cli-reference`
+- Claude Code tools reference (Glob and Grep availability): `https://code.claude.com/docs/en/tools-reference`
+- Header corrections and §8: [specs/391-isolated-auditable-operation/spec.md](../../specs/391-isolated-auditable-operation/spec.md) (FR-003, FR-011, FR-012)

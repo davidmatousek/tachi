@@ -56,6 +56,8 @@ from pathlib import Path
 # Import the FROZEN parser + enum from the shared module. These are READ-ONLY
 # here — SC-011 binary-diffs tachi_parsers.py against main and must show zero
 # change.
+if __name__ == "__main__":
+    sys.dont_write_bytecode = True  # no bytecode cache for the import below (feature 391, FR-007)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tachi_parsers import (  # noqa: E402

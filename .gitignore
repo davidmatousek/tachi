@@ -203,7 +203,11 @@ _internal/
 # Subagent result artifacts (ephemeral, session-scoped)
 .aod/results/
 
-# Runtime-generated Typst data file (produced by extract-report-data.py)
+# Throwaway report build directories (extract-report-data.py --build-dir; hold report-data.typ)
+**/.tachi-build/
+
+# Runtime-generated Typst data file of the legacy --output mode (the test suite and
+# scripts/regenerate-ca-baselines.sh still write it into the template directory)
 templates/tachi/security-report/report-data.typ
 
 # Test output artifacts (generated during local testing)

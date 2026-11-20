@@ -263,7 +263,7 @@ header = "x-goog-api-key: $GEMINI_API_KEY"
 EOF
 ```
 
-`{request_file}` and `{response_file}` are files the agent writes beside its other intermediates. Add `--write-out '\n%{http_code}'` when the status code is needed for the error table. The key is read from the environment only (the agent's "API Key Check"), it is sent only as this header, delivered through `--config -`; it is never passed as `--header "x-goog-api-key: …"` on the command line, never as a `?key=` query parameter, never echoed, and never passed to a verbose/trace flag.
+`{request_file}` is `{output_dir}/.tachi-build/gemini-{template_name}-request.json`, written with the Write tool, and `{response_file}` is `{output_dir}/.tachi-build/gemini-{template_name}-response.json`, written by `curl --output`; `{output_dir}` is the directory named in the agent's "Script Invocation" section. Both files are kept: the agent has no deletion command, the files are as sensitive as the rest of `{output_dir}` (the request file is the exact payload sent to the Gemini host), and a retry on the next chain model overwrites both. Add `--write-out '\n%{http_code}'` when the status code is needed for the error table. The key is read from the environment only (the agent's "API Key Check"), it is sent only as this header, delivered through `--config -`; it is never passed as `--header "x-goog-api-key: …"` on the command line, never as a `?key=` query parameter, never echoed, and never passed to a verbose/trace flag.
 
 **Request Body**:
 ```json
@@ -296,7 +296,7 @@ EOF
 3. Find the part where **`inlineData`** is present and `inlineData.mimeType` starts with `image/`. The SDK spelling (`inline_data` / `inline_data.mime_type`) is accepted too, for callers going through a client library instead of the raw REST body.
 4. Extract the `inlineData.data` field (base64-encoded image data)
 5. Decode the base64 data
-6. Save the decoded bytes as `threat-{template-name}.{ext}` where `{ext}` is derived from the MIME type:
+6. Decode and save with `python3`, using only the standard library (`json` and `base64`): read `{response_file}`, base64-decode the `inlineData.data` value found in step 4, and write the bytes to `{output_dir}/threat-{template_name}.{ext}`, where `{ext}` is derived from the MIME type. No other tool is used for the decode, and nothing is written anywhere else:
    - `image/jpeg` or `image/jpg` → `.jpg`
    - `image/png` → `.png`
    - Any other `image/*` → the subtype as the extension

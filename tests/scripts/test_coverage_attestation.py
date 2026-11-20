@@ -41,7 +41,6 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = Path(__file__).parent / "fixtures" / "coverage_attestation"
 TAXONOMY_DIR = REPO_ROOT / "schemas" / "taxonomy"
 TEMPLATE_DIR = REPO_ROOT / "templates" / "tachi" / "security-report"
-TEMPLATE_MAIN = TEMPLATE_DIR / "main.typ"
 
 
 # ---------------------------------------------------------------------------
@@ -178,12 +177,27 @@ def test_default_value_guard_stale_report_data(tmp_path: Path):
     # on a real example baseline — the web-app example is the smallest and
     # produces a report-data.typ with every non-F-B variable populated.
     #
-    # CRITICAL: --template-dir MUST point at the real TEMPLATE_DIR so the
-    # image paths in report-data.typ (logo, infographic paths) resolve
-    # relative to where main.typ will actually live at compile time.
+    # The extractor runs in --build-dir mode: it copies the template into a
+    # throwaway build directory (the real TEMPLATE_DIR is only read, never
+    # written, not even temporarily) and writes report-data.typ there, with
+    # every image and brand path computed relative to that directory, which is
+    # where main.typ will actually live at compile time. The build directory
+    # must lie under the working directory, so the test runs in a scratch
+    # project under tmp_path whose brand/final holds the logos the extractor
+    # looks for. The Typst root is the same scratch project.
     script_path = REPO_ROOT / "scripts" / "extract-report-data.py"
     target_dir = REPO_ROOT / "examples" / "web-app"
-    stale_path = tmp_path / "report-data.typ"
+    work_dir = tmp_path / "work"
+    brand_dir = work_dir / "brand" / "final"
+    brand_dir.mkdir(parents=True)
+    for logo in (
+        "tachi-logo-primary.png",
+        "tachi-logo-primary-dark.png",
+        "tachi-logo-horizontal.png",
+    ):
+        shutil.copy2(REPO_ROOT / "brand" / "final" / logo, brand_dir / logo)
+    build_dir = work_dir / "out" / ".tachi-build" / "security-report"
+    stale_path = build_dir / "report-data.typ"
 
     env = {**os.environ, "SOURCE_DATE_EPOCH": "1700000000"}
     extract_cmd = [
@@ -191,13 +205,13 @@ def test_default_value_guard_stale_report_data(tmp_path: Path):
         str(script_path),
         "--target-dir",
         str(target_dir),
-        "--output",
-        str(stale_path),
+        "--build-dir",
+        str(build_dir),
         "--template-dir",
         str(TEMPLATE_DIR),
     ]
     subprocess.run(
-        extract_cmd, cwd=REPO_ROOT, env=env, check=True, capture_output=True
+        extract_cmd, cwd=work_dir, env=env, check=True, capture_output=True
     )
 
     # Defense-in-depth: strip any F-B declarations that might already be
@@ -217,43 +231,20 @@ def test_default_value_guard_stale_report_data(tmp_path: Path):
         stripped.append(line)
     stale_path.write_text("\n".join(stripped) + "\n")
 
-    # Compile main.typ against the stale report-data.typ. We run with the
-    # real template dir as cwd and a temp output path, but scope the
-    # report-data.typ mutation to the sandbox by pointing main.typ directly
-    # at the sandbox copy. --root is set to REPO_ROOT (production convention)
-    # but the source file must also live under REPO_ROOT, so we swap the real
-    # template_dir's report-data.typ with the stale sandbox version for the
-    # duration of the compile and restore it after.
-    real_report_data = TEMPLATE_DIR / "report-data.typ"
-    preexisting = real_report_data.exists()
-    preexisting_backup = None
-    if preexisting:
-        preexisting_backup = real_report_data.read_bytes()
-
-    try:
-        real_report_data.write_bytes(stale_path.read_bytes())
-
-        compile_cmd = [
-            "typst",
-            "compile",
-            str(TEMPLATE_MAIN),
-            str(tmp_path / "out.pdf"),
-            "--root",
-            str(REPO_ROOT),
-        ]
-        result = subprocess.run(
-            compile_cmd, cwd=REPO_ROOT, env=env, capture_output=True, text=True
-        )
-    finally:
-        # Restore or remove the real report-data.typ so we do not leave test
-        # artifacts in the template directory.
-        if preexisting_backup is not None:
-            real_report_data.write_bytes(preexisting_backup)
-        elif real_report_data.exists():
-            try:
-                real_report_data.unlink()
-            except OSError:
-                pass
+    # Compile the build directory's main.typ against the stale report-data.typ
+    # sitting beside it. --root is the scratch project (production uses the
+    # working directory), which contains both the build directory and brand/.
+    compile_cmd = [
+        "typst",
+        "compile",
+        str(build_dir / "main.typ"),
+        str(tmp_path / "out.pdf"),
+        "--root",
+        str(work_dir),
+    ]
+    result = subprocess.run(
+        compile_cmd, cwd=work_dir, env=env, capture_output=True, text=True
+    )
 
     assert result.returncode == 0, (
         f"main.typ compile against stale report-data.typ failed with exit "

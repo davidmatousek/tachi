@@ -44,7 +44,7 @@ Single-command entry point for tachi compensating controls analysis — the thir
    - If missing, display:
      ```
      TACHI CONTROL ANALYZER NOT INSTALLED
-     Run: cp -r <tachi-repo>/adapters/claude-code/agents/control-analyzer.md .claude/agents/tachi/
+     Re-run the installer from this project's root: <tachi-repo>/scripts/install.sh
      See: https://github.com/davidmatousek/tachi
      ```
    - Halt if missing.
