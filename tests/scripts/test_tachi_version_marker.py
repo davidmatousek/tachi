@@ -22,6 +22,8 @@ W1 cases (tasks.md T037) and the tests that carry them:
     5. `-release-manifest` fallback   test_source_without_a_git_tree_reads_the_release_manifest
                                       test_source_inside_another_repo_reads_the_release_manifest
     6. `unknown` fallback             test_no_usable_version_reads_unknown
+                                      test_value_outside_the_readers_rule_reads_unknown (X-7)
+                                      test_value_at_the_cap_is_written_verbatim (X-7 control)
     7. manifest carries the placeholder
                                       test_manifest_entry_ships_the_placeholder
     8. the README's manual loop writes the marker (lands with T048's marker line)
@@ -49,7 +51,9 @@ line, so the loop itself is a marker-WRITING install, and only case 8 runs it.
 Environment: each test runs in its own temp dir, removed afterwards with Python
 (`shutil`), under a hermetic environment: git config isolated, `$HOME` inside the
 temp dir, repository-locating `GIT_*` variables scrubbed, and a git ceiling at the
-temp dir so no repository above it can be found.
+temp dir so no repository above it can be found. Installs run under `LC_ALL=C`
+(`run_install_sh` sets it); the one X-7 case with an accented letter runs under an
+installed UTF-8 locale instead, and skips only when the host has none.
 
 Repository inputs (the CI path anchor must list them):
     scripts/install.sh                 copied into every synthetic source
@@ -70,6 +74,7 @@ import os
 import re
 import shlex
 import shutil
+import string
 import subprocess
 import tempfile
 from pathlib import Path
@@ -217,11 +222,12 @@ def _write_release_manifest(source: Path, packages: dict) -> None:
     )
 
 
-def _install(source: Path, project: Path, *extra: str):
+def _install(source: Path, project: Path, *extra: str, extra_env=None):
     return run_install_sh(
         source / "scripts" / "install.sh",
         cwd=project,
         args=("--source", str(source), *extra),
+        extra_env=extra_env,
     )
 
 
@@ -576,6 +582,112 @@ def test_no_usable_version_reads_unknown(sandbox, prepare):
     assert result.returncode == 0, result.combined
     assert _read_marker(project) == PLACEHOLDER
     assert _summary_version(result) == "unknown"
+
+
+# A tag of exactly 128 allowed characters: the readers' cap (contracts/version-marker.md). It holds
+# every ASCII letter and digit, taken from the standard library and not from install.sh's own list,
+# and `.`, `_`, `+` and `-`, so a letter or digit missing from the installer's list turns it red.
+# `~` is in the readers' rule too, but git refuses it in a tag name, so no describe value holds one.
+TAG_AT_THE_CAP = (
+    "v" + string.digits + string.ascii_lowercase + string.ascii_uppercase + "1.2_3+4-" * 8 + "x"
+)
+# `v`, e with an acute accent (U+00E9), `1`: a tag git accepts, which a range such as `A-Za-z` can
+# match in a collating UTF-8 locale. Built with chr() so that this file stays ASCII.
+ACCENTED_TAG = "v" + chr(0xE9) + "1"
+
+
+def _utf8_locale():
+    """An installed UTF-8 locale for the accented-letter case: `en_US.UTF-8` first, `C.UTF-8` last.
+
+    Any other UTF-8 locale comes before `C.UTF-8`, which orders by code point (see the case's
+    docstring). Skips, with the reason, only when `locale -a` lists no UTF-8 locale at all.
+    """
+    try:
+        names = subprocess.run(
+            ["locale", "-a"], capture_output=True, text=True, timeout=30
+        ).stdout.split()
+    except (OSError, subprocess.SubprocessError):
+        names = []
+    utf8 = [name for name in names if name.lower().endswith((".utf-8", ".utf8"))]
+    if not utf8:
+        pytest.skip(
+            "no UTF-8 locale is available (`locale -a` lists none, or `locale` is not installed): "
+            "the accented-letter case needs one"
+        )
+
+    def preference(name):
+        plain = name.lower().replace("-", "")
+        return (0 if plain == "en_us.utf8" else 2 if plain.startswith("c.") else 1, name)
+
+    return min(utf8, key=preference)
+
+
+def _install_from_clone_tagged(sandbox, tag, extra_env=None):
+    """Install from a clone whose HEAD sits on `tag`: `(project, result)`.
+
+    The source's placeholder is SENTINEL, so what the marker holds afterwards is what the
+    installer wrote. The setup check is that git describes the clone by `tag` alone, which
+    leaves the installer's filter as the only thing between the tag and the marker. The install
+    runs under the harness's `LC_ALL=C` unless `extra_env` says otherwise.
+    """
+    source = _build_tagged_source(
+        sandbox / "tachi-src", placeholder=SENTINEL, commits_after_tag=0, tag=tag
+    )
+    project = build_project_tree(sandbox / "project")
+    assert _describe(source) == tag, "setup: git describe must print the tag as it is"
+    return project, _install(source, project, extra_env=extra_env)
+
+
+@pytest.mark.parametrize(
+    "tag, utf8",
+    [
+        pytest.param("rel/v1.0.0", False, id="slash"),
+        pytest.param("_x", False, id="leading-underscore"),
+        pytest.param("+x", False, id="leading-plus"),
+        pytest.param(TAG_AT_THE_CAP + "x", False, id="129-characters"),
+        pytest.param(ACCENTED_TAG, True, id="accented-letter-in-a-utf-8-locale"),
+    ],
+)
+def test_value_outside_the_readers_rule_reads_unknown(sandbox, tag, utf8):
+    """A describe value the readers would read as `unknown` is written as `unknown` (X-7).
+
+    `stamp-tachi-version.py` and `archive-run-transcripts.py` share one rule
+    (contracts/version-marker.md): a letter or digit first, then letters, digits and `. _ + ~ -`,
+    128 characters at most, all of them ASCII. Each tag breaks one part of it, and git accepts all
+    five: a `/` in the value, a first character that is not a letter or digit (`_` and `+`; git
+    refuses `.` and `-` there), one character over the cap, and an accented letter (`v` + e with an
+    acute accent + `1`).
+
+    The accented letter is the one case that runs the installer under a UTF-8 locale; the others
+    run under the harness's `LC_ALL=C`. Bash 3.2 reads a range such as `A-Za-z` through the
+    locale's collation, and in a collating locale such as macOS's `en_US.UTF-8` the range matches
+    accented letters, so a filter written with ranges keeps `v` + e-acute + `1` there. `C.UTF-8`
+    orders by code point and may not reproduce that widening, so this case proves most where a
+    collating locale exists (macOS); where only `C.UTF-8` is installed it still must pass.
+    """
+    extra_env = {"LC_ALL": _utf8_locale()} if utf8 else None
+
+    project, result = _install_from_clone_tagged(sandbox, tag, extra_env=extra_env)
+
+    assert result.returncode == 0, result.combined
+    assert _read_marker(project) == PLACEHOLDER
+    assert _summary_version(result) == "unknown"
+
+
+def test_value_at_the_cap_is_written_verbatim(sandbox):
+    """Control for the 129-character case: 128 allowed characters is inside the rule.
+
+    A cap that is off by one either way turns this case or that one red. The tag holds every ASCII
+    letter and digit and `.`, `_`, `+` and `-`, so the whole character set is exercised: a letter
+    or digit missing from the installer's spelled-out list turns this case red.
+    """
+    assert len(TAG_AT_THE_CAP) == 128, "setup: the tag must be exactly the cap long"
+
+    project, result = _install_from_clone_tagged(sandbox, TAG_AT_THE_CAP)
+
+    assert result.returncode == 0, result.combined
+    assert _read_marker(project) == _marker_line(TAG_AT_THE_CAP)
+    assert _summary_version(result) == TAG_AT_THE_CAP
 
 
 # ---------------------------------------------------------------------------

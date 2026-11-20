@@ -655,11 +655,17 @@ elif [ -f "${SOURCE_DIR}/.release-please-manifest.json" ]; then
     *) INSTALLED_VERSION="${manifest_version}-release-manifest" ;;
   esac
 fi
-# The value goes into a one-line file that another script reads back: keep it to
-# plain version characters (a git tag name may hold others), else `unknown`.
+# The value goes into a one-line file that another script reads back, so it follows
+# the readers' rule (contracts/version-marker.md): a letter or digit first, then
+# letters, digits and . _ + ~ -, 128 characters at most. A git tag may break it
+# (rel/v1.0.0 has a `/`); the value is then `unknown`, which is what they read.
+# The letters and digits are spelled out, not given as ranges, so the shell's locale
+# cannot widen them (under a UTF-8 locale a range can match accented letters).
+alnum=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 case $INSTALLED_VERSION in
-  ""|*[!0-9A-Za-z._+/-]*) INSTALLED_VERSION="unknown" ;;
+  ""|[!$alnum]*|*[!$alnum._+~-]*) INSTALLED_VERSION="unknown" ;;
 esac
+[ "${#INSTALLED_VERSION}" -le 128 ] || INSTALLED_VERSION="unknown"
 
 if [ "$MARKER_WRITE" -eq 1 ] && [ -d "${TARGET_P}/templates/tachi" ]; then
   marker_guard
