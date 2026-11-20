@@ -150,8 +150,11 @@ sed -n '/^<!-- BEGIN MANIFEST -->$/,/^<!-- END MANIFEST -->$/p' "$TACHI/INSTALL_
       *)  mkdir -p "$(dirname "$p")" && cp "$TACHI/$p" "$p" ;;
     esac
   done
+printf 'tachi_version: %s\n' "$(git -C "$TACHI" describe --tags --always --dirty 2>/dev/null || echo unknown)" >| templates/tachi/VERSION
 ```
 <!-- END MANUAL INSTALL LOOP -->
+
+The last line is the marker line. It writes the tachi version you installed to `templates/tachi/VERSION`, taken from `git describe --tags --always --dirty` in your clone, or `unknown` when git cannot describe `$TACHI`, for example because it is not a git clone. `/tachi.threat-model` stamps that value into `threats.md` as `tachi_version`. If you skip it, nothing else changes, and a skipped marker line reads `unknown`: the copy installs a placeholder that says `unknown`, so `tachi_version` is `unknown` in the `threats.md` files you write.
 
 </details>
 
