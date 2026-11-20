@@ -10,8 +10,9 @@
 # Version: 1.5
 #
 # This file is the single source of the threats.md schema version: the output
-# template, the output-schemas reference, the SARIF specification and the SARIF
-# generator all take their version from it (Feature 391). It had stayed at 1.1
+# template, the output-schemas reference and the SARIF specification take their
+# version from it (Feature 391). The SARIF generator reads the input's own
+# schema_version first and falls back to this file. This file had stayed at 1.1
 # while the template and the reference documents moved on to 1.2 and 1.4. 1.5
 # reconciles them, declares the frontmatter keys that producers already wrote
 # (run_id, baseline, coverage_gate, has_attack_chains, has_agentic_patterns,
