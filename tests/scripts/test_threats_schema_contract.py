@@ -1,6 +1,8 @@
 """Contract tests for threats.md schema 1.5 and the tachi_version stamp.
 
-Feature 391, Part B2 (plan AD-7 and CF-21; tasks.md T038a and T039, test part).
+Feature 391, Part B2 (plan AD-7 and CF-21; tasks.md T038a and T039, test part),
+and X-6 of the P0 architect checkpoint (``test-results/p0-architect-checkpoint.md``,
+section 3 row 6) for the SARIF generator's version sourcing.
 
 Schema 1.5 (``schemas/output.yaml``, the single source of the version) declares
 the frontmatter keys that producers already wrote and adds one optional key,
@@ -8,7 +10,7 @@ the frontmatter keys that producers already wrote and adds one optional key,
 key. It runs as Step 2.6 of ``/tachi.threat-model``, after the populator re-assert
 and before the results are reported. The model never writes the field.
 
-Six groups, one per T039 case:
+Seven groups, the first six one per T039 case:
 
   1. Parsers unchanged. ``tachi_parsers`` and ``extract-report-data.py`` behave
      the same on a 1.4 input and on that input as 1.5 plus ``tachi_version``.
@@ -21,6 +23,10 @@ Six groups, one per T039 case:
   5. Step 2.6 is in ``tachi.threat-model.md`` between Step 2.5 and Step 3.
   6. The consumer guidance is in ``output-schemas.md`` and in the comments of
      ``output.yaml``.
+  7. The SARIF generator's version sourcing (X-6). ``generate-threats-sarif.py``
+     writes the input's own ``schema_version`` as ``semanticVersion`` (standard
+     and code-fenced frontmatter) and falls back to ``output.yaml`` when the input
+     declares none.
 
 Exit codes pinned here are the implemented ones, the house convention: 0 stamped,
 unchanged or ``--check`` clean; 1 ``--check`` only, when the file would change;
@@ -28,13 +34,15 @@ unchanged or ``--check`` clean; 1 ``--check`` only, when the file would change;
 round; T040 reconciles it.
 
 Hygiene: every run happens in a pytest temporary directory. The repository tree is
-only read. The stamp and the extractor run with ``cwd`` and every output under
-``tmp_path``, and subprocesses get ``-B`` so no bytecode lands beside the scripts.
+only read. The stamp, the extractor and the SARIF generator run with ``cwd`` and every
+output under ``tmp_path``, and subprocesses get ``-B`` so no bytecode lands beside the
+scripts. No tracked SARIF is regenerated.
 Needs pytest and PyYAML (``tests/scripts/conftest.py`` already requires both).
 Python 3.9 syntax throughout.
 
 Inputs, for the CI path filter: ``scripts/stamp-tachi-version.py``,
 ``scripts/tachi_parsers.py``, ``scripts/extract-report-data.py``,
+``scripts/generate-threats-sarif.py`` (which also loads ``scripts/sarif_common.py``),
 ``schemas/output.yaml``, ``templates/tachi/output-schemas/threats.md``,
 ``.claude/skills/tachi-orchestration/references/output-schemas.md``,
 ``.claude/skills/tachi-orchestration/references/sarif-specification.md`` and
@@ -64,6 +72,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 STAMP_SCRIPT = SCRIPTS_DIR / "stamp-tachi-version.py"
 EXTRACT_REPORT_DATA = SCRIPTS_DIR / "extract-report-data.py"
+SARIF_GENERATOR = SCRIPTS_DIR / "generate-threats-sarif.py"
 OUTPUT_YAML = REPO_ROOT / "schemas" / "output.yaml"
 TEMPLATE_MD = REPO_ROOT / "templates" / "tachi" / "output-schemas" / "threats.md"
 REPORT_TEMPLATE_DIR = REPO_ROOT / "templates" / "tachi" / "security-report"
@@ -1167,3 +1176,73 @@ def test_the_two_guidance_texts_point_at_each_other():
     assert pointer, "the output.yaml guidance comment no longer says where the same text lives"
     assert (REPO_ROOT / pointer.group(1)).resolve() == OUTPUT_SCHEMAS_MD.resolve()
     assert "schemas/output.yaml" in read_text(OUTPUT_SCHEMAS_MD)
+
+
+# =============================================================================
+# Case 7. The SARIF generator takes semanticVersion from the input first
+# =============================================================================
+
+# X-6 of the P0 architect checkpoint. ``generate-threats-sarif.py`` writes the SARIF's
+# ``runs[0].tool.driver.semanticVersion`` from the ``schema_version`` the input's own
+# frontmatter declares, so a regenerated SARIF agrees with the file it came from. Only when the
+# input declares none does it use the version ``schemas/output.yaml`` declares. The three cases
+# below pin that order. Each runs the real script (its ``main``) as a subprocess on a file under
+# ``tmp_path`` and reads the SARIF it writes there: nothing under the repository is written.
+
+# Not the version output.yaml declares (each case that relies on that asserts it), so a SARIF
+# that says 1.4 can only have taken it from the input.
+DECLARED_VERSION = "1.4"
+# The two headings ``parse_findings`` needs. The version does not depend on a finding: no rows.
+SARIF_SECTIONS = ["", "## 3. STRIDE Threat Tables", "", "## 5. Coverage Matrix"]
+# BODY ends in a quoted example frontmatter that says schema_version 1.2. It is not the input's
+# declaration, so a reader that took the version from anywhere but the frontmatter would return it.
+SARIF_BODY = BODY + SARIF_SECTIONS
+
+
+def sarif_semantic_version(tmp_path, data):
+    """``semanticVersion`` of the SARIF the real generator writes for ``data``, a threats.md as bytes."""
+    threats = fresh_threats(tmp_path, data)
+    sarif = tmp_path / "threats.sarif"
+    cmd = [sys.executable, "-I", "-B", str(SARIF_GENERATOR), str(threats), str(sarif)]
+    proc = subprocess.run(cmd, cwd=str(tmp_path), **RUN)
+    assert proc.returncode == 0, "generate-threats-sarif.py exited %s:\n%s" % (proc.returncode, proc.stderr)
+    runs = json.loads(sarif.read_text(encoding="utf-8"))["runs"]
+    assert len(runs) == 1
+    return runs[0]["tool"]["driver"]["semanticVersion"]
+
+
+def test_sarif_semantic_version_is_the_inputs_declared_schema_version(tmp_path, version):
+    """An input declaring ``schema_version`` 1.4 gives ``semanticVersion`` 1.4, not output.yaml's."""
+    assert DECLARED_VERSION != version, "the declared version must differ from output.yaml's"
+    frontmatter = ['schema_version: "%s"' % DECLARED_VERSION] + FM_FULL[1:]
+    found = sarif_semantic_version(tmp_path, make_threats(frontmatter, body=SARIF_BODY))
+    assert found == DECLARED_VERSION, "semanticVersion is %r; the input declares %r and output.yaml %r" % (
+        found, DECLARED_VERSION, version)
+
+
+def test_sarif_semantic_version_falls_back_to_output_yaml_without_a_declaration(tmp_path, version):
+    """An input with no ``schema_version`` gives the version ``schemas/output.yaml`` declares.
+
+    ``version`` is parsed from output.yaml (the ``version`` fixture), never written here, so the
+    case follows a bump of the schema. The body's quoted example frontmatter is not a declaration.
+    """
+    assert not any(line.startswith("schema_version") for line in FM_BLOCK_LAST)
+    assert any(line.startswith("schema_version") for line in SARIF_BODY), "the body lost its look-alike line"
+    found = sarif_semantic_version(tmp_path, make_threats(FM_BLOCK_LAST, body=SARIF_BODY))
+    assert found == version, "semanticVersion is %r; the input declares none, so output.yaml's %r" % (
+        found, version)
+
+
+def test_sarif_semantic_version_is_read_from_fenced_frontmatter(tmp_path, version):
+    """The code-fenced form (a ``---`` block inside a ``yaml`` fence) is honoured as in the first case."""
+    assert DECLARED_VERSION != version, "the declared version must differ from output.yaml's"
+    frontmatter = ['schema_version: "%s"' % DECLARED_VERSION] + FM_FULL[1:]
+    data = make_threats(frontmatter, fenced=True, body=SARIF_BODY)
+    text = data.decode("utf-8")
+    # The input really is the fenced shape, and the reader the generator uses finds the declaration in it.
+    reader_sees = parser_frontmatter_text(text)
+    assert not text.startswith("---"), "a fenced input does not open with the frontmatter itself"
+    assert reader_sees and 'schema_version: "%s"' % DECLARED_VERSION in reader_sees
+    found = sarif_semantic_version(tmp_path, data)
+    assert found == DECLARED_VERSION, "semanticVersion is %r; the fenced input declares %r and output.yaml %r" % (
+        found, DECLARED_VERSION, version)
