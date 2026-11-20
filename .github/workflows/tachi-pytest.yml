@@ -32,11 +32,13 @@
 # Python >= 3.9 (`pyproject.toml` declares `requires-python = ">=3.9"`; stock
 # macOS ships 3.9.6), but the matrix above runs 3.11, where a 3.10+ API would
 # pass unnoticed. The `py39-floor` job re-runs the F-391 modules under
-# `setup-python` 3.9 on ubuntu-latest only: the floor is an interpreter
-# question, so the macOS bash-3.2 leg adds nothing. It is a job of its own, not
+# `setup-python` 3.9 on Linux only: the floor is an interpreter question, so the
+# macOS bash-3.2 leg adds nothing. It is a job of its own, not
 # `if: matrix.os == 'ubuntu-latest'` steps, so it runs in parallel, still
-# reports when the 3.11 suite fails, and cannot be moved off ubuntu-latest by a
-# matrix edit. Its module list is a subset of the matrix list below.
+# reports when the 3.11 suite fails, and sits on an image pinned apart from the
+# matrix's `ubuntu-latest` (no matrix edit moves it). That image is
+# `ubuntu-24.04`, not `ubuntu-latest`; the reason is on the job's `runs-on`.
+# Its module list is a subset of the matrix list below.
 #
 # Path filter (NFR-005 alignment + scope discipline): the workflow ONLY
 # fires when files in the F-248 + F-256 hardening surfaces change. Pure
@@ -293,9 +295,21 @@ jobs:
             -v --timeout=1080
 
   py39-floor:
-    name: pytest Python 3.9 floor — ubuntu-latest
-    # Pinned to ubuntu-latest, no OS matrix (see "Python floor" in the header).
-    runs-on: ubuntu-latest
+    name: pytest Python 3.9 floor — ubuntu-24.04
+    # Pinned to ubuntu-24.04, not ubuntu-latest, and no OS matrix (see "Python
+    # floor" in the header). `name:` above keeps its old text; `runs-on` is the
+    # image. `ubuntu-latest` moved to Ubuntu 26.04 (rollout 2026-10-19 to
+    # 2026-11-19, actions/runner-images#14748), and setup-python installs 3.9
+    # from the actions/python-versions manifest, which has no 3.9 build for
+    # 26.04 (3.9 is end-of-life, so none is coming): "The version '3.9' with
+    # architecture 'x64' was not found for Ubuntu 26.04". 22.04 and 24.04 both
+    # carry 3.9.25 x64 there, but ubuntu-22.04 retires on 2027-04-17
+    # (actions/runner-images#14254), so 24.04.
+    # Expiry: when GitHub retires ubuntu-24.04 (no date announced; it keeps the
+    # two latest stable Ubuntu images, so expect 2028 or later). The job then
+    # fails when scheduled. Install 3.9 without the manifest (a `python:3.9`
+    # container or uv) or raise the floor; never go back to `ubuntu-latest`.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Checkout repository
