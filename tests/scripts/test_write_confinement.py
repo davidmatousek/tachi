@@ -23,6 +23,12 @@ What each group proves:
   ``mmdc`` (no Chromium); the PNGs land under ``{out}/attack-trees/`` and
   ``{out}/attack-chains/``. No CI workflow installs ``mmdc``, so this stub is
   the only CI evidence for W17 and W18. Typst-gated for the compile.
+- X-1 (AD-9): ``TACHI_MMDC_PUPPETEER_CONFIG``, at each of the two mmdc call sites
+  (attack trees, attack chains), through the real extractor and the same stub,
+  which records what it was called with. Unset, mmdc gets no ``-p``; an absolute
+  path to a regular file reaches it as ``-p <path>``; an empty, relative, missing
+  or directory value stops the run with an error that names the variable, before
+  mmdc starts and before anything is written. Needs no Typst.
 - legacy mode (``--output``) still writes next to the artifacts, as before.
 - AR-14: a stock ``python3 scripts/<entry> --help`` of each of the three
   installed scripts that import ``tachi_parsers`` leaves no bytecode cache, in
@@ -44,7 +50,7 @@ as macOS's ``/usr/bin/python3`` keeps its cache outside the project.
 
 Layout under ``tmp_path`` (``harness/`` is excluded from every snapshot)::
 
-    harness/   stub mmdc and its canned PNG
+    harness/   stub mmdc, its canned PNG and one file per call it received
     systmp/    $TMPDIR of every child process
     project/   working directory and Typst root
       scripts/ schemas/ templates/tachi/security-report/   installed copies
@@ -83,6 +89,8 @@ INSTALLED_SCRIPTS = ("extract-report-data.py", "tachi_parsers.py")
 
 CUSTOM_FOOTER = "T015 custom footer"
 SUBPROCESS_TIMEOUT = 300
+# The environment variable that forwards a puppeteer config file to mmdc (AD-9).
+PUPPETEER_ENV = "TACHI_MMDC_PUPPETEER_CONFIG"
 
 Snapshot = Dict[str, Tuple[str, str]]
 
@@ -207,6 +215,9 @@ def _pdf_text(pdf: Path) -> Optional[str]:
 
 MMDC_STUB = """#!/bin/sh
 # Stub mmdc (T015): write the canned PNG to the path after -o. No Chromium.
+# X-1: first record the arguments, one per line, in a file of their own, so a
+# test can read back what the extractor passed (the optional -p <config>).
+printf '%s\\n' "$@" > {calls}/$$
 out=
 while [ "$#" -gt 0 ]; do
   if [ "$1" = "-o" ]; then out=$2; fi
@@ -294,8 +305,9 @@ class Project:
         self.pdf = self.out / "security-report.pdf"
         self.canned_png = self.harness / "canned.png"
         self.bin = self.harness / "bin"
+        self.calls_dir = self.harness / "mmdc-calls"
 
-        for directory in (self.cwd, self.harness, self.systmp, self.bin, self.target):
+        for directory in (self.cwd, self.harness, self.systmp, self.bin, self.calls_dir, self.target):
             directory.mkdir(parents=True, exist_ok=True)
         if create_out:
             self.out.mkdir(parents=True, exist_ok=True)
@@ -314,7 +326,12 @@ class Project:
         # Stub mmdc, used only by runs that ask for it.
         self.canned_png.write_bytes(_png_bytes())
         stub = self.bin / "mmdc"
-        stub.write_text(MMDC_STUB.format(png=shlex.quote(str(self.canned_png))), encoding="utf-8")
+        stub.write_text(
+            MMDC_STUB.format(
+                png=shlex.quote(str(self.canned_png)), calls=shlex.quote(str(self.calls_dir))
+            ),
+            encoding="utf-8",
+        )
         stub.chmod(0o755)
 
     # -- fixtures -----------------------------------------------------------
@@ -324,11 +341,19 @@ class Project:
         for source in sorted(FIXTURE_DIR.glob("*.md")):
             shutil.copy2(str(source), str(self.target / source.name))
         if trees_and_chains:
-            (self.target / "attack-trees").mkdir()
-            (self.target / "attack-trees" / "t-1-attack-tree.md").write_text(
-                ATTACK_TREE_MD, encoding="utf-8"
-            )
-            (self.target / "attack-chains.md").write_text(ATTACK_CHAINS_MD, encoding="utf-8")
+            self.add_attack_tree()
+            self.add_attack_chain()
+
+    def add_attack_tree(self) -> None:
+        """One High-severity attack tree (T-1): the extractor renders it through mmdc."""
+        (self.target / "attack-trees").mkdir()
+        (self.target / "attack-trees" / "t-1-attack-tree.md").write_text(
+            ATTACK_TREE_MD, encoding="utf-8"
+        )
+
+    def add_attack_chain(self) -> None:
+        """One surfaced attack chain (CHAIN-001): the extractor renders it through mmdc."""
+        (self.target / "attack-chains.md").write_text(ATTACK_CHAINS_MD, encoding="utf-8")
 
     def add_custom_config(self) -> bytes:
         """Write a custom report-config.typ into the target (the shipped default plus a footer)."""
@@ -347,7 +372,9 @@ class Project:
     def rel(self, path: Path) -> str:
         return os.path.relpath(str(path), str(self.cwd))
 
-    def _run(self, argv: List[str], stub_mmdc: bool = False) -> "subprocess.CompletedProcess":
+    def _run(
+        self, argv: List[str], stub_mmdc: bool = False, puppeteer_config: Optional[str] = None
+    ) -> "subprocess.CompletedProcess":
         env = dict(os.environ)
         env.update(
             {
@@ -356,7 +383,9 @@ class Project:
             }
         )
         env.pop("PYTHONDONTWRITEBYTECODE", None)  # stock run: a developer's setting must not mask a regression (AR-14)
-        env.pop("TACHI_MMDC_PUPPETEER_CONFIG", None)  # a developer's sandbox config must not leak in
+        env.pop(PUPPETEER_ENV, None)  # a developer's sandbox config must not leak in
+        if puppeteer_config is not None:
+            env[PUPPETEER_ENV] = puppeteer_config  # "" is a value too: set but empty (X-1)
         if stub_mmdc:
             env["PATH"] = str(self.bin) + os.pathsep + env.get("PATH", "")
         return subprocess.run(
@@ -370,15 +399,23 @@ class Project:
         )
 
     def extract(
-        self, *extra: str, stub_mmdc: bool = False, build: Optional[str] = None
+        self,
+        *extra: str,
+        stub_mmdc: bool = False,
+        build: Optional[str] = None,
+        puppeteer_config: Optional[str] = None,
     ) -> "subprocess.CompletedProcess":
-        """``python3 scripts/extract-report-data.py --target-dir T --build-dir B``."""
+        """``python3 scripts/extract-report-data.py --target-dir T --build-dir B``.
+
+        ``puppeteer_config`` is the value of ``TACHI_MMDC_PUPPETEER_CONFIG`` for
+        this run; None leaves the variable unset.
+        """
         argv = [
             sys.executable, "scripts/extract-report-data.py",
             "--target-dir", self.rel(self.target),
             "--build-dir", build if build is not None else self.rel(self.build),
         ] + list(extra)
-        return self._run(argv, stub_mmdc=stub_mmdc)
+        return self._run(argv, stub_mmdc=stub_mmdc, puppeteer_config=puppeteer_config)
 
     def extract_legacy(self, output: Path, *extra: str) -> "subprocess.CompletedProcess":
         """The pre-391 form: ``--output FILE --template-dir DIR``."""
@@ -409,6 +446,16 @@ class Project:
         return self._run(argv)
 
     # -- observation ------------------------------------------------------------
+
+    def mmdc_calls(self) -> List[List[str]]:
+        """The arguments of every run of the stub mmdc so far, in no set order.
+
+        Empty when mmdc never started: a run that stops before a render leaves
+        the directory empty.
+        """
+        return [
+            path.read_text(encoding="utf-8").splitlines() for path in sorted(self.calls_dir.iterdir())
+        ]
 
     def snapshot(self) -> Snapshot:
         return _snapshot(self.root, skip=("harness",))
@@ -768,6 +815,110 @@ def test_attack_images_rendered_under_out_compile_and_the_run_stays_confined(tmp
     p.assert_untouched(before, after, p.templates, "the installed templates")
     assert p.pdf.is_file() and not p.build.exists()
     assert (p.out / TREE_PNG).is_file() and (p.out / CHAIN_PNG).is_file()
+
+
+# =============================================================================
+# X-1 (AD-9): TACHI_MMDC_PUPPETEER_CONFIG reaches both mmdc call sites, or stops the run
+# =============================================================================
+
+# The two production code paths that spawn mmdc. Each is reached through the real
+# extractor CLI by a project that needs only that one, and a recorded call is told
+# apart by the output name the extractor hands mmdc:
+#   trees   render_mermaid_to_png  -> _render_single        (one attack tree)
+#   chains  _render_chain_diagrams -> _render_chain_single  (one surfaced chain)
+SITES = ("trees", "chains")
+SITE_OUTPUT = {"trees": "t-1.png", "chains": "chain-001.png"}
+
+# The four values AD-9 refuses. A traceback echoes the source line of the call
+# site, and that line names the variable in a comment, so the error is looked for
+# on an unindented line (the exception message), not anywhere in stderr.
+BAD_PUPPETEER_VALUES = ("empty", "relative", "missing", "directory")
+NAMES_PUPPETEER_ENV = re.compile(r"^\S.*\b%s\b" % re.escape(PUPPETEER_ENV), re.M)
+
+
+def _site_project(tmp_path: Path, site: str) -> Project:
+    """A project whose run renders through ``site`` and through no other mmdc call site;
+    ``out/`` does not exist yet (the extractor must create it)."""
+    p = Project(tmp_path, create_out=False)
+    p.add_artifacts()
+    if site == "trees":
+        p.add_attack_tree()
+    else:
+        p.add_attack_chain()
+    return p
+
+
+def _the_one_call(p: Project, site: str) -> List[str]:
+    """The stub mmdc's only call, checked to have come from ``site``."""
+    calls = p.mmdc_calls()
+    assert len(calls) == 1, "expected one mmdc call, from the %s site: %s" % (site, calls)
+    argv = calls[0]
+    assert "-o" in argv, argv
+    output = os.path.basename(argv[argv.index("-o") + 1])
+    assert output == SITE_OUTPUT[site], "the call did not come from the %s site: %s" % (site, argv)
+    return argv
+
+
+def _bad_puppeteer_value(p: Project, case: str) -> str:
+    """Prepare ``case`` and return the value to put in the variable.
+
+    The relative value names a real regular file that resolves from the working
+    directory, so only the absolute-path rule can refuse it. The other three are
+    absolute: nothing at the path, a directory at it, or an empty string.
+    """
+    if case == "empty":
+        return ""
+    if case == "relative":
+        (p.cwd / "puppeteer.json").write_text("{}", encoding="utf-8")
+        return "puppeteer.json"
+    if case == "missing":
+        return str(p.harness / "no-such-puppeteer.json")
+    directory = p.harness / "puppeteer-dir"
+    directory.mkdir()
+    return str(directory)
+
+
+@pytest.mark.parametrize("site", SITES)
+def test_mmdc_gets_no_puppeteer_flag_when_the_variable_is_unset(tmp_path: Path, site: str):
+    """No variable, no ``-p``. The run has to reach the call site for this to mean anything."""
+    p = _site_project(tmp_path, site)
+
+    proc = p.extract(stub_mmdc=True)
+    assert proc.returncode == 0, _describe(proc)
+    argv = _the_one_call(p, site)
+    assert "-p" not in argv, argv
+
+
+@pytest.mark.parametrize("site", SITES)
+def test_mmdc_gets_an_absolute_puppeteer_config_file_as_dash_p(tmp_path: Path, site: str):
+    """An absolute path to a regular file reaches mmdc as ``-p <path>``, verbatim, once."""
+    p = _site_project(tmp_path, site)
+    config = p.harness / "puppeteer-no-sandbox.json"
+    config.write_text('{"args": ["--no-sandbox"]}', encoding="utf-8")
+
+    proc = p.extract(stub_mmdc=True, puppeteer_config=str(config))
+    assert proc.returncode == 0, _describe(proc)
+    argv = _the_one_call(p, site)
+    assert argv.count("-p") == 1, argv
+    assert argv[argv.index("-p") + 1] == str(config), argv
+
+
+@pytest.mark.parametrize("case", BAD_PUPPETEER_VALUES)
+@pytest.mark.parametrize("site", SITES)
+def test_a_bad_puppeteer_config_stops_the_run_before_mmdc_starts(tmp_path: Path, site: str, case: str):
+    """Anything but an absolute path to a regular file fails the run loudly, naming
+    the variable, with mmdc never started and nothing written (``out/`` is never
+    created). The stub is on PATH, so the mmdc-missing preflight cannot be what
+    stops the run."""
+    p = _site_project(tmp_path, site)
+    value = _bad_puppeteer_value(p, case)
+    before = p.snapshot()
+
+    proc = p.extract(stub_mmdc=True, puppeteer_config=value)
+    assert proc.returncode != 0, _describe(proc)
+    assert NAMES_PUPPETEER_ENV.search(proc.stderr), "the error must name the variable: %s" % _describe(proc)
+    assert p.mmdc_calls() == [], "mmdc must not start: %s" % _describe(proc)
+    assert p.snapshot() == before, "a refused run must not write anything"
 
 
 # =============================================================================

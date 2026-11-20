@@ -168,7 +168,7 @@ The Effort column reads tasks.md v1.1's figure → the team-lead's central re-co
 | T035 | US4 | B1 | SBE-B1 + `security-analyst` (leakage review) | part-b | 0.20 → 0.25 | After T051 and T021. TW-B4 governs |
 | T041 | Polish | — | `tester` | records | 0.10 | After T016 and T021 |
 | T042 | Polish | — | `security-analyst` | records | 0.05 | After T021 |
-| T043 | Polish | — | `tester` | scratch clones of both tips | 0.15 | After T035 and T021. Includes the 18 `tachi-pytest.yml` modules, the new modules on 3.11 and 3.9, and `test_coverage_attestation.py` |
+| T043 | Polish | — | `tester` | scratch clones of both tips | 0.15 | After T035 and T021. Includes the `tachi-pytest.yml` modules (21 on Part A and 24 on part-b at the S1 close), the new modules on 3.11 and 3.9, and `test_coverage_attestation.py` |
 | T044 | Polish | — | `code-reviewer`, then `architect` | both | 0.15 → 0.20 | Part A first, then part-b. Fixes go to SBE-W3A (Part A), DEVOPS-R (runbook), SBE-B1 or SBE-B2 (part-b). Re-run T043 on any changed tip |
 
 ### W4 (build wave 4, S2)
@@ -403,7 +403,7 @@ python3 -m pytest tests/scripts/test_archive_run_transcripts.py tests/scripts/te
 |---|---|
 | 1 (W0) | T003's pre-state is the record |
 | 2 (W1) | • The Part A tip and the part-b tip, as above.<br>• T005: `test_gemini_request_contract.py` A1/A5, if the client was pinned.<br>• G1 also needs CI green on #392 |
-| 3 (W3) | T043, on both tips:<br>• the 18 `tachi-pytest.yml` modules, including `test_install_sh_symlink_preflight.py` and `test_install_sh_ref_restore.py`;<br>• the new modules on 3.11 and 3.9;<br>• the install-fidelity suites;<br>• the byte-identity suites against T003 (the six pre-existing reds excepted);<br>• `tests/scripts/test_coverage_attestation.py` |
+| 3 (W3) | T043, on both tips:<br>• the `tachi-pytest.yml` modules (21 on Part A and 24 on part-b at the S1 close), including `test_install_sh_symlink_preflight.py` and `test_install_sh_ref_restore.py`;<br>• the new modules on 3.11 and 3.9;<br>• the install-fidelity suites;<br>• the byte-identity suites against T003 (the six pre-existing reds excepted);<br>• `tests/scripts/test_coverage_attestation.py` |
 | 4 (W4) | Docs and release mechanics only, so no run |
 
 ---

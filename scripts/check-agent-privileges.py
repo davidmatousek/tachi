@@ -53,8 +53,12 @@ contracts/cli-contracts.md, plan AD-3 and AD-8):
                   unlisted file without frontmatter; a duplicate name; the allow-listed
                   file with planted frontmatter). Each mutated copy must gain a finding,
                   in the expected check and file, that the unmutated copy lacked; one that
-                  does not is exit 2. It runs on a drifted tree too, and is skipped only
-                  when C1-C7 hit an infrastructure error.
+                  does not is exit 2, unless that check and file is already red in the
+                  unmutated copy (reported as "already red", not a failure: the tree is red
+                  and exit 1 lists the finding). The tool is added to an agent that has a
+                  section 8 row, so a planted rowless agent cannot become the target. It
+                  runs on a drifted tree too, and is skipped only when C1-C7 hit an
+                  infrastructure error.
 
 Section 8 is parsed between ``## 8.`` and the next level-2 heading (today
 ``## Cross-references``). Tables are found by their exact header row and cells follow
@@ -67,15 +71,17 @@ Exit codes:
   2  infrastructure: matrix, runbook or section missing; a cell, frontmatter or
      ``tools:`` shape the guard cannot parse (a duplicate key, a multi-line value, an
      alias, a flow mapping); an unreadable input or a git failure; a self-test
-     mutation that failed to fail; or a bug in the guard itself
+     mutation that failed to fail (not one that is already red); or a bug in the
+     guard itself
 
 ``--json`` prints ``json.dumps(summary, sort_keys=True, indent=2)`` where the summary is
 ``{status: pass|drift|infra, roster: {agents, allowlisted, red}, drift: [{agent, check,
 expected, actual, ...}], self_test: pass|fail|skipped|null, ...}`` (data-model.md,
 GuardResult) plus ``violations`` (every finding with its check id), ``infra`` (every
-exit-2 cause) and ``bash_families`` (the families found and allowed per Bash-capable
-agent). Human output goes to stdout, infrastructure errors to stderr, both with a
-``[391]`` prefix.
+exit-2 cause), ``bash_families`` (the families found and allowed per Bash-capable
+agent) and, with ``--self-test``, ``self_test_detail`` (per mutation: id, mutation,
+expected_check, expected_file, exit_code, detected, already_red). Human output goes to
+stdout, infrastructure errors to stderr, both with a ``[391]`` prefix.
 
 Constraints: stdlib only, Python >= 3.9, no network, reads the tree and writes
 nothing outside the temp directory that --self-test uses.
@@ -166,6 +172,7 @@ class Report:
         self.infra = []      # dicts: check_id, file, message
         self.agent_files = []
         self.allowlisted = []
+        self.matrix = None   # the parsed section 8 matrix; stays None when it could not be read
         self.bash = {}       # agent name -> {"found": [...], "allowed": [...]}
         self.counts = {"agents": 0, "commands": 0, "paths": 0, "bash_agents": 0}
 
@@ -998,6 +1005,7 @@ def run_checks(ctx):
     except InfraError as exc:
         rep.broken("MATRIX", ctx.matrix_rel, str(exc))
         return rep
+    rep.matrix = matrix
     candidates = check_roster(ctx, matrix, rep)
     rep.agent_files = candidates
     rep.counts["agents"] = len(candidates)
@@ -1056,8 +1064,20 @@ def run_self_test(ctx):
     """C8: five mutations of a temp copy, each of which must add a finding in the expected check.
 
     A mutation counts only for a finding that the unmutated copy did not already have, so the
-    proof holds on a drifted tree too. Returns (results, problem); problem is a message when the
-    self-test could not run.
+    proof holds on a drifted tree too. Two rules keep a drifted tree from being misread as a blind
+    guard (exit 2 instead of exit 1):
+
+    - M1 mutates an agent that has a section 8 row. C2 compares an agent with its row, so it can
+      never fire for a rowless agent, whatever path that agent sorts to (``Evil.md``, ``0-x.md``,
+      ``_TACHI_...``).
+    - A mutation whose expected check and file is already red in the unmutated copy (a planted
+      unlisted file, frontmatter already in the allow-listed document) cannot add a finding
+      there. When its mutated copy is still red there it is reported as ``already_red``, which is
+      not a failure: the tree is red and exit 1 lists the finding. It cannot hide a blind guard
+      on a green tree, because the unmutated copy of a green tree has no finding to be already
+      red on; a guard that stops reporting the mutated copy is still exit 2.
+
+    Returns (results, problem); problem is a message when the self-test could not run.
     """
     def copy_to(tmp):
         root = Path(tmp)
@@ -1072,10 +1092,11 @@ def run_self_test(ctx):
     if baseline.infra:
         return [], "the unmutated copy raises infrastructure errors, so the mutations prove nothing"
     known = {(f["check_id"], f["file"], f["message"]) for f in baseline.findings}
+    rows = baseline.matrix.agents   # the baseline has no infra errors, so the matrix was parsed
     target = next((af for af in sorted(baseline.agent_files, key=lambda a: a.rel)
-                   if af.name and af.tools and not _hit(baseline.findings, "C2", af.rel)), None)
+                   if af.name in rows and af.tools and not _hit(baseline.findings, "C2", af.rel)), None)
     if target is None:
-        return [], "no agent with a parsable tools: entry to mutate"
+        return [], "no agent with a section 8 row and a parsable tools: entry to mutate"
     agents = ctx.agents_rel.rstrip("/")
     allow_doc = f"{agents}/{sorted(ALLOW_LISTED_DOCS)[0]}"
     extra_tool = next(t for t in ("Bash", "Write", "Agent", "Edit", "WebFetch") if t not in target.tools)
@@ -1116,10 +1137,14 @@ def run_self_test(ctx):
         except (InfraError, OSError) as exc:
             return results, f"cannot build the mutated copy for {mid}: {exc}"
         added = [f for f in rep.findings if (f["check_id"], f["file"], f["message"]) not in known]
+        caught = _hit(added, check_id, rel) and not rep.infra
         results.append({
             "id": mid, "mutation": label, "expected_check": check_id, "expected_file": rel,
             "exit_code": 2 if rep.infra else (1 if rep.findings else 0),
-            "detected": _hit(added, check_id, rel) and not rep.infra,
+            "detected": caught,
+            # not caught means every finding here is one the unmutated copy already had: the mutated
+            # copy is red where expected and the tree was red there before, so nothing new can show
+            "already_red": not caught and not rep.infra and _hit(rep.findings, check_id, rel),
         })
     return results, None
 
@@ -1174,7 +1199,12 @@ def _human_report(rep, self_test, detail):
             out.append(f"{PREFIX} {check_id} {CHECK_LABEL[check_id]:<16} {status:<5} "
                        f"{f'{n} finding(s)' if n else extra}")
     for d in detail or []:
-        got = f"detected by {d['expected_check']}" if d["detected"] else f"NOT DETECTED (exit {d['exit_code']})"
+        if d["detected"]:
+            got = f"detected by {d['expected_check']}"
+        elif d["already_red"]:
+            got = f"already red in {d['expected_check']} (the unmutated copy has this finding)"
+        else:
+            got = f"NOT DETECTED (exit {d['exit_code']})"
         out.append(f"{PREFIX} C8 {d['id']} {d['mutation']}: {got}")
     if self_test is not None:
         out.append(f"{PREFIX} C8 {'self-test':<16} {self_test.upper()}")
@@ -1226,12 +1256,12 @@ def _run(args):
             if problem is not None:
                 rep.broken("C8", "", problem)
                 self_test, exit_code = "fail", 2
-            elif all(d["detected"] for d in detail):
-                self_test = "pass"
+            elif all(d["detected"] or d["already_red"] for d in detail):
+                self_test = "pass"   # an already-red mutation is no failure: C1-C7 report that finding (exit 1)
             else:
                 self_test, exit_code = "fail", 2
                 for d in detail:
-                    if not d["detected"]:
+                    if not (d["detected"] or d["already_red"]):
                         rep.broken("C8", d["expected_file"],
                                    f"mutation {d['id']} ({d['mutation']}) did not turn the guard red "
                                    f"in {d['expected_check']} (exit {d['exit_code']})")

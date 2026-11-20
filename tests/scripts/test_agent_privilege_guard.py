@@ -46,8 +46,12 @@ What each group proves:
   token.
 - C7 (write locations): the runbook table and matrix section 8.5 against the Writes cells,
   in both directions, and a duplicated row.
-- C8 (self-test): five mutations are detected on a clean tree and on a drifted one; a guard
-  that is blind to a check, or a tree with no mutation target, ends in exit 2.
+- C8 (self-test): five mutations are detected on a clean tree. A drifted tree stays exit 1 with
+  the self-test passing, also when the drift is an unlisted agent that sorts before every real
+  agent (M1 must pick an agent with a section 8 row) or frontmatter already in the allow-listed
+  document or a file the self-test plants itself (a mutation whose finding is already red is
+  reported as already red, not as having failed to fail). A guard that is blind to a check, or
+  a tree with no mutation target, ends in exit 2.
 - output contract: ``--json`` parses, is ``json.dumps(sort_keys=True, indent=2)`` and lists
   every violation with its check id; the human lines and the ``[391]`` prefix.
 - negative controls: a mutation helper that changes nothing fails instead of passing, the
@@ -537,6 +541,10 @@ def test_live_tree_self_test_is_green():
         "M1": "C2", "M2": "C1", "M3": "C1", "M4": "C1", "M5": "C1",
     }
     assert all(d["detected"] for d in data["self_test_detail"])
+    # a green tree has nothing to be already red on: every mutation is proven, none hides behind that
+    assert not any(d["already_red"] for d in data["self_test_detail"])
+    for d in data["self_test_detail"]:
+        assert set(d) == {"id", "mutation", "expected_check", "expected_file", "exit_code", "detected", "already_red"}
 
 
 def test_live_tree_self_test_in_human_mode_is_the_ci_step(tmp_path):
@@ -1133,18 +1141,115 @@ def test_write_location_drift_is_red(tree, mutate, wants):
 # =============================================================================
 
 
-def test_self_test_stays_valid_on_a_drifted_tree(tree):
+EVIL = f"{AGENTS}/Evil.md"  # sorts before every lower-case file name
+SELF_TEST_UNLISTED = f"{AGENTS}/_selftest-unlisted.md"  # the file the self-test's own M3 plants
+
+
+class Drifted(NamedTuple):
+    """What the self-test makes of a drifted tree.
+
+    ``wants`` are the findings the drift itself causes (exactly those checks are red).
+    ``already_red`` are the mutations whose expected finding the tree already had: they add nothing
+    new, so the guard reports them as already red (not as having failed to fail).
+    """
+
+    wants: List[Want]
+    already_red: List[str]
+
+
+def real_agent_paths(root: Path) -> List[str]:
+    """Repo-relative paths of the agent files a clean tree has: every ``.md`` bar the allow-listed one."""
+    return sorted(f"{AGENTS}/{p.name}" for p in (root / AGENTS).glob("*.md") if p.name != ALLOW_LISTED)
+
+
+def drift_the_m1_target(tree: Tree) -> Drifted:
     first = tree.check("--self-test")
     assert first.code == 0, first.show()
     target = re.search(r"added to (tachi-[\w-]+)", first.data()["self_test_detail"][0]["mutation"]).group(1)
-    add_tool(tree, target.replace("tachi-", "", 1), "WebFetch")  # drift the very agent M1 would mutate
+    stem = target.replace("tachi-", "", 1)
+    add_tool(tree, stem, "WebFetch")  # drift the very agent M1 would mutate
+    return Drifted([Want("C2", agent_path(stem), "(added ['WebFetch'], removed [])")], [])
+
+
+def plant_an_unlisted_agent_that_sorts_first(tree: Tree) -> Drifted:
+    # No section 8 row, so C2 can never fire for it: M1 must not pick it just because it sorts first.
+    assert EVIL < real_agent_paths(tree.root)[0], "Evil.md must sort before every real agent, or this proves nothing"
+    plant(tree, EVIL, agent_text("helper"))
+    return Drifted(
+        [Want("C1", EVIL, "does not start with 'tachi-'"),
+         Want("C1", EVIL, "has no row in the section 8 agents table")],
+        [],
+    )
+
+
+def plant_frontmatter_in_the_allow_listed_document(tree: Tree) -> Drifted:
+    # The document sorts before every real agent and now parses as one without a row. M5 plants the
+    # very thing that is already there, so it can add no finding: it is already red.
+    assert DOC < real_agent_paths(tree.root)[0], "the allow-listed document must sort first, or this proves nothing"
+    plant_in_doc(lambda text: text)(tree)
+    return Drifted(
+        [Want("C1", DOC, "allow-listed document has leading frontmatter"),
+         Want("C1", DOC, "agent 'tachi-planted-doc' has no row")],
+        ["M5"],
+    )
+
+
+def plant_the_file_the_self_test_plants(tree: Tree) -> Drifted:
+    plant(tree, SELF_TEST_UNLISTED, "# Not an agent and not on the allow-list\n")  # M3 writes this same file
+    return Drifted(
+        [Want("C1", SELF_TEST_UNLISTED, ".md file without frontmatter that is not on the allow-list")],
+        ["M3"],
+    )
+
+
+DRIFTED_TREES = [
+    pytest.param(drift_the_m1_target, id="tool-added-to-the-m1-target"),
+    pytest.param(plant_an_unlisted_agent_that_sorts_first, id="unlisted-agent-sorting-before-every-real-agent"),
+    pytest.param(plant_frontmatter_in_the_allow_listed_document, id="allow-listed-document-already-has-frontmatter"),
+    pytest.param(plant_the_file_the_self_test_plants, id="file-already-named-like-a-self-test-mutation"),
+]
+
+
+@pytest.mark.parametrize("drift", DRIFTED_TREES)
+def test_self_test_stays_valid_on_a_drifted_tree(tree, pristine, drift):
+    drifted = drift(tree)
     run = tree.check("--self-test")
+    # the drift is exit 1 and is listed; the self-test never turns it into exit 2 (a guard failure)
     assert run.code == 1, run.show()
     data = run.data()
-    assert data["status"] == "drift" and data["self_test"] == "pass"
-    assert all(d["detected"] for d in data["self_test_detail"])
-    assert target not in data["self_test_detail"][0]["mutation"]  # M1 moved on to a clean agent
-    assert any(v["check_id"] == "C2" for v in data["violations"])
+    assert data["status"] == "drift" and data["self_test"] == "pass", run.show()
+    assert data["infra"] == [] and run.err == "", run.show()
+    assert_wants(data, drifted.wants)
+    detail = data["self_test_detail"]
+    assert [d["id"] for d in detail] == ["M1", "M2", "M3", "M4", "M5"], run.show()
+    # every mutation is detected, or its expected finding was already red; none failed to fail
+    unproven = [d for d in detail if not d["detected"]]
+    assert [d["id"] for d in unproven] == drifted.already_red, run.show()
+    assert all(d["already_red"] for d in unproven), run.show()
+    # M1 acts on a real agent that has a section 8 row and no finding of its own
+    m1_file = detail[0]["expected_file"]
+    assert m1_file in real_agent_paths(pristine.root), run.show()
+    assert m1_file not in {v["file"].split(":")[0] for v in data["violations"]}, run.show()
+
+
+@pytest.mark.parametrize("drift", DRIFTED_TREES)
+def test_self_test_on_a_drifted_tree_reads_as_drift_in_the_human_output(tree, drift):
+    drifted = drift(tree)
+    run = tree.run("--self-test")  # the exact command the CI workflow runs
+    assert run.code == 1, run.show()
+    lines = run.out.splitlines()
+    assert f"{PREFIX} RESULT: drift (exit 1)" in lines, run.show()
+    assert any(line.startswith(f"{PREFIX} C8 self-test") and line.endswith("PASS") for line in lines), run.show()
+    assert run.err == "", run.show()  # no "ERROR C8" line sends the reviewer to the guard instead of the PR
+    mutation_lines = [line for line in lines if line.startswith(f"{PREFIX} C8 M")]
+    assert [line.split()[2] for line in mutation_lines] == ["M1", "M2", "M3", "M4", "M5"], run.show()
+    assert not any("NOT DETECTED" in line for line in mutation_lines), run.show()
+    assert [line.split()[2] for line in mutation_lines if "already red in " in line] == drifted.already_red, run.show()
+    # the drift itself is listed, one FAIL line per finding
+    for w in drifted.wants:
+        assert any(
+            line.startswith(f"{PREFIX} FAIL {w.check} {w.file}: ") and w.text in line for line in lines
+        ), f"no FAIL line for {w}\n" + run.show()
 
 
 def test_self_test_leaves_the_tree_it_checks_untouched(tree):
@@ -1161,7 +1266,10 @@ def test_self_test_is_exit_2_when_no_agent_is_left_to_mutate(tree):
     assert run.code == 2, run.show()
     data = run.data()
     assert data["status"] == "infra" and data["self_test"] == "fail" and data["self_test_detail"] == []
-    assert any(i["check_id"] == "C8" and "no agent with a parsable tools" in i["message"] for i in data["infra"])
+    assert any(
+        i["check_id"] == "C8" and "no agent with a section 8 row and a parsable tools" in i["message"]
+        for i in data["infra"]
+    )
     assert f"{PREFIX} ERROR C8" in run.err
 
 
@@ -1194,6 +1302,36 @@ def test_self_test_is_exit_2_when_a_mutation_fails_to_fail(tree, guard_module, m
     )
     for mutation_id in escaped:
         assert f"mutation {mutation_id} " in captured.err
+
+
+def test_an_already_red_mutation_does_not_hide_a_blind_check_on_a_tree_that_is_red_elsewhere(
+    tree, guard_module, monkeypatch, capsys
+):
+    # Two kinds of red on one tree. The allow-listed document already has frontmatter: M5 is already red.
+    # M1's target is red in C3 (a model drift): the guard is red on that very file, so only the check id
+    # tells "C2 was already red" (it was not) from "C2 failed to fire". A guard blind to C2 is still exit 2,
+    # and the ERROR lines name the mutation that failed to fail (M1), not the one that was already red (M5).
+    plant_in_doc(lambda text: text)(tree)
+    set_model(tree, Path(real_agent_paths(tree.root)[0]).stem, "opus")
+    real = guard_module.run_checks
+
+    def blind_to_c2(ctx):
+        report = real(ctx)
+        report.findings = [f for f in report.findings if f["check_id"] != "C2"]
+        return report
+
+    monkeypatch.setattr(guard_module, "run_checks", blind_to_c2)
+    code = guard_module.main(["--repo-root", str(tree.root), "--self-test", "--json"])
+    captured = capsys.readouterr()
+    assert code == 2, captured.out + captured.err
+    data = json.loads(captured.out)
+    assert data["status"] == "infra" and data["self_test"] == "fail"
+    detail = {d["id"]: d for d in data["self_test_detail"]}
+    assert [i for i, d in detail.items() if not d["detected"]] == ["M1", "M5"]
+    assert detail["M1"]["already_red"] is False and detail["M5"]["already_red"] is True
+    assert detail["M1"]["expected_file"] in {v["file"] for v in data["violations"]}  # red there, in C3
+    assert [i["file"] for i in data["infra"] if i["check_id"] == "C8"] == [detail["M1"]["expected_file"]]
+    assert "mutation M1 " in captured.err and "mutation M5 " not in captured.err
 
 
 # =============================================================================
