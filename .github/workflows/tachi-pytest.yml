@@ -70,9 +70,11 @@
 # builders — wired through both paths and invocation in lock-step.
 # F-391 (T037) added the installed-version marker suite
 # (`test_tachi_version_marker.py`, covering the `scripts/install.sh` marker
-# block) plus the inputs F-373's wiring did not already list
-# (`templates/tachi/VERSION`, `INSTALL_MANIFEST.md`) — wired through both paths
-# and invocation in lock-step, and through the `py39-floor` job's module list.
+# block and the README manual-install loop that writes the same marker) plus
+# the inputs F-373's wiring did not already list (`templates/tachi/VERSION`,
+# `INSTALL_MANIFEST.md`, `README.md`) — the suite extracts and runs the README
+# loop, so a README-only edit must re-run it. Wired through both paths and
+# invocation in lock-step, and through the `py39-floor` job's module list.
 # F-391 (T039) added the threats.md schema-contract suite
 # (`test_threats_schema_contract.py`: schema 1.5 declarations, the
 # `tachi_version` stamp, parsers unchanged) plus the files a traced full run
@@ -174,6 +176,7 @@ on:
       - tests/scripts/test_tachi_version_marker.py             # F-391 (T037) — installed-version marker suite (install.sh marker block)
       - templates/tachi/VERSION                                # F-391 (T037) — tracked placeholder the suite asserts on and the installer overwrites (input)
       - INSTALL_MANIFEST.md                                    # F-391 (T037) — case 7 reads the `templates/tachi/` manifest entry (input)
+      - README.md                                              # F-391 (T037/F-4) — case 8 extracts and runs the README manual-install loop (input)
       - tests/scripts/test_threats_schema_contract.py          # F-391 (T039) — threats.md schema 1.5 + tachi_version stamp contract suite
       - scripts/stamp-tachi-version.py                         # F-391 (T039) — the stamp CLI the suite runs (input)
       - schemas/output.yaml                                    # F-391 (T039) — single source of the schema version and the declared keys (input)

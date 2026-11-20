@@ -24,20 +24,27 @@ W1 cases (tasks.md T037) and the tests that carry them:
     6. `unknown` fallback             test_no_usable_version_reads_unknown
     7. manifest carries the placeholder
                                       test_manifest_entry_ships_the_placeholder
+    8. the README's manual loop writes the marker (lands with T048's marker line)
+         test_manual_loop_writes_the_describe_value       (bash, and zsh when present)
+         test_manual_loop_without_a_git_tree_reads_unknown (bash, and zsh when present)
 
 Every install is a real `scripts/install.sh` run (Bash 3.2 where the host has
 it, see `install_sh_helpers.BASH_BIN`) against a synthetic source built at test
-time. The repository itself is never installed from, and nothing reaches the
-network: the throwaway repos have no remote, so the installer's best-effort
-`git fetch --tags` fails at once.
+time. Case 8 runs README.md's manual install loop instead, as written, with only
+its `TACHI=` line pointed at that synthetic source. The repository itself is
+never installed from, and nothing reaches the network: the throwaway repos have
+no remote, so the installer's best-effort `git fetch --tags` fails at once, and
+the loop has no network step.
 
-Cases that expect the installer to have WRITTEN the marker start from a source
-whose placeholder is SENTINEL, a value no install can produce. A pass therefore
-cannot be a placeholder copied through, and the case goes red against an
-installer that never writes. Cases about skipped writes start from the real
-tracked placeholder. A marker-skipping install is the manual loop's copy step
-for the `templates/tachi/` entry (`cp -R <src>/templates/tachi/. <dst>`), built
-here directly rather than read out of the README (P0B0-10 (a)).
+Cases that expect a marker to have been WRITTEN (by the installer, or by the
+manual loop's last line) start from a source whose placeholder is SENTINEL, a
+value no install can produce. A pass therefore cannot be a placeholder copied
+through, and the case goes red against an install that never writes. Cases about
+skipped writes start from the real tracked placeholder. A marker-skipping install
+is the manual loop's copy step for the `templates/tachi/` entry
+(`cp -R <src>/templates/tachi/. <dst>`), built here directly rather than read out
+of the README (P0B0-10 (a)): since T048 the README's loop ends with the marker
+line, so the loop itself is a marker-WRITING install, and only case 8 runs it.
 
 Environment: each test runs in its own temp dir, removed afterwards with Python
 (`shutil`), under a hermetic environment: git config isolated, `$HOME` inside the
@@ -48,6 +55,7 @@ Repository inputs (the CI path anchor must list them):
     scripts/install.sh                 copied into every synthetic source
     templates/tachi/VERSION            the tracked placeholder (cases 2, 3, 7)
     INSTALL_MANIFEST.md                case 7
+    README.md                          case 8: the loop between its MANUAL INSTALL LOOP markers
     tests/scripts/install_sh_helpers.py, tests/scripts/conftest.py
                                        sandbox builders and the `tests/scripts` sys.path entry
 
@@ -58,7 +66,9 @@ Python 3.9 compatible (CI adds a 3.9 leg): no `X | Y` outside annotations, no
 from __future__ import annotations
 
 import json
+import os
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -67,6 +77,7 @@ from pathlib import Path
 import pytest
 
 from install_sh_helpers import (
+    BASH_BIN,
     DEFAULT_MANIFEST_ENTRIES,
     GIT_ISOLATION_ENV,
     build_project_tree,
@@ -80,10 +91,15 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 VERSION_REL = "templates/tachi/VERSION"
 VERSION_PATH = REPO_ROOT / VERSION_REL
 MANIFEST_PATH = REPO_ROOT / "INSTALL_MANIFEST.md"
+README_PATH = REPO_ROOT / "README.md"
 
 # Same markers as install.sh's parse_manifest (string equality, not a regex).
 MANIFEST_BEGIN = "<!-- BEGIN MANIFEST -->"
 MANIFEST_END = "<!-- END MANIFEST -->"
+
+# The lines that fence the manual install loop in README.md (case 8).
+LOOP_BEGIN_MARKER = "<!-- BEGIN MANUAL INSTALL LOOP -->"
+LOOP_END_MARKER = "<!-- END MANUAL INSTALL LOOP -->"
 
 # The tracked placeholder, as contracts/version-marker.md fixes it.
 PLACEHOLDER = "tachi_version: unknown\n"
@@ -219,6 +235,79 @@ def _install_templates_without_marker_line(source: Path, project: Path) -> None:
         text=True,
     )
     assert proc.returncode == 0, proc.stderr
+
+
+def _readme_loop_script(tachi: Path) -> str:
+    """README.md's manual install loop as runnable shell, its `TACHI=` line pointed at `tachi`.
+
+    Extracted the way test_install_manifest_completeness.py extracts it: the lines between the
+    one BEGIN/END MANUAL INSTALL LOOP marker pair, without the ```bash fences, and with the first
+    line (`TACHI=~/Projects/tachi`) rewritten to the synthetic source. Every other line, the
+    marker line included, runs as written.
+    """
+    lines = README_PATH.read_text(encoding="utf-8").split("\n")
+    assert lines.count(LOOP_BEGIN_MARKER) == 1 and lines.count(LOOP_END_MARKER) == 1, (
+        f"expected exactly one {LOOP_BEGIN_MARKER!r} / {LOOP_END_MARKER!r} pair in README.md"
+    )
+    block = lines[lines.index(LOOP_BEGIN_MARKER) + 1 : lines.index(LOOP_END_MARKER)]
+    while block and block[0].strip() == "":
+        block.pop(0)
+    while block and block[-1].strip() == "":
+        block.pop()
+    assert len(block) >= 2 and block[0].strip() == "```bash" and block[-1].strip() == "```", (
+        f"expected the loop block to be one ```bash fence, got {block[:1]!r} .. {block[-1:]!r}"
+    )
+    script = block[1:-1]
+    assert script and script[0].startswith("TACHI="), (
+        f"expected the loop's first line to set TACHI=, got {script[:1]!r}"
+    )
+    script[0] = f"TACHI={shlex.quote(str(tachi))}"
+    return "\n".join(script)
+
+
+def _run_manual_loop(shell: str, script: str, project: Path) -> subprocess.CompletedProcess:
+    """Run the loop in `project`: under the pinned system bash, or under interactive zsh.
+
+    The two ways test_install_manifest_completeness.py runs it: `bash -c <script>`, and `zsh -f -i`
+    with the script on stdin (interactive zsh has no comment syntax and expands history). The
+    environment is the sandbox's, so git is isolated and capped at the temp dir.
+    """
+    env = dict(os.environ)
+    env["LC_ALL"] = "C"
+    if shell == "bash":
+        return subprocess.run(
+            [BASH_BIN, "-c", script],
+            cwd=str(project),
+            env=env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    assert shell == "zsh", f"unknown shell {shell!r}"
+    return subprocess.run(
+        ["zsh", "-f", "-i"],
+        input=script,
+        cwd=str(project),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
+# The shells the README block is run under. zsh is skipped where it is not installed (ubuntu
+# runners may lack it), like the manual-loop cases in test_install_manifest_completeness.py.
+_SHELLS = [
+    pytest.param("bash", id="bash"),
+    pytest.param(
+        "zsh",
+        id="zsh",
+        marks=pytest.mark.skipif(
+            shutil.which("zsh") is None, reason="zsh not on PATH (ubuntu runners may lack it)"
+        ),
+    ),
+]
 
 
 def _assert_no_git_tree(source: Path) -> None:
@@ -503,4 +592,61 @@ def test_manifest_entry_ships_the_placeholder():
     assert _tracked_placeholder() == PLACEHOLDER
 
 
-# README manual-loop write case: lands here after T048 adds the loop's marker line on part-b (red before).
+# ---------------------------------------------------------------------------
+# Case 8: the README's manual loop writes the marker (T048's last line)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("shell", _SHELLS)
+def test_manual_loop_writes_the_describe_value(sandbox, shell):
+    """README.md's loop, run as written, ends by writing its source clone's describe value.
+
+    The source's placeholder is SENTINEL, so the value can only have come from the loop's last
+    line: a loop without it leaves SENTINEL behind. The clone is two commits past a lightweight
+    tag and has an uncommitted edit, so a last line that dropped `--tags` or `--dirty` would name
+    another value.
+    """
+    source = _build_tagged_source(sandbox / "tachi-src", placeholder=SENTINEL, commits_after_tag=2)
+    tracked = source / "AFTER_TAG_1.txt"
+    tracked.write_text(
+        tracked.read_text(encoding="utf-8") + "an edit that is never committed\n", encoding="utf-8"
+    )
+    project = build_project_tree(sandbox / "project")
+    expected = _describe(source)
+    assert re.fullmatch(_DESCRIBE_PAST_TAG + "-dirty", expected), f"setup: unexpected value {expected!r}"
+
+    result = _run_manual_loop(shell, _readme_loop_script(source), project)
+
+    assert result.returncode == 0, (
+        f"the README manual loop ({shell}) exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    assert _read_marker(project) == _marker_line(expected), (
+        f"the README's manual loop did not write the describe value: its last line must write {VERSION_REL}"
+    )
+
+
+@pytest.mark.parametrize("shell", _SHELLS)
+def test_manual_loop_without_a_git_tree_reads_unknown(sandbox, shell):
+    """A source that git cannot describe reads `unknown`; the loop has no `-release-manifest` tier.
+
+    `install.sh` falls back to `<release manifest ".">-release-manifest` first (case 5). The loop's
+    one line does not, and README.md says `unknown` "when git cannot describe `$TACHI`". The source
+    carries a release manifest on purpose: a loop that grew that tier would read
+    `7.6.5-release-manifest` here. SENTINEL as the placeholder, so the `unknown` is what the loop
+    wrote and not what it copied.
+    """
+    source = _build_source(sandbox / "tachi-src", placeholder=SENTINEL)
+    _write_release_manifest(source, {".": "7.6.5"})
+    _assert_no_git_tree(source)
+    project = build_project_tree(sandbox / "project")
+
+    result = _run_manual_loop(shell, _readme_loop_script(source), project)
+
+    assert result.returncode == 0, (
+        f"the README manual loop ({shell}) exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    assert _read_marker(project) == PLACEHOLDER, (
+        f"the README's manual loop did not fall back to `unknown`: its last line must write {VERSION_REL}"
+    )
