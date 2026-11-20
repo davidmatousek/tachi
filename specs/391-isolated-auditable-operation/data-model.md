@@ -6,7 +6,7 @@ All entities are files or document sections; there is no database. Field names b
 | Field | Type | Rule |
 |---|---|---|
 | `tachi_version` | string, one line `tachi_version: <value>` | Tracked placeholder value `unknown`. At install `<value>` = `git describe --tags --always --dirty` of the source clone after any `--version` checkout; `<manifest ".">-release-manifest` when no git tree (labelled, never a describe string); else `unknown`. Never SemVer `+` build metadata. |
-Writers: `install.sh` (removes any existing marker before the copy loop; writes after it, inside the containment and symlink guards), the README manual-install loop (same line after its copy). Every copy path resets the value to `unknown` because the placeholder is tracked. Reader: `stamp-tachi-version.py` (Step 2.6 of `/tachi.threat-model`). Residual: a pre-391 installer used to downgrade cannot reset the marker.
+Writers: `install.sh` (removes any existing marker before the copy loop; writes after it, inside the containment and symlink guards), the README manual-install loop (same line after its copy). Every copy path resets the value to `unknown` because the placeholder is tracked. Readers: `stamp-tachi-version.py` (Step 2.6 of `/tachi.threat-model`) and `archive-run-transcripts.py` (P0B0-6). Residual: a pre-391 installer used to downgrade cannot reset the marker.
 
 ## ThreatsFrontmatter (`threats.md`, schema 1.5) — Part B2
 Declared keys after reconciliation: `schema_version` ("1.5"), `date`, `input_format`, `classification` ("confidential"), plus the de-facto keys documented: `run_id`, `baseline`, `coverage_gate`, `has_attack_chains`, `has_agentic_patterns`, `has_source_attribution`, and the new `tachi_version` (string; marker value or `unknown`). Additive: 1.4 readers ignore unknown keys. `generated_at` is never added.
@@ -21,20 +21,20 @@ Declared keys after reconciliation: `schema_version` ("1.5"), `date`, `input_for
 | `started_at`, `ended_at`, `archived_at` | ISO-8601 UTC | first/last transcript timestamps; archive time |
 | `transcripts[]` | {`path`, `bytes`, `sha256`} | every archived file |
 | `main` | {`served_model_histogram`: {model: int}, `turns`: int, `synthetic_turns`: int, `tool_calls_by_tool`: {tool: int}} | main session; no `pinned_model` |
-| `subagents[]` | {`agent_id`, `agent_type`, `attribution_agent`, `spawn_depth`, `parent_tool_use_id`, `pinned_model`, `served_model_histogram`, `synthetic_turns`, `turns`, `tool_calls_by_tool`, `unknown_meta_keys`: [string]} | one per recorded subagent instance; `pinned_model` from the agent file matched by `agent_type` or `null` |
+| `subagents[]` | {`agent_id`, `agent_type`, `attribution_agent`, `spawn_depth`, `parent_tool_use_id`, `pinned_model`, `served_model_histogram`, `synthetic_turns`, `turns`, `tool_calls_by_tool`, `unknown_meta_keys`: [string]} | one per subagent instance, tachi or not; `pinned_model` from the agent file matched by `agent_type` or `null` |
 | `dispatches[]` | {`agent`, `tool_use_id`, `dispatched_from`: "main" or `<agent_id>`, `spawn_depth`, `status`: recorded|dispatch-failed|not-recorded} | every `Agent`/`Task` `tool_use` naming a tachi agent, in any transcript at any depth, failed ones included |
 | `tachi_agents_not_recorded[]` | {`agent`, `tool_use_id`, `dispatched_from`, `reason`: no-transcript|dispatch-failed} | successful dispatches with no matching meta (`no-transcript`, trips TW-B1) and errored dispatches (`dispatch-failed`, listed only); never inferred |
 | `tachi_agents_not_dispatched` | [string] | installed tachi agents (roster = the `name:` values of the installed `.claude/agents/tachi/*.md`; the matrix is not installed and its absence never exits 2) with neither a recorded instance nor a dispatch, so an inline-analysing orchestrator never yields an empty listing |
-| `permission_modes_seen` | [string] | distinct values |
+| `permission_modes_seen` | [string] | distinct values of the `permission-mode` entries in every archived transcript |
 | `egress_observed[]` | {`host`, `tool`, `count`} | hostnames only (no userinfo, query, fragment); unparsable → `<unparseable>` |
 | `egress_unparsed_count` | int | |
 | `egress_denied[]` | {`host`, `kind`: sandbox|classifier|permission-rule, `count`} | |
 | `denial_detection` | {`validated_claude_code_versions`: [string], `status`: validated|not-validated} | fails closed: `validated` only when every version in `claude_code_versions` has a passing fixture; never an empty list standing for "none" |
 | `artifacts[]` or `null` + `artifacts_reason` | {`path`, `bytes`, `sha256`} | requires `--output-dir` |
-Validation: structured fields only, no free text; final secret scan (known key formats + values of env vars named `*KEY*`, `*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*CREDENTIAL*`, hash fields excluded) — a hit fails the run with no manifest written.
+Validation: structured fields only, no free text; final secret scan per `schemas/run-manifest.yaml` (`redaction.final_scan`). It applies 20 key-format rules with boundaries, and it checks the values of environment variables whose names contain KEY, TOKEN, SECRET, PASSWORD, PASSWD, PASSPHRASE, PWD, CREDENTIAL, PRIVATE, AUTH, DSN or DATABASE_URL. `PWD`, `OLDPWD` and `SSH_AUTH_SOCK` are excluded by name. Each value is stripped, split into pieces when it holds whitespace, JSON or a URL password, and matched raw and as hex, base32, base64, base64url, percent-encoded and JSON-escaped text. Values under 8 characters, and date, timestamp, version and IP shapes, are skipped (P0B0-11 as amended at T034). Hash fields are excluded, and the run reports how many values it compared. A hit fails the run with no manifest written.
 
 ### Archive run states
-`discovered` (project matched by `cwd`) → `resolved` (destination realpath; work-tree/ignore check) → `refused` (exit 1 with reason) | `copied` (0700/0600, `O_EXCL`, verbatim) → `parsed` (minimal contract) → `manifest-written` | `failed` (exit 1, no manifest). Re-archive of an identical session: `no-op` (hash match).
+`discovered` (project matched by `cwd`) → `resolved` (destination realpath; work-tree/ignore check) → `refused` (exit 1 with reason) | `copied` (0700/0600, `O_EXCL`, verbatim) → `parsed` (minimal contract) → `manifest-written` | `failed` (exit 1, no manifest). Re-archive of an identical session: `no-op` only when `run-manifest.json` is present and matches the source (P0B0-5); hash-equal transcripts without it are `refused` (incomplete archive).
 
 ## MatrixRow (`CLAUDE_PERMISSIONS.md` §8, agents table) — Part A3
 | Column | Values | Enforcement |
