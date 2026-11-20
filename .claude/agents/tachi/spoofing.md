@@ -5,7 +5,6 @@ tools:
   - Read
   - Glob
   - Grep
-  - WebFetch
 model: sonnet
 ---
 
