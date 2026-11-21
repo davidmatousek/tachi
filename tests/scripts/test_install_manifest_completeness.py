@@ -29,12 +29,25 @@ a manifest-driven, ``.git``-less end-to-end install; and the manual install
 loop that must read byte-identical (and comment-free) across README.md and
 both ``docs/guides/DEVELOPER_GUIDE_TACHI.md`` blocks, executable under both
 bash and (when present) interactive zsh.
+
+Feature 391 (T028) adds two groups at the end of the module. (1) The
+isolated-operation runbook (``docs/guides/ISOLATED_OPERATION_TACHI.md``) is a
+row of the manifest's docs table, an entry of its block, and a file that
+``install.sh`` places. (2) SC-A4: after each documented install path (the
+installer, the manual loop under bash, the manual loop under zsh) every
+installed agent's ``tools:`` set equals its row in section 8 of
+``docs/standards/CLAUDE_PERMISSIONS.md``. Both sides are read with the CI
+guard's own parser (``scripts/check-agent-privileges.py``, loaded by path), so
+the test and the guard cannot disagree about a cell or a ``tools:`` shape; a
+synthetic negative matrix keeps the comparison from going vacuous. Nothing
+here reads the version marker (Part B).
 """
 
 from __future__ import annotations
 
 import ast
 import functools
+import importlib.util
 import os
 import re
 import shlex
@@ -42,6 +55,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -738,3 +752,377 @@ def test_manual_install_loop_zsh(tmp_path: Path) -> None:
         f"zsh -f -i exited {result.returncode}\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     )
     _assert_required_set_exists(project_root)
+
+
+# ---------------------------------------------------------------------------
+# F-391 (T028): the runbook's manifest entries, and SC-A4 (the installed
+# agents' tools equal the section 8 matrix on every documented install path)
+# ---------------------------------------------------------------------------
+
+RUNBOOK_REL = "docs/guides/ISOLATED_OPERATION_TACHI.md"
+MATRIX_PATH = REPO_ROOT / "docs" / "standards" / "CLAUDE_PERMISSIONS.md"
+GUARD_PATH = SCRIPTS_DIR / "check-agent-privileges.py"
+
+
+def _fresh_install_dirs(tmp_path: Path) -> tuple[Path, Path]:
+    """A manifest-driven, ``.git``-less source tree and an empty project.
+
+    Built the way the existing install cases build theirs, so a path that
+    installs from this source is the same path those cases exercise.
+    """
+    src_root = tmp_path / "src"
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    _build_source_from_manifest(read_manifest(_manifest_text()), src_root)
+    assert not (src_root / ".git").exists(), (
+        "test setup bug: a .git dir would let install.sh's post-copy "
+        "`git fetch --tags` run for real"
+    )
+    return src_root, project_root
+
+
+def _require_clean_exit(result: subprocess.CompletedProcess, label: str) -> None:
+    assert result.returncode == 0, (
+        f"{label} exited {result.returncode}\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+
+
+def _install_via_install_sh(tmp_path: Path) -> Path:
+    """Install with ``scripts/install.sh``; returns the project root."""
+    src_root, project_root = _fresh_install_dirs(tmp_path)
+    result = subprocess.run(
+        ["/bin/bash", str(src_root / "scripts" / "install.sh")],
+        cwd=project_root,
+        env={**os.environ, "LC_ALL": "C"},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    _require_clean_exit(result, "install.sh")
+    return project_root
+
+
+def _install_via_manual_loop(tmp_path: Path) -> Path:
+    """Install with the README's manual loop under bash; returns the project root."""
+    src_root, project_root = _fresh_install_dirs(tmp_path)
+    result = subprocess.run(
+        ["/bin/bash", "-c", _rewritten_loop_script(src_root)],
+        cwd=project_root,
+        env={**os.environ, "LC_ALL": "C"},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    _require_clean_exit(result, "the manual install loop (bash)")
+    return project_root
+
+
+def _install_via_manual_loop_zsh(tmp_path: Path) -> Path:
+    """Install with the README's manual loop under interactive zsh; returns the project root."""
+    if shutil.which("zsh") is None:
+        pytest.skip("zsh not on PATH (ubuntu runners may lack it)")
+    src_root, project_root = _fresh_install_dirs(tmp_path)
+    result = subprocess.run(
+        ["zsh", "-f", "-i"],
+        input=_rewritten_loop_script(src_root),
+        cwd=project_root,
+        env={**os.environ, "LC_ALL": "C"},
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    _require_clean_exit(result, "the manual install loop (zsh -f -i)")
+    return project_root
+
+
+# ---------------------------------------------------------------------------
+# The runbook's manifest entries (T018 edits the manifest; these pin it)
+# ---------------------------------------------------------------------------
+
+
+def _distributable_table_paths(text: str) -> list[str]:
+    """Paths in the first cell of each row of the manifest's docs table.
+
+    The table sits under the ``## Distributable Directories`` heading. A first
+    cell reads as a backticked path, optionally followed by a note; the header
+    and separator rows have no backticked first cell and are skipped.
+    """
+    heading = "## Distributable Directories"
+    lines = text.split("\n")
+    assert lines.count(heading) == 1, f"expected exactly one {heading!r} line in the manifest"
+    paths: list[str] = []
+    for line in lines[lines.index(heading) + 1 :]:
+        if line.startswith("## "):
+            break
+        if line.startswith("|"):
+            match = re.match(r"`([^`]+)`", line.split("|")[1].strip())
+            if match:
+                paths.append(match.group(1))
+    return paths
+
+
+def test_runbook_in_manifest_docs_table(manifest_text: str) -> None:
+    paths = _distributable_table_paths(manifest_text)
+    assert "docs/guides/DEVELOPER_GUIDE_TACHI.md" in paths, (
+        f"test setup assumption broken: the developer guide's docs row was not read, got {paths}"
+    )
+    assert RUNBOOK_REL in paths, (
+        f"INSTALL_MANIFEST.md's Distributable Directories table has no row for {RUNBOOK_REL}. "
+        "Add one next to the developer guide's row."
+    )
+
+    # Negative control: the same text without the runbook's row must not list it.
+    without_row = "\n".join(
+        line for line in manifest_text.split("\n") if not line.startswith(f"| `{RUNBOOK_REL}`")
+    )
+    assert without_row != manifest_text, "test setup assumption broken: the row was not found"
+    assert RUNBOOK_REL not in _distributable_table_paths(without_row)
+
+
+def test_runbook_in_manifest_block(manifest_entries: list[str]) -> None:
+    assert RUNBOOK_REL in manifest_entries, (
+        f"INSTALL_MANIFEST.md is missing {RUNBOOK_REL} (docs, runbook). "
+        "Add it to the block between the BEGIN/END MANIFEST markers."
+    )
+    assert (REPO_ROOT / RUNBOOK_REL).is_file(), (
+        f"{RUNBOOK_REL} is in the manifest block but is not a file in the repository"
+    )
+
+
+def test_end_to_end_install_places_runbook(tmp_path: Path) -> None:
+    project_root = _install_via_install_sh(tmp_path)
+    placed = project_root / RUNBOOK_REL
+    assert placed.is_file(), f"install.sh did not place {RUNBOOK_REL} in the project"
+    assert placed.read_bytes() == (REPO_ROOT / RUNBOOK_REL).read_bytes(), (
+        f"the installed {RUNBOOK_REL} differs from the source file"
+    )
+
+
+# ---------------------------------------------------------------------------
+# SC-A4: the installed agents' tools equal the section 8 rows
+# ---------------------------------------------------------------------------
+
+
+@functools.lru_cache(maxsize=None)
+def _guard() -> ModuleType:
+    """``scripts/check-agent-privileges.py``, loaded from its path (the hyphen rules out ``import``).
+
+    Both sides of SC-A4 are read with this module: section 8 by its table
+    parser, each agent's ``tools:`` by its frontmatter reader. The test and the
+    CI guard therefore agree on the cell syntax and on every accepted
+    ``tools:`` shape (block list, flow list, comma string).
+    """
+    assert GUARD_PATH.is_file(), (
+        f"{GUARD_PATH} is missing: SC-A4 reads section 8 and each tools: with the guard's parser"
+    )
+    spec = importlib.util.spec_from_file_location("check_agent_privileges", str(GUARD_PATH))
+    assert spec is not None and spec.loader is not None, (
+        f"cannot build an import spec for {GUARD_PATH}"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _section8_tool_sets() -> dict[str, frozenset[str]]:
+    """Agent ``name:`` -> the Tools cell of its section 8 row."""
+    guard = _guard()
+    try:
+        matrix = guard.parse_matrix(MATRIX_PATH.read_text(encoding="utf-8-sig"))
+    except guard.InfraError as exc:
+        raise AssertionError(
+            f"the guard cannot parse section 8 of {MATRIX_PATH.name}: {exc}"
+        ) from exc
+    rows = {name: row.tools for name, row in matrix.agents.items()}
+    assert len(rows) >= 21, f"expected >= 21 agent rows in section 8, found {len(rows)}"
+    return rows
+
+
+def _installed_agent_tool_sets(agents_dir: Path) -> dict[str, frozenset[str]]:
+    """Agent ``name:`` -> its ``tools:`` set, for each agent file under ``agents_dir``.
+
+    A ``*.md`` file with leading frontmatter is an agent (the guard's C1 rule);
+    one without (``_TACHI_AGENT_BEST_PRACTICES.md``) is a document and is
+    skipped. A missing ``name:`` or ``tools:`` key, an unreadable ``tools:``
+    shape and a repeated name all fail here: an agent without ``tools:``
+    inherits every tool, so it can never "match".
+    """
+    guard = _guard()
+    assert agents_dir.is_dir(), f"no agents directory was installed at {agents_dir}"
+    installed: dict[str, frozenset[str]] = {}
+    origin: dict[str, str] = {}
+    for path in sorted(agents_dir.rglob("*.md")):
+        rel = path.relative_to(agents_dir).as_posix()
+        try:
+            agent = guard.load_agent_file(path, rel, rel)
+            if agent is None:
+                continue
+            assert "name" in agent.entries, f"{rel}: frontmatter has no name: key"
+            assert "tools" in agent.entries, (
+                f"{rel}: no tools: key (an agent without tools: inherits every tool)"
+            )
+            name = guard.parse_scalar(agent.entries["name"], "name")
+            tools = frozenset(guard.parse_tools(agent.entries["tools"]))
+        except guard.InfraError as exc:
+            raise AssertionError(
+                f"{rel}: the guard's parser cannot read this agent: {exc}"
+            ) from exc
+        assert name not in installed, f"duplicate agent name {name!r} in {origin[name]} and {rel}"
+        installed[name] = tools
+        origin[name] = rel
+    return installed
+
+
+def _tools_drift(
+    installed: dict[str, frozenset[str]], expected: dict[str, frozenset[str]]
+) -> list[str]:
+    """Every way the installed agents differ from the section 8 rows (empty = they match)."""
+    problems: list[str] = []
+    for name in sorted(set(installed) | set(expected)):
+        if name not in expected:
+            problems.append(f"{name}: installed, but section 8 has no row for it")
+        elif name not in installed:
+            problems.append(f"{name}: section 8 lists it, but no installed agent file has that name")
+        elif installed[name] != expected[name]:
+            have, want = installed[name], expected[name]
+            problems.append(
+                f"{name}: installed tools {sorted(have)} differ from the section 8 row "
+                f"{sorted(want)} (added {sorted(have - want)}, removed {sorted(want - have)})"
+            )
+    return problems
+
+
+def _assert_installed_tools_match_matrix(
+    project_root: Path, expected: dict[str, frozenset[str]], via: str
+) -> None:
+    # AOD-SIMPLIFICATION: tools only, as SC-A4 states -- upgrade: compare model: and the key set too
+    agents_dir = project_root / ".claude" / "agents" / "tachi"
+    installed = _installed_agent_tool_sets(agents_dir)
+    problems = _tools_drift(installed, expected)
+    assert not problems, (
+        f"after {via}, the installed agents differ from section 8 of "
+        "docs/standards/CLAUDE_PERMISSIONS.md: " + "; ".join(problems)
+    )
+
+
+_INSTALL_PATHS = {
+    "install-sh": _install_via_install_sh,
+    "manual-loop": _install_via_manual_loop,
+    "manual-loop-zsh": _install_via_manual_loop_zsh,
+}
+
+
+@pytest.mark.parametrize("install_path", list(_INSTALL_PATHS))
+def test_installed_agent_tools_match_matrix(install_path: str, tmp_path: Path) -> None:
+    project_root = _INSTALL_PATHS[install_path](tmp_path)
+    _assert_installed_tools_match_matrix(project_root, _section8_tool_sets(), install_path)
+
+
+def _agent_text(name: str, tools_lines: str) -> str:
+    """A minimal agent file; ``tools_lines`` is the whole ``tools:`` entry, or "" for none."""
+    return (
+        "---\n"
+        f"name: {name}\n"
+        'description: "synthetic agent for the SC-A4 negative controls"\n'
+        f"{tools_lines}"
+        "model: sonnet\n"
+        "---\n"
+        "# Synthetic agent\n"
+    )
+
+
+def _tools_block(tools: list[str]) -> str:
+    """The block-list shape the real agent files use."""
+    return "tools:\n" + "".join(f"  - {tool}\n" for tool in tools)
+
+
+def test_installed_tools_negative_matrix(tmp_path: Path) -> None:
+    base = _section8_tool_sets()
+    victim = "tachi-spoofing"
+    assert victim in base and base[victim] == {"Read", "Glob", "Grep"}, (
+        "test setup assumption broken: section 8 no longer lists tachi-spoofing as Read, Glob, Grep"
+    )
+    ordered = sorted(base[victim])
+
+    def project(label: str, mutate) -> Path:
+        """A project whose agents match section 8, then ``mutate(agents_dir)``."""
+        root = tmp_path / re.sub(r"\W+", "-", label)
+        agents_dir = root / ".claude" / "agents" / "tachi"
+        agents_dir.mkdir(parents=True)
+        for name, tools in sorted(base.items()):
+            text = _agent_text(name, _tools_block(sorted(tools)))
+            (agents_dir / f"{name}.md").write_text(text, encoding="utf-8")
+        mutate(agents_dir)
+        return root
+
+    def put(filename: str, name: str, tools_lines: str):
+        """A mutation that writes one synthetic agent file (replacing it when it exists)."""
+
+        def apply(agents_dir: Path) -> None:
+            (agents_dir / filename).write_text(_agent_text(name, tools_lines), encoding="utf-8")
+
+        return apply
+
+    own = f"{victim}.md"
+    without_grep = [t for t in ordered if t != "Grep"]
+    grep_for_bash = ["Bash" if t == "Grep" else t for t in ordered]
+
+    # Green: the unmutated tree, and the same set in the guard's other two accepted shapes.
+    green = [
+        ("unmutated tree", lambda agents_dir: None),
+        ("block list", put(own, victim, _tools_block(ordered))),
+        ("flow list", put(own, victim, "tools: [" + ", ".join(ordered) + "]\n")),
+        ("comma string", put(own, victim, "tools: " + ", ".join(ordered) + "\n")),
+    ]
+    for label, mutate in green:
+        _assert_installed_tools_match_matrix(project(label, mutate), base, label)
+
+    # Red: each drift the assertion exists to catch, with the message that names it.
+    red = [
+        (
+            "tool added",
+            put(own, victim, _tools_block(ordered + ["Bash"])),
+            r"added \['Bash'\], removed \[\]",
+        ),
+        (
+            "tool removed",
+            put(own, victim, _tools_block(without_grep)),
+            r"added \[\], removed \['Grep'\]",
+        ),
+        (
+            "tool swapped",
+            put(own, victim, _tools_block(grep_for_bash)),
+            r"added \['Bash'\], removed \['Grep'\]",
+        ),
+        ("no tools key", put(own, victim, ""), r"tachi-spoofing\.md: no tools: key"),
+        (
+            "unreadable tools shape",
+            put(own, victim, "tools: {Read: 1}\n"),
+            r"cannot read this agent",
+        ),
+        (
+            "agent file missing",
+            lambda agents_dir: (agents_dir / own).unlink(),
+            r"tachi-spoofing: section 8 lists it",
+        ),
+        (
+            "agent without a row",
+            put("helper.md", "helper", _tools_block(ordered)),
+            r"helper: installed, but section 8 has no row",
+        ),
+        (
+            "duplicate agent name",
+            put("copy.md", victim, _tools_block(ordered)),
+            r"duplicate agent name 'tachi-spoofing'",
+        ),
+    ]
+    for label, mutate, message in red:
+        with pytest.raises(AssertionError, match=message):
+            _assert_installed_tools_match_matrix(project(label, mutate), base, label)
+
+    # Red, matrix side: the installed tree is untouched and one section 8 cell loses a tool.
+    edited = {**base, victim: base[victim] - {"Grep"}}
+    with pytest.raises(AssertionError, match=r"added \['Grep'\], removed \[\]"):
+        _assert_installed_tools_match_matrix(
+            project("matrix cell edited", lambda agents_dir: None), edited, "a section 8 edit"
+        )

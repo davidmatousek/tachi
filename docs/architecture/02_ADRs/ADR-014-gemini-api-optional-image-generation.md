@@ -16,6 +16,8 @@
 > - **Key handling.** `GEMINI_API_KEY` is read from the environment and sent only in the `x-goog-api-key` header: never as a `?key=` query parameter, never echoed or logged, and never through verbose or trace output.
 > - **Watching for the next shutdown.** `gemini-prompt-construction.md` keeps one dated `Verified:` line per chain model and aspect ratio, so the date each model was last proven live sits next to the chain. A chain change re-verifies and re-dates those lines, and A1–A5 pin the body and the chain in the reference, every template block and the adapter copy. At runtime, a key that loses every chain model gets the exhausted-chain Error naming each one, not a quiet spec-only result.
 
+> **Note (2026-11-19, Feature 391)**: The Context's phrase "entirely self-contained (no external service dependencies)" refers to the services tachi itself calls through Features 001-015. It is not a statement about where a run's data goes. The egress profile in the [isolated-operation runbook](../../guides/ISOLATED_OPERATION_TACHI.md) states the hosts a run reaches and what each receives. This ADR's decisions are unchanged.
+
 ---
 
 ## Context

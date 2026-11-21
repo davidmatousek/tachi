@@ -57,7 +57,7 @@ Your input is:
    - **`threats.md`** -- produced by the orchestrator's Phase 4 (Assess). Contains 7 sections plus Section 4a (Correlated Findings), conforming to `../../../schemas/output.yaml`.
    - **`risk-scores.md`** -- produced by the risk scorer agent. Contains quantitative composite scores conforming to `../../../schemas/risk-scoring.yaml`. Requires a co-located `threats.md` for structural/spatial data.
    - **`compensating-controls.md`** -- produced by the control analyzer agent. Contains residual risk scores with control effectiveness. Requires a co-located `threats.md` for structural/spatial data.
-2. **Template name** -- specified by the orchestrator. Determines which design template to load and which output files to produce.
+2. **Template name** -- passed by the `/tachi.infographic` command in its prompt. Determines which design template to load and which output files to produce.
 
 You must not require any other input -- you run in a fresh context with only the data source file(s) and a template name.
 
@@ -161,19 +161,21 @@ Re-run the tachi installer to distribute these files:
 DO NOT attempt LLM-based inline extraction as a fallback.
 ```
 
+`{output_dir}` is the directory named on the "Write all output files to:" line of the prompt the `/tachi.infographic` command sends you, and every file you produce is written there, the intermediates included.
+
 Run the extraction script before generating the specification:
 
 ```bash
-python scripts/extract-infographic-data.py \
+python3 scripts/extract-infographic-data.py \
   --target-dir {target_directory} \
   --template {template_name} \
-  --output /tmp/infographic-data.json
+  --output {output_dir}/.tachi-build/infographic-{template_name}.json
 ```
 
 **Parameters**:
 - `--target-dir`: Directory containing threat model artifacts (threats.md, and optionally risk-scores.md, compensating-controls.md)
 - `--template`: Template name (`baseball-card`, `system-architecture`, or `risk-funnel`)
-- `--output`: Path for the JSON output file (default: stdout)
+- `--output`: Path for the JSON output file (required; the script has no stdout form and creates the `.tachi-build/` directory when it is absent). The file is an intermediate that stays in `.tachi-build/` after the run.
 
 The script automatically detects the richest data source available (compensating-controls.md > risk-scores.md > threats.md) and extracts all data needed for the specification. No manual data source detection is required.
 

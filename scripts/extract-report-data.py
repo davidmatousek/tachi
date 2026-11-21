@@ -5,10 +5,48 @@ Reads threats.md, risk-scores.md, compensating-controls.md, and threat-report.md
 from a target directory and writes a Typst data file (report-data.typ) with all
 variable bindings needed by the security report templates.
 
+Modes:
+  --target-dir DIR --output FILE --template-dir DIR
+      Write report-data.typ to FILE; image and brand paths are computed relative
+      to the template directory. Rendered diagrams (attack-trees/,
+      attack-chains/) and corrected infographic copies are written next to the
+      artifacts in DIR.
+  --target-dir DIR --build-dir PATH [--template-dir DIR]
+      Build-directory mode (isolated operation). The extractor owns PATH, a
+      throwaway copy of the report template, so a run never writes under
+      templates/. It removes any existing PATH, copies the template (default
+      templates/tachi/security-report/) into it, lays DIR/report-config.typ over
+      the template's default when present, writes report-data.typ there and
+      computes every image and brand path relative to PATH. Compile with:
+        typst compile PATH/main.typ OUT/security-report.pdf --root .
+      OUT is the output directory: the directory that contains PATH's
+      .tachi-build/. In this mode the extractor writes only under OUT and the
+      system temp directory, and only reads DIR: report-data.typ and the
+      template copy in PATH, the attack-tree and attack-chain PNGs in
+      OUT/attack-trees/ and OUT/attack-chains/, and a corrected copy of a
+      mislabeled infographic in OUT. --cleanup-mislabeled-images deletes a
+      file only when it lies in OUT.
+  --remove-build-dir PATH
+      Remove a build directory (use it after a verified compile).
+
+Build-directory guard (--build-dir and --remove-build-dir; exit 2 when it fails):
+the resolved path must lie below the resolved working directory (never the
+working directory itself or a parent of it), must end in
+.tachi-build/security-report, must not overlap the template directory or contain
+--target-dir, and neither it nor any component below the working directory may
+be a symlink.
+
+Environment:
+  TACHI_MMDC_PUPPETEER_CONFIG  absolute path to a regular file. When set, both
+                               mmdc invocations get "-p <path>" (Linux/WSL2
+                               sandboxed sessions). Any other value fails loud.
+
 Exit codes:
   0 — success
   1 — missing required artifact (threats.md)
-  2 — validation failure (severity sum mismatch, duplicate IDs, etc.)
+  2 — validation failure (severity sum mismatch, duplicate IDs, etc.), or a
+      --build-dir / --remove-build-dir path that fails the guard or cannot be
+      prepared
 """
 
 import argparse
@@ -23,6 +61,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+if __name__ == "__main__":
+    sys.dont_write_bytecode = True  # no bytecode cache for the import below (feature 391, FR-007)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from tachi_parsers import (
@@ -897,6 +937,41 @@ def _build_error_record(fid: str, failure_class: str, stderr_bytes, subdir: str 
     }
 
 
+# Optional puppeteer launch config for mmdc (AD-9). Sandboxed Linux/WSL2
+# sessions need a Chromium launch flag that only a puppeteer config file can
+# carry; the operator provisions that file and this script only forwards its
+# path, so the flag is never baked into the code.
+MMDC_PUPPETEER_CONFIG_ENV = "TACHI_MMDC_PUPPETEER_CONFIG"
+
+
+def _mmdc_puppeteer_args() -> list:
+    """Return ``["-p", <path>]`` when TACHI_MMDC_PUPPETEER_CONFIG is set, else ``[]``.
+
+    The value must be an absolute path to a regular file. Anything else --
+    empty, relative, missing, a directory -- raises RuntimeError (the same
+    fail-loud channel as the mmdc preflight) instead of being ignored, so a
+    misconfigured sandbox fix cannot pass unnoticed.
+    """
+    value = os.environ.get(MMDC_PUPPETEER_CONFIG_ENV)
+    if value is None:
+        return []
+    if value == "":
+        problem = "is set but empty"
+    elif not os.path.isabs(value):
+        problem = f"must be an absolute path (got {value!r})"
+    elif not os.path.exists(value):
+        problem = f"does not exist ({value!r})"
+    elif not os.path.isfile(value):
+        problem = f"is not a regular file ({value!r})"
+    else:
+        return ["-p", value]
+    raise RuntimeError(
+        f"{MMDC_PUPPETEER_CONFIG_ENV} {problem}.\n"
+        "Set it to the absolute path of an existing puppeteer config file, "
+        "or unset it."
+    )
+
+
 def _render_single(entry, tmp_path):
     """Render one Mermaid entry to PNG. Returns ``(entry, success, value)``.
 
@@ -937,7 +1012,8 @@ def _render_single(entry, tmp_path):
 
     try:
         subprocess.run(
-            ["mmdc", "-i", str(mmd_file), "-o", str(png_file), "-s", "2", "-b", "transparent"],
+            ["mmdc", "-i", str(mmd_file), "-o", str(png_file), "-s", "2", "-b", "transparent"]
+            + _mmdc_puppeteer_args(),
             capture_output=True,
             timeout=30,
             check=True,
@@ -959,7 +1035,12 @@ def _render_single(entry, tmp_path):
         return (entry, False, _build_error_record(fid, "timeout", e.stderr))
 
 
-def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Path):
+def render_mermaid_to_png(
+    attack_trees: list,
+    target_dir: Path,
+    template_dir: Path,
+    image_dir: "Path | None" = None,
+):
     """Render Mermaid code blocks to PNG images via mmdc.
 
     Modifies attack_trees entries in-place, setting has_image and image_path.
@@ -969,8 +1050,12 @@ def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Pa
 
     Args:
         attack_trees: List of attack tree dicts (must have id, mermaid_code keys).
-        target_dir: Directory containing the attack-trees/ subdirectory.
+        target_dir: Directory containing the attack-trees/ subdirectory; it
+            receives the rendered PNGs unless ``image_dir`` is given.
         template_dir: Typst template directory (for relative path calculation).
+        image_dir: Directory that receives the attack-trees/ PNG directory.
+            None (legacy mode) means ``target_dir``. Build mode passes the
+            output directory so that ``target_dir`` is only ever read.
     """
     if not attack_trees:
         return
@@ -981,15 +1066,18 @@ def render_mermaid_to_png(attack_trees: list, target_dir: Path, template_dir: Pa
             "Install with: npm install -g @mermaid-js/mermaid-cli\n"
             "Then re-run /tachi.security-report."
         )
+    _mmdc_puppeteer_args()  # fail loud on a bad TACHI_MMDC_PUPPETEER_CONFIG before any render starts
 
-    # Compute relative path from template_dir to target_dir
+    # Compute relative path from template_dir to the directory that receives
+    # the PNGs (target_dir in legacy mode, the output directory in build mode)
+    png_base = target_dir if image_dir is None else image_dir
     try:
-        rel_target = os.path.relpath(str(target_dir), str(template_dir))
+        rel_target = os.path.relpath(str(png_base), str(template_dir))
     except ValueError:
-        rel_target = str(target_dir)
+        rel_target = str(png_base)
 
-    attack_trees_dir = target_dir / "attack-trees"
-    attack_trees_dir.mkdir(exist_ok=True)
+    attack_trees_dir = png_base / "attack-trees"
+    attack_trees_dir.mkdir(parents=True, exist_ok=True)
 
     global _render_attack_trees_dir, _render_rel_target
     _render_attack_trees_dir = attack_trees_dir
@@ -1101,7 +1189,12 @@ def generate_chain_mermaid(chain: dict) -> str:
     return "\n".join(lines)
 
 
-def prepare_attack_chains(target_dir: Path, findings: list, template_dir: Path) -> tuple:
+def prepare_attack_chains(
+    target_dir: Path,
+    findings: list,
+    template_dir: Path,
+    image_dir: "Path | None" = None,
+) -> tuple:
     """Parse attack chains, generate Mermaid diagrams, and render to PNG.
 
     Follows the same pattern as parse_attack_trees + render_mermaid_to_png
@@ -1111,6 +1204,9 @@ def prepare_attack_chains(target_dir: Path, findings: list, template_dir: Path) 
         target_dir: Directory containing attack-chains.md artifact.
         findings: Parsed findings list for cross-referencing.
         template_dir: Typst template directory (for relative path calculation).
+        image_dir: Directory that receives the attack-chains/ PNG directory.
+            None (legacy mode) means ``target_dir``; build mode passes the
+            output directory.
 
     Returns:
         (has_attack_chains: bool, chains: list of chain dicts with rendering data)
@@ -1145,7 +1241,7 @@ def prepare_attack_chains(target_dir: Path, findings: list, template_dir: Path) 
             })
 
     if render_entries:
-        _render_chain_diagrams(render_entries, target_dir, template_dir)
+        _render_chain_diagrams(render_entries, target_dir, template_dir, image_dir=image_dir)
         # Map rendered paths back to chains
         rendered_map = {e["id"]: e for e in render_entries}
         for chain in surfaced:
@@ -1532,10 +1628,16 @@ def build_per_finding_rows(findings: list) -> list:
     return rows
 
 
-def _render_chain_diagrams(entries: list, target_dir: Path, template_dir: Path):
+def _render_chain_diagrams(
+    entries: list,
+    target_dir: Path,
+    template_dir: Path,
+    image_dir: "Path | None" = None,
+):
     """Render chain Mermaid diagrams to PNG, following render_mermaid_to_png pattern.
 
-    Writes PNGs to {target_dir}/attack-chains/ directory.
+    Writes PNGs to {image_dir}/attack-chains/; ``image_dir`` None (legacy mode)
+    means {target_dir}/attack-chains/.
     """
     if not entries:
         return
@@ -1546,14 +1648,16 @@ def _render_chain_diagrams(entries: list, target_dir: Path, template_dir: Path):
             "Install with: npm install -g @mermaid-js/mermaid-cli\n"
             "Then re-run /tachi.security-report."
         )
+    _mmdc_puppeteer_args()  # fail loud on a bad TACHI_MMDC_PUPPETEER_CONFIG before any render starts
 
+    png_base = target_dir if image_dir is None else image_dir
     try:
-        rel_target = os.path.relpath(str(target_dir), str(template_dir))
+        rel_target = os.path.relpath(str(png_base), str(template_dir))
     except ValueError:
-        rel_target = str(target_dir)
+        rel_target = str(png_base)
 
-    chains_dir = target_dir / "attack-chains"
-    chains_dir.mkdir(exist_ok=True)
+    chains_dir = png_base / "attack-chains"
+    chains_dir.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
@@ -1597,7 +1701,8 @@ def _render_chain_single(entry, tmp_path, chains_dir, rel_target):
 
     try:
         subprocess.run(
-            ["mmdc", "-i", str(mmd_file), "-o", str(png_file), "-s", "2", "-b", "transparent"],
+            ["mmdc", "-i", str(mmd_file), "-o", str(png_file), "-s", "2", "-b", "transparent"]
+            + _mmdc_puppeteer_args(),
             capture_output=True,
             timeout=30,
             check=True,
@@ -1669,7 +1774,23 @@ def _file_format(path: Path) -> "str | None":
     return None
 
 
-def _maybe_delete_mislabeled(mislabeled_fp: Path, counterpart_fp: Path) -> bool:
+def _lies_in(entry: Path, directory: Path) -> bool:
+    """True when the directory entry ``entry`` sits in ``directory`` or below it.
+
+    Both sides are resolved. The entry's parent is resolved rather than the
+    entry itself: unlinking a symlink removes the link where it lives and never
+    touches its target.
+    """
+    base = Path(os.path.realpath(directory))
+    parent = Path(os.path.realpath(entry.parent))
+    return parent == base or base in parent.parents
+
+
+def _maybe_delete_mislabeled(
+    mislabeled_fp: Path,
+    counterpart_fp: Path,
+    confine_to: "Path | None" = None,
+) -> bool:
     """Delete ``mislabeled_fp`` iff ``counterpart_fp`` is a verified byte-identical
     survivor (gate 2 of the double-gated cleanup; the --cleanup-mislabeled-images
     flag is gate 1, checked by the caller). The entire attempt — existence/size
@@ -1678,8 +1799,19 @@ def _maybe_delete_mislabeled(mislabeled_fp: Path, counterpart_fp: Path) -> bool:
     extraction (FR-005/INV-3). Returns whether the deletion happened. This is
     the sole deletion primitive in the module (INV-1: both wiring moments call
     it, so the predicate cannot drift between them).
+
+    ``confine_to`` (build mode: the output directory) adds a location gate that
+    runs first: a file that does not lie in that directory is never touched, and
+    one stderr line says so. Legacy mode passes None and is unaffected.
     """
     try:
+        if confine_to is not None and not _lies_in(mislabeled_fp, confine_to):
+            print(
+                f"Cleanup skipped for {mislabeled_fp}: it lies outside the output "
+                f"directory {confine_to}, and build mode deletes only inside it",
+                file=sys.stderr,
+            )
+            return False
         if not counterpart_fp.exists() or counterpart_fp.stat().st_size == 0:
             return False
         if not filecmp.cmp(mislabeled_fp, counterpart_fp, shallow=False):
@@ -1696,7 +1828,12 @@ def _maybe_delete_mislabeled(mislabeled_fp: Path, counterpart_fp: Path) -> bool:
         return False
 
 
-def detect_images(target_dir: Path, template_dir: Path, cleanup: bool = False) -> dict:
+def detect_images(
+    target_dir: Path,
+    template_dir: Path,
+    cleanup: bool = False,
+    image_dir: "Path | None" = None,
+) -> dict:
     """Compute image paths relative to template directory.
 
     The infographic agent writes images whose extension is supposed to match
@@ -1713,14 +1850,28 @@ def detect_images(target_dir: Path, template_dir: Path, cleanup: bool = False) -
     Cleanup never changes which file is chosen/emitted (INV-2): the chosen
     file is always self-consistent by construction, so it can never itself
     satisfy the mislabeled predicate.
+
+    ``image_dir`` is the build-mode output directory. Candidates are always
+    read from ``target_dir``; the corrected sibling is written to ``image_dir``
+    and cleanup deletes only a file that lies in it (so with an output
+    directory other than ``target_dir`` nothing is deleted). None (legacy
+    mode) means ``target_dir`` for all of it.
     """
     if cleanup:
         filecmp.clear_cache()
 
+    write_dir = target_dir if image_dir is None else image_dir
     try:
         rel_target = os.path.relpath(str(target_dir), str(template_dir))
     except ValueError:
         rel_target = str(target_dir)
+    if image_dir is None:
+        rel_write = rel_target
+    else:
+        try:
+            rel_write = os.path.relpath(str(write_dir), str(template_dir))
+        except ValueError:
+            rel_write = str(write_dir)
 
     images = {
         "funnel_image_path": "",
@@ -1750,6 +1901,7 @@ def detect_images(target_dir: Path, template_dir: Path, cleanup: bool = False) -
             continue
 
         chosen = None
+        chosen_base = rel_target
         for ext, fp in candidates:
             if _IMAGE_FORMAT_TO_EXT.get(_file_format(fp)) == ext:
                 chosen = fp
@@ -1770,33 +1922,37 @@ def detect_images(target_dir: Path, template_dir: Path, cleanup: bool = False) -
                     continue
                 canonical_ext = _IMAGE_FORMAT_TO_EXT.get(_file_format(fp))
                 if canonical_ext is not None and canonical_ext != ext:
-                    _maybe_delete_mislabeled(fp, chosen)
+                    _maybe_delete_mislabeled(fp, chosen, confine_to=image_dir)
 
         if chosen is None:
             for ext, fp in candidates:
                 fmt = _file_format(fp)
                 if fmt is None:
                     continue
-                target_path = target_dir / f"{stem}{_IMAGE_FORMAT_TO_EXT[fmt]}"
+                target_path = write_dir / f"{stem}{_IMAGE_FORMAT_TO_EXT[fmt]}"
                 print(
                     f"Image format mismatch: {fp.name} contains {fmt.upper()} bytes; "
-                    f"writing corrected sibling {target_path.name}",
+                    f"writing corrected sibling {target_path.name}"
+                    + (f" in {write_dir}" if image_dir is not None else ""),
                     file=sys.stderr,
                 )
                 # Moment B — recovery write: record pre-existence BEFORE the
                 # copy so a cross-swapped sibling (overwritten, not created)
                 # never gets deleted (AC-1g guard).
                 pre_existed = target_path.exists()
+                if image_dir is not None:
+                    write_dir.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(fp, target_path)
                 chosen = target_path
+                chosen_base = rel_write
 
                 if cleanup and not pre_existed:
-                    _maybe_delete_mislabeled(fp, target_path)
+                    _maybe_delete_mislabeled(fp, target_path, confine_to=image_dir)
 
                 break
 
         if chosen is not None:
-            images[key] = rel_target + "/" + chosen.name
+            images[key] = chosen_base + "/" + chosen.name
 
     return images
 
@@ -2292,27 +2448,205 @@ def _append_scope_array(lines: list, var_name: str, items: list, keys: list):
 
 
 # =============================================================================
+# Build Directory (isolated operation)
+# =============================================================================
+
+# The report compiles from a throwaway copy of the template, so a run never
+# writes under templates/ (AD-4). The extractor owns that copy's whole
+# lifecycle: --build-dir and --remove-build-dir are the only places this script
+# deletes a directory tree, and both go through _guard_build_dir() first.
+BUILD_DIR_SUFFIX = (".tachi-build", "security-report")
+DEFAULT_TEMPLATE_DIR = "templates/tachi/security-report"
+
+
+class BuildDirError(Exception):
+    """A build directory failed the path-shape guard or could not be prepared."""
+
+
+def _guard_build_dir(raw: str, template_dirs, target_dir=None) -> str:
+    """Check that ``raw`` is a build directory this script may delete and recreate.
+
+    Returns its fully resolved path, the only path ever handed to a filesystem
+    operation. No side effects. Raises BuildDirError naming the first rule
+    broken, unless:
+
+    * the resolved path lies strictly below the resolved working directory;
+    * neither it nor any component below the working directory is a symlink (a
+      prefix that merely spells the working directory differently, such as /tmp
+      for /private/tmp, is fine);
+    * it does not overlap a template directory (equal, inside it, or containing
+      it) and does not contain ``target_dir`` (deleting it would destroy the
+      input artifacts);
+    * its last two components are exactly ``.tachi-build/security-report``;
+    * if it exists, it is a directory.
+    """
+    cwd = os.path.realpath(os.getcwd())
+    lexical = os.path.abspath(raw)  # '..' collapsed lexically; the path as given is never used again
+    real = os.path.realpath(lexical)
+    cwd_p, real_p = Path(cwd), Path(real)
+
+    # Symlink walk over the lexical path: once a prefix resolves to the working
+    # directory, every component below it must be a real directory entry.
+    anchored = False
+    probe = Path(lexical).anchor
+    for part in Path(lexical).parts[1:]:
+        probe = os.path.join(probe, part)
+        if anchored:
+            if os.path.islink(probe):
+                raise BuildDirError(f"{probe} is a symlink; symlinks are never followed")
+        elif os.path.realpath(probe) == cwd:
+            anchored = True
+
+    if real_p == cwd_p:
+        raise BuildDirError("it is the working directory itself")
+    if real_p in cwd_p.parents:
+        raise BuildDirError("it is a parent of the working directory")
+    if cwd_p not in real_p.parents:
+        raise BuildDirError(f"it resolves outside the working directory ({cwd})")
+    if not anchored:
+        raise BuildDirError("it reaches the working directory only through a symlink")
+
+    for template in template_dirs:
+        template_p = Path(os.path.realpath(template))
+        if real_p == template_p or real_p in template_p.parents or template_p in real_p.parents:
+            raise BuildDirError(f"it overlaps the template directory {template}")
+    if target_dir is not None:
+        target_p = Path(os.path.realpath(target_dir))
+        if real_p == target_p or real_p in target_p.parents:
+            raise BuildDirError(f"it contains the target directory {target_dir}")
+
+    if real_p.parts[-2:] != BUILD_DIR_SUFFIX:
+        raise BuildDirError("it must end in .tachi-build/security-report")
+    if os.path.lexists(real) and not os.path.isdir(real):
+        raise BuildDirError("it exists and is not a directory")
+    return real
+
+
+def _materialize_build_dir(raw: str, template_src, target_dir) -> str:
+    """Recreate the build directory and return its resolved path.
+
+    Removes any existing directory, copies the template in, then lays
+    ``{target_dir}/report-config.typ`` over the template's default when present.
+    The guard runs again here, immediately before the first deletion, so a path
+    swapped for a symlink after the early check is still refused. The template
+    is checked before anything is deleted.
+    """
+    real = _guard_build_dir(raw, (template_src, DEFAULT_TEMPLATE_DIR), target_dir)
+    if not os.path.isdir(template_src):
+        raise BuildDirError(f"template directory not found: {template_src}")
+    try:
+        if os.path.lexists(real):
+            shutil.rmtree(real)
+        shutil.copytree(template_src, real)
+        custom_config = Path(target_dir) / "report-config.typ"
+        if custom_config.is_file():
+            shutil.copyfile(custom_config, os.path.join(real, "report-config.typ"))
+            print(f"Using custom report-config.typ from {target_dir}", file=sys.stderr)
+        else:
+            print("Using default report configuration", file=sys.stderr)
+    except OSError as exc:  # shutil.Error is an OSError
+        raise BuildDirError(f"could not prepare the build directory: {exc}") from exc
+    print(f"Build directory ready: {raw}", file=sys.stderr)
+    return real
+
+
+def _remove_build_dir(raw: str) -> None:
+    """Remove the build directory ``raw`` (same guard as --build-dir).
+
+    Idempotent: a directory that is already gone is reported, not an error.
+    Only the build directory itself goes; its parent .tachi-build/ stays.
+    """
+    real = _guard_build_dir(raw, (DEFAULT_TEMPLATE_DIR,))
+    if not os.path.lexists(real):
+        print(f"Build directory not present, nothing to remove: {raw}", file=sys.stderr)
+        return
+    try:
+        shutil.rmtree(real)
+    except OSError as exc:
+        raise BuildDirError(f"could not remove the build directory: {exc}") from exc
+    print(f"Removed build directory: {raw}", file=sys.stderr)
+
+
+def _exit_build_dir_error(flag: str, raw: str, exc: BuildDirError) -> None:
+    """Print a one-line reason on stderr and exit 2 (EXIT_VALIDATION_FAILURE)."""
+    print(f"Error: {flag} {raw!r}: {exc}", file=sys.stderr)
+    sys.exit(EXIT_VALIDATION_FAILURE)
+
+
+# =============================================================================
 # CLI Entry Point
 # =============================================================================
 
+_USAGE = (
+    "%(prog)s [-h] --target-dir TARGET_DIR --output OUTPUT\n"
+    "                              --template-dir TEMPLATE_DIR [--title TITLE]\n"
+    "                              [--cleanup-mislabeled-images]\n"
+    "       %(prog)s [-h] --target-dir TARGET_DIR --build-dir PATH\n"
+    "                              [--template-dir TEMPLATE_DIR] [--title TITLE]\n"
+    "                              [--cleanup-mislabeled-images]\n"
+    "       %(prog)s [-h] --remove-build-dir PATH"
+)
+
+_EPILOG = """\
+build directory (--build-dir / --remove-build-dir):
+  The extractor owns PATH, a throwaway copy of the report template, so a run
+  never writes under templates/. --build-dir removes any existing PATH, copies
+  the template into it, lays TARGET_DIR/report-config.typ over the template's
+  default when present, writes report-data.typ there and computes every image
+  and brand path relative to PATH. Compile with:
+    typst compile PATH/main.typ OUT/security-report.pdf --root .
+  PATH must end in .tachi-build/security-report, lie below the working directory
+  (not the directory itself or a parent), stay clear of the template directory
+  and TARGET_DIR, and contain no symlink below the working directory; otherwise
+  the extractor exits 2 before touching anything.
+  In this mode the extractor writes only under the output directory (the
+  directory that contains PATH's .tachi-build/) and the system temp directory,
+  and only reads TARGET_DIR: the attack-tree and attack-chain PNGs go to
+  OUT/attack-trees/ and OUT/attack-chains/, a corrected copy of a mislabeled
+  infographic to OUT/, and --cleanup-mislabeled-images deletes a file only when
+  it lies in OUT (with OUT other than TARGET_DIR nothing is deleted and one line
+  on stderr says so). Without --build-dir these all stay next to the artifacts
+  in TARGET_DIR, as before.
+
+environment:
+  TACHI_MMDC_PUPPETEER_CONFIG  absolute path to a regular file; when set, both mmdc
+                               invocations get "-p <path>". Any other value fails loud.
+
+exit codes:
+  0 success; 1 missing required artifact (threats.md); 2 validation failure, or a
+  build directory that fails the guard or cannot be prepared.
+"""
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Extract structured data from tachi pipeline artifacts into a Typst data file."
+        description="Extract structured data from tachi pipeline artifacts into a Typst data file.",
+        usage=_USAGE,
+        epilog=_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    # --target-dir / --output / --template-dir are enforced in _resolve_cli_mode,
+    # not by argparse: --remove-build-dir needs none of them and --build-dir
+    # replaces --output (and, optionally, --template-dir).
     parser.add_argument(
         "--target-dir",
-        required=True,
-        help="Directory containing tachi pipeline artifacts (threats.md, etc.)",
+        default=None,
+        help="Directory containing tachi pipeline artifacts (threats.md, etc.). "
+             "Required unless --remove-build-dir is given",
     )
     parser.add_argument(
         "--output",
-        required=True,
-        help="Output path for the generated report-data.typ file",
+        default=None,
+        help="Output path for the generated report-data.typ file. "
+             "Required unless --build-dir or --remove-build-dir is given",
     )
     parser.add_argument(
         "--template-dir",
-        required=True,
-        help="Path to templates/tachi/security-report/ directory",
+        default=None,
+        help="Path to templates/tachi/security-report/ directory. Required unless "
+             "--build-dir or --remove-build-dir is given; with --build-dir it is the "
+             "template copied into the build directory "
+             "(default: templates/tachi/security-report)",
     )
     parser.add_argument(
         "--title",
@@ -2322,22 +2656,123 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--cleanup-mislabeled-images",
         action="store_true",
-        help="Opt-in: delete a mislabeled duplicate image once a byte-identical, correctly-labeled counterpart is confirmed",
+        help="Opt-in: delete a mislabeled duplicate image once a byte-identical, correctly-labeled counterpart is confirmed "
+             "(with --build-dir, only a file that lies in the output directory)",
+    )
+    parser.add_argument(
+        "--build-dir",
+        default=None,
+        metavar="PATH",
+        help="Recreate PATH as a copy of the template and write report-data.typ into it "
+             "instead of using --output; image and brand paths are computed relative to "
+             "PATH (shape rules below)",
+    )
+    parser.add_argument(
+        "--remove-build-dir",
+        default=None,
+        metavar="PATH",
+        help="Remove the build directory PATH (same path guard as --build-dir) and "
+             "exit; takes no other option",
     )
     return parser
 
 
+def _resolve_cli_mode(parser: argparse.ArgumentParser, args) -> str:
+    """Return "remove", "build" or "legacy"; exit 2 via parser.error() on a bad combination.
+
+    The legacy requirement (--target-dir, --output and --template-dir) is
+    re-imposed here with argparse's own message, so an invocation that uses only
+    the original flags fails or succeeds exactly as before.
+    """
+    if args.remove_build_dir is not None:
+        clashes = [
+            flag
+            for flag, given in (
+                ("--target-dir", args.target_dir is not None),
+                ("--output", args.output is not None),
+                ("--template-dir", args.template_dir is not None),
+                ("--build-dir", args.build_dir is not None),
+                ("--title", args.title is not None),
+                ("--cleanup-mislabeled-images", args.cleanup_mislabeled_images),
+            )
+            if given
+        ]
+        if clashes:
+            parser.error("--remove-build-dir cannot be combined with " + ", ".join(clashes))
+        return "remove"
+    if args.build_dir is not None:
+        if args.target_dir is None:
+            parser.error("the following arguments are required: --target-dir")
+        if args.output is not None:
+            parser.error(
+                "--output cannot be combined with --build-dir: "
+                "report-data.typ is written inside the build directory"
+            )
+        return "build"
+    missing = [
+        flag
+        for flag, value in (
+            ("--target-dir", args.target_dir),
+            ("--output", args.output),
+            ("--template-dir", args.template_dir),
+        )
+        if value is None
+    ]
+    if missing:
+        parser.error("the following arguments are required: " + ", ".join(missing))
+    return "legacy"
+
+
 def main():
     """CLI entrypoint: detect artifacts in --target-dir, select the richest
-    data tier, and write the Typst data file to --output. Non-fatal issues
-    log to stderr; exit codes are documented in the module docstring.
+    data tier, and write the Typst data file to --output (or into the build
+    directory with --build-dir; --remove-build-dir only removes one). Non-fatal
+    issues log to stderr; exit codes are documented in the module docstring.
     """
     parser = build_parser()
-    args = parser.parse_args()
+    # parse_known_args plus the explicit error below is what parse_args() does,
+    # but it lets a missing required flag (checked in _resolve_cli_mode) be
+    # reported before an unrecognized one, as argparse's own check always did.
+    args, unrecognized = parser.parse_known_args()
+    mode = _resolve_cli_mode(parser, args)
+    if unrecognized:
+        parser.error("unrecognized arguments: " + " ".join(unrecognized))
+
+    if mode == "remove":
+        try:
+            _remove_build_dir(args.remove_build_dir)
+        except BuildDirError as exc:
+            _exit_build_dir_error("--remove-build-dir", args.remove_build_dir, exc)
+        sys.exit(EXIT_SUCCESS)
 
     target_dir = Path(args.target_dir)
-    output_path = Path(args.output)
-    template_dir = Path(args.template_dir)
+    if mode == "build":
+        # The template to copy. Guard the path now (no side effects) so a bad
+        # --build-dir fails before any artifact parsing or mmdc rendering; the
+        # guard runs again right before the build directory is recreated.
+        template_src = Path(
+            args.template_dir if args.template_dir is not None else DEFAULT_TEMPLATE_DIR
+        )
+        try:
+            build_real = _guard_build_dir(
+                args.build_dir, (template_src, DEFAULT_TEMPLATE_DIR), target_dir
+            )
+        except BuildDirError as exc:
+            _exit_build_dir_error("--build-dir", args.build_dir, exc)
+        # Every image, attack-tree and brand path is computed relative to the
+        # build directory. Both ends are spelled in resolved form so the
+        # relative paths stay inside the project root (which Typst enforces)
+        # however the caller spelled them, for example /tmp for /private/tmp.
+        template_dir = Path(build_real)
+        target_dir = Path(os.path.realpath(target_dir))
+        # The output directory is the build directory's grandparent (the guard
+        # pins the ".tachi-build/security-report" suffix). Everything this run
+        # renders or corrects lands there, never in target_dir (AR-1).
+        image_dir = Path(build_real).parent.parent
+    else:
+        output_path = Path(args.output)
+        template_dir = Path(args.template_dir)
+        image_dir = None  # legacy mode: diagrams and corrected images go next to the artifacts
 
     # Artifact detection
     artifacts = detect_artifacts(target_dir)
@@ -2476,7 +2911,9 @@ def main():
     )
 
     # Image paths (relative from template dir to target dir)
-    images = detect_images(target_dir, template_dir, cleanup=args.cleanup_mislabeled_images)
+    images = detect_images(
+        target_dir, template_dir, cleanup=args.cleanup_mislabeled_images, image_dir=image_dir
+    )
     data["funnel_image_path"] = images["funnel_image_path"]
     data["baseball_image_path"] = images["baseball_image_path"]
     data["architecture_image_path"] = images["architecture_image_path"]
@@ -2494,7 +2931,7 @@ def main():
     # Attack tree data — try standalone files first, fall back to inline in threat-report.md
     if artifacts.get("has_attack_trees") or artifacts.get("threat_report_md"):
         attack_trees = parse_attack_trees(target_dir, data["findings"], tr_content=tr_content)
-        render_mermaid_to_png(attack_trees, target_dir, template_dir)
+        render_mermaid_to_png(attack_trees, target_dir, template_dir, image_dir=image_dir)
         data["has_attack_trees"] = len(attack_trees) > 0
         data["attack_trees"] = attack_trees
         if attack_trees:
@@ -2505,7 +2942,9 @@ def main():
 
     # Attack chain data (cross-layer correlation)
     if artifacts.get("has_attack_chains"):
-        has_chains, chains = prepare_attack_chains(target_dir, data["findings"], template_dir)
+        has_chains, chains = prepare_attack_chains(
+            target_dir, data["findings"], template_dir, image_dir=image_dir
+        )
         data["has_attack_chains"] = has_chains
         data["attack_chains"] = chains
         surfaced = [c for c in chains if c.get("surfaced", False)]
@@ -2570,6 +3009,15 @@ def main():
 
     # Generate Typst output
     typst_output = generate_report_data_typ(data)
+
+    if mode == "build":
+        # Recreate the build directory only now that extraction has succeeded,
+        # so a failed run never disturbs the previous one.
+        try:
+            build_real = _materialize_build_dir(args.build_dir, template_src, target_dir)
+        except BuildDirError as exc:
+            _exit_build_dir_error("--build-dir", args.build_dir, exc)
+        output_path = Path(build_real) / "report-data.typ"
 
     # Write output
     output_path.parent.mkdir(parents=True, exist_ok=True)

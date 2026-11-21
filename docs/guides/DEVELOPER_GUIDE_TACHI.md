@@ -56,6 +56,10 @@ Get from zero to your first threat model in 6 steps. No security background requ
 
 The Gemini key is only needed for generating infographic images (`.jpg`). All text-based outputs (threats.md, SARIF, report, attack trees) work without it.
 
+> **What leaves your machine.** Your Claude Code model provider receives the architecture description, the files tachi reads and the findings on every run. If you set `GEMINI_API_KEY` and run `/tachi.infographic`, Google's Gemini API (`generativelanguage.googleapis.com`) also receives image prompts made of tachi's fixed layout instructions and derived threat-model content, including names and descriptions taken from your architecture (the project name and assessment date; the names, types and short descriptions of components, trust zones, trust boundaries and data flows; finding IDs, descriptions, severities and risk scores; correlation groups of related findings and their descriptions; finding counts, severities and analysis coverage, overall and by component, zone, boundary, flow, threat category and MAESTRO layer; the overall risk posture; control-coverage and risk-reduction figures from compensating-control runs; counts of new, updated, unchanged and resolved findings since a baseline, with new findings marked; and, if a template cannot be loaded, a one-line system description). By design, tachi sends nothing else, but an AI agent following tachi's templates writes each prompt, and no code checks it against this list before it is sent. Claude Code's own operational traffic, such as usage metrics, error reports and feature-flag fetches, is separate from tachi; it is governed by Claude Code's [privacy and telemetry settings](https://code.claude.com/docs/en/data-usage#telemetry-services), and setting `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` turns these off.
+
+To run tachi inside a sandbox with an egress allow-list, follow the [isolated-operation runbook](ISOLATED_OPERATION_TACHI.md).
+
 1. Get a key at [Google AI Studio](https://aistudio.google.com/apikey)
 2. Make it available to Claude Code using **one** of these methods:
 
@@ -1606,7 +1610,7 @@ The report auto-detects available artifacts and includes pages accordingly:
 # 2. Parse threats.md for scope data (components, data flows, trust boundaries)
 # 3. Detect brand assets in brand/final/
 # 4. Generate report-data.typ and report-config.typ
-# 5. Compile via: typst compile templates/tachi/security-report/main.typ security-report.pdf --root .
+# 5. Compile via: typst compile {output_dir}/.tachi-build/security-report/main.typ {output_dir}/security-report.pdf --root .  (the build directory is a throwaway copy of the template)
 ```
 
 ### Report Pages
@@ -1711,6 +1715,10 @@ jobs:
 
 Tachi generates two infographic images by default using the Google Gemini API: a **Baseball Card** (risk summary dashboard) and a **System Architecture** diagram (annotated architecture with attack surface badges). This requires a Gemini API key.
 
+> **What leaves your machine.** Your Claude Code model provider receives the architecture description, the files tachi reads and the findings on every run. If you set `GEMINI_API_KEY` and run `/tachi.infographic`, Google's Gemini API (`generativelanguage.googleapis.com`) also receives image prompts made of tachi's fixed layout instructions and derived threat-model content, including names and descriptions taken from your architecture (the project name and assessment date; the names, types and short descriptions of components, trust zones, trust boundaries and data flows; finding IDs, descriptions, severities and risk scores; correlation groups of related findings and their descriptions; finding counts, severities and analysis coverage, overall and by component, zone, boundary, flow, threat category and MAESTRO layer; the overall risk posture; control-coverage and risk-reduction figures from compensating-control runs; counts of new, updated, unchanged and resolved findings since a baseline, with new findings marked; and, if a template cannot be loaded, a one-line system description). By design, tachi sends nothing else, but an AI agent following tachi's templates writes each prompt, and no code checks it against this list before it is sent. Claude Code's own operational traffic, such as usage metrics, error reports and feature-flag fetches, is separate from tachi; it is governed by Claude Code's [privacy and telemetry settings](https://code.claude.com/docs/en/data-usage#telemetry-services), and setting `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` turns these off.
+
+To run tachi inside a sandbox with an egress allow-list, follow the [isolated-operation runbook](ISOLATED_OPERATION_TACHI.md).
+
 **Secure key storage**:
 
 ```bash
@@ -1797,10 +1805,9 @@ cp -r ~/Projects/tachi/brand/ brand/
 ```
 
 **"Tachi says it is not installed."**
-Verify that `.claude/agents/tachi/orchestrator.md` exists in your project. The agent files must be at that exact path. If you moved them, re-copy:
-```bash
-cp -r ~/Projects/tachi/adapters/claude-code/agents/ .claude/agents/tachi/
-```
+Verify that `.claude/agents/tachi/orchestrator.md` exists in your project. The agent files must be at that exact path. If the file is missing or you moved the agents, repair the install. Re-run the installer from this project's root: `<tachi-repo>/scripts/install.sh`
+
+`<tachi-repo>` is your tachi clone (`~/Projects/tachi` if you followed Step 1).
 
 **"The architecture file was not found."**
 By default, Tachi looks for `docs/security/architecture.md`. If your file is elsewhere, specify the path:
@@ -1991,7 +1998,7 @@ SARIF 2.1.0 JSON file extending `risk-scores.sarif` with control analysis. Each 
 | Control Coverage | Only if `compensating-controls.md` exists | Coverage matrix, control statistics |
 | Infographic (full-bleed) | Only if `threat-*.jpg` files exist | One landscape page per image |
 
-The report-assembler agent parses artifacts, generates `report-data.typ` (extracted data) and `report-config.typ` (page toggles), then invokes `typst compile templates/tachi/security-report/main.typ security-report.pdf --root .`.
+The report-assembler agent parses artifacts, generates `report-data.typ` (extracted data) and `report-config.typ` (page toggles) in a throwaway copy of the template at `{output_dir}/.tachi-build/security-report/`, then invokes `typst compile {output_dir}/.tachi-build/security-report/main.typ {output_dir}/security-report.pdf --root .`.
 
 ### Infographic Spec Sections (Both Templates)
 
