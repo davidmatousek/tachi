@@ -31,7 +31,7 @@
 # Python floor (F-391): the scripts the installer ships to adopters are stdlib
 # Python >= 3.9 (`pyproject.toml` declares `requires-python = ">=3.9"`; stock
 # macOS ships 3.9.6), but the matrix above runs 3.11, where a 3.10+ API would
-# pass unnoticed. The `py39-floor` job re-runs the F-391 modules under
+# pass unnoticed. The `py39-floor` job re-runs F-391's Part B modules under
 # `setup-python` 3.9 on Linux only: the floor is an interpreter question, so the
 # macOS bash-3.2 leg adds nothing. It is a job of its own, not
 # `if: matrix.os == 'ubuntu-latest'` steps, so it runs in parallel, still
@@ -333,8 +333,8 @@ jobs:
           python -c 'import sys; assert sys.version_info[:2] == (3, 9), sys.version'
           python -m pytest --version
 
-      - name: Run the F-391 modules under Python 3.9
-        # The module list is the F-391 subset of the matrix step's list, in the
+      - name: Run F-391's Part B modules under Python 3.9
+        # The module list is F-391's Part B subset of the matrix step's list, in the
         # same order. Extend it in lock-step with that list and with `paths:`
         # (see the header). `--timeout=600`: ubuntu only and no init.sh
         # subprocess (the matrix step's 1080 is sized for macOS cold-cache

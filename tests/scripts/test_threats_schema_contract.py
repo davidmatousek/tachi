@@ -30,8 +30,7 @@ Seven groups, the first six one per T039 case:
 
 Exit codes pinned here are the implemented ones, the house convention: 0 stamped,
 unchanged or ``--check`` clean; 1 ``--check`` only, when the file would change;
-2 every error. The contract text in ``cli-contracts.md`` has 1 and 2 the other way
-round; T040 reconciles it.
+2 every error.
 
 Hygiene: every run happens in a pytest temporary directory. The repository tree is
 only read. The stamp, the extractor and the SARIF generator run with ``cwd`` and every
