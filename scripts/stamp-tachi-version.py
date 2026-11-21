@@ -31,8 +31,7 @@ What it does to ``--threats``, in place:
 ``<value>`` is the marker's value. When the marker is absent or malformed it is
 ``unknown`` and the reason goes to stderr. The marker is one line,
 ``tachi_version: <value>``, where the value is one token (a letter or digit, then
-letters, digits and ``. _ + ~ -``, at most 128 characters). The run archiver
-applies the same rule, so its manifest and the stamped file always agree.
+letters, digits and ``. _ + ~ -``, at most 128 characters).
 
 Scope decision (CF-21): this script writes ``tachi_version`` and no other key.
 Writing ``schema_version`` from ``schemas/output.yaml`` was measured in a scratch
@@ -76,9 +75,8 @@ MARKER_MAX_BYTES = 4096
 # AOD-SIMPLIFICATION: writes tachi_version only, schema_version stays model-authored — upgrade: regenerate the five infographic goldens, then add a flag that reads schemas/output.yaml (CF-21)
 
 # The marker's one line. The value is one token with nothing in it that a
-# double-quoted YAML scalar would need escaped. Kept identical to _MARKER_RE in
-# scripts/archive-run-transcripts.py, so the manifest's tachi_version and the
-# stamped one cannot disagree.
+# double-quoted YAML scalar would need escaped. scripts/install.sh writes only
+# values that match it (contracts/version-marker.md).
 _MARKER_RE = re.compile(r"tachi_version:[ \t]*([A-Za-z0-9][A-Za-z0-9._+~-]{0,127})[ \t]*\r?\Z")
 
 # Frontmatter is found on lines, as bytes: the file is never decoded or newline-
