@@ -1071,6 +1071,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.48.4](https://github.com/davidmatousek/tachi/compare/v4.48.3...v4.48.4) (2026-11-21)
+
+
+### Bug Fixes
+
+* **397:** correct the agentic CVSS default and re-key carried OWASP 2025 codes ([#421](https://github.com/davidmatousek/tachi/issues/421)) ([a7f9ec5](https://github.com/davidmatousek/tachi/commit/a7f9ec5de61e360e04c0ef5a2c5b5b4120d9597d))
+
 ## [4.48.3](https://github.com/davidmatousek/tachi/compare/v4.48.2...v4.48.3) (2026-11-21)
 
 
