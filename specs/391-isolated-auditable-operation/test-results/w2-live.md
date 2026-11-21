@@ -15,6 +15,10 @@
 
 This record is curated and structure-only: no transcript excerpts, session ids, home paths or key material. The raw notes and the archives are private.
 
+*Corrections, 2026-11-20 (T051; `tw-b1-w2.md` §7):*
+- *(a) K1 had 8 dispatches, not 9 (§5.8). The transcripts, the manifest and the instance count all give 8.*
+- *(b) K2 held one refusal that no probe planted. Before it ran, a Bash call by `tachi-threat-infographic` that named the Gemini host and carried a per-command allowed-domain field was refused by the strict allowlist, with the same refusal as P3b and no denial marker. The pipeline completed with 6 images. This qualifies the "Unexpected egress denials: 0" lines above and in §5.5, and SC-001's "zero unexpected egress denials". The note states the facts and does not rule on whether the refusal is an egress denial.*
+
 ## 1. Result in brief
 
 - **Passed:**
@@ -135,6 +139,8 @@ Each listing hashes every file and directory in the scratch project except `.git
 | Unexpected egress denials | 0. K2 had no denial; K1's denials were the planted probes |
 | Auto mode with non-essential traffic off | PASS. Every measured session ran in auto mode with "Auto mode server: Enabled". No fallback was needed |
 
+*Correction, 2026-11-20 (T051): K2 held one unplanted refusal before running; see correction (b) under the header table.*
+
 ### 5.6 Offline render check
 
 PASS, with a change of method:
@@ -162,6 +168,8 @@ The B1 archiver ran from a plain shell for each session, with that session's own
 | K2 | Exit 0, 12 files. Secret scan: 1 environment value (`GEMINI_API_KEY`) plus 20 rules; the manifest was written. 5 subagent instances, as above; 5 dispatches `recorded`; `egress_denied` empty; `egress_observed` lists the Gemini host only |
 | K1a, B7, MM, SS | Exit 0, 1 file each. MM records the mode as `default` |
 | All | Claude Code `2.1.330`, `tachi_version` `v4.48.2-103-gfe5125a`, `denial_detection: not-validated` (as designed until T035) |
+
+*Correction, 2026-11-20 (T051): K1 had 8 dispatches, not 9; see correction (a) under the header table. T051 re-ran the archiver on all six archives and ruled TW-B1 (`tw-b1-w2.md`).*
 
 ## 6. Not run
 
