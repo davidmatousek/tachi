@@ -193,6 +193,7 @@ The Effort column reads tasks.md v1.1's figure → the team-lead's central re-co
   - mark the unfinished B1 tasks `[X] honest-stopped (TW-B1)` (T031–T035, T051);
   - T048 then drops its B1 items (the runbook's archiver text, ADR-049's B1 section, ADR-019's manifest sentence) and keeps the B2 items;
   - B2 continues.
+  - *Applied at T051 on 2026-11-20, after B1's code had been built in W1: T035 is honest-stopped, T031 to T034 stay `[x]`, and B1's files and hunks leave part-b by delete-and-edit commits, never `git revert` (architect ruling, local: `.aod/results/architect-b1-stop-391.md`).*
 - **T050 defers Part B, or one lane**: mark the unfinished tasks `[X] deferred (TW-B2)`.
 
 ---

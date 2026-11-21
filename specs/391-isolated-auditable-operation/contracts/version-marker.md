@@ -6,7 +6,7 @@
 
 **Writers**: `scripts/install.sh` removes any existing marker before the copy loop and writes the new line after it (`:585`), through the containment (`under()`, `[ -ef ]`) and symlink guards, before the EXIT trap restores the ref; the README manual-install loop (and the two developer-guide copies, byte-identical per the manifest completeness test) writes the same line after its copy. Installs that skip the line read `unknown` because the copied placeholder says so; a marker-writing install followed by a marker-skipping install reads `unknown` (tested). **Residual**: a downgrade performed with a pre-391 installer cannot reset the marker (ADR-049 Known limitations). `install.sh` runs a best-effort `git fetch --tags` at install time; the runbook mentions it for air-gapped installs.
 
-**Readers**: `stamp-tachi-version.py` (Step 2.6) and `archive-run-transcripts.py` (the manifest's `tachi_version`), with one rule: exactly one line, `tachi_version: <value>`, where `<value>` matches `[A-Za-z0-9][A-Za-z0-9._+~-]{0,127}`. Anything else, or no file, reads `unknown`. Agents never read it.
+**Readers**: `stamp-tachi-version.py` (Step 2.6) and `archive-run-transcripts.py` (the manifest's `tachi_version`), with one rule: exactly one line, `tachi_version: <value>`, where `<value>` matches `[A-Za-z0-9][A-Za-z0-9._+~-]{0,127}`. Anything else, or no file, reads `unknown`. Agents never read it. *(2026-11-20: B1 was honest-stopped at T051, TW-B1, so `archive-run-transcripts.py` does not ship in 391 and `stamp-tachi-version.py` is the only reader.)*
 
 **Coordination**: #369's `adapters/*/VERSION` uses `source_version:`; this marker uses `tachi_version:` to match the frontmatter key; the two formats are documented side by side in #369's attestation doc.
 

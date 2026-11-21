@@ -309,7 +309,7 @@ This section is the adopter-facing matrix. For the 21 tachi agents and the 6 tac
 
 **Declared, not enforced by Claude Code**
 
-- **Bash families, Writes and Hosts** declare what an agent's instructions do. Only the adopter's sandbox and permission rules enforce them; the Tools column bounds them as described above.
+- **Bash families, Writes and Hosts** declare what an agent's instructions do; they do not bound a run. A Bash-capable agent can run any command its session allows: in the live validation on macOS, `tachi-report-assembler` ran commands from families outside its Bash families cell, and `tachi-threat-infographic` ran many commands outside its fenced recipes ([run record](../../specs/391-isolated-auditable-operation/test-results/w2-live.md)). The adopter's sandbox bounds where any command can write and connect, not which commands run; the Tools column bounds only which tools an agent holds, as described above.
 - **Commands.** A tachi command declares no `allowed-tools`, so it runs in the main session with that session's tools and permission rules. In the commands table, Frontmatter keys records what each command file declares; Dispatches, Bash it instructs, Writes and Child processes record what the command text instructs, which Claude Code does not enforce.
 
 **Tier.** The highest capability the Tools cell grants: `read-only` (`Read`, `Glob`, `Grep`), `writer` (adds `Write`) or `Bash` (adds `Bash`). `Agent` does not change the tier; see Dispatch.

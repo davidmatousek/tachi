@@ -1,4 +1,4 @@
-"""Isolated-operation session profile contract (feature 391, T017; AR-15 to AR-20).
+"""Isolated-operation session profile contract (feature 391, T017; AR-15 to AR-21a).
 
 ``docs/guides/ISOLATED_OPERATION_TACHI.md`` ships the session profile as one fenced
 JSON block between ``<!-- BEGIN TACHI SESSION PROFILE -->`` and ``<!-- END TACHI SESSION
@@ -6,8 +6,8 @@ PROFILE -->``. Adopters save it and start Claude Code with ``claude --settings <
 so the block is the isolation guarantee: a key added to it, or a value flipped in it,
 silently widens what a tachi session may do. This module pins the block to the contract
 (``specs/391-isolated-auditable-operation/contracts/session-profile.md``, final at AR-15
-to AR-20). The contract's key paths, values and lists are the constants below, so the
-test does not depend on the spec workspace.
+to AR-20, amended at AR-21 and AR-21a). The contract's key paths, values and lists are
+the constants below, so the test does not depend on the spec workspace.
 
 Inputs (read-only; nothing is written; no network):
 
@@ -29,7 +29,12 @@ What each group proves:
   in ``allowedDomains``; ``"$defaults"`` is in every ``autoMode`` list; ``tlsTerminate`` is
   present whenever a ``mask`` entry exists; the ``hard_deny`` sentence and the audiences
   list are byte-exact against PRD FR-6; AR-15 (Read denies and the login-file entry),
-  AR-16 (``autoAllowBashIfSandboxed`` is ``false``) and AR-17 (``mcp__*`` denied).
+  AR-16 (``autoAllowBashIfSandboxed`` is ``false``), AR-17 (``mcp__*`` denied), AR-21
+  (the eight built-in tools that reach past the sandbox are denied by bare name, each
+  exactly as written: a scoped form or a different case does not count) and AR-21a
+  (``Workflow`` is denied by bare name, and the Agent tool's isolation parameter by the
+  exact rule ``Agent(isolation:*)``: a rule for one value, such as
+  ``Agent(isolation:remote)``, does not count).
 - named negatives (AR-19): 21 weakening or forbidden key paths are absent, whatever their
   value (the closed key set rejects every other path too).
 - release-please marker, matrix link and anchor: the matrix-link line is the only
@@ -82,7 +87,7 @@ TextMutation = Callable[[str], str]
 
 
 # =============================================================================
-# The contract (contracts/session-profile.md, final at AR-15 to AR-20)
+# The contract (contracts/session-profile.md, final at AR-15 to AR-20, amended at AR-21 and AR-21a)
 # =============================================================================
 
 # 19 key paths. Objects only: the members of the three lists below are pinned by value.
@@ -126,6 +131,16 @@ EXPECTED_DENY: Tuple[str, ...] = (
     "WebFetch",
     "WebSearch",
     "mcp__*",
+    "ListMcpResourcesTool",
+    "ReadMcpResourceTool",
+    "ReadMcpResourceDirTool",
+    "SendMessage",
+    "ListAgents",
+    "Monitor",
+    "RemoteTrigger",
+    "ShareOnboardingGuide",
+    "Workflow",
+    "Agent(isolation:*)",
     "Read(~/.ssh/**)",
     "Read(~/.aws/**)",
     "Read(~/.claude/.credentials.json)",
@@ -177,6 +192,26 @@ NAMED_NEGATIVES: Tuple[str, ...] = (
     "autoMode.allow",
     "autoMode.soft_deny",
 )
+
+# AR-21: the eight built-in tools whose paths reach past the sandbox, denied by bare name
+# (a member list only: no key path was added). Each must be in permissions.deny exactly
+# as written, so a scoped form such as Monitor(*) or a different case does not count.
+AR21_TOOL_DENIES: Tuple[str, ...] = (
+    "ListMcpResourcesTool",
+    "ReadMcpResourceTool",
+    "ReadMcpResourceDirTool",
+    "SendMessage",
+    "ListAgents",
+    "Monitor",
+    "RemoteTrigger",
+    "ShareOnboardingGuide",
+)
+
+# AR-21a: two denies added after the Agent tool was observed to offer a "remote" isolation
+# value: the bare name Workflow, and the exact rule Agent(isolation:*), which matches any
+# explicit isolation value. Each must be in permissions.deny exactly as written, so a rule
+# for one value, such as Agent(isolation:remote) or Agent(isolation:worktree), does not count.
+AR21A_DENIES: Tuple[str, ...] = ("Workflow", "Agent(isolation:*)")
 
 # The block's audiences entry (PM ruling, field-list.md section 10.3): its frame is
 # pinned here and the list inside the parentheses is compared with PRD FR-6.
@@ -452,6 +487,15 @@ def check_named_negatives(profile: Any) -> List[str]:
     ]
 
 
+def check_ar21(profile: Any) -> List[str]:
+    deny = _get(profile, "permissions.deny")
+    return [
+        f"permissions.deny lacks {rule!r}"
+        for rule in AR21_TOOL_DENIES + AR21A_DENIES
+        if not isinstance(deny, list) or rule not in deny
+    ]
+
+
 # =============================================================================
 # PRD FR-6 sources
 # =============================================================================
@@ -492,6 +536,7 @@ PROFILE_CHECK_IDS = (
     "ar16_classifier_coverage",
     "ar17_mcp_denied",
     "named_negatives_absent",
+    "ar21_tool_denies",
 )
 
 
@@ -510,6 +555,7 @@ def profile_checks(prd_sentence: str, prd_list: str) -> Dict[str, Check]:
         "ar16_classifier_coverage": check_ar16,
         "ar17_mcp_denied": check_ar17,
         "named_negatives_absent": check_named_negatives,
+        "ar21_tool_denies": check_ar21,
     }
 
 
@@ -728,11 +774,15 @@ _HARD_DENY = "autoMode.hard_deny"
 _ENVIRONMENT = "autoMode.environment"
 _AUTO_ALLOW_BASH = "sandbox.autoAllowBashIfSandboxed"
 _PROC_DENY, _LOGIN_DENY = AR15_READ_DENIES
+_WORKFLOW_DENY, _AGENT_ISOLATION_DENY = AR21A_DENIES
 _AUDIENCES_CLAUSE = "; and, if a template cannot be loaded, a one-line system description"
 
 # AR-19: each named key, injected with an arbitrary value, is reported by name and by the
 # closed key set.
 _INJECTIONS = tuple(("inject-" + dotted, put(dotted, True)) for dotted in NAMED_NEGATIVES)
+
+# AR-21: each of the eight tool names, taken out of permissions.deny, is reported by name.
+_TOOL_REMOVALS = tuple((name + "-deny-removed", remove(_DENY, name)) for name in AR21_TOOL_DENIES)
 
 ProfileRows = Tuple[Tuple[str, ProfileMutation], ...]
 PROFILE_GROUPS: Dict[str, ProfileRows] = {
@@ -845,6 +895,25 @@ PROFILE_GROUPS: Dict[str, ProfileRows] = {
         ("mcp-deny-narrowed", replace(_DENY, "mcp__*", "mcp__github__*")),
     ),
     "named_negatives_absent": _INJECTIONS,
+    "ar21_tool_denies": _TOOL_REMOVALS
+    + (
+        # a scoped form is not the bare name the contract pins
+        ("Monitor-deny-scoped", replace(_DENY, "Monitor", "Monitor(*)")),
+        # the check compares exactly, so a different case is not the pinned name
+        ("SendMessage-deny-case-changed", replace(_DENY, "SendMessage", "sendMessage")),
+        # AR-21a
+        ("Workflow-deny-removed", remove(_DENY, _WORKFLOW_DENY)),
+        ("Agent-isolation-deny-removed", remove(_DENY, _AGENT_ISOLATION_DENY)),
+        # a rule for one isolation value covers that value only; the contract pins the wildcard
+        (
+            "Agent-isolation-narrowed-to-remote",
+            replace(_DENY, _AGENT_ISOLATION_DENY, "Agent(isolation:remote)"),
+        ),
+        (
+            "Agent-isolation-narrowed-to-worktree",
+            replace(_DENY, _AGENT_ISOLATION_DENY, "Agent(isolation:worktree)"),
+        ),
+    ),
 }
 PROFILE_CONTROLS: Tuple[ProfileControl, ...] = tuple(
     ProfileControl(check, name, mutate)
@@ -1021,7 +1090,10 @@ def _fingerprint(profile: Dict[str, Any]) -> str:
 def test_contract_constants_match_the_contract_counts() -> None:
     assert len(EXPECTED_KEY_PATHS) == 19
     assert len(EXPECTED_SCALARS) == 7
-    assert [len(members) for _, members in EXPECTED_LISTS] == [8, 3, 1]
+    assert [len(members) for _, members in EXPECTED_LISTS] == [18, 3, 1]
+    ar21 = AR21_TOOL_DENIES + AR21A_DENIES
+    assert (len(AR21_TOOL_DENIES), len(AR21A_DENIES), len(set(ar21))) == (8, 2, 10)
+    assert set(ar21) <= set(EXPECTED_DENY), "an AR-21 or AR-21a rule is not in the deny list"
     assert len(NAMED_NEGATIVES) == 21 == len(set(NAMED_NEGATIVES))
     allowed = {".".join(path) for path in EXPECTED_KEY_PATHS}
     assert not allowed & set(NAMED_NEGATIVES), "a named negative is also an allowed key path"

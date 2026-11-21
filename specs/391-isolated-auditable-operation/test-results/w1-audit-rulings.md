@@ -436,3 +436,120 @@ ADR-049 adds one clause: in build mode the extractor only reads `--target-dir`.
 | AR-18 | The runbook's effective-config check names no `/sandbox` view inside the profile session. The `strictAllowlist` probe row and the Linux and WSL2 seccomp step are present. T020 recorded the `/sandbox` message |
 | AR-19 | T017 asserts the 19 paths, the scalar values, the three member sets and the 21 negatives, and goes red on a mutated copy |
 | AR-20 | The second commit's prose matches 2.11. The runbook's Part A text names neither the manifest nor the archiver |
+
+## 6. W3 addendum: AR-21 (architect, 2026-11-20, S2b)
+
+AR-21 is the architect's ruling W3-3, made against the Part A branch at `858ac85` and the public Claude Code docs read on 2026-11-20. It began as finding F3 of the live validation (T020), the three MCP resource tools that sit outside `mcp__*`, and widened after a pass over the whole public tools reference. It applies AR-17's principle, that model-invocable egress outside the sandbox is closed in the profile, to the other built-in tools that run in the Claude Code process.
+
+**PM:** FYI only. PRD FR-5's list is a floor (AR-15) and the `hard_deny` sentence is unchanged, so no PRD change is needed. **User:** nothing blocking. The maintainer's re-check (6.3) is the one action, and it comes before T046.
+
+### 6.1 Ruling
+
+| AR | Discrepancy | Disposition | Absorbing task | Scope change (files, lines, behaviour) |
+|---|---|---|---|---|
+| AR-21 | Profile defect: eight built-in tools run in the Claude Code process, outside the sandbox, and can move content off the machine or into another session. Most need no permission prompt. tachi uses none of them, and the profile denied none: AR-17's `mcp__*` does not match the three MCP resource tools, whose names do not start with `mcp__` | Add the eight to `permissions.deny` by bare name: `ListMcpResourcesTool`, `ReadMcpResourceTool`, `ReadMcpResourceDirTool`, `SendMessage`, `ListAgents`, `Monitor`, `RemoteTrigger`, `ShareOnboardingGuide`. Not adopted: `disableClaudeAiConnectors`, `crossSessionInbound`, a user-scope fix | T021 (the block, the runbook text, these records), T017's test in the same commit as the block (SBE-TA), T042 (review), the maintainer's re-check before T046 | `permissions.deny` +8 rules (16). No new key path: the closed set stays at 19. The published block differs from the one the live run used, which ends the "Last validated" claim under refresh trigger 2 until the re-check runs. Detail in 6.2 and 6.3 |
+
+### 6.2 AR-21: deny eight built-in tools that run past the sandbox
+
+**The eight, by family.** Each runs in the Claude Code process, as the Read tool does, so the sandbox, `allowedDomains` and `strictAllowlist` do not reach it.
+- MCP resources: `ListMcpResourcesTool`, `ReadMcpResourceTool` and `ReadMcpResourceDirTool`. They list and read the resources of every connected server. Their names do not start with `mcp__`, so AR-17's rule misses them. The first two are in the tools reference; the third was observed on Claude Code 2.1.330.
+- Messaging between your sessions: `SendMessage` and `ListAgents`. The feature is on by default, including with feature-flag fetching off (v2.1.248 or later), and the docs' recipe for turning it off is to deny both tools.
+- `Monitor`: Claude Code itself opens a WebSocket watch to a `ws://` or `wss://` address. The docs' list of hosts denied to a watch does not include `allowedDomains`.
+- `RemoteTrigger`: creates and runs cloud scheduled tasks on claude.ai, which need only a claude.ai login.
+- `ShareOnboardingGuide`: uploads `ONBOARDING.md` and returns a share link (Team and Enterprise).
+
+**Why it is a defect.**
+- Most of the eight need no permission prompt, and a deny rule applies before the classifier, in every mode.
+- tachi uses none of them. A grep over `.claude/agents/tachi/`, `.claude/commands/tachi.*.md` and `.claude/skills/tachi-*/` finds only the English word "Monitor" in mitigation text. A deny rule therefore removes nothing a run needs, and R6 checks that.
+- The pass covered the whole tools reference, not only the three tools the live run noticed. `Artifact`, `PushNotification` and `SendUserFile` stay because the profile's non-essential-traffic variable turns off the publishing and Remote Control that they need. `Workflow` and `Agent` stay because they run under the same sandbox and rules. Everything else in the table is local or needs a cloud session or the desktop app.
+
+**Form.** A bare tool name in a deny rule removes the tool from Claude's context, which the live run also showed for `WebFetch`. The docs describe no warning for a deny rule that names an absent tool, and R3 checks that on the version in use.
+
+**Not adopted**, one reason each.
+- `disableClaudeAiConnectors`: it would add a key path and cover only the claude.ai connectors, while the deny rules close the model's route to resources on every server.
+- `crossSessionInbound`: it governs messages that arrive, not egress, so it earns no key path. The runbook text (T021) discloses it as an optional setting for the adopter's project-local settings.
+- A user-scope fix: the eight are model-invocable and run in the Claude Code process, so AR-17's principle puts them in the profile. User scope is for process residuals, such as a local server starting.
+
+**Key set.** No key path is added: the closed set stays at 19, and the scalars and the 21 named negatives are unchanged. In the contract, only the `permissions.deny` members change, plus one invariant and the two Disclosures bullets.
+
+**Owners.**
+- DEVOPS-R (T021): the runbook block, with the contract's block identical to it; the runbook text that follows (§1, §3, §4, §9); and the records (`contracts/session-profile.md`, `data-model.md` line 53, this addendum).
+- SBE-TA: `tests/scripts/test_isolated_profile_contract.py`, landed in the same commit as the block edit. The test pins the block, so either change alone turns CI red. It gains the eight members, a check that each is present exactly as written, and negative controls (each name removed, one scoped form, one case change).
+- Maintainer: the re-check in 6.3, before T046.
+- T042: reviews the amended block.
+
+### 6.3 The bounded re-check
+
+A changed profile ends the "Last validated" claim (refresh trigger 2 in the runbook's header), and the published block differs from the one the live run used. A deny-only change cannot widen anything, but it could remove something a run needs. The re-check therefore covers the profile layer plus one command with a deep dispatch tree. It is required before T046 and is the maintainer's to run, and Claude may drive it with the deviation recorded. It runs key-less in the W2 scratch adopter and takes about 0.03 d.
+
+| Step | What it covers |
+|---|---|
+| R1 | Extract the committed block. Record its bytes and SHA-256 |
+| R2 | Run `claude --settings <file> auto-mode config` and compare as W2's GL-3 did: `environment` 21 to 26, `hard_deny` 1 to 2, `allow` and `soft_deny` unchanged |
+| R3 | Launch with the validated wrapper form (W3-5), key-less. Pass: no startup warning names a rule, `/status` sources include Command line arguments, and `/permissions` lists the 16 profile denies. If a warning names one of the eight, drop only that name from the block and the test, then repeat R3 |
+| R4 | Take the tool inventory, names only. Pass: no `mcp__` tool and none of the eight names, loaded or deferred. Also record which `isolation` values the `Agent` tool offers. Anything other than `worktree` goes back to the architect, because no deny rule can remove that without removing `Agent` |
+| R5 | Run probes P1 to P3 and the planted `.env` row |
+| R6 | Run `/tachi.threat-model` once on the W2 input, key-less. It must pass |
+
+The record is a dated addendum in `test-results/w2-live.md`, or a short W3 record, plus runbook §11.
+
+### 6.4 Check for T040
+
+| Ruling | Check |
+|---|---|
+| AR-21 | The runbook block and the contract block are identical and carry 16 `permissions.deny` rules, with the eight tool names bare and in the architect's order. The contract says "sixteen rules" and carries the AR-21 invariant, and `data-model.md` lists the same 16. The contract test pins the members, the key set is still 19 paths, and the test goes red on a mutated copy. The re-check's R1 to R6 are recorded before T046 |
+
+## 7. W3 addendum: AR-21a (architect, 2026-11-20, W3-3a)
+
+AR-21a is the architect's ruling W3-3a. It was made after the first run of the bounded re-check (6.3) stopped at R4: R1 to R3 had passed on the 16-rule block, and R4's inventory matched the AR-21 table, but the Agent tool's `isolation` parameter accepted a `remote` value besides `worktree` on Claude Code 2.1.330. It applies AR-17's principle to a path that is an option of a tool tachi needs, so no bare-name deny can close it. It supersedes AR-21's "keep" for `Workflow`, R1 to R4 in 6.3, and the counts "eight" and "sixteen" where they describe the published block.
+
+**PM:** FYI only. PRD FR-5's list is a floor and the `hard_deny` sentence is unchanged. **User:** nothing blocking. The re-check restarts on the new block (7.3), and it is the maintainer's to run before T046.
+
+### 7.1 Ruling
+
+| AR | Discrepancy | Disposition | Absorbing task | Scope change (files, lines, behaviour) |
+|---|---|---|---|---|
+| AR-21a | Profile defect: the Agent tool's `isolation` parameter also offers `remote`, which the tool's own description says launches the agent in a cloud environment. The public subagent docs describe only `worktree`. A cloud session runs outside the local process and does not enforce its restrictions, its network follows its cloud environment's access level, and a session started from a repository without a GitHub remote uploads a bundle of the repository. No rule in the 16-rule block matches an Agent call. `Workflow` starts subagents through a script whose launch options the docs do not describe, so a parameter rule cannot be shown to cover them | Add `Agent(isolation:*)` (the documented parameter form, which matches any explicit isolation value) and `Workflow` (bare name) to `permissions.deny`. `Agent` stays available. Not adopted: `--restricted`, and `allow_remote_sessions` as a profile key | T021 (the block, the runbook text, these records), T017's test in the same commit as the block (SBE-TA), T042 (review), the maintainer's re-check before T046 (7.3) | `permissions.deny` +2 rules (18). No new key path: the closed set stays at 19. The published block changes again, so the re-check restarts. Detail in 7.2 and 7.3 |
+
+### 7.2 AR-21a: deny the Agent tool's isolation option and the Workflow tool
+
+**Why it is a defect.**
+- The `remote` value is observed, not documented. Neither the value nor its gate appears in the public subagent docs.
+- What the docs confirm about cloud sessions: a cloud session runs outside the local process and does not enforce its restrictions (Claude Code refuses to create one from a `--restricted` session for that reason). Its network follows the cloud environment's access level: a new environment starts at Limited, which covers package registries, GitHub and cloud SDKs, and Full reaches any domain. A session started from the terminal in a repository with no git remote uploads a bundle of the repository, though whether a remote subagent does the same is not documented.
+- Nothing in the 16-rule block is documented to close it. The docs tie cloud sessions to an account and to the organization's `allow_remote_sessions` policy, not to the non-essential-traffic variable. `strictAllowlist` governs sandboxed commands, and the Claude Code process makes the dispatch.
+
+**Why these two rules.**
+- `Agent(isolation:*)` is a documented form: deny rules can match a top-level input parameter on any built-in tool, `Agent(isolation:*)` matches any explicit isolation value, and a parameter the model omits is never matched. tachi's dispatches set no isolation value (the guard pins agent frontmatter to four keys, and no tachi text passes one), so they are unaffected and `Agent` stays available.
+- The wildcard replaces `Agent(isolation:remote)` for three reasons: it also covers any further value, today's value is undocumented and gated, and it allows a live check with a local-only value (R4a).
+- `Workflow` is denied by bare name. That revises AR-21's "keep", which rested on a workflow's agents getting the session's permission checks and sandboxing. With a remote launch option in play, where an agent runs matters too, and the docs describe no launch options for a workflow script's agents. tachi uses no workflow.
+
+**Not adopted**, one reason each.
+- `--restricted`: it refuses cloud sessions on the client, but it removes the command-running tools unless each is named in `--tools` and loads only managed settings and `--settings`, so it changes the launch form and the tool set and would need its own validation. It is a T045 follow-up candidate.
+- `allow_remote_sessions`: it is an Owner control, not a profile key. The runbook names it as the organization-level switch.
+
+**Key set.** No key path is added: the closed set stays at 19, and the scalars and the 21 named negatives are unchanged. In the contract, the `permissions.deny` members change again, plus one invariant, one amendment note and one Disclosures bullet.
+
+**Owners.**
+- DEVOPS-R (T021): the runbook block, with the contract's block identical to it; the runbook text that follows (§3, §4, §9, §11); and the records (`contracts/session-profile.md`, `data-model.md`, this addendum).
+- SBE-TA: `tests/scripts/test_isolated_profile_contract.py`, in the same commit as the block edit. The AR-21 check also requires `Workflow` (bare) and the exact literal `Agent(isolation:*)`, with controls for each removed and for the rule narrowed to one value (`remote`, `worktree`).
+- Maintainer: the re-check in 7.3, before T046.
+- T042: reviews the amended block.
+
+### 7.3 The re-check restarts
+
+The block changes, so R1 to R4 restart on the new block, and R5 and R6 then run on it. R4's stop condition in 6.3 is replaced by R4a. The record is kept as in 6.3.
+
+| Step | What it covers |
+|---|---|
+| R1 | Record the bytes and SHA-256 of the committed 18-rule block |
+| R2 | As before |
+| R3 | As before, plus: `/permissions` lists the 18 profile denies, and `claude --settings <file> doctor` lists no rejected or skipped rule |
+| R4 | Pass: no `mcp__` tool and none of the nine bare names (the eight AR-21 names and `Workflow`), loaded or deferred, and `Agent` is present. Record its `isolation` values: a parameter rule removes no schema value, so `remote` is expected to remain listed |
+| R4a (new) | Ask the session exactly: "Start one subagent with the Agent tool: subagent_type general-purpose, isolation worktree, prompt 'Reply with the single word ok and use no tools.' Do not retry it with other parameters." Pass: the call is refused before it runs, by a permission rule from the command-line settings, and no subagent runs. From a plain shell, `git worktree list` in the scratch adopter shows only the main worktree. Record the layer that refused. Never ask for `isolation: "remote"`. If the call is not refused, stop and return to the architect: on 2.1.330 the profile would then not close the remote path |
+| R5, R6 | As specified in 6.3. R6 also shows that tachi's dispatches, which set no isolation value, are unaffected |
+
+### 7.4 Check for T040
+
+| Ruling | Check |
+|---|---|
+| AR-21a | The runbook block and the contract block are identical and carry 18 `permissions.deny` rules, with `Workflow` and `Agent(isolation:*)` directly after `ShareOnboardingGuide`. The contract says "eighteen rules" and carries the AR-21a note and invariant, and `data-model.md` lists the same 18. The contract test pins the members (`[18, 3, 1]`), the key set is still 19 paths, and the test goes red on a mutated copy, among them `Agent(isolation:*)` narrowed to one value. The re-check's R1 to R4a, R5 and R6 are recorded before T046 |

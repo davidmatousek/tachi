@@ -1,5 +1,7 @@
 # run-manifest.json v1 (Part B1)
 
+*Not shipped in 391: B1 was honest-stopped at T051 (TW-B1, `../test-results/tw-b1-w2.md`). This contract stays as the design record for the follow-up.*
+
 Structured fields only (no free text). Produced by `archive-run-transcripts.py`; documented for consumers at `schemas/run-manifest.yaml` (installed with `schemas/`).
 
 ```json
