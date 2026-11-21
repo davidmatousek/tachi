@@ -3,7 +3,7 @@
 **Delivery Date**: 2026-11-21
 **Branch**: `391-isolated-auditable-operation` (Part A). Part B is on `391-isolated-auditable-operation-part-b`.
 **PR**: #392 (Part A), squash-merged to `main` as `e83ca6b` at 2026-11-21T18:35:56Z. #396 (Part B), draft, now based on `main`: it closed when the Part A branch was deleted at the merge and was reopened and retargeted at this delivery; T047's merge of `origin/main` into part-b is pending.
-**Release**: v4.48.3. The release-please PR #418 opened at the squash-merge. Part A ships alone as `fix(391)`, a patch release.
+**Release**: v4.48.3, published 2026-11-21T20:57:53Z. The release-please PR #418 opened at the squash-merge and was squash-merged as `b1c3369`. Part A ships alone as `fix(391)`, a patch release.
 **Closes**: #391, closed at this delivery (the PM's recommendation; #399 carries B1 and #400 the Part B landing)
 **Path**: split (TW-A2). #364 was still open when Part A became merge-ready.
 **Part B**: B2 built, awaiting #364 (#396, based on `main` since this delivery; T047's merge phase done the same day: merge `644f12f`, Part B security scan `51eaa5c` PASSED, gated set 1124 passed in a scratch clone, `/aod.analyze` clean). Landing tracker: #400.
@@ -253,6 +253,13 @@ Correcting published copies of the old data-locality claim outside this reposito
 
 **Status at delivery (2026-11-21): open.** A maintainer action, not performed by `/aod.deliver`; the known published copy carries the old sentence until the maintainer corrects it.
 
+**Status after delivery (2026-11-21): closed by the maintainer's decision; nothing corrected.** The coverage article was never published. The F-296 records say it was not pursued (`specs/296-50-50-owasp-coverage-distribution-launch/notes/linkedin-post-url.txt`), and the content repository has had no push since 2026-04-12. A sweep of the published surfaces found the old claim in two places, both on LinkedIn:
+
+- the F-296 coverage post of 2026-05-29 (its URL is in that notes file), which says the harness makes no remote calls and the architecture never leaves the machine;
+- the tachi entry in the profile's Projects section, which says no architecture leaves the laptop.
+
+The rest of the sweep came back clean: the repository description, every release body, the profile README, the Discussions, the awesome-list entry (it already says the configured Claude model processes the architecture description), the content repository, the maintainer's site and the AOD site. The 2026-04-14 post argues that whoever owns the model sees the architecture, so it does not repeat the old claim. The "local-first" taglines in other posts stay: like `scope.md` after FR-001, they describe where tachi runs, not what it sends. The maintainer decided to leave the LinkedIn copies as they are: the posts are more than 30 days old and now draw almost no views.
+
 ### Records outside Feature 391
 
 - **A stale checksum.** `specs/029-agent-refactoring-right/baseline-checksums.txt:23` holds Feature 029's SHA-256 of `schemas/output.yaml` (`3686e693…`). The file has changed since, and Part B changes it again. Nothing in the tests, scripts, workflows or the Makefile reads the record, so it was left unchanged.
@@ -497,8 +504,8 @@ All items below were done at the delivery on 2026-11-21: the note appended and t
 ## Cleanup
 
 - [x] The Part A branch was deleted at the merge (restored for a minute to reopen #396, then deleted again); the part-b branch stays until #396 lands.
-- [ ] The local branch `391-sc-a3-evidence` (`git branch -D` is denied in this environment; the maintainer removes it).
-- [ ] `.aod/revision-context.md`, a stale untracked leftover from the tasks loop, deliberately not committed (the maintainer removes it).
+- [x] The local branch `391-sc-a3-evidence`, deleted after delivery (its tip was `aaa2d84`; the closed PR #398 keeps its commits).
+- [x] `.aod/revision-context.md`, a stale untracked leftover from the tasks loop, deliberately not committed; deleted after delivery.
 - [x] Tasks: 50 of 52 done; T047 (after this merge) and T038b (after #364) are conditional.
 - [x] Committed and pushed: `7ae5e35` (the closure docs, KB Entry 25, the regenerated fixture) and the CI-record commit that carries this line, both direct to `main` under the deliver-stage exception.
 - [x] GitHub Issue #391 closed with `stage:done` (2026-11-21T19:16Z); the board row moved to Done.
