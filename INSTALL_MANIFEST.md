@@ -12,7 +12,7 @@ Canonical list of files and directories that must be copied when installing tach
 | `templates/tachi/output-schemas/` | Canonical output format templates | orchestrator, risk-scorer, control-analyzer, threat-report |
 | `templates/tachi/infographics/` | Infographic design templates | threat-infographic |
 | `templates/tachi/security-report/` | Typst PDF report templates | report-assembler |
-| `scripts/` (6 Python files) | Deterministic extraction, population and version-stamp scripts, and the operator-run run archiver | report-assembler, threat-infographic, orchestrator, risk-scorer, `/tachi.threat-model` (Step 2.6), operator (after a session) |
+| `scripts/` (5 Python files) | Deterministic extraction, population and version-stamp scripts | report-assembler, threat-infographic, orchestrator, risk-scorer, `/tachi.threat-model` (Step 2.6) |
 | `.claude/skills/tachi-*/` (21 dirs) | Agent skill references (detection patterns, domain knowledge) | All threat agents, infographic, report-assembler |
 | `adapters/claude-code/agents/references/` | SARIF generation and validation guides | risk-scorer, control-analyzer |
 | `brand/` | Logo assets for branded PDF reports | report-assembler |
@@ -62,7 +62,7 @@ Copy the entire `.claude/agents/tachi/` directory. Current agents:
 
 ## Script Files
 
-Copy these 6 Python files from `scripts/` to the target project's `scripts/`:
+Copy these 5 Python files from `scripts/` to the target project's `scripts/`:
 
 | File | Purpose | Invoked By |
 |------|---------|------------|
@@ -70,7 +70,6 @@ Copy these 6 Python files from `scripts/` to the target project's `scripts/`:
 | `extract-infographic-data.py` | Parses tachi artifacts and generates infographic specification JSON | threat-infographic (via `/tachi.infographic`) |
 | `tachi_parsers.py` | Shared parser helpers imported by both extraction scripts | extract-report-data.py, extract-infographic-data.py |
 | `populate-affected-assets.py` | Deterministically joins architecture `[asset:...]` tags to findings by component and upserts the `## Affected Assets` block into `threats.md` | orchestrator (via `/tachi.threat-model`), `/tachi.risk-score` |
-| `archive-run-transcripts.py` | Archives a finished session's transcripts to a location that cannot be committed and writes `run-manifest.json` (served model per agent, dispatches, egress hosts, artifact hashes); never run by an agent | operator, from a plain shell after a session |
 | `stamp-tachi-version.py` | Stamps `tachi_version` into the frontmatter of `threats.md` from the install-time marker `templates/tachi/VERSION` (`unknown` when the marker is missing or malformed); deterministic and idempotent | `/tachi.threat-model` (Step 2.6) |
 
 Dependency note: stdlib-only at import; PyYAML is imported lazily for the PDF coverage-attestation page.
@@ -91,7 +90,6 @@ Copy the entire `schemas/` directory. Current schemas:
 - `compensating-controls.yaml` -- controls analysis structure
 - `infographic.yaml` -- infographic specification structure
 - `security-report.yaml` -- PDF report configuration
-- `run-manifest.yaml` -- run archive manifest (`run-manifest.json`) fields
 
 ## Machine-Parseable Manifest
 
@@ -132,7 +130,6 @@ scripts/extract-report-data.py
 scripts/extract-infographic-data.py
 scripts/tachi_parsers.py
 scripts/populate-affected-assets.py
-scripts/archive-run-transcripts.py
 scripts/stamp-tachi-version.py
 adapters/claude-code/agents/references/
 brand/
