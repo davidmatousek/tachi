@@ -1,21 +1,21 @@
 {
   "schema_version": "1.0",
   "wave": 3,
-  "wave_label": "W3 gate (session S2b): T043, the full gated-suite run on both committed tips, with X-5. results-part1.json stays as the S2a part 1 record",
-  "timestamp": "2026-11-21T02:49:20Z",
+  "wave_label": "W3 gate (session S2b): T043 re-run on the final tips after T044's fixes, with X-5. This is the final W3 gate result. Run 1 (b71a0d7, f34e0ed) is under earlier_run",
+  "timestamp": "2026-11-21T04:22:34Z",
   "test_runner": "scratch clones of each committed tip (git clone --no-hardlinks, checkout of the tip, git log -1 checked): python3 -m pytest <module set> -q -p no:cacheprovider on Python 3.12.11 for the tachi-pytest.yml run list (--timeout=1080), the tachi-install-fidelity.yml jobs (manifest-completeness, extraction-fidelity, report-posture with TACHI_REQUIRE_TYPST=1), test_coverage_attestation.py and test_backward_compatibility.py; /usr/bin/python3 (3.9.6) for X-5 (TACHI_REQUIRE_TYPST=1), part-b's py39-floor list (--timeout=600) and the extra manifest-completeness run; python3 -I -B scripts/check-agent-privileges.py --self-test on 3.12.11 and 3.9.6",
   "runner_override": "#365 PNG hazard; gated sets run in scratch clones",
   "gate_mode": "soft",
   "gate_decision": "pass",
   "baseline": "w0-prestate.md (T003, 46aec8d); wave-02/results.json (G1); wave-03/results-part1.json (S2a); X-5 baseline 667 passed (p0-architect-checkpoint.md, 2c5fe08)",
   "tips": {
-    "part_a": "b71a0d7",
-    "part_b": "f34e0ed"
+    "part_a": "6ade384",
+    "part_b": "3cc8294"
   },
   "sets": {
     "part_a": {
       "tachi-pytest (21 modules, 3.12.11)": {
-        "pass": 615,
+        "pass": 619,
         "fail": 0,
         "skip": 1,
         "xfail": 1
@@ -52,7 +52,7 @@
         "exit_code": 0
       },
       "X-5: 12 installed-script modules, Typst required (3.9.6)": {
-        "pass": 702,
+        "pass": 706,
         "fail": 0,
         "skip": 0
       },
@@ -67,13 +67,13 @@
     },
     "part_b": {
       "tachi-pytest (23 modules, 3.12.11)": {
-        "pass": 744,
+        "pass": 752,
         "fail": 0,
         "skip": 1,
         "xfail": 1
       },
       "py39-floor job list (2 modules, 3.9.6)": {
-        "pass": 128,
+        "pass": 132,
         "fail": 0,
         "skip": 1
       },
@@ -109,7 +109,7 @@
         "exit_code": 0
       },
       "X-5 modules run on part-b as well, Typst required (3.9.6)": {
-        "pass": 702,
+        "pass": 706,
         "fail": 0,
         "skip": 0
       },
@@ -147,17 +147,151 @@
     "free-text-microservice": 221304,
     "maestro-reference": 52
   },
+  "earlier_run": {
+    "label": "run 1, first T043 run, before T044's fixes",
+    "timestamp": "2026-11-21T02:49:20Z",
+    "tips": {
+      "part_a": "b71a0d7",
+      "part_b": "f34e0ed"
+    },
+    "gate_decision": "pass",
+    "sets": {
+      "part_a": {
+        "tachi-pytest (21 modules, 3.12.11)": {
+          "pass": 615,
+          "fail": 0,
+          "skip": 1,
+          "xfail": 1
+        },
+        "manifest-completeness (3.12.11)": {
+          "pass": 17,
+          "fail": 0,
+          "skip": 0
+        },
+        "extraction-fidelity (7 modules, 3.12.11)": {
+          "pass": 255,
+          "fail": 0,
+          "skip": 0
+        },
+        "report-posture + write-confinement, Typst required (3.12.11)": {
+          "pass": 75,
+          "fail": 0,
+          "skip": 0
+        },
+        "test_coverage_attestation.py, explicit (3.12.11)": {
+          "pass": 16,
+          "fail": 0,
+          "skip": 0
+        },
+        "test_backward_compatibility.py (3.12.11)": {
+          "pass": 6,
+          "fail": 6,
+          "skip": 2
+        },
+        "guard --self-test (3.12.11)": {
+          "exit_code": 0
+        },
+        "guard --self-test (3.9.6)": {
+          "exit_code": 0
+        },
+        "X-5: 12 installed-script modules, Typst required (3.9.6)": {
+          "pass": 702,
+          "fail": 0,
+          "skip": 0
+        },
+        "manifest-completeness, zsh manual-loop cases included (3.9.6)": {
+          "pass": 16,
+          "fail": 0,
+          "skip": 1
+        },
+        "permissions workflow run steps incl. guard --self-test": {
+          "exit_code": 0
+        }
+      },
+      "part_b": {
+        "tachi-pytest (23 modules, 3.12.11)": {
+          "pass": 744,
+          "fail": 0,
+          "skip": 1,
+          "xfail": 1
+        },
+        "py39-floor job list (2 modules, 3.9.6)": {
+          "pass": 128,
+          "fail": 0,
+          "skip": 1
+        },
+        "manifest-completeness (3.12.11)": {
+          "pass": 17,
+          "fail": 0,
+          "skip": 0
+        },
+        "extraction-fidelity (7 modules, 3.12.11)": {
+          "pass": 255,
+          "fail": 0,
+          "skip": 0
+        },
+        "report-posture + write-confinement, Typst required (3.12.11)": {
+          "pass": 75,
+          "fail": 0,
+          "skip": 0
+        },
+        "test_coverage_attestation.py, explicit (3.12.11)": {
+          "pass": 16,
+          "fail": 0,
+          "skip": 0
+        },
+        "test_backward_compatibility.py (3.12.11)": {
+          "pass": 6,
+          "fail": 6,
+          "skip": 2
+        },
+        "guard --self-test (3.12.11)": {
+          "exit_code": 0
+        },
+        "guard --self-test (3.9.6)": {
+          "exit_code": 0
+        },
+        "X-5 modules run on part-b as well, Typst required (3.9.6)": {
+          "pass": 702,
+          "fail": 0,
+          "skip": 0
+        },
+        "manifest-completeness, zsh manual-loop cases included (3.9.6)": {
+          "pass": 16,
+          "fail": 0,
+          "skip": 1
+        },
+        "permissions workflow run steps incl. guard --self-test": {
+          "exit_code": 0
+        }
+      }
+    },
+    "classification": {
+      "regressions": 0,
+      "new_failures": 0,
+      "pre_existing": 6
+    },
+    "first_divergence_offsets": {
+      "web-app": 224224,
+      "microservices": 261105,
+      "ascii-web-api": 197843,
+      "mermaid-agentic-app": 260842,
+      "free-text-microservice": 221304,
+      "maestro-reference": 52
+    }
+  },
   "notes": [
-    "Interpreters: Python 3.12.11 (pytest 9.1.0) for the gated sets, where CI runs 3.11. Python 3.9.6 (pytest 8.4.2) for X-5, the py39-floor list and the extra manifest-completeness run; CI's py39-floor job runs 3.9 on ubuntu-24.04.",
-    "Counts come from the junit files and match each pytest summary line. A skip is counted apart from an xfail, as in wave-02/results.json.",
-    "The six failing node ids are #365's. They are the same on both tips and diverge at the same byte offsets as T003 and wave-02: web-app 224224, microservices 261105, ascii-web-api 197843, mermaid-agentic-app 260842, free-text-microservice 221304, maestro-reference 52. The offsets were compared as well as the node ids, so a change before a first divergence would have shown. T003's masking caveat stands: a change after the first divergence in a red example is not seen by this suite (for maestro-reference the floor is byte 52).",
-    "The byte-identity suite rewrote the same 21 tracked PNGs in each of its two clones (9 under examples/maestro-reference, 12 under examples/mermaid-agentic-app), as at T003. Every other clone stayed clean after its run, which is why the suite runs only in a scratch clone.",
-    "X-5: 702 passed under 3.9.6 with TACHI_REQUIRE_TYPST=1, against the architect's 667 (collecting the same 12 modules at 2c5fe08 gives 667 ids, an exact match). The +35 is test_agent_privilege_guard 146 to 154 (X-2), test_isolated_profile_contract 187 to 202 (the AR-21 and AR-21a controls) and test_write_confinement 57 to 69 (X-1). The same 12 modules also pass on part-b (702).",
-    "The zsh manual-loop cases (test_manual_install_loop_zsh and test_installed_agent_tools_match_matrix[manual-loop-zsh], both in test_install_manifest_completeness.py) passed, not skipped, on both tips under 3.12.11 and under 3.9.6. On part-b the two zsh cases in test_tachi_version_marker.py also ran and passed, under 3.12.11 in the matrix run and under 3.9.6 in the py39-floor run.",
-    "Under 3.9.6 two tests skip because they need Python 3.10 or later: test_distributable_imports_stdlib_only in manifest-completeness (present at the T003 pre-state) and test_the_stamp_script_imports_only_the_standard_library in test_threats_schema_contract.py (a 3.10+ guard in the module itself). Neither is a zsh case.",
-    "The run list is 21 modules on Part A and 23 on part-b, and part-b's py39-floor job runs 2 (test_tachi_version_marker.py, test_threats_schema_contract.py). Part-b holds no archiver module, schema, test or fixture: git ls-files over the four named paths prints 0 on both tips.",
-    "No node id collected at the T003 pre-state is missing at either tip: 562 ids from the 30 modules that exist there, 569 at each tip, and the 7 new ones are all in test_install_manifest_completeness.py. Against W2, the only id missing on Part A is the unparametrized test_self_test_stays_valid_on_a_drifted_tree, which X-2 split into four parametrized cases; the only module missing on part-b is test_archive_run_transcripts.py, removed by the TW-B1 stop.",
-    "The permissions workflow's run steps (jq present, settings.json well-formed, the AC-2 cross-check, the section 3 and 4 heading checks, python3 present, the guard with --self-test) exit 0 on both tips. They are not on T043's list; they are here because wave-02/results.json carries them.",
-    "Not covered here: CI. The local runs are macOS arm64 only, so the ubuntu legs, the macOS leg of tachi-pytest.yml and the CI runner that has no zsh belong to CI (S2b step 1 re-checks CI)."
+    "Two runs of T043 are recorded. Run 1 was on Part A b71a0d7 and part-b f34e0ed, before T044's fixes, and passed; its sets are under earlier_run, and its notes are in the b2385ca version of this file and in w3-gated-suite.md. Run 2 was on the final tips, Part A 6ade384 and part-b 3cc8294, after T044's fixes, and passed. tips and sets in this file are run 2, and run 2 is the final W3 gate result.",
+    "Run 2 repeated everything run 1 ran, the same way, in new scratch clones (git clone --no-hardlinks, checkout of the tip, git log -1 checked; no pytest or extractor in the main tree). The run lists were read again from each clone's own workflow file and are unchanged: 21 modules on Part A, 23 on part-b, and 2 in part-b's py39-floor job. Interpreters as in run 1: Python 3.12.11 (CI runs 3.11) and Python 3.9.6.",
+    "What changed between the runs, in code and tests: scripts/check-agent-privileges.py now refuses ambiguous frontmatter delimiters (CR-1), with 4 new exit-2 cases in test_agent_privilege_guard.py; the report-assembler agent body quotes paths with spaces (CR-6). On part-b also: the manual-loop marker line's nested-copy rule in README.md and DEVELOPER_GUIDE_TACHI.md (CR-2, CR-5) with 4 new cases in test_tachi_version_marker.py, the section 8.4 wording (CR-7), tachi-pytest.yml comment wording (CR-4) and a docstring in test_threats_schema_contract.py (CR-8). The rest is documentation and records.",
+    "Counts against run 1: Part A run list 619 (was 615, +4), X-5 706 (was 702, +4); part-b run list 752 (was 744, +8: the same 4 guard cases through the Part A merge and 4 in test_tachi_version_marker.py), py39-floor 132 (was 128, +4). Everything else is unchanged: manifest-completeness 17, extraction-fidelity 255, report-posture + write-confinement 75, test_coverage_attestation 16, byte-identity 6 failed, 6 passed, 2 skipped, on both tips.",
+    "The six failing node ids are #365's, the same on both tips, at the same first-divergence byte offsets as T003, wave-02 and run 1, and with the same baseline and generated sizes as run 1 (web-app 224224, microservices 261105, ascii-web-api 197843, mermaid-agentic-app 260842, free-text-microservice 221304, maestro-reference 52). T003's masking caveat stands: a change after the first divergence in a red example is not seen by this suite (for maestro-reference the floor is byte 52). The suite rewrote the same 21 tracked PNGs in each of its two clones, as at T003 and in run 1; every other clone stayed clean after its run.",
+    "X-5: 706 passed under 3.9.6 with TACHI_REQUIRE_TYPST=1, 0 failed, 0 skipped, against the architect's 667 (run 1: 702). The +39 over the baseline is test_agent_privilege_guard 146 to 158 (X-2 and the 4 CR-1 cases), test_isolated_profile_contract 187 to 202 and test_write_confinement 57 to 69. The same 12 modules also pass on part-b (706).",
+    "The zsh manual-loop cases (test_manual_install_loop_zsh and test_installed_agent_tools_match_matrix[manual-loop-zsh], both in test_install_manifest_completeness.py) passed, not skipped, on both tips under 3.12.11 and under 3.9.6. On part-b the three zsh cases in test_tachi_version_marker.py (two from run 1 and the new test_manual_loop_inside_another_repo_reads_unknown[zsh]) also passed, under 3.12.11 in the run list and under 3.9.6 in the py39-floor run.",
+    "Under 3.9.6 two tests skip because they need Python 3.10 or later: test_distributable_imports_stdlib_only in manifest-completeness (present at the T003 pre-state) and test_the_stamp_script_imports_only_the_standard_library in test_threats_schema_contract.py. Neither is a zsh case. The run list's skip and xfail are the same two as at T003: test_tty_no_flag_default_y and test_personalized_tree_bytes_match_baseline.",
+    "Part-b still holds no archiver module, schema, test or fixture: git ls-files over the four named paths prints 0 on both final tips, and no workflow file, INSTALL_MANIFEST.md line or file under tests/ names the archiver.",
+    "No node id is missing at either final tip, against the T003 pre-state (562 ids from the 30 modules that exist there, 569 at each tip) or against run 1's tips (the gated modules: Part A 994 to 998 ids, part-b 1123 to 1131). The only new ids are the 4 CR-1 cases (both tips) and 4 in test_tachi_version_marker.py (part-b).",
+    "The permissions workflow's run steps and the guard --self-test exit 0 on both final tips, under 3.12.11 and 3.9.6.",
+    "Not covered here: CI. The local runs are macOS arm64 only, so the ubuntu legs, the macOS leg of tachi-pytest.yml and the CI runner that has no zsh belong to CI."
   ]
 }
