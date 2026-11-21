@@ -2,7 +2,7 @@
 
 ## 0. Header
 
-- Last validated: not yet validated for the published profile. The live run on 2026-11-20 (§11) used an earlier profile without the eight deny rules in §3.
+- Last validated: not yet validated for the published profile. The live run on 2026-11-20 (§11) used an earlier profile without the ten deny rules in §3.
 - Minimum Claude Code version: v2.1.285
 - Owner: the tachi maintainer
 - Platforms the claim covers: none yet. §6 lists the platforms this runbook targets, and §11 names the ones that ran in the live validation.
@@ -106,6 +106,8 @@ Save the block below to a file and start each tachi session with `claude --setti
       "Monitor",
       "RemoteTrigger",
       "ShareOnboardingGuide",
+      "Workflow",
+      "Agent(isolation:*)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Read(~/.claude/.credentials.json)",
@@ -213,7 +215,9 @@ Command hooks, plugin monitors, LSP servers, mods and helper commands such as th
 - `RemoteTrigger` creates and runs cloud scheduled tasks on claude.ai. They run as cloud sessions with network policies of their own, the tool needs only a claude.ai sign-in, and the docs tie it to no non-essential-traffic switch ([routines](https://code.claude.com/docs/en/routines)).
 - `ShareOnboardingGuide` uploads `ONBOARDING.md` and returns a share link, on Team and Enterprise plans ([tools reference](https://code.claude.com/docs/en/tools-reference)).
 
-`Artifact` and Remote Control, which `PushNotification` and `SendUserFile` need, are off while `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` is set, and the profile sets it (§1). `Workflow` and `Agent` stay available. The agents that a workflow starts get the same permission checks and sandboxing ([workflows](https://code.claude.com/docs/en/workflows)), subagents run under the same sandbox and rules, and tachi needs `Agent`. Check the result with the "Tool inventory" row in §4.
+`Artifact` and Remote Control, which `PushNotification` and `SendUserFile` need, are off while `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` is set, and the profile sets it (§1).
+
+**The Agent tool's `remote` option.** On Claude Code 2.1.330 the Agent tool also offers a `remote` isolation value, which it describes as launching the agent in a cloud environment; the subagent docs describe only `worktree` ([supported frontmatter fields](https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields)). A cloud session runs outside your machine and does not enforce your local session's restrictions ([errors](https://code.claude.com/docs/en/errors#cloud-sessions-cannot-be-created-from-a-restricted-session)). Its network follows its cloud environment's access level: a new environment starts at Limited, with package registries, GitHub and cloud SDKs, and Full reaches any domain ([cloud environments: network access](https://code.claude.com/docs/en/cloud-environments#network-access)). A cloud session started from a repository without a GitHub remote uploads a bundle of the repository; the docs do not say whether a remote subagent does the same ([from terminal to cloud](https://code.claude.com/docs/en/claude-code-on-the-web#from-terminal-to-cloud)). The profile denies every Agent call that sets an isolation value (`Agent(isolation:*)`), a documented rule form ([match by input parameter](https://code.claude.com/docs/en/permissions#match-by-input-parameter)). `Agent` stays available, and tachi's dispatches, which set no isolation value, are unaffected. The profile also denies the Workflow tool, which starts subagents through a script whose launch options the docs do not describe; tachi does not use it. An organization Owner can turn cloud sessions off for the whole organization (`allow_remote_sessions`) ([`--cloud` requirements](https://code.claude.com/docs/en/claude-code-on-the-web#from-terminal-to-cloud)). Check the profile's side of this with the "Tool inventory" row in §4.
 
 Messages from your other sessions can still arrive in a tachi session. To drop them, set `"crossSessionInbound": "refuse"` in the project's `.claude/settings.local.json`; from project or local settings, `refuse` applies over every other source ([turn off cross-session messaging](https://code.claude.com/docs/en/cross-session-messaging#turn-off-cross-session-messaging)). The profile does not set it: it controls messages coming in, not what leaves, and with `SendMessage` denied the session cannot answer them.
 
@@ -310,7 +314,7 @@ Run these probes first, inside a session that you started with the profile. Ask 
 | WebFetch: ask Claude to fetch `https://example.com` with WebFetch | Denied. Claude has no WebFetch tool or the call is refused, and no page content comes back ([allow or deny every fetch](https://code.claude.com/docs/en/permissions#allow-or-deny-every-fetch)) | The permission rule `WebFetch` |
 | Secret-store rules (a configuration check): run `/permissions` | The list holds the profile's deny rules, among them `Read(//proc/**)` and `Read(~/.claude/.credentials.json)`, and no startup warning names an invalid rule ([manage permissions](https://code.claude.com/docs/en/permissions#manage-permissions)) | Configuration |
 | Environment names (a configuration check): ask Claude to run `python3 -c 'import os; print("\n".join(sorted(os.environ)))'` | It prints names, never values. Apart from Claude Code's own variables and the sandbox's proxy and CA-bundle variables, only the names you launched with appear, and no credential name ([what the sandbox restricts](https://code.claude.com/docs/en/sandboxing#what-the-sandbox-restricts)) | Configuration |
-| Tool inventory (a configuration check): ask Claude to list its tools, loaded and deferred, by name | No tool whose name starts with `mcp__` appears, and none of the tools that the profile denies by name (§3) | Configuration |
+| Tool inventory (a configuration check): ask Claude to list its tools, loaded and deferred, by name, and run `/permissions` | No tool whose name starts with `mcp__` appears, and none of the tools that the profile denies by name (§3), `Workflow` among them. `Agent` is present, and `/permissions` lists `Agent(isolation:*)` | Configuration |
 | Linux and WSL2, seccomp filter (a check, not yet run live: `/sandbox` does not open under the profile, so run it in a session started without the profile): run `/sandbox` | No Dependencies tab appears beside the other tabs. If one lists the seccomp filter, install it with `npm install -g @anthropic-ai/sandbox-runtime`, restart Claude Code and check again before the first session with the profile ([set up Linux and WSL2](https://code.claude.com/docs/en/sandboxing#set-up-linux-and-wsl2)) | Configuration |
 
 **Record which layer refused each line.** A refusal by a permission rule or by the auto mode classifier is not a sandbox result. If one stops a `touch` or `curl` line, approve the action under `/permissions`, on the Recently blocked tab, and ask Claude to retry it, so the sandbox gets to answer ([review denials](https://code.claude.com/docs/en/auto-mode-config#review-denials)).
@@ -499,7 +503,7 @@ tachi's work falls in the guidance's first category, local work that needs no in
 | Guidance item | Paraphrase | Marker | In a tachi session under the profile |
 |---|---|---|---|
 | Sandbox and network isolation (1) | Run inside a virtual machine or a dedicated physical host | Boundary | The profile sandboxes shell commands on your own host. It is not a virtual machine. On macOS, sandboxed commands can still query your login Keychain (§3) |
-| Sandbox and network isolation (2) | Block egress except to the model API | Profile, for shell commands. Boundary, for the rest | Sandboxed commands reach only the Gemini host. The allow-list is strict, there is no unsandboxed retry, and the session stops if the sandbox cannot start. WebFetch, WebSearch, every MCP tool and the built-in tools in §3 that reach past the sandbox are denied. The Gemini host stays allowed when you run without the key. Everything in the list above runs outside the sandbox |
+| Sandbox and network isolation (2) | Block egress except to the model API | Profile, for shell commands. Boundary, for the rest | Sandboxed commands reach only the Gemini host. The allow-list is strict, there is no unsandboxed retry, and the session stops if the sandbox cannot start. WebFetch, WebSearch, every MCP tool and the built-in tools and Agent options in §3 that reach past the sandbox are denied. The Gemini host stays allowed when you run without the key. Everything in the list above runs outside the sandbox |
 | Sandbox and network isolation (3) | Reach the model API only through a local proxy, with the key added from outside the sandbox | Boundary, for the model connection. Profile, for the image key | The Claude Code process connects to your provider itself and holds its own credentials. A provider credential set in the environment is inherited by sandboxed commands (§3). For the image key, sandboxed commands see a placeholder, and the sandbox proxy adds the real key only on connections to the Gemini host ([mask credentials](https://code.claude.com/docs/en/sandboxing#mask-credentials)). On macOS, Claude Code keeps its sign-in in the Keychain, and whether sandboxed commands can read that item was not tested (§3) |
 | Sandbox and network isolation (4) | Tell the model not to use the internet | Profile, in part | The profile gives auto mode's classifier a rule against sending tachi's content to any other host. tachi's agent instructions do not yet say it themselves ([#360](https://github.com/davidmatousek/tachi/issues/360)) |
 | Sandbox and network isolation (5) | Install every tool before the run, so nothing is fetched mid-run | tachi | See §1. Under the profile, a fetch to any other host would be refused |
@@ -536,7 +540,7 @@ tachi's CI runs a guard (`scripts/check-agent-privileges.py`) that compares the 
 
 ## 11. Live-validation record
 
-**Re-check of the published profile: pending (R1 to R6).** The live run recorded here used the profile that §3 published before it gained eight deny rules, so the header says that the published profile is not yet validated. The re-check covers the published profile's startup, its rule list, the tool inventory, the sandbox probes and one `/tachi.threat-model` run. This section records it when it runs.
+**Re-check of the published profile: pending (R1 to R6).** The live run recorded here used the profile that §3 published before it gained ten deny rules, so the header says that the published profile is not yet validated. The re-check covers the published profile's startup, its rule list, the tool inventory, the refusal of an Agent call that sets an isolation value, the sandbox probes and one `/tachi.threat-model` run. This section records it when it runs.
 
 This record is structure only. It holds no transcript excerpts, session ids, home paths or key material. The sessions were real interactive Claude Code sessions in a terminal, driven by Claude at the maintainer's instruction. The maintainer directed the run and recorded the result.
 
@@ -559,7 +563,7 @@ This record is structure only. It holds no transcript excerpts, session ids, hom
 | Installed build | `v4.48.2-103-gfe5125a`, installed with `scripts/install.sh` from a clean clone into a fresh scratch project. It is a pre-release build that also carries changes outside this release. None of them changes the session profile, the probes or §5's write set |
 | Input | The repository's `examples/ascii-web-api/input.md`, used as the architecture description |
 | Profile that ran | 2,908 bytes, SHA-256 `43496fb7d4fca098983a70648def8f1da2a2d1843528b5ca4c14444e32564279`, passed as a file to `--settings` |
-| Profile published in §3 | 3,110 bytes, SHA-256 `0880db3b3d75ad84e95b12a6127aeac345999b6366edb2bb1e6a4725d46b78d2`. It differs from the profile that ran only by the eight deny rules after `mcp__*` |
+| Profile published in §3 | 3,156 bytes, SHA-256 `36df2a9a98e301d783a06ff605d1be7f9548e10f805084b3fe225ff89eef9644`. It differs from the profile that ran only by the ten deny rules after `mcp__*` |
 | User settings | The user-scope additions that §3 recommends (a `deniedMcpServers` entry for one local server, and the `~/.claude.json` Read deny with its `credentials.files` entry) were applied for the sessions and restored afterwards. No hooks, plugins, `apiKeyHelper` or `allowedDomains` at user scope. No managed settings. `cleanupPeriodDays` was unset in every scope |
 | Session shell | `/bin/bash` in every measured session |
 
