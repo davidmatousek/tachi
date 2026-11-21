@@ -19,11 +19,11 @@ Both files use the same finding data collected in Phase 3. The `threats.md` sect
 
 ### Frontmatter
 
-The output begins with YAML frontmatter containing exactly these fields:
+The output begins with YAML frontmatter. These four fields open it; `run_id`, `baseline` and `coverage_gate` follow exactly as the template (`../../../templates/tachi/output-schemas/threats.md`) shows them, and `../../../schemas/output.yaml` declares every key, the optional ones included:
 
 ```yaml
 ---
-schema_version: "1.4"
+schema_version: "1.5"
 date: "YYYY-MM-DD"
 input_format: "detected-or-declared-format"
 classification: "confidential"
@@ -32,10 +32,19 @@ classification: "confidential"
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Always `"1.4"` for this release (bumped in Feature 142 from 1.3 to cover the additive Pattern column and Section 4b; backward-compatible with 1.3 parsers per FR-017). |
+| `schema_version` | string | Always `"1.5"` for this release, the value `../../../schemas/output.yaml` declares (bumped from 1.4 in Feature 391; additive-only, backward-compatible with 1.4 parsers. The 1.3 to 1.4 bump in Feature 142 covered the Pattern column and Section 4b, per FR-017). |
 | `date` | string | ISO 8601 date when the threat model was generated. Format: `YYYY-MM-DD`. |
 | `input_format` | string | The architecture input format that was analyzed. One of: `ascii`, `free-text`, `mermaid`, `plantuml`, `c4`. Set to the detected format when `format: auto`, or the explicitly declared format value. |
 | `classification` | string | Always `"confidential"`. |
+| `tachi_version` | string, optional | Not authored by the model. A deterministic step stamps it into the frontmatter after this file is written and validated, from the version marker `templates/tachi/VERSION` that the installer records. Do not write, copy or edit it. Reads `unknown` when the install recorded no version. Absent in files written before schema 1.5. |
+| `has_attack_chains`, `has_agentic_patterns`, `has_source_attribution` | boolean, optional | Whether `attack-chains.md` was produced; whether any finding carries an agentic pattern other than `none`; whether any finding carries a non-empty `source_attribution`. Declared in `../../../schemas/output.yaml`. |
+
+**Consumer guidance** (for programs and people that read a `threats.md`; the same text is in the comments of `../../../schemas/output.yaml`):
+
+- **Feature-detect `tachi_version`.** Read it when the key is present. Do not infer it from `schema_version`, and do not assume it exists: a `threats.md` written before schema 1.5 has no such key, which is normal for older files.
+- **Treat `schema_version` in files older than 1.5 as declared, not ordinal.** Before 1.5 the model wrote the value and nothing kept it in step with the schema: files with the 1.4 structure declare 1.4, 1.7 and 1.8. Do not order, compare or gate on it; test for the structure you need.
+- **`tachi_version: unknown`** means the install recorded no version: it skipped the version-marker line, or the marker file is missing or malformed. It is not an error in the `threats.md`.
+- **`schema_version` stays model-authored and declared-only.** The step that writes `tachi_version` writes no other key, so a file's `schema_version` is what its producer declared, not a value stamped from `schemas/output.yaml`.
 
 ### Section 1: System Overview
 
@@ -282,7 +291,7 @@ Before finalizing the output document, run the following validation checklist ag
 
 ### Frontmatter Validation
 
-- [ ] `schema_version` is `"1.2"`.
+- [ ] `schema_version` is `"1.5"`.
 - [ ] `date` is a valid ISO 8601 date in `YYYY-MM-DD` format.
 - [ ] `input_format` is one of: `ascii`, `free-text`, `mermaid`, `plantuml`, `c4`.
 - [ ] `classification` is `"confidential"`.
@@ -290,6 +299,7 @@ Before finalizing the output document, run the following validation checklist ag
 - [ ] `baseline.source`, `baseline.date`, `baseline.finding_count`, `baseline.run_id` are present (null when no baseline, populated when baseline used).
 - [ ] `coverage_gate.status` is one of: `"pass"`, `"warn"`.
 - [ ] `coverage_gate.gaps` is a list (empty when no gaps; each entry has `component`, `missing_category`, `resolution`).
+- [ ] `tachi_version` is not authored here: the key is absent at this point, because a deterministic step stamps it after validation.
 
 ### Finding ID Validation
 

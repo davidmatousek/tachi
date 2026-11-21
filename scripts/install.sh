@@ -549,6 +549,53 @@ if [ "$CLEANUP_COUNT" -gt 0 ]; then
   printf '  Cleaned up %d deprecated command file(s)\n' "$CLEANUP_COUNT"
 fi
 
+# --- Version marker: guard and reset (Feature 391, T036) ---------------------
+# templates/tachi/VERSION holds one line, `tachi_version: <value>`, which
+# /tachi.threat-model stamps into threats.md (contracts/version-marker.md).
+# The source ships a tracked placeholder that reads `unknown`; the copy loop
+# installs it and the write after the loop replaces it. Removing any existing
+# marker first means an install that never reaches that write reads `unknown`,
+# never a stale value. The marker lives in templates/tachi/, so it is handled
+# only when this run installs that folder (CHECKED_SET, built by the
+# pre-flight, has one row per manifest entry).
+MARKER_REL="templates/tachi/VERSION"
+MARKER_PATH="${TARGET_P}/${MARKER_REL}"
+MARKER_WRITE=0
+case $'\n'"$CHECKED_SET" in
+  *$'\n'"${TARGET_P}/templates/tachi"$'\t'dir$'\t'entry$'\n'*) MARKER_WRITE=1 ;;
+esac
+
+# marker_guard -> returns 0 when MARKER_PATH may be written, otherwise dies.
+# The pre-flight's rules, re-checked for the one path it may not have seen (a
+# tag older than the placeholder has no tracked VERSION to classify): never
+# through a link at the file itself, never onto a non-regular file, never
+# inside the tachi source clone.
+marker_guard() {
+  local marker_phys
+  if [ -L "$MARKER_PATH" ]; then
+    die "version marker: ${MARKER_REL} is a symbolic link, and install.sh never writes or deletes through a link. Replace it with a regular file or remove it, then re-run."
+  fi
+  if [ -e "$MARKER_PATH" ] && [ ! -f "$MARKER_PATH" ]; then
+    die "version marker: ${MARKER_REL} exists and is not a regular file. Remove it, then re-run."
+  fi
+  if ! marker_phys=$(phys_dest "$MARKER_PATH"); then
+    die "version marker: ${MARKER_REL} cannot be resolved (a broken or looping link on its path). Fix the link, then re-run."
+  fi
+  if under "$marker_phys" "$SRC_P"; then
+    die "version marker: ${MARKER_REL} would land inside the tachi source clone (${SRC_P}). Move the clone out of the destination, then re-run."
+  fi
+  return 0
+}
+
+if [ "$MARKER_WRITE" -eq 1 ]; then
+  marker_guard
+  # install.sh only copies through a link and never deletes through one, so with
+  # a followed link above the marker the write below replaces the file in place.
+  if [ ! -L "${TARGET_P}/templates" ] && [ ! -L "${TARGET_P}/templates/tachi" ]; then
+    rm -f "$MARKER_PATH"
+  fi
+fi
+
 # --- File copy loop ----------------------------------------------------------
 
 COPY_SUCCESS=0
@@ -584,14 +631,55 @@ while IFS= read -r entry; do
   esac
 done < <(parse_manifest "$MANIFEST_FILE")
 
-# --- Summary output ----------------------------------------------------------
-
-INSTALLED_VERSION="untagged"
-if command -v git >/dev/null 2>&1 && [ -d "${SOURCE_DIR}/.git" ]; then
+# --- Installed version and version marker (Feature 391, T036) -----------------
+# The version is computed once, here: the summary below and the marker share it.
+# This runs inside the script body, so a --version install reports the tag it
+# just installed; the EXIT trap restores the source ref only after it.
+INSTALLED_VERSION="unknown"
+# The source is its own git tree only when its work-tree root is SOURCE_DIR
+# itself (--show-cdup is empty there). `.git` may be a file (a worktree or a
+# submodule), so it is detected with rev-parse, not `-d .git`. A copy of tachi
+# vendored inside another project's repo is not one: describing it would name
+# that project's version.
+if command -v git >/dev/null 2>&1 && git -C "$SOURCE_DIR" rev-parse --git-dir >/dev/null 2>&1 && [ -z "$(git -C "$SOURCE_DIR" rev-parse --show-cdup 2>/dev/null)" ]; then
   # Fetch tags so git describe finds release-please tags created on GitHub
   git -C "$SOURCE_DIR" fetch --tags --quiet 2>/dev/null || true
-  INSTALLED_VERSION="$(git -C "$SOURCE_DIR" describe --tags --always 2>/dev/null || echo "untagged")"
+  INSTALLED_VERSION="$(git -C "$SOURCE_DIR" describe --tags --always --dirty 2>/dev/null || echo "unknown")"
+elif [ -f "${SOURCE_DIR}/.release-please-manifest.json" ]; then
+  # No git tree (a release archive): the release manifest's "." version, read
+  # without jq (Bash 3.2), and labelled so it cannot be mistaken for a git
+  # describe string or sort above the release.
+  manifest_version=$(sed -n '/"\."[[:space:]]*:/{s/^.*"\."[[:space:]]*:[[:space:]]*"\([^"]*\)".*$/\1/p;q;}' "${SOURCE_DIR}/.release-please-manifest.json") || manifest_version=""
+  case $manifest_version in
+    ""|*[!0-9A-Za-z._-]*) ;;
+    *) INSTALLED_VERSION="${manifest_version}-release-manifest" ;;
+  esac
 fi
+# The value goes into a one-line file that another script reads back, so it follows
+# the readers' rule (contracts/version-marker.md): a letter or digit first, then
+# letters, digits and . _ + ~ -, 128 characters at most. A git tag may break it
+# (rel/v1.0.0 has a `/`); the value is then `unknown`, which is what they read.
+# The letters and digits are spelled out, not given as ranges, so the shell's locale
+# cannot widen them (under a UTF-8 locale a range can match accented letters).
+alnum=0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
+case $INSTALLED_VERSION in
+  ""|[!$alnum]*|*[!$alnum._+~-]*) INSTALLED_VERSION="unknown" ;;
+esac
+[ "${#INSTALLED_VERSION}" -le 128 ] || INSTALLED_VERSION="unknown"
+
+if [ "$MARKER_WRITE" -eq 1 ] && [ -d "${TARGET_P}/templates/tachi" ]; then
+  marker_guard
+  # Atomic: a temp file beside the marker, then a rename over it. The subshell's
+  # noclobber (O_EXCL) makes a file or link already at the temp name fail
+  # instead of being written through; the umask applies as it does to a copy.
+  marker_tmp="${MARKER_PATH}.tmp.$$"
+  if ! ( set -C; printf 'tachi_version: %s\n' "$INSTALLED_VERSION" > "$marker_tmp" ) || ! mv -f "$marker_tmp" "$MARKER_PATH"; then
+    rm -f "$marker_tmp"
+    die "version marker: could not write ${MARKER_REL}. The rest of the install is in place; fix the cause and re-run."
+  fi
+fi
+
+# --- Summary output ----------------------------------------------------------
 
 echo ""
 printf '%stachi installed successfully%s\n' "$GREEN" "$NC"
