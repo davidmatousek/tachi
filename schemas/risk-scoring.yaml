@@ -115,7 +115,7 @@ category_defaults:
   info-disclosure:     "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"   # Data exposure
   denial-of-service:   "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"   # Resource exhaustion
   privilege-escalation: "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H"  # Privilege gain
-  agentic:             "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L"   # Agent misuse (PR:L to avoid ceiling effect)
+  agentic:             "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L"   # Agent misuse (PR:L: authenticated agent access)
   llm:                 "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N"   # Prompt injection
 
 # Asset-Sensitivity Modifiers (Issue #260 prototype, additive, opt-in)

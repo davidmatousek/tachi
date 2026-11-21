@@ -56,6 +56,11 @@
 # covering `scripts/install.sh`'s destination-containment pre-flight and its
 # ref-restore trap fix, plus `tests/scripts/install_sh_helpers.py`'s sandbox
 # builders — wired through both paths and invocation in lock-step.
+# Fix 397 (Patch A) added `test_cvss_category_defaults.py` (N13: every documented
+# CVSS category default recomputed from its vector) and
+# `test_baseline_owasp_rekey.py` (N5: the carry-forward 2025→2026 re-key table
+# and its validation pattern), plus their input surfaces — wired through both
+# paths and invocation in lock-step.
 #
 # References:
 #   - specs/248-substitution-surface-hardening/spec.md (FR-001..FR-011, NFR-001)
@@ -130,6 +135,13 @@ on:
       - .claude/agents/tachi/threat-infographic.md              # F-393 — API Key Check (input)
       - adapters/claude-code/agents/references/infographic-gemini-api.md   # F-393 — adapter copy (input)
       - .claude/skills/tachi-infographics/references/gemini-prompt-construction.md   # F-393 — pinned request form (input)
+      - tests/scripts/test_cvss_category_defaults.py           # Fix 397 (N13) — documented CVSS defaults equal their vectors' scores
+      - schemas/risk-scoring.yaml                              # Fix 397 (N13) — category_defaults vectors (input)
+      - .claude/skills/tachi-risk-scoring/references/cvss-vectors.md   # Fix 397 (N13) — default and bounded-range tables (input)
+      - adapters/claude-code/agents/risk-scorer.md             # Fix 397 (N13) — adapter copy of the default table (input)
+      - tests/scripts/test_baseline_owasp_rekey.py             # Fix 397 (N5) — carry-forward 2025→2026 re-key table + validation pattern
+      - .claude/skills/tachi-orchestration/references/baseline-correlation.md   # Fix 397 (N5) — re-key rule and table (input)
+      - .claude/skills/tachi-orchestration/references/output-schemas.md         # Fix 397 (N5) — structural-validation check (input)
       - tests/scripts/init_sh_helpers.py
       - tests/scripts/conftest.py
       - tests/fixtures/init-baseline-tree/**
@@ -231,4 +243,6 @@ jobs:
             tests/scripts/test_isolated_profile_contract.py \
             tests/scripts/test_agent_privilege_guard.py \
             tests/scripts/test_gemini_key_env_only.py \
+            tests/scripts/test_cvss_category_defaults.py \
+            tests/scripts/test_baseline_owasp_rekey.py \
             -v --timeout=1080

@@ -100,6 +100,8 @@ Scenario: an attacker injects malicious instructions into an externally availabl
 
 **Difference**: AIVSS scores 9.9 (Critical); tachi scores 6.9 (Medium). The two frameworks disagree on both the score and the severity band. AIVSS's amplification model treats the agentic capabilities as severity multipliers that consume nearly all of the CVSS-base headroom (the AARS uplift of 0.52 nearly maxes out the 0.6-point gap between CVSS 9.4 and 10.0). Tachi's weighted-sum model treats exploitability, reachability, and scalability as moderating dimensions that pull the composite *toward* the average rather than uplifting it toward the ceiling.
 
+> **Erratum (2026-11-21, #397)**: The tachi row above uses CVSS 3.1 = 9.0, which came from a documentation error. The agentic default vector `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L` scores **9.9** under CVSS 3.1, and the scoring reference now says so. At 9.9 the composite is (0.35 × 9.9) + 1.50 + 1.40 + 0.87 = 7.235, which rounds to **7.2 (High)**, so the gap to AIVSS is 2.7 rather than 3.0. The two frameworks still disagree on the band (Critical vs. High). Both examples now show a 2.7 gap, so on their own they no longer rule out a constant offset; the divergence argument rests on the formula shapes described above. The decision is unchanged, because its decisive inputs are maturity and compatibility.
+
 **Example 2 — Agent Cascading Failures** (AIVSS v0.8 §3.6.3)
 
 Scenario: a crafted injection message causes downstream agents to enter error states, producing availability and data integrity issues.

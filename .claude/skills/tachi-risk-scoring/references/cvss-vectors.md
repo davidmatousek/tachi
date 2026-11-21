@@ -43,7 +43,7 @@ Standard CVSS 3.1 metrics do not natively cover AI/ML threat characteristics. Ap
 
 **Agentic threats (`agentic`)**:
 - Default vector: `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L`
-- **PR:L** (not PR:N): Agent misuse typically requires authenticated access to the agent system; setting PR:N would create a ceiling effect where all agentic threats score at maximum
+- **PR:L** (not PR:N): Agent misuse typically requires authenticated access to the agent system. PR:L does not avoid a ceiling effect: with the rest of this vector, PR:N, PR:L and PR:H give 10.0, 9.9 and 9.0. Per-threat refinement of the metrics below is what separates agentic findings
 - **S:C**: Agent actions typically cross component boundaries (tool servers, external APIs, data stores)
 - Refine **A** based on whether the threat involves resource exhaustion (A:H) or data manipulation only (A:N)
 - Refine **PR** upward to H if the threat requires admin-level agent access
@@ -70,7 +70,7 @@ These defaults from `schemas/risk-scoring.yaml` serve as baselines. Per-threat r
 | info-disclosure | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N` | 6.5 | Data exposure: high confidentiality, no integrity/availability |
 | denial-of-service | `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | 7.5 | Resource exhaustion: remote, no auth needed, high availability impact |
 | privilege-escalation | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H` | 9.9 | Privilege gain: scope change, full CIA impact |
-| agentic | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L` | 9.1 | Agent misuse: scope change, high CI, lower A |
+| agentic | `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L` | 9.9 | Agent misuse: scope change, high CI, lower A |
 | llm | `CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N` | 9.3 | Prompt injection: no auth but requires input processing |
 
 ---
@@ -94,7 +94,7 @@ When a finding has `delta_status: NEW` (discovered in Phase 2 of a baseline-awar
 | info-disclosure | I | 6.5 | 5.5 – 7.5 |
 | denial-of-service | D | 7.5 | 6.5 – 8.5 |
 | privilege-escalation | E | 9.9 | 8.9 – 10.0 |
-| agentic | AG | 9.0 | 8.0 – 10.0 |
+| agentic | AG | 9.9 | 8.9 – 10.0 |
 | llm | LLM | 9.3 | 8.3 – 10.0 |
 
 **Category resolution**: Determine the category from the finding's ID prefix (S→spoofing, T→tampering, R→repudiation, I→info-disclosure, D→denial-of-service, E→privilege-escalation, AG→agentic, LLM→llm). The default CVSS base score is computed from the corresponding default vector in `schemas/risk-scoring.yaml`.

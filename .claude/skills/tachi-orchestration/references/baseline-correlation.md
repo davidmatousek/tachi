@@ -52,7 +52,7 @@ For each finding row in a table, extract:
 | `impact` | Impact | LOW, MEDIUM, or HIGH |
 | `risk_level` | Risk Level | Critical, High, Medium, Low, or Note |
 | `mitigation` | Mitigation | Recommended countermeasure |
-| `owasp_ref` | OWASP Reference | AI tables only; null for STRIDE |
+| `owasp_ref` | OWASP Reference | AI tables only; null for STRIDE. Carried-forward `LLM<NN>:2025` tokens are re-keyed to 2026 (see Delta Classification) |
 
 ### ID Prefix Mapping
 
@@ -121,6 +121,21 @@ After matching, classify each finding:
 | `NEW` | Current finding has no baseline match | Assign new sequential ID | Score fresh with bounds |
 
 **MAESTRO layer handling**: `maestro_layer` is a classification field, not a score. For `UNCHANGED` and `UPDATED` findings, re-derive `maestro_layer` from the current Phase 1 component inventory rather than inheriting from the baseline finding. This prevents stale layer labels from persisting across MAESTRO taxonomy revisions (schema version bumps or keyword table changes). `RESOLVED` findings retain the baseline `maestro_layer` because the component is absent from the current inventory.
+
+**OWASP edition re-keying**: `owasp_ref` is also a classification field. For every carried-forward finding (`UNCHANGED`, `UPDATED` and `RESOLVED`), replace each `LLM<NN>:2025` token in `owasp_ref` with its 2026 token from the table below. This is the OWASP LLM Top 10 2025 → 2026 mapping adopted in ADR-048, which bars re-emitting 2025 tokens. The change between editions is a permutation, not a renumbering, so a token copied verbatim would name a different category than a NEW finding's token with the same number: `LLM07:2025` is System Prompt Leakage, while `LLM07:2026` is Misinformation. Replace only the token and keep the rest of the cell, so `OWASP LLM07:2025` becomes `OWASP LLM08:2026`, and `OWASP LLM01:2025, ASI-01` becomes `OWASP LLM01:2026, ASI-01`. Leave `:2026`, ASI and MCP tokens unchanged. Re-keying is not a change of assessment: it never changes a finding's delta status, so an `UNCHANGED` finding stays `UNCHANGED`.
+
+| 2025 token | 2026 token | Category (2026 name) |
+|------------|------------|----------------------|
+| `LLM01:2025` | `LLM01:2026` | Prompt Injection |
+| `LLM02:2025` | `LLM02:2026` | Sensitive Information Disclosure |
+| `LLM03:2025` | `LLM04:2026` | Supply Chain |
+| `LLM04:2025` | `LLM05:2026` | Data and Model Poisoning |
+| `LLM05:2025` | `LLM10:2026` | Improper Output Handling |
+| `LLM06:2025` | `LLM03:2026` | Excessive Agency |
+| `LLM07:2025` | `LLM08:2026` | Hidden Context Exposure |
+| `LLM08:2025` | `LLM09:2026` | Vector and Embedding Weaknesses |
+| `LLM09:2025` | `LLM07:2026` | Misinformation |
+| `LLM10:2025` | `LLM06:2026` | Unbounded Consumption |
 
 ### Sequential ID Assignment for NEW Findings
 

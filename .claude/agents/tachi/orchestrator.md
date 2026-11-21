@@ -229,6 +229,8 @@ Each classified finding inherits its baseline ID. `UNCHANGED` findings inherit a
 
 **MAESTRO layer re-inheritance**: For `UNCHANGED` and `UPDATED` findings, `maestro_layer` is re-derived from the current Phase 1 component inventory (not copied from the baseline finding). This prevents stale layer labels from propagating when the MAESTRO taxonomy or keyword table changes between runs (e.g., across a schema version bump). `RESOLVED` findings retain the baseline `maestro_layer` because their component is absent from the current inventory and no fresh classification is available.
 
+**OWASP edition re-keying**: For every carried-forward finding (`UNCHANGED`, `UPDATED` and `RESOLVED`), re-key each `LLM<NN>:2025` token in `owasp_ref` to its 2026 token using the table in the baseline correlation reference. Leave `:2026`, ASI and MCP tokens unchanged. Re-keying never changes a finding's delta status.
+
 **Edge cases**: Component renames (same `primaryLocationLineHash` and DFD type) are treated as `UPDATED`, not RESOLVED + NEW. Partial fixes (context changed but category still applies) are `UPDATED`, not `RESOLVED`. Each RESOLVED finding retains audit fields (`id`, `threat`, `likelihood`, `impact`, `risk_level`, `mitigation`, `baseline_run_id`, `resolution_reason`).
 
 #### Delta Summary Lines
