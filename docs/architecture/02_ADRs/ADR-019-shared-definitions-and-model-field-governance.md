@@ -5,7 +5,7 @@
 **Deciders**: Architect
 **Feature**: 078 (Agent Context Optimization)
 
-> **Note (2026-11-19, Feature 391)**: The `model: sonnet` pins added under Decision §2 are kept deliberately, and Feature 391 changes none of them. The model that served a run is evidenced by the run manifest, which the run archiver builds from Claude Code's transcripts ([ADR-049](ADR-049-privilege-contract-and-write-confinement.md), D10), and not by the agent files, which record only the pin.
+> **Note (2026-11-19, Feature 391)**: The `model: sonnet` pins added under Decision §2 are kept deliberately, and Feature 391 changes none of them. The model that served a run is recorded in Claude Code's transcripts, not in the agent files.
 
 ---
 
