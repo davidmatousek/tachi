@@ -188,9 +188,17 @@ echo "[regen] scanning source for substitution targets (canonical placeholders)â
 # The init-baseline-tree itself is gitignored via tests/fixtures/.gitignore
 # (or excluded explicitly below), and binary assets like *.png are out-of-
 # scope for substitution by definition.
+#
+# CHANGELOG.md is excluded (#345). It is not a template: it matches only
+# because a prose entry quotes a placeholder (the F-248 `&` example). And
+# release-please rewrites it in release PRs, which run no CI, so covering
+# it would stale this baseline at every release. If a release-please
+# extra-file (release-please-config.json) ever gains a placeholder, exclude
+# it here for the same reason.
 (cd "$REPO_ROOT" && git ls-files -z --cached --others --exclude-standard \
     | xargs -0 grep -lE "$PLACEHOLDER_REGEX" 2>/dev/null \
     | grep -vE '^tests/fixtures/init-baseline-tree/' \
+    | grep -vE '^CHANGELOG\.md$' \
     | grep -vE '\.(png|jpg|ico)$' \
     | sort) > "$TARGET_LIST" || true
 
