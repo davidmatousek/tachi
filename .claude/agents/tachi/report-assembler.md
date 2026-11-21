@@ -194,7 +194,7 @@ Compile the copy of `main.typ` that the extractor built in Step 2c, with the `--
 typst compile {output_path}/.tachi-build/security-report/main.typ {output_path}/security-report.pdf --root .
 ```
 
-Where `{output_path}` is the resolved output directory from the command (the value used in Step 2c). Run from the **project root directory**; it is also the Typst root, so the brand assets in `brand/final/`, the rendered diagrams and the infographic images resolve from the copy.
+Where `{output_path}` is the resolved output directory from the command (the value used in Step 2c). Quote a path that contains spaces. Run from the **project root directory**; it is also the Typst root, so the brand assets in `brand/final/`, the rendered diagrams and the infographic images resolve from the copy.
 
 ### 3b. Handle Compilation Errors
 
@@ -218,7 +218,7 @@ Only after Step 3c passes, have the extractor remove the build directory. It is 
 python3 scripts/extract-report-data.py --remove-build-dir {output_path}/.tachi-build/security-report
 ```
 
-The parent `{output_path}/.tachi-build/` stays in place. Do not delete anything with any other command.
+Quote a path that contains spaces. The parent `{output_path}/.tachi-build/` stays in place. Do not delete anything with any other command.
 
 ### 3e. Report Results
 
