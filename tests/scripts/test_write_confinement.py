@@ -16,6 +16,10 @@ What each group proves:
   trees (no ``mmdc``); extract, compile, remove. Typst-gated.
 - ``--remove-build-dir`` removes only the build directory and refuses every
   path that is not one; ``--build-dir`` refuses a path outside the project.
+- command-line refusals (EC-5): a bad flag combination, a missing flag reported
+  before an unknown one, an unknown flag on its own, ``--target-dir`` equal to or
+  inside the build directory and a file at its path each exit 2 with a one-line
+  reason and write nothing. Needs no Typst.
 - AR-1 case 2: a mislabeled infographic (a ``.jpg`` holding PNG bytes) yields
   its corrected copy under ``{out}``; ``--cleanup-mislabeled-images`` deletes
   only inside ``{out}``, and nothing in the target. Typst-gated for the compile.
@@ -659,6 +663,67 @@ def test_build_dir_outside_the_project_or_of_the_wrong_shape_is_refused_untouche
     assert proc.returncode == 2, _describe(proc)
     assert "--build-dir" in proc.stderr, _describe(proc)
     assert project.snapshot() == before
+
+
+# The extractor's refusals of a bad command line or build directory, one case each:
+# ``case -> (flags after the script name, a fragment of the reason on stderr)``, with
+# ``{t}`` the target directory, ``{b}`` the build directory and ``{o}`` an --output path.
+CLI_REFUSALS = {
+    # _resolve_cli_mode: the legacy form needs all three of its flags
+    "legacy-without-template-dir": ("--target-dir {t} --output {o}", "required: --template-dir"),
+    # _resolve_cli_mode: --build-dir replaces --output and needs --target-dir
+    "build-dir-with-output": (
+        "--target-dir {t} --build-dir {b} --output {o}",
+        "--output cannot be combined with --build-dir",
+    ),
+    # the newline ends the reason at --target-dir; the legacy form would list all three flags
+    "build-dir-without-target-dir": ("--build-dir {b}", "required: --target-dir\n"),
+    # _resolve_cli_mode: --remove-build-dir takes no other flag
+    "remove-build-dir-with-target-dir": (
+        "--remove-build-dir {b} --target-dir {t}",
+        "--remove-build-dir cannot be combined with --target-dir",
+    ),
+    # main: a missing flag is reported before an unknown one, as argparse's own check always did
+    "missing-flag-before-unknown-flag": (
+        "--target-dir {t} --output {o} --bogus",
+        "required: --template-dir",
+    ),
+    # main: an unknown flag on its own is refused, never ignored
+    "unknown-flag-alone": ("--target-dir {t} --build-dir {b} --bogus", "unrecognized arguments: --bogus"),
+    # _guard_build_dir: the two rules that no other case reaches
+    "target-dir-is-the-build-dir": (
+        "--target-dir {b} --build-dir {b}",
+        "it contains the target directory",
+    ),
+    # recreating a build directory that holds the target directory would delete the inputs
+    "target-dir-inside-the-build-dir": (
+        "--target-dir {b}/inputs --build-dir {b}",
+        "it contains the target directory",
+    ),
+    "build-dir-is-a-file": ("--target-dir {t} --build-dir {b}", "it exists and is not a directory"),
+}
+
+
+@pytest.mark.parametrize("case", CLI_REFUSALS)
+def test_a_bad_command_line_or_build_dir_exits_2_with_its_reason_and_writes_nothing(
+    project: Project, case: str
+):
+    """Exit 2, the reason on stderr, and nothing written anywhere. Needs no Typst."""
+    if case == "build-dir-is-a-file":
+        project.build.parent.mkdir()
+        project.build.write_text("a file where the build directory belongs", encoding="utf-8")
+    flags, reason = CLI_REFUSALS[case]
+    argv = [sys.executable, "scripts/extract-report-data.py"] + flags.format(
+        t=project.rel(project.target),
+        b=project.rel(project.build),
+        o=project.rel(project.out / "report-data.typ"),
+    ).split()
+    before = project.snapshot()
+
+    proc = project._run(argv)
+    assert proc.returncode == 2, _describe(proc)
+    assert reason in proc.stderr, _describe(proc)
+    assert project.snapshot() == before, "a refused run must not touch anything"
 
 
 # =============================================================================
