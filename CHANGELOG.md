@@ -1042,6 +1042,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.48.3](https://github.com/davidmatousek/tachi/compare/v4.48.2...v4.48.3) (2026-11-21)
+
+
+### Bug Fixes
+
+* **391:** isolated and auditable operation (Part A) ([#392](https://github.com/davidmatousek/tachi/issues/392)) ([e83ca6b](https://github.com/davidmatousek/tachi/commit/e83ca6b2c6f38571b8910f824d61ea6fdc0b8902))
+
 ## [4.48.2](https://github.com/davidmatousek/tachi/compare/v4.48.1...v4.48.2) (2026-11-19)
 
 
