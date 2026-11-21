@@ -13,7 +13,8 @@ This file defines what tachi is (and isn't) to set clear expectations for adopte
 
 - A **threat modeling and AI-reasoning vulnerability detection harness for Claude Code** (STRIDE + AI + MAESTRO).
 - A new scanning column alongside SAST / SCA / Secrets — same role, logic-level instead of syntax-level.
-- An instrumentation harness, not a SaaS — adopters install it into their own project and run it locally; architecture descriptions never leave their machine.
+- An instrumentation harness, not a SaaS — adopters install it into their own project and run it locally.
+- **Data handling** — Your Claude Code model provider receives the architecture description, the files tachi reads and the findings on every run. If you set `GEMINI_API_KEY` and run `/tachi.infographic`, Google's Gemini API (`generativelanguage.googleapis.com`) also receives image prompts made of tachi's fixed layout instructions and derived threat-model content, including names and descriptions taken from your architecture (the project name and assessment date; the names, types and short descriptions of components, trust zones, trust boundaries and data flows; finding IDs, descriptions, severities and risk scores; correlation groups of related findings and their descriptions; finding counts, severities and analysis coverage, overall and by component, zone, boundary, flow, threat category and MAESTRO layer; the overall risk posture; control-coverage and risk-reduction figures from compensating-control runs; counts of new, updated, unchanged and resolved findings since a baseline, with new findings marked; and, if a template cannot be loaded, a one-line system description). By design, tachi sends nothing else, but an AI agent following tachi's templates writes each prompt, and no code checks it against this list before it is sent. Claude Code's own operational traffic, such as usage metrics, error reports and feature-flag fetches, is separate from tachi; it is governed by Claude Code's [privacy and telemetry settings](https://code.claude.com/docs/en/data-usage#telemetry-services), and setting `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` turns these off.
 - Open source under Apache 2.0.
 
 ## Key Features
@@ -34,7 +35,7 @@ This file defines what tachi is (and isn't) to set clear expectations for adopte
 - **NOT a CI/CD tool** — adopters integrate it into their own pipelines (SARIF outputs feed GitHub Code Scanning)
 - **NOT a replacement for human oversight** — the harness surfaces findings; remediation decisions are yours
 - **NOT agent-agnostic** — the scanner runs inside Claude Code (the AOD-Kit methodology backing tachi's development IS portable, but the scanner itself is not)
-- **NOT a SaaS** — no telemetry, no remote inference, no data leaving your environment
+- **NOT a SaaS** — there is no tachi-hosted service; what a run sends is stated under "What tachi Is"
 
 ---
 

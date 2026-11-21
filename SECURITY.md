@@ -45,7 +45,14 @@ In-scope for private vulnerability reports:
 The following are not handled through this private disclosure channel:
 
 - **Claude Code itself** → report to Anthropic.
+- **Out-of-scope model behaviour** you observe as a member of an Anthropic program such as the Cyber Verification Program → report it to Anthropic through the program's own channel, the Verification Portal. The [runbook](docs/guides/ISOLATED_OPERATION_TACHI.md) lists the reporting routes, including any reporting address that a public Anthropic page names. A vulnerability in tachi itself still goes through the private advisory route above.
 - **Third-party MCP servers** → report to their maintainers.
 - **Adopter personalization data** (`.aod/personalization.env`, `brands/*/`) → adopter's responsibility.
 - **Adopter-modified scaffold output** (post-`make scaffold` customizations) → adopter's responsibility.
 - **Threat-model accuracy concerns** (false positives, missed threats) → file as regular [GitHub Issues](https://github.com/davidmatousek/tachi/issues), not security advisories.
+
+## Data handling
+
+Your Claude Code model provider receives the architecture description, the files tachi reads and the findings on every run. If you set `GEMINI_API_KEY` and run `/tachi.infographic`, Google's Gemini API (`generativelanguage.googleapis.com`) also receives image prompts made of tachi's fixed layout instructions and derived threat-model content, including names and descriptions taken from your architecture (the project name and assessment date; the names, types and short descriptions of components, trust zones, trust boundaries and data flows; finding IDs, descriptions, severities and risk scores; correlation groups of related findings and their descriptions; finding counts, severities and analysis coverage, overall and by component, zone, boundary, flow, threat category and MAESTRO layer; the overall risk posture; control-coverage and risk-reduction figures from compensating-control runs; counts of new, updated, unchanged and resolved findings since a baseline, with new findings marked; and, if a template cannot be loaded, a one-line system description). By design, tachi sends nothing else, but an AI agent following tachi's templates writes each prompt, and no code checks it against this list before it is sent. Claude Code's own operational traffic, such as usage metrics, error reports and feature-flag fetches, is separate from tachi; it is governed by Claude Code's [privacy and telemetry settings](https://code.claude.com/docs/en/data-usage#telemetry-services), and setting `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` turns these off.
+
+The [isolated-operation runbook](docs/guides/ISOLATED_OPERATION_TACHI.md) covers running tachi in a sandbox: the egress profile, a session profile, write locations, retention and reporting routes.

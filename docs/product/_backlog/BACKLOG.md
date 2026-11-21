@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-10-10T20:58:12Z.
+> Auto-generated from GitHub Issues on 2026-11-19T21:34:40Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,7 +8,8 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
-| #386 | enhancement: remove Feature 373 dead code and stale EXPECTED RED test annotations | — | — | 2026-10-10 |
+| #388 | enhancement: parse scores and section facts once at the parser boundary (incl. an uncaught ValueError on a malformed Section 1 total) | — | — | 2026-10-12 |
+| #387 | defect(extractors): threats.md Section 7 read through several paths gives a spurious tier-3 ID warning, an inconsistent empty delta_status key and repeated row warnings | — | — | 2026-10-12 |
 | #385 | defect(security-log): scan-log.jsonl chain hash breaks at entry 34 after a behind-main branch merge | — | — | 2026-10-10 |
 | #384 | defect(install.sh): a project directory whose name ends in a newline installs into a same-named sibling | — | — | 2026-10-10 |
 | #383 | defect(adapters): Copilot, Cursor and generic infographic instructions still send the rejected Gemini request to shut-down models | — | — | 2026-10-10 |
@@ -27,7 +28,6 @@
 | #345 | Regenerate init.sh-substitution baseline (tests/fixtures/init-baseline-tree/) — re-tag from #329 | — | — | 2026-08-12 |
 | #342 | Deliver-stage preflight: guard against stale/diverged local main and behind-main feature branch | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 338 (Re... | 2026-06-30 |
 | #168 | Track OWASP AIVSS v1.0 release and first external adopter case study | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 143 (MA... | 2026-06-01 |
-| #126 | Auto-detect architecture drift | | Dimension | Score | Rationale | | — | 2026-05-05 |
 
 ## Define
 
@@ -65,6 +65,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #391 | Isolated and auditable operation: egress disclosure, agent permission matrix, and run provenance (CVP mapping) | OPEN | 2026-11-16 |
 | #370 | Covering test for the FR-012b form-drift guard in extract-report-data.py | CLOSED | 2026-10-10 |
 | #369 | CI manifest-integrity check for adapter VERSION attestations (+ copilot-aware generator) | OPEN | 2026-08-12 |
 | #368 | check-catalog-drift: _canonical() widening — decided DEFER with rationale; plus false-docstring defect (docstring :95 vs fail-closed fallback :105) | OPEN | 2026-08-12 |

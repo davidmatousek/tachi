@@ -21,7 +21,7 @@ input_schemas:
   page-assembly: ../../../schemas/security-report.yaml
 output_files:
   - security-report.pdf
-  - report-data.typ  # intermediate, cleaned up after compilation
+  - .tachi-build/security-report/  # intermediate: throwaway template copy holding report-data.typ; removed after a successful compile
 references:
   schemas:
     page_assembly: ../../../schemas/security-report.yaml
@@ -29,8 +29,8 @@ references:
     input_risk_scores: ../../../schemas/risk-scoring.yaml
     input_compensating_controls: ../../../schemas/compensating-controls.yaml
   templates:
-    directory: ../../../templates/tachi/security-report/
-    entry_point: ../../../templates/tachi/security-report/main.typ
+    directory: ../../../templates/tachi/security-report/  # read-only source, copied by the extractor
+    entry_point: "{output_path}/.tachi-build/security-report/main.typ"  # compiled from the copy
 ```
 
 # Report Assembler Agent
@@ -45,7 +45,7 @@ Your inputs are:
 3. **Title override** (optional) to replace the auto-detected project name on the cover page
 4. **Detected artifacts** list from the command's Step 1 detection
 
-Your output is a single `security-report.pdf` file assembled from Typst templates in `templates/tachi/security-report/`.
+Your output is a single `security-report.pdf` file assembled from a throwaway copy of the Typst templates in `templates/tachi/security-report/`. The copy lives in `{output_path}/.tachi-build/security-report/`; the installed templates are only read, never written.
 
 You must not require any other input. The command file handles prerequisite validation (Typst installation, threats.md existence) before invoking you.
 
@@ -69,14 +69,14 @@ Load domain knowledge on-demand from the `tachi-report-assembly` skill using the
 ## Data Flow
 
 ```
-Detected artifacts → Parse markdown/YAML → Extract structured data → Generate report-data.typ → Typst compile → security-report.pdf
+Detected artifacts → Parse markdown/YAML → Extract structured data → Generate report-data.typ (in the build directory) → Typst compile → security-report.pdf
 ```
 
 ### Architecture
 
 The Typst template system uses a data injection pattern:
 - `main.typ` -- master orchestrator that imports `report-data.typ` and conditionally includes page templates
-- `report-data.typ` -- runtime-generated data file containing all extracted variables as Typst `#let` bindings
+- `report-data.typ` -- runtime-generated data file containing all extracted variables as Typst `#let` bindings, written into the build directory (`{output_path}/.tachi-build/security-report/`), a throwaway copy of the template directory
 - `shared.typ` -- shared design tokens (colors, fonts, page geometry)
 - Page templates (`cover.typ`, `executive-summary.typ`, `attack-path.typ`, etc.) -- each renders one page type
 
@@ -106,16 +106,16 @@ Using the detected artifacts list provided by the command, verify each artifact'
 
 Invoke the deterministic Python extraction script to parse all artifacts and generate `report-data.typ`. The script handles artifact parsing, tier selection, severity counting, scope extraction, validation, and Typst output generation.
 
-### 2a. Handle Report Configuration
+The script also owns the build directory, so a run never writes under `templates/tachi/`. With `--build-dir` it recreates `{output_path}/.tachi-build/security-report/` as a copy of `templates/tachi/security-report/`, lays a custom `report-config.typ` from `{target_dir}` over the default when there is one, and writes `report-data.typ` into the copy. It writes only under `{output_path}` and the system temp directory, and only reads `{target_dir}`: attack-tree and attack-chain diagrams go to `{output_path}/attack-trees/` and `{output_path}/attack-chains/`.
 
-Check for a user-provided `report-config.typ` in the target directory:
+### 2a. Report Configuration
 
-1. If `{target_dir}/report-config.typ` exists:
-   - Copy it to `templates/tachi/security-report/report-config.typ`, overwriting the default
-   - Log: `"Using custom report-config.typ from {target_dir}"`
-2. If not present:
-   - Ensure the default `templates/tachi/security-report/report-config.typ` exists (it ships with the templates)
-   - Log: `"Using default report configuration"`
+There is nothing to copy or edit in this step. The extractor (Step 2c) looks for a user-provided `report-config.typ` in the target directory itself:
+
+1. If `{target_dir}/report-config.typ` exists, the extractor copies it over the default inside the build directory and logs `"Using custom report-config.typ from {target_dir}"` on stderr.
+2. If not present, the default that ships with the templates stays in the copy and the extractor logs `"Using default report configuration"`.
+
+Relay that log line in your report. The installed `templates/tachi/security-report/report-config.typ` is never modified.
 
 ### 2b. Preflight: Verify Script Exists
 
@@ -152,17 +152,16 @@ Return failure to the command. Do NOT proceed to Step 2c, Step 2d, or Step 3 und
 
 ### 2c. Invoke Extraction Script
 
-Run the deterministic extraction script:
+Run the deterministic extraction script from the project root. `{output_path}` is the output directory the command passed you (the same value Step 3 uses); it must lie under the working directory, and the script exits 2 for a build directory outside it:
 
 ```bash
 python3 scripts/extract-report-data.py \
   --target-dir {target_dir} \
-  --output templates/tachi/security-report/report-data.typ \
-  --template-dir templates/tachi/security-report/ \
+  --build-dir {output_path}/.tachi-build/security-report \
   [--title "{title_override}"]
 ```
 
-Include `--title` only if the command provided a title override.
+Include `--title` only if the command provided a title override. Use exactly these flags: do not pass `--output` or `--template-dir`. Quote a path that contains spaces.
 
 ### 2d. Handle Exit Codes
 
@@ -170,7 +169,7 @@ Include `--title` only if the command provided a title override.
 |-----------|---------|-------------|
 | 0 | Success | Proceed to Step 3 (Compilation) |
 | 1 | Missing required artifact | Display stderr message and abort: `"Error: {message}"` |
-| 2 | Validation failure | Display stderr details and abort: `"Validation error: {details}"` |
+| 2 | Validation failure, or the build directory was rejected (for example `{output_path}` is not under the working directory) | Display stderr details and abort: `"Validation error: {details}"` |
 | 127 | `python3` or script not found | Display: `"Error: extraction script invocation failed. Verify scripts/extract-report-data.py is executable and python3 is on PATH. Re-run scripts/install.sh if the script is missing."` and abort |
 
 If the script exits non-zero for any reason, do NOT proceed to compilation. Do NOT fall back to inline LLM extraction. Display the error and return failure to the command.
@@ -189,31 +188,37 @@ Display: `"report-data.typ generated — proceeding to compilation"`
 
 ### 3a. Invoke Typst Compiler
 
-Run the Typst compiler with the `--root` flag pointing to the project root:
+Compile the copy of `main.typ` that the extractor built in Step 2c, with the `--root` flag pointing to the project root:
 
 ```bash
-typst compile templates/tachi/security-report/main.typ "{output_path}/security-report.pdf" --root .
+typst compile {output_path}/.tachi-build/security-report/main.typ {output_path}/security-report.pdf --root .
 ```
 
-Where `{output_path}` is the resolved output directory from the command. Run from the **project root directory**.
+Where `{output_path}` is the resolved output directory from the command (the value used in Step 2c). Quote a path that contains spaces. Run from the **project root directory**; it is also the Typst root, so the brand assets in `brand/final/`, the rendered diagrams and the infographic images resolve from the copy.
 
 ### 3b. Handle Compilation Errors
 
 If `typst compile` exits with a non-zero status:
 
 1. Capture stderr
-2. Display: `"TYPST COMPILATION ERROR: {stderr}. report-data.typ preserved for debugging."`
-3. Do NOT delete `report-data.typ` -- leave it for debugging
+2. Display: `"TYPST COMPILATION ERROR: {stderr}. Build directory preserved for debugging: {output_path}/.tachi-build/security-report/"`
+3. Do NOT remove the build directory (skip Step 3d) -- `report-data.typ` and the template copy stay in it for debugging
 4. Return failure to the command
 
 ### 3c. Verify Output
 
 1. Verify `{output_path}/security-report.pdf` exists and is non-zero size
-2. If missing: `"Compilation succeeded but output file is missing or empty"`
+2. If missing: `"Compilation succeeded but output file is missing or empty"` (keep the build directory and skip Step 3d)
 
 ### 3d. Clean Up
 
-Delete `templates/tachi/security-report/report-data.typ` after successful verification.
+Only after Step 3c passes, have the extractor remove the build directory. It is the only tool that deletes it, and it refuses any path that is not a `.tachi-build/security-report` directory below the working directory:
+
+```bash
+python3 scripts/extract-report-data.py --remove-build-dir {output_path}/.tachi-build/security-report
+```
+
+Quote a path that contains spaces. The parent `{output_path}/.tachi-build/` stays in place. Do not delete anything with any other command.
 
 ### 3e. Report Results
 

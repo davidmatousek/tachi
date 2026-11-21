@@ -3998,3 +3998,50 @@ No ADR was minted. Plan review ratified that on one condition, a dated Feature 3
 - **Installer.** The pre-flight is a safety fix inside one script. If a second installer surface ever adopts a symlink policy, an ADR is revisited then.
 
 **Known gap, out of scope here.** The Copilot, Cursor and generic adapter copies of the infographic instructions still carry the old request shape and model names; FR-K14.6 scoped the fix to the Claude Code adapter. The P2 architect review proposed it as a follow-up (`specs/373-adopter-install-output-fidelity/test-results/p2-architect-review.md` §7), filed at delivery as #383.
+
+### Feature 391: isolated-auditable-operation
+
+*Source: `specs/391-isolated-auditable-operation/plan.md` v1.2 (PM ⚠ + Architect ⚠, 2026-11-16). Part A: egress truth, isolated-operation runbook, write relocation, report-assembler dispatch fix, CI-guarded privilege matrix, ADR-049. Part B (trip-wire gated): run archive + provenance manifest, `tachi_version` stamp.*
+
+#### Components
+
+| Component | Kind | Part | Owner lane | Notes |
+|---|---|---|---|---|
+| D-3 egress sentence (PRD v1.3 wording) | docs edit | A1 | D (after R confirms the field list, PM approves) | Six locations; immutable records untouched (ADR-014 gets a Note) |
+| Runbook `ISOLATED_OPERATION_TACHI.md` | installed doc | A2 | R | Sections per `contracts/runbook-outline.md`; profile in marked block; live-validation record |
+| Session profile | JSON block in the runbook | A2 | R | Contract in `contracts/session-profile.md`; closed-key-set test; validated live |
+| Write relocation | agent/command edits | A2 | E (audit) + D (edits) | `{out}/.tachi-build/…`; `templates/tachi/` byte-unchanged; precondition `{out}` under cwd |
+| Report-assembler dispatch (AD-13) | command body edit | A3 | E (audit) + D (edit) | `tachi.security-report.md:162` → `tachi-report-assembler`; pre-existing defect recorded |
+| Privilege matrix §8 | docs section | A3 | E | Columns in `contracts/matrix-section.md` incl. Dispatches; single source |
+| Guard `check-agent-privileges.py` | stdlib script + CI step | A3 | E | Bidirectional roster, closed key set, C6 tokenization, self-test |
+| ADR-049 + Notes | ADRs | A | D | Privilege contract, write confinement, dispatch fix; conditional Part B paragraphs; Known limitations |
+| Archiver `archive-run-transcripts.py` | stdlib script | B1 | B1 | D-8 rules; manifest v1 with dispatch-at-any-depth attribution |
+| Version marker + stamp | placeholder + `install.sh` + stdlib script | B2 | B2 | `templates/tachi/VERSION`; `stamp-tachi-version.py` as Step 2.6 of `/tachi.threat-model`; schema reconciliation |
+
+#### Data Flow
+
+```mermaid
+flowchart LR
+  subgraph Adopter machine
+    RB[Runbook] -->|save profile| P[(--settings profile)]
+    P --> CC[Claude Code session: sandbox + auto mode]
+    CC -->|Bash via proxy| GEM[(generativelanguage.googleapis.com, optional)]
+    CC -->|model API| MP[(Claude model provider)]
+    CC --> OUT[{out}/ threats.md, sarif, report, .tachi-build/]
+    CC --> TR[~/.claude/projects/<slug>/<session>.jsonl + <session>/subagents/]
+    TR -->|archive-run-transcripts.py, dispatches at any depth| AR[~/.tachi/runs/<project>/<date>-<session>/ + run-manifest.json]
+    INST[install.sh] -->|remove, copy, rewrite| VER[templates/tachi/VERSION]
+    VER -->|stamp-tachi-version.py, Step 2.6 of /tachi.threat-model| OUT
+  end
+  subgraph CI
+    PR[PR / push main] --> WF[tachi-permissions-verify.yml]
+    WF -->|check-agent-privileges.py| MX[CLAUDE_PERMISSIONS.md §8]
+    WF --> AG[.claude/agents/tachi/*.md, .claude/commands/tachi.*.md]
+  end
+```
+
+Egress is exactly two hosts during a run: the model provider (inherent to Claude Code) and, only with a key and the infographic step, the Gemini host. Claude Code's own operational traffic is named separately and switched off by `env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`. `install.sh` additionally runs a best-effort `git fetch --tags` at install time (stated in the runbook for air-gapped installs).
+
+#### Tech Stack
+
+Bash 3.2 (`install.sh`, workflow steps, probe commands); Python ≥ 3.9 stdlib for installed scripts (`argparse`, `json`, `hashlib` with chunked updates, `os`, `pathlib`, `re`, `subprocess` for `git rev-parse`/`git check-ignore` only); pytest + PyYAML (tests only); GitHub Actions (existing workflows); Claude Code sandbox (Seatbelt / bubblewrap + local proxy), permission rules, `--settings` launch profile, auto-mode `environment`/`hard_deny`; typst + mmdc (existing). No new runtime dependency.

@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "wave": 1,
+  "wave_label": "W0 (T003 pre-state)",
+  "timestamp": "2026-11-19T21:30:44Z",
+  "commit": "46aec8d",
+  "test_runner": "scratch clones of 46aec8d: python3 -m pytest <tachi-pytest.yml run list, 19 modules> --timeout=1080; test_install_manifest_completeness.py; <extraction-fidelity, 7 modules>; TACHI_REQUIRE_TYPST=1 test_report_posture_contract.py; test_coverage_attestation.py; test_backward_compatibility.py (fresh clone); permissions-verify steps (jq, AC-2 cross-check, heading greps)",
+  "runner_override": "agent-assignments.md section 6: /aod.build --no-tests (#365 PNG hazard; ~19 out-of-gate reds); the gated sets run in scratch clones of the committed tip instead of the default post-wave pytest in the main tree; sub-step 4.6 test generation not used (the feature's own tasks write the CI-gated modules).",
+  "execution_duration_ms": 820000,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "baseline": "this wave is the pre-state (specs/391-isolated-auditable-operation/test-results/w0-prestate.md)",
+  "sets": {
+    "tachi-pytest (19 modules)": {"pass": 259, "fail": 0, "skip": 1, "xfail": 1},
+    "install-fidelity manifest-completeness": {"pass": 10, "fail": 0, "skip": 0},
+    "install-fidelity extraction-fidelity (7 modules)": {"pass": 255, "fail": 0, "skip": 0},
+    "install-fidelity report-posture (Typst)": {"pass": 6, "fail": 0, "skip": 0},
+    "permissions-verify steps": {"exit_code": 0},
+    "test_coverage_attestation.py (ungated)": {"pass": 16, "fail": 0, "skip": 0},
+    "test_backward_compatibility.py (byte-identity)": {"pass": 6, "fail": 6, "skip": 2}
+  },
+  "totals": {"pass": 552, "fail": 6, "skip": 4},
+  "classification": {"regressions": 0, "new_failures": 0, "pre_existing": 6},
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [
+    "tests/scripts/test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[web-app]",
+    "tests/scripts/test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[microservices]",
+    "tests/scripts/test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[ascii-web-api]",
+    "tests/scripts/test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[mermaid-agentic-app]",
+    "tests/scripts/test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[free-text-microservice]",
+    "tests/scripts/test_backward_compatibility.py::test_unmodified_examples_byte_identical_pdfs[maestro-reference]"
+  ],
+  "skipped_or_xfailed": [
+    "tests/scripts/test_init_sh_substitution.py::test_personalized_tree_bytes_match_baseline (xfail)",
+    "tests/scripts/test_init_precommit_matrix.py::test_tty_no_flag_default_y",
+    "tests/scripts/test_backward_compatibility.py::test_feature_142_zero_edit_invariant_on_detection_agents",
+    "tests/scripts/test_backward_compatibility.py::test_feature_142_multi_agent_gate_predicate_false_on_baselines[mermaid-agentic-app]"
+  ],
+  "first_divergence_offsets": {
+    "web-app": 224224,
+    "microservices": 261105,
+    "ascii-web-api": 197843,
+    "mermaid-agentic-app": 260842,
+    "free-text-microservice": 221304,
+    "maestro-reference": 52
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "schema_version": "1.0",
+  "wave": 3,
+  "wave_label": "W3 part 1 (session S2a, before session L): T030, T050, T040 fixes X-1, X-2, X-3, X-6, X-7, X-8, X-9, and BX''. Not the W3 gate: T043 runs the full W3 gate in S2b and writes wave-03/results.json and w3-gated-suite.md",
+  "timestamp": "2026-11-20T15:30:00Z",
+  "test_runner": "scratch clones of each committed tip: python3 -I -B scripts/check-agent-privileges.py --self-test (Python 3.12.11 and 3.9.6); python3 -m pytest <module set> -q -p no:cacheprovider; TACHI_REQUIRE_TYPST=1 for the report-posture set; /usr/bin/python3 (3.9.6) for the py39-floor list on part-b",
+  "runner_override": "agent-assignments.md section 6: /aod.build --no-tests (#365 PNG hazard); gated sets run in scratch clones of the committed tips; CI runs the full matrix on push.",
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "baseline": "wave-02/results.json (G1) and w0-prestate.md (T003, 46aec8d)",
+  "tips": {
+    "part_a": "3921857",
+    "part_b": "fe5125a"
+  },
+  "sets": {
+    "part_a": {
+      "guard --self-test (3.12.11)": {
+        "exit_code": 0
+      },
+      "guard --self-test (3.9.6)": {
+        "exit_code": 0
+      },
+      "test_agent_privilege_guard + test_isolated_profile_contract + test_install_manifest_completeness (3.12.11)": {
+        "pass": 358,
+        "fail": 0,
+        "skip": 0
+      },
+      "report-posture + write-confinement, Typst required (3.12.11)": {
+        "pass": 75,
+        "fail": 0,
+        "skip": 0
+      },
+      "report-posture + write-confinement + guard tests, Typst required (3.9.6)": {
+        "pass": 229,
+        "fail": 0,
+        "skip": 0
+      }
+    },
+    "part_b": {
+      "guard --self-test (3.12.11)": {
+        "exit_code": 0
+      },
+      "guard --self-test (3.9.6)": {
+        "exit_code": 0
+      },
+      "Part B modules: test_tachi_version_marker + test_threats_schema_contract + test_archive_run_transcripts (3.12.11)": {
+        "pass": 959,
+        "fail": 0,
+        "skip": 0
+      },
+      "py39-floor list, the same three modules (3.9.6)": {
+        "pass": 957,
+        "fail": 0,
+        "skip": 2
+      },
+      "test_agent_privilege_guard + test_isolated_profile_contract + test_install_manifest_completeness (3.12.11)": {
+        "pass": 358,
+        "fail": 0,
+        "skip": 0
+      },
+      "report-posture + write-confinement, Typst required (3.12.11)": {
+        "pass": 75,
+        "fail": 0,
+        "skip": 0
+      },
+      "test_install_sh_ref_restore + test_install_sh_symlink_preflight (3.12.11)": {
+        "pass": 74,
+        "fail": 0,
+        "skip": 0
+      }
+    }
+  },
+  "ci": {
+    "part_a_3921857": {
+      "tachi-pytest": "success (44749429686)",
+      "tachi-install-fidelity": "success (44749429682)",
+      "tachi-permissions-verify": "success (44749429702)",
+      "gitleaks": "success",
+      "catalog-drift": "success",
+      "maestro-coverage": "success",
+      "mmdc-preflight": "success"
+    },
+    "part_a_ff5da27": {
+      "tachi-pytest": "success (44754342030), both legs",
+      "tachi-install-fidelity": "success (44754342141)",
+      "tachi-permissions-verify": "success (44754342019)",
+      "gitleaks": "success",
+      "catalog-drift": "success",
+      "maestro-coverage": "success",
+      "mmdc-preflight": "success"
+    },
+    "part_b_fe5125a": {
+      "tachi-pytest": "success (44754343822), both legs and py39-floor on ubuntu-24.04",
+      "tachi-install-fidelity": "success (44754344029)",
+      "tachi-permissions-verify": "success (44754343784)",
+      "mmdc-preflight": "success"
+    },
+    "sc_a3_throwaway_pr_398": {
+      "red_a1d1df8": "permissions-verify, install fidelity (manifest-completeness) and pytest failed, as planted",
+      "green_aaa2d84": "all seven workflows success"
+    }
+  },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "notes": [
+    "The two 3.9.6 skips are pre-existing tests that need Python 3.10 or later (one in test_threats_schema_contract.py, one in test_archive_run_transcripts.py).",
+    "The byte-identity suite (#365's six reds) was not run here; T043 runs it on both tips against T003's pre-state.",
+    "Per-fix module counts from the writers: X-1 test_write_confinement 57 -> 69; X-2 test_agent_privilege_guard 146 -> 154; X-6 test_threats_schema_contract 101 -> 104 (3.12); X-7 version-marker + symlink-preflight + ref-restore 93 -> 99; X-8 test_archive_run_transcripts 828 -> 830."
+  ]
+}

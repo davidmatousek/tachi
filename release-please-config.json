@@ -5,7 +5,8 @@
       "include-component-in-tag": false,
       "extra-files": [
         "README.md",
-        "scripts/install.sh"
+        "scripts/install.sh",
+        "docs/guides/ISOLATED_OPERATION_TACHI.md"
       ],
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
