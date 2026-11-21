@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "wave": 4,
+  "timestamp": "2026-11-21T17:31:32Z",
+  "test_runner": "scratch clone of 97208fe (git clone --no-hardlinks, checkout of the tip, git log -1 checked): TACHI_REQUIRE_TYPST=1 .venv/bin/python3 -m pytest tests/scripts/test_write_confinement.py -q -p no:cacheprovider (Python 3.12.11, Typst 0.14.2); python3 -I -B scripts/check-agent-privileges.py --self-test. W4 is otherwise docs and release mechanics (agent-assignments.md section 6); /aod.build ran without its main-tree post-wave pytest (plan G0, the #365 rule)",
+  "execution_duration_ms": 7700,
+  "gate_mode": "soft",
+  "gate_decision": "pass",
+  "totals": {
+    "pass": 78,
+    "fail": 0,
+    "skip": 0
+  },
+  "classification": {
+    "regressions": 0,
+    "new_failures": 0,
+    "pre_existing": 0
+  },
+  "regressions": [],
+  "new_failures": [],
+  "pre_existing": [],
+  "note": "EC-5 (Economy Gate, carve-out 1): 9 new refusal cases in test_a_bad_command_line_or_build_dir_exits_2_with_its_reason_and_writes_nothing; each refusal branch pinned by a mutation check in SBE-TA's clone"
+}

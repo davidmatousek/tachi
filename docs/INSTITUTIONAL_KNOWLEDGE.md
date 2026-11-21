@@ -743,6 +743,37 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 ---
 
+### Entry 25: F-391 Isolated and Auditable Operation (Part A) — Delivery Retrospective (spike the environment's refusal signals, not only its success path)
+
+**Date**: 2026-11-21 | **Category**: Process improvement | **Feature**: F-391 | **Issues**: #391 (lead), PR #392 (Part A, squash `e83ca6b`), #418 (release v4.48.3), #396 (Part B PR, B2 only), #399 (B1 follow-up), #400 (Part B landing), #401–#417 (follow-ups filed at build)
+
+**Context**:
+- **Scope.** F-391 corrected what tachi says leaves the machine (the D-3 sentence in six documents), added an installed isolated-operation runbook with a `claude --settings` session profile validated live on macOS, confined a run's writes to `{out}` and `$TMPDIR`, and put a CI guard (`scripts/check-agent-privileges.py`, C1 to C8 with a planted-mutation self-test) on the agent privilege matrix in `CLAUDE_PERMISSIONS.md` §8. ADR-049. Two pre-existing defects were fixed in passing: the report dispatch (AD-13) and the risk-scorer's output directory (AR-2).
+- **The split.** PRD trip-wire TW-A2 applied (#364 still open), so Part A shipped alone as `fix(391)`. Part B: B2 (the version marker, the `tachi_version` stamp, schema 1.5) is built on #396 and lands after #364 (#400); B1 (the transcript archiver and run manifest) was honest-stopped when TW-B1 fired (#399).
+- **Results.** 50 of 52 tasks (T038b and T047 conditional). The gated set: 988 passed on the final Part A tip, with only #365's six pre-existing byte-identity reds. CI 11 of 11 on #392. Security scan PASSED (1 LOW, #416). Economy Gate: 5 advisories (EC-5 fixed, EC-1 to EC-4 as #417).
+- **Duration.** Estimated 4.7 d central (2.9 to 7.5; Part A 4.87 d). It took 5 calendar days, from branch creation on 2026-11-16 to the merge on 2026-11-21, across build sessions S1, S2a, S2b and S2c.
+- **Surprise log.** (1) TW-B1 fired on the denial clause: on Claude Code 2.1.330, 5 of 7 planted sandbox refusals carry no structural marker, and the markers that exist use labels the archiver did not know. (2) Chromium cannot start inside Claude Code's macOS sandbox, so the macOS claim excludes the report step for runs with diagrams. (3) The Agent tool offers an undocumented `remote` isolation value and eight built-in tools reach past the sandbox; the profile grew from 8 to 18 deny rules. (4) At deliver: `gh pr merge --squash --delete-branch` on Part A closed the stacked Part B PR #396 instead of retargeting it, and GitHub refuses to change the base of a closed PR or to reopen one whose base is gone; the base ref was restored at its last tip, #396 reopened and retargeted to `main`, and the ref deleted again.
+
+**Lesson — Spike the environment's refusal signals, not only its success path.**
+
+- **Problem**: B1's value was recognizing another tool's refusals in its transcripts: sandbox, classifier and permission-rule denials, with dispatch at any depth. The W0′ spike (T002) proved the three attribution clauses: dispatched agents attributable from transcript structure, non-empty served-model histograms, agreeing names. It ran without a sandbox and planted no denial, so it could not test the fourth clause, which TW-B1 made binding from W2. B1 was then built in W1 (T031 to T034, with a security review and fixes) before W2's census (T051) showed the denial layout: `toolDenialKind` only on Bash results in the main transcript, `automode-blocked` as an unrecognised label, nothing structural on five of seven sandbox refusals. The gate fails closed, so B1 stopped with its code reviewed but unshipped.
+- **What we learned**:
+  1. **A parser of another tool's signals is validated only against that tool's failure modes, planted on purpose.** A success-path spike proves attribution, not detection. The spike for a detector must run in the real environment (sandbox on, the profile applied) with each denial kind planted, and must record the observed layout before the build wave that depends on it.
+  2. **The trip-wire did its job.** TW-B1's fail-closed denial clause, evaluated at a named task (T051) with a written census, turned a late discovery into an honest stop instead of a shipped detector that misses five of seven refusals. The built work stays retrievable (`fe5125a`), the follow-up (#399) carries the observed layout, and Part A shipped on time.
+  3. **Evidence that exists only after the merge belongs to the deliver step, planned in advance.** The guard's `push:[main]` leg could not run before #392 merged; `feasibility-check.md` (e) said so, and `/aod.deliver` recorded run 44936411660 (success) in `test-results/sc-a3-evidence.md`.
+- **How to apply**:
+  - When a task builds a reader of transcripts, logs or tool results, add a spike task that runs under the production constraints and plants one instance of every signal class the reader must classify. Its output is a layout table (key, where it sits, values, which results carry it), and the build task depends on it.
+  - Keep the trip-wire clause that tests detection separate from the clauses that test attribution, and name the task and the record that evaluate it.
+  - For a stacked PR pair, retarget the dependent PR to `main` before the base branch is deleted (`gh pr edit <n> --base main`, then delete), or merge without `--delete-branch`. If it has already closed: push the old tip back under the branch name, reopen, retarget, delete again.
+  - For CI evidence that only a push to `main` produces, write the deliver-stage recording step into the evidence file at build time, with the field left explicitly open.
+
+**Related**:
+- **Feature records:** `specs/391-isolated-auditable-operation/` (`delivery.md`; `test-results/{w0-spike,tw-b1-w2,w2-live,w3-recheck,sc-a3-evidence}.md`; `plan.md`; `agent-assignments.md` §4, the gates).
+- **Merge:** squash-merge `e83ca6b` (PR #392, `fix(391):` title) → release-please v4.48.3 (#418).
+- **Related:** Entry 22 (gate on the compiled artifact, never intermediate agent output), Entry 18 (the deliver-stage clobber hazard), Entry 1 (a substitution-target edit regenerates the init-baseline fixture in the same commit: applied here to the system-design README note).
+
+---
+
 ## Bug Fixes
 
 *No entries yet. Use `/kb-create` to add the first bug fix.*

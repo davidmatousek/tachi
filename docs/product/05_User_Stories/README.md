@@ -741,3 +741,16 @@ Each PRD should include relevant user stories:
 - As an adopter whose `.claude/skills` is a symlink to a shared folder, the installer tells me exactly where tachi's files went, or behaves as the PRD decides. It never silently writes into a folder other tools read.
 - As a security lead sharing tachi output, the infographics and the PDF show the same numbers as the source artifacts. That covers residual bands, MAESTRO layers, funnel, delta, recommendations and posture, so I can present them without hand-correcting anything.
 - As an adopter running `/tachi.infographic`, the stock agent renders every image, with no leaked prompt text and no wrong IDs.
+
+### Feature 391: Isolated and Auditable Operation
+
+**PRD**: [391-isolated-auditable-operation](../02_PRD/391-isolated-auditable-operation-2026-11-16.md)
+**Delivered**: 2026-11-21, Part A only | **PR**: #392 (merge commit `e83ca6b`) | **Release**: v4.48.3 (release PR [#418](https://github.com/davidmatousek/tachi/pull/418)) | **Tasks**: 50/52 (T038b and T047 are conditional on the split path) | **Stories**: 3 of 5 delivered (US1 P1 + US2 P1 + US3 P2); US4 and US5 are Part B and not in this release
+**Spec**: [specs/391-isolated-auditable-operation/spec.md](../../../specs/391-isolated-auditable-operation/spec.md)
+**Retrospective**: [specs/391-isolated-auditable-operation/delivery.md](../../../specs/391-isolated-auditable-operation/delivery.md)
+
+- **US1** (P1, PRD US-A1, delivered): The adopter learns exactly what leaves the machine. The six data-locality documents say that the model provider receives the architecture description, the files tachi reads and the findings on every run. Google's Gemini API receives derived threat-model content only when the key is set and `/tachi.infographic` runs. The README states the Gemini flow before the key step. SC-002 is met.
+- **US2** (P1, PRD US-A2, delivered): A security team runs tachi inside an isolated environment from a validated runbook. `docs/guides/ISOLATED_OPERATION_TACHI.md` installs with tachi. It was validated live on macOS with Claude Code 2.1.330 in auto mode, with and without the key, on the profile before its last ten deny rules. The published profile was re-checked without the key. Linux and WSL2 are not yet run live (#406). On macOS, `/tachi.security-report` is outside the claim for runs with diagrams (#405). A run writes only under its output directory and `$TMPDIR`. SC-005 is met. SC-001 is recorded by clause on macOS and not claimed as a whole.
+- **US3** (P2, PRD US-A3, delivered): A reviewer trusts one enforced matrix of agent privileges. §8 of `docs/standards/CLAUDE_PERMISSIONS.md` is checked in CI by `scripts/check-agent-privileges.py` on pull requests and on pushes to `main`. On every documented install path, the installed agents declare the §8 tools. SC-003 and SC-004 are met.
+- **US4** (P2, PRD US-B1, not delivered): An operator archives a run and proves which model served each agent. B1 honest-stopped when trip-wire TW-B1 fired on its denial clause: planted denials went undetected in Claude Code 2.1.330 transcripts. SC-006 and SC-007 are not met. Follow-up: #399.
+- **US5** (P3, PRD US-B2, Part B pending): A consumer of `threats.md` knows which tachi release wrote it. B2 is built and ships separately through #396 after #364 merges, with SC-008. Tracker: #400.

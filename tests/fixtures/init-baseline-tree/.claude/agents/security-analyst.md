@@ -1,5 +1,6 @@
 ---
 name: security-analyst
+model: sonnet
 description: "Security vulnerability assessment, threat modeling, and dependency scanning. Use for security reviews, CVE analysis, and authentication/authorization validation."
 version: 2.0.0
 changelog:
@@ -159,7 +160,7 @@ All security reviews must:
 - **Impact**: [Description]
 - **Fix**: [Specific remediation steps]
 
-### High Priority (Fix This Sprint)
+### High Priority (Fix This Loop)
 - [Findings with remediation]
 
 ### Dependencies & CVEs

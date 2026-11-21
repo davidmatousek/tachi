@@ -78,7 +78,8 @@ and checks the declared privileges of every tachi agent and command in CI.
   Cyber Verification Program participants, as tachi's own reading of that guidance. Its header
   records a live validation on macOS with Claude Code 2.1.330 in auto mode. Linux and WSL2
   are not yet run live. On macOS, Chromium cannot start inside the sandbox, so for runs with
-  diagrams the runbook gives a by-hand build of the PDF report, run after the session.
+  diagrams the runbook gives a by-hand build of the PDF report, run after the session (not yet
+  run live).
 - An agent and command privilege matrix, §8 of `docs/standards/CLAUDE_PERMISSIONS.md`: each
   agent's tools, model pin, shell command families, written paths and hosts, and each
   command's frontmatter keys, dispatches, written paths and child processes. It states which
@@ -90,7 +91,7 @@ and checks the declared privileges of every tachi agent and command in CI.
   write-location table drift from §8, and when agent files and §8 rows do not match one to
   one. A self-test plants five mutations on every run to show that the guard still fails.
   The install-fidelity suite checks that the agents each install path produces carry the
-  §8 tools.
+  §8 tools (the zsh manual-install loop where zsh is present).
 - `scripts/extract-report-data.py` gains `--build-dir` and `--remove-build-dir`, which build
   the report in a throwaway copy of the template and then remove that copy. It also passes
   `-p <file>` to `mmdc` when `TACHI_MMDC_PUPPETEER_CONFIG` names an absolute path to a regular
@@ -99,13 +100,16 @@ and checks the declared privileges of every tachi agent and command in CI.
 
 **Changed**
 - A run now writes only under its output directory and the temporary directory (`$TMPDIR`),
-  and never under the installed `templates/tachi/` tree. `/tachi.security-report` compiles a
+  and never under the installed `templates/tachi/` tree; `/tachi.architecture` still writes the
+  architecture file it creates and an archive copy beside it. `/tachi.security-report` compiles a
   throwaway copy of the template in `{out}/.tachi-build/security-report/`, removed after a
   successful compile and kept after a failed one for debugging. The infographic extraction
   JSON, which went to `/tmp`, and the Gemini request and response files now sit in
   `{out}/.tachi-build/` and are kept. `install.sh` writes no `.gitignore`, so a project that
   commits run output should ignore `.tachi-build/`.
-- `/tachi.security-report --output-dir` must now sit under the working directory, or the build stops.
+- `/tachi.security-report`'s output directory must now sit under the working directory, or the
+  build stops with exit 2. That is the `--output-dir` path, or the target directory when
+  `--output-dir` is not given.
 - With `--output-dir`, `/tachi.security-report` writes its rendered diagrams, and any
   corrected infographic copy, under that directory instead of the artifact directory.
 - `/tachi.risk-score` runs its in-place Affected Assets refresh of `threats.md` only when the

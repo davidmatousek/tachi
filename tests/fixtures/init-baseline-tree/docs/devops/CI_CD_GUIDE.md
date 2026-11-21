@@ -23,18 +23,15 @@ Add CI/CD after you have:
 
 ## Reference Patterns: Template-Maintenance CI Workflows
 
-This section documents the reference CI workflows that the upstream template uses to protect its own release-tooling integrity. **None ship to adopter projects** — adopt them only if you extend the template and want the same guarantees.
+This section documents three reference CI workflows that the upstream template uses to protect its own release-tooling integrity. **None ship to adopter projects** — adopt them only if you extend the template and want the same guarantees.
 
 | Workflow | Feature | Protects |
 |----------|---------|----------|
 | `.github/workflows/manifest-coverage.yml` | F129 (downstream template update) | File-ownership invariant for `.aod/template-manifest.txt` |
 | `.github/workflows/extract-coverage.yml` | F128 (directory-based extraction manifest) | Classification-snapshot invariant for `scripts/extract-classification.txt` |
 | `.github/workflows/stack-contract.yml` | F130 (Stack Pack Test Contract) | Test contract invariant for every `stacks/*/STACK.md` (excluding content-pack allowlist) |
-| `.github/workflows/tachi-mmdc-preflight.yml` | F145 (Mermaid CLI hard-prerequisite) | Loud-failure path when `mmdc` is absent on the runner (ADR-022) |
-| `.github/workflows/tachi-pytest.yml` | F-248 (Substitution surface hardening) | `scripts/init.sh` substitution behaviour on a macOS+Ubuntu pytest matrix (ADR-038) |
-| `.github/workflows/gitleaks.yml` | F-282 / F-5 (Pre-commit secret-scanning defaults) | Full-repo gitleaks scan on PR — back-stop for `git commit --no-verify` (ADR-042) |
 
-The first three workflows share the bash:3.2 Docker pattern, SHA-pinned checkout action, `contents: read` permissions, and cancel-in-progress concurrency. The latter three (`tachi-mmdc-preflight.yml`, `tachi-pytest.yml`, `gitleaks.yml`) follow a different pattern — direct host-runner execution with path-filtered triggers (or unfiltered, in `gitleaks.yml`'s case) — because their workloads (`mmdc` Node binary preflight, Python+bash subprocess tests, native gitleaks binary) do not benefit from container isolation. Use any of the first three as a template when adding a new maintenance workflow that needs the bash:3.2 floor; use `tachi-pytest.yml` as a template when adding a new path-filtered Python test job; use `gitleaks.yml` as a template when adding a new SARIF-emitting scanner job.
+All three workflows share the same CI pattern (bash:3.2 Docker, SHA-pinned checkout action, `contents: read` permissions, cancel-in-progress concurrency). Use any as a template when adding a new maintenance workflow.
 
 ### Shared Workflow Conventions
 
@@ -136,254 +133,6 @@ In `--all` mode the script exits with the **numerically lowest non-zero code** a
 **Full contract**: `specs/130-e2e-hard-gate/contracts/stack-contract-lint.md` and `docs/stacks/TEST_COMMAND_CONTRACT.md`. The STACK.md block schema is defined in `specs/130-e2e-hard-gate/data-model.md` §1, §2, §5.
 
 **Feature 142 Update (2026-04-23)**: The workflow itself (`.github/workflows/stack-contract.yml`) and the validator (`.aod/scripts/bash/stack-contract-lint.sh`) are **unchanged** by F142 (PR #151) — the exit-code contract (0–5) was already strict as of F130. F142 only removes the grace-period fallback that previously lived inside `/aod.deliver` Step 9a, which translated a lint exit 5 (MISSING_BLOCK) into a silent skip. Post-F142, `/aod.deliver` surfaces exit 5 as an explicit error with the lint stderr diagnostic shown verbatim in the delivery report. **Effective impact on CI consumers**: any pipeline that parses delivery.md rendered by `/aod.deliver` should read `e2e_validation.status` (`error` vs. `skipped` vs. `success`) from the payload rather than pattern-matching grace-period language in the human-readable rendering. The stack-contract CI workflow continues to fail any PR that would have tripped its exit 5 anyway — F142 closes the same gap at the `/aod.deliver` boundary for branches not guarded by the CI workflow. PRD: `docs/product/02_PRD/142-remove-grace-period-fallback-2026-04-23.md`.
-
-### Tachi Pytest Workflow (F-248 + F-250 + F-256 + F-282 + F-302)
-
-**Added in Feature 248** (Substitution Surface Hardening), merged via PR #249 (squash commit `6db9a25`) on 2026-05-04. Re-tuned and re-scoped by Feature 250 (PR #253, squash `75866d9`) on 2026-05-04 (timeouts + session-scoped fixture). Extended by Feature 256 (PR #257, squash `f959622`) on 2026-05-05 to cover the source-pattern-hardening surface. Extended by Feature 282 / F-5 (PR #283, squash `18378bd`) on 2026-05-10 to wire `tests/scripts/test_init_precommit_matrix.py` into both the `paths:` trigger and the pytest invocation in lock-step (the F-256 lock-step pattern, applied verbatim). Extended by Feature 302 / F-260b (PR #303, squash commit `3d3d29f`) on 2026-06-01 to wire the previously-unwired asset-tag test suite (`tests/scripts/test_asset_sensitivity_tags.py` + `tests/scripts/test_affected_assets_wiring.py`) plus their three source surfaces into the `paths:` trigger — and the two test files into the pytest invocation — in lock-step (the same F-256 lock-step pattern).
-
-`.github/workflows/tachi-pytest.yml` runs the combined F-248 substitution test suite + F-256 source-pattern-hardening test suite on a 2-runner cross-platform matrix (`macos-latest` + `ubuntu-latest`) to catch bash-version regressions across the full bash surface area: `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-git.sh`, `.aod/scripts/bash/template-config-load.sh` (F-256 canonical KV-load primitive), the constitution templates, and the shipped stack-pack `defaults.env` files (F-256 Site A whitelist surface). The macOS leg is the strictest gate because it ships bash 3.2.57 (Apple's bundled `/bin/bash`, GPLv3-pinned) — a green macOS run on top of a green Ubuntu run proves the entire hardening surface is portable, not bash-3.2-quirk-locked.
-
-| Property | Value |
-|----------|-------|
-| Workflow file | `.github/workflows/tachi-pytest.yml` |
-| Trigger | `pull_request` only (path-filtered — see below) |
-| Runners | `macos-latest`, `ubuntu-latest` (matrix, `fail-fast: false`) |
-| Python version | 3.11 (matches `tachi-mmdc-preflight.yml` baseline) |
-| Permissions | `contents: read` |
-| Pip dependencies | `pytest>=8`, `pytest-timeout>=2`, `pyyaml>=6` |
-| Inner subprocess timeout | 900s (in `tests/scripts/init_sh_helpers.run_init_in_clone`, F-250) |
-| Outer pytest timeout | 1080s (per-test wall-clock cap, ~180s fixture-teardown slack, F-250) |
-| Job ID | `init-sh-suite` |
-| Job name | `pytest init.sh suite — ${{ matrix.os }}` |
-
-**Test files covered** (F-248 substitution suite + F-250 unit modules + F-256 source-pattern-hardening suite, all wired into the same pytest invocation per the path-filter completeness pattern):
-
-F-248 substitution suite (per ADR-038 §Test Coverage — 8 substitution + 4 rejection + 1 case-13 + 1 residual + 1 constitution + 3 self-delete + 2 fixture-replay = 20 tests):
-
-- `tests/scripts/test_init_sh_substitution.py`
-- `tests/scripts/test_init_sh_adversarial.py`
-- `tests/scripts/test_init_sh_constitution.py`
-- `tests/scripts/test_init_sh_self_delete.py`
-
-F-250 unit modules (sub-second per case — adversarial extraction + canary):
-
-- `tests/scripts/test_template_substitute_unit.py`
-- `tests/scripts/test_init_input_unit.py`
-- `tests/scripts/test_substitute_shim_canary.py`
-
-F-256 source-pattern-hardening suite (per ADR-040 §Test Coverage — Sites A-D + Stream 4 watchdog + lint guard):
-
-- `tests/scripts/test_init_sh_defaults_env.py` — Site A integration: `scripts/init.sh` against `stacks/*/defaults.env` (positive packs + malicious-pack rejection + missing-key rejection)
-- `tests/scripts/test_template_config_load_unit.py` — Canonical `aod_template_load_kv_file` primitive surface (29 parametrized cases — comments, blanks, trailing newline, NUL-byte rejection, key-case enforcement, allowlist enforcement, indirect array access)
-- `tests/scripts/test_template_config_load_integration.py` — Full-library round-trip: writer-reader semantic equivalence with the deprecated `source` pattern across personalization-env + aod-kit-version + defaults.env fixtures
-- `tests/scripts/test_template_git_clone_timeout.py` — Stream 4 watchdog + `AOD_FETCH_TIMEOUT` adopter env-var contract (hanging-upstream timeout, validation-rejection footguns, fast-clone happy-path + zombie-watchdog assertion)
-- `tests/scripts/test_template_substitute_lint_no_eval.py` — Lint guard: asserts post-F-256 `template-substitute.sh` contains zero `eval` invocations (closes TACHI-VULN-9a7512071b4a regression-resistance)
-
-F-282 / F-5 pre-commit-secret-scanning matrix (added 2026-05-10):
-
-- `tests/scripts/test_init_precommit_matrix.py` — Validates the F-5 init.sh prompt block: `--no-precommit` skip path, `--precommit` force-install path, default-Y TTY path, non-TTY silent-skip path, `pre-commit --version >= 3.5.0` floor check (warn-and-continue when below), pre-commit-not-installed path (warn-and-continue, no abort). Both `macos-latest` (bash 3.2.57) and `ubuntu-latest` (bash 5.x) legs MUST pass.
-
-F-302 / F-260b asset-tag output-wiring suite (added 2026-06-01):
-
-- `tests/scripts/test_asset_sensitivity_tags.py` — the previously-unwired 26-case asset-tag suite (23 defs + 1 parametrize → 26). Covers @north-echo's asset-sensitivity tag prototype merged in v4.31.0 (PR #262).
-- `tests/scripts/test_affected_assets_wiring.py` — populator + SARIF `affected_assets` wiring (35 cases): all 6 tags propagate, empty-default `[]` present, fuzzy component match, sorted/deduped output, cross-format equality (SC-006) across the `threats.md` block + both SARIF emitters, and ceiling-preservation (SC-004). Combined with the sensitivity suite, both F-260b suites run 61/61 green.
-
-Three source surfaces were also added to `paths:` (trigger-only — not separate pytest invocation entries) so the suites fire on F-260b code changes: `scripts/populate-affected-assets.py` (deterministic populator — value authority), `scripts/sarif_common.py` (`affected_assets` extractor — verification tier), and `schemas/finding.yaml` (the `affected_assets` schema contract, bumped 1.8 → 1.9).
-
-**Path filter (NFR-005 — scope discipline)**: The workflow ONLY fires when files in the combined F-248 substitution surface + F-256 source-pattern surface change. Pure docs edits, ADR text, or unrelated agent-tier changes do NOT trigger this job. Mirrors the narrow-scope pattern of `tachi-mmdc-preflight.yml` and avoids burning CI minutes on edits that cannot affect substitution or config-loading behaviour. The complete trigger set is:
-
-```yaml
-paths:
-  - scripts/init.sh
-  - .aod/scripts/bash/init-input.sh
-  - .aod/scripts/bash/template-substitute.sh
-  - .aod/scripts/bash/template-validate.sh
-  - .aod/scripts/bash/template-git.sh
-  - .aod/scripts/bash/template-config-load.sh   # F-256
-  - .aod/templates/constitution-clean.md
-  - .aod/templates/constitution-instructional.md
-  - .aod/template-manifest.txt
-  - stacks/*/defaults.env                       # F-256 — Site A whitelist surface
-  - tests/scripts/test_init_sh_substitution.py
-  - tests/scripts/test_init_sh_adversarial.py
-  - tests/scripts/test_init_sh_constitution.py
-  - tests/scripts/test_init_sh_self_delete.py
-  - tests/scripts/test_template_substitute_unit.py    # F-250
-  - tests/scripts/test_init_input_unit.py             # F-250
-  - tests/scripts/test_substitute_shim_canary.py      # F-250
-  - tests/scripts/test_init_sh_defaults_env.py            # F-256
-  - tests/scripts/test_template_config_load_unit.py       # F-256
-  - tests/scripts/test_template_config_load_integration.py # F-256
-  - tests/scripts/test_template_git_clone_timeout.py      # F-256
-  - tests/scripts/test_template_substitute_lint_no_eval.py # F-256
-  - tests/scripts/test_init_precommit_matrix.py            # F-5 (282) — pre-commit prompt + flag matrix
-  - tests/scripts/test_asset_sensitivity_tags.py           # F-302 (260b) — 26-case asset-tag suite
-  - tests/scripts/test_affected_assets_wiring.py           # F-302 (260b) — populator + SARIF affected_assets wiring
-  - scripts/populate-affected-assets.py                    # F-302 (260b) — deterministic populator (value authority)
-  - scripts/sarif_common.py                                # F-302 (260b) — affected_assets extractor (verification tier)
-  - schemas/finding.yaml                                   # F-302 (260b) — affected_assets schema contract (1.9)
-  - tests/scripts/init_sh_helpers.py
-  - tests/scripts/conftest.py
-  - tests/fixtures/init-baseline-tree/**
-  - tests/fixtures/regenerate-baseline.sh
-  - tests/fixtures/regenerate-config-load-baseline.sh     # F-256
-  - tests/fixtures/config-load/**                         # F-256
-  - .github/workflows/tachi-pytest.yml
-```
-
-**Path-filter completeness pattern (F-250 lesson, reinforced by F-256, applied verbatim by F-282/F-5 and F-302/F-260b)**: The `paths:` filter and the `pytest` invocation MUST be kept in lock-step. F-250 hot-fixed an asymmetry where 3 unit modules were added to the test invocation but omitted from `paths:`, so edits scoped to those modules silently bypassed CI. F-256 added 5 new test modules + 1 new bash library file (`template-config-load.sh`) + a new fixture tree (`tests/fixtures/config-load/`) — all wired through both the trigger list and the pytest invocation in a single commit. F-282 / F-5 added one new test module (`tests/scripts/test_init_precommit_matrix.py`) — wired through both the trigger list AND the pytest invocation in a single commit (T020 in the F-5 task plan, ratified at /aod.deliver close-out). F-302 / F-260b added two new test modules (`tests/scripts/test_asset_sensitivity_tags.py` + `tests/scripts/test_affected_assets_wiring.py`) — both wired through the trigger list AND the pytest invocation in a single commit (T020 in the F-302 task plan); it also added three source surfaces (`scripts/populate-affected-assets.py`, `scripts/sarif_common.py`, `schemas/finding.yaml`) to the trigger list only, since those are production/schema files exercised by the suites rather than themselves test entry points. When adding a new test file or library file in future work, update BOTH the `paths:` trigger list AND the `python -m pytest ...` command in the same commit — and verify the file appears in both (source-only surfaces belong in `paths:` only).
-
-Edits to other shell scripts, agent files, ADRs, or documentation will not invoke this workflow even if the PR also includes substitution-surface changes — GitHub Actions evaluates the path filter at the PR level, so the workflow fires when at least one matching path is in the diff.
-
-**pyyaml dependency**: `tests/scripts/conftest.py` imports `yaml` at module scope. The dependency is cross-suite — shared with the BLP-01 + F-241 detection-agent attestation tests that load `schemas/finding.yaml` and `.claude/agents/tachi/*.yml` schemas. Bumping `pyyaml` in this workflow MUST be coordinated with those suites.
-
-**Baseline fixture**: `tests/fixtures/init-baseline-tree/` contains the canonical post-init filesystem snapshot that `test_init_sh_substitution.py` and `test_init_sh_adversarial.py` diff against. The accompanying `tests/fixtures/regenerate-baseline.sh` script is the **only** supported way to regenerate the baseline — it pins the deterministic substitution inputs (`AOD_RATIFICATION_DATE_OVERRIDE`, `AOD_CURRENT_DATE_OVERRIDE`) and drives `scripts/init.sh` against a clean clone. Run it whenever the canonical placeholder set expands (e.g., new `{{...}}` token added) or upstream template content additions land. See `docs/devops/environment-variables.md` for the full env-var contract.
-
-**Performance characteristics (macOS leg)**: macOS runners are notoriously ~3-4× slower than dev hardware for arm64 bash work — a single `scripts/init.sh` invocation that takes ~140-175s on a developer workstation can take ~560-700s cold-cache on `macos-latest` at the 4× worst-case multiplier. F-248 originally tuned a 300s/360s inner/outer pair that worked on the Ubuntu leg but flaked the macOS leg during close-out. F-250 (PR #253, 2026-05-04) re-tuned the timeout budget and restructured the fixture topology to fit the observed cold-cache budget without masking real regressions.
-
-**F-250 timeout philosophy (current)**: The timeout pair is sized to the slowest reasonable cold-cache scenario plus deliberate slack, NOT the fastest happy-path scenario.
-
-| Layer | Value | Rationale |
-|-------|-------|-----------|
-| Inner subprocess (`run_init_in_clone(timeout_sec=)` default) | 900s | Caps a single `scripts/init.sh` invocation. Headroom over the 560-700s observed worst case so that the timeout fires only on a genuine hang, not on cold-cache compounding. |
-| Outer pytest (`--timeout=1080`) | 1080s | Per-test wall-clock cap = inner cap + ~180s fixture-teardown slack. Aligns with the inner cap so a subprocess timeout surfaces as the inner exception (preserving diagnostic stderr) before the outer cap fires. |
-
-The 1080s outer cap is intentional: it MUST be > the inner 900s cap to ensure the helper's `subprocess.TimeoutExpired` raises with stderr captured rather than being preempted by a pytest-level timeout that drops the subprocess output.
-
-**F-250 fixture restructure**: F-248 originally declared the `init_run` fixture at module scope across 5 separate test modules — every module paid the cold-cache cost on first use, summing to 5×300s+ on the macOS leg. F-250 promoted `init_run` to a session-scoped fixture in `tests/scripts/conftest.py` so the macOS cold-cache cost is paid ONCE per pytest session instead of once per module. Combined with the new timeout budget, observed wall time on the macOS leg dropped from the 30-40 minute band into a 5-7 minute band on the post-merge CI run.
-
-**KPIs observed on PR #253 (F-250 merge run, 2026-05-04)**:
-
-| Runner | Wall time | Status | Baseline (pre-F-250) |
-|--------|-----------|--------|----------------------|
-| `ubuntu-latest` | 1m29s | green | unchanged |
-| `macos-latest` | 5m19s | green | 30-40 min flaky band |
-
-Both legs green on first attempt; release-please PR #254 auto-opened ~35s post-merge. The macos-latest run is now well under the 15-minute target informally adopted as the upper bound for CI-test feedback loop tolerance.
-
-**F-248 closeout addendum (now superseded by F-250)**: F-248 PR #249 merged via admin-override squash-merge with the macOS leg flaking on the 300s timeout. F-250 — landed same day — converts that scoped exception back into a deterministic green by re-budgeting the timeouts and restructuring the fixture topology. The substitution surface itself was never the regression; the CI-runner cost was.
-
-**Diagnostic step** — every run prints `bash --version` for both `/bin/bash` and the default `bash` so the macOS 3.2 vs. Ubuntu 5.x split is visible in CI logs without parsing the matrix metadata.
-
-**Local invocation** (matches CI exactly post-F-250):
-
-```bash
-# Install dependencies (matches CI versions)
-python -m pip install 'pytest>=8' 'pytest-timeout>=2' 'pyyaml>=6'
-
-# Run the full F-248 + F-256 + F-282 + F-302 hardening suite (matches CI exactly)
-python -m pytest \
-  tests/scripts/test_init_sh_substitution.py \
-  tests/scripts/test_init_sh_adversarial.py \
-  tests/scripts/test_init_sh_constitution.py \
-  tests/scripts/test_init_sh_self_delete.py \
-  tests/scripts/test_template_substitute_unit.py \
-  tests/scripts/test_init_input_unit.py \
-  tests/scripts/test_substitute_shim_canary.py \
-  tests/scripts/test_init_sh_defaults_env.py \
-  tests/scripts/test_template_config_load_unit.py \
-  tests/scripts/test_template_config_load_integration.py \
-  tests/scripts/test_template_git_clone_timeout.py \
-  tests/scripts/test_template_substitute_lint_no_eval.py \
-  tests/scripts/test_init_precommit_matrix.py \
-  tests/scripts/test_asset_sensitivity_tags.py \
-  tests/scripts/test_affected_assets_wiring.py \
-  -v --timeout=1080
-```
-
-On dev hardware the suite finishes in ~3-4 minutes (vs. the 5-7 minute cold-cache band on `macos-latest`). The 1080s `--timeout` is sized for the worst-case CI runner, not for local; on a fast workstation, no test approaches the cap.
-
-**Full contract**: `specs/248-substitution-surface-hardening/spec.md` (FR-001..FR-011, NFR-001 bash floor, NFR-005 scope discipline). F-250 hot-fix: `specs/250-adversarial-unit-extraction-hotfix/spec.md`. F-256 source-pattern hardening: `specs/256-source-pattern-hardening/spec.md` (FR-1..FR-9, NFR-1..NFR-6, SC-1..SC-15). F-302 asset-tag output-wiring: `specs/302-asset-tag-output-wiring/spec.md` (FR-008 CI wiring + FR-009 regression protection; SC-001..SC-012). ADRs: `docs/architecture/02_ADRs/ADR-038-placeholder-substitution-strategy.md` (F-248) + `docs/architecture/02_ADRs/ADR-040-config-file-parsing-hardening.md` (F-256) + `docs/architecture/02_ADRs/ADR-046-asset-tag-output-wiring.md` (F-302). Tasks T039 (workflow authoring) + T040 (CI matrix verification) + T041 (close-out attestation) for F-248; F-250 tasks T001-T029 for the hot-fix; F-256 covers Sites A-D + Stream 4 (T014-T041) + Stream 5 lint (T046); F-302 task T020 wires both asset-tag suites into the matrix in lock-step.
-
-### F-256 Adopter-Facing Environment Variable
-
-F-256 introduces one adopter-facing environment variable, `AOD_FETCH_TIMEOUT`, read by `.aod/scripts/bash/template-git.sh:98` to bound `git clone` wall-clock cost during `/aod.update` / `make update`. Default 60 seconds; positive-integer validation against `^[1-9][0-9]*$` (rejects `0`, leading-zero forms, non-numeric values); exit `9` on timeout (with partial-checkout cleanup), exit `1` on invalid value. Full contract — including the watchdog process-leak invariant and the Q-3 footgun-rejection ruling — is documented in `docs/devops/environment-variables.md` → "F-256 Source-Pattern-Hardening Adopter Variable".
-
----
-
-### Gitleaks CI Parity Workflow (F-282 / F-5)
-
-**Added in Feature 282 / F-5** (Pre-commit Secret-Scanning Defaults), merged via PR #283 (squash commit `18378bd`) on 2026-05-10 — the 5th and final feature of BLP-02 enterprise hardening (5/5 closed).
-
-`.github/workflows/gitleaks.yml` runs a full-repo gitleaks scan on every `pull_request` against `main` as a back-stop for the local pre-commit hook. The CI workflow exists to catch the case where a developer deliberately bypassed the local hook with `git commit --no-verify` (or has not opted into the hook because they are an existing pre-F-5 adopter). Findings are uploaded to GitHub Code Scanning via SARIF so PR reviewers see them inline in the GitHub Security tab.
-
-| Property | Value |
-|----------|-------|
-| Workflow file | `.github/workflows/gitleaks.yml` |
-| Trigger | `pull_request` against `main` (no path filter — every PR scans the full repo) |
-| Runner | `ubuntu-latest` |
-| Permissions | `contents: read` + `security-events: write` (required by `github/codeql-action/upload-sarif@v3`) |
-| Gitleaks version | **v8.30.1** (pinned) |
-| SHA256 checksum | `551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb` (verified before tarball extraction) |
-| Scan scope | Full-repo (`gitleaks git`) — NOT PR-diff |
-| SARIF category | `gitleaks` (visible under GitHub Security tab → Code Scanning → Tool: gitleaks) |
-| `actions/checkout` | `@v4` with `fetch-depth: 0` (full git history needed for `gitleaks git`) |
-| SARIF upload action | `github/codeql-action/upload-sarif@v3` |
-| `continue-on-error` | `true` on the scan step (so the SARIF upload always runs even when findings are present) |
-| `if: always()` | Set on the upload step to guarantee the SARIF artifact is published |
-
-**Native gitleaks invocation, NOT `gitleaks-action@v2` (per ADR-042 §Alternatives)**: the proprietary `gitleaks-action@v2` requires a paid `GITLEAKS_LICENSE` secret for org repos. The license requirement is enforced at runtime — the action fails closed with no warning during dry-run testing. F-5 deliberately downloads the gitleaks binary from the upstream GitHub release tarball, verifies the SHA256 checksum from the upstream `gitleaks_8.30.1_checksums.txt` artifact before extraction, and invokes the binary directly. This avoids the org-wide license trap and preserves SARIF compatibility verbatim.
-
-**Full-repo, not PR-diff (Q5 ruling)**: PR-diff scanning would miss pre-existing un-scanned credentials in older commits of the branch or its history. Full-repo catches them at merge time even if they predate the introduction of the hook. Trade-off: marginally higher CI cost (≈30s on a tachi-sized tree) vs. cleaner credential hygiene over the lifetime of the repo. The SARIF report retains all findings — reviewers triage based on whether the finding is on the PR-diff (immediate concern) or pre-existing (sweep work item).
-
-**Scan invocation** (verbatim from the workflow):
-
-```bash
-./gitleaks git \
-  --config=.gitleaks.toml \
-  --report-format=sarif \
-  --report-path=gitleaks.sarif \
-  --no-banner \
-  --verbose
-```
-
-**Deliberate decoupling from the local wrapper**: the CI workflow does NOT invoke `.aod/scripts/bash/precommit-wrap.sh` even though the wrapper is the entry point for local commits. The wrapper writes to stderr (the four-item structured contract: rule ID + file:line + bypass guidance + docs link), which is not SARIF-compatible. Reviewers in CI consume findings via the SARIF report uploaded to Code Scanning; developers at the local hook consume findings via the wrapper's stderr output. The two channels are intentionally separated per spec PM-5 / ADR-042 §Decision.
-
-**Bumping gitleaks**: each minor release of gitleaks requires (a) re-testing against `tests/fixtures/gitleaks-rule-interaction/` to confirm the upstream default ruleset still flags + allow-lists tachi's representative samples, (b) updating the `GITLEAKS_VERSION` and `GITLEAKS_SHA256` constants in `gitleaks.yml` from the upstream `gitleaks_<VERSION>_checksums.txt` artifact, and (c) regenerating the rationale catalog in `docs/standards/PRECOMMIT_HOOKS.md` §3 if any new default rule fires on tachi content. Per ADR-042 §Consequences.
-
-**Local equivalent** (matches CI scan behaviour byte-for-byte minus the SARIF upload):
-
-```bash
-# Install gitleaks v8.30.1 locally (macOS):
-brew install gitleaks   # or download the v8.30.1 release tarball + verify SHA256 manually
-
-# Run the same scan CI runs:
-gitleaks git \
-  --config=.gitleaks.toml \
-  --report-format=sarif \
-  --report-path=gitleaks.sarif \
-  --no-banner \
-  --verbose
-
-# Inspect findings:
-jq '.runs[0].results[] | {rule: .ruleId, file: .locations[0].physicalLocation.artifactLocation.uri, line: .locations[0].physicalLocation.region.startLine}' gitleaks.sarif
-```
-
-The local pre-commit hook (`.pre-commit-config.yaml` + `.aod/scripts/bash/precommit-wrap.sh`) runs a different invocation (`gitleaks git --pre-commit --redact --staged`) that scopes to staged content only and emits the wrapper's stderr contract instead of SARIF. Both invocations resolve against the same `.gitleaks.toml` ruleset.
-
-**Full contract**: `specs/282-pre-commit-secret-scanning-defaults/spec.md` (FR-001..FR-013, AC-1..AC-12, NFR-1..NFR-5, R-1..R-5). ADR: `docs/architecture/02_ADRs/ADR-042-pre-commit-secret-scanning-default.md` (§Decision, §Alternatives, §Consequences). Policy log: `docs/standards/PRECOMMIT_HOOKS.md` (per-rule rationale catalog, bypass mechanisms, install paths).
-
----
-
-### Tachi Mermaid Preflight Workflow (F145)
-
-**Added in Feature 145** (Maestro Canonical Worked Example, ADR-022 hard-prerequisite of `mmdc`).
-
-`.github/workflows/tachi-mmdc-preflight.yml` runs on `ubuntu-latest` (which does NOT have `mmdc` preinstalled) and asserts the loud-failure path when the Mermaid CLI is absent. Guards ADR-022's "no silent fallback" invariant — if `mmdc` is missing, the threat-modelling pipeline MUST fail explicitly rather than silently degrading to text-only output.
-
-| Property | Value |
-|----------|-------|
-| Workflow file | `.github/workflows/tachi-mmdc-preflight.yml` |
-| Runner | `ubuntu-latest` (no preinstalled `mmdc`) |
-| Trigger | `pull_request` against `main` (path-filtered) |
-| Permissions | `contents: read` |
-| Validates | Loud-failure exit code + stderr message when `mmdc` is missing |
-
-The workflow is intentionally minimal — it does NOT install `mmdc`; the absence is the point. A separate workflow that exercises the success path (`mmdc` present + diagram rendering) is the responsibility of any feature that uses `mmdc` in CI; F145's preflight only asserts the failure mode is observable.
-
-**Full contract**: `docs/architecture/02_ADRs/ADR-022-mmdc-hard-prerequisite.md`.
-
----
 
 ### Why bash:3.2 in Docker
 
@@ -643,6 +392,352 @@ Why-this-matters: F129's initial implementation shipped with 514 BATS tests, non
 **New exit code: 13 — `placeholder-drift`**: emitted by `scripts/update.sh --check-placeholders` when legacy placeholder occurrences are detected outside the canonical 12-member `AOD_CANONICAL_PLACEHOLDERS` set defined in `.aod/scripts/bash/template-substitute.sh`. Findings format: `<file>:<line>: {{<name>}}` per occurrence on stdout, followed by a migration-guide table. The exit code is **additive** to the existing F129 taxonomy (0–5) and F139 taxonomy (10–12) — CI consumers that branch on update-script exit codes should add explicit handling for `13)` if they call `make update --check-placeholders` from automation. Stable forever.
 
 PRD: `docs/product/02_PRD/134-update-bootstrap-placeholder-migration-2026-04-24.md`. Spec: `specs/134-update-bootstrap-placeholder-migration/spec.md`. Adopter walkthrough: `docs/guides/DOWNSTREAM_UPDATE.md`.
+
+---
+
+## Tachi Pytest Workflow
+
+**Workflow file**: `.github/workflows/tachi-pytest.yml`
+
+This workflow runs the F-248 substitution-surface suite and the F-256 source-pattern-hardening suite (`tests/scripts/test_init_sh_*.py` + `tests/scripts/test_template_*.py`) on a two-runner cross-platform matrix (macOS bash 3.2.57 + ubuntu bash 5.x). Both matrix legs must pass green.
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/tachi-pytest.yml` |
+| Runner matrix | `macos-latest` (bash 3.2.57) + `ubuntu-latest` (bash 5.x) |
+| Python version | 3.11 |
+| Pytest dependencies | `pytest>=8`, `pytest-timeout>=2`, `pyyaml>=6` |
+| Per-test timeout | `--timeout=1080` (hardcoded flag; see F-250 outer-cap rationale in spec) |
+| Permissions | `contents: read` |
+
+### Trigger Design (F-338 — push:[main] guard, PR #340, 2026-06-30)
+
+**Added in Feature 338** (Restore F-248/F-256 Substitution Hardening, PR #340, merged 2026-06-30, release v4.45.1).
+
+The workflow fires on **both** `pull_request` and `push: branches: [main]`. The path filter is shared between the two triggers via a single YAML anchor (`&hardening_paths` / `*hardening_paths`) so the trigger surface stays single-source — no third list to keep in lock-step.
+
+```yaml
+on:
+  pull_request:
+    paths: &hardening_paths
+      - scripts/init.sh
+      - .aod/scripts/bash/template-substitute.sh
+      # ... (full list in .github/workflows/tachi-pytest.yml)
+  push:
+    branches: [main]
+    paths: *hardening_paths
+```
+
+**Why `push: branches: [main]`**: a direct-to-`main` push (e.g., a `/aod.update` apply commit) bypasses the `pull_request` trigger. That is exactly how the F-248/F-256 hardening was silently reverted on `main` in June 2026 (issue #338) — an `/aod.update` run clobbered four hardening-surface files and the gap went undetected until manual inspection. The `push: [main]` trigger closes this regression class: any future direct-to-`main` commit that touches a hardening-surface path will immediately fail CI on `main`, surfacing the regression in minutes rather than shipping it silently to adopters.
+
+**Regression class defended**: silent hardening clobber via direct-to-`main` push (e.g., `/aod.update`). The `pull_request` trigger alone cannot defend this because direct pushes bypass it entirely.
+
+### Path Filter
+
+The `paths:` filter (`&hardening_paths`) covers the hardening surfaces in lock-step with the pytest invocation. When adding a new test file or refactoring a new bash library file, update both the `paths:` trigger list and the `python -m pytest ...` command in the same commit (per F-250 lock-step lesson). Current surfaces include:
+
+- `scripts/init.sh`, `.aod/scripts/bash/template-substitute.sh`, `.aod/scripts/bash/template-git.sh`, `.aod/scripts/bash/template-config-load.sh`, `.aod/scripts/bash/init-input.sh`, `.aod/scripts/bash/template-validate.sh`
+- Constitution templates, template manifest, stack-pack `defaults.env` files (F-256 Site A)
+- All `tests/scripts/test_*.py` modules in the suite
+- `.github/workflows/tachi-pytest.yml` itself (self-watching)
+
+See the workflow file for the authoritative full list.
+
+### Feature History
+
+| Feature | PR | Change |
+|---------|----|--------|
+| F-248 | #249 | Initial substitution-surface suite + macOS matrix |
+| F-256 | #257 | Source-pattern-hardening suite; `template-config-load.sh`; `AOD_FETCH_TIMEOUT` watchdog |
+| F-250 | — | `--timeout=1080` outer cap; session-scoped fixture rationale |
+| F-5 / F-282 | #286 | `test_init_precommit_matrix.py` added to suite |
+| F-302 / F-260b | #303 | Asset-tag test modules + `populate-affected-assets.py` / `sarif_common.py` / `schemas/finding.yaml` path-filter lock-step |
+| **F-338** | **#340** | **`push: branches: [main]` trigger added; paths shared via YAML anchor `&hardening_paths`; defends against direct-to-`main` hardening clobber** |
+| F-295 | #353 | `scripts/generate-threats-sarif.py` added to path filter (FR-014 input-path-derived `artifactLocation.uri`, covered by 4 assertions in the existing suite); no new test module or workflow added — the planned US-3 byte-identity CI wiring was structurally deferred to defect #356 after the T026 Cat 6 gate failed |
+| F-362 | #363 | `tests/scripts/test_owasp_2026_contract.py` added to suite + path filter (T017 — `normalize_owasp_id` D2 covering matrix + FR-012a derived-taxa contract asserting risk-scores taxa == catalog records); `scripts/generate-risk-scores-sarif.py` and `schemas/taxonomy/owasp.yaml` added to path filter only, no new test module for either (architect MEDIUM-1 — the FR-012a emitter and its catalog derive-source must trigger their own gate); gated module count 15 → 16 |
+| **F-373** | **#375** | **`test_install_sh_symlink_preflight.py` + `test_install_sh_ref_restore.py` added to suite + path filter (K3 — `scripts/install.sh`'s destination-containment pre-flight behind the new `--follow-symlinks` opt-in flag, plus the `--version` ref-restore trap fix), with `tests/scripts/install_sh_helpers.py`'s sandbox builders added to the path filter only (no invocation line — it is a helper module, not a test module); gated module count 16 → 18. This is the existing 2-OS bash matrix's own K3 coverage — distinct from the new `tachi-install-fidelity.yml` workflow's `manifest-completeness` / `extraction-fidelity` / `report-posture` jobs, which gate the manifest and the extraction/report pipeline on a single fast `ubuntu-latest` runner instead. See "Tachi Install Fidelity Workflow" below.** |
+| **F-391** | **#392** | **`test_isolated_profile_contract.py` + `test_agent_privilege_guard.py` added to suite + path filter (Isolated and Auditable Operation, Part A: the session-profile contract of the isolated-operation runbook, and the privilege guard's own suite — live tree green, one red case per check, exit codes, `--json`). `scripts/check-agent-privileges.py` (run as a subprocess by every guard case), `.claude/agents/tachi/**` and `.claude/commands/tachi.*.md` (copied into each guard case), `docs/guides/ISOLATED_OPERATION_TACHI.md`, `docs/standards/CLAUDE_PERMISSIONS.md` and the F-391 PRD (`docs/product/02_PRD/391-isolated-auditable-operation-2026-11-16.md`) added to the path filter only (inputs, no invocation line); gated module count 19 → 21 (F-393's `test_gemini_key_env_only.py` took it from 18 to 19 and has no row in this table). The two agent and command globs widen the trigger: an edit to any tachi agent or command file now also runs this 2-OS matrix. `test_write_confinement.py` (F-391 write confinement) is not in this workflow — it runs in the Typst-gated `report-posture` job of `tachi-install-fidelity.yml`. The same guard also runs as a step of `tachi-permissions-verify.yml`. See "Tachi Permissions-Verify Workflow" and "Tachi Install Fidelity Workflow" below.** |
+
+### Environment Variables
+
+The workflow itself reads **no adopter-facing environment variables** — `--timeout=1080` is a hardcoded flag, not an env var. The test fixtures invoke `AOD_FETCH_TIMEOUT` and `AOD_RATIFICATION_DATE_OVERRIDE` indirectly via `tests/scripts/init_sh_helpers.run_init_in_clone()` for determinism; see `docs/devops/environment-variables.md` for the full contracts.
+
+---
+
+## Tachi Catalog Drift Guard Workflow
+
+**Workflow file**: `.github/workflows/tachi-catalog-drift.yml`
+
+**Added in Feature 329** (Ordered-Frameworks Catalog-Drift CI Guard, PR #344, merged 2026-06-30, release v4.46.0).
+
+This workflow reddens CI — on PRs AND direct-to-`main` pushes — when an `ORDERED_FRAMEWORKS` catalog member drifts from its committed fingerprint sidecar without a CA-baseline regen. It renders nothing and makes no network calls (NFR-001: zero-network, zero-render).
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/tachi-catalog-drift.yml` |
+| Runner | `ubuntu-latest` |
+| Permissions | `contents: read` (principle of least privilege) |
+| Pytest dependencies | `pytest`, `pytest-timeout`, `pyyaml` |
+| Test file | `tests/scripts/test_catalog_drift_guard.py` |
+| Invocation | `pytest tests/scripts/test_catalog_drift_guard.py` |
+
+### Trigger Design (F-329 — dual-trigger with YAML anchor)
+
+The workflow fires on **both** `pull_request` and `push: branches: [main]`. The path filter is shared between the two triggers via a single YAML anchor (`&drift_paths` / `*drift_paths`) so the trigger surface stays single-source — no second list to drift out of sync.
+
+```yaml
+on:
+  pull_request:
+    paths: &drift_paths
+      - catalog/*.yaml
+      - catalog/*.sidecar.json
+      - tests/scripts/test_catalog_drift_guard.py
+      # ... (full list in .github/workflows/tachi-catalog-drift.yml)
+  push:
+    branches: [main]
+    paths: *drift_paths
+```
+
+**Why `push: branches: [main]`**: a direct-to-`main` push (e.g., a `/aod.update` apply commit or a catalog edit) bypasses the `pull_request` trigger. The `push: [main]` trigger closes this regression class: any future direct-to-`main` commit that touches a catalog or fingerprint path will immediately fail CI on `main`, surfacing a drift in minutes rather than shipping it silently.
+
+### What it guards
+
+`ORDERED_FRAMEWORKS` is an ordered list of catalog framework identifiers. When a catalog YAML is edited (a record added, removed, or modified), the corresponding fingerprint sidecar must be regenerated (`make catalog-regen` or equivalent CA-baseline regen). If the sidecar is stale, the drift guard test fails:
+
+- **Drift detected → CI red** — PR is blocked; a direct-to-`main` push surfaces the regression immediately.
+- **Sidecar current → CI green** — no action required.
+
+### Local invocation
+
+```bash
+# Run the guard locally (matches CI exactly)
+pytest tests/scripts/test_catalog_drift_guard.py
+
+# After editing a catalog file, regenerate the sidecar then re-run:
+make catalog-regen   # or the project's CA-baseline regen command
+pytest tests/scripts/test_catalog_drift_guard.py
+```
+
+### Relationship to `tachi-pytest.yml`
+
+`tachi-catalog-drift.yml` is a **sibling** workflow to `tachi-pytest.yml`, not a sub-job of it. The two workflows share the same shared-anchor dual-trigger pattern but guard independent test surfaces:
+
+| Workflow | Guards | Test module |
+|----------|--------|-------------|
+| `tachi-pytest.yml` | Substitution-surface hardening (init.sh, template-substitute.sh, etc.) | `tests/scripts/test_init_sh_*.py`, `test_template_*.py`, etc. |
+| `tachi-catalog-drift.yml` | ORDERED_FRAMEWORKS catalog fingerprint integrity | `tests/scripts/test_catalog_drift_guard.py` |
+
+Both workflows use `ubuntu-latest`, `contents: read`, and install the same pytest stack. New catalog-level CI guards SHOULD follow this sibling-workflow pattern rather than adding jobs to `tachi-pytest.yml`.
+
+### Feature History
+
+| Feature | PR | Change |
+|---------|----|--------|
+| F-329 | #344 | Initial workflow — `ORDERED_FRAMEWORKS` fingerprint ↔ CA-baseline coupling gate; dual-trigger YAML anchor `&drift_paths` |
+| F-362 | #363 | `docs/standards/OWASP_COVERAGE.md` added to `&drift_paths` (T020 — a new D5 consistency function in the existing `tests/scripts/test_catalog_drift_guard.py` asserts the doc's LLM-row edition matches the catalog `full_id` edition prefix; whole-module invocation means no pytest-invocation line was needed, only the path-filter addition) |
+
+---
+
+## Tachi Permissions-Verify Workflow
+
+**Workflow file**: `.github/workflows/tachi-permissions-verify.yml`
+
+**Added in Feature 281** (CI & Governance Hardening Tail, F-4/F-5 follow-ups; PR #347, merged 2026-07-01). This workflow reddens CI — on PRs AND direct-to-`main` pushes — when `.claude/settings.json` and its governing doc (`docs/standards/CLAUDE_PERMISSIONS.md`) drift out of sync with each other or become internally invalid. It ports the already-shipped F-4 local pre-commit recipe (jq validity + AC-2 cross-check) into a CI back-stop, so a `--no-verify` commit, an uninstalled hook, or a GitHub-web-UI edit to `.claude/settings.json` cannot land on `main` unchecked.
+
+**Extended in Feature 391** (Isolated and Auditable Operation, Part A; PR #392, merged 2026-11-21, patch release v4.48.3 pending). The same workflow also runs the **agent privilege guard**, `scripts/check-agent-privileges.py`, which pins what §8 of `docs/standards/CLAUDE_PERMISSIONS.md` (the agent and command privilege matrix) says to what the files under `.claude/agents/tachi/` and `.claude/commands/tachi.*.md` declare. It is a drift guard: it makes a privilege change visible in review and in CI, and it sandboxes nothing (§8.1 separates what Claude Code enforces from what the files only declare). **In a fork**, a change to a tachi agent's `tools:`, `model:` pin or frontmatter keys, or to a command's frontmatter keys, fails this workflow until §8 changes in the same pull request.
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/tachi-permissions-verify.yml` |
+| Runner | `ubuntu-latest` (single OS — every check is an OS-independent string/JSON assertion) |
+| Permissions | `contents: read` (no `security-events: write` — this workflow emits no SARIF) |
+| Checkout | Full, non-sparse (`actions/checkout@v4` default) — required by step 3's `git rev-parse --show-toplevel` root resolution and by step 6's `git ls-files` |
+| Reused script | `.aod/scripts/bash/claude-permissions-ac2-crosscheck.sh` (delivered #280 — reused verbatim, not reimplemented) |
+| Privilege guard | `scripts/check-agent-privileges.py` (F-391) — standard library only, Python 3.9 or later; the runner's system `python3` runs it (no `actions/setup-python`); no network, no installs |
+
+### Trigger Design (F-281 — dual-trigger with YAML anchor)
+
+The workflow fires on **both** `pull_request` and `push: branches: [main]`. The path filter is shared between the two triggers via a single YAML anchor (`&verify_paths` / `*verify_paths`) so the trigger surface stays single-source — no second list to drift out of sync (the same F-250 lock-step rule applied by `tachi-pytest.yml` and `tachi-catalog-drift.yml`).
+
+```yaml
+on:
+  pull_request:
+    paths: &verify_paths
+      - .claude/settings.json
+      - docs/standards/CLAUDE_PERMISSIONS.md
+      - .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh
+      - .claude/agents/tachi/**                   # F-391 — guard input: agent roster, tools:/model:/key set, Bash fences
+      - .claude/commands/tachi.*.md               # F-391 — guard input: command frontmatter keys
+      - scripts/check-agent-privileges.py         # F-391 — the guard itself
+      - docs/guides/ISOLATED_OPERATION_TACHI.md   # F-391 — guard input: runbook §5 write-path table
+      - .github/workflows/tachi-permissions-verify.yml
+  push:
+    branches: [main]
+    paths: *verify_paths
+```
+
+**Why `push: branches: [main]`**: a `.claude/settings.json` or `CLAUDE_PERMISSIONS.md` edit can reach `main` via a direct push that bypasses the `pull_request` trigger entirely — the same direct-to-`main` bypass class already documented for `tachi-pytest.yml` (F-338) and `tachi-catalog-drift.yml` (F-329). The push leg closes that gap: any future direct-to-`main` commit touching the settings/doc pair will immediately fail CI, surfacing the drift in minutes rather than shipping it silently. Since F-391 the same shared anchor also carries the guard's four inputs (the agents, the commands, the guard script and the runbook), so an edit to any of them that lands by direct push is checked too.
+
+### What it checks (six ordered steps)
+
+1. **jq-presence guard** — fails loudly (`::error::jq missing on runner`) if a future runner-image change drops `jq`, rather than erroring ambiguously inside the next step.
+2. **`jq empty .claude/settings.json`** — asserts the file is well-formed JSON.
+3. **AC-2 cross-check** (`bash .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh`) — the reused #280 script. The job fails on **any** non-zero exit: exit 1 (orphaned rule / mismatched table row) and exit 2 (invariant violation — missing files, jq parse error, empty section) both fail; there is no `continue-on-error` and the exit code is never swallowed.
+4. **Doc-presence grep** — asserts `CLAUDE_PERMISSIONS.md` §3 ("Settings precedence") and §4 ("Per-rule rationale table") are present. This covers the two interactive-only acceptance criteria (AC-7, AC-12) that the AC-2 script cannot exercise on its own. The greps match byte-exact live headings — a future heading rename must update both the doc and the greps in the same commit.
+5. **python3-presence guard** — fails loudly (`::error::python3 missing on runner`) if a future runner-image change drops `python3`, mirroring the jq guard. There is no `actions/setup-python` step: the guard is standard-library-only and the runner's system `python3` is newer than its 3.9 floor.
+6. **Agent privilege guard** (F-391; SC-003, PRD SC-A3; `python3 scripts/check-agent-privileges.py --self-test`) — runs checks C1 to C7 against §8 of `CLAUDE_PERMISSIONS.md`, then C8, its own planted-mutation self-test:
+   - **C1 roster** — every file under `.claude/agents/tachi/` that has frontmatter is a `tachi-*` agent with a §8 row, and every §8 row has a file. Any tracked non-`.md` file, any symlink and any `.md` file without frontmatter other than the allow-listed `_TACHI_AGENT_BEST_PRACTICES.md` is red.
+   - **C2 to C4, agent declarations** — `tools:` equals the row's Tools cell (as sets), `model:` equals its Model cell, and the frontmatter keys are exactly `name`, `description`, `tools` and `model`.
+   - **C5 commands** — each `.claude/commands/tachi.*.md` has a row in the commands table, and its frontmatter keys equal the row's Frontmatter keys cell.
+   - **C6 shell fences** — the command families in the `bash`, `sh`, `shell` and `zsh` fences of each Bash-capable agent are a subset of its row's Bash families cell. `$(`, backticks, `eval`, `bash -c`, `sh -c`, `xargs` and process substitution are red.
+   - **C7 write paths** — the paths in the runbook's §5 write-locations table (`docs/guides/ISOLATED_OPERATION_TACHI.md`) equal the union of the Writes cells in §8.
+   - **C8 self-test** — copies the inputs to a temp directory and plants five mutations (a tool added, a planted `name: helper`, an unlisted file without frontmatter, a duplicate name, the allow-listed file with planted frontmatter). Each mutated copy must gain a finding that the unmutated copy lacked, or the run exits 2.
+
+   Exit `0` means clean, `1` means drift (every finding is listed with its check id and file) and `2` means infrastructure (the matrix, the runbook or a section is missing, a cell or frontmatter shape cannot be parsed, an input is unreadable, git fails, or a mutation fails to fail). The job fails on **any** non-zero exit: there is no `continue-on-error`, and the exit code is never swallowed. The guard needs the default full checkout, because `git ls-files` decides which non-`.md` files in the agents directory count as tracked. Scope: `.claude/agents/tachi/**` and `.claude/commands/tachi.*.md` only. The adapter copies under `adapters/claude-code/` (#369) and skills' `allowed-tools`/`model` (#409) are not covered.
+
+### Local invocation
+
+```bash
+# Steps 1-2 (JSON validity)
+jq empty .claude/settings.json
+
+# Step 3 (AC-2 cross-check — matches CI exactly)
+bash .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh
+
+# Step 4 (doc-presence — manual grep, matches CI exactly)
+grep -qE '^## 3\. Settings precedence' docs/standards/CLAUDE_PERMISSIONS.md && echo "§3 OK"
+grep -qE '^## 4\. Per-rule rationale table' docs/standards/CLAUDE_PERMISSIONS.md && echo "§4 OK"
+
+# Steps 5-6 (agent privilege guard + planted-mutation self-test — matches CI exactly)
+python3 scripts/check-agent-privileges.py --self-test
+```
+
+The guard needs no network and writes nothing outside its self-test's temp directory. Add `--json` for a machine-readable summary. The guard's own pytest suite (`tests/scripts/test_agent_privilege_guard.py`) and the session-profile contract test (`tests/scripts/test_isolated_profile_contract.py`) run in `tachi-pytest.yml`, not in this workflow; run pytest in a scratch clone, as "Tachi Install Fidelity Workflow" → "Local invocation" explains (#365).
+
+### Relationship to sibling dual-trigger workflows
+
+`tachi-permissions-verify.yml` follows the same anchor-based dual-trigger pattern as `tachi-pytest.yml` (F-338) and `tachi-catalog-drift.yml` (F-329), but owns its **own** anchor and file — it MUST NOT touch either sibling's anchor (`&hardening_paths` / `&drift_paths`).
+
+| Workflow | Guards | Anchor |
+|----------|--------|--------|
+| `tachi-pytest.yml` | Substitution-surface hardening (init.sh, template-substitute.sh, etc.) | `&hardening_paths` |
+| `tachi-catalog-drift.yml` | ORDERED_FRAMEWORKS catalog fingerprint integrity | `&drift_paths` |
+| `tachi-permissions-verify.yml` | `.claude/settings.json` ↔ `CLAUDE_PERMISSIONS.md` sync; tachi agent and command privileges ↔ `CLAUDE_PERMISSIONS.md` §8 (F-391) | `&verify_paths` |
+
+**Reference**: `specs/281-ci-governance-hardening-tail/spec.md` FR-281.1 through FR-281.8. ADR precedent: `docs/architecture/02_ADRs/ADR-037-*.md` D-14 (catalog-drift-guard direct-invocation / single-OS / anchor pattern). F-391 additions: `specs/391-isolated-auditable-operation/plan.md` AD-3, `docs/architecture/02_ADRs/ADR-049-privilege-contract-and-write-confinement.md` and §8 of `docs/standards/CLAUDE_PERMISSIONS.md` (the matrix the guard pins). Neither the workflow nor the guard reads a tachi environment variable — see `docs/devops/environment-variables.md`.
+
+---
+
+## Tachi Install Fidelity Workflow
+
+**Workflow file**: `.github/workflows/tachi-install-fidelity.yml`
+
+**Added in Feature 373** (Adopter Install + Output Fidelity Fixes, PR #375, merged 2026-10-10, patch release v4.48.1 pending). This workflow reddens CI — on PRs AND direct-to-`main` pushes — when `INSTALL_MANIFEST.md` drifts from what an adopter actually needs (a missing skill, agent, command, or distributable script; a manifest hygiene break; a non-stdlib import reaching a distributable script at module load; or a manual-install loop that no longer matches byte-for-byte across `README.md` and `docs/guides/DEVELOPER_GUIDE_TACHI.md`), when the deterministic extraction pipeline regresses, or when a stale `report-data.typ` would silently render with the wrong risk posture.
+
+**Extended in Feature 391** (Isolated and Auditable Operation, Part A; PR #392, merged 2026-11-21, patch release v4.48.3 pending). The same workflow also reddens CI when the agents an install path produces carry `tools:` that differ from §8 of `docs/standards/CLAUDE_PERMISSIONS.md` (SC-004, PRD SC-A4; in `manifest-completeness`), when the isolated-operation runbook `docs/guides/ISOLATED_OPERATION_TACHI.md` drops out of the manifest or is not installed (`manifest-completeness`), and when a report run writes anywhere outside its output directory and `$TMPDIR` (write confinement, SC-005; in `report-posture`).
+
+| Property | Value |
+|----------|-------|
+| Workflow file | `.github/workflows/tachi-install-fidelity.yml` |
+| Jobs | `manifest-completeness`, `extraction-fidelity`, `report-posture` |
+| Runner | `ubuntu-latest` (all three jobs) |
+| Timeout | 10 minutes per job |
+| Permissions | `contents: read` |
+| Python version | 3.11 |
+| Pytest dependencies | `pytest>=8`, `pytest-timeout>=2`, `pyyaml>=6` |
+| Extra tooling | `report-posture` only — `typst-community/setup-typst@v5`, with `TACHI_REQUIRE_TYPST: "1"` set in the job `env:` |
+
+### The three jobs
+
+1. **`manifest-completeness`** — runs `tests/scripts/test_install_manifest_completeness.py` only. This is the K1/K2 guard (FR-K2.2–K2.5): every `.claude/skills/tachi-*` dir, every `.claude/commands/tachi.*.md` file, and every distributable `scripts/*.py` a distributed command/agent/skill/template references must be covered by `INSTALL_MANIFEST.md` or carry an explicit, reasoned exclusion. Since F-391 (T028) the same module also pins the isolated-operation runbook (`docs/guides/ISOLATED_OPERATION_TACHI.md`) as a docs-table row and a manifest-block entry that `install.sh` places byte-for-byte, and asserts **SC-A4**: after each documented install path — `install.sh`, the README's manual install loop under bash, and the same loop under interactive zsh — every installed `.claude/agents/tachi/` agent's `tools:` set equals its row in §8 of `docs/standards/CLAUDE_PERMISSIONS.md` (`test_installed_agent_tools_match_matrix`, with a synthetic negative matrix, `test_installed_tools_negative_matrix`, so the comparison cannot go vacuous). Both sides are read with the privilege guard's own parser (`scripts/check-agent-privileges.py`, loaded by path), so the test and the guard cannot disagree about a cell or a `tools:` shape. The zsh path skips on the CI runner, which has no zsh (#415), so CI asserts SC-A4 on the other two paths. The job's pytest invocation is unchanged: the new cases live in the module it already runs, in `.git`-less throwaway sources and projects under `tmp_path`.
+2. **`extraction-fidelity`** — runs the pre-existing extraction/parser modules on a bare `ubuntu-latest` runner for the first time, plus two new F-373 modules: `test_tachi_parsers.py`, `test_extract_infographic_data.py`, `test_extract_report_data.py`, `test_extractor_contract_fixes.py`, `test_executive_architecture_payload.py`, `test_gemini_request_contract.py` (new — the K14 static request-contract test), and `test_extraction_sibling_parity.py` (new — W2, compares posture/severity/delta counts and MAESTRO output between the infographic JSON and `report-data.typ` on shared fixtures). No `mmdc` is installed on this runner; the five `mmdc`-dependent cases in `test_extract_report_data.py`'s Typst fixture skip rather than fail, and every other case in these seven modules must pass.
+3. **`report-posture`** — runs `tests/scripts/test_report_posture_contract.py` and `tests/scripts/test_write_confinement.py` in one pytest session, with Typst installed via `typst-community/setup-typst@v5` and `TACHI_REQUIRE_TYPST: "1"` set so a missing Typst fails this job instead of silently skipping the gate. The posture module asserts that a `report-data.typ` built without the `risk-posture-level`/`risk-posture-label` variables fails Typst compilation with an explicit regenerate-instruction panic, rather than rendering with a stale or default posture. The write-confinement module (F-391, SC-005) runs the report-assembler's three commands (`extract-report-data.py --build-dir`, `typst compile`, `extract-report-data.py --remove-build-dir`) in a throwaway adopter project and fails on any write outside the output directory and `$TMPDIR`. Of the write-confinement module, only the cases that compile are Typst-gated; the rest (the command-line refusals, the `TACHI_MMDC_PUPPETEER_CONFIG` cases, the bytecode-cache cases and the static checks of the recipe documents) runs without Typst. See `docs/devops/environment-variables.md` → "F-373 Report-Posture Typst Gate" for the `TACHI_REQUIRE_TYPST` contract.
+
+### Trigger Design (F-373 — dual-trigger with YAML anchor)
+
+The workflow fires on **both** `pull_request` and `push: branches: [main]`, following the same shared-anchor pattern as `tachi-pytest.yml` (F-338), `tachi-catalog-drift.yml` (F-329), and `tachi-permissions-verify.yml` (F-281) — a single path list (`&fidelity_paths` / `*fidelity_paths`) so there is no second list to drift out of sync, closing the same direct-to-`main` bypass class issue #338 exploited once before.
+
+```yaml
+on:
+  pull_request:
+    paths: &fidelity_paths
+      - INSTALL_MANIFEST.md
+      - .claude/skills/**
+      - .claude/commands/tachi.*.md
+      - .claude/agents/tachi/**
+      - templates/tachi/**
+      - scripts/*.py
+      - scripts/install.sh
+      - README.md
+      - docs/guides/DEVELOPER_GUIDE_TACHI.md
+      # ... (full list in .github/workflows/tachi-install-fidelity.yml)
+  push:
+    branches: [main]
+    paths: *fidelity_paths
+```
+
+The `paths:` list is intentionally broad — together with `adapters/claude-code/**` and the two manual-install-loop docs, it matches **every** `INSTALL_MANIFEST.md` entry — because all three jobs together run in well under a minute. This is the opposite trigger-design trade-off from the installer's own K3 suite below: broad trigger + fast run, instead of narrow trigger + slow run. F-391 added three entries: `tests/scripts/test_write_confinement.py`, and two files the SC-A4 cases read that no other entry covers, `docs/standards/CLAUDE_PERMISSIONS.md` and `docs/guides/ISOLATED_OPERATION_TACHI.md`. The guard script whose parsers those cases load matches `scripts/*.py`, and the agents they compare match `.claude/agents/tachi/**`.
+
+### Relationship to `tachi-pytest.yml`'s K3 installer suite
+
+`tachi-install-fidelity.yml` and the K3 addition to `tachi-pytest.yml` (see "Tachi Pytest Workflow" → "Feature History" above) both ship with F-373 and both guard installer-adjacent surfaces, but they are deliberately **not** the same gate:
+
+| Workflow | Guards | Runner(s) | Why split |
+|----------|--------|-----------|-----------|
+| `tachi-install-fidelity.yml` | Manifest completeness, extraction/report fidelity, report posture, write confinement (F-391), installed-agent tools vs §8 (F-391) | Single `ubuntu-latest`, 3 jobs | Broad `paths:` trigger is safe because the run takes seconds |
+| `tachi-pytest.yml` (K3 addition) | `scripts/install.sh` itself — the `--follow-symlinks` destination-containment pre-flight and the `--version` ref-restore trap | Existing 2-OS bash matrix (macOS bash 3.2.57 + ubuntu bash 5.x) | The installer must be proven on both bash dialects it actually ships to, but that matrix takes 22–29 minutes — too slow for a trigger as broad as `&fidelity_paths`, so `tachi-pytest.yml`'s `paths:` anchor gains only `scripts/install.sh`, the K3 tests, and their helpers/fixtures |
+
+### Relationship to sibling dual-trigger workflows
+
+| Workflow | Guards | Anchor |
+|----------|--------|--------|
+| `tachi-pytest.yml` | Substitution-surface hardening (init.sh, template-substitute.sh, etc.) | `&hardening_paths` |
+| `tachi-catalog-drift.yml` | ORDERED_FRAMEWORKS catalog fingerprint integrity | `&drift_paths` |
+| `tachi-permissions-verify.yml` | `.claude/settings.json` ↔ `CLAUDE_PERMISSIONS.md` sync; tachi agent and command privileges ↔ `CLAUDE_PERMISSIONS.md` §8 (F-391) | `&verify_paths` |
+| `tachi-install-fidelity.yml` | Manifest completeness + extraction/report fidelity + report posture + write confinement and installed-agent tools vs §8 (F-391) | `&fidelity_paths` |
+
+### Local invocation
+
+```bash
+# Run these in a scratch clone of committed HEAD, never in the main working tree:
+# the report tests and the extractors re-render tracked example PNGs (#365).
+SCRATCH="$(mktemp -d)" && git clone --no-hardlinks . "$SCRATCH/tachi" && cd "$SCRATCH/tachi"
+
+# manifest-completeness (includes the F-391 runbook cases and SC-A4)
+python3 -m pytest tests/scripts/test_install_manifest_completeness.py -v
+
+# extraction-fidelity
+python3 -m pytest \
+  tests/scripts/test_tachi_parsers.py \
+  tests/scripts/test_extract_infographic_data.py \
+  tests/scripts/test_extract_report_data.py \
+  tests/scripts/test_extractor_contract_fixes.py \
+  tests/scripts/test_executive_architecture_payload.py \
+  tests/scripts/test_gemini_request_contract.py \
+  tests/scripts/test_extraction_sibling_parity.py \
+  -v
+
+# report-posture (requires Typst on PATH; TACHI_REQUIRE_TYPST=1 matches CI exactly)
+TACHI_REQUIRE_TYPST=1 python3 -m pytest \
+  tests/scripts/test_report_posture_contract.py \
+  tests/scripts/test_write_confinement.py \
+  -v
+```
+
+### Rollback note (v4.48.1 patch release)
+
+`install.sh --version v4.48.0` is the mechanical way to pin a tachi install to the pre-F-373 release, and it is how an adopter would normally roll back a patch they didn't want. **Do not use it to roll back this one.** `v4.48.0` is the release whose infographic image request is broken — it sends `aspectRatio`/`imageSize` directly under `generationConfig` instead of nested under `generationConfig.imageConfig`, so the Gemini API rejects every image request with HTTP 400 — and it still names the shut-down `-preview` model chain. Pinning back to it does not undo a F-373 regression; it reintroduces the exact rendering failure F-373 exists to fix. If a genuine F-373 regression surfaces, the correct response is a forward fix on top of v4.48.1, not a version-pin rollback.
+
+### Feature History
+
+| Feature | PR | Change |
+|---------|----|--------|
+| F-373 | #375 | Initial workflow — `manifest-completeness` + `extraction-fidelity` + `report-posture` jobs; dual-trigger YAML anchor `&fidelity_paths`; first CI gate to run the pre-existing extraction/parser modules on a bare `ubuntu-latest` runner |
+| F-391 | #392 | `manifest-completeness` gains the runbook's manifest-entry cases and SC-A4 (`test_installed_agent_tools_match_matrix` on the `install-sh`, `manual-loop` and `manual-loop-zsh` paths, plus `test_installed_tools_negative_matrix`) inside its existing module; `report-posture` gains `tests/scripts/test_write_confinement.py` (write confinement, SC-005) in the same pytest session as the K13 stale-data gate; `paths:` gains `tests/scripts/test_write_confinement.py`, `docs/standards/CLAUDE_PERMISSIONS.md` and `docs/guides/ISOLATED_OPERATION_TACHI.md` |
+
+**Reference**: `specs/373-adopter-install-output-fidelity/spec.md` NFR-7. Contract: `specs/373-adopter-install-output-fidelity/contracts/manifest-completeness.md`. No adopter-facing environment variables introduced; one test-only CI variable (`TACHI_REQUIRE_TYPST`) — see `docs/devops/environment-variables.md` → "F-373 Report-Posture Typst Gate".
+
+**F-391 reference**: `specs/391-isolated-auditable-operation/spec.md` (SC-004, SC-005) and `docs/architecture/02_ADRs/ADR-049-privilege-contract-and-write-confinement.md`. `TACHI_REQUIRE_TYPST` is now also read by `test_write_confinement.py`, with the same contract. The feature's one new variable, `TACHI_MMDC_PUPPETEER_CONFIG`, is adopter-facing and opt-in; the CI jobs leave it unset (the write-confinement tests remove it from their children's environment) — see `docs/devops/environment-variables.md` → "F-391 Isolated and Auditable Operation (Part A) — Adopter Variable".
 
 ---
 

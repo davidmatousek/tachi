@@ -3,8 +3,13 @@ prd:
   number: 391
   topic: isolated-auditable-operation
   created: 2026-11-16
-  status: Approved
+  status: Delivered   # Part A only (split path, TW-A2). B1 honest-stopped at TW-B1 (#399); B2 ships through #396 after #364 (#400)
   approved: 2026-11-16
+  delivered: 2026-11-21
+  pr: 392
+  merge_commit: e83ca6b
+  release: 4.48.3     # patch; release-please PR #418, open at delivery
+  spec: specs/391-isolated-auditable-operation/spec.md
   feasibility: specs/391-isolated-auditable-operation/feasibility-check.md
   type: feature
 triad:
@@ -35,7 +40,7 @@ parts:
 
 # PRD-391 — Isolated and Auditable Operation
 
-**Status**: Approved 2026-11-16 (PM ✓, Architect ⚠ after iteration 2, Team-Lead ⚠). v1.1 goes to the Architect for a delta re-review of RC-1 to RC-7. Source: GitHub Issue [#391](https://github.com/davidmatousek/tachi/issues/391), validated 2026-11-16 (PM: APPROVED_WITH_CONCERNS, ICE 22 / P1). Analysis: `_internal/planning/ANL-2026-11-16-cvp-best-practices-gap.md` (private). Reviews (local): `.aod/results/product-manager.md`, `.aod/results/architect-391.md`, `.aod/results/team-lead-391.md`. Estimate: `specs/391-isolated-auditable-operation/feasibility-check.md`.
+**Status**: Delivered 2026-11-21, Part A only. PR [#392](https://github.com/davidmatousek/tachi/pull/392) squash-merged to `main` as `e83ca6b` under a `fix(391):` title, so Part A ships as a patch release (release-please PR #418, v4.48.3, open at delivery). #364 was still open when Part A became merge-ready, so the split path applied (TW-A2). Spec: [`specs/391-isolated-auditable-operation/spec.md`](../../../specs/391-isolated-auditable-operation/spec.md). US-A1 to US-A3 shipped, and SC-A2 to SC-A5 are met. SC-A1 is recorded by clause on macOS and not claimed as a whole. The runbook was validated live there with Claude Code 2.1.330 in auto mode. Linux and WSL2 are not yet run live (#406). On macOS, `/tachi.security-report` is outside the claim for runs with diagrams (#405). Not delivered: B1 (US-B1) honest-stopped at TW-B1, so SC-B1 and SC-B2 are not met; #399 carries it. B2 (US-B2) is built and ships separately through #396 after #364 merges, with SC-B3; #400 tracks the landing. #391 closes at this delivery. 50 of 52 tasks; T038b and T047 are conditional on the split path. Retrospective: `specs/391-isolated-auditable-operation/delivery.md`. Approved 2026-11-16 (PM ✓, Architect ⚠ after iteration 2, Team-Lead ⚠). Source: GitHub Issue [#391](https://github.com/davidmatousek/tachi/issues/391), validated 2026-11-16 (PM: APPROVED_WITH_CONCERNS, ICE 22 / P1). Analysis: `_internal/planning/ANL-2026-11-16-cvp-best-practices-gap.md` (private). Reviews (local): `.aod/results/product-manager.md`, `.aod/results/architect-391.md`, `.aod/results/team-lead-391.md`. Estimate: `specs/391-isolated-auditable-operation/feasibility-check.md`.
 
 > **Framing.** This PRD and every public doc it changes use neutral wording: "isolated and auditable operation". They make no claim about tachi's standing with Anthropic or under any program (D-2). Anthropic's Cyber Verification Program (CVP) guidance for members is the trigger and is covered by a mapping section in the runbook; its intent is cited and paraphrased, never reproduced. Technical recipes come from the public Claude Code documentation, cited per item (§14).
 >
