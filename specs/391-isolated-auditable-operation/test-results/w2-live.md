@@ -201,3 +201,10 @@ Follow-ups outside F-391, for T045 to file:
 - The infographic agent wrote its own helper scripts and simplified specs, producing "Unknown Project" titles and MAESTRO layers all rated "High".
 
 Observed and recorded, not new: the orchestrator analysed inline rather than dispatching the STRIDE agents, which the manifest's not-dispatched list shows.
+
+*Addendum, 2026-11-20 (S2b; from the K1 and K2 transcripts, structure only: command families and write paths, no command text):*
+- *All three Bash-capable agents ran shell command families outside their §8 Bash families cells.*
+- *`tachi-orchestrator` (cell: `python3`) also ran `ls`, `cat`, `head`, `sed`, `grep`, `cd` and `mkdir`, among others.*
+- *`tachi-report-assembler` (cell: `python3`, `test`, `typst`) also ran `echo`, `ls` and `which`, and in K2 `tail`.*
+- *`tachi-threat-infographic` (cell: `[`, `echo`, `python3`, `test`) also ran `ls`, `cat`, `grep`, `sed` and `cd`, and in K2 `awk` and `curl`. In K2 it also wrote two helper scripts of its own under `{out}/.tachi-build/`.*
+- *Every write still landed under `{out}`. The cells record what tachi's instructions say, not what a run is limited to. The architect's ruling W3-8 carries this into §8.1 of the permissions standard and runbook §5 and §10.*
