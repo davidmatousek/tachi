@@ -68,7 +68,7 @@ None.
 - **Recommendation**:
   - In build mode, refuse with exit 2, as `_exit_build_dir_error` does, a symlinked `report-config.typ` in the target directory.
   - Refuse the same way any symlink at or under the paths written in the output directory: `attack-trees/`, `attack-chains/` and a corrected infographic copy.
-  - This is CR-10 (T044) and the code half of T042's W3-H1, held for maintainer triage (`delivery.md`, Feedback Loop). Until then, the runbook's §6 "Check first" step covers the by-hand build: `find {out} -type l` prints nothing.
+  - This is CR-10 (T044) and the code half of T042's W3-H1, tracked as #416 (filed 2026-11-21 at the maintainer's choice). Until then, the runbook's §6 "Check first" step covers the by-hand build: `find {out} -type l` prints nothing.
 
 ---
 

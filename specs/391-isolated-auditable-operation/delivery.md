@@ -48,6 +48,11 @@
 | G-B2 (T050) | start of S2 | TW-B2 not fired |
 | G-B1R (T051) | first in W3 | TW-B1 fired |
 | G3 | end of W3 | Closed: the full T043 re-run passed on both final tips, and CI was green on #392 at `6ade384` (11 of 11) and on #396 at `3cc8294` (8 of 8) |
+| Step 5, final validation | W4 | APPROVED_WITH_CONCERNS (architect: 0 critical, 0 high). Its fix texts are applied ("Wording sweep (T046)") |
+| Step 6, design quality | W4 | Skipped: no UI files changed |
+| Step 7, security scan | W4 | PASSED: 9 code files and no blocking finding. 1 LOW, the build-mode symlink refusal (#416) (`security-scan.md`) |
+| Step 8, Economy Gate | W4 | FINDINGS, 5 advisories (`economy-check.md`). At the maintainer's choice, EC-5 is fixed in `97208fe`, and EC-1 to EC-4 are filed as #417 |
+| G4, the merge gate | end of W4 | T046 passed. The merge belongs to `/aod.deliver`; the maintainer confirmed it on 2026-11-21, after green CI |
 
 ### TW-B1 fired at T051
 
@@ -257,7 +262,8 @@ Correcting published copies of the old data-locality claim outside this reposito
 **S2c** (W4):
 - **T046's steps were run by the orchestrator,** not dispatched to DEVOPS-E: the Wording sweep, `/aod.analyze`, the three diff checks and the `gh` steps. The architect's Step 5 review covered the same ground independently.
 - **The orchestrator applied the architect's Step 5 fix texts verbatim** (F-1 to F-5, F-8, F-10). It also narrowed one phrase of T048's Part B entry: the output template declares schema 1.5, and the stamp writes no other key.
-- **The orchestrator filed the follow-ups** from the PM's drafts, with one held for maintainer triage.
+- **The orchestrator filed the follow-ups** from the PM's drafts, with one held for maintainer triage (filed later as #416).
+- **EC-5's last two rows** (an unknown flag on its own; a target directory inside the build directory) were added by the orchestrator from SBE-TA's checked variant.
 
 **S2b** (verbatim):
 
@@ -319,9 +325,9 @@ Prepared at T045; `/aod.deliver` finalizes it.
 
 ## Feedback Loop
 
-**New Ideas**: 17 follow-ups filed at T045 (S2c, 2026-11-21), #399 to #415, all at `stage:discover`. The PM drafted them from the build's review record, and the orchestrator filed them. Each title was dry-run against the open issues just before filing, and none matched.
+**New Ideas**: 17 follow-ups filed at T045 (S2c, 2026-11-21), #399 to #415, all at `stage:discover`. The PM drafted them from the build's review record, and the orchestrator filed them. Each title was dry-run against the open issues just before filing, and none matched. Two more followed in S2c: #416, the build-mode symlink refusal, after the maintainer chose the public route, and #417, the Economy Gate's test-economy advisories EC-1 to EC-4.
 
-| Placeholder | Title | Label |
+| Issue | Title | Label |
 |---|---|---|
 | #399 | Run archive and provenance manifest: denial detection on Claude Code 2.1.330 transcripts (F-391 B1 follow-up) | `enhancement` |
 | #400 | F-391 Part B landing: ship #396 (B2) after #364 merges | `enhancement` |
@@ -335,14 +341,15 @@ Prepared at T045; `/aod.deliver` finalizes it.
 | #408 | enhancement: bound the subagent types tachi-orchestrator and tachi-threat-report can start | `enhancement` |
 | #409 | enhancement: extend the privilege guard to dispatch targets in command and dispatcher bodies and to skill frontmatter | `enhancement` |
 | #410 | defect(extractors): a bad TACHI_MMDC_PUPPETEER_CONFIG ends extract-report-data.py with a traceback and exit 1, and is checked only when a diagram renders | `type:bug` |
-| held | enhancement: extract-report-data.py build mode refuses a symlinked report-config.typ and symlinks under the output directory | `enhancement` |
+| #416 | enhancement: extract-report-data.py build mode refuses a symlinked report-config.typ and symlinks under the output directory | `enhancement` |
+| #417 | enhancement: trim F-391's test modules: reuse the guard's checks, one install harness, pin the §8 anchor, one script loader | `enhancement` |
 | #411 | enhancement: run the privilege guard and the installed-script test modules under Python 3.9 in CI | `enhancement` |
 | #412 | defect(sarif): informationUri is the placeholder github.com/owner/tachi in the SARIF templates, the risk-score SARIF generator and the risk-scorer instructions | `type:bug` |
 | #413 | defect(examples): two tracked threats.sarif twins carry a semanticVersion that disagrees with their input's schema_version | `type:bug` |
 | #414 | defect(risk-scorer): a fresh re-run of the same input moves findings across a severity band, and an entry-point component scores at the reachability floor | `type:bug` |
 | #415 | enhancement: run the zsh manual-install-loop cases in CI (the manifest-completeness runner has no zsh) | `enhancement` |
 
-One more item, the build-mode symlink refusal (CR-10, the code half of T042's W3-H1), is held for maintainer triage before it is filed: the maintainer decides whether it goes public or through `SECURITY.md`'s private route. The runbook's §6 "Check first" step covers the case today.
+The build-mode symlink refusal (CR-10, the code half of T042's W3-H1) was held at T045 for the maintainer's choice of route. On 2026-11-21 the maintainer chose a public issue, #416.
 
 **Comments on open issues** instead of new ones:
 - #365 (required): the maestro-reference offset (byte 828878 to byte 52) and the W0 census of 35 out-of-gate failures and errors.
@@ -395,6 +402,7 @@ Every gated run used scratch clones of the committed tip (the #365 rule).
 | W0 pre-state (T003) | `46aec8d` | Census: 1,229 passed, 27 failed, 8 errors, 5 skipped, 1 xfailed. All 35 failures and errors are outside every gate and predate 391. Byte-identity: #365's 6 failures |
 | W1 gate G1 (`wave-02/results.json`) | Part A `8273669`; part-b `7e64fd7` | Part A: run list 592 passed, manifest-completeness 17, extraction-fidelity 255, report-posture with write confinement 63, coverage attestation 16, guard self-test pass. part-b, with B1 still on it: run list 1,203 passed, `py39-floor` 942 on Python 3.9.6 |
 | W3, T043 first run | Part A `b71a0d7`; part-b `f34e0ed` | PASS: 984 and 1,113 passed; 0 regressions; #365's six only. X-5: 702 passed on Python 3.9.6 |
+| W4, EC-5 (`wave-04/results.json`) | Part A `97208fe` | PASS: `test_write_confinement.py` 78 passed with `TACHI_REQUIRE_TYPST=1` (69 existing, 9 new refusal cases); the guard's `--self-test` passes |
 | W3, T043 re-run (G3) | Part A `6ade384`; part-b `3cc8294` | PASS: Part A 988 passed, 6 failed (#365's six), 3 skipped, 1 xfailed; part-b 1,121 passed with the same failures. X-5: 706 passed and `py39-floor` 132 on Python 3.9.6. The zsh cases passed |
 
 **CI at the final W3 tips:** #392 at `6ade384`, 11 of 11 green; #396 at `3cc8294`, 8 of 8 green. **CI at merge:** TBD at /aod.deliver.
@@ -436,7 +444,7 @@ TBD at /aod.deliver.
 ## Reminder for /aod.deliver
 
 - **The system-design README.** Its appended note records the B1 stop and B2's separate landing, and `tests/fixtures/init-baseline-tree/` is regenerated in the same commit (FR-021). #345 tracks that fixture's pre-existing drift, so record the result there.
-  - Confirm the regeneration with the maintainer first. The PM notes that it absorbs #345's drift and turns that test's `xfail(strict=False)` into an XPASS; F-362 chose not to regenerate and left the drift to #345.
+  - Maintainer decision (2026-11-21): regenerate per the plan. The regeneration absorbs #345's drift there and turns that test's `xfail(strict=False)` into an XPASS. Comment on #345 that its marker can be removed there.
   - The note's text, from the architect's final validation (F-7):
 
     > **Status at Part A's merge (<date>).** Part A shipped alone as `fix(391)` (TW-A2). B1, the archiver and its run manifest, was honest-stopped at TW-B1 and does not ship (follow-up #399). B2, the version marker, the `tachi_version` stamp and the schema 1.5 reconciliation, ships separately through #396 after #364. Until #396 merges, the B2 rows and the `install.sh` → `VERSION` → stamp edges above describe the plan, not `main`; the archiver row, its edge and the Tech Stack's `subprocess` note describe work that did not ship.
