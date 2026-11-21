@@ -302,6 +302,7 @@ Before finalizing the output document, run the following validation checklist ag
 
 - [ ] Every finding row in the STRIDE tables has all 9 required fields populated: ID, Status, Component, MAESTRO Layer, Threat, Likelihood, Impact, Risk Level, Mitigation. Status is one of: `NEW`, `UNCHANGED`, `UPDATED`. MAESTRO Layer is one of L1-L7 or "Unclassified".
 - [ ] Every finding row in the AI tables has all 10 required fields populated: ID, Status, Component, MAESTRO Layer, Threat, OWASP Reference, Likelihood, Impact, Risk Level, Mitigation. Status is one of: `NEW`, `UNCHANGED`, `UPDATED`. MAESTRO Layer is one of L1-L7 or "Unclassified".
+- [ ] No OWASP Reference cell in the AI tables contains a token matching `LLM\d{2}:2025`. A match is a carried-forward finding that missed the 2026 re-keying in the baseline correlation reference (`baseline-correlation.md`); re-key it before finalizing. `:2026`, ASI and MCP tokens pass.
 - [ ] No field contains an empty value or placeholder text.
 - [ ] Every finding has exactly one delta status annotation. When no baseline is present, all findings have Status `NEW`.
 

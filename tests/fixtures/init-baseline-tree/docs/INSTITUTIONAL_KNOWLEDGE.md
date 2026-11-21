@@ -776,4 +776,45 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 
 ## Bug Fixes
 
-*No entries yet. Use `/kb-create` to add the first bug fix.*
+### Entry 26: Fix 397 Patch A — Agentic CVSS default and carried OWASP 2025 codes (a number derived from a canonical source must be recomputed, not retyped)
+
+**Date**: 2026-11-21 | **Category**: Bug fix | **Fix**: 397 Patch A (N13 + N5) | **Issues**: #397 (tracking; N13 and N5)
+
+**Symptom**:
+- **N13.** `cvss-vectors.md` gave the agentic category default as 9.1, and as 9.0 with a range of 8.0–10.0 in the bounded-scoring table. Its vector, `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L`, scores 9.9, so a baseline-aware run bounded NEW agentic findings against a floor of 8.0 instead of 8.9.
+- **N5.** Carry-forward copied each finding's `owasp_ref` verbatim. One `threats.md` could therefore hold `LLM<NN>:2025` and `:2026` codes together, and because 2025 → 2026 is a permutation, one code could name two categories.
+
+**Root cause (5 Whys)**: Each is a derived value kept by hand beside its canonical source, with nothing tying the two together.
+- **N13.** Default scores were typed next to the vectors they are computed from, and nothing in `tests/` computed CVSS. The other seven rows happened to be right.
+- **N5.** On a taxonomy change, carry-forward re-derived only `maestro_layer`. The F-362 edition change therefore reached new findings but not carried ones. Validation checked that the OWASP field was filled in, not which edition it used.
+
+**Fix applied**:
+- **N13.**
+  - `cvss-vectors.md`: 9.9, the 8.9–10.0 range and the PR:L rationale (PR:N, PR:L and PR:H give 10.0, 9.9 and 9.0);
+  - the adapter copy of the risk scorer and the schema comment;
+  - an ADR-024 erratum.
+- **N5.**
+  - a re-key rule and the ten-row 2025 → 2026 table beside the `maestro_layer` rule (`baseline-correlation.md`, `orchestrator.md`);
+  - a validation check that rejects `LLM\d{2}:2025` in Section 4.
+- **Two gated tests.**
+  - `test_cvss_category_defaults.py`: a stdlib CVSS 3.1 implementation, self-tested on 16 FIRST examples;
+  - `test_baseline_owasp_rekey.py`.
+- **Left as is:** the `agentic_app` extractor fixture keeps 9.1, because five golden JSONs depend on its composites. `examples/**` stays with #364.
+
+**Verification**: PASS.
+- **Red/green.** Against the pre-fix documents, 8 of the new tests fail, naming the defect; with the fix, all 54 pass.
+- **Local runs in the worktree:**
+  - the gated `tachi-pytest.yml` list: 674 passed, 1 skipped;
+  - install-fidelity: 17 + 255 + 84 passed;
+  - maestro-coverage: 11 passed, 2 skipped;
+  - permissions-verify: pass.
+
+**Prevention**:
+- **A printed number computed from another artifact needs a test that recomputes it.** Examples are a score computed from a vector and a bound computed from a default. Otherwise, print only the source. Self-test any calculator on the standard's own published examples.
+- **Check reference data against the publisher before committing it.** In this fix's first draft, three remembered CVE labels were wrong: one example's score had changed in v3.1, and two CVEs aren't in the v3.1 document.
+- **When an edition change re-means codes, carry-forward is a contract surface too.** Re-key at carry-forward beside any existing re-derivation rule, and make validation reject the old edition.
+
+**Related**:
+- Entry 23 (F-362; its sweep covered authored surfaces, not adopters' carried baselines).
+- Entry 1 (a substitution-target edit regenerates the init-baseline fixture in the same commit; applied to this entry).
+- Entry 3 (the lock-step rule for path filters and invocations).

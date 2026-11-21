@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fix 397 — Agentic CVSS default and OWASP edition re-keying (Patch A, #397) — fix(397)
+
+**Fixed**
+- The scoring reference gave the agentic category default as 9.1, and as 9.0 in the
+  bounded-scoring table. Its vector, `CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L`, scores 9.9
+  under CVSS 3.1, so NEW agentic findings in a baseline-aware run are now bounded to 8.9–10.0
+  instead of 8.0–10.0. The rationale that PR:L avoids a ceiling effect is corrected: PR:N, PR:L
+  and PR:H give 10.0, 9.9 and 9.0. The Claude Code adapter copy of the risk scorer and the
+  schema comment match, and ADR-024 carries an erratum for its Example 1, whose tachi composite
+  becomes 7.2 (High) instead of 6.9 (Medium).
+- A baseline-aware run copied carried-forward findings' OWASP LLM `:2025` codes verbatim, so one
+  `threats.md` could mix editions and one code could name two categories. Phase 1a now re-keys
+  every carried `LLM<NN>:2025` token through the 2025→2026 table, leaving `:2026`, ASI and MCP
+  tokens and the delta status unchanged, and structural validation rejects `LLM<NN>:2025` in the
+  Section 4 tables.
+
+**Added**
+- Two gated tests. `tests/scripts/test_cvss_category_defaults.py` recomputes every documented
+  category default from its vector with a stdlib CVSS 3.1 implementation, self-tested on FIRST's
+  published examples. `tests/scripts/test_baseline_owasp_rekey.py` pins the re-key table to the
+  2025→2026 mapping and the catalog's category names, and checks the validation pattern on
+  synthetic rows.
+
+**Upgrading**: update tachi and re-run `install.sh`. If you copied
+`adapters/claude-code/agents/risk-scorer.md` into your agents directory, copy it again. Scores an
+existing baseline already holds are inherited as they are; this fix changes the bound for NEW
+findings only. A baseline that still carries `:2025` codes no longer needs re-keying by hand: the
+next run re-keys them when it carries the findings forward.
+
 ### Feature 391 — Isolated and Auditable Operation, Part A (#391) — fix(391)
 
 Corrects what tachi's documentation says leaves the machine, adds an installed runbook for
