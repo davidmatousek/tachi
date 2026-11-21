@@ -1,6 +1,6 @@
 # Design Patterns - tachi
 
-**Last Updated**: 2026-10-10
+**Last Updated**: 2026-11-21
 **Owner**: Architect
 
 ---
@@ -91,6 +91,7 @@ This directory documents reusable design patterns for tachi.
 - [Session-Scoped init.sh Fixture](#pattern-session-scoped-init-sh-fixture)
 - [Asymmetric Baseline File-Set Check](#pattern-asymmetric-baseline-file-set-check)
 - [Fail-Closed Manifest Completeness Test](#pattern-fail-closed-manifest-completeness-test)
+- [Self-Testing Drift Guard (Planted-Mutation Self-Test)](#pattern-self-testing-drift-guard)
 
 ---
 
@@ -2293,6 +2294,49 @@ def test_skills_covered(manifest_entries):
 
 - [Asymmetric Baseline File-Set Check](#pattern-asymmetric-baseline-file-set-check) -- the counterpart: it tolerates additions where this pattern requires full coverage
 - [Shared Parser Module Extraction](#pattern-shared-parser-module-extraction) -- reader parity is the same idea: one interpretation of one artifact
+
+---
+
+### Pattern: Self-Testing Drift Guard
+
+**Added**: Feature 391 (Isolated and Auditable Operation, Part A); decision record [ADR-049](../02_ADRs/ADR-049-privilege-contract-and-write-confinement.md) D1
+**Implementation**: `run_self_test()` in [`scripts/check-agent-privileges.py`](../../../scripts/check-agent-privileges.py), run as `--self-test` on every run of [`.github/workflows/tachi-permissions-verify.yml`](../../../.github/workflows/tachi-permissions-verify.yml); the guard's red cases are in [`tests/scripts/test_agent_privilege_guard.py`](../../../tests/scripts/test_agent_privilege_guard.py), on `tachi-pytest.yml`
+
+#### Problem
+
+A drift guard compares a declared table with the files it describes and passes when they agree. It also passes when it has stopped looking: a parser that matches no rows, a glob that finds nothing after a rename, a check whose target set is empty. Nothing turns red. Red cases in a test suite catch this only when that suite runs, and it may run in another workflow with other path filters: the job that runs a standard-library guard often has no test runner at all.
+
+#### Solution
+
+Give the guard a `--self-test` mode and pass it on every CI run. After its live checks, the guard proves that it can still fail:
+
+1. **Copy, then plant.** Copy the guard's inputs to a temporary directory, apply one mutation per copy, and run the same checks on each copy. Nothing outside the temporary directory is written.
+2. **Plant the drift the guard exists to catch.** The privilege guard plants five: a tool added to an agent, a new agent named `helper`, an unlisted file without frontmatter, a duplicate agent name, and frontmatter in the one allow-listed document.
+3. **Detect differentially.** A mutation is caught only when its copy gains a finding, in the expected check and file, that the unmutated copy lacked. The proof then holds on a tree that is already red: a mutation that lands on an existing finding is reported as already red, and the live checks' exit 1 still fails the job.
+4. **Aim each mutation where its check can fire.** The added tool goes to an agent that has a matrix row, because the tools check compares an agent with its row and can never fire for an agent without one.
+5. **Give a blind guard its own exit code.** Exit 1 means drift in the tree. Exit 2 means an infrastructure error or a mutation that failed to fail. CI fails on any non-zero exit, and the code says which kind of failure it was.
+
+```python
+# scripts/check-agent-privileges.py, run_self_test() (excerpt)
+known = {(f["check_id"], f["file"], f["message"]) for f in baseline.findings}
+...
+added = [f for f in rep.findings if (f["check_id"], f["file"], f["message"]) not in known]
+caught = _hit(added, check_id, rel) and not rep.infra
+```
+
+#### When to Use
+
+- A static guard compares declarations with files and runs as a bare CI step, with no negative tests in its job. In this repository the AC-2 cross-check, which runs in the same job as the privilege guard, has this shape
+- The guard parses files that other changes reshape (a table's header row, a frontmatter layout, a directory name), so a change elsewhere can blind it without touching the guard
+
+#### When NOT to Use
+
+- A suite that plants drift already runs in the guard's own job, as `tests/scripts/test_catalog_drift_guard.py` does for the catalog-drift guard, or as the negative matrix of the [Fail-Closed Manifest Completeness Test](#pattern-fail-closed-manifest-completeness-test) does inside pytest
+- A mutation would need the network, a renderer or minutes of runtime: the self-test runs on every CI run, so it has to stay cheap and deterministic
+
+#### Related Patterns
+
+- [Fail-Closed Manifest Completeness Test](#pattern-fail-closed-manifest-completeness-test) -- the same "prove each assertion can fail" rule, applied inside a pytest suite
 
 ---
 

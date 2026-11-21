@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-11-19T21:34:40Z.
+> Auto-generated from GitHub Issues on 2026-11-21T18:43:49Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,6 +8,26 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
+| #417 | enhancement: trim F-391's test modules: reuse the guard's checks, one install harness, pin the §8 anchor, one script loader | — | — | 2026-11-21 |
+| #416 | enhancement: extract-report-data.py build mode refuses a symlinked report-config.typ and symlinks under the output directory | — | — | 2026-11-21 |
+| #415 | enhancement: run the zsh manual-install-loop cases in CI (the manifest-completeness runner has no zsh) | — | — | 2026-11-21 |
+| #414 | defect(risk-scorer): a fresh re-run of the same input moves findings across a severity band, and an entry-point component scores at the reachability floor | — | — | 2026-11-21 |
+| #413 | defect(examples): two tracked threats.sarif twins carry a semanticVersion that disagrees with their input's schema_version | — | — | 2026-11-21 |
+| #412 | defect(sarif): informationUri is the placeholder github.com/owner/tachi in the SARIF templates, the risk-score SARIF generator and the risk-scorer instructions | — | — | 2026-11-21 |
+| #411 | enhancement: run the privilege guard and the installed-script test modules under Python 3.9 in CI | — | — | 2026-11-21 |
+| #410 | defect(extractors): a bad TACHI_MMDC_PUPPETEER_CONFIG ends extract-report-data.py with a traceback and exit 1, and is checked only when a diagram renders | — | — | 2026-11-21 |
+| #409 | enhancement: extend the privilege guard to dispatch targets in command and dispatcher bodies and to skill frontmatter | — | — | 2026-11-21 |
+| #408 | enhancement: bound the subagent types tachi-orchestrator and tachi-threat-report can start | — | - In F-391's attribution spike, `tachi-threat-report` sta... | 2026-11-21 |
+| #407 | enhancement: evaluate claude --restricted as an isolated launch form for tachi | — | — | 2026-11-21 |
+| #406 | enhancement: validate the isolated-operation runbook live on Linux and WSL2 | — | — | 2026-11-21 |
+| #405 | enhancement: a /tachi.security-report path for runs with diagrams under the isolated session profile on macOS | — | — | 2026-11-21 |
+| #404 | defect(infographics): the infographic agent departs from its pinned recipe (own helper scripts, simplified specs, every MAESTRO layer rated High, a per-command allowed-domain field) | — | — | 2026-11-21 |
+| #403 | defect(infographics): several infographic placeholders have no defined source, and the risk funnel sends component names it does not draw | — | — | 2026-11-21 |
+| #402 | defect(infographics): executive-architecture callouts send mitigation text when a finding's threat text is empty | — | — | 2026-11-21 |
+| #401 | enhancement: check the Gemini infographic request against its documented field list before sending | — | — | 2026-11-21 |
+| #400 | F-391 Part B landing: ship #396 (B2) after #364 merges | — | — | 2026-11-21 |
+| #399 | Run archive and provenance manifest: denial detection on Claude Code 2.1.330 transcripts (F-391 B1 follow-up) | — | — | 2026-11-21 |
+| #397 | Tracking: defects found in a large real-world adopter run on v4.48.1 | — | — | 2026-11-21 |
 | #388 | enhancement: parse scores and section facts once at the parser boundary (incl. an uncaught ValueError on a malformed Section 1 total) | — | — | 2026-10-12 |
 | #387 | defect(extractors): threats.md Section 7 read through several paths gives a spurious tier-3 ID warning, an inconsistent empty delta_status key and repeated row warnings | — | — | 2026-10-12 |
 | #385 | defect(security-log): scan-log.jsonl chain hash breaks at entry 34 after a behind-main branch merge | — | — | 2026-10-10 |
@@ -15,11 +35,11 @@
 | #383 | defect(adapters): Copilot, Cursor and generic infographic instructions still send the rejected Gemini request to shut-down models | — | — | 2026-10-10 |
 | #382 | defect(infographics): baseball-card heat-map cell grid has no deterministic extractor source | — | — | 2026-10-10 |
 | #381 | defect(infographics): baseball-card and maestro-stack typography tables specify dark text on their dark background | — | — | 2026-10-10 |
-| #380 | defect(extractors): project-name parser misses em-dash H1 forms and falls back to Unknown Project | — | — | 2026-10-10 |
+| #380 | defect(extractors): project-name parser misses em-dash H1 forms and falls back to Unknown Project | — | — | 2026-11-21 |
 | #379 | defect(extractors): a stateless run with a free-text baseline.source is treated as a baseline run | — | — | 2026-10-10 |
 | #378 | defect(extractors): headings in the Section N: Title form are not recognized, silently dropping section data | — | — | 2026-10-10 |
 | #377 | defect(install.sh): --version passes a dash-leading value to git checkout instead of refusing it | — | — | 2026-10-10 |
-| #374 | Large-architecture pipeline resilience: skipped attack-chain phase, single-response output overflow, controls table drift | Impact: 8, Confidence: 6, Effort: 4 = **18** | On a run with 200+ findings: | 2026-09-27 |
+| #374 | Large-architecture pipeline resilience: skipped attack-chain phase, single-response output overflow, controls table drift | Impact: 8, Confidence: 6, Effort: 4 = **18** | On a run with 200+ findings: | 2026-11-21 |
 | #364 | F-362b: re-key examples/** and sample-report baselines to the OWASP LLM 2026 σ (BLOCKING before next minor release) | — | — | 2026-10-10 |
 | #361 | Extend tachi detection coverage for GhostCommit primitives (encoded exfil, convention-file trust, committed-file dormancy) | Impact: 7, Confidence: 7, Effort: 6 = **20** | Team Observation: coverage mapping of tachi's detection-p... | 2026-07-13 |
 | #360 | Harden tachi's own agents against ingested-repo-text prompt injection (GhostCommit self-exposure) | Impact: 8, Confidence: 8, Effort: 8 = **24** | Team Observation: grounded file:line code analysis of tac... | 2026-07-13 |
@@ -27,7 +47,6 @@
 | #346 | Harden read_sidecar against non-dict sidecar member entries (F-329 S-1) | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 329 (OR... | 2026-06-30 |
 | #345 | Regenerate init.sh-substitution baseline (tests/fixtures/init-baseline-tree/) — re-tag from #329 | — | — | 2026-08-12 |
 | #342 | Deliver-stage preflight: guard against stale/diverged local main and behind-main feature branch | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 338 (Re... | 2026-06-30 |
-| #168 | Track OWASP AIVSS v1.0 release and first external adopter case study | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 143 (MA... | 2026-06-01 |
 
 ## Define
 
@@ -51,7 +70,7 @@
 
 | # | Title | Delivered | Retro | Updated |
 |---|-------|-----------|-------|---------|
-| — | *No items in this stage* | | |
+| #391 | Isolated and auditable operation: egress disclosure, agent permission matrix, and run provenance (CVP mapping) | 2026-11-21 | — | 2026-11-21 |
 
 ## Document
 
@@ -65,13 +84,12 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
-| #391 | Isolated and auditable operation: egress disclosure, agent permission matrix, and run provenance (CVP mapping) | OPEN | 2026-11-16 |
 | #370 | Covering test for the FR-012b form-drift guard in extract-report-data.py | CLOSED | 2026-10-10 |
-| #369 | CI manifest-integrity check for adapter VERSION attestations (+ copilot-aware generator) | OPEN | 2026-08-12 |
+| #369 | CI manifest-integrity check for adapter VERSION attestations (+ copilot-aware generator) | OPEN | 2026-11-21 |
 | #368 | check-catalog-drift: _canonical() widening — decided DEFER with rationale; plus false-docstring defect (docstring :95 vs fail-closed fallback :105) | OPEN | 2026-08-12 |
 | #367 | State the LLM10:2026 generated-code scope boundary explicitly in OWASP_COVERAGE.md | OPEN | 2026-08-11 |
 | #366 | Persona↔catalog pattern-category enumeration parity for tachi threat agents | OPEN | 2026-08-11 |
-| #365 | defect(test_backward_compatibility): 6 pre-existing byte-identity reds — measured typst font-subset tag divergence + untested self-perturbing PNG-input candidate | OPEN | 2026-08-11 |
+| #365 | defect(test_backward_compatibility): 6 pre-existing byte-identity reds — measured typst font-subset tag divergence + untested self-perturbing PNG-input candidate | OPEN | 2026-11-21 |
 | #357 | enhancement: parameterize generate-risk-scores-sarif.py (CLI args, configurable paths, findings-count gate) to support additional example baselines | OPEN | 2026-07-03 |
 | #356 | defect(tachi-orchestrator): Phase-3 compilation can absorb output-integrity findings into the LLM-N sequence, dropping the OI- prefix carve-out and CWE citations (F-295 T026 gate FAIL) | OPEN | 2026-07-03 |
 | #355 | defect: examples/agentic-app/sample-report/threats.md duplicates output-integrity findings under legacy LLM-5/6/7 and current OI-1/2/3 IDs | OPEN | 2026-07-03 |

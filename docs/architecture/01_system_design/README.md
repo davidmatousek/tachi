@@ -4045,3 +4045,5 @@ Egress is exactly two hosts during a run: the model provider (inherent to Claude
 #### Tech Stack
 
 Bash 3.2 (`install.sh`, workflow steps, probe commands); Python ≥ 3.9 stdlib for installed scripts (`argparse`, `json`, `hashlib` with chunked updates, `os`, `pathlib`, `re`, `subprocess` for `git rev-parse`/`git check-ignore` only); pytest + PyYAML (tests only); GitHub Actions (existing workflows); Claude Code sandbox (Seatbelt / bubblewrap + local proxy), permission rules, `--settings` launch profile, auto-mode `environment`/`hard_deny`; typst + mmdc (existing). No new runtime dependency.
+
+**Status at Part A's merge (2026-11-21).** Part A shipped alone as `fix(391)` (TW-A2). B1, the archiver and its run manifest, was honest-stopped at TW-B1 and does not ship (follow-up #399). B2, the version marker, the `tachi_version` stamp and the schema 1.5 reconciliation, ships separately through #396 after #364. Until #396 merges, the B2 rows and the `install.sh` → `VERSION` → stamp edges above describe the plan, not `main`; the archiver row, its edge and the Tech Stack's `subprocess` note describe work that did not ship.

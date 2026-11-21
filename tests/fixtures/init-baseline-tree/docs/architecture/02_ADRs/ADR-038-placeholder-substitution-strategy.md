@@ -187,3 +187,9 @@ Before promoting Status `Proposed → Accepted` at T036, the architect MUST veri
 ## Open Questions
 
 None at proposal time. T035 (Wave 5) amends this ADR with final T021 benchmark numbers and PM acknowledgment of perf trade-off. T036 (Wave 5) is the architect promotion gate per the checklist above.
+
+---
+
+## Revision History
+
+- **2026-06-30** — hardening restored to `main` via [#338](../../../specs/338-restore-substitution-hardening/spec.md) after a `/aod.update` re-sync regression; durability now enforced by the `tachi-pytest` `push:[main]` gate (FR-006).

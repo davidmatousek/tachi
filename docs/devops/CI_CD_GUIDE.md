@@ -456,6 +456,7 @@ See the workflow file for the authoritative full list.
 | F-295 | #353 | `scripts/generate-threats-sarif.py` added to path filter (FR-014 input-path-derived `artifactLocation.uri`, covered by 4 assertions in the existing suite); no new test module or workflow added — the planned US-3 byte-identity CI wiring was structurally deferred to defect #356 after the T026 Cat 6 gate failed |
 | F-362 | #363 | `tests/scripts/test_owasp_2026_contract.py` added to suite + path filter (T017 — `normalize_owasp_id` D2 covering matrix + FR-012a derived-taxa contract asserting risk-scores taxa == catalog records); `scripts/generate-risk-scores-sarif.py` and `schemas/taxonomy/owasp.yaml` added to path filter only, no new test module for either (architect MEDIUM-1 — the FR-012a emitter and its catalog derive-source must trigger their own gate); gated module count 15 → 16 |
 | **F-373** | **#375** | **`test_install_sh_symlink_preflight.py` + `test_install_sh_ref_restore.py` added to suite + path filter (K3 — `scripts/install.sh`'s destination-containment pre-flight behind the new `--follow-symlinks` opt-in flag, plus the `--version` ref-restore trap fix), with `tests/scripts/install_sh_helpers.py`'s sandbox builders added to the path filter only (no invocation line — it is a helper module, not a test module); gated module count 16 → 18. This is the existing 2-OS bash matrix's own K3 coverage — distinct from the new `tachi-install-fidelity.yml` workflow's `manifest-completeness` / `extraction-fidelity` / `report-posture` jobs, which gate the manifest and the extraction/report pipeline on a single fast `ubuntu-latest` runner instead. See "Tachi Install Fidelity Workflow" below.** |
+| **F-391** | **#392** | **`test_isolated_profile_contract.py` + `test_agent_privilege_guard.py` added to suite + path filter (Isolated and Auditable Operation, Part A: the session-profile contract of the isolated-operation runbook, and the privilege guard's own suite — live tree green, one red case per check, exit codes, `--json`). `scripts/check-agent-privileges.py` (run as a subprocess by every guard case), `.claude/agents/tachi/**` and `.claude/commands/tachi.*.md` (copied into each guard case), `docs/guides/ISOLATED_OPERATION_TACHI.md`, `docs/standards/CLAUDE_PERMISSIONS.md` and the F-391 PRD (`docs/product/02_PRD/391-isolated-auditable-operation-2026-11-16.md`) added to the path filter only (inputs, no invocation line); gated module count 19 → 21 (F-393's `test_gemini_key_env_only.py` took it from 18 to 19 and has no row in this table). The two agent and command globs widen the trigger: an edit to any tachi agent or command file now also runs this 2-OS matrix. `test_write_confinement.py` (F-391 write confinement) is not in this workflow — it runs in the Typst-gated `report-posture` job of `tachi-install-fidelity.yml`. The same guard also runs as a step of `tachi-permissions-verify.yml`. See "Tachi Permissions-Verify Workflow" and "Tachi Install Fidelity Workflow" below.** |
 
 ### Environment Variables
 
@@ -543,13 +544,16 @@ Both workflows use `ubuntu-latest`, `contents: read`, and install the same pytes
 
 **Added in Feature 281** (CI & Governance Hardening Tail, F-4/F-5 follow-ups; PR #347, merged 2026-07-01). This workflow reddens CI — on PRs AND direct-to-`main` pushes — when `.claude/settings.json` and its governing doc (`docs/standards/CLAUDE_PERMISSIONS.md`) drift out of sync with each other or become internally invalid. It ports the already-shipped F-4 local pre-commit recipe (jq validity + AC-2 cross-check) into a CI back-stop, so a `--no-verify` commit, an uninstalled hook, or a GitHub-web-UI edit to `.claude/settings.json` cannot land on `main` unchecked.
 
+**Extended in Feature 391** (Isolated and Auditable Operation, Part A; PR #392, merged 2026-11-21, patch release v4.48.3 pending). The same workflow also runs the **agent privilege guard**, `scripts/check-agent-privileges.py`, which pins what §8 of `docs/standards/CLAUDE_PERMISSIONS.md` (the agent and command privilege matrix) says to what the files under `.claude/agents/tachi/` and `.claude/commands/tachi.*.md` declare. It is a drift guard: it makes a privilege change visible in review and in CI, and it sandboxes nothing (§8.1 separates what Claude Code enforces from what the files only declare). **In a fork**, a change to a tachi agent's `tools:`, `model:` pin or frontmatter keys, or to a command's frontmatter keys, fails this workflow until §8 changes in the same pull request.
+
 | Property | Value |
 |----------|-------|
 | Workflow file | `.github/workflows/tachi-permissions-verify.yml` |
 | Runner | `ubuntu-latest` (single OS — every check is an OS-independent string/JSON assertion) |
 | Permissions | `contents: read` (no `security-events: write` — this workflow emits no SARIF) |
-| Checkout | Full, non-sparse (`actions/checkout@v4` default) — required by step 3's `git rev-parse --show-toplevel` root resolution |
+| Checkout | Full, non-sparse (`actions/checkout@v4` default) — required by step 3's `git rev-parse --show-toplevel` root resolution and by step 6's `git ls-files` |
 | Reused script | `.aod/scripts/bash/claude-permissions-ac2-crosscheck.sh` (delivered #280 — reused verbatim, not reimplemented) |
+| Privilege guard | `scripts/check-agent-privileges.py` (F-391) — standard library only, Python 3.9 or later; the runner's system `python3` runs it (no `actions/setup-python`); no network, no installs |
 
 ### Trigger Design (F-281 — dual-trigger with YAML anchor)
 
@@ -562,20 +566,34 @@ on:
       - .claude/settings.json
       - docs/standards/CLAUDE_PERMISSIONS.md
       - .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh
+      - .claude/agents/tachi/**                   # F-391 — guard input: agent roster, tools:/model:/key set, Bash fences
+      - .claude/commands/tachi.*.md               # F-391 — guard input: command frontmatter keys
+      - scripts/check-agent-privileges.py         # F-391 — the guard itself
+      - docs/guides/ISOLATED_OPERATION_TACHI.md   # F-391 — guard input: runbook §5 write-path table
       - .github/workflows/tachi-permissions-verify.yml
   push:
     branches: [main]
     paths: *verify_paths
 ```
 
-**Why `push: branches: [main]`**: a `.claude/settings.json` or `CLAUDE_PERMISSIONS.md` edit can reach `main` via a direct push that bypasses the `pull_request` trigger entirely — the same direct-to-`main` bypass class already documented for `tachi-pytest.yml` (F-338) and `tachi-catalog-drift.yml` (F-329). The push leg closes that gap: any future direct-to-`main` commit touching the settings/doc pair will immediately fail CI, surfacing the drift in minutes rather than shipping it silently.
+**Why `push: branches: [main]`**: a `.claude/settings.json` or `CLAUDE_PERMISSIONS.md` edit can reach `main` via a direct push that bypasses the `pull_request` trigger entirely — the same direct-to-`main` bypass class already documented for `tachi-pytest.yml` (F-338) and `tachi-catalog-drift.yml` (F-329). The push leg closes that gap: any future direct-to-`main` commit touching the settings/doc pair will immediately fail CI, surfacing the drift in minutes rather than shipping it silently. Since F-391 the same shared anchor also carries the guard's four inputs (the agents, the commands, the guard script and the runbook), so an edit to any of them that lands by direct push is checked too.
 
-### What it checks (four ordered steps)
+### What it checks (six ordered steps)
 
 1. **jq-presence guard** — fails loudly (`::error::jq missing on runner`) if a future runner-image change drops `jq`, rather than erroring ambiguously inside the next step.
 2. **`jq empty .claude/settings.json`** — asserts the file is well-formed JSON.
 3. **AC-2 cross-check** (`bash .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh`) — the reused #280 script. The job fails on **any** non-zero exit: exit 1 (orphaned rule / mismatched table row) and exit 2 (invariant violation — missing files, jq parse error, empty section) both fail; there is no `continue-on-error` and the exit code is never swallowed.
 4. **Doc-presence grep** — asserts `CLAUDE_PERMISSIONS.md` §3 ("Settings precedence") and §4 ("Per-rule rationale table") are present. This covers the two interactive-only acceptance criteria (AC-7, AC-12) that the AC-2 script cannot exercise on its own. The greps match byte-exact live headings — a future heading rename must update both the doc and the greps in the same commit.
+5. **python3-presence guard** — fails loudly (`::error::python3 missing on runner`) if a future runner-image change drops `python3`, mirroring the jq guard. There is no `actions/setup-python` step: the guard is standard-library-only and the runner's system `python3` is newer than its 3.9 floor.
+6. **Agent privilege guard** (F-391; SC-003, PRD SC-A3; `python3 scripts/check-agent-privileges.py --self-test`) — runs checks C1 to C7 against §8 of `CLAUDE_PERMISSIONS.md`, then C8, its own planted-mutation self-test:
+   - **C1 roster** — every file under `.claude/agents/tachi/` that has frontmatter is a `tachi-*` agent with a §8 row, and every §8 row has a file. Any tracked non-`.md` file, any symlink and any `.md` file without frontmatter other than the allow-listed `_TACHI_AGENT_BEST_PRACTICES.md` is red.
+   - **C2 to C4, agent declarations** — `tools:` equals the row's Tools cell (as sets), `model:` equals its Model cell, and the frontmatter keys are exactly `name`, `description`, `tools` and `model`.
+   - **C5 commands** — each `.claude/commands/tachi.*.md` has a row in the commands table, and its frontmatter keys equal the row's Frontmatter keys cell.
+   - **C6 shell fences** — the command families in the `bash`, `sh`, `shell` and `zsh` fences of each Bash-capable agent are a subset of its row's Bash families cell. `$(`, backticks, `eval`, `bash -c`, `sh -c`, `xargs` and process substitution are red.
+   - **C7 write paths** — the paths in the runbook's §5 write-locations table (`docs/guides/ISOLATED_OPERATION_TACHI.md`) equal the union of the Writes cells in §8.
+   - **C8 self-test** — copies the inputs to a temp directory and plants five mutations (a tool added, a planted `name: helper`, an unlisted file without frontmatter, a duplicate name, the allow-listed file with planted frontmatter). Each mutated copy must gain a finding that the unmutated copy lacked, or the run exits 2.
+
+   Exit `0` means clean, `1` means drift (every finding is listed with its check id and file) and `2` means infrastructure (the matrix, the runbook or a section is missing, a cell or frontmatter shape cannot be parsed, an input is unreadable, git fails, or a mutation fails to fail). The job fails on **any** non-zero exit: there is no `continue-on-error`, and the exit code is never swallowed. The guard needs the default full checkout, because `git ls-files` decides which non-`.md` files in the agents directory count as tracked. Scope: `.claude/agents/tachi/**` and `.claude/commands/tachi.*.md` only. The adapter copies under `adapters/claude-code/` (#369) and skills' `allowed-tools`/`model` (#409) are not covered.
 
 ### Local invocation
 
@@ -589,7 +607,12 @@ bash .aod/scripts/bash/claude-permissions-ac2-crosscheck.sh
 # Step 4 (doc-presence — manual grep, matches CI exactly)
 grep -qE '^## 3\. Settings precedence' docs/standards/CLAUDE_PERMISSIONS.md && echo "§3 OK"
 grep -qE '^## 4\. Per-rule rationale table' docs/standards/CLAUDE_PERMISSIONS.md && echo "§4 OK"
+
+# Steps 5-6 (agent privilege guard + planted-mutation self-test — matches CI exactly)
+python3 scripts/check-agent-privileges.py --self-test
 ```
+
+The guard needs no network and writes nothing outside its self-test's temp directory. Add `--json` for a machine-readable summary. The guard's own pytest suite (`tests/scripts/test_agent_privilege_guard.py`) and the session-profile contract test (`tests/scripts/test_isolated_profile_contract.py`) run in `tachi-pytest.yml`, not in this workflow; run pytest in a scratch clone, as "Tachi Install Fidelity Workflow" → "Local invocation" explains (#365).
 
 ### Relationship to sibling dual-trigger workflows
 
@@ -599,9 +622,9 @@ grep -qE '^## 4\. Per-rule rationale table' docs/standards/CLAUDE_PERMISSIONS.md
 |----------|--------|--------|
 | `tachi-pytest.yml` | Substitution-surface hardening (init.sh, template-substitute.sh, etc.) | `&hardening_paths` |
 | `tachi-catalog-drift.yml` | ORDERED_FRAMEWORKS catalog fingerprint integrity | `&drift_paths` |
-| `tachi-permissions-verify.yml` | `.claude/settings.json` ↔ `CLAUDE_PERMISSIONS.md` sync | `&verify_paths` |
+| `tachi-permissions-verify.yml` | `.claude/settings.json` ↔ `CLAUDE_PERMISSIONS.md` sync; tachi agent and command privileges ↔ `CLAUDE_PERMISSIONS.md` §8 (F-391) | `&verify_paths` |
 
-**Reference**: `specs/281-ci-governance-hardening-tail/spec.md` FR-281.1 through FR-281.8. ADR precedent: `docs/architecture/02_ADRs/ADR-037-*.md` D-14 (catalog-drift-guard direct-invocation / single-OS / anchor pattern). No new environment variables introduced — see `docs/devops/environment-variables.md`.
+**Reference**: `specs/281-ci-governance-hardening-tail/spec.md` FR-281.1 through FR-281.8. ADR precedent: `docs/architecture/02_ADRs/ADR-037-*.md` D-14 (catalog-drift-guard direct-invocation / single-OS / anchor pattern). F-391 additions: `specs/391-isolated-auditable-operation/plan.md` AD-3, `docs/architecture/02_ADRs/ADR-049-privilege-contract-and-write-confinement.md` and §8 of `docs/standards/CLAUDE_PERMISSIONS.md` (the matrix the guard pins). Neither the workflow nor the guard reads a tachi environment variable — see `docs/devops/environment-variables.md`.
 
 ---
 
@@ -610,6 +633,8 @@ grep -qE '^## 4\. Per-rule rationale table' docs/standards/CLAUDE_PERMISSIONS.md
 **Workflow file**: `.github/workflows/tachi-install-fidelity.yml`
 
 **Added in Feature 373** (Adopter Install + Output Fidelity Fixes, PR #375, merged 2026-10-10, patch release v4.48.1 pending). This workflow reddens CI — on PRs AND direct-to-`main` pushes — when `INSTALL_MANIFEST.md` drifts from what an adopter actually needs (a missing skill, agent, command, or distributable script; a manifest hygiene break; a non-stdlib import reaching a distributable script at module load; or a manual-install loop that no longer matches byte-for-byte across `README.md` and `docs/guides/DEVELOPER_GUIDE_TACHI.md`), when the deterministic extraction pipeline regresses, or when a stale `report-data.typ` would silently render with the wrong risk posture.
+
+**Extended in Feature 391** (Isolated and Auditable Operation, Part A; PR #392, merged 2026-11-21, patch release v4.48.3 pending). The same workflow also reddens CI when the agents an install path produces carry `tools:` that differ from §8 of `docs/standards/CLAUDE_PERMISSIONS.md` (SC-004, PRD SC-A4; in `manifest-completeness`), when the isolated-operation runbook `docs/guides/ISOLATED_OPERATION_TACHI.md` drops out of the manifest or is not installed (`manifest-completeness`), and when a report run writes anywhere outside its output directory and `$TMPDIR` (write confinement, SC-005; in `report-posture`).
 
 | Property | Value |
 |----------|-------|
@@ -624,9 +649,9 @@ grep -qE '^## 4\. Per-rule rationale table' docs/standards/CLAUDE_PERMISSIONS.md
 
 ### The three jobs
 
-1. **`manifest-completeness`** — runs `tests/scripts/test_install_manifest_completeness.py` only. This is the K1/K2 guard (FR-K2.2–K2.5): every `.claude/skills/tachi-*` dir, every `.claude/commands/tachi.*.md` file, and every distributable `scripts/*.py` a distributed command/agent/skill/template references must be covered by `INSTALL_MANIFEST.md` or carry an explicit, reasoned exclusion.
+1. **`manifest-completeness`** — runs `tests/scripts/test_install_manifest_completeness.py` only. This is the K1/K2 guard (FR-K2.2–K2.5): every `.claude/skills/tachi-*` dir, every `.claude/commands/tachi.*.md` file, and every distributable `scripts/*.py` a distributed command/agent/skill/template references must be covered by `INSTALL_MANIFEST.md` or carry an explicit, reasoned exclusion. Since F-391 (T028) the same module also pins the isolated-operation runbook (`docs/guides/ISOLATED_OPERATION_TACHI.md`) as a docs-table row and a manifest-block entry that `install.sh` places byte-for-byte, and asserts **SC-A4**: after each documented install path — `install.sh`, the README's manual install loop under bash, and the same loop under interactive zsh — every installed `.claude/agents/tachi/` agent's `tools:` set equals its row in §8 of `docs/standards/CLAUDE_PERMISSIONS.md` (`test_installed_agent_tools_match_matrix`, with a synthetic negative matrix, `test_installed_tools_negative_matrix`, so the comparison cannot go vacuous). Both sides are read with the privilege guard's own parser (`scripts/check-agent-privileges.py`, loaded by path), so the test and the guard cannot disagree about a cell or a `tools:` shape. The zsh path skips on the CI runner, which has no zsh (#415), so CI asserts SC-A4 on the other two paths. The job's pytest invocation is unchanged: the new cases live in the module it already runs, in `.git`-less throwaway sources and projects under `tmp_path`.
 2. **`extraction-fidelity`** — runs the pre-existing extraction/parser modules on a bare `ubuntu-latest` runner for the first time, plus two new F-373 modules: `test_tachi_parsers.py`, `test_extract_infographic_data.py`, `test_extract_report_data.py`, `test_extractor_contract_fixes.py`, `test_executive_architecture_payload.py`, `test_gemini_request_contract.py` (new — the K14 static request-contract test), and `test_extraction_sibling_parity.py` (new — W2, compares posture/severity/delta counts and MAESTRO output between the infographic JSON and `report-data.typ` on shared fixtures). No `mmdc` is installed on this runner; the five `mmdc`-dependent cases in `test_extract_report_data.py`'s Typst fixture skip rather than fail, and every other case in these seven modules must pass.
-3. **`report-posture`** — runs `tests/scripts/test_report_posture_contract.py` and `tests/scripts/test_write_confinement.py` in one pytest session, with Typst installed via `typst-community/setup-typst@v5` and `TACHI_REQUIRE_TYPST: "1"` set so a missing Typst fails this job instead of silently skipping the gate. The posture module asserts that a `report-data.typ` built without the `risk-posture-level`/`risk-posture-label` variables fails Typst compilation with an explicit regenerate-instruction panic, rather than rendering with a stale or default posture. The write-confinement module (F-391, SC-005) runs the report-assembler's three commands (`extract-report-data.py --build-dir`, `typst compile`, `extract-report-data.py --remove-build-dir`) in a throwaway adopter project and fails on any write outside the output directory and `$TMPDIR`. See `docs/devops/environment-variables.md` → "F-373 Report-Posture Typst Gate" for the `TACHI_REQUIRE_TYPST` contract.
+3. **`report-posture`** — runs `tests/scripts/test_report_posture_contract.py` and `tests/scripts/test_write_confinement.py` in one pytest session, with Typst installed via `typst-community/setup-typst@v5` and `TACHI_REQUIRE_TYPST: "1"` set so a missing Typst fails this job instead of silently skipping the gate. The posture module asserts that a `report-data.typ` built without the `risk-posture-level`/`risk-posture-label` variables fails Typst compilation with an explicit regenerate-instruction panic, rather than rendering with a stale or default posture. The write-confinement module (F-391, SC-005) runs the report-assembler's three commands (`extract-report-data.py --build-dir`, `typst compile`, `extract-report-data.py --remove-build-dir`) in a throwaway adopter project and fails on any write outside the output directory and `$TMPDIR`. Of the write-confinement module, only the cases that compile are Typst-gated; the rest (the command-line refusals, the `TACHI_MMDC_PUPPETEER_CONFIG` cases, the bytecode-cache cases and the static checks of the recipe documents) runs without Typst. See `docs/devops/environment-variables.md` → "F-373 Report-Posture Typst Gate" for the `TACHI_REQUIRE_TYPST` contract.
 
 ### Trigger Design (F-373 — dual-trigger with YAML anchor)
 
@@ -651,7 +676,7 @@ on:
     paths: *fidelity_paths
 ```
 
-The `paths:` list is intentionally broad — together with `adapters/claude-code/**` and the two manual-install-loop docs, it matches **every** `INSTALL_MANIFEST.md` entry — because all three jobs together run in well under a minute. This is the opposite trigger-design trade-off from the installer's own K3 suite below: broad trigger + fast run, instead of narrow trigger + slow run.
+The `paths:` list is intentionally broad — together with `adapters/claude-code/**` and the two manual-install-loop docs, it matches **every** `INSTALL_MANIFEST.md` entry — because all three jobs together run in well under a minute. This is the opposite trigger-design trade-off from the installer's own K3 suite below: broad trigger + fast run, instead of narrow trigger + slow run. F-391 added three entries: `tests/scripts/test_write_confinement.py`, and two files the SC-A4 cases read that no other entry covers, `docs/standards/CLAUDE_PERMISSIONS.md` and `docs/guides/ISOLATED_OPERATION_TACHI.md`. The guard script whose parsers those cases load matches `scripts/*.py`, and the agents they compare match `.claude/agents/tachi/**`.
 
 ### Relationship to `tachi-pytest.yml`'s K3 installer suite
 
@@ -659,7 +684,7 @@ The `paths:` list is intentionally broad — together with `adapters/claude-code
 
 | Workflow | Guards | Runner(s) | Why split |
 |----------|--------|-----------|-----------|
-| `tachi-install-fidelity.yml` | Manifest completeness, extraction/report fidelity, report posture | Single `ubuntu-latest`, 3 jobs | Broad `paths:` trigger is safe because the run takes seconds |
+| `tachi-install-fidelity.yml` | Manifest completeness, extraction/report fidelity, report posture, write confinement (F-391), installed-agent tools vs §8 (F-391) | Single `ubuntu-latest`, 3 jobs | Broad `paths:` trigger is safe because the run takes seconds |
 | `tachi-pytest.yml` (K3 addition) | `scripts/install.sh` itself — the `--follow-symlinks` destination-containment pre-flight and the `--version` ref-restore trap | Existing 2-OS bash matrix (macOS bash 3.2.57 + ubuntu bash 5.x) | The installer must be proven on both bash dialects it actually ships to, but that matrix takes 22–29 minutes — too slow for a trigger as broad as `&fidelity_paths`, so `tachi-pytest.yml`'s `paths:` anchor gains only `scripts/install.sh`, the K3 tests, and their helpers/fixtures |
 
 ### Relationship to sibling dual-trigger workflows
@@ -668,13 +693,17 @@ The `paths:` list is intentionally broad — together with `adapters/claude-code
 |----------|--------|--------|
 | `tachi-pytest.yml` | Substitution-surface hardening (init.sh, template-substitute.sh, etc.) | `&hardening_paths` |
 | `tachi-catalog-drift.yml` | ORDERED_FRAMEWORKS catalog fingerprint integrity | `&drift_paths` |
-| `tachi-permissions-verify.yml` | `.claude/settings.json` ↔ `CLAUDE_PERMISSIONS.md` sync | `&verify_paths` |
-| `tachi-install-fidelity.yml` | Manifest completeness + extraction/report fidelity + report posture | `&fidelity_paths` |
+| `tachi-permissions-verify.yml` | `.claude/settings.json` ↔ `CLAUDE_PERMISSIONS.md` sync; tachi agent and command privileges ↔ `CLAUDE_PERMISSIONS.md` §8 (F-391) | `&verify_paths` |
+| `tachi-install-fidelity.yml` | Manifest completeness + extraction/report fidelity + report posture + write confinement and installed-agent tools vs §8 (F-391) | `&fidelity_paths` |
 
 ### Local invocation
 
 ```bash
-# manifest-completeness
+# Run these in a scratch clone of committed HEAD, never in the main working tree:
+# the report tests and the extractors re-render tracked example PNGs (#365).
+SCRATCH="$(mktemp -d)" && git clone --no-hardlinks . "$SCRATCH/tachi" && cd "$SCRATCH/tachi"
+
+# manifest-completeness (includes the F-391 runbook cases and SC-A4)
 python3 -m pytest tests/scripts/test_install_manifest_completeness.py -v
 
 # extraction-fidelity
@@ -689,7 +718,10 @@ python3 -m pytest \
   -v
 
 # report-posture (requires Typst on PATH; TACHI_REQUIRE_TYPST=1 matches CI exactly)
-TACHI_REQUIRE_TYPST=1 python3 -m pytest tests/scripts/test_report_posture_contract.py -v
+TACHI_REQUIRE_TYPST=1 python3 -m pytest \
+  tests/scripts/test_report_posture_contract.py \
+  tests/scripts/test_write_confinement.py \
+  -v
 ```
 
 ### Rollback note (v4.48.1 patch release)
@@ -701,8 +733,11 @@ TACHI_REQUIRE_TYPST=1 python3 -m pytest tests/scripts/test_report_posture_contra
 | Feature | PR | Change |
 |---------|----|--------|
 | F-373 | #375 | Initial workflow — `manifest-completeness` + `extraction-fidelity` + `report-posture` jobs; dual-trigger YAML anchor `&fidelity_paths`; first CI gate to run the pre-existing extraction/parser modules on a bare `ubuntu-latest` runner |
+| F-391 | #392 | `manifest-completeness` gains the runbook's manifest-entry cases and SC-A4 (`test_installed_agent_tools_match_matrix` on the `install-sh`, `manual-loop` and `manual-loop-zsh` paths, plus `test_installed_tools_negative_matrix`) inside its existing module; `report-posture` gains `tests/scripts/test_write_confinement.py` (write confinement, SC-005) in the same pytest session as the K13 stale-data gate; `paths:` gains `tests/scripts/test_write_confinement.py`, `docs/standards/CLAUDE_PERMISSIONS.md` and `docs/guides/ISOLATED_OPERATION_TACHI.md` |
 
 **Reference**: `specs/373-adopter-install-output-fidelity/spec.md` NFR-7. Contract: `specs/373-adopter-install-output-fidelity/contracts/manifest-completeness.md`. No adopter-facing environment variables introduced; one test-only CI variable (`TACHI_REQUIRE_TYPST`) — see `docs/devops/environment-variables.md` → "F-373 Report-Posture Typst Gate".
+
+**F-391 reference**: `specs/391-isolated-auditable-operation/spec.md` (SC-004, SC-005) and `docs/architecture/02_ADRs/ADR-049-privilege-contract-and-write-confinement.md`. `TACHI_REQUIRE_TYPST` is now also read by `test_write_confinement.py`, with the same contract. The feature's one new variable, `TACHI_MMDC_PUPPETEER_CONFIG`, is adopter-facing and opt-in; the CI jobs leave it unset (the write-confinement tests remove it from their children's environment) — see `docs/devops/environment-variables.md` → "F-391 Isolated and Auditable Operation (Part A) — Adopter Variable".
 
 ---
 

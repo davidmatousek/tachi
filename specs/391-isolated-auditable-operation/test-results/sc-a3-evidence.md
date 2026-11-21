@@ -73,3 +73,32 @@ Green (`aaa2d84`):
 ## Cleanup
 
 PR #398 is closed unmerged and its remote branch is deleted. The local branch `391-sc-a3-evidence` stays, because `git branch -D` is denied in this repository (R-8); the maintainer removes it.
+
+## The `push:[main]` leg (recorded at /aod.deliver, 2026-11-21)
+
+| Item | Value |
+|---|---|
+| Merge | #392 squash-merged to `main` as `e83ca6b` at 2026-11-21T18:35:56Z |
+| First push-leg run of the guard | `tachi permissions-verify`, run 44936411660, event `push`, branch `main`, head `e83ca6b`, started 2026-11-21T18:35:59Z, conclusion **success** |
+| Companion push-leg runs on the same head | `tachi install fidelity` 44936411674 (success); `tachi catalog-drift` 44936411675 (success); `release-please` 44936411638 (success; opened #418); `tachi pytest` 44936411639 (`delivery.md`, "CI at merge") |
+
+The guard's output in run 44936411660:
+
+```
+[391] C1 roster           PASS  21 agents, 1 allow-listed document(s)
+[391] C2 tools            PASS  21 agents
+[391] C3 model            PASS  21 agents
+[391] C4 frontmatter keys PASS  21 agents
+[391] C5 command keys     PASS  6 commands
+[391] C6 bash families    PASS  3 Bash-capable agents
+[391] C7 write locations  PASS  21 paths
+[391] C8 M1 a tool (Bash) added to tachi-agent-autonomy: detected by C2
+[391] C8 M2 a planted agent with name: helper: detected by C1
+[391] C8 M3 an unlisted .md file without frontmatter: detected by C1
+[391] C8 M4 a duplicate of the name tachi-agent-autonomy: detected by C1
+[391] C8 M5 the allow-listed document with planted frontmatter: detected by C1
+[391] C8 self-test        PASS
+[391] RESULT: pass (exit 0)
+```
+
+Both legs of SC-003 are now shown live: the pull-request leg on #398 (red on an added tool, green on the revert) and the push leg on `main` at the merge.

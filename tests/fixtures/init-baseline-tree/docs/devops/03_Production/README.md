@@ -119,6 +119,16 @@ Configure alerts for:
 - Server errors (5xx)
 - Database connection failures
 
+### Scheduled / Non-Deploy Workflows
+
+Some monitoring runs as **scheduled GitHub Actions**, not as part of the deployment lifecycle. These do not gate deploys and have no production runtime surface — they are background health watches whose "alert channel" is a GitHub artifact (issue / PR), not a pager.
+
+| Workflow | Cadence | Alert channel | Gate? |
+|----------|---------|---------------|-------|
+| `.github/workflows/tachi-citation-linkrot.yml` (F-183) | Weekly cron `17 9 * * 1` (Mondays 09:17 UTC) + manual `workflow_dispatch` | A **single self-healing GitHub tracking issue** (opened/updated/commented/closed automatically as citation-URL rot appears and clears) | **No — never a required check** |
+
+**Operator note for `tachi-citation-linkrot.yml`**: this is a **monitor, not a gate**. The run is **GREEN even when link-rot is found** — only an infra failure (script crash / `gh` auth failure) reddens it. **Read the tracking issue for rot state, not the Actions run color.** A green checkmark means "the probe completed," not "no rot." Do NOT add this workflow to branch protection. It uses the ambient `GITHUB_TOKEN` (no PAT, no new secret) scoped to `contents: read` + `issues: write`. Manual run: `gh workflow run tachi-citation-linkrot.yml -f inject_sentinel_rot=false`. Full walkthrough: `docs/devops/CI_CD_GUIDE.md` → "Tachi Citation Link-Rot Monitor (F-183 / #183)".
+
 ---
 
 ## Incident Response

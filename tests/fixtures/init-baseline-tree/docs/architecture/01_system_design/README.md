@@ -127,7 +127,7 @@ Contributor proposing a new crosswalk edge
 
 `schemas/taxonomy/` catalog YAMLs reference the following external standards (no runtime dependency on any of them — data is transcribed from authoritative sources at authoring time):
 
-- **OWASP LLM Top 10:2025**, **OWASP Top 10 for Agentic Applications:2026**, **OWASP Top 10:2021**, **OWASP API Security Top 10:2023**, **OWASP Mobile Top 10:2024**, **OWASP Machine Learning Security Top 10:2023**
+- **OWASP LLM Top 10:2026**, **OWASP Top 10 for Agentic Applications:2026**, **OWASP Top 10:2021**, **OWASP API Security Top 10:2023**, **OWASP Mobile Top 10:2024**, **OWASP Machine Learning Security Top 10:2023**
 - **MITRE ATT&CK Enterprise matrix** (38 seed techniques per Feature 082 detection-patterns.md baseline)
 - **MITRE ATLAS v5.4** — includes the October 2025 agent techniques AML.T0058-T0062 (curated as a +5 extension beyond the 7-technique seed)
 - **NIST AI 100-1 (NIST AI RMF 1.0)** — 72-Subcategory Playbook catalog per airc.nist.gov (primary-source-corrected from historical 68 per pm_signoff_amendment_1)
@@ -2074,7 +2074,7 @@ Architecture Input
 | Function | Purpose |
 |----------|---------|
 | `parse_baseline_frontmatter()` | Extract baseline metadata (source, date, finding_count, run_id) from nested YAML frontmatter block in threats.md. Handles both standard and code-fenced frontmatter delimiters. Returns None values when no baseline is present. |
-| `parse_resolved_findings()` | Parse Section 4b Resolved Findings table. Returns list of resolved finding dicts with `delta_status: "RESOLVED"` injected. Returns empty list when Section 4b is absent (first run, no baseline). |
+| `parse_resolved_findings()` | Parse the `## 4c.` Resolved Findings table (the legacy `## 4b.` heading is also accepted, FR-K12.5). Returns list of resolved finding dicts with `delta_status: "RESOLVED"` injected. Returns empty list when neither heading is present (first run, no baseline). |
 | `parse_threats_findings()` (updated) | Extended to extract optional `delta_status` field from Status column in Section 7 Recommended Actions table. Backward compatible -- omits field when Status column is absent. |
 
 ### Component 2: Output Schema Updates
@@ -3739,3 +3739,311 @@ flowchart TD
 | Build tooling | none | no runtime, no dependencies, no application code |
 
 **Cross-references**: [Spec 305](../../../specs/305-adoption-signal-capture/spec.md) · [Plan 305](../../../specs/305-adoption-signal-capture/plan.md) · [Data model](../../../specs/305-adoption-signal-capture/data-model.md) · Issue #305 · Issue #168 (AIVSS watch) · No new ADR (ADR-044 positioning precedent).
+
+### Feature 183: Citation-URL Link-Rot Monitoring — Scheduled CI Check (BLP-05 Wave 3, last open item)
+
+**PR**: [#330](https://github.com/davidmatousek/tachi/pull/330) | **Status**: Delivered | **Date**: 2026-06-15 | **Release**: v4.44.0 | **Squash-merge commit**: `0a33d70` | **Position**: BLP-05 Wave 3 (Crosswalk Integrity & Edges) **last open item** + F-180 T034 follow-on; **closes BLP-05 Wave 3** and is the **final feature of the BLP-05 framework-mapping initiative**. Adds the *asynchronous, networked* citation-reachability guard that F-180 deferred by design — complementary to the *synchronous, offline* `test_citation_shape()`.
+
+## Tech Stack
+
+- **Runtime**: Python 3.11 standard library (`urllib.request`, `concurrent.futures.ThreadPoolExecutor`, `http.client`, `json`, `re`, `glob`, `pathlib`, `argparse`, `time`, `threading.Semaphore`, `email.utils.parsedate_to_datetime`).
+- **Parsing**: `pyyaml>=6.0` (already pinned in `requirements-dev.txt`) via `yaml.safe_load`.
+- **CI**: GitHub Actions — `actions/checkout@v4`, `actions/setup-python@v5` (3.11), `actions/cache@v4`.
+- **Issue I/O**: native `gh` CLI with ambient `GITHUB_TOKEN` (`issues: write`).
+- **Tests**: `pytest>=8.0` (offline parity + classifier unit tests).
+- **Zero new runtime dependency** — the deliberate stdlib path (NFR-002).
+
+## Components
+
+1. **`scripts/check-citation-urls.py`** (new, single zero-dependency stdlib checker) — `discover_urls()` (glob `schemas/taxonomy/*.yaml`, extract `citation`/`url`, `^https?://` filter, dedup, URL→source map), `classify_url()` (HEAD→ranged-GET, ≤5 redirects, retry transient only), `HostThrottler` (per-host Semaphore 2–3 under global 10 + politeness delay + UA/Accept/Retry-After), `Ledger` (cache TTL ~21d, miss=check-all, 4xx-never-OK, `last_status`), `render_issue_body()` (host-grouped, delimited machine block), `manage_tracking_issue()` (gh 3-state lifecycle), and sentinel injection (`--inject-sentinel-rot`, pre-classified, no fetch).
+2. **`.github/workflows/tachi-citation-linkrot.yml`** (new) — `schedule` (`17 9 * * 1`) + `workflow_dispatch` (`inject_sentinel_rot` input); `permissions: contents: read, issues: write`; checkout → setup-python 3.11 → cache restore → checker → cache save. **No `on: pull_request`/`push`.**
+3. **`tests/schemas/test_citation_linkrot_parity.py`** (new) — FR-008 offline parity guard (set-parity both directions vs the **union** of crosswalk `citation` [`test_citation_shape()`] **and** catalog `url` [`test_framework_yamls_load()`] + field-rule encoding + uniform `^https?://` filter) + classifier unit tests (stubbed, no socket). Import pulls no outbound HTTP (NFR-001).
+4. **`schemas/taxonomy/README.md`** (edit, ~line 224) — deferral note → live-monitor reference (FR-009).
+
+**Architectural posture**: one new workflow + one new script + one new test module + one README line. Disjoint write-set; no parser reuse; zero new runtime dependency; no schema / `finding.yaml` change. The only network egress lives in the scheduled-only checker, structurally unreachable from the pytest collection path (NFR-001 determinism boundary — the load-bearing invariant).
+
+## Data Flow
+
+```
+weekly cron (17 9 * * 1)  ──┐
+workflow_dispatch ──────────┴─► tachi-citation-linkrot.yml
+   ├─ checkout@v4 ─► schemas/taxonomy/*.yaml
+   ├─ setup-python@v5 (3.11) ; cache@v4 restore ─► ledger.json {url:{last_ok,last_status}}
+   └─ python scripts/check-citation-urls.py
+        1. discover_urls() ── glob+safe_load+filter+dedup ─► {url → [sources]}
+        2. ledger TTL skip (last_ok < 21d ⇒ skip; miss ⇒ check-all)
+        3. classify_url() per URL ── HostThrottler (per-host sem) ─► external hosts
+              HEAD → (405/403/501) → ranged GET ; ≤5 redirects ; retry transient only
+        4. partition → {link-rot | needs-review | transient | healthy}  (+ injected sentinel rot)
+        5. ledger update (2xx ⇒ write last_ok ; 4xx ⇒ never cache OK)
+        6. manage_tracking_issue() via gh:
+              rot>0 & no issue    ─► gh issue create  (sentinel title + follow-on-180)
+              rot>0 & issue open  ─► gh issue edit (machine block) + dated delta comment
+              rot==0 & issue open ─► gh issue comment "healthy" + gh issue close
+   └─ cache@v4 save ─► updated ledger.json
+```
+
+**Determinism boundary**: outbound egress exists only inside `classify_url()`/`HostThrottler`, reachable only from the scheduled-workflow script; pytest collection never imports it; the parity guard + classifier tests stub the transport (NFR-001).
+
+**Cross-references**: [Spec 183](../../../specs/183-citation-url-link-rot-monitoring/spec.md) · [Plan 183](../../../specs/183-citation-url-link-rot-monitoring/plan.md) · [Data model](../../../specs/183-citation-url-link-rot-monitoring/data-model.md) · [Contracts](../../../specs/183-citation-url-link-rot-monitoring/contracts/) · Issue #183 · PR #330 (squash `0a33d70`, v4.44.0) · Predecessor F-180 (F-A1).
+
+**No new ADR — reasoning.** The two architecturally notable stances (scheduled-only determinism boundary + monitor-not-gate exit semantics) are *derivative* of the already-accepted [ADR-021](../02_ADRs/ADR-021-source-date-epoch-for-deterministic-pdf-comparison.md) determinism-boundary invariant — they apply the same "keep the deterministic test/PR path free of environmental non-determinism" principle to outbound HTTP rather than wall-clock timestamps — and are fully recorded across this section, [Plan 183](../../../specs/183-citation-url-link-rot-monitoring/plan.md) (§ trigger, exit-code contract, R8), the [checker CLI contract](../../../specs/183-citation-url-link-rot-monitoring/contracts/), and the dual-signed-off architect baseline. The feature sits entirely outside the production pipeline and the `pytest` suite: no schema / `finding.yaml` change, no new structural invariant in the product, zero net-new runtime dependency, reusing existing `actions/cache@v4` + already-pinned `pyyaml` + native `gh`. This is below the repo's ADR bar (cf. [ADR-047](../02_ADRs/ADR-047-maestro-coverage-state-authority.md): "A render annotation alone would warrant no ADR; the cross-surface authority decision does"). Architect baseline `.aod/results/architect-baseline-183.md` and closure record `.aod/results/architect-183-closure.md` both concur.
+
+---
+
+### Feature 281: ci-governance-hardening-tail
+
+**Added**: 2026-07-01 · **Plan**: `specs/281-ci-governance-hardening-tail/plan.md` · **Nature**: infra/CI/docs (BLP-06 Wave-2 maintenance; bundle lead #281 + #285/#286/#287)
+
+#### Tech Stack
+
+- **CI**: GitHub Actions (`ubuntu-latest`), `actions/checkout@v4`.
+- **Assertion tools**: `jq` (JSON validity), `bash` 3.2 (AC-2 cross-check script, reused), `grep -E` (doc-presence).
+- **Secret-scanning**: `gitleaks` v8.30.1 (SHA256-pinned download), `useDefault = true` ruleset.
+- **No language runtime, no build system, no package manager** added.
+
+#### Components
+
+| Component | Type | Change | Reuses |
+|---|---|---|---|
+| `.github/workflows/tachi-permissions-verify.yml` | CI workflow | **new** | `tachi-catalog-drift.yml` (dual-trigger, `paths:` anchor, `contents: read`, header comment) |
+| `claude-permissions-ac2-crosscheck.sh` | Bash script | **reused (invoked, not edited)** | delivered #280 (PR #290) |
+| `docs/standards/PRECOMMIT_HOOKS.md` §3 | doc | modify — per-pattern→rule-ID catalog | existing §3 "What gets scanned" |
+| `.gitleaks.toml.adopter-template` | config template | **new** (~80–120 LOC) | `.gitleaks.toml` + ADR-042 §Alternatives |
+| `docs/standards/PRECOMMIT_HOOKS.md` §9 + `README.md` | doc | modify — template pointer + cross-ref | F-5 doc pattern |
+| gitleaks pin-bump cadence surface | doc (+ optional issue template) | **new/modify** | ADR-042 Decision Item 6 |
+
+#### Data Flow
+
+```
+#281 workflow (per PR / push:[main] touching a governed path):
+  GitHub event
+    -> paths: filter (single &verify_paths anchor)   -- no governed path? -> job never runs (zero cost)
+         -> actions/checkout@v4  (FULL checkout -- .git required by AC-2 script)
+              -> [1] command -v jq            (FR-281.7 guard -- fail loud if jq absent)
+              -> [2] jq empty settings.json   (FR-281.2 -- JSON validity)
+              -> [3] bash claude-permissions-ac2-crosscheck.sh   (FR-281.3 -- exit 0 pass / 1 orphan / 2 invariant; any non-zero fails)
+              -> [4] grep -E '^## 3. Settings precedence' + '^## 4. Per-rule rationale table'  (FR-281.4 doc-presence)
+                   -> all green -> pass ; any non-zero -> RED (blocks merge / flags direct push)
+```
+
+#### No new ADR — reasoning (CARVE-IN)
+
+No ADR was minted for Feature 281 (CARVE-IN confirmed at plan and Architect gate). The feature introduces no significant *new* technical decision: it **ports** an already-accepted stance into a new enforcement surface rather than deciding anything novel. Every design choice is inherited and cited, not originated:
+- The permissions baseline and its verification recipe were decided in [ADR-041](../02_ADRs/ADR-041-claude-permissions-baseline.md) (Feature 277 / F-4) — `tachi-permissions-verify.yml` executes that recipe in CI; it does not redefine it.
+- The **CI-gate shape** (single-concern, single-runner, `contents: read`, path-filtered, direct-invocation-not-slash-command) follows the [ADR-037](../02_ADRs/ADR-037-web-api-coverage-attestation-and-populator-wiring.md) D-14 catalog-drift-guard precedent; the **dual-trigger `pull_request` + `push:[main]` single-anchor** pattern follows the `tachi-pytest.yml` / `#338` / `#329` direct-to-main-bypass precedent. Both are established patterns, not new decisions.
+- The gitleaks-adopter and pin-bump-cadence work is a **documentation and template surface over the already-accepted** [ADR-042](../02_ADRs/ADR-042-pre-commit-secret-scanning-default.md) Decision Item 6 — `.gitleaks.toml.adopter-template`, `PRECOMMIT_HOOKS.md` §3/§9.5/§10, and the `gitleaks-bump.md` issue template all realize ADR-042's stated cadence; no new secret-scanning decision was made (gitleaks v8.30.1 was already pinned — **zero net-new dependency**). ADR-042 §References was wired to `PRECOMMIT_HOOKS.md §10` in this feature.
+
+This sits below the repo's ADR bar (cf. the [ADR-047](../02_ADRs/ADR-047-maestro-coverage-state-authority.md) rule: a mechanism that only *applies* an accepted invariant to a new surface warrants no ADR; only a genuinely new cross-cutting decision does). The feature touches no product-pipeline schema, no `finding.yaml`, and no runtime dependency manifest.
+
+### Feature 217: detect-images-duplicate-cleanup
+
+**Added**: 2026-07-01 · **Plan**: `specs/217-detect-images-duplicate-cleanup/plan.md` · **Nature**: script maintenance (BLP-06 Wave-3 tail; opt-in mislabeled-image removal, Issue #217 follow-on to #215/PR #216)
+
+#### Tech Stack
+
+- **Python 3 stdlib only**: `argparse` (flag), `shutil` (existing copy path), **`filecmp` (new import — byte-identity gate, `cmp(..., shallow=False)` + defensive `clear_cache()`)**, `pathlib`.
+- **No new dependencies** (ADR-017 stdlib-only constraint holds); pytest local-only suites (not in the CI pytest gate).
+
+#### Components
+
+| Component | Type | Change | Notes |
+|---|---|---|---|
+| `_file_format(path)` probe | function (existing) | unchanged | supplies `content_format` for the mislabeled predicate |
+| `_maybe_delete_mislabeled(...)` | function | **new (~12 LOC)** | sole deletion path in the module; whole attempt (probe+compare+delete) in `try/except OSError` (best-effort); one stderr record per deletion/failure |
+| `detect_images(target_dir, template_dir, cleanup=False)` | function | modify | defaulted kwarg (two-positional-arg callers unchanged); cleanup wired into BOTH moments — pre-existing-pairs branch + recovery-write branch (`pre_existed` guard closes the cross-swap edge) |
+| `build_parser()` / `main()` | CLI | modify | `--cleanup-mislabeled-images` (`store_true`), threaded at the single call site |
+| `tests/scripts/test_extract_report_data.py` | tests | modify | `run_extract(+extra_args)`; 9 new cases (AC-1a–1h + deletion-failure best-effort) |
+| `.claude/skills/tachi-report-assembly/references/typst-artifacts.md` | doc | modify | US-3: duplicate-pair origin + sanctioned cleanup path |
+
+#### Data Flow
+
+```
+per stem: glob candidates (.jpg/.png, exists, size>0)
+  -> self-consistent candidate found?
+     |- yes -> chosen = it
+     |         [cleanup ON] Moment A: other candidates -> mislabeled? -> counterpart byte-identical? -> delete + stderr record
+     |- no  -> Moment B recovery: probe -> pre_existed := sibling.exists() -> copyfile corrected sibling -> chosen = sibling
+               [cleanup ON] NOT pre_existed AND byte-identical? -> delete original + stderr record
+  -> emit template-relative path of chosen  (UNCHANGED by cleanup — path-invariance INV-2:
+     chosen is self-consistent by definition, so it can never satisfy the mislabeled deletion predicate)
+```
+
+Safety contract: deletion only under the double gate (flag AND byte-identity); without the flag every path is byte-identical to pre-F-217 behavior (Principle III). No new ADR — PR-level change applying accepted invariants (ADR-017 stdlib-only, ADR-021 determinism, ADR-008 opt-in-for-high-risk reasoning); #215/#216 set the precedent of no ADR for `detect_images` changes.
+
+---
+
+### Feature 295: f292-verification-runs
+
+**Added**: 2026-07-04 · **Plan**: `specs/295-f292-verification-runs/plan.md` · **Nature**: verification/evidence feature — executes F-292's two deferred verification runs (T017 / SC-003 + T026 / SC-015) under fail-closed, false-pass-guarded gates. Almost no production code. **PR #353** squash-merged to `main` at `e6e8ef0`; 16 tasks.
+
+#### Tech Stack
+
+- **Python 3 stdlib only**: `pathlib` (`Path.resolve` / `relative_to` / `as_posix`) for the FR-014 URI helper. **Zero new dependency**, no version bump, no schema change. FR-020 scope fence held: detection-tier files, `schemas/finding.yaml`, and the archived F-292 contract are untouched, and the fence audit (`git diff main -- scripts/generate-threats-sarif.py`) confirms FR-014 is the **sole** generator change.
+
+#### Components
+
+| Component | Type | Change | Notes |
+|---|---|---|---|
+| `scripts/generate-threats-sarif.py` — `artifact_uri_for(input_path)` | new helper | **new** | FR-014: derives the SARIF `physicalLocation.artifactLocation.uri` from the actual input path — repo-relative POSIX via `resolved.relative_to(REPO_ROOT).as_posix()`, with an out-of-repo fallback to the resolved absolute POSIX path. Wired in `main()` (`source_uri = artifact_uri_for(args.input)`), replacing the hardcoded `examples/agentic-app/sample-report/threats.md` constant `build_result()` previously emitted regardless of input. `build_result` / `build_sarif` default kwargs retained (backward-compatible call sites). |
+| `tests/scripts/test_affected_assets_wiring.py` | tests | **+4 assertions** | in-repo repo-relative derivation · out-of-repo `tmp_path` fallback (POSIX-normalized, never the stale constant) · end-to-end SARIF wiring · default-parameter backward-compat. Suite 74/3/0 → 78/3/0 (sole flip attributed to `995359f`). Agentic-app regeneration verified **byte-unchanged** (script-output-before vs -after). |
+
+FR-014 lives entirely in the **Python regeneration/verification tier** (the "NOT live" branch of the pipeline data-flow diagram above) — `generate-threats-sarif.py` has no production caller; production `threats.sarif` is LLM-authored. The fix is the correctness enabler that lets the regeneration tooling emit a truthful `artifactLocation.uri` for any baseline other than agentic-app (the multi-baseline case US-2 was to exercise).
+
+#### Verification outcome (the feature's actual deliverable — recorded honestly)
+
+- **US-1 (T017 / SC-003)** — **PASS**, via the **scoped-full fallback** path; the single-agent `tachi-output-integrity` primary path **under-triggered** (a methodology learning recorded in `sc-003-verification-record.md §3` for future verification-run path selection). Corrected OI-subset filter — `partialFingerprints["findingId/v1"]` prefix `OI-`, not the archived contract §3's zero-match `ruleId | startswith("OI-")` — yielded the expected 4 findingIds under a fail-closed, false-pass-guarded diff.
+- **US-2 (T026 / SC-015)** — **gate FAIL, honest-stop**. Orchestrator **Phase-3 compilation** absorbs OI findings into the LLM-N sequence, dropping the `OI-` prefix carve-out (ADR-045 D3) and CWE citations → defect **#356** (discovered, not fixed — FR-020 fix-vs-file). **No `examples/multi-tenant-rag-app/` baseline artifacts were committed.**
+- **US-3 (CI SARIF-regen byte-identity check)** — **structurally deferred to #356** (depends on US-2's artifacts; `tachi-sarif-regen.yml` was never authored — not a US-3 failure per the spec's structural gate).
+
+#### No new ADR — reasoning
+
+No ADR was minted. FR-014 is a PR-level correctness fix applying accepted invariants ([ADR-013](../02_ADRs/ADR-013-sarif-output-format-adoption.md) SARIF format, [ADR-021](../02_ADRs/ADR-021-source-date-epoch-for-deterministic-pdf-comparison.md) determinism) to a new input case — it decides nothing novel, sitting below the repo's ADR bar per the [ADR-047](../02_ADRs/ADR-047-maestro-coverage-state-authority.md) rule. The verification findings are **filed, not recorded as decisions**: defects **#354** (contract §3 broken `ruleId` filter + non-executable invocation), **#355** (agentic-app duplicate OI/LLM finding IDs), **#356** (orchestrator Phase-3 OI-prefix drop) — together three failure modes of one underlying mechanism (the `OI-`-vs-`LLM-` id-prefix assignment is not a deterministic Phase-3 step) — plus enhancement **#357** (parameterize `generate-risk-scores-sarif.py`).
+
+---
+
+### Feature 362: remap-owasp-llm-top10-2026
+
+**Added**: 2026-08-12 · **Plan**: `specs/362-remap-owasp-llm-top10-2026/plan.md` · **Nature**: taxonomy **edition cutover** — the first time tachi has re-based an already-shipped OWASP framework onto a new edition. Category-level data surgery across every LLM Top 10 contract surface (rank permutation + one rename + four scope absorptions), governed by the movement map as remap authority. No new component, no API, no UI; the repo IS the data store. **PR #363** squash-merged to `main` at `e6316e3`; 26/26 tasks; shipping in v4.48.0 (release PR #371).
+
+#### Tech Stack
+
+- **Zero new dependency, zero schema shape change.** Python 3 stdlib + the already-pinned `pyyaml`; the only net-new import is `importlib.util` in `generate-risk-scores-sarif.py`, used to reuse the existing catalog loader rather than add one. The catalog and crosswalk record shapes stay frozen per [ADR-027](../02_ADRs/ADR-027-taxonomy-crosswalk-schema.md) (crosswalk edges hard-reject extra keys), so no Extension History entry and no `schemas/finding.yaml` version bump — the cutover lives entirely in **field values and a token grammar**, not in structure. This is what made an alias field the rejected alternative in ADR-048.
+
+#### Components
+
+| Component | Type | Change | Notes |
+|---|---|---|---|
+| `schemas/taxonomy/owasp.yaml` (LLM block, `:439–518`) | catalog data | **10 records re-keyed** | `full_id` → `OWASP-LLM-2026-NN`, verbatim 2026 names (LLM08 = **Hidden Context Exposure**, renamed + re-scoped from System Prompt Leakage), `url` → the D9 interim release-resource anchor, and each `# citation:` comment re-attested to the category **now occupying that slot** (content follows category, not slot number). `id` / `order` / `out_of_scope` untouched; `cwe_refs` held `[]` behind the D6 fence (no `cwe.yaml` growth in-loop). |
+| `schemas/taxonomy/crosswalk.yaml` | catalog data | **57 σ re-keys in one pass** | 74 LLM-keyed edges of 645 (66 primary + 8 related). The permutation is applied **simultaneously**, never sequentially — see the pattern entry in [03_patterns](../03_patterns/README.md#pattern-single-pass-taxonomy-edition-permutation). Then a manual 74-edge disposition against 2026 definitions: 74 valid / 0 revised / 0 dropped, 3 confidence downgrades, 61 citations re-anchored. Post-σ oracles: 645 edges · 0 duplicate dedupe keys · primary floor 608 ≥ 500 · per-2026-id vector 8/9/7/8/6/11/4/6/7/8. |
+| `scripts/generate-risk-scores-sarif.py` | emitter (regeneration tier) | **hardcoding removed** | FR-012a: the OWASP-LLM `taxa` are now **derived from the catalog** via `_llm_catalog_records()`, which calls `extract_report_data._load_framework_yaml_records("owasp")` through an `importlib` file-path load — the same loader-reuse idiom `check-catalog-drift.py::_load_extract_module` already uses in production. A future edition bump now requires only a catalog edit; this module **cannot** drift from it. `_OWASP_REFERENCE_BY_PREFIX` re-keyed (`OI` → `OWASP LLM10:2026`, `MI` → `OWASP LLM07:2026`). |
+| `scripts/generate-threats-sarif.py` — `normalize_owasp_id` | parser (regeneration tier) | **unchanged, now covered** | The `^OWASP\s+LLM(\d+):\d+$` regex is already year-agnostic, so it parsed 2026 tokens on day one. Its risk was never the regex — it was **zero test coverage** plus silent passthrough on mismatch. ADR-048 D2 pins the behavior instead of changing it. |
+| `scripts/extract-report-data.py` — `classify_framework_items` | parser | **+ unmatched-ref warning** | FR-012b: emits a stderr warning on a reference that matches no catalog entry, so token-form drift is loud at extraction time rather than silently under-classifying a Coverage-Attestation page. Verified byte-neutral against CA extraction. |
+| `tests/scripts/test_owasp_2026_contract.py` | tests | **new (287 lines)** | The ADR-048 D2 covering matrix for `normalize_owasp_id` (2025 token, 2026 token, breadcrumb-suffixed passthrough, ASI/MCP/CWE branches, unknown-string passthrough) plus the FR-012a derived-taxa contract. |
+| `tests/scripts/test_catalog_drift_guard.py` | tests | **+79 lines** | D5 consistency test: the `OWASP_COVERAGE.md` LLM row's edition must match the catalog `full_id` edition prefix. Placed here **because this module is CI-gated** by `tachi-catalog-drift.yml` (`&drift_paths` already covers `schemas/taxonomy/*.yaml`) — the originally proposed host, `test_coverage_attestation.py`, is in no workflow and would have left the check as in-loop-only assurance. |
+| `.github/workflows/tachi-pytest.yml` | CI | **gated subset 15 → 16 modules** | Adds `test_owasp_2026_contract.py` plus its guarded source surfaces `scripts/generate-risk-scores-sarif.py` and `schemas/taxonomy/owasp.yaml`; `paths:` filter and pytest invocation moved in lock-step per the F-250 rule. |
+| 45 authored contract surfaces | prose | **re-keyed** | 9 agent personas (84 refs) · 15 skill reference files (113 refs + 33 URL re-anchors) · 17 adapter files (118 refs + 28 URL re-anchors + 4 regenerated `VERSION` manifests) · 4 legacy mirrors (31 refs) · `schemas/finding.yaml` both example blocks · `templates/tachi/output-schemas/threats.md:365` golden row. |
+
+**Tier placement — why the authored surfaces are the real contract.** Production `threats.md` and both `.sarif` files are **LLM-authored at run time**; the `generate-*-sarif.py` scripts have no production caller (the standing tier split recorded in [Deterministic Populator as Value Authority](../03_patterns/README.md#pattern-deterministic-populator-as-value-authority)). So the edition cutover could not be shipped by editing emitters — the enforcement points are the **authored prose** the LLM transcribes from: personas, skill references, schema example blocks, the sarif-specification templates, and the golden row (ADR-048 D3). The script changes move in lock-step but are regeneration-only.
+
+#### No-churn proof (FR-007a)
+
+The cutover changes **taxonomy meaning without changing a single rendered byte**: `tests/scripts/test_backward_compatibility.py` green on committed HEAD with zero baseline bytes changed. `examples/**` is deliberately carved out to **F-362b** (#364, blocking-before-next-minor), which accepts the disclosed consequence that mid-window example artifacts still display 2025 attributions. The `tachi-catalog-drift.yml` check goes green on this PR but is **explicitly uninformative** for this change class — `_canonical()` fingerprints `[id, out_of_scope]` only, and neither moved.
+
+#### Coverage outcome
+
+All 10 verdicts **re-derived from detection evidence** against 2026 definitions rather than carried forward, including the four scope absorptions (cross-modal → LLM01, model-artifact authenticity → LLM04, fine-tuning subversion → LLM05, and the LLM08 broadening). Result: **10/10 Covered**, no Partial downgrade, so the **50/50** five-framework headline holds without a cascade edit.
+
+#### ADR — [ADR-048](../02_ADRs/ADR-048-llm-top10-2026-alias-cutover.md) (Accepted 2026-08-06, SHA `e6316e3`)
+
+Minted because the cutover decides a **consumer-facing contract**, which is above the repo's ADR bar. D1 hard cutover with one-release `(2025: LLM<NN>)` prose breadcrumbs and no dual-emission; D2 parser/test lock-step; D3 enforcement points. The decisive constraint against dual-emission was structural, not budgetary: `source_attribution` must carry bare catalog-resolving ids, and `classify_framework_items` matches by exact equality — an aliased attribution row would **double-count** Coverage-Attestation classification. Dual-emission was therefore partial by construction at maximal cost. A **2026-08-12 amendment** records the F-142 zero-edit-invariant narrowing as a scope correction (ADR-026 constrains F-142's synthesis mechanism, not the detection tier repo-wide). Follow-ups filed, not fixed: **#364** (F-362b carve-out + breadcrumb sunset), **#365**, **#366**, **#367**, **#368** (`_canonical()` widening — decided-defer).
+
+---
+
+### Feature 373: adopter-install-output-fidelity
+
+**Added**: 2026-10-10 · **Plan**: `specs/373-adopter-install-output-fidelity/plan.md` · **Nature**: `fix:` patch bundle. It closes ten adopter-facing defects on three surfaces: the installer (K1–K3), the deterministic extraction tier (K9–K13) and the infographic render path (K14–K15). It also folds in #370's test coverage. K4–K8 are the separate companion bundle #374. Every optional (split-valve) unit shipped; none was carved. No new pipeline stage, agent, API or schema version. **PR #375** squash-merged to `main` at `109705c`; 40/40 tasks; closes #373 and #370; shipping in v4.48.1 (release PR #376).
+
+#### Tech Stack
+
+- **Zero new dependency.** The installer stays Bash 3.2+ on BSD or GNU userland, using only `[ -ef ]`, `readlink` (never `-f`), `pwd -P` and POSIX `awk` `ENVIRON`. The extractors stay Python 3 stdlib, with `decimal` for the funnel arithmetic. CI reuses `pytest`, `pytest-timeout`, `pyyaml` and `typst-community/setup-typst@v5`, all already in use on `main`.
+- **No schema version bump.** `schemas/infographic.yaml` lists the two new posture metadata fields. The finding IR is untouched.
+- **External contract corrected, not added.** The Gemini request now matches the `generateContent` schema, on the GA model chain `gemini-3-pro-image` → `gemini-3.1-flash-image` ([ADR-014](../02_ADRs/ADR-014-gemini-api-optional-image-generation.md), 2026-10-10 note).
+
+#### Components
+
+| Component | Type | Change | Notes |
+|---|---|---|---|
+| `scripts/install.sh` | installer | **new pre-flight stage**, `--follow-symlinks` flag | Runs after the `--version` checkout and before any cleanup or copy, and **writes nothing**. It builds a checked set from the manifest: each entry, its ancestors, each directory entry's source subtree, and the deprecated-command cleanup paths with their ancestors. Then it classifies every symlinked component and checks every destination's containment. **Always refused**, with no flag remedy: broken, looping or wrong-type links; links nested inside an installed folder; a destination that physically resolves inside the tachi clone; a directory destination that contains the clone; a TAB or LF byte in the project or source path. **Flag-eligible**: links inside or outside the project. With the flag, the installer follows them, names each resolved destination before copying and again in the summary, and skips any cleanup path that passes through a link instead of deleting through it. The `--version` restore trap now warns when the restore fails and exits with the run's recorded status. |
+| `under()` | shell function | **new** | Containment by identity walk with `[ -ef ]` (architect ruling AR-1), because APFS case variants and firmlinks bypass a string-prefix test. It also replaces the old logical self-install guard: the project must not be the clone or lie inside it. See [Identity-Based Path Containment](../03_patterns/README.md#pattern-identity-based-path-containment). |
+| `INSTALL_MANIFEST.md` | manifest | **+3 skill dirs, +1 script** | The skill directories for the agents added in Features 201, 206 and 224, and `populate-affected-assets.py` (Feature 302), were missing, so a stock install shipped those agents without their skill references. This was the third such omission, after two earlier fixes that only added prose warnings. The README and developer-guide manual install blocks now read the manifest instead of listing paths: one comment-free loop, byte-identical in all three places. |
+| `scripts/tachi_parsers.py` | shared parser | **parser-boundary helpers** (ruling AR-3) | Header aliases, the placeholder predicate, `Decimal` score parsing, the control-status classifier, heading-level-aware table matching, delta-status normalization and counting, and the posture rubric. Each value is normalized once where it is parsed, and neither extractor normalizes it again. The Resolved Findings heading is `4c`; the legacy `4b` is still accepted. The function list is in [00_Tech_Stack](../00_Tech_Stack/README.md#python-scripts). |
+| `scripts/extract-infographic-data.py` | extractor | modify | The risk funnel narrows by **risk volume**, not finding count, over one controls row set, with each residual clamped to its inherent score once. The script computes the widths itself (`Decimal`, STEP 10, FLOOR 30) and always emits four tier objects with a `ghost` flag and three reductions. Volumes are `null`, not 0, when no row carries an inherent score. The Section 1 totals become drift comparands. Every template's JSON gains the posture fields and a top-level `allow_list` (`compute_allow_list`, kept here as its only consumer). |
+| `scripts/extract-report-data.py` | extractor | modify | Emits the `risk-posture-level` / `risk-posture-label` pair. A recommendation join with a fallback means no recommendation renders blank on any data tier, and the roadmap, finding cards and attack-path remediation always agree. Attack-tree finding IDs are validated at both parse sites, and both render write sites assert the resolved path stays under its base directory. That is the CWE-22 fix, for a defect the build's own security scan found in code that predates this feature. |
+| `templates/tachi/security-report/main.typ`, `cover.typ` | Typst | modify | The cover renders the posture label verbatim and takes its color from the level; its own posture derivation is gone. `main.typ` panics with a regenerate instruction when `report-data.typ` lacks the posture variables, and `cover-page` panics when called without them. A stale or hand-built data file therefore cannot silently print a reassuring `LOW RISK`. |
+| Infographic render path: `templates/tachi/infographics/*.md`, `.claude/skills/tachi-infographics/references/`, `.claude/agents/tachi/threat-infographic.md`, `adapters/claude-code/agents/references/infographic-gemini-api.md` | prompt and configuration text | modify | Each template's `## Gemini API Configuration` block now maps key by key onto the request body, a mapping that did not exist before. Executive-architecture gets its own block, at 3:4. The chain is walked only on HTTP 404 or 403. A 400 and an exhausted chain are logged at Error, and none of these blocks the pipeline. The prompts allow only the finding IDs and component names in the JSON `allow_list`, and forbid printing layout labels. Only the Claude Code adapter copy is in scope (FR-K14.6). |
+| `.github/workflows/tachi-install-fidelity.yml` | CI | **new**, 3 jobs | `manifest-completeness`, `extraction-fidelity` and `report-posture`, on a dual trigger with one `&fidelity_paths` anchor and `contents: read`. The installer suites joined `tachi-pytest.yml`'s 2-OS matrix (16 → 18 modules). Details in [00_Tech_Stack](../00_Tech_Stack/README.md#scheduled-automation-inventory). |
+
+#### Data Flow
+
+```
+install.sh, run from the adopter project root
+  parse args → TARGET_P, SRC_P = pwd -P   (CDPATH unset)
+    → TAB or LF byte in either path?            → refuse (exit 1, nothing written)
+    → under(TARGET_P, SRC_P)?                    → refuse
+    → [--version] dirty-tree check → trap EXIT (restore; warn if it fails; keep the exit status) → checkout tag
+    → PRE-FLIGHT (writes nothing)
+        checked set = manifest entries + ancestors + source subtrees + cleanup paths and their ancestors
+        each symlinked component → cleanup-only | unresolvable | nested | inside | outside
+        each destination         → under(dest, SRC_P)?   directory entries also: under(SRC_P, dest)?
+        any always-refused class                  → exit 1
+        any flag-eligible link, no --follow-symlinks → exit 1
+    → cleanup (a path through a link is skipped, never deleted) → copy → summary (names the followed links)
+
+extraction → render   (both extractors import tachi_parsers.py)
+  threats.md · risk-scores.md · compensating-controls.md
+    → parse once: header aliases · placeholder rows dropped · Decimal scores · status_class · normalized Status
+    → one controls row set → residual clamped once → funnel volumes, widths, reductions
+    → compute_delta_counts(normalized Section 7 map) ─┬→ infographic JSON: metadata.risk_posture_*, allow_list, funnel
+    → compute_risk_posture(data-tier counts)         ─┴→ report-data.typ: risk-posture-level / risk-posture-label
+         report-data.typ → main.typ guard (panic if the pair is missing) → cover (label verbatim, color by level)
+         infographic JSON + template config block → generateContent (walk on 404/403) → image, or spec only
+```
+
+#### No new ADR (PD-15)
+
+No ADR was minted. Plan review ratified that on one condition, a dated Feature 373 note in [ADR-014](../02_ADRs/ADR-014-gemini-api-optional-image-generation.md), which landed.
+- **Render path.** ADR-014's decisions stand: spec first, image optional, graceful degradation. Only its model names and its request shape aged out, so the note supersedes them in place of a successor ADR. The one tightening is observability: a rejected request and an exhausted chain are now logged at Error instead of degrading silently.
+- **Extraction.** The changes sit inside [ADR-017](../02_ADRs/ADR-017-deterministic-infographic-extraction.md), the deterministic extraction tier and shared parser module that is the direct parent of K9–K13. They apply [ADR-047](../02_ADRs/ADR-047-maestro-coverage-state-authority.md)'s single-authority stance to the posture and the delta counts, guarded by a sibling-parity test as in ADR-037 and ADR-046. They apply [ADR-022](../02_ADRs/ADR-022-mmdc-hard-prerequisite.md)'s fail-loud posture to stale report data.
+- **Installer.** The pre-flight is a safety fix inside one script. If a second installer surface ever adopts a symlink policy, an ADR is revisited then.
+
+**Known gap, out of scope here.** The Copilot, Cursor and generic adapter copies of the infographic instructions still carry the old request shape and model names; FR-K14.6 scoped the fix to the Claude Code adapter. The P2 architect review proposed it as a follow-up (`specs/373-adopter-install-output-fidelity/test-results/p2-architect-review.md` §7), filed at delivery as #383.
+
+### Feature 391: isolated-auditable-operation
+
+*Source: `specs/391-isolated-auditable-operation/plan.md` v1.2 (PM ⚠ + Architect ⚠, 2026-11-16). Part A: egress truth, isolated-operation runbook, write relocation, report-assembler dispatch fix, CI-guarded privilege matrix, ADR-049. Part B (trip-wire gated): run archive + provenance manifest, `tachi_version` stamp.*
+
+#### Components
+
+| Component | Kind | Part | Owner lane | Notes |
+|---|---|---|---|---|
+| D-3 egress sentence (PRD v1.3 wording) | docs edit | A1 | D (after R confirms the field list, PM approves) | Six locations; immutable records untouched (ADR-014 gets a Note) |
+| Runbook `ISOLATED_OPERATION_TACHI.md` | installed doc | A2 | R | Sections per `contracts/runbook-outline.md`; profile in marked block; live-validation record |
+| Session profile | JSON block in the runbook | A2 | R | Contract in `contracts/session-profile.md`; closed-key-set test; validated live |
+| Write relocation | agent/command edits | A2 | E (audit) + D (edits) | `{out}/.tachi-build/…`; `templates/tachi/` byte-unchanged; precondition `{out}` under cwd |
+| Report-assembler dispatch (AD-13) | command body edit | A3 | E (audit) + D (edit) | `tachi.security-report.md:162` → `tachi-report-assembler`; pre-existing defect recorded |
+| Privilege matrix §8 | docs section | A3 | E | Columns in `contracts/matrix-section.md` incl. Dispatches; single source |
+| Guard `check-agent-privileges.py` | stdlib script + CI step | A3 | E | Bidirectional roster, closed key set, C6 tokenization, self-test |
+| ADR-049 + Notes | ADRs | A | D | Privilege contract, write confinement, dispatch fix; conditional Part B paragraphs; Known limitations |
+| Archiver `archive-run-transcripts.py` | stdlib script | B1 | B1 | D-8 rules; manifest v1 with dispatch-at-any-depth attribution |
+| Version marker + stamp | placeholder + `install.sh` + stdlib script | B2 | B2 | `templates/tachi/VERSION`; `stamp-tachi-version.py` as Step 2.6 of `/tachi.threat-model`; schema reconciliation |
+
+#### Data Flow
+
+```mermaid
+flowchart LR
+  subgraph Adopter machine
+    RB[Runbook] -->|save profile| P[(--settings profile)]
+    P --> CC[Claude Code session: sandbox + auto mode]
+    CC -->|Bash via proxy| GEM[(generativelanguage.googleapis.com, optional)]
+    CC -->|model API| MP[(Claude model provider)]
+    CC --> OUT[{out}/ threats.md, sarif, report, .tachi-build/]
+    CC --> TR[~/.claude/projects/<slug>/<session>.jsonl + <session>/subagents/]
+    TR -->|archive-run-transcripts.py, dispatches at any depth| AR[~/.tachi/runs/<project>/<date>-<session>/ + run-manifest.json]
+    INST[install.sh] -->|remove, copy, rewrite| VER[templates/tachi/VERSION]
+    VER -->|stamp-tachi-version.py, Step 2.6 of /tachi.threat-model| OUT
+  end
+  subgraph CI
+    PR[PR / push main] --> WF[tachi-permissions-verify.yml]
+    WF -->|check-agent-privileges.py| MX[CLAUDE_PERMISSIONS.md §8]
+    WF --> AG[.claude/agents/tachi/*.md, .claude/commands/tachi.*.md]
+  end
+```
+
+Egress is exactly two hosts during a run: the model provider (inherent to Claude Code) and, only with a key and the infographic step, the Gemini host. Claude Code's own operational traffic is named separately and switched off by `env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`. `install.sh` additionally runs a best-effort `git fetch --tags` at install time (stated in the runbook for air-gapped installs).
+
+#### Tech Stack
+
+Bash 3.2 (`install.sh`, workflow steps, probe commands); Python ≥ 3.9 stdlib for installed scripts (`argparse`, `json`, `hashlib` with chunked updates, `os`, `pathlib`, `re`, `subprocess` for `git rev-parse`/`git check-ignore` only); pytest + PyYAML (tests only); GitHub Actions (existing workflows); Claude Code sandbox (Seatbelt / bubblewrap + local proxy), permission rules, `--settings` launch profile, auto-mode `environment`/`hard_deny`; typst + mmdc (existing). No new runtime dependency.
+
+**Status at Part A's merge (2026-11-21).** Part A shipped alone as `fix(391)` (TW-A2). B1, the archiver and its run manifest, was honest-stopped at TW-B1 and does not ship (follow-up #399). B2, the version marker, the `tachi_version` stamp and the schema 1.5 reconciliation, ships separately through #396 after #364. Until #396 merges, the B2 rows and the `install.sh` → `VERSION` → stamp edges above describe the plan, not `main`; the archiver row, its edge and the Tech Stack's `subprocess` note describe work that did not ship.

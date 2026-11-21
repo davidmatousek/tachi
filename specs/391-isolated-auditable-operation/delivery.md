@@ -1,12 +1,12 @@
 # Delivery Document: Feature 391 — Isolated and Auditable Operation
 
-**Delivery Date**: TBD at /aod.deliver
+**Delivery Date**: 2026-11-21
 **Branch**: `391-isolated-auditable-operation` (Part A). Part B is on `391-isolated-auditable-operation-part-b`.
-**PR**: #392 (Part A), squash-merge SHA TBD at /aod.deliver. #396 (Part B), draft, stacked on Part A.
-**Release**: TBD at /aod.deliver. Part A ships alone as `fix(391)`, a patch release.
-**Closes**: TBD at /aod.deliver
+**PR**: #392 (Part A), squash-merged to `main` as `e83ca6b` at 2026-11-21T18:35:56Z. #396 (Part B), draft, now based on `main`: it closed when the Part A branch was deleted at the merge and was reopened and retargeted at this delivery; T047's merge of `origin/main` into part-b is pending.
+**Release**: v4.48.3. The release-please PR #418 opened at the squash-merge. Part A ships alone as `fix(391)`, a patch release.
+**Closes**: #391, closed at this delivery (the PM's recommendation; #399 carries B1 and #400 the Part B landing)
 **Path**: split (TW-A2). #364 was still open when Part A became merge-ready.
-**Part B**: B2 built, awaiting #364 (#396). Landing tracker: #400.
+**Part B**: B2 built, awaiting #364 (#396, based on `main` since this delivery). Landing tracker: #400.
 **B1**: honest-stopped (TW-B1). Follow-up: #399.
 
 > Prepared at T045 (build session S2c, 2026-11-21). `/aod.deliver` completes every field marked "TBD at /aod.deliver". Structure only: no transcript text, session or tool-call ids, home or scratch paths, or key material. Numbers such as `#399` are filled in when the follow-ups are filed.
@@ -109,7 +109,7 @@ The W0' spike (`w0-spike.md`) passed the three attribution clauses. It ran witho
   tests/scripts/test_threats_schema_contract.py
   ```
 
-- **How it lands (T047, split path).** After Part A squash-merges: merge `origin/main` into part-b (conflicts expected on ADR-049, §8, the README, the developer guide, `INSTALL_MANIFEST.md` and the CHANGELOG); the B1-absence grep on `main...<part-b tip>` prints 0; retarget #396 to `main`; re-run the gated set; run T038b if #364 has merged; mark #396 ready only after #364. It ships as its own `feat(391)` release. This document then records "Part B: merged" with the PR number. Tracker: #400.
+- **How it lands (T047, split path).** After Part A squash-merges: merge `origin/main` into part-b (conflicts expected on ADR-049, §8, the README, the developer guide, `INSTALL_MANIFEST.md` and the CHANGELOG); the B1-absence grep on `main...<part-b tip>` prints 0; retarget #396 to `main` (done at this delivery, after the branch deletion closed it); re-run the gated set; run T038b if #364 has merged; mark #396 ready only after #364. It ships as its own `feat(391)` release. This document then records "Part B: merged" with the PR number. Tracker: #400.
 - **SC-008:** in #396, not in this release. Its live field check passed in W2 on the part-b build (`w2-live.md` §5.4, SC-B3).
 - **The G-B2 record:**
 
@@ -127,7 +127,7 @@ The W0' spike (`w0-spike.md`) passed the three attribution clauses. It ran witho
 |---|---|
 | SC-001 (PRD SC-A1) | Recorded by clause, on macOS; SC-001 as a whole is not claimed. The probe table and the FR-010 probes passed, and auto mode worked with non-essential traffic off. The zero-unexpected-egress-denials clause is met with a recorded qualification (the PM's ruling, under "Live validation"), for the profile that ran. "A full run completes" rests on W3-1's macOS scoping: `/tachi.security-report` built no PDF in either measured run (F1). Both full runs, key-less and keyed, used the profile that ran (2,908 bytes, `43496fb7…`); the published 18-rule profile was re-checked key-less (R1 to R6, with one `/tachi.threat-model` run), so the keyed pipeline has not run on it. The header names macOS only and stamps the Claude Code version, permission mode and date; Linux and WSL2 did not run (D1) |
 | SC-002 (PRD SC-A2) | Met (T041, `w3-sweeps.md` §1): the D-3 sentence stands verbatim at 8 places in the six documents, the 4 unqualified claims on `main` are gone, PRD-054 and PRD-060 are untouched, and ADR-014 changed only by its Note |
-| SC-003 (PRD SC-A3) | The pull-request leg is shown (T030, throwaway PR #398: red on an added tool, green on the revert; the self-test red path runs on every run), and `test_agent_privilege_guard.py` covers the other synthetic cases. The `push:[main]` leg is TBD at /aod.deliver (below) |
+| SC-003 (PRD SC-A3) | The pull-request leg is shown (T030, throwaway PR #398: red on an added tool, green on the revert; the self-test red path runs on every run), and `test_agent_privilege_guard.py` covers the other synthetic cases. The `push:[main]` leg ran at the merge: run 44936411660, success ("SC-003's push leg" below). Met |
 | SC-004 (PRD SC-A4) | Met: `test_installed_agent_tools_match_matrix` on the install-sh, manual-loop and manual-loop-zsh paths (T028). The zsh path skips on CI's Ubuntu runner and ran locally in T043 (#415, optional) |
 | SC-005 (PRD SC-A5) | Met by `test_write_confinement.py` (T015, in the Typst-gated report-posture job), a custom report configuration included. Live, four of the five run commands wrote only under `{out}` (the W2 listings and the W3 re-check's R6); the report step's write set rests on the test (F1) |
 | SC-006 (PRD SC-B1) | Not met: B1 honest-stopped (TW-B1) |
@@ -215,7 +215,7 @@ T045 copies this section into `delivery.md` (`tasks.md` line 173, "observed layo
 
 - **The `push:[main]` lag.** The workflow's push leg (`push: branches: [main]`, the same `&verify_paths` list) cannot be shown before the feature merges, because the guard steps reach `main` only with #392. The first push to `main` after that merge is the first push-leg run of the guard. `/aod.deliver` records its run id here (`feasibility-check.md` (e): the `push:[main]` evidence arrives only at merge).
 
-**Run id: TBD at /aod.deliver.**
+**Run id: 44936411660.** The `tachi permissions-verify` workflow, event `push`, branch `main`, head `e83ca6b` (the squash-merge of #392), started 2026-11-21T18:35:59Z, conclusion success: the guard printed PASS for C1 to C7, detected all five planted mutations in C8, and exited 0. The companion push-leg runs on the same head: `tachi install fidelity` 44936411674 (success), `tachi catalog-drift` 44936411675 (success), `release-please` 44936411638 (success, opened #418) and `tachi pytest` 44936411639 ("CI at merge" below).
 
 ### Conditional follow-ups in T045, resolved
 
@@ -251,7 +251,7 @@ The plan's register (`plan.md`, "Technical debt register"), verbatim:
 
 Correcting published copies of the old data-locality claim outside this repository is a **maintainer action**, out of the feature's scope (PRD C-9; `spec.md`, Out of Scope). The known copy is the coverage article drafted at `specs/296-50-50-owasp-coverage-distribution-launch/notes/cybersec-article-draft.md:131`, which says "your architecture description stays on your machine". The published copies take the D-3 sentence. The in-repository draft is a record of that feature and stays unchanged.
 
-**Status: TBD at /aod.deliver (maintainer).**
+**Status at delivery (2026-11-21): open.** A maintainer action, not performed by `/aod.deliver`; the known published copy carries the old sentence until the maintainer corrects it.
 
 ### Records outside Feature 391
 
@@ -300,18 +300,19 @@ Correcting published copies of the old data-locality claim outside this reposito
 | Metric | Value |
 |--------|-------|
 | Estimated Duration | The team-lead's re-cost (v1.1): effort 7.7 d; duration floor 2.9, central 4.7 and ceiling 7.5 d; Part A 4.87 d and Part B 2.86 d |
-| Actual Duration | TBD at /aod.deliver |
-| Variance | TBD at /aod.deliver |
+| Actual Duration | 5 calendar days: branch created 2026-11-16 (define, spec, plan and tasks that evening), squash-merged 2026-11-21, across build sessions S1, S2a, S2b and S2c and the W2 live-validation day |
+| Variance | On target: 5 d against the 4.7 d central (+0.3 d), inside the 2.9 to 7.5 d band. What shipped is Part A (planned at 4.87 d); Part B's B2 is built and awaits #364, and B1 was honest-stopped at TW-B1 |
 
 ---
 
 ## Surprise Log
 
-Prepared at T045; `/aod.deliver` finalizes it.
+Captured at T045 and finalized at `/aod.deliver` (2026-11-21).
 
 - **TW-B1 fired on the denial clause.** On Claude Code 2.1.330, 5 of the 7 planted sandbox refusals carry no structural marker, and the markers that exist use labels the archiver did not know. The W0′ spike could not show this: it ran without a sandbox and planted no denial.
 - **Chromium cannot start inside Claude Code's macOS sandbox** (F1), so the macOS claim excludes the report step for runs with diagrams.
 - **The Agent tool offers an undocumented `remote` isolation value** on 2.1.330 (W3-3a), and eight built-in tools reach past the sandbox (AR-21). The profile went from 8 to 18 deny rules, and the re-check restarted.
+- **Deleting the Part A branch at the merge closed the stacked Part B PR.** `gh pr merge --squash --delete-branch` closed #396 instead of retargeting it, and GitHub refuses to change the base of a closed PR or to reopen one whose base is gone. The base ref was restored at its last tip, #396 was reopened and retargeted to `main`, and the ref was deleted again (KB Entry 25, "How to apply").
 
 ---
 
@@ -319,7 +320,7 @@ Prepared at T045; `/aod.deliver` finalizes it.
 
 | Category | Lesson | KB Entry |
 |----------|--------|----------|
-| TBD at /aod.deliver | TBD at /aod.deliver | TBD at /aod.deliver |
+| Process improvement | Spike an environment's refusal signals, not only its success path. The W0′ spike validated transcript attribution without a sandbox and with no planted denial, so the denial-marker layout stayed unknown until W2, after B1 was built; TW-B1 then fired and B1 was honest-stopped (#399). A parser of another tool's signals is validated only against that tool's real failure modes, planted on purpose, before the build wave that depends on it. | Entry 25 in `docs/INSTITUTIONAL_KNOWLEDGE.md` |
 
 ---
 
@@ -350,6 +351,8 @@ Prepared at T045; `/aod.deliver` finalizes it.
 | #415 | enhancement: run the zsh manual-install-loop cases in CI (the manifest-completeness runner has no zsh) | `enhancement` |
 
 The build-mode symlink refusal (CR-10, the code half of T042's W3-H1) was held at T045 for the maintainer's choice of route. On 2026-11-21 the maintainer chose a public issue, #416.
+
+At the retrospective (2026-11-21): no new ideas beyond these. The one deliver-stage finding, the stacked-PR closure in the Surprise Log, is recorded as a mechanic in KB Entry 25 and not filed here, because it belongs to the AOD-Kit deliver flow rather than to tachi.
 
 **Comments on open issues** instead of new ones:
 - #365 (required): the maestro-reference offset (byte 828878 to byte 52) and the W0 census of 35 out-of-gate failures and errors.
@@ -385,13 +388,37 @@ The build-mode symlink refusal (CR-10, the code half of T042's W3-H1) was held a
 
 #### Acceptance Criteria Coverage
 
-TBD at /aod.deliver.
+| AC ID | Given/When/Then | Scenario(s) | Status |
+|-------|-----------------|-------------|--------|
+| — | (No scenarios declared — zero ACs in spec.md) | — | — |
+
+The row above is the template's empty state, not a statement about `spec.md`, which carries US1 to US5 with Given/When/Then criteria. The E2E gate exited at Step 9a (the active pack's `STACK.md` has no test-contract block; lint exit 5), so the AC-to-scenario map of Step 9a.5 was not computed. The criteria were checked by the W1 to W4 gated runs and the W2 live record instead (Build-Wave Test Results and Manual Validation below).
 
 ### Execution Evidence
 
 #### E2E Validation Gate
 
-TBD at /aod.deliver.
+| Field | Value |
+|-------|-------|
+| Status | error |
+| Gate Mode | hard |
+| Gate Result | skip |
+| Tests Passed | N/A |
+| Tests Failed | N/A |
+| Tests Skipped | N/A |
+| Duration | N/A |
+
+**Failure Details**: N/A. Step 9a's contract lint exited 5 on the active pack: `[aod-stack-contract] stacks/knowledge-system/STACK.md:0: ERROR: no aod-test-contract block found (expected sentinel-bracketed YAML in Section 7)`. No tester agent ran and no scenarios were generated. The error does not block the close (ADR-006: the hard block is reserved for real test failures). The feature's test evidence is the Build-Wave table below and the CI runs at merge.
+
+#### Command
+
+```bash
+/aod.deliver 391
+```
+
+#### Artifacts
+
+The archived artifacts are the per-wave `results.json` files and the W0 to W4 records already under `specs/391-isolated-auditable-operation/test-results/`. Nothing was found to archive at the project root: `.aod/test-results/` holds one empty `wave-01/` directory from an earlier feature, and `test-results/` and `coverage/` do not exist.
 
 #### Build-Wave Test Results
 
@@ -437,7 +464,16 @@ Run on 2026-11-21 (S2c). Steps (1) to (4) ran at Part A `107c0a4`. The sweep was
 
 ## Documentation Updates
 
-TBD at /aod.deliver.
+Three documentation agents ran in parallel at `/aod.deliver` (2026-11-21), each against its section of `docs/DOCS_TO_UPDATE_AFTER_NEW_FEATURE.md`; the orchestrator made the edits it owns itself.
+
+| Domain | Agent | Files Updated | Status |
+|--------|-------|---------------|--------|
+| Product | product-manager | 3: `docs/product/02_PRD/INDEX.md` (row 391 "Delivered (Part A)", header rewritten); `docs/product/02_PRD/391-isolated-auditable-operation-2026-11-16.md` (frontmatter status Delivered with the Part A qualifier, PR, merge commit, release); `docs/product/05_User_Stories/README.md` (Feature 391 block: US1 to US3 delivered, US4 not delivered, US5 Part B pending) | done |
+| Architecture | architect | 3: `docs/architecture/README.md` (ADR-049 closure line); `docs/architecture/00_Tech_Stack/README.md` (the permissions-verify row now lists the six steps, the guard's `--self-test` last; isolated-operation suites paragraph); `docs/architecture/03_patterns/README.md` (new pattern "Self-Testing Drift Guard", linked to ADR-049 D1). ADR-049 left unchanged because #396 edits its D9 and Known limitation 5 lines | done |
+| DevOps | devops | 2: `docs/devops/CI_CD_GUIDE.md`; `docs/devops/environment-variables.md` (adds `TACHI_MMDC_PUPPETEER_CONFIG`). `docs/devops/README.md`, `01_Local`, `02_Staging` and `03_Production` checked, nothing stale | done |
+| Orchestrator | /aod.deliver | `docs/architecture/01_system_design/README.md` (the F-7 status note) with `tests/fixtures/init-baseline-tree/` regenerated in the same commit (FR-021; 62 substitution targets: 17 files changed, 8 added, 0 removed; #345 told); `docs/INSTITUTIONAL_KNOWLEDGE.md` Entry 25; `docs/product/_backlog/BACKLOG.md` regenerated; `test-results/sc-a3-evidence.md` (the push-leg record); this document | done |
+
+Wording sweep over every added line of the three agents' diffs: Pattern A 0 hits, Pattern B 0 hits.
 
 ---
 
@@ -458,7 +494,7 @@ TBD at /aod.deliver.
 
 ## Cleanup
 
-- [ ] TBD at /aod.deliver: the Part A branch is deleted at merge; the part-b branch stays until #396 lands.
+- [x] The Part A branch was deleted at the merge (restored for a minute to reopen #396, then deleted again); the part-b branch stays until #396 lands.
 - [ ] The local branch `391-sc-a3-evidence` (`git branch -D` is denied in this environment; the maintainer removes it).
 - [ ] `.aod/revision-context.md`, a stale untracked leftover from the tasks loop, deliberately not committed (the maintainer removes it).
-- [ ] Tasks: 47 of 52 done when T045 started; T045, T046 and T048's W4 part close in W4; T047 and T038b are conditional.
+- [x] Tasks: 50 of 52 done; T047 (after this merge) and T038b (after #364) are conditional.

@@ -1,6 +1,6 @@
 # Environment Variables Contract
 
-**Last Updated**: 2026-05-10
+**Last Updated**: 2026-11-21
 **Owner**: DevOps Agent
 **Scope**: Adopter-facing, test-only, and CI-only environment variables for the upstream template repository.
 
@@ -186,6 +186,22 @@ Neither change reads or introduces an environment variable — both are pure `pa
 
 ---
 
+## F-391 Isolated and Auditable Operation (Part A) — Adopter Variable
+
+**Added in Feature 391, Part A** (Isolated and Auditable Operation, PR #392, merged 2026-11-21, patch release v4.48.3 pending). One new variable, and it is **adopter-facing and opt-in**: a person who launches Claude Code on Linux or WSL2 with the isolated-operation session profile sets it so the report step's diagram renderer can start. The canonical adopter documentation is the installed runbook, `docs/guides/ISOLATED_OPERATION_TACHI.md` (§6, "Linux and WSL2"); this section mirrors the contract for cross-reference.
+
+| Variable | Default | Read at | Purpose |
+|----------|---------|---------|---------|
+| `TACHI_MMDC_PUPPETEER_CONFIG` | unset (`mmdc` is started with no `-p` flag) | `scripts/extract-report-data.py` (`_mmdc_puppeteer_args()`, applied at both `mmdc` call sites: the attack-tree render and the attack-chain render) | **Adopter-facing, opt-in — for sandboxed Linux and WSL2 sessions only.** When set to the absolute path of an existing regular file (a puppeteer launch config), the extractor passes `-p <path>` to every `mmdc` run. The runbook's recipe points it at a file that holds `{"args": ["--no-sandbox"]}`, because Chromium, which `mmdc` starts, cannot create user namespaces inside Claude Code's sandbox on Linux and WSL2. Any other value — empty, a relative path, a path that does not exist, a directory — ends the run with an error that names the variable; it is never ignored. The check runs only when a diagram is about to render, and today it surfaces as an uncaught exception, a traceback and exit 1 (#410). Leave it **unset** on macOS, where the flag does not let Chromium start inside the sandbox, and in every run outside Claude Code's sandbox, where Chromium keeps its own sandbox. The recipe is not yet run live on Linux or WSL2. |
+
+**Test coverage**: `tests/scripts/test_write_confinement.py` (X-1) drives the real extractor at each call site through a stub `mmdc` that records its arguments: unset gives no `-p`; an absolute regular file reaches the stub as `-p <path>`; an empty, relative, missing or directory value stops the run with an error that names the variable and starts no render. These cases need no Typst. The module's command runner removes `PYTHONDONTWRITEBYTECODE` and `TACHI_MMDC_PUPPETEER_CONFIG` from the child's environment (the X-1 cases then set the second on purpose), so a developer's shell setting can neither leak in nor mask a regression.
+
+**No other new variables.** `TACHI_REQUIRE_TYPST` (F-373 section above) is now also read by `test_write_confinement.py`, in the same `report-posture` job; its contract is unchanged. `scripts/check-agent-privileges.py` reads no tachi-defined variable: it removes `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` and `GIT_PREFIX` from the environment of its `git ls-files` child, so an exported value cannot redirect it. A run's writes are confined to its output directory and `$TMPDIR`, the standard per-user temporary-directory variable that Python's `tempfile` and Chromium use; it is not tachi-defined. None of the other F-391 CI additions (the privilege-guard step, the SC-A4 assertion, the two new `tachi-pytest.yml` modules) reads a tachi-defined variable.
+
+**Reference**: `docs/guides/ISOLATED_OPERATION_TACHI.md` §6; `docs/standards/CLAUDE_PERMISSIONS.md` §8.6 (child processes); `specs/391-isolated-auditable-operation/plan.md` AD-9. Workflow walkthrough: `docs/devops/CI_CD_GUIDE.md` → "Tachi Permissions-Verify Workflow", → "Tachi Install Fidelity Workflow" and → "Tachi Pytest Workflow" → "Feature History".
+
+---
+
 ## Cross-References
 
 - **Adopter-facing update env vars**: `docs/devops/CI_CD_GUIDE.md` → "Update-Script Environment Variables" (`CI`, `FORCE_RETAG`, `AOD_UPDATE_TMP_DIR`, `AOD_BOOTSTRAP_*`, `AOD_UPSTREAM_URL`, `YES`, `SKIP_MARKER`).
@@ -200,6 +216,7 @@ Neither change reads or introduces an environment variable — both are pure `pa
 - **F-295 post-merge verification runs** (no new env vars; CI lock-step path-filter addition only — `scripts/generate-threats-sarif.py` added to `tachi-pytest.yml` trigger paths, PR #353; `SOURCE_DATE_EPOCH` used as a run convention only, not read by any script; US-3 CI wiring deferred to #356): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Feature History". Section above documents the no-env-var scope.
 - **F-362 OWASP LLM Top 10 2026 remap** (no new env vars; CI lock-step path-filter additions only — `test_owasp_2026_contract.py` + 2 guarded source paths added to `tachi-pytest.yml`, `docs/standards/OWASP_COVERAGE.md` added to `tachi-catalog-drift.yml`, PR #363): `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Feature History" and → "Tachi Catalog Drift Guard Workflow" → "Feature History". Section above documents the no-env-var scope.
 - **F-373 adopter install + output fidelity fixes** (one new test-only CI var — `TACHI_REQUIRE_TYPST`, documented above; new dual-trigger `tachi-install-fidelity.yml` CI gate (`manifest-completeness` + `extraction-fidelity` + `report-posture` jobs); K3 installer suite — `test_install_sh_symlink_preflight.py` + `test_install_sh_ref_restore.py` — added to `tachi-pytest.yml`'s existing 2-OS bash matrix, gated module count 16 → 18; PR #375, v4.48.1 pending): `docs/devops/CI_CD_GUIDE.md` → "Tachi Install Fidelity Workflow" and → "Tachi Pytest Workflow" → "Feature History".
+- **F-391 isolated and auditable operation, Part A** (one new adopter-facing, opt-in variable — `TACHI_MMDC_PUPPETEER_CONFIG`, for sandboxed Linux/WSL2 diagram rendering, documented above; `TACHI_REQUIRE_TYPST` now also read by `test_write_confinement.py`; CI delta — the agent privilege guard step in `tachi-permissions-verify.yml`, SC-A4 and write confinement in `tachi-install-fidelity.yml`, `test_isolated_profile_contract.py` + `test_agent_privilege_guard.py` added to `tachi-pytest.yml`, gated module count 19 → 21; PR #392, v4.48.3 pending): `docs/devops/CI_CD_GUIDE.md` → "Tachi Permissions-Verify Workflow", → "Tachi Install Fidelity Workflow" and → "Tachi Pytest Workflow" → "Feature History".
 
 ---
 
