@@ -70,9 +70,11 @@ Exit codes:
   1  drift: at least one finding; each is listed with its check id and file
   2  infrastructure: matrix, runbook or section missing; a cell, frontmatter or
      ``tools:`` shape the guard cannot parse (a duplicate key, a multi-line value, an
-     alias, a flow mapping); an unreadable input or a git failure; a self-test
-     mutation that failed to fail (not one that is already red); or a bug in the
-     guard itself
+     alias, a flow mapping, a delimiter-shaped line inside frontmatter such as an
+     indented ``---``, ``...`` or anything but an exact ``---`` as the closer, a first
+     line that starts with ``---`` but is not ``---``); an unreadable input or a git
+     failure; a self-test mutation that failed to fail (not one that is already red);
+     or a bug in the guard itself
 
 ``--json`` prints ``json.dumps(summary, sort_keys=True, indent=2)`` where the summary is
 ``{status: pass|drift|infra, roster: {agents, allowlisted, red}, drift: [{agent, check,
@@ -428,17 +430,28 @@ def split_frontmatter(lines):
     """(open_index, close_index) of leading frontmatter, or None when there is none.
 
     Lenient on the way in (blank lines before the opening delimiter; the BOM and CRLF are
-    already gone), strict on the way out: an opening delimiter with no closing one is
-    infrastructure, not "no frontmatter".
+    already gone), strict on the way out: the block closes only at a line that is exactly
+    `---`. An opening delimiter with no closing one, a delimiter-shaped line inside the
+    block (an indented `---`, `--- ` with trailing blanks, or `...` at any indent), and a
+    first line that starts with `---` but is not `---` are infrastructure, not "no
+    frontmatter": two parsers may disagree on where such a block ends, which is the reason
+    a duplicate key is refused too.
     """
     i = 0
     while i < len(lines) and not lines[i].strip():
         i += 1
-    if i >= len(lines) or lines[i].strip() != "---":
+    if i >= len(lines):
+        return None
+    if lines[i].strip() != "---":
+        if lines[i].lstrip().startswith("---"):
+            raise InfraError(f"line {i + 1}: first line {lines[i].strip()[:20]!r} is not exactly ---")
         return None
     for j in range(i + 1, len(lines)):
-        if lines[j].strip() in ("---", "..."):
+        if lines[j] == "---":
             return i, j
+        if lines[j].strip() in ("---", "..."):
+            raise InfraError(f"line {j + 1}: {lines[j].strip()!r} inside the frontmatter is not a "
+                             "closing --- at the start of the line; two parsers may disagree where it ends")
     raise InfraError("frontmatter opens with --- but never closes")
 
 
