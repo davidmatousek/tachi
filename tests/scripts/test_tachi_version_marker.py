@@ -8,7 +8,8 @@ its copy loop is done (T036): the source clone's
 `git describe --tags --always --dirty`; with no git tree of its own,
 `<release manifest ".">-release-manifest`; otherwise `unknown`.
 
-W1 cases (tasks.md T037) and the tests that carry them:
+Cases (W1, tasks.md T037; the W3 fixes of T044 added case 9 and the last test of case 8) and the
+tests that carry them:
     1. the installer writes the describe value
          test_installer_writes_the_describe_value        (HEAD at a tag, and past it)
          test_version_install_writes_the_installed_tag    (`--version`)
@@ -29,6 +30,10 @@ W1 cases (tasks.md T037) and the tests that carry them:
     8. the README's manual loop writes the marker (lands with T048's marker line)
          test_manual_loop_writes_the_describe_value       (bash, and zsh when present)
          test_manual_loop_without_a_git_tree_reads_unknown (bash, and zsh when present)
+         test_manual_loop_inside_another_repo_reads_unknown (bash, and zsh when present)
+    9. the marker guard refuses a symlink or a directory at the marker path
+         test_marker_guard_refuses_a_symlinked_marker
+         test_marker_guard_refuses_a_non_regular_marker
 
 Every install is a real `scripts/install.sh` run (Bash 3.2 where the host has
 it, see `install_sh_helpers.BASH_BIN`) against a synthetic source built at test
@@ -47,6 +52,12 @@ is the manual loop's copy step for the `templates/tachi/` entry
 (`cp -R <src>/templates/tachi/. <dst>`), built here directly rather than read out
 of the README (P0B0-10 (a)): since T048 the README's loop ends with the marker
 line, so the loop itself is a marker-WRITING install, and only case 8 runs it.
+
+Case 9 is about a marker install.sh must refuse to write. Its source ships no
+`templates/tachi/VERSION` and has no git tree, the shape of a tag older than the placeholder: the
+pre-flight classifies the destination of every file the source holds, so it has no marker to look
+at there, and `marker_guard` is the only check left on the marker path. A refused install exits 1
+and leaves the project, and whatever a link points at, as it was.
 
 Environment: each test runs in its own temp dir, removed afterwards with Python
 (`shutil`), under a hermetic environment: git config isolated, `$HOME` inside the
@@ -85,11 +96,14 @@ from install_sh_helpers import (
     BASH_BIN,
     DEFAULT_MANIFEST_ENTRIES,
     GIT_ISOLATION_ENV,
+    add_symlink,
+    assert_no_tree_changes,
     build_project_tree,
     build_source_tree,
     copy_working_tree_install_sh,
     current_ref,
     run_install_sh,
+    snapshot_tree,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -743,10 +757,11 @@ def test_manual_loop_without_a_git_tree_reads_unknown(sandbox, shell):
     """A source that git cannot describe reads `unknown`; the loop has no `-release-manifest` tier.
 
     `install.sh` falls back to `<release manifest ".">-release-manifest` first (case 5). The loop's
-    one line does not, and README.md says `unknown` "when git cannot describe `$TACHI`". The source
-    carries a release manifest on purpose: a loop that grew that tier would read
-    `7.6.5-release-manifest` here. SENTINEL as the placeholder, so the `unknown` is what the loop
-    wrote and not what it copied.
+    one line does not, and README.md says `unknown` "when `$TACHI` is not the top folder of its own
+    git clone (a copy that is not a clone, even one inside another repository) or git cannot
+    describe it". The source carries a release manifest on purpose: a loop that grew that tier
+    would read `7.6.5-release-manifest` here. SENTINEL as the placeholder, so the `unknown` is what
+    the loop wrote and not what it copied.
     """
     source = _build_source(sandbox / "tachi-src", placeholder=SENTINEL)
     _write_release_manifest(source, {".": "7.6.5"})
@@ -762,3 +777,105 @@ def test_manual_loop_without_a_git_tree_reads_unknown(sandbox, shell):
     assert _read_marker(project) == PLACEHOLDER, (
         f"the README's manual loop did not fall back to `unknown`: its last line must write {VERSION_REL}"
     )
+
+
+@pytest.mark.parametrize("shell", _SHELLS)
+def test_manual_loop_inside_another_repo_reads_unknown(sandbox, shell):
+    """A copy of tachi inside another project's repo reads `unknown`, not that project's tag.
+
+    `git -C $TACHI describe` finds the OUTER repository from a folder inside it and names ITS
+    version, so the loop's last line describes `$TACHI` only when it is the top of its own work
+    tree: the rule `install.sh` applies (case 5). The outer repository is tagged, so a line that
+    described regardless would write `v9.9.9-outer`. The copy carries a release manifest on
+    purpose, as in the case above: a loop that grew that tier would read `7.6.5-release-manifest`.
+    SENTINEL as the placeholder, so the `unknown` is what the loop wrote and not what it copied.
+    """
+    outer = sandbox / "outer-project"
+    outer.mkdir()
+    _git("init", "--quiet", cwd=outer)
+    (outer / "README.md").write_text("an unrelated project\n", encoding="utf-8")
+    _git("add", "-A", cwd=outer)
+    _commit(outer, "outer project")
+    _git("tag", "v9.9.9-outer", cwd=outer)
+    source = _build_source(outer / "vendor" / "tachi", placeholder=SENTINEL)
+    _write_release_manifest(source, {".": "7.6.5"})
+    # Setup: git does find a repository above the copy and the copy is not its root, so describing
+    # it names the outer project's tag, and `unknown` below cannot be a describe that failed.
+    assert _git("rev-parse", "--git-dir", cwd=source, check=False).returncode == 0
+    assert _git("rev-parse", "--show-cdup", cwd=source).stdout.strip() != ""
+    assert _describe(source) == "v9.9.9-outer", "setup: describing the copy must name the outer tag"
+    project = build_project_tree(sandbox / "project")
+
+    result = _run_manual_loop(shell, _readme_loop_script(source), project)
+
+    assert result.returncode == 0, (
+        f"the README manual loop ({shell}) exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    marker = _read_marker(project)
+    assert marker == PLACEHOLDER, (
+        "the README's manual loop did not fall back to `unknown` for a copy inside another "
+        "repository: its last line must describe $TACHI only when it is the top of its own work "
+        f"tree (the marker reads {marker!r})"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Case 9: the marker guard refuses a bad marker path (T044 CR-5)
+# ---------------------------------------------------------------------------
+
+
+def _build_source_without_a_marker(root: Path) -> Path:
+    """A synthetic source with no `templates/tachi/VERSION` and no git tree.
+
+    The shape of a tag older than the placeholder: the manifest lists `templates/tachi/` and the
+    folder holds one file, but there is no `VERSION` to copy. The pre-flight classifies the
+    destination of every file the source holds, so it has no marker to look at, and `marker_guard`
+    is the only check left on the marker path.
+    """
+    build_source_tree(root, entries=ENTRIES)
+    copy_working_tree_install_sh(root)
+    assert not (root / VERSION_REL).exists(), f"setup: the source must not ship {VERSION_REL}"
+    _assert_no_git_tree(root)
+    return root
+
+
+def test_marker_guard_refuses_a_symlinked_marker(sandbox):
+    """A link at `templates/tachi/VERSION` is refused, and the file it points at keeps its bytes.
+
+    install.sh never writes or deletes through a link. It must stop with exit 1 before it copies,
+    removes or writes anything, and the project tree must be exactly as it was. The link's target
+    lies outside the project.
+    """
+    source = _build_source_without_a_marker(sandbox / "tachi-src")
+    project = build_project_tree(sandbox / "project")
+    outside = sandbox / "outside-the-project.txt"
+    outside_bytes = b"not tachi's file: an install must never write through the link\n"
+    outside.write_bytes(outside_bytes)
+    add_symlink(project, VERSION_REL, outside)
+    before_project = snapshot_tree(project)
+
+    result = _install(source, project)
+
+    assert result.returncode == 1, result.combined
+    assert "symbolic link" in result.clean_stderr, result.combined
+    assert outside.read_bytes() == outside_bytes, "the install wrote through the link"
+    assert_no_tree_changes(before_project, snapshot_tree(project), label="project")
+
+
+def test_marker_guard_refuses_a_non_regular_marker(sandbox):
+    """A directory at `templates/tachi/VERSION` is refused, and nothing is written.
+
+    Exit 1 with the guard's own message: the marker path exists and is not a regular file, so there
+    is nothing install.sh may replace there.
+    """
+    source = _build_source_without_a_marker(sandbox / "tachi-src")
+    project = build_project_tree(sandbox / "project")
+    (project / VERSION_REL).mkdir(parents=True)
+    before_project = snapshot_tree(project)
+
+    result = _install(source, project)
+
+    assert result.returncode == 1, result.combined
+    assert "not a regular file" in result.clean_stderr, result.combined
+    assert_no_tree_changes(before_project, snapshot_tree(project), label="project")

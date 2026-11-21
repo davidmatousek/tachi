@@ -128,7 +128,7 @@ sed -n '/^<!-- BEGIN MANIFEST -->$/,/^<!-- END MANIFEST -->$/p' "$TACHI/INSTALL_
       *)  mkdir -p "$(dirname "$p")" && cp "$TACHI/$p" "$p" ;;
     esac
   done
-printf 'tachi_version: %s\n' "$(git -C "$TACHI" describe --tags --always --dirty 2>/dev/null || echo unknown)" >| templates/tachi/VERSION
+printf 'tachi_version: %s\n' "$( [ -z "$(git -C "$TACHI" rev-parse --show-cdup 2>/dev/null)" ] && git -C "$TACHI" describe --tags --always --dirty 2>/dev/null || echo unknown)" >| templates/tachi/VERSION
 ```
 <!-- END MANUAL INSTALL LOOP -->
 
@@ -1033,7 +1033,7 @@ sed -n '/^<!-- BEGIN MANIFEST -->$/,/^<!-- END MANIFEST -->$/p' "$TACHI/INSTALL_
       *)  mkdir -p "$(dirname "$p")" && cp "$TACHI/$p" "$p" ;;
     esac
   done
-printf 'tachi_version: %s\n' "$(git -C "$TACHI" describe --tags --always --dirty 2>/dev/null || echo unknown)" >| templates/tachi/VERSION
+printf 'tachi_version: %s\n' "$( [ -z "$(git -C "$TACHI" rev-parse --show-cdup 2>/dev/null)" ] && git -C "$TACHI" describe --tags --always --dirty 2>/dev/null || echo unknown)" >| templates/tachi/VERSION
 ```
 <!-- END MANUAL INSTALL LOOP -->
 
