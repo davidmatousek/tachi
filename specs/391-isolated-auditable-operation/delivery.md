@@ -6,7 +6,7 @@
 **Release**: v4.48.3. The release-please PR #418 opened at the squash-merge. Part A ships alone as `fix(391)`, a patch release.
 **Closes**: #391, closed at this delivery (the PM's recommendation; #399 carries B1 and #400 the Part B landing)
 **Path**: split (TW-A2). #364 was still open when Part A became merge-ready.
-**Part B**: B2 built, awaiting #364 (#396, based on `main` since this delivery). Landing tracker: #400.
+**Part B**: B2 built, awaiting #364 (#396, based on `main` since this delivery; T047's merge phase done the same day: merge `644f12f`, Part B security scan `51eaa5c` PASSED, gated set 1124 passed in a scratch clone, `/aod.analyze` clean). Landing tracker: #400.
 **B1**: honest-stopped (TW-B1). Follow-up: #399.
 
 > Prepared at T045 (build session S2c, 2026-11-21) and completed by `/aod.deliver` the same day: every field that T045 left open for the delivery is filled. Structure only: no transcript text, session or tool-call ids, home or scratch paths, or key material.
