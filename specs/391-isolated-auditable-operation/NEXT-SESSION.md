@@ -11,7 +11,7 @@
 | Part A | `391-isolated-auditable-operation` | `6ade384`; records after it, the newest being this H3 commit | #392 (draft) |
 | Part B | `391-isolated-auditable-operation-part-b` | `3cc8294` (BX⁗⁗) | #396 (draft, base = Part A). It now carries **B2 only** |
 
-**CI:** pushes at `6ade384` and `3cc8294` started full runs (the macOS pytest leg takes about 35 minutes). Check both are green before T046.
+**CI:** green at `6ade384` (#392, 11 of 11) and `3cc8294` (#396, 8 of 8). The H3 records push starts one more run on #392.
 
 **Worktree:** part-b is still at S2a's scratchpad path, `<S2a scratchpad>/wt/391-part-b`. If it is gone, run `git worktree prune`, then `git worktree add <scratchpad>/wt/391-part-b 391-isolated-auditable-operation-part-b`. Every commit is pushed.
 
@@ -58,7 +58,7 @@
    - W3-L6;
    - the PM's §3 sentence.
 
-**G3:** the full T043 re-run on `6ade384` and `3cc8294` **passed**: 0 regressions, #365's six only; Part A 988 passed, part-b 1,121; X-5 706 and `py39-floor` 132 on 3.9.6 (`test-results/w3-gated-suite.md`, "Re-run on the final W3 tips"). T044 is `[x]`. CI: #396 green at `3cc8294`; #392 green at `6ade384` except the macOS leg, which was still running at handoff, and this H3 commit starts one more records-only run. Check both are green before T046.
+**G3:** the full T043 re-run on `6ade384` and `3cc8294` **passed**: 0 regressions, #365's six only; Part A 988 passed, part-b 1,121; X-5 706 and `py39-floor` 132 on 3.9.6 (`test-results/w3-gated-suite.md`, "Re-run on the final W3 tips"). T044 is `[x]`. CI green on both final tips: #392 at `6ade384` (11 of 11) and #396 at `3cc8294` (8 of 8), so **G3 is closed**. This H3 push starts one more records-only run on #392; check it before T046.
 
 ## S2c plan (W4)
 
