@@ -383,7 +383,7 @@ The guard reads the tables in this section, and the runbook's write-locations ta
 
 - **Frontmatter keys.** Each command declares only `description`: no `allowed-tools` and no `model`. A value for either key is recorded here when it is set.
 - **Dispatches** lists the tachi agent the command starts. `/tachi.threat-model` starts `tachi-orchestrator`, which starts the 14 threat agents and `tachi-threat-report` one level down (see Dispatch). `/tachi.architecture` runs in the main session and starts no agent.
-- **Bash it instructs** is declared only. The commands also tell the main session, in prose that names no command, to create `{out}/`; `/tachi.threat-model` tells it to copy the architecture file into `{out}/`, and `/tachi.architecture` tells it to copy the previous file into its archive directory. Those writes are listed under Writes.
+- **Bash it instructs** is declared only. The commands also tell the main session, in prose that names no command, to create `{out}/`; `/tachi.threat-model` tells it to copy the architecture file into `{out}/`, and `/tachi.architecture` tells it to copy the previous file into its archive directory. Those writes are listed under Writes. `/tachi.threat-model`'s Step 2.6 runs `python3 scripts/stamp-tachi-version.py`, which replaces `{out}/threats.md` with a stamped copy through a temporary file beside it.
 - **Writes** is the command's whole footprint: its own writes plus those of the agents it starts. `/tachi.risk-score` runs the populate script on its input file only when `{out}` is the input directory; with `--output-dir` set to another directory, the input directory stays read-only.
 
 ### 8.5 Write locations (canonical list)

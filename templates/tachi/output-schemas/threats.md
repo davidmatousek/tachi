@@ -3,8 +3,8 @@
 <!--
   Canonical output template for tachi threat model reports.
 
-  Schema version : 1.2
-  Schema file    : schemas/output.yaml
+  Schema version : 1.5
+  Schema file    : schemas/output.yaml (the single source of the version)
   Contract       : specs/001-project-skeleton-interface/contracts/output-schema.md
 
   Producers      : Template engine (applying IR findings to output template)
@@ -21,7 +21,7 @@
 
 ```yaml
 ---
-schema_version: "1.4"
+schema_version: "1.5"
 date: "YYYY-MM-DD"
 input_format: "{detected or declared format}"
 classification: "confidential"
@@ -41,7 +41,7 @@ coverage_gate:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Output schema version. Always `"1.4"` for this release (bumped from 1.3 in Feature 142 to cover the additive Pattern column in Section 7 and the new conditional Section 4b "Findings by Agentic Pattern"; additive-only, backward-compatible with 1.3 parsers per FR-017). |
+| `schema_version` | string | Output schema version. Always `"1.5"` for this release, the value `schemas/output.yaml` declares (bumped from 1.4 in Feature 391 to declare the optional `tachi_version` key and the de-facto keys below; additive-only, backward-compatible with 1.4 parsers. The 1.3 to 1.4 bump in Feature 142 covered the additive Pattern column in Section 7 and the conditional Section 4b "Findings by Agentic Pattern", per FR-017). |
 | `date` | string | ISO 8601 date when the threat model was generated. Format: `YYYY-MM-DD`. |
 | `input_format` | string | Architecture input format that was analyzed. One of: `ascii`, `free-text`, `mermaid`, `plantuml`, `c4`. |
 | `classification` | string | Data classification label for the report. Default: `confidential`. |
@@ -52,12 +52,16 @@ coverage_gate:
 | `baseline.run_id` | string, nullable | Run identifier of the baseline. Null when no baseline. |
 | `coverage_gate.status` | string | Coverage gate result. `"pass"` (all required categories covered or analyzed clean) or `"warn"` (unresolved gaps remain). |
 | `coverage_gate.gaps` | list | List of `{component, missing_category, resolution}` objects. Empty list when all required categories covered with no gaps. Resolution values: `"findings_produced"`, `"analyzed_clean"`, `"dispatch_failure"`. |
+| `has_attack_chains` | boolean, optional | `true` when `attack-chains.md` was produced for this run. Absent in older files. |
+| `has_agentic_patterns` | boolean, optional | `true` when at least one finding carries an agentic pattern other than `none` (Section 4b is rendered). Absent in older files. |
+| `has_source_attribution` | boolean, optional | `true` when at least one finding carries a non-empty `source_attribution`. Absent in older files. |
+| `tachi_version` | string, optional | The tachi release that wrote this file. Not authored by the model: a deterministic step stamps it after the file is written, from the version marker `templates/tachi/VERSION` that the installer records, and it reads `unknown` when the install recorded no version. Do not write, copy or edit it. Absent in files written before schema 1.5; consumers feature-detect it and treat `schema_version` in older files as declared, not ordinal (see `schemas/output.yaml`). |
 
 **Example frontmatter (with baseline, coverage gate pass):**
 
 ```yaml
 ---
-schema_version: "1.4"
+schema_version: "1.5"
 date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"
@@ -77,7 +81,7 @@ coverage_gate:
 
 ```yaml
 ---
-schema_version: "1.4"
+schema_version: "1.5"
 date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"
@@ -99,7 +103,7 @@ coverage_gate:
 
 ```yaml
 ---
-schema_version: "1.4"
+schema_version: "1.5"
 date: "2026-03-31"
 input_format: "mermaid"
 classification: "confidential"

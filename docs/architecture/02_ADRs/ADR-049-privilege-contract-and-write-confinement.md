@@ -3,7 +3,7 @@
 **Status**: Accepted
 **Date**: 2026-11-19
 **Deciders**: Architect (owner), Product Manager, Team-Lead
-**Feature**: [391-isolated-auditable-operation](../../../specs/391-isolated-auditable-operation/spec.md) (FR-007, FR-008, FR-011 to FR-015)
+**Feature**: [391-isolated-auditable-operation](../../../specs/391-isolated-auditable-operation/spec.md) (FR-007, FR-008, FR-011 to FR-015, FR-020, FR-021)
 **Supersedes**: None
 **Superseded by**: None
 **Related ADRs**: [ADR-041](ADR-041-claude-permissions-baseline.md) (governs this repository's development-time settings; this ADR adds the adopter-facing matrix to the same standard), [ADR-019](ADR-019-shared-definitions-and-model-field-governance.md) (the `model: sonnet` pins, left unchanged), [ADR-014](ADR-014-gemini-api-optional-image-generation.md) (the optional Gemini host that the Hosts column names), [ADR-022](ADR-022-mmdc-hard-prerequisite.md) (`mmdc`, the renderer child that the write rules cover), [ADR-021](ADR-021-source-date-epoch-for-deterministic-pdf-comparison.md) (the byte-identity suites that show a relocation moves no deliverable)
@@ -28,7 +28,7 @@ The audit also found a dispatch defect. `/tachi.security-report` started `senior
 
 ## Decision
 
-Nine decisions follow. D1 to D4 cover the privilege contract, D5 to D8 write confinement, and D9 the dispatch fix.
+Ten decisions follow. D1 to D4 cover the privilege contract, D5 to D8 write confinement, D9 the dispatch fix, and D10 the version stamp, which is marked "if shipped" because it applies only when that work ships.
 
 ### D1: A standard-library guard checks the privilege matrix in CI (AD-3, AD-8)
 
@@ -111,6 +111,15 @@ Agents and commands run `extract-report-data.py`, `extract-infographic-data.py` 
 
 The command's dispatch step now reads `subagent_type: "tachi-report-assembler"`. The prompt is kept and the command's frontmatter is unchanged. The assembler declares `Read`, `Glob`, `Grep`, `Write` and `Bash`, and its body names no other tool, so those cover its steps. The defect predates this decision. §8's commands table records each command's target in a Dispatches column. The guard does not check that column; a check that command bodies dispatch only tachi agents with a §8 row is a follow-up.
 
+### D10: `tachi_version` in `threats.md` (if shipped)
+
+A `threats.md` declares a schema version, and nothing says which tachi release wrote it. The schema version cannot stand in for that: nothing kept the value in step with the schema file, so files with the same structure declare 1.4, 1.7 and 1.8. This decision records the release in the file without asking the model to write it.
+
+- **Marker.** `templates/tachi/VERSION` is a tracked placeholder, `tachi_version: unknown`, so every copy path resets it. `scripts/install.sh` removes any existing marker before its copy loop. After the loop, inside its containment and symlink guards, it writes `tachi_version: <value>`, where the value is `git describe --tags --always --dirty` of the source clone after any `--version` checkout. A source with no git tree of its own gives `<release manifest version>-release-manifest`, and anything else gives `unknown`. The README's manual-install loop, and the two copies of it in the developer guide, write the same line from `git describe`, with `unknown` as their only fallback. An install that skips the line reads `unknown`.
+- **Stamp.** `scripts/stamp-tachi-version.py` copies the marker's value into the frontmatter of `threats.md`, after `schema_version`. It is deterministic and idempotent, and a missing or malformed marker stamps `unknown`. `/tachi.threat-model` runs it as Step 2.6, after the populator re-assert and before it reports results, so the orchestrator's instructions are unchanged and the model never writes the field.
+- **Schema 1.5.** `schemas/output.yaml` is the single source of the schema version, and the output template, the output-schemas reference and the SARIF specification now agree with it. Version 1.5 is additive: it declares the six frontmatter keys that producers already wrote (`run_id`, `baseline`, `coverage_gate`, `has_attack_chains`, `has_agentic_patterns` and `has_source_attribution`) and adds `tachi_version`. Parsers are unchanged, and a contract test shows it. Consumers feature-detect `tachi_version` and treat `schema_version` in a file older than 1.5 as declared, not ordinal.
+- **What is not written.** The stamp step writes `tachi_version` and no other key. Writing `schema_version` from `schemas/output.yaml` into the tracked outputs was measured and turns five infographic golden files red, so `schema_version` stays model-authored and declared-only, as the schema documents say. The SARIF generator takes `semanticVersion` from the input file's own `schema_version` and falls back to `schemas/output.yaml`, so a regenerated SARIF file agrees with the frontmatter of the file it was generated from. Two tracked SARIF files do not: `examples/agentic-app/sample-report/threats.sarif` says 1.7 for an input that declares 1.4, and `examples/consumer-agent-app/sample-report/threats.sarif` keeps 1.8 when its input is corrected to 1.4. They stay as they are, because this feature moves no tracked SARIF baseline; correcting them is a follow-up.
+
 ## Alternatives Considered
 
 ### Alternative 1: Document the stray writes instead of relocating them
@@ -188,11 +197,13 @@ The plan's first mechanism had the report assembler remove, create and copy into
 3. **Command frontmatter is declared-only until `allowed-tools` and `model` are set.** Each command declares only `description`, so it runs in the main session with that session's tools and permission rules. Its Dispatches, shell, Writes and Child processes entries in §8 record what the command text instructs, and Claude Code enforces none of them. The guard pins the key set, so adding `allowed-tools` or `model` is a change that must update §8.
 4. **`tests/scripts/test_coverage_attestation.py` is ungated.** No workflow runs it. The report relocation edits it (its stale-data swap moves to the build-directory location), so a regression in it would not turn CI red. It is run by hand in a scratch clone before delivery.
 5. **The adapter copies carry no `tools:` or `model:` and are out of scope.** The 15 files under `adapters/claude-code/agents/` declare only `name` and `description`, and six agents have no copy there. By Claude Code's documentation, a subagent definition without `tools` inherits every tool available to subagents, and one without `model` runs on the model of the conversation that starts it unless `CLAUDE_CODE_SUBAGENT_MODEL` is set. The guard does not cover the copies, and the repair path is `scripts/install.sh`. Refreshing the adapter roster is tracked in #369.
+6. **A downgrade made with an installer from before this feature cannot reset the version marker.** Any install from a source that ships the `templates/tachi/VERSION` placeholder resets the marker, and the current installer also rewrites it after the copy, including for a `--version` tag that is older than the placeholder. An installer from before Feature 391 knows nothing of the file. Checking out an older release in the tachi clone and running that clone's installer replaces the agents and commands and leaves the newer marker in the project, where it names a version that the installed agents do not match (the older `/tachi.threat-model` has no Step 2.6, so it does not stamp that value). Delete `templates/tachi/VERSION` after such a downgrade (the marker then reads `unknown`), or downgrade with a current installer's `--version` option.
 
 ## Cross-references
 
-- Feature 391: [spec](../../../specs/391-isolated-auditable-operation/spec.md) (FR-007, FR-008, FR-011 to FR-015) and [plan](../../../specs/391-isolated-auditable-operation/plan.md) (AD-1, AD-3, AD-4 as amended, AD-8, AD-11, AD-13)
+- Feature 391: [spec](../../../specs/391-isolated-auditable-operation/spec.md) (FR-007, FR-008, FR-011 to FR-015, FR-020, FR-021) and [plan](../../../specs/391-isolated-auditable-operation/plan.md) (AD-1, AD-3, AD-4 as amended, AD-7, AD-8, AD-11, AD-13)
 - Contracts: [audit-write-set.md](../../../specs/391-isolated-auditable-operation/contracts/audit-write-set.md), [cli-contracts.md](../../../specs/391-isolated-auditable-operation/contracts/cli-contracts.md) (the guard and the extractor flags), [matrix-section.md](../../../specs/391-isolated-auditable-operation/contracts/matrix-section.md)
+- Version stamp (D10): the contract [version-marker.md](../../../specs/391-isolated-auditable-operation/contracts/version-marker.md) and the schema [measurement](../../../specs/391-isolated-auditable-operation/test-results/t038a-measurement.md)
 - Records: [w1-audit-rulings.md](../../../specs/391-isolated-auditable-operation/test-results/w1-audit-rulings.md) (AR-1 to AR-14), [profile-prestage.md](../../../specs/391-isolated-auditable-operation/test-results/profile-prestage.md) (model selection), [w0-spike.md](../../../specs/391-isolated-auditable-operation/test-results/w0-spike.md) (the recorded run in D4)
 - [`docs/standards/CLAUDE_PERMISSIONS.md`](../../standards/CLAUDE_PERMISSIONS.md) §8, and the installed runbook [`docs/guides/ISOLATED_OPERATION_TACHI.md`](../../guides/ISOLATED_OPERATION_TACHI.md) (its section 5 repeats the write locations)
 - Claude Code documentation: [subagents: restrict which tools a subagent can use](https://code.claude.com/docs/en/sub-agents#restrict-which-tools-a-subagent-can-use), [subagents: choose a model](https://code.claude.com/docs/en/sub-agents#choose-a-model), [model configuration: environment variables](https://code.claude.com/docs/en/model-config#environment-variables)

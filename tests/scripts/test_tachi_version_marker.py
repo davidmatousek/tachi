@@ -1,0 +1,881 @@
+"""Installed version marker tests for `scripts/install.sh` (Feature 391, T037, US5).
+
+`templates/tachi/VERSION` is one line, `tachi_version: <value>`
+(`specs/391-isolated-auditable-operation/contracts/version-marker.md`, plan.md
+AD-7). The source ships it as a tracked placeholder that reads `unknown`, so
+every copy path resets it. `scripts/install.sh` then writes the real value once
+its copy loop is done (T036): the source clone's
+`git describe --tags --always --dirty`; with no git tree of its own,
+`<release manifest ".">-release-manifest`; otherwise `unknown`.
+
+Cases (W1, tasks.md T037; the W3 fixes of T044 added case 9 and the last test of case 8) and the
+tests that carry them:
+    1. the installer writes the describe value
+         test_installer_writes_the_describe_value        (HEAD at a tag, and past it)
+         test_version_install_writes_the_installed_tag    (`--version`)
+         test_worktree_source_writes_the_describe_value  (`.git` is a file)
+    2. a marker-writing install, then a marker-skipping one, reads `unknown`
+         test_marker_writing_then_skipping_install_reads_unknown
+    3. an install that skips the marker line reads `unknown`, the placeholder
+         test_marker_skipping_install_reads_the_tracked_placeholder
+         test_tracked_placeholder_is_one_unknown_line
+    4. `-dirty`                       test_uncommitted_change_appends_dirty
+    5. `-release-manifest` fallback   test_source_without_a_git_tree_reads_the_release_manifest
+                                      test_source_inside_another_repo_reads_the_release_manifest
+    6. `unknown` fallback             test_no_usable_version_reads_unknown
+                                      test_value_outside_the_readers_rule_reads_unknown (X-7)
+                                      test_value_at_the_cap_is_written_verbatim (X-7 control)
+    7. manifest carries the placeholder
+                                      test_manifest_entry_ships_the_placeholder
+    8. the README's manual loop writes the marker (lands with T048's marker line)
+         test_manual_loop_writes_the_describe_value       (bash, and zsh when present)
+         test_manual_loop_without_a_git_tree_reads_unknown (bash, and zsh when present)
+         test_manual_loop_inside_another_repo_reads_unknown (bash, and zsh when present)
+    9. the marker guard refuses a symlink or a directory at the marker path
+         test_marker_guard_refuses_a_symlinked_marker
+         test_marker_guard_refuses_a_non_regular_marker
+
+Every install is a real `scripts/install.sh` run (Bash 3.2 where the host has
+it, see `install_sh_helpers.BASH_BIN`) against a synthetic source built at test
+time. Case 8 runs README.md's manual install loop instead, as written, with only
+its `TACHI=` line pointed at that synthetic source. The repository itself is
+never installed from, and nothing reaches the network: the throwaway repos have
+no remote, so the installer's best-effort `git fetch --tags` fails at once, and
+the loop has no network step.
+
+Cases that expect a marker to have been WRITTEN (by the installer, or by the
+manual loop's last line) start from a source whose placeholder is SENTINEL, a
+value no install can produce. A pass therefore cannot be a placeholder copied
+through, and the case goes red against an install that never writes. Cases about
+skipped writes start from the real tracked placeholder. A marker-skipping install
+is the manual loop's copy step for the `templates/tachi/` entry
+(`cp -R <src>/templates/tachi/. <dst>`), built here directly rather than read out
+of the README (P0B0-10 (a)): since T048 the README's loop ends with the marker
+line, so the loop itself is a marker-WRITING install, and only case 8 runs it.
+
+Case 9 is about a marker install.sh must refuse to write. Its source ships no
+`templates/tachi/VERSION` and has no git tree, the shape of a tag older than the placeholder: the
+pre-flight classifies the destination of every file the source holds, so it has no marker to look
+at there, and `marker_guard` is the only check left on the marker path. A refused install exits 1
+and leaves the project, and whatever a link points at, as it was.
+
+Environment: each test runs in its own temp dir, removed afterwards with Python
+(`shutil`), under a hermetic environment: git config isolated, `$HOME` inside the
+temp dir, repository-locating `GIT_*` variables scrubbed, and a git ceiling at the
+temp dir so no repository above it can be found. Installs run under `LC_ALL=C`
+(`run_install_sh` sets it); the one X-7 case with an accented letter runs under an
+installed UTF-8 locale instead, and skips only when the host has none.
+
+Repository inputs (the CI path anchor must list them):
+    scripts/install.sh                 copied into every synthetic source
+    templates/tachi/VERSION            the tracked placeholder (cases 2, 3, 7)
+    INSTALL_MANIFEST.md                case 7
+    README.md                          case 8: the loop between its MANUAL INSTALL LOOP markers
+    tests/scripts/install_sh_helpers.py, tests/scripts/conftest.py
+                                       sandbox builders and the `tests/scripts` sys.path entry
+
+Python 3.9 compatible (CI adds a 3.9 leg): no `X | Y` outside annotations, no
+`match`, no `ignore_cleanup_errors`.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import shlex
+import shutil
+import string
+import subprocess
+import tempfile
+from pathlib import Path
+
+import pytest
+
+from install_sh_helpers import (
+    BASH_BIN,
+    DEFAULT_MANIFEST_ENTRIES,
+    GIT_ISOLATION_ENV,
+    add_symlink,
+    assert_no_tree_changes,
+    build_project_tree,
+    build_source_tree,
+    copy_working_tree_install_sh,
+    current_ref,
+    run_install_sh,
+    snapshot_tree,
+)
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+VERSION_REL = "templates/tachi/VERSION"
+VERSION_PATH = REPO_ROOT / VERSION_REL
+MANIFEST_PATH = REPO_ROOT / "INSTALL_MANIFEST.md"
+README_PATH = REPO_ROOT / "README.md"
+
+# Same markers as install.sh's parse_manifest (string equality, not a regex).
+MANIFEST_BEGIN = "<!-- BEGIN MANIFEST -->"
+MANIFEST_END = "<!-- END MANIFEST -->"
+
+# The lines that fence the manual install loop in README.md (case 8).
+LOOP_BEGIN_MARKER = "<!-- BEGIN MANUAL INSTALL LOOP -->"
+LOOP_END_MARKER = "<!-- END MANUAL INSTALL LOOP -->"
+
+# The tracked placeholder, as contracts/version-marker.md fixes it.
+PLACEHOLDER = "tachi_version: unknown\n"
+# A placeholder no install can produce (see the module docstring).
+SENTINEL = "tachi_version: placeholder-copied-from-the-source\n"
+
+TAG = "v4.48.1"
+# `templates/tachi/` as a directory entry is what makes install.sh handle the marker.
+ENTRIES = (*DEFAULT_MANIFEST_ENTRIES, "templates/tachi/")
+
+_DESCRIBE_AT_TAG = re.escape(TAG)
+_DESCRIBE_PAST_TAG = re.escape(TAG) + r"-\d+-g[0-9a-f]{7,}"
+
+# Variables that locate a repository (set when pytest itself runs inside a git hook,
+# for one): left in place they would send every throwaway repo to the wrong place.
+_GIT_LOCATION_VARS = (
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_PREFIX",
+)
+
+_SUMMARY_VERSION_RE = re.compile(r"^  Version:  (\S+)$", re.MULTILINE)
+
+
+# ---------------------------------------------------------------------------
+# Sandbox and builders
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def sandbox(monkeypatch):
+    """A fresh temp dir and a hermetic environment for every git and installer call.
+
+    The dir is removed afterwards with `shutil`, never a shell. The environment
+    is applied to `os.environ`, which both this module's git calls and
+    `install_sh_helpers.run_install_sh` (it copies `os.environ`) inherit.
+    """
+    raw = tempfile.mkdtemp(prefix="tachi-t037-")
+    try:
+        root = Path(raw).resolve()
+        home = root / "home"
+        home.mkdir()
+        for name in _GIT_LOCATION_VARS:
+            monkeypatch.delenv(name, raising=False)
+        hermetic = dict(GIT_ISOLATION_ENV)
+        hermetic["HOME"] = str(home)
+        hermetic["GIT_CEILING_DIRECTORIES"] = str(root)
+        hermetic["GIT_TERMINAL_PROMPT"] = "0"
+        for name, value in hermetic.items():
+            monkeypatch.setenv(name, value)
+        yield root
+    finally:
+        shutil.rmtree(raw, ignore_errors=True)
+
+
+def _git(*args: str, cwd: Path, check: bool = True) -> subprocess.CompletedProcess:
+    proc = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True)
+    if check:
+        assert proc.returncode == 0, f"git {' '.join(args)} failed in {cwd}:\n{proc.stderr}"
+    return proc
+
+
+def _commit(cwd: Path, message: str) -> None:
+    identity = ("-c", "user.name=tachi-test", "-c", "user.email=test@example.invalid")
+    _git(*identity, "commit", "--quiet", "-m", message, cwd=cwd)
+
+
+def _describe(repo: Path) -> str:
+    """The value the marker must hold for a git source: install.sh's own command."""
+    return _git("describe", "--tags", "--always", "--dirty", cwd=repo).stdout.strip()
+
+
+def _tracked_placeholder() -> str:
+    return VERSION_PATH.read_text(encoding="utf-8")
+
+
+def _build_source(root: Path, *, placeholder: str) -> Path:
+    """A synthetic tachi source whose manifest lists `templates/tachi/`, with `placeholder` as its marker."""
+    build_source_tree(root, entries=ENTRIES, extra_files={VERSION_REL: placeholder})
+    copy_working_tree_install_sh(root)
+    return root
+
+
+def _build_tagged_source(
+    root: Path, *, placeholder: str, commits_after_tag: int = 2, tag: str = TAG
+) -> Path:
+    """`_build_source`, committed and tagged, then `commits_after_tag` more commits.
+
+    `scripts/install.sh` is committed once and never touched again, so it stays
+    byte-identical at the tag and at HEAD (a `--version` checkout must not
+    rewrite the script bash is running).
+    """
+    _build_source(root, placeholder=placeholder)
+    _git("init", "--quiet", cwd=root)
+    _git("add", "-A", cwd=root)
+    _commit(root, "tagged commit")
+    _git("tag", tag, cwd=root)
+    for number in range(1, commits_after_tag + 1):
+        (root / f"AFTER_TAG_{number}.txt").write_text(
+            f"commit {number} after the tag\n", encoding="utf-8"
+        )
+        _git("add", "-A", cwd=root)
+        _commit(root, f"commit {number} after the tag")
+    return root
+
+
+def _write_release_manifest(source: Path, packages: dict) -> None:
+    """Write `.release-please-manifest.json` in release-please's own shape (two-space indent)."""
+    (source / ".release-please-manifest.json").write_text(
+        json.dumps(packages, indent=2) + "\n", encoding="utf-8"
+    )
+
+
+def _install(source: Path, project: Path, *extra: str, extra_env=None):
+    return run_install_sh(
+        source / "scripts" / "install.sh",
+        cwd=project,
+        args=("--source", str(source), *extra),
+        extra_env=extra_env,
+    )
+
+
+def _install_templates_without_marker_line(source: Path, project: Path) -> None:
+    """A marker-skipping install: the manual loop's copy step for `templates/tachi/`, nothing after it."""
+    destination = project / "templates" / "tachi"
+    destination.mkdir(parents=True, exist_ok=True)
+    proc = subprocess.run(
+        ["cp", "-R", f"{source}/templates/tachi/.", str(destination)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stderr
+
+
+def _readme_loop_script(tachi: Path) -> str:
+    """README.md's manual install loop as runnable shell, its `TACHI=` line pointed at `tachi`.
+
+    Extracted the way test_install_manifest_completeness.py extracts it: the lines between the
+    one BEGIN/END MANUAL INSTALL LOOP marker pair, without the ```bash fences, and with the first
+    line (`TACHI=~/Projects/tachi`) rewritten to the synthetic source. Every other line, the
+    marker line included, runs as written.
+    """
+    lines = README_PATH.read_text(encoding="utf-8").split("\n")
+    assert lines.count(LOOP_BEGIN_MARKER) == 1 and lines.count(LOOP_END_MARKER) == 1, (
+        f"expected exactly one {LOOP_BEGIN_MARKER!r} / {LOOP_END_MARKER!r} pair in README.md"
+    )
+    block = lines[lines.index(LOOP_BEGIN_MARKER) + 1 : lines.index(LOOP_END_MARKER)]
+    while block and block[0].strip() == "":
+        block.pop(0)
+    while block and block[-1].strip() == "":
+        block.pop()
+    assert len(block) >= 2 and block[0].strip() == "```bash" and block[-1].strip() == "```", (
+        f"expected the loop block to be one ```bash fence, got {block[:1]!r} .. {block[-1:]!r}"
+    )
+    script = block[1:-1]
+    assert script and script[0].startswith("TACHI="), (
+        f"expected the loop's first line to set TACHI=, got {script[:1]!r}"
+    )
+    script[0] = f"TACHI={shlex.quote(str(tachi))}"
+    return "\n".join(script)
+
+
+def _run_manual_loop(shell: str, script: str, project: Path) -> subprocess.CompletedProcess:
+    """Run the loop in `project`: under the pinned system bash, or under interactive zsh.
+
+    The two ways test_install_manifest_completeness.py runs it: `bash -c <script>`, and `zsh -f -i`
+    with the script on stdin (interactive zsh has no comment syntax and expands history). The
+    environment is the sandbox's, so git is isolated and capped at the temp dir.
+    """
+    env = dict(os.environ)
+    env["LC_ALL"] = "C"
+    if shell == "bash":
+        return subprocess.run(
+            [BASH_BIN, "-c", script],
+            cwd=str(project),
+            env=env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    assert shell == "zsh", f"unknown shell {shell!r}"
+    return subprocess.run(
+        ["zsh", "-f", "-i"],
+        input=script,
+        cwd=str(project),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+
+
+# The shells the README block is run under. zsh is skipped where it is not installed (ubuntu
+# runners may lack it), like the manual-loop cases in test_install_manifest_completeness.py.
+_SHELLS = [
+    pytest.param("bash", id="bash"),
+    pytest.param(
+        "zsh",
+        id="zsh",
+        marks=pytest.mark.skipif(
+            shutil.which("zsh") is None, reason="zsh not on PATH (ubuntu runners may lack it)"
+        ),
+    ),
+]
+
+
+def _assert_no_git_tree(source: Path) -> None:
+    """Setup check: git finds no repository at or above `source` (the sandbox's ceiling guarantees it)."""
+    found = _git("rev-parse", "--git-dir", cwd=source, check=False)
+    assert found.returncode != 0, f"setup: {source} must have no git tree"
+
+
+def _read_marker(project: Path) -> str:
+    marker = project / VERSION_REL
+    assert marker.is_file(), f"{VERSION_REL} was not installed into {project}"
+    return marker.read_text(encoding="utf-8")
+
+
+def _marker_line(value: str) -> str:
+    return f"tachi_version: {value}\n"
+
+
+def _summary_version(result) -> str:
+    """The value on install.sh's `  Version:  <value>` summary line (it must be the marker's value)."""
+    found = _SUMMARY_VERSION_RE.findall(result.clean_stdout)
+    assert len(found) == 1, f"expected one 'Version:' summary line, got {found!r}\n{result.combined}"
+    return found[0]
+
+
+def _manifest_entries(path: Path) -> list:
+    """The entries between the manifest markers, read the way install.sh's parse_manifest reads them."""
+    entries = []
+    inside = False
+    for line in path.read_text(encoding="utf-8").split("\n"):
+        if line == MANIFEST_BEGIN:
+            inside = True
+        elif line == MANIFEST_END:
+            inside = False
+        elif inside and line != "" and not line.startswith("#"):
+            entries.append(line)
+    return entries
+
+
+# ---------------------------------------------------------------------------
+# Case 1: the installer writes the describe value
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "commits_after_tag, describe_shape",
+    [
+        pytest.param(0, _DESCRIBE_AT_TAG, id="head-at-the-tag"),
+        pytest.param(2, _DESCRIBE_PAST_TAG, id="two-commits-past-the-tag"),
+    ],
+)
+def test_installer_writes_the_describe_value(sandbox, commits_after_tag, describe_shape):
+    source = _build_tagged_source(
+        sandbox / "tachi-src", placeholder=SENTINEL, commits_after_tag=commits_after_tag
+    )
+    project = build_project_tree(sandbox / "project")
+    expected = _describe(source)
+    assert re.fullmatch(describe_shape, expected), f"setup: unexpected describe value {expected!r}"
+
+    result = _install(source, project)
+
+    assert result.returncode == 0, result.combined
+    assert _read_marker(project) == _marker_line(expected)
+    assert _summary_version(result) == expected, "the summary line reuses the marker's value"
+    # The atomic write leaves no temp file behind, and adds nothing else to the folder.
+    assert sorted(p.name for p in (project / "templates" / "tachi").iterdir()) == [
+        "PLACEHOLDER.md",
+        "VERSION",
+    ]
+    assert (source / VERSION_REL).read_text(encoding="utf-8") == SENTINEL, (
+        "the installer must never write the marker into the source tree"
+    )
+
+
+def test_version_install_writes_the_installed_tag(sandbox):
+    """`--version <tag>` checks the tag out first: the marker names the tag it installed,
+    not the describe value of the branch tip, and the ref is restored after the write."""
+    source = _build_tagged_source(sandbox / "tachi-src", placeholder=SENTINEL, commits_after_tag=2)
+    project = build_project_tree(sandbox / "project")
+    original_ref = current_ref(source)
+    tip_describe = _describe(source)
+    assert re.fullmatch(_DESCRIBE_PAST_TAG, tip_describe), f"setup: {tip_describe!r}"
+
+    result = _install(source, project, "--version", TAG)
+
+    assert result.returncode == 0, result.combined
+    assert _read_marker(project) == _marker_line(TAG)
+    assert _summary_version(result) == TAG
+    assert current_ref(source) == original_ref, "the source must be back on its original ref"
+    assert _describe(source) == tip_describe
+
+
+def test_worktree_source_writes_the_describe_value(sandbox):
+    """A git worktree has a `.git` FILE, so a `-d .git` test would miss it; the contract's
+    detection is `git rev-parse --git-dir`, which sees worktrees and submodules alike."""
+    main = _build_tagged_source(sandbox / "tachi-main", placeholder=SENTINEL, commits_after_tag=2)
+    worktree = sandbox / "tachi-worktree"
+    _git("worktree", "add", "--detach", str(worktree), "HEAD", cwd=main)
+    assert (worktree / ".git").is_file(), "setup: a worktree's .git is a file"
+    project = build_project_tree(sandbox / "project")
+    expected = _describe(worktree)
+    assert re.fullmatch(_DESCRIBE_PAST_TAG, expected), f"setup: unexpected describe value {expected!r}"
+
+    result = _install(worktree, project)
+
+    assert result.returncode == 0, result.combined
+    assert _read_marker(project) == _marker_line(expected)
+    assert _summary_version(result) == expected
+
+
+# ---------------------------------------------------------------------------
+# Case 2: a marker-writing install, then a marker-skipping one
+# ---------------------------------------------------------------------------
+
+
+def test_marker_writing_then_skipping_install_reads_unknown(sandbox):
+    """Re-installing by a path that skips the marker line must not leave the earlier value
+    behind: the copy resets it to the tracked placeholder (P0B0-10)."""
+    source = _build_tagged_source(sandbox / "tachi-src", placeholder=_tracked_placeholder())
+    project = build_project_tree(sandbox / "project")
+
+    writing = _install(source, project)
+
+    assert writing.returncode == 0, writing.combined
+    # Precondition (P0B0-10 (b)): the writing install left a describe value, not `unknown`.
+    describe = _describe(source)
+    assert re.fullmatch(_DESCRIBE_PAST_TAG, describe), f"setup: unexpected describe value {describe!r}"
+    assert _read_marker(project) == _marker_line(describe)
+    assert _read_marker(project) != PLACEHOLDER
+
+    _install_templates_without_marker_line(source, project)
+
+    assert _read_marker(project) == PLACEHOLDER
+
+
+# ---------------------------------------------------------------------------
+# Case 3: an install that skips the marker line reads the tracked placeholder
+# ---------------------------------------------------------------------------
+
+
+def test_marker_skipping_install_reads_the_tracked_placeholder(sandbox):
+    # A describable source: a writing install would have named a version here.
+    source = _build_tagged_source(sandbox / "tachi-src", placeholder=_tracked_placeholder())
+    project = build_project_tree(sandbox / "project")
+    assert re.fullmatch(_DESCRIBE_PAST_TAG, _describe(source))
+
+    _install_templates_without_marker_line(source, project)
+
+    assert _read_marker(project) == "tachi_version: unknown\n"
+
+
+def test_tracked_placeholder_is_one_unknown_line():
+    """The file every copy path carries: exactly `tachi_version: unknown`, newline-terminated."""
+    assert VERSION_PATH.is_file(), f"{VERSION_REL} must be tracked in the repository"
+    assert _tracked_placeholder() == "tachi_version: unknown\n"
+
+
+# ---------------------------------------------------------------------------
+# Case 4: -dirty
+# ---------------------------------------------------------------------------
+
+
+def test_uncommitted_change_appends_dirty(sandbox):
+    source = _build_tagged_source(sandbox / "tachi-src", placeholder=SENTINEL, commits_after_tag=2)
+    tracked = source / "AFTER_TAG_1.txt"
+    tracked.write_text(
+        tracked.read_text(encoding="utf-8") + "an edit that is never committed\n", encoding="utf-8"
+    )
+    project = build_project_tree(sandbox / "project")
+    expected = _describe(source)
+    assert re.fullmatch(_DESCRIBE_PAST_TAG + "-dirty", expected), f"setup: unexpected value {expected!r}"
+
+    result = _install(source, project)
+
+    assert result.returncode == 0, result.combined
+    assert _read_marker(project) == _marker_line(expected)
+    assert _summary_version(result) == expected
+
+
+# ---------------------------------------------------------------------------
+# Case 5: the -release-manifest fallback (a source with no git tree of its own)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "packages",
+    [
+        pytest.param({".": "7.6.5"}, id="root-package-only"),
+        pytest.param({"packages/other": "1.0.0", ".": "7.6.5"}, id="root-package-after-another"),
+    ],
+)
+def test_source_without_a_git_tree_reads_the_release_manifest(sandbox, packages):
+    source = _build_source(sandbox / "tachi-src", placeholder=SENTINEL)
+    _write_release_manifest(source, packages)
+    _assert_no_git_tree(source)
+    project = build_project_tree(sandbox / "project")
+
+    result = _install(source, project)
+
+    assert result.returncode == 0, result.combined
+    assert _read_marker(project) == _marker_line("7.6.5-release-manifest")
+    assert _summary_version(result) == "7.6.5-release-manifest"
+
+
+def test_source_inside_another_repo_reads_the_release_manifest(sandbox):
+    """A copy of tachi vendored in a project's own repo has no git tree of its own: describing it
+    would name the OUTER project's version, so the installer falls back to the manifest."""
+    outer = sandbox / "outer-project"
+    outer.mkdir()
+    _git("init", "--quiet", cwd=outer)
+    (outer / "README.md").write_text("an unrelated project\n", encoding="utf-8")
+    _git("add", "-A", cwd=outer)
+    _commit(outer, "outer project")
+    _git("tag", "v9.9.9-outer", cwd=outer)
+    source = _build_source(outer / "vendor" / "tachi", placeholder=SENTINEL)
+    _write_release_manifest(source, {".": "7.6.5"})
+    # Setup: git does find a repository above the source, and the source is not its root.
+    assert _git("rev-parse", "--git-dir", cwd=source, check=False).returncode == 0
+    assert _git("rev-parse", "--show-cdup", cwd=source).stdout.strip() != ""
+    project = build_project_tree(sandbox / "project")
+
+    result = _install(source, project)
+
+    assert result.returncode == 0, result.combined
+    assert _read_marker(project) == _marker_line("7.6.5-release-manifest")
+    assert _summary_version(result) == "7.6.5-release-manifest"
+
+
+# ---------------------------------------------------------------------------
+# Case 6: the unknown fallback
+# ---------------------------------------------------------------------------
+
+
+def _prepare_no_git_tree_and_no_manifest(source: Path) -> None:
+    _assert_no_git_tree(source)
+
+
+def _prepare_manifest_without_a_root_package(source: Path) -> None:
+    _write_release_manifest(source, {"packages/other": "1.0.0"})
+    _assert_no_git_tree(source)
+
+
+def _prepare_repository_without_commits(source: Path) -> None:
+    _git("init", "--quiet", cwd=source)
+    describe = _git("describe", "--tags", "--always", "--dirty", cwd=source, check=False)
+    assert describe.returncode != 0, "setup: git describe must fail with no commits"
+
+
+@pytest.mark.parametrize(
+    "prepare",
+    [
+        pytest.param(_prepare_no_git_tree_and_no_manifest, id="no-git-tree-no-manifest"),
+        pytest.param(_prepare_manifest_without_a_root_package, id="manifest-without-a-root-package"),
+        pytest.param(_prepare_repository_without_commits, id="git-describe-fails"),
+    ],
+)
+def test_no_usable_version_reads_unknown(sandbox, prepare):
+    """The source's own placeholder is SENTINEL, so `unknown` can only be what the installer wrote
+    (and the old `untagged` fallback would show in the summary line)."""
+    source = _build_source(sandbox / "tachi-src", placeholder=SENTINEL)
+    prepare(source)
+    project = build_project_tree(sandbox / "project")
+
+    result = _install(source, project)
+
+    assert result.returncode == 0, result.combined
+    assert _read_marker(project) == PLACEHOLDER
+    assert _summary_version(result) == "unknown"
+
+
+# A tag of exactly 128 allowed characters: the readers' cap (contracts/version-marker.md). It holds
+# every ASCII letter and digit, taken from the standard library and not from install.sh's own list,
+# and `.`, `_`, `+` and `-`, so a letter or digit missing from the installer's list turns it red.
+# `~` is in the readers' rule too, but git refuses it in a tag name, so no describe value holds one.
+TAG_AT_THE_CAP = (
+    "v" + string.digits + string.ascii_lowercase + string.ascii_uppercase + "1.2_3+4-" * 8 + "x"
+)
+# `v`, e with an acute accent (U+00E9), `1`: a tag git accepts, which a range such as `A-Za-z` can
+# match in a collating UTF-8 locale. Built with chr() so that this file stays ASCII.
+ACCENTED_TAG = "v" + chr(0xE9) + "1"
+
+
+def _utf8_locale():
+    """An installed UTF-8 locale for the accented-letter case: `en_US.UTF-8` first, `C.UTF-8` last.
+
+    Any other UTF-8 locale comes before `C.UTF-8`, which orders by code point (see the case's
+    docstring). Skips, with the reason, only when `locale -a` lists no UTF-8 locale at all.
+    """
+    try:
+        names = subprocess.run(
+            ["locale", "-a"], capture_output=True, text=True, timeout=30
+        ).stdout.split()
+    except (OSError, subprocess.SubprocessError):
+        names = []
+    utf8 = [name for name in names if name.lower().endswith((".utf-8", ".utf8"))]
+    if not utf8:
+        pytest.skip(
+            "no UTF-8 locale is available (`locale -a` lists none, or `locale` is not installed): "
+            "the accented-letter case needs one"
+        )
+
+    def preference(name):
+        plain = name.lower().replace("-", "")
+        return (0 if plain == "en_us.utf8" else 2 if plain.startswith("c.") else 1, name)
+
+    return min(utf8, key=preference)
+
+
+def _install_from_clone_tagged(sandbox, tag, extra_env=None):
+    """Install from a clone whose HEAD sits on `tag`: `(project, result)`.
+
+    The source's placeholder is SENTINEL, so what the marker holds afterwards is what the
+    installer wrote. The setup check is that git describes the clone by `tag` alone, which
+    leaves the installer's filter as the only thing between the tag and the marker. The install
+    runs under the harness's `LC_ALL=C` unless `extra_env` says otherwise.
+    """
+    source = _build_tagged_source(
+        sandbox / "tachi-src", placeholder=SENTINEL, commits_after_tag=0, tag=tag
+    )
+    project = build_project_tree(sandbox / "project")
+    assert _describe(source) == tag, "setup: git describe must print the tag as it is"
+    return project, _install(source, project, extra_env=extra_env)
+
+
+@pytest.mark.parametrize(
+    "tag, utf8",
+    [
+        pytest.param("rel/v1.0.0", False, id="slash"),
+        pytest.param("_x", False, id="leading-underscore"),
+        pytest.param("+x", False, id="leading-plus"),
+        pytest.param(TAG_AT_THE_CAP + "x", False, id="129-characters"),
+        pytest.param(ACCENTED_TAG, True, id="accented-letter-in-a-utf-8-locale"),
+    ],
+)
+def test_value_outside_the_readers_rule_reads_unknown(sandbox, tag, utf8):
+    """A describe value the readers would read as `unknown` is written as `unknown` (X-7).
+
+    `stamp-tachi-version.py` reads the marker by one rule
+    (contracts/version-marker.md): a letter or digit first, then letters, digits and `. _ + ~ -`,
+    128 characters at most, all of them ASCII. Each tag breaks one part of it, and git accepts all
+    five: a `/` in the value, a first character that is not a letter or digit (`_` and `+`; git
+    refuses `.` and `-` there), one character over the cap, and an accented letter (`v` + e with an
+    acute accent + `1`).
+
+    The accented letter is the one case that runs the installer under a UTF-8 locale; the others
+    run under the harness's `LC_ALL=C`. Bash 3.2 reads a range such as `A-Za-z` through the
+    locale's collation, and in a collating locale such as macOS's `en_US.UTF-8` the range matches
+    accented letters, so a filter written with ranges keeps `v` + e-acute + `1` there. `C.UTF-8`
+    orders by code point and may not reproduce that widening, so this case proves most where a
+    collating locale exists (macOS); where only `C.UTF-8` is installed it still must pass.
+    """
+    extra_env = {"LC_ALL": _utf8_locale()} if utf8 else None
+
+    project, result = _install_from_clone_tagged(sandbox, tag, extra_env=extra_env)
+
+    assert result.returncode == 0, result.combined
+    assert _read_marker(project) == PLACEHOLDER
+    assert _summary_version(result) == "unknown"
+
+
+def test_value_at_the_cap_is_written_verbatim(sandbox):
+    """Control for the 129-character case: 128 allowed characters is inside the rule.
+
+    A cap that is off by one either way turns this case or that one red. The tag holds every ASCII
+    letter and digit and `.`, `_`, `+` and `-`, so the whole character set is exercised: a letter
+    or digit missing from the installer's spelled-out list turns this case red.
+    """
+    assert len(TAG_AT_THE_CAP) == 128, "setup: the tag must be exactly the cap long"
+
+    project, result = _install_from_clone_tagged(sandbox, TAG_AT_THE_CAP)
+
+    assert result.returncode == 0, result.combined
+    assert _read_marker(project) == _marker_line(TAG_AT_THE_CAP)
+    assert _summary_version(result) == TAG_AT_THE_CAP
+
+
+# ---------------------------------------------------------------------------
+# Case 7: INSTALL_MANIFEST.md carries the placeholder
+# ---------------------------------------------------------------------------
+
+
+def test_manifest_entry_ships_the_placeholder():
+    """`templates/tachi/` is a directory entry (the spelling install.sh matches to handle the
+    marker), and the placeholder sits inside it, so every manifest-driven copy carries it."""
+    entries = _manifest_entries(MANIFEST_PATH)
+    assert "templates/tachi/" in entries, "INSTALL_MANIFEST.md must keep its `templates/tachi/` entry"
+    assert VERSION_PATH.is_file(), f"{VERSION_REL} must exist inside that entry's folder"
+    assert _tracked_placeholder() == PLACEHOLDER
+
+
+# ---------------------------------------------------------------------------
+# Case 8: the README's manual loop writes the marker (T048's last line)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("shell", _SHELLS)
+def test_manual_loop_writes_the_describe_value(sandbox, shell):
+    """README.md's loop, run as written, ends by writing its source clone's describe value.
+
+    The source's placeholder is SENTINEL, so the value can only have come from the loop's last
+    line: a loop without it leaves SENTINEL behind. The clone is two commits past a lightweight
+    tag and has an uncommitted edit, so a last line that dropped `--tags` or `--dirty` would name
+    another value.
+    """
+    source = _build_tagged_source(sandbox / "tachi-src", placeholder=SENTINEL, commits_after_tag=2)
+    tracked = source / "AFTER_TAG_1.txt"
+    tracked.write_text(
+        tracked.read_text(encoding="utf-8") + "an edit that is never committed\n", encoding="utf-8"
+    )
+    project = build_project_tree(sandbox / "project")
+    expected = _describe(source)
+    assert re.fullmatch(_DESCRIBE_PAST_TAG + "-dirty", expected), f"setup: unexpected value {expected!r}"
+
+    result = _run_manual_loop(shell, _readme_loop_script(source), project)
+
+    assert result.returncode == 0, (
+        f"the README manual loop ({shell}) exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    assert _read_marker(project) == _marker_line(expected), (
+        f"the README's manual loop did not write the describe value: its last line must write {VERSION_REL}"
+    )
+
+
+@pytest.mark.parametrize("shell", _SHELLS)
+def test_manual_loop_without_a_git_tree_reads_unknown(sandbox, shell):
+    """A source that git cannot describe reads `unknown`; the loop has no `-release-manifest` tier.
+
+    `install.sh` falls back to `<release manifest ".">-release-manifest` first (case 5). The loop's
+    one line does not, and README.md says `unknown` "when `$TACHI` is not the top folder of its own
+    git clone (a copy that is not a clone, even one inside another repository) or git cannot
+    describe it". The source carries a release manifest on purpose: a loop that grew that tier
+    would read `7.6.5-release-manifest` here. SENTINEL as the placeholder, so the `unknown` is what
+    the loop wrote and not what it copied.
+    """
+    source = _build_source(sandbox / "tachi-src", placeholder=SENTINEL)
+    _write_release_manifest(source, {".": "7.6.5"})
+    _assert_no_git_tree(source)
+    project = build_project_tree(sandbox / "project")
+
+    result = _run_manual_loop(shell, _readme_loop_script(source), project)
+
+    assert result.returncode == 0, (
+        f"the README manual loop ({shell}) exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    assert _read_marker(project) == PLACEHOLDER, (
+        f"the README's manual loop did not fall back to `unknown`: its last line must write {VERSION_REL}"
+    )
+
+
+@pytest.mark.parametrize("shell", _SHELLS)
+def test_manual_loop_inside_another_repo_reads_unknown(sandbox, shell):
+    """A copy of tachi inside another project's repo reads `unknown`, not that project's tag.
+
+    `git -C $TACHI describe` finds the OUTER repository from a folder inside it and names ITS
+    version, so the loop's last line describes `$TACHI` only when it is the top of its own work
+    tree: the rule `install.sh` applies (case 5). The outer repository is tagged, so a line that
+    described regardless would write `v9.9.9-outer`. The copy carries a release manifest on
+    purpose, as in the case above: a loop that grew that tier would read `7.6.5-release-manifest`.
+    SENTINEL as the placeholder, so the `unknown` is what the loop wrote and not what it copied.
+    """
+    outer = sandbox / "outer-project"
+    outer.mkdir()
+    _git("init", "--quiet", cwd=outer)
+    (outer / "README.md").write_text("an unrelated project\n", encoding="utf-8")
+    _git("add", "-A", cwd=outer)
+    _commit(outer, "outer project")
+    _git("tag", "v9.9.9-outer", cwd=outer)
+    source = _build_source(outer / "vendor" / "tachi", placeholder=SENTINEL)
+    _write_release_manifest(source, {".": "7.6.5"})
+    # Setup: git does find a repository above the copy and the copy is not its root, so describing
+    # it names the outer project's tag, and `unknown` below cannot be a describe that failed.
+    assert _git("rev-parse", "--git-dir", cwd=source, check=False).returncode == 0
+    assert _git("rev-parse", "--show-cdup", cwd=source).stdout.strip() != ""
+    assert _describe(source) == "v9.9.9-outer", "setup: describing the copy must name the outer tag"
+    project = build_project_tree(sandbox / "project")
+
+    result = _run_manual_loop(shell, _readme_loop_script(source), project)
+
+    assert result.returncode == 0, (
+        f"the README manual loop ({shell}) exited {result.returncode}\n"
+        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    )
+    marker = _read_marker(project)
+    assert marker == PLACEHOLDER, (
+        "the README's manual loop did not fall back to `unknown` for a copy inside another "
+        "repository: its last line must describe $TACHI only when it is the top of its own work "
+        f"tree (the marker reads {marker!r})"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Case 9: the marker guard refuses a bad marker path (T044 CR-5)
+# ---------------------------------------------------------------------------
+
+
+def _build_source_without_a_marker(root: Path) -> Path:
+    """A synthetic source with no `templates/tachi/VERSION` and no git tree.
+
+    The shape of a tag older than the placeholder: the manifest lists `templates/tachi/` and the
+    folder holds one file, but there is no `VERSION` to copy. The pre-flight classifies the
+    destination of every file the source holds, so it has no marker to look at, and `marker_guard`
+    is the only check left on the marker path.
+    """
+    build_source_tree(root, entries=ENTRIES)
+    copy_working_tree_install_sh(root)
+    assert not (root / VERSION_REL).exists(), f"setup: the source must not ship {VERSION_REL}"
+    _assert_no_git_tree(root)
+    return root
+
+
+def test_marker_guard_refuses_a_symlinked_marker(sandbox):
+    """A link at `templates/tachi/VERSION` is refused, and the file it points at keeps its bytes.
+
+    install.sh never writes or deletes through a link. It must stop with exit 1 before it copies,
+    removes or writes anything, and the project tree must be exactly as it was. The link's target
+    lies outside the project.
+    """
+    source = _build_source_without_a_marker(sandbox / "tachi-src")
+    project = build_project_tree(sandbox / "project")
+    outside = sandbox / "outside-the-project.txt"
+    outside_bytes = b"not tachi's file: an install must never write through the link\n"
+    outside.write_bytes(outside_bytes)
+    add_symlink(project, VERSION_REL, outside)
+    before_project = snapshot_tree(project)
+
+    result = _install(source, project)
+
+    assert result.returncode == 1, result.combined
+    assert "symbolic link" in result.clean_stderr, result.combined
+    assert outside.read_bytes() == outside_bytes, "the install wrote through the link"
+    assert_no_tree_changes(before_project, snapshot_tree(project), label="project")
+
+
+def test_marker_guard_refuses_a_non_regular_marker(sandbox):
+    """A directory at `templates/tachi/VERSION` is refused, and nothing is written.
+
+    Exit 1 with the guard's own message: the marker path exists and is not a regular file, so there
+    is nothing install.sh may replace there.
+    """
+    source = _build_source_without_a_marker(sandbox / "tachi-src")
+    project = build_project_tree(sandbox / "project")
+    (project / VERSION_REL).mkdir(parents=True)
+    before_project = snapshot_tree(project)
+
+    result = _install(source, project)
+
+    assert result.returncode == 1, result.combined
+    assert "not a regular file" in result.clean_stderr, result.combined
+    assert_no_tree_changes(before_project, snapshot_tree(project), label="project")

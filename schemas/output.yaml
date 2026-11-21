@@ -7,9 +7,36 @@
 # Producers: Template engine (applying IR findings to output template)
 # Consumers: Integrators, SARIF export (F-006), downstream features
 #
-# Version: 1.1
+# Version: 1.5
+#
+# This file is the single source of the threats.md schema version: the output
+# template, the output-schemas reference and the SARIF specification take their
+# version from it (Feature 391). The SARIF generator reads the input's own
+# schema_version first and falls back to this file. This file had stayed at 1.1
+# while the template and the reference documents moved on to 1.2 and 1.4. 1.5
+# reconciles them, declares the frontmatter keys that producers already wrote
+# (run_id, baseline, coverage_gate, has_attack_chains, has_agentic_patterns,
+# has_source_attribution) and adds tachi_version. The change is additive: a
+# parser that reads 1.4 files reads 1.5 files unchanged.
+#
+# Consumer guidance (the same text is in
+# .claude/skills/tachi-orchestration/references/output-schemas.md):
+#
+#   - Feature-detect `tachi_version`. Read it when the key is present. Do not
+#     infer it from `schema_version`, and do not assume it exists: a threats.md
+#     written before schema 1.5 has no such key, which is normal for older files.
+#   - Treat `schema_version` in files older than 1.5 as declared, not ordinal.
+#     Before 1.5 the value was written by the model and nothing kept it in step
+#     with this file: files with the 1.4 structure declare 1.4, 1.7 and 1.8.
+#     Do not order, compare or gate on it; test for the structure you need.
+#   - `tachi_version: unknown` means the install recorded no version: it skipped
+#     the version-marker line, or the marker file is missing or malformed. It is
+#     not an error in the threats.md.
+#   - `schema_version` stays model-authored and declared-only: the step that
+#     writes `tachi_version` writes no other key, so a file's `schema_version`
+#     is what its producer declared, not a value stamped from this file.
 
-schema_version: "1.1"
+schema_version: "1.5"
 
 output:
   frontmatter:
@@ -17,7 +44,7 @@ output:
     fields:
       schema_version:
         type: string
-        value: "1.1"
+        value: "1.5"
       date:
         type: string
         format: "YYYY-MM-DD"
@@ -32,6 +59,82 @@ output:
       classification:
         type: string
         default: confidential
+
+      # Declared in 1.5. Producers already wrote the next six keys; a consumer
+      # must still tolerate the absence of each, because files from earlier
+      # runs do not carry it.
+      run_id:
+        type: string
+        format: "YYYY-MM-DDTHH-MM-SS"
+        description: >
+          Identifier of this pipeline run. A later run's baseline.run_id
+          refers back to it.
+      baseline:
+        type: object
+        description: >
+          The earlier run this one was compared against. Every key is null
+          when there is no baseline (a first run).
+        fields:
+          source:
+            type: string
+            nullable: true
+          date:
+            type: string
+            format: "YYYY-MM-DD"
+            nullable: true
+          finding_count:
+            type: integer
+            nullable: true
+          run_id:
+            type: string
+            nullable: true
+      coverage_gate:
+        type: object
+        description: >
+          Result of the coverage gate (the Coverage Gate Results section).
+        fields:
+          status:
+            type: string
+            enum:
+              - pass
+              - warn
+          gaps:
+            type: list
+            description: >
+              One entry per component and category the gate flagged, as
+              {component, missing_category, resolution}. Empty when nothing
+              is missing.
+            resolution_values:
+              - findings_produced
+              - analyzed_clean
+              - dispatch_failure
+      has_attack_chains:
+        type: boolean
+        description: >
+          True when attack-chains.md was produced for this run.
+      has_agentic_patterns:
+        type: boolean
+        description: >
+          True when at least one finding carries an agentic pattern other
+          than none, so the Findings by Agentic Pattern section is rendered.
+      has_source_attribution:
+        type: boolean
+        description: >
+          True when at least one finding carries a non-empty
+          source_attribution.
+
+      # Added in 1.5.
+      tachi_version:
+        type: string
+        description: >
+          The tachi release that wrote this file. It is copied from the
+          one-line version marker the installer records at
+          templates/tachi/VERSION, by a deterministic step that runs after the
+          file is written; the model never writes it. Examples: "v4.48.1",
+          "v4.48.1-2-g3ecba74-dirty", "4.48.1-release-manifest" (an install
+          from a source with no git tree) and "unknown". Absent in files
+          written before 1.5. Feature-detect it (see the consumer guidance
+          above).
 
   sections:
     - name: System Overview

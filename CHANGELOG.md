@@ -9,6 +9,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 391 — Isolated and Auditable Operation, Part B (#391) — feat(391)
+
+Records which tachi release wrote a `threats.md`: the installer leaves a one-line version
+marker in your project, `/tachi.threat-model` stamps it into the file's frontmatter as
+`tachi_version`, and the output schema moves to 1.5 to declare the new key.
+
+**Added**
+- A version marker, `templates/tachi/VERSION`, one line of the form `tachi_version: <value>`.
+  `install.sh` writes it after its copy step. The value is
+  `git describe --tags --always --dirty` of the clone you install from, taken after any
+  `--version` checkout. A source with no git tree of its own gives the version in its
+  `.release-please-manifest.json` followed by `-release-manifest`, and anything else gives
+  `unknown`.
+- `scripts/stamp-tachi-version.py`, installed with the other scripts that tachi distributes.
+  `/tachi.threat-model` runs it as Step 2.6, after the Step 2.5 populator re-assert and before
+  it reports results. It copies the marker's value into the frontmatter of `threats.md` as
+  `tachi_version`, right after `schema_version`, and stamps `unknown` when the marker is
+  missing or malformed. It is deterministic and idempotent, and the model never writes the
+  field. It writes no other key, so `schema_version` stays what the file's producer declared.
+
+**Changed**
+- The manual-install loop in the README and in the developer guide now ends with a line that
+  writes the same marker from `git describe`, with `unknown` as its only fallback. An install
+  that skips that line reads `unknown`, because the copy installs a placeholder that says so.
+- The `threats.md` schema moves from 1.4 to 1.5, and the change is additive.
+  `schemas/output.yaml`, which had stayed at 1.1, is now the single source of the version, and
+  the output template, the output-schemas reference and the SARIF specification state the same
+  one. Version 1.5 declares the six frontmatter keys that producers already wrote (`run_id`,
+  `baseline`, `coverage_gate`, `has_attack_chains`, `has_agentic_patterns` and
+  `has_source_attribution`) and adds `tachi_version`. Parsers are unchanged.
+- Consumers should feature-detect `tachi_version`: read it when the key is present, and do not
+  infer it from `schema_version` or assume it exists, because a `threats.md` written before 1.5
+  has none. Treat `schema_version` in a file older than 1.5 as declared, not ordinal: before
+  1.5 the model wrote the value and nothing kept it in step with the schema, so files with the
+  1.4 structure declare 1.4, 1.7 and 1.8. `tachi_version: unknown` means that the install
+  recorded no version, and it is not an error.
+- `scripts/generate-threats-sarif.py`, which is not installed into projects, now takes the
+  SARIF `semanticVersion` (the `threats.md` schema version, not the tachi release) from the
+  `schema_version` that its input file declares, and from `schemas/output.yaml` when the input
+  declares none.
+
+**Upgrading**: update your tachi clone, re-run `install.sh` from your project root and restart
+Claude Code. If you install with `--version`, pull first anyway, so that the updated
+`install.sh`, which writes the marker, is the one that runs. If you install by hand, run the
+README's manual-install loop again, since it now ends with the marker line. A `threats.md`
+written before this release has no `tachi_version`, which is normal. A new run stamps it, and
+the output template that run follows declares `schema_version: "1.5"`.
+
+**Known limitation**: a downgrade made with an installer from before this release cannot reset
+the marker, so the newer value stays; delete `templates/tachi/VERSION` afterwards (the marker
+then reads `unknown`), or downgrade with this release's `install.sh --version <tag>`.
+
 ### Feature 391 — Isolated and Auditable Operation, Part A (#391) — fix(391)
 
 Corrects what tachi's documentation says leaves the machine, adds an installed runbook for
