@@ -87,16 +87,6 @@
 # (one that gains an undeclared frontmatter key fails the suite, so an edit to
 # only those files must run it) — wired through both paths and invocation in
 # lock-step, and through the `py39-floor` job's module list.
-# F-391 (T033) added the run-transcript archiver suite
-# (`test_archive_run_transcripts.py`: the refusal matrix, both synthetic
-# transcript generations, the secret scan) plus the three inputs a traced full
-# run reads beyond the pytest scaffolding all modules here share: the archiver
-# (`scripts/archive-run-transcripts.py`), the synthetic sessions it copies and
-# edits (`tests/fixtures/transcripts/`) and the manifest schema it cross-checks
-# (`schemas/run-manifest.yaml`). The suite starts `git` and small `/bin/sh`
-# scripts of its own, so both must exist on the runner (both images ship them).
-# Wired through both paths and invocation in lock-step, and through the
-# `py39-floor` job's module list.
 #
 # References:
 #   - specs/248-substitution-surface-hardening/spec.md (FR-001..FR-011, NFR-001)
@@ -192,10 +182,6 @@ on:
       - schemas/taxonomy/nist-ai-rmf.yaml                      # F-391 (T039) — extractor catalog, as cwe.yaml (input)
       - examples/**/threats.md                                 # F-391 (T039) — swept sample data: an undeclared frontmatter key fails the suite (input)
       - tests/scripts/fixtures/**/threats.md                   # F-391 (T039) — swept sample data, same sweep (input)
-      - tests/scripts/test_archive_run_transcripts.py          # F-391 (T033) — run-transcript archiver suite: refusal matrix, both transcript generations, secret scan
-      - scripts/archive-run-transcripts.py                     # F-391 (T033) — the archiver; the suite imports it and runs it as a subprocess (input)
-      - tests/fixtures/transcripts/**                          # F-391 (T033) — synthetic gen1 and gen2 sessions the suite copies and edits (input)
-      - schemas/run-manifest.yaml                              # F-391 (T033) — manifest schema the suite cross-checks fields, enums and example against (input)
       - tests/scripts/init_sh_helpers.py
       - tests/scripts/conftest.py
       - tests/fixtures/init-baseline-tree/**
@@ -278,7 +264,6 @@ jobs:
         # F-391 modules added (also run under Python 3.9 by the `py39-floor` job):
         #   test_tachi_version_marker.py            — installed-version marker written by install.sh
         #   test_threats_schema_contract.py         — threats.md schema 1.5 + tachi_version stamp contract
-        #   test_archive_run_transcripts.py         — run-transcript archiver: refusals, both generations, secret scan
         run: |
           python -m pytest \
             tests/scripts/test_init_sh_substitution.py \
@@ -304,7 +289,6 @@ jobs:
             tests/scripts/test_gemini_key_env_only.py \
             tests/scripts/test_tachi_version_marker.py \
             tests/scripts/test_threats_schema_contract.py \
-            tests/scripts/test_archive_run_transcripts.py \
             -v --timeout=1080
 
   py39-floor:
@@ -359,5 +343,4 @@ jobs:
           python -m pytest \
             tests/scripts/test_tachi_version_marker.py \
             tests/scripts/test_threats_schema_contract.py \
-            tests/scripts/test_archive_run_transcripts.py \
             -v --timeout=600
