@@ -9,6 +9,98 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Feature 391 — Isolated and Auditable Operation, Part A (#391) — fix(391)
+
+Corrects what tachi's documentation says leaves the machine, adds an installed runbook for
+running tachi inside Claude Code's sandbox, keeps a run's writes inside its output directory,
+and checks the declared privileges of every tachi agent and command in CI.
+
+**Added**
+- An isolated-operation runbook, `docs/guides/ISOLATED_OPERATION_TACHI.md`, installed with
+  tachi. It names the two hosts a run reaches and what each receives, and gives one session
+  profile to pass with `claude --settings`: Claude Code's sandbox with a one-host network
+  allow-list, auto mode's built-in rules plus one prohibition, and deny rules for the web
+  tools, the MCP tools, the built-in tools that reach past the sandbox and common secret
+  paths. It adds probe checks, the write locations, transcript retention, reporting routes,
+  and a mapping to the agent-containment guidance that Anthropic publishes for
+  Cyber Verification Program participants, as tachi's own reading of that guidance. Its header
+  records a live validation on macOS with Claude Code 2.1.330 in auto mode. Linux and WSL2
+  are not yet run live. On macOS, Chromium cannot start inside the sandbox, so for runs with
+  diagrams the runbook gives a by-hand build of the PDF report, run after the session.
+- An agent and command privilege matrix, §8 of `docs/standards/CLAUDE_PERMISSIONS.md`: each
+  agent's tools, model pin, shell command families, written paths and hosts, and each
+  command's frontmatter keys, dispatches, written paths and child processes. It states which
+  columns Claude Code enforces and which only declare what tachi's instructions do.
+- A CI privilege guard, `scripts/check-agent-privileges.py` (standard library only, Python 3.9
+  or later), run by `tachi-permissions-verify.yml` on pull requests and on pushes to `main`.
+  It fails when an agent's tools, model pin or frontmatter keys, a command's frontmatter keys,
+  the shell commands fenced in a Bash-capable agent's instructions or the runbook's
+  write-location table drift from §8, and when agent files and §8 rows do not match one to
+  one. A self-test plants five mutations on every run to show that the guard still fails.
+  The install-fidelity suite checks that the agents each install path produces carry the
+  §8 tools.
+- `scripts/extract-report-data.py` gains `--build-dir` and `--remove-build-dir`, which build
+  the report in a throwaway copy of the template and then remove that copy. It also passes
+  `-p <file>` to `mmdc` when `TACHI_MMDC_PUPPETEER_CONFIG` names an absolute path to a regular
+  file, for the runbook's Linux and WSL2 rendering recipe (not yet run live).
+- ADR-049 records the privilege contract and the write confinement.
+
+**Changed**
+- A run now writes only under its output directory and the temporary directory (`$TMPDIR`),
+  and never under the installed `templates/tachi/` tree. `/tachi.security-report` compiles a
+  throwaway copy of the template in `{out}/.tachi-build/security-report/`, removed after a
+  successful compile and kept after a failed one for debugging. The infographic extraction
+  JSON, which went to `/tmp`, and the Gemini request and response files now sit in
+  `{out}/.tachi-build/` and are kept. `install.sh` writes no `.gitignore`, so a project that
+  commits run output should ignore `.tachi-build/`.
+- `/tachi.security-report --output-dir` must now sit under the working directory, or the build stops.
+- With `--output-dir`, `/tachi.security-report` writes its rendered diagrams, and any
+  corrected infographic copy, under that directory instead of the artifact directory.
+- `/tachi.risk-score` runs its in-place Affected Assets refresh of `threats.md` only when the
+  output directory is the input directory, so a run with another `--output-dir` leaves the
+  input directory unchanged.
+- The installed scripts that agents and commands run no longer write a Python bytecode cache
+  into the project.
+- The repair hints in the tachi commands and the developer guide say to re-run
+  `scripts/install.sh` from the project root instead of copying adapter files.
+- `SECURITY.md` gains a data-handling section and a reporting route for out-of-scope model
+  behaviour observed under an Anthropic program such as the Cyber Verification Program.
+- `docs/standards/CLAUDE_PERMISSIONS.md` states that its §1 to §7 baseline governs tachi's own
+  repository and is not installed into adopter projects, and names two gaps in that
+  baseline: a web fetch to an unlisted host is asked about, not denied, and shell `curl` is
+  not covered.
+- ADR-014 and ADR-019 gain dated Notes.
+
+**Fixed**
+- `.claude/rules/scope.md` said that architecture descriptions never leave the machine and
+  that no data leaves the environment, and `docs/standards/CLAUDE_PERMISSIONS.md` described
+  its baseline as having no network egress and a default-deny outbound rule. Both are
+  corrected. The README, the developer guide, `SECURITY.md`, `scope.md`, `CLAUDE_PERMISSIONS.md`
+  and the runbook now state the two flows: your Claude Code model provider receives the
+  architecture description, the files tachi reads and the findings on every run, and
+  Google's Gemini API receives image prompts built from derived threat-model content,
+  including names and descriptions taken from the architecture, only when `GEMINI_API_KEY`
+  is set and `/tachi.infographic` runs. The README states the Gemini flow before the key
+  setup step.
+- `/tachi.security-report` dispatched `senior-backend-engineer`, a development agent that
+  tachi does not install, instead of its own report assembler. It now dispatches
+  `tachi-report-assembler`.
+- `tachi-risk-scorer` wrote `risk-scores.md` and `risk-scores.sarif` beside its input even
+  when `/tachi.risk-score` was given another `--output-dir`. It now writes them to the output
+  directory it is given.
+- A custom `report-config.typ` was copied over the installed template's default and stayed
+  in effect for later reports in the same project. It now applies only to the report built
+  from its run folder, and the installed default is never modified.
+- The MAESTRO-data check behind `/tachi.infographic all` used `grep -P`, which macOS's grep
+  does not support; it now uses `grep -E`. The infographic agent's extraction step calls
+  `python3` instead of `python`.
+
+**Upgrading**: update your tachi clone, re-run `install.sh` from your project root and restart
+Claude Code; the runbook is installed with the rest of tachi. If you install with `--version`,
+pull first anyway, so that the updated `install.sh` is the one that runs. In a fork, a change
+to a tachi agent's tools, model pin or frontmatter keys now fails CI until §8 of
+`docs/standards/CLAUDE_PERMISSIONS.md` changes in the same pull request.
+
 ### Fix 393 — Read GEMINI_API_KEY from the environment only (#393) — fix(393)
 
 **Changed**
