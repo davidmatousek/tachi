@@ -651,7 +651,7 @@ def _install_from_clone_tagged(sandbox, tag, extra_env=None):
 def test_value_outside_the_readers_rule_reads_unknown(sandbox, tag, utf8):
     """A describe value the readers would read as `unknown` is written as `unknown` (X-7).
 
-    `stamp-tachi-version.py` and `archive-run-transcripts.py` share one rule
+    `stamp-tachi-version.py` reads the marker by one rule
     (contracts/version-marker.md): a letter or digit first, then letters, digits and `. _ + ~ -`,
     128 characters at most, all of them ASCII. Each tag breaks one part of it, and git accepts all
     five: a `/` in the value, a first character that is not a letter or digit (`_` and `+`; git
