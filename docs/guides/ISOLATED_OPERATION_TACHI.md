@@ -211,7 +211,6 @@ The image key is optional (§1). To use it, inject `GEMINI_API_KEY` into the env
   ```
 
 - A wrapper that runs `claude` as a child process, such as `op run`, masks the child's output by default and can disturb an interactive session. If you use one, try it before a real run. §11 records the exact form that worked in the live validation.
-- Run the archiver (§7) under the same secret-injection wrapper as the session, with the same variables set. Its final scan compares what it writes with the values of secret-named variables in its own environment, so an archiver started from a shell that lacks them checks fewer values. It prints how many it checked.
 
 **What the mask does and does not do.** The image key is masked for sandboxed commands: they see a placeholder, and the sandbox proxy substitutes the real value only on connections to `generativelanguage.googleapis.com`. The real value is still held by the Claude Code process, which runs outside the sandbox, and it can reach hooks, the status line and local MCP servers, which Claude Code starts outside the sandbox, unless you scrub the environment. The Read denies in the profile keep Claude's file tools away from that environment on Linux and from Claude Code's own login file; whatever a tool does read is written to the plaintext transcript. `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1` is the documented switch that strips credentials from those subprocesses. The profile does not set it, and the docs do not say how it combines with a masked variable ([what the subprocess environment scrub removes](https://code.claude.com/docs/en/env-vars#what-the-subprocess-environment-scrub-removes)).
 
@@ -392,44 +391,6 @@ grep -n cleanupPeriodDays ~/.claude/settings.json .claude/settings.json .claude/
 ```
 
 `/status` shows whether managed settings are in effect ([confirm what loaded](https://code.claude.com/docs/en/settings#confirm-what-loaded)). If any file lowers the key, raise it again, or archive the transcripts you need by copying them out of `~/.claude/projects/` before you start another session. Claude Code deletes old transcripts in a background sweep that starts after a session starts, so the copy has to finish first. The docs do not say whether a session that lowers the value also deletes the transcripts of other projects, so assume that it does ([retention sweep event](https://code.claude.com/docs/en/monitoring-usage#retention-sweep-event)). Keep any copy as protected as the original.
-
-### The run archive and the run manifest
-
-`scripts/archive-run-transcripts.py` copies one finished session to a directory outside `~/.claude/projects/`, where Claude Code's retention sweep works, and writes `run-manifest.json` beside the copy. It needs Python 3.9 or later and no packages. It makes the copy that the retention advice above calls for, and it records how the run was produced.
-
-**Run it.** Run it from your own shell, in the project root, after the session has ended, and start it the way you started the session: under the same secret-injection wrapper, with the same variables set (§3). For a session that held the image key:
-
-```
-GEMINI_API_KEY="$(your-secret-manager-read-command)" \
-  python3 -I -B scripts/archive-run-transcripts.py --latest --output-dir docs/security/<timestamp>
-```
-
-For a session that ran without the key, leave the variable out. `--latest` takes the newest session of this project, and `--session <id>` takes a named one. `--output-dir` names the run's output directory (§5), so that the manifest records a hash of every file in it. `--dest <dir>` overrides the destination. The `-I -B` flags stop a file planted beside the script from shadowing a standard-library module in a shell that holds your secrets, and a plain `python3` start restarts the script under them. The archiver is not part of the isolated session. Its default destination is in your home directory, which a sandboxed command cannot write, so it is not one of tachi's run commands and §5 does not list that destination.
-
-**What it copies, and where.** It finds the project's transcripts under `~/.claude/projects/`, or under the directory that `CLAUDE_CONFIG_DIR` names, by matching their working directory to the project ([application data](https://code.claude.com/docs/en/claude-directory#application-data)). It copies the main transcript and the whole session directory beside it, which holds the subagent transcripts, their metadata files and the persisted tool results, byte for byte. The default destination is `~/.tachi/runs/<project>/<YYYY-MM-DD>-<session>/`. Directories are owner-only (mode 0700) and files are mode 0600.
-
-**When it refuses.** The archiver exits 1 and writes nothing when the destination is inside a git work tree and git does not ignore every path the run would write there; when the destination is not empty (an identical, finished archive of the same session is a no-op, and anything else needs a new `--dest`); when the session looks live, meaning a file of it changed in the last 120 seconds, unless you pass `--allow-live`; when the destination is a symbolic link, or a link on its path leads into a work tree; and when the destination lies under Claude Code's projects directory, where the sweep could delete it. It exits 2 when it cannot work at all, for example when it finds no transcript for the project, or needs git for the work-tree check and cannot find it. It recognizes git work trees only: Mercurial, Subversion and Jujutsu work trees are not recognized, so keep `--dest` outside them.
-
-**The archive is sensitive.** The copy is a full, unredacted transcript. It holds your architecture description, the files that were read, command output and the findings, and anything a tool printed, which can include a secret. It is owner-only, and the archiver refuses a destination that git could commit, but never commit it, attach it to a ticket or share it whole. Retention is yours: the archiver never deletes an archive, and nothing in tachi limits how long it lives. Keep it as protected as the original. A backup or indexing tool that reads `~/.tachi` picks the archive up too.
-
-**The manifest.** `run-manifest.json` holds structure only: identifiers, counts, host names and hashes, never message text, tool input or output, command lines or URLs. It records:
-
-- the tachi version of the install (`tachi_version`, from `templates/tachi/VERSION`, and `unknown` when the install recorded none), the session id, the Claude Code versions seen, the start, end and archive times, and a SHA-256 hash of every archived file;
-- for the main session and for each subagent instance, the models that served its turns as a count of turns per model id (`served_model_histogram`), with its agent type, its spawn depth and its pin (`pinned_model`), which is the alias as your installed agent file writes it. A subagent type that the installed roster does not name, such as a built-in `general-purpose` instance, is listed too, with `pinned_model: null`. The archiver does not resolve the alias and does not compare it with the served model;
-- every dispatch of a tachi agent at any depth with its outcome (`recorded`, `dispatch-failed` or `not-recorded`), and the installed tachi agents that were never dispatched, so a run in which the orchestrator analysed inline shows what never ran as an agent;
-- the permission modes seen;
-- the hosts that URLs in Bash commands and WebFetch calls named (`egress_observed`), and the calls that Claude Code denied, by host and kind: sandbox, classifier or permission rule (`egress_denied`);
-- with `--output-dir`, a hash of every file in the run's output directory.
-
-The run manifest records the model that actually served each turn. `pinned_model` is the alias that tachi asked for, and `served_model_histogram` counts the turns that each model id actually answered, so compare the two (§3, "Model selection").
-
-**What it does not show.**
-
-- `egress_observed` records what the session asked for, not what the network did. It sees only URLs, and it cannot see the child processes of a tool, such as a diagram renderer or a headless browser.
-- `denial_detection` says whether an empty `egress_denied` can be read as "none denied". It reads `validated` only for Claude Code versions whose denial markers were checked against a recorded run. For every other version it reads `not-validated`, and an empty list proves nothing.
-- The manifest is not signed. `pinned_model`, the agent roster and `tachi_version` are read from your project's files when the archiver runs, so a session that could write those files could have changed them. Treat the manifest as an aid to an audit, not as proof.
-
-**Before you share the manifest.** The manifest is built to hold no secret. A final scan refuses to write it when a value that looks like a key, or the value of a secret-named environment variable (raw, or re-encoded as hex, base32, base64, percent-encoding or JSON escaping), reaches it. The scan skips variable values shorter than 8 characters, so the manifest's structure, not the scan, is what keeps a secret out. The archiver prints how many variables it compared, and warns when there were none. The manifest still names hosts, file names and session ids, so read it before you share it.
 
 ## 8. Reporting routes
 
