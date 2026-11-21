@@ -207,4 +207,5 @@ Observed and recorded, not new: the orchestrator analysed inline rather than dis
 - *`tachi-orchestrator` (cell: `python3`) also ran `ls`, `cat`, `head`, `sed`, `grep`, `cd` and `mkdir`, among others.*
 - *`tachi-report-assembler` (cell: `python3`, `test`, `typst`) also ran `echo`, `ls` and `which`, and in K2 `tail`.*
 - *`tachi-threat-infographic` (cell: `[`, `echo`, `python3`, `test`) also ran `ls`, `cat`, `grep`, `sed` and `cd`, and in K2 `awk` and `curl`. In K2 it also wrote two helper scripts of its own under `{out}/.tachi-build/`.*
+- *2026-11-20 (T044): in K2 the two helper scripts built the infographic specifications and the Gemini request files, so no request file was written with the Write tool. The agent decoded each image with `python3` and the standard library, through a heredoc, as its instructions say.*
 - *Every write still landed under `{out}`. The cells record what tachi's instructions say, not what a run is limited to. The architect's ruling W3-8 carries this into §8.1 of the permissions standard and runbook §5 and §10.*
