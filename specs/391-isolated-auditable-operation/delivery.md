@@ -9,7 +9,7 @@
 **Part B**: B2 built, awaiting #364 (#396, based on `main` since this delivery). Landing tracker: #400.
 **B1**: honest-stopped (TW-B1). Follow-up: #399.
 
-> Prepared at T045 (build session S2c, 2026-11-21). `/aod.deliver` completes every field marked "TBD at /aod.deliver". Structure only: no transcript text, session or tool-call ids, home or scratch paths, or key material. Numbers such as `#399` are filled in when the follow-ups are filed.
+> Prepared at T045 (build session S2c, 2026-11-21) and completed by `/aod.deliver` the same day: every field that T045 left open for the delivery is filled. Structure only: no transcript text, session or tool-call ids, home or scratch paths, or key material.
 
 ---
 
@@ -432,7 +432,7 @@ Every gated run used scratch clones of the committed tip (the #365 rule).
 | W4, EC-5 (`wave-04/results.json`) | Part A `97208fe` | PASS: `test_write_confinement.py` 78 passed with `TACHI_REQUIRE_TYPST=1` (69 existing, 9 new refusal cases); the guard's `--self-test` passes |
 | W3, T043 re-run (G3) | Part A `6ade384`; part-b `3cc8294` | PASS: Part A 988 passed, 6 failed (#365's six), 3 skipped, 1 xfailed; part-b 1,121 passed with the same failures. X-5: 706 passed and `py39-floor` 132 on Python 3.9.6. The zsh cases passed |
 
-**CI at the final W3 tips:** #392 at `6ade384`, 11 of 11 green; #396 at `3cc8294`, 8 of 8 green. **CI at merge:** TBD at /aod.deliver.
+**CI at the final W3 tips:** #392 at `6ade384`, 11 of 11 green; #396 at `3cc8294`, 8 of 8 green. **CI at merge:** on `e83ca6b` (the push to `main`), all five path-triggered workflows green: `tachi permissions-verify` 44936411660, `tachi catalog-drift` 44936411675, `tachi install fidelity` 44936411674, `release-please` 44936411638 (opened #418) and `tachi pytest` 44936411639 (ubuntu-latest finished 18:47Z, macos-latest 19:08Z). The closure push `7ae5e35` re-ran `tachi pytest` (44939997013, in progress at this record) and `release-please` (44939997020, success). The regenerated fixture was checked first in a scratch clone of `7ae5e35`: `test_init_sh_substitution.py` and `test_isolated_profile_contract.py`, 203 passed, 1 xpassed (`test_personalized_tree_bytes_match_baseline`, the XPASS that #345 waits for).
 
 ### Manual Validation
 
@@ -479,6 +479,8 @@ Wording sweep over every added line of the three agents' diffs: Pattern A 0 hits
 
 ## Reminder for /aod.deliver
 
+All items below were done at the delivery on 2026-11-21: the note appended and the fixture regenerated in `7ae5e35`, with #345 told; run 44936411660 recorded; #392 squash-merged and #418 opened; #396 reopened and retargeted to `main`; C-9 left with the maintainer; the open fields filled.
+
 - **The system-design README.** Its appended note records the B1 stop and B2's separate landing, and `tests/fixtures/init-baseline-tree/` is regenerated in the same commit (FR-021). #345 tracks that fixture's pre-existing drift, so record the result there.
   - Maintainer decision (2026-11-21): regenerate per the plan. The regeneration absorbs #345's drift there and turns that test's `xfail(strict=False)` into an XPASS. Comment on #345 that its marker can be removed there.
   - The note's text, from the architect's final validation (F-7):
@@ -488,7 +490,7 @@ Wording sweep over every added line of the three agents' diffs: Pattern A 0 hits
 - **The merge.** Confirm with the maintainer before any merge. Squash-merge #392 under its `fix(391): …` title, then confirm that a release-please PR opened, and push a `fix(391)` marker commit if it did not.
 - **T047** follows the squash-merge (split path).
 - **C-9**, the maintainer action above.
-- **The TBD fields** in this document.
+- **The open fields** in this document.
 
 ---
 
@@ -498,3 +500,9 @@ Wording sweep over every added line of the three agents' diffs: Pattern A 0 hits
 - [ ] The local branch `391-sc-a3-evidence` (`git branch -D` is denied in this environment; the maintainer removes it).
 - [ ] `.aod/revision-context.md`, a stale untracked leftover from the tasks loop, deliberately not committed (the maintainer removes it).
 - [x] Tasks: 50 of 52 done; T047 (after this merge) and T038b (after #364) are conditional.
+- [x] Committed and pushed: `7ae5e35` (the closure docs, KB Entry 25, the regenerated fixture) and the CI-record commit that carries this line, both direct to `main` under the deliver-stage exception.
+- [x] GitHub Issue #391 closed with `stage:done` (2026-11-21T19:16Z); the board row moved to Done.
+- [x] Story export skipped: the issue body has no `## Stories` section. The PM added the Feature 391 block to `docs/product/05_User_Stories/README.md` by hand.
+- [x] Delivery lock released as the last act of the run.
+
+**Feature 391 (Part A) is now officially CLOSED. Part B lands through #396 (tracker #400); B1 through #399.**
