@@ -2,10 +2,10 @@
 
 ## 0. Header
 
-- Last validated: not yet validated for the published profile. The live run on 2026-11-20 (§11) used an earlier profile without the ten deny rules in §3.
+- Last validated: 2026-11-20, on macOS 26.6.2 (arm64), Claude Code 2.1.330, auto mode (one Manual-mode check), key-less and keyed, tachi build `v4.48.2-103-gfe5125a`, with the session profile at SHA-256 `43496fb7d4fca098983a70648def8f1da2a2d1843528b5ca4c14444e32564279`. The published profile adds ten deny rules (§3). A key-less re-check on 2026-11-20 covered its startup, its rule list, the tool inventory, a refused isolated Agent call, the sandbox probes and one `/tachi.threat-model` run (§11).
 - Minimum Claude Code version: v2.1.285
 - Owner: the tachi maintainer
-- Platforms the claim covers: none yet. §6 lists the platforms this runbook targets, and §11 names the ones that ran in the live validation.
+- Platforms the claim covers: macOS, except `/tachi.security-report` on runs with diagrams (§6). Linux and WSL2: not yet run live. §6 lists the platforms this runbook targets, and §11 names the ones that ran in the live validation.
 - Refresh triggers: re-validate this runbook and update the "Last validated" line when one of these changes:
   - A new Claude Code minor release, or a change to its sandbox, auto-mode, `--settings` or retention behavior.
   - A change to the session profile (§3).
@@ -540,9 +540,25 @@ tachi's CI runs a guard (`scripts/check-agent-privileges.py`) that compares the 
 
 ## 11. Live-validation record
 
-**Re-check of the published profile: pending (R1 to R6).** The live run recorded here used the profile that §3 published before it gained ten deny rules, so the header says that the published profile is not yet validated. The re-check covers the published profile's startup, its rule list, the tool inventory, the refusal of an Agent call that sets an isolation value, the sandbox probes and one `/tachi.threat-model` run. This section records it when it runs.
+This record is structure only. It holds no transcript excerpts, session ids, home paths or key material. It has two parts: the key-less re-check of the published profile, first, and the live run before it, which used the profile that §3 published before it gained ten deny rules. The sessions of both were real interactive Claude Code sessions in a terminal, driven by Claude at the maintainer's instruction. The maintainer directed the runs and recorded the results.
 
-This record is structure only. It holds no transcript excerpts, session ids, home paths or key material. The sessions were real interactive Claude Code sessions in a terminal, driven by Claude at the maintainer's instruction. The maintainer directed the run and recorded the result.
+### Re-check of the published profile
+
+**Passed on 2026-11-20: R1 to R6, with R4a, on the published 18-rule profile.** A change to the profile ends the "Last validated" claim (the second refresh trigger in the header), so the maintainer re-checked the profile that §3 now publishes. The re-check was key-less, on macOS 26.6.2 (arm64) with Claude Code 2.1.330, in auto mode, in the scratch project and with the installed build of the live run below (`v4.48.2-103-gfe5125a`). It used the launch form from §3, key-less, with `SHELL=/bin/bash` and the profile passed as a file to `--settings`. The user-scope additions that §3 recommends were not applied for it. Claude drove each session, as in the live run.
+
+| Step | Result |
+|---|---|
+| R1 | Passed. The profile block extracted from the published runbook is 3,156 bytes, SHA-256 `36df2a9a98e301d783a06ff605d1be7f9548e10f805084b3fe225ff89eef9644`, with 18 deny rules. The same extraction of the live run's runbook gives its 2,908 bytes and `43496fb7d4fca098983a70648def8f1da2a2d1843528b5ca4c14444e32564279`. The two differ only by the ten deny rules after `mcp__*` |
+| R2 | Passed. `claude --settings <file> auto-mode config` equalled the built-in lists followed by the profile's entries, in order (`environment` 21 to 26 entries, `hard_deny` 1 to 2, `allow` and `soft_deny` unchanged), identical to the live run's output |
+| R3 | Passed. `claude --settings <file> doctor` reported no installation issues and no rejected or skipped rule, auto-update disabled by the non-essential-traffic variable, and Remote Control off because feature-flag evaluation is disabled. In the session, no startup warning named a rule and auto mode was on. `/status` listed User settings and Command line arguments as the settings sources, with `Auto mode server: Enabled`, and `/permissions` showed an empty Allow list and exactly the 18 profile rules under Deny, `Agent(isolation:*)` and `Workflow` among them |
+| R4 | Passed. The session listed its tools without calling one. No `mcp__` tool and none of the nine bare names (the eight built-in tools that §3 denies by name, and `Workflow`) appeared, loaded or deferred, and `Agent` was present. The Agent tool still lists the `isolation` values `worktree` and `remote`, because a parameter rule removes no schema value |
+| R4a | Passed. Asked to start one subagent with `isolation: "worktree"` and a one-word prompt, the session's Agent call was refused before it ran, with the message that permission to use Agent with `isolation:*` had been denied. No subagent ran, and `git worktree list` in the project showed only the main worktree. The layer was the permission rule from the command-line settings. The `remote` value was never requested |
+| R5 | Passed. The `touch`, `curl --noproxy` and proxy `curl` probes of §4 were refused as in the live run, and a planted dummy `.env` was refused through the Read tool (by the permission settings) and through `cat` (before it ran, by the permission rule from the command-line arguments). The dummy file was removed afterwards |
+| R6 | Passed. `/tachi.threat-model` ran key-less into a fresh output directory, so with no baseline: 1 Critical, 11 High, 5 Medium and 0 Low findings, and 17 SARIF results, in about 6 minutes. The dispatch tree was the orchestrator, then the report agent, then the attack-tree agent, all finished. None set an isolation value, so the new parameter rule left tachi's dispatches untouched. As in the live run, the orchestrator analysed inline instead of dispatching the STRIDE agents. The write listing (a hash of every path except `.git/`, before and after) showed 21 new paths, 0 changed and 0 deleted, all under the run's output directory |
+
+**The first attempt, on the 16-rule profile.** A first re-check ran on the profile as it stood before the Agent tool's `remote` isolation value was known (3,110 bytes, SHA-256 `0880db3b3d75ad84e95b12a6127aeac345999b6366edb2bb1e6a4725d46b78d2`, 16 deny rules). R1 to R3 passed. R4's inventory showed no `mcp__` tool and none of the eight tool names, but the Agent tool's `isolation` parameter accepted `worktree` and `remote`. R4's stop condition applied, and that session ended without R5 or R6. The profile then gained `Agent(isolation:*)` and `Workflow` (§3), and the re-check restarted at R1 on the 18-rule profile recorded above.
+
+**What it supports.** The published profile is validated for what the re-check covered: startup and the rule list, the tool inventory, a refused isolated Agent call, the sandbox and `.env` probes, and one key-less `/tachi.threat-model` run with the deepest dispatch tree. The rest of the live validation, including the keyed pipeline, the mask and the Gemini client's trust of the proxy's CA, ran in the live run, on the earlier profile. The ten added rules only deny: they name tools that tachi does not use, and Agent calls that set an isolation value, which tachi's dispatches never do. Nothing in the re-check changes blocker F1: on macOS, `/tachi.security-report` still cannot render diagrams under the profile (§6). The subsections below record the live run.
 
 ### Result in brief
 
@@ -643,8 +659,8 @@ Each write listing hashed every file and directory in the scratch project except
 - **Mask:** the value that a sandboxed command saw had the real key's length, a different SHA-256 (compared on the host, with only the verdict printed) and no marker word: a same-length placeholder. A key-prefix test does not work for this key format, which is why the check used the length and a hash.
 - **CA trust under `tlsTerminate`:** 6 `curl` requests to `generativelanguage.googleapis.com`, none with `-k` or `--insecure`, and the pinned client form has neither. 6 images came back, so the proxy substituted the masked key.
 - **The key on disk:** after the keyed run, 0 files held the real key across the scratch project, every session transcript and Claude Code's state files. The count before the run was also 0.
-- **Denials seen:** in the key-less session, the planted probes. The keyed session showed no denial marker.
-- **Unexpected egress denials: 0, with one qualification.** The keyed session held one refusal that no probe planted. Before the pipeline ran, a Bash call by the infographic agent that named the Gemini host and carried a per-command allowed-domain field was refused by the strict allowlist, with the same refusal as the added per-command probe and no denial marker. The pipeline then completed with 6 images. This record states the facts and does not rule on whether that refusal is an egress denial.
+- **Denials seen:** in the key-less sessions, the planted probes. In the keyed session, the one refusal in the next bullet, which no probe planted.
+- **Unexpected egress denials: 0, with one qualification.** In the keyed session's `/tachi.infographic` step, Claude Code refused one Bash call by the infographic agent without running it, with the same refusal as the added per-command probe and no denial marker, because the call carried a per-command host list, which `strictAllowlist` refuses by design even when, as here, the list and the command name only `generativelanguage.googleapis.com` (§3, "No extra host for a single command"). No probe planted it, and the agent continued without the list, so all 6 image requests completed with 6 responses: this record counts it as the profile's designed refusal, not as an unexpected egress denial.
 - **Auto mode with non-essential traffic off:** every measured session ran in auto mode with `Auto mode server: Enabled`. No fallback was needed.
 
 ### Offline render check
@@ -691,5 +707,5 @@ The keyed sessions started with this form, whose placeholders are as in §3:
   - The by-hand build in §6, which runs outside the isolated session.
   - Linux and WSL2: the seccomp check, the `/proc` rule, the Linux diagram recipe and auto mode on Linux.
   - `CLAUDE_CODE_SHELL=/bin/bash`, and the argument-free launch form for shared hosts (§3).
-  - The published profile: the re-check at the top of this section.
+  - The keyed pipeline, the mask and the Gemini client's trust of the proxy's CA on the published profile: they ran on the earlier profile only, and the re-check was key-less.
 - **Not tested:** whether a sandboxed command can read the item that holds Claude Code's own sign-in, and whether a sandboxed command can use the messaging socket and token (§3).
