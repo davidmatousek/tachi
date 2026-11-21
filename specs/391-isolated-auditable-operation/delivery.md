@@ -71,7 +71,7 @@ The W0' spike (`w0-spike.md`) passed the three attribution clauses. It ran witho
 ### B1: honest-stopped (TW-B1)
 
 - **Built in W1, not shipped.** T031 to T034 built the archiver, `schemas/run-manifest.yaml`, two generations of synthetic fixtures and the test suite, with the T034 security review and the T040 fixes. T035 (the recorded fixture) is honest-stopped. T031 to T034 stay `[x]`.
-- **How B1 left part-b.** Seven delete-and-edit commits, not `git revert` (the architect's ruling): `be2e890`, `dfcf93e`, `efaaf70`, `140d93d`, `f7f8ce4`, `40f0a58` and `bc943c6`. #396 now differs from Part A in 17 paths, all of them B2. The runbook and ADR-019 are byte-identical to Part A's.
+- **How B1 left part-b.** Seven delete-and-edit commits, not `git revert` (the architect's ruling): `be2e890`, `dfcf93e`, `efaaf70`, `140d93d`, `f7f8ce4`, `40f0a58` and `bc943c6`. #396 now differs from Part A in 18 paths: the 17 B2 paths below and `CHANGELOG.md` (T048's Part B entry, `923c802`). The runbook and ADR-019 are byte-identical to Part A's.
 - **Where the built work is.** Every B1 commit stays an ancestor of part-b's tip and of `refs/pull/396/head`.
   - `fe5125a` is the last commit with B1 intact: the archiver as reviewed and fixed (1,823 lines, SHA-256 `ae65e4dc957cc55b56d649f3b20883cb479bc9626b2c6daf246e704e619325a7`), the schema, the fixtures, the suite and the B1 doc text.
   - Code: `093be0a`, `f9b5c0a`, `5952539`, `9e17230` and `c46b6a8`.
@@ -82,7 +82,7 @@ The W0' spike (`w0-spike.md`) passed the three attribution clauses. It ran witho
 
 ### Part B: B2 built, awaiting #364 (#396)
 
-- **What #396 carries:** B2 only. The installed version marker (`templates/tachi/VERSION`, written by `install.sh`), `tachi_version` stamped into `threats.md` at Step 2.6 of `/tachi.threat-model` by `scripts/stamp-tachi-version.py`, and the additive schema reconciliation to 1.5, with their tests and docs. Its 17 paths against Part A:
+- **What #396 carries:** B2 only. The installed version marker (`templates/tachi/VERSION`, written by `install.sh`), `tachi_version` stamped into `threats.md` at Step 2.6 of `/tachi.threat-model` by `scripts/stamp-tachi-version.py`, and the additive schema reconciliation to 1.5, with their tests and docs. Its 17 B2 paths against Part A (`CHANGELOG.md` is the 18th, T048's Part B entry):
 
   ```
   .claude/commands/tachi.threat-model.md
@@ -120,7 +120,7 @@ The W0' spike (`w0-spike.md`) passed the three attribution clauses. It ran witho
 
 | SC | Status at T045 |
 |---|---|
-| SC-001 (PRD SC-A1) | Recorded by clause, on macOS. The probe table and the FR-010 probes passed, and auto mode worked with non-essential traffic off. The zero-unexpected-egress-denials clause is met with a recorded qualification (the PM's ruling, under "Live validation"). "A full run completes" holds under W3-1's macOS scoping: `/tachi.security-report` built no PDF in either measured run (F1). The header names macOS only; Linux and WSL2 did not run (D1) |
+| SC-001 (PRD SC-A1) | Recorded by clause, on macOS; SC-001 as a whole is not claimed. The probe table and the FR-010 probes passed, and auto mode worked with non-essential traffic off. The zero-unexpected-egress-denials clause is met with a recorded qualification (the PM's ruling, under "Live validation"), for the profile that ran. "A full run completes" rests on W3-1's macOS scoping: `/tachi.security-report` built no PDF in either measured run (F1). Both full runs, key-less and keyed, used the profile that ran (2,908 bytes, `43496fb7…`); the published 18-rule profile was re-checked key-less (R1 to R6, with one `/tachi.threat-model` run), so the keyed pipeline has not run on it. The header names macOS only and stamps the Claude Code version, permission mode and date; Linux and WSL2 did not run (D1) |
 | SC-002 (PRD SC-A2) | Met (T041, `w3-sweeps.md` §1): the D-3 sentence stands verbatim at 8 places in the six documents, the 4 unqualified claims on `main` are gone, PRD-054 and PRD-060 are untouched, and ADR-014 changed only by its Note |
 | SC-003 (PRD SC-A3) | The pull-request leg is shown (T030, throwaway PR #398: red on an added tool, green on the revert; the self-test red path runs on every run), and `test_agent_privilege_guard.py` covers the other synthetic cases. The `push:[main]` leg is TBD at /aod.deliver (below) |
 | SC-004 (PRD SC-A4) | Met: `test_installed_agent_tools_match_matrix` on the install-sh, manual-loop and manual-loop-zsh paths (T028). The zsh path skips on CI's Ubuntu runner and ran locally in T043 (#415, optional) |
@@ -253,6 +253,11 @@ Correcting published copies of the old data-locality claim outside this reposito
 - **A stale checksum.** `specs/029-agent-refactoring-right/baseline-checksums.txt:23` holds Feature 029's SHA-256 of `schemas/output.yaml` (`3686e693…`). The file has changed since, and Part B changes it again. Nothing in the tests, scripts, workflows or the Makefile reads the record, so it was left unchanged.
 
 ### Orchestrator deviations
+
+**S2c** (W4):
+- **T046's steps were run by the orchestrator,** not dispatched to DEVOPS-E: the Wording sweep, `/aod.analyze`, the three diff checks and the `gh` steps. The architect's Step 5 review covered the same ground independently.
+- **The orchestrator applied the architect's Step 5 fix texts verbatim** (F-1 to F-5, F-8, F-10). It also narrowed one phrase of T048's Part B entry: the output template declares schema 1.5, and the stamp writes no other key.
+- **The orchestrator filed the follow-ups** from the PM's drafts, with one held for maintainer triage.
 
 **S2b** (verbatim):
 
@@ -403,6 +408,23 @@ Every gated run used scratch clones of the committed tip (the #365 rule).
 
 ## Wording sweep (T046)
 
+Run on 2026-11-21 (S2c). Steps (1) to (4) ran at Part A `107c0a4`. The sweep was re-run on the texts as this records commit leaves them, after the architect's final-validation edits. The orchestrator ran DEVOPS-E's steps (see "Orchestrator deviations").
+
+- **Wording Rules, step (0).** Pattern A: 0 hits. Pattern B: 0 hits.
+  - Surface: the Part A CHANGELOG entry (`### Feature 391 — … Part A … — fix(391)`), `release-notes.md`, and the titles and bodies of #392 and #396.
+  - Also swept, for T047: the Part B CHANGELOG entry on part-b (`923c802`).
+  - The only matching terms are names the spec allows: "Cyber Verification Program" (Part A entry, 2) and `tachi-permissions-verify` (Part A entry 1, #392 body 1).
+- **`/aod.analyze`, step (1):** clean. 0 critical, 0 high, 0 medium and 5 low, all records-level.
+- **AD-14, step (2):** `git diff --stat main...391-isolated-auditable-operation` lists 88 paths and none of AD-14's Part B-only paths. Part A's `tachi-pytest.yml` carries no Part B entry.
+- **Step (3), the hunk grep:** 0 hits.
+- **Step (4):** the diff holds no tracked example image, PDF or SARIF baseline, and no `examples/` path.
+- **Step (5):** #392 is retitled `fix(391): isolated and auditable operation (Part A)`, and the bodies of #392 and #396 come from the T045 drafts. #392 is marked ready when this commit is pushed. The squash-merge and the release-please check belong to `/aod.deliver`.
+- **After the architect's final validation** (Step 5 of `/aod.build`; local, `.aod/results/architect-final-391.md`): APPROVED_WITH_CONCERNS, with 0 critical and 0 high.
+  - Applied: F-1 to F-5, F-8, F-10, and two of F-11's precision notes (the `/tachi.architecture` exception and the zsh install path).
+  - F-7's note is carried to `/aod.deliver` below.
+  - F-9 is an acceptance item on #401.
+  - Both sweeps were re-run on the edited texts: Pattern A 0, Pattern B 0.
+
 ---
 
 ## Documentation Updates
@@ -413,7 +435,11 @@ TBD at /aod.deliver.
 
 ## Reminder for /aod.deliver
 
-- **The system-design README.** Its append records the B1 stop in one line, and `tests/fixtures/init-baseline-tree/` is regenerated in the same commit (FR-021). #345 tracks that fixture's pre-existing drift, so record the result there.
+- **The system-design README.** Its appended note records the B1 stop and B2's separate landing, and `tests/fixtures/init-baseline-tree/` is regenerated in the same commit (FR-021). #345 tracks that fixture's pre-existing drift, so record the result there.
+  - Confirm the regeneration with the maintainer first. The PM notes that it absorbs #345's drift and turns that test's `xfail(strict=False)` into an XPASS; F-362 chose not to regenerate and left the drift to #345.
+  - The note's text, from the architect's final validation (F-7):
+
+    > **Status at Part A's merge (<date>).** Part A shipped alone as `fix(391)` (TW-A2). B1, the archiver and its run manifest, was honest-stopped at TW-B1 and does not ship (follow-up #399). B2, the version marker, the `tachi_version` stamp and the schema 1.5 reconciliation, ships separately through #396 after #364. Until #396 merges, the B2 rows and the `install.sh` → `VERSION` → stamp edges above describe the plan, not `main`; the archiver row, its edge and the Tech Stack's `subprocess` note describe work that did not ship.
 - **SC-003's push leg.** Record the run id of the guard's first `push:[main]` run in `test-results/sc-a3-evidence.md` and above.
 - **The merge.** Confirm with the maintainer before any merge. Squash-merge #392 under its `fix(391): …` title, then confirm that a release-please PR opened, and push a `fix(391)` marker commit if it did not.
 - **T047** follows the squash-merge (split path).
