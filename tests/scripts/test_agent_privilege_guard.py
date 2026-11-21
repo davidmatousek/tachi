@@ -34,8 +34,11 @@ What each group proves:
   (an untracked ``.DS_Store`` is ignored); with no git tree every such file is red except
   known OS junk.
 - exit 2 (infrastructure, never drift): every unparseable ``tools:`` shape, a malformed matrix
-  cell or table, a missing matrix, an unclosed frontmatter, a ``.git`` that git cannot read;
-  exit 2 also outranks exit 1.
+  cell or table, a missing matrix, an unclosed frontmatter, a delimiter-shaped line inside the
+  frontmatter (an indented ``---`` or a ``...`` line with a key hidden after it, in an agent or
+  a command), a first line that starts with ``---`` but is not ``---`` (the allow-listed
+  document with a ``---yaml`` opener), a ``.git`` that git cannot read; exit 2 also outranks
+  exit 1.
 - C5 (commands, bidirectional): a command frontmatter key added or removed, a command file
   without a row, a row without a file.
 - C6 (shell command families): ``$(...)``, backticks, process substitution, ``eval``,
@@ -844,6 +847,28 @@ def repeat_a_key(tree: Tree) -> None:
     plant(tree, HELPER, agent_text("tachi-helper").replace("model: sonnet\n", "model: sonnet\nmodel: opus\n"))
 
 
+# Delimiter-shaped lines inside the frontmatter. Each case puts a key (in the third, a command's
+# allowed-tools) after a line that strips to --- or ..., then closes with a --- at the start of a line.
+# A guard that stops at the first such line never sees the key and, the key set being unchanged, stays
+# green; a parser that closes only at the column-0 --- may read it. Two parsers may disagree on where the
+# frontmatter ends, so the guard must refuse the file (exit 2).
+def hide_a_key_behind_an_indented_delimiter(tree: Tree) -> None:
+    drop_line(tree, TAMPERING, "description:")  # it comes back below, as a block scalar that holds the ---
+    add_agent_key(
+        tree, READ_ONLY, "description: |\n  planted by the T026 test\n  ---\npermissionMode: bypassPermissions"
+    )
+
+
+def hide_a_key_behind_a_document_end_marker(tree: Tree) -> None:
+    add_agent_key(tree, READ_ONLY, "...\npermissionMode: bypassPermissions")
+
+
+def hide_allowed_tools_behind_an_indented_delimiter(tree: Tree) -> None:
+    rel = command_path("risk-score")
+    tree.replace(rel, "---\ndescription: ", "---\ndescription: |\n  ")  # the live description becomes the block
+    tree.replace(rel, "\n---\n", "\n  ---\nallowed-tools: Bash\n---\n")  # the first closer is the real one
+
+
 def remove_the_agents_directory(tree: Tree) -> None:
     shutil.rmtree(str(tree.path(AGENTS)))
 
@@ -872,6 +897,25 @@ INFRA = [
     ),
     pytest.param(unclose_the_frontmatter, "C1", HELPER, "never closes", id="frontmatter-never-closes"),
     pytest.param(repeat_a_key, "C1", HELPER, "duplicate frontmatter key 'model'", id="frontmatter-key-repeated"),
+    pytest.param(
+        hide_a_key_behind_an_indented_delimiter,
+        "C1", TAMPERING, "inside the frontmatter", id="indented-delimiter-hides-a-key",
+    ),
+    pytest.param(
+        hide_a_key_behind_a_document_end_marker,
+        "C1", TAMPERING, "inside the frontmatter", id="document-end-marker-hides-a-key",
+    ),
+    pytest.param(
+        hide_allowed_tools_behind_an_indented_delimiter,
+        "C5", command_path("risk-score"), "inside the frontmatter",
+        id="command-indented-delimiter-hides-allowed-tools",
+    ),
+    # a first line that starts with --- but is not --- reads as "no frontmatter" to a guard that wants an exact
+    # ---, and the allow-listed document may have none; another reader may take that line as an opener
+    pytest.param(
+        plant_in_doc(lambda text: text.replace("---\n", "---yaml\n", 1)),
+        "C1", DOC, "is not exactly ---", id="allow-listed-document-with-a-yaml-opener",
+    ),
     pytest.param(remove_the_agents_directory, "C1", AGENTS, "agents directory not found", id="agents-directory-missing"),
 ]
 

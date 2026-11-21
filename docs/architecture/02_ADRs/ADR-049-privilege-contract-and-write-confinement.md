@@ -105,7 +105,7 @@ Three places where an agent's text chose a path or left it open now pin one:
 
 ### D8: The installed scripts write no bytecode cache (AR-14)
 
-`extract-report-data.py`, `extract-infographic-data.py` and `populate-affected-assets.py` are the three installed scripts that agents and commands run. Each imports `tachi_parsers` from its own directory, so CPython caches that module as bytecode, in `scripts/__pycache__/` or under the interpreter's cache prefix, both outside `{out}` and `$TMPDIR`. Each script sets `sys.dont_write_bytecode = True` under `if __name__ == "__main__":`, before that import. The guarantee lives in the script, so it holds for a paraphrased command and for a person running the script by hand. The interpreter's own standard-library cache lies outside the project and serves every Python program, so it is out of scope.
+Agents and commands run `extract-report-data.py`, `extract-infographic-data.py` and `populate-affected-assets.py`, and each imports `tachi_parsers` from its own directory, so CPython caches that module as bytecode, in `scripts/__pycache__/` or under the interpreter's cache prefix, both outside `{out}` and `$TMPDIR`. Each script sets `sys.dont_write_bytecode = True` under `if __name__ == "__main__":`, before that import. The guarantee lives in the script, so it holds for a paraphrased command and for a person running the script by hand. The interpreter's own standard-library cache lies outside the project and serves every Python program, so it is out of scope.
 
 ### D9: `/tachi.security-report` dispatches `tachi-report-assembler` (AD-13)
 
