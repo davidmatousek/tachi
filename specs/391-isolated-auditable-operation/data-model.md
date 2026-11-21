@@ -6,12 +6,14 @@ All entities are files or document sections; there is no database. Field names b
 | Field | Type | Rule |
 |---|---|---|
 | `tachi_version` | string, one line `tachi_version: <value>` | Tracked placeholder value `unknown`. At install `<value>` = `git describe --tags --always --dirty` of the source clone after any `--version` checkout; `<manifest ".">-release-manifest` when no git tree (labelled, never a describe string); else `unknown`. Never SemVer `+` build metadata. |
-Writers: `install.sh` (removes any existing marker before the copy loop; writes after it, inside the containment and symlink guards), the README manual-install loop (same line after its copy). Every copy path resets the value to `unknown` because the placeholder is tracked. Readers: `stamp-tachi-version.py` (Step 2.6 of `/tachi.threat-model`) and `archive-run-transcripts.py` (P0B0-6). Residual: a pre-391 installer used to downgrade cannot reset the marker.
+Writers: `install.sh` (removes any existing marker before the copy loop; writes after it, inside the containment and symlink guards), the README manual-install loop (same line after its copy). Every copy path resets the value to `unknown` because the placeholder is tracked. Readers: `stamp-tachi-version.py` (Step 2.6 of `/tachi.threat-model`) and `archive-run-transcripts.py` (P0B0-6; the archiver is not shipped in 391: B1 was honest-stopped at T051, TW-B1). Residual: a pre-391 installer used to downgrade cannot reset the marker.
 
 ## ThreatsFrontmatter (`threats.md`, schema 1.5) — Part B2
 Declared keys after reconciliation: `schema_version` ("1.5"), `date`, `input_format`, `classification` ("confidential"), plus the de-facto keys documented: `run_id`, `baseline`, `coverage_gate`, `has_attack_chains`, `has_agentic_patterns`, `has_source_attribution`, and the new `tachi_version` (string; marker value or `unknown`). Additive: 1.4 readers ignore unknown keys. `generated_at` is never added.
 
 ## RunManifest (`run-manifest.json`, `manifest_version: 1`) — Part B1
+*Not shipped in 391: B1 was honest-stopped at T051 (TW-B1, `test-results/tw-b1-w2.md`). This section stays as the design record for the follow-up.*
+
 | Field | Type | Rule |
 |---|---|---|
 | `manifest_version` | int | 1 |
