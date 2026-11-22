@@ -9,7 +9,7 @@ triad:
     agent: architect
     date: 2026-11-22
     status: APPROVED_WITH_CONCERNS
-    notes: "First review: CHANGES_REQUESTED, 18 findings (4 HIGH: slot rules, replace before check, escaping, Track O order). Re-review of rev. 1: APPROVED_WITH_CONCERNS. 17 of 18 fixes are sufficient; F7 is partial in PR 2 and tracked as N3. New findings: 0 HIGH, 2 MEDIUM (N1: carried prose keeps its slots; N2: over-limit prose is cut and flagged, not rejected), 4 LOW and nits, all folded in rev. 2 and checked by the lead. O-α (phase2), O-β (threats-md), O-γ (the report payload) and N3 are ruled as ADR-050 revisions before W2′ under TW-ADR, and each contingency is priced as its own line at /aod.tasks. ADR-050 is Accepted (provisional pre-PR). Full: .aod/results/architect-374-plan.md, architect-374-plan-rereview.md and architect-374-plan-rev2.md"
+    notes: "First review: CHANGES_REQUESTED, 18 findings (4 HIGH: slot rules, replace before check, escaping, Track O order). Re-review of rev. 1: APPROVED_WITH_CONCERNS. 17 of 18 fixes are sufficient; F7 is partial in PR 2 and tracked as RR3. New findings: 0 HIGH, 2 MEDIUM (RR1: carried prose keeps its slots; RR2: over-limit prose is cut and flagged, not rejected), 4 LOW and nits, all folded in rev. 2 and checked by the lead. O-α (phase2), O-β (threats-md), O-γ (the report payload) and RR3 are ruled as ADR-050 revisions before W2′ under TW-ADR, and each contingency is priced as its own line at /aod.tasks. ADR-050 is Accepted (provisional pre-PR). Full: .aod/results/architect-374-plan.md, architect-374-plan-rereview.md and architect-374-plan-rev2.md"
   techlead_signoff: null  # Added by /aod.tasks
 ---
 
@@ -303,7 +303,7 @@ The lanes follow the feasibility check's §3.1. Each hot file has one lane per w
 
 **PR 2: Track O** (about T0 + 11 to 12; bounded at its planning central + 1.0)
 - **Branch.** The Track O lanes may start after the cut line, on their own branch cut from the cut-line commit. PR 2's base is always `main` (KB 25). After PR 1 squash-merges, the branch is rebased onto `origin/main`, and the full tree is diffed (KB 18).
-- **Before W2′:** ADR-050's items O-α (`phase2`), O-β (`threats-md`) and O-γ (the `report` payload), and N3's plan check for the report assembler, are ruled, and `/aod.tasks` prices their contingencies (D6).
+- **Before W2′:** ADR-050's items O-α (`phase2`), O-β (`threats-md`) and O-γ (the `report` payload), and RR3's plan check for the report assembler, are ruled, and `/aod.tasks` prices their contingencies (D6).
 - **W2′ and W3′.**
   - **O2:** records, briefs and the ID map; the persisted Phase 1 tables; Phase 2 re-dispatch built against S-9's spike.
   - **OC:** the chain script (S-2, S-3) and the provenance and completeness checks, with ruling B's reissue check.
@@ -367,21 +367,21 @@ Rev. 1 resolves every finding and folds the PM's rulings. ADR-050 stays Proposed
 
 ### Re-review (Architect APPROVED_WITH_CONCERNS) and PM confirmation (CONFIRMED_WITH_AMENDMENTS), 2026-11-22
 
-Rev. 2 folds both. The lead checked the fold against the reviewers' text and accepted the author's readings. It also folded the one gap the author noticed: a carried UNCHANGED controls result's evidence takes N1's decoded path. ADR-050 is **Accepted** (provisional pre-PR; the commit SHA is filled at merge).
+This plan cites the re-review's findings as RR1–RR6 (N1–N6 in its results file), so they don't collide with #397's N-items. Rev. 2 folds both. The lead checked the fold against the reviewers' text and accepted the author's readings. It also folded the one gap the author noticed: a carried UNCHANGED controls result's evidence takes RR1's decoded path. ADR-050 is **Accepted** (provisional pre-PR; the commit SHA is filled at merge).
 
 | Item | Change | Where |
 |---|---|---|
-| N1 (MEDIUM) carried prose loses its slots | Each narrative field's validated, slotted text is persisted, escaped on write (scorer §6, controls §7's `### Assessment Inputs`). Carried or copied text is decoded, re-validated as narrative and re-resolved against this run's values, with the per-field fallback. Legacy prose stays evidence | ADR-050 D2, D3, D9, Known limitations; `part-files.md` |
-| N2 (MEDIUM) one long field rejects a part | Over-limit prose is cut at its limit before escaping, flagged `input:<field>:truncated` and counted. Only keys, types, closed values, IDs and structure reject a part, and `fragments[].text` follows the same rule | D3 step 9, D9's flag kinds; `part-files.md` |
-| N3 (LOW) the report assembler's plan check | An item to rule before W2′, with O-α and O-β | D6; "Carried to `/aod.tasks`" (TW-ADR) |
-| N4 (LOW) the `report` payload | Item O-γ, with its contingency in lane T, priced as its own line | D6; "Carried to `/aod.tasks`" |
-| N5 (LOW) run-level schemas | `threat-model` in the plan and stage-record enums; a null `batch_size` for a plan with no units; `tachi.check-handoff/1`, strict-loaded | D15; `part-files.md` §4 to §6 |
-| N6 (LOW) layout and exit wording | ADR-049's note names the writers under `trees/` and `report/`. Row 2 of the exit table gains three exceptions | D3, D4; `cli.md` |
+| RR1 (MEDIUM) carried prose loses its slots | Each narrative field's validated, slotted text is persisted, escaped on write (scorer §6, controls §7's `### Assessment Inputs`). Carried or copied text is decoded, re-validated as narrative and re-resolved against this run's values, with the per-field fallback. Legacy prose stays evidence | ADR-050 D2, D3, D9, Known limitations; `part-files.md` |
+| RR2 (MEDIUM) one long field rejects a part | Over-limit prose is cut at its limit before escaping, flagged `input:<field>:truncated` and counted. Only keys, types, closed values, IDs and structure reject a part, and `fragments[].text` follows the same rule | D3 step 9, D9's flag kinds; `part-files.md` |
+| RR3 (LOW) the report assembler's plan check | An item to rule before W2′, with O-α and O-β | D6; "Carried to `/aod.tasks`" (TW-ADR) |
+| RR4 (LOW) the `report` payload | Item O-γ, with its contingency in lane T, priced as its own line | D6; "Carried to `/aod.tasks`" |
+| RR5 (LOW) run-level schemas | `threat-model` in the plan and stage-record enums; a null `batch_size` for a plan with no units; `tachi.check-handoff/1`, strict-loaded | D15; `part-files.md` §4 to §6 |
+| RR6 (LOW) layout and exit wording | ADR-049's note names the writers under `trees/` and `report/`. Row 2 of the exit table gains three exceptions | D3, D4; `cli.md` |
 | Nits, with F3's and F11's | §2a's Flags cell holds `resolved`; D4's step 7 runs `render` after the join; S-9 in W2′; `{{7*7}}` in an evidence field; the digest-checked `inputs` exemption; `fail` writes stage records; `trees/` in P-6; the second escaped-pipe row (`agentic-app/threats.md:230`); a literal `&lt;` in the round trip; `f374-macos` listed | D3, D6, D9, D13, D16; `data-model.md`, `part-files.md`, `cli.md`; P-6; Project Structure; quickstart §1 |
 | PM ruling 1 (`retagged` scope) | Values that follow a band the tags moved, such as the SLA and the review date, are `retagged`. None is `corrected`, `follows-band` included | D9 |
 | PM ruling 2 (TW-L2's threshold) | The PM's W5 text, verbatim, with the 25% return. The contract text states the check, and the release notes name the fixed sentence and both flags | D3, Mitigation, Known limitations; W5; `part-files.md` |
 | PM ruling 4 (the oracle class) | The bounded class, verbatim. The first class reads "a flagged value (corrected, or retagged under ruling A)" | D3; Verification 7 |
-| Rev. 2's noticed gap: carried controls evidence | An UNCHANGED result's evidence-class values are decoded into its batch-input row, like N1's narrative, so escaping never compounds, with a two-run test. Quoted control characters are recorded as a known limitation | D2, D16, Known limitations; `part-files.md` |
+| Rev. 2's noticed gap: carried controls evidence | An UNCHANGED result's evidence-class values are decoded into its batch-input row, like RR1's narrative, so escaping never compounds, with a two-run test. Quoted control characters are recorded as a known limitation | D2, D16, Known limitations; `part-files.md` |
 
 ## Verification & Gates
 
@@ -423,11 +423,11 @@ Rev. 2 folds both. The lead checked the fold against the reviewers' text and acc
 
 - **The estimate.** The team-lead re-baselines PR 1 from the actual M1 date, the day tasks.md gets its triple sign-off, rather than M1's planned T0 + 0.6, with its floor and ceiling under TW-0's 9.0 days. PR 2's bound is its planning central plus 1.0 (PRD §11). Priced per PR:
   - **the spec's unpriced additions:** S-4, S-11 and S-12, with the spec review's finding 1 reader work (PR 1); S-3 and S-9 (PR 2); S-14 (both);
-  - **this review's additions, PR 1:** rulings A, B and C (the `retagged` rule, the `reused-id` flag in both renderers, the message sentence); P-7's runs; PM findings 1 and 2 (the slot table and per-field fallback; D10's legacy list); and the Architect's F2, F3, F5 to F9, F11, F12 and F16 (staged rendering with pre-image restore, the reference decoder, schema-first validation, the identifier module, the plan digest, the resolver's path flag, carried prose, the macOS job, the exit table, the evidence-path checks); plus the re-review's N1 and N2 (carried slotted prose; over-limit prose cut, not rejected);
+  - **this review's additions, PR 1:** rulings A, B and C (the `retagged` rule, the `reused-id` flag in both renderers, the message sentence); P-7's runs; PM findings 1 and 2 (the slot table and per-field fallback; D10's legacy list); and the Architect's F2, F3, F5 to F9, F11, F12 and F16 (staged rendering with pre-image restore, the reference decoder, schema-first validation, the identifier module, the plan digest, the resolver's path flag, carried prose, the macOS job, the exit table, the evidence-path checks); plus the re-review's RR1 and RR2 (carried slotted prose; over-limit prose cut, not rejected);
   - **this review's additions, PR 2:** ruling B's mark and check; Step 1.5's run-level plan and the checks' hand-off files (F4, F12); and the contingencies of items O-α, O-β and O-γ, each as its own line within PR 2's central + 1.0 (ADR-050 D6; re-review deferral condition 1);
   - **F17:** the live matrix at the measured p90 batch sizes, which may double the planned dispatches (C-3).
 - **Condition 4 (PM plan review), in full.** A PR 1 projection above 9.0 days comes back to the PM before `/aod.tasks` signs off, with the items that drive it named. R-34 leaves no carve in PR 1, so the PM then chooses between re-basing TW-0 for PR 1 and moving named items to PR 2.
-- **The trip-wires:** TW-0, TW-ADR (every decision ADR-050 D1–D16 rules, plus items O-α, O-β and O-γ, and N3's plan check for the report assembler, before W2′), TW-R and TW-N3.
+- **The trip-wires:** TW-0, TW-ADR (every decision ADR-050 D1–D16 rules, plus items O-α, O-β and O-γ, and RR3's plan check for the report assembler, before W2′), TW-R and TW-N3.
 - **The split.** M5 and M6 split per PR. Row 13's optional fold-ins drop (FR-E.8, R-14's run-time bound, FR-N4.3's script).
 - **Assignments.** `agent-assignments.md` with the lanes above, at most five concurrent `senior-backend-engineer` lanes per wave, and the `tachi-*` agents as subjects under test, never assignees.
 - **The `[POST-MERGE]` tail, as one issue per PR (KB 7):** #364's audit leads, the R-17 adapter follow-up, the optional Code Scanning check, and S-16's follow-ups.

@@ -61,7 +61,7 @@ triad:
 | **Stage record** | One small JSON file per stage: counts, batches, overflow events and retries (NFR-5) |
 | **Matching key** | GitHub's alert key: the tool and upload category, the `ruleId`, `partialFingerprints.primaryLocationLineHash` and `artifactLocation.uri` (D-5) |
 | **Re-key event** | A release after which some alerts close and reopen once. Under R-34 there are at most two, at most one per file |
-| **Flags** | **Corrected**, with its cause; **unverifiable** (no vector, R-7); **unchecked** (an N17 ambiguity, R-10); **divergent** (an UNCHANGED peer whose score differs from its primary's, R-4); **override** (a human governance value, R-31); **resolved** (a RESOLVED row in `risk-scores.md`, R-30); **retagged** (a value the asset tags alone moved: the band, or a value on the way to it such as `cvss_base` or `composite_score`, even when the band holds; never `corrected`, ruling A); **reused-id** (a NEW finding whose ID the baseline used, ruling B); **input** (a kept input with a problem, such as two sources that disagree or a reachability outside its range; a narrative field replaced by its fixed sentence, PM plan-review finding 1; or a prose field cut at its length limit, Architect re-review N2). A rounding-only difference is **normalized** and counted, not flagged (R-11) |
+| **Flags** | **Corrected**, with its cause; **unverifiable** (no vector, R-7); **unchecked** (an N17 ambiguity, R-10); **divergent** (an UNCHANGED peer whose score differs from its primary's, R-4); **override** (a human governance value, R-31); **resolved** (a RESOLVED row in `risk-scores.md`, R-30); **retagged** (a value the asset tags alone moved: the band, or a value on the way to it such as `cvss_base` or `composite_score`, even when the band holds; never `corrected`, ruling A); **reused-id** (a NEW finding whose ID the baseline used, ruling B); **input** (a kept input with a problem, such as two sources that disagree or a reachability outside its range; a narrative field replaced by its fixed sentence, PM plan-review finding 1; or a prose field cut at its length limit, Architect re-review RR2). A rounding-only difference is **normalized** and counted, not flagged (R-11) |
 | **Adopter default effort** | A session launched with no effort override (R-18) |
 
 ---
@@ -691,7 +691,7 @@ These consumers read what the bundle changes. They form T001's pre-state census 
 - **PR 2 carries items 1, 2 and 5**, each for its own scope. Item 1 adds that IDs are no longer reissued, so numbering can skip (ruling B). Item 5 adds that SV-2b is carved: `threats.md`'s tables and Section 6 stay model-authored (Section 6 is checked), and the dispatch records are manifests.
 - **Both PRs, the narrative fallback** (PM confirmation, ruling 2):
   - Each PR's notes cover the stages that PR changes.
-  - They name each field's fixed sentence, the `input:<field>:narrative-fallback` flag, and the `input:<field>:truncated` flag for prose cut at its length limit (Architect re-review N2).
+  - They name each field's fixed sentence, the `input:<field>:narrative-fallback` flag, and the `input:<field>:truncated` flag for prose cut at its length limit (Architect re-review RR2).
   - They link the follow-up for any stage whose W5 fallback rate is above 10%.
 
 ---

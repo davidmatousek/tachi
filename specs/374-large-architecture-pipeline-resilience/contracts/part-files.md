@@ -38,7 +38,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `attempt` | an integer, 1–3 |
 | `part_path` | an absolute path under `<plan_id>/parts/` |
 | `tree_paths` | in `trees`, `{finding_id: absolute path under <plan_id>/trees/}`, one per ID; `{}` elsewhere |
-| `units` | the batch's unit rows, as verbatim data. In `compensating-controls`, an UNCHANGED unit's row also holds its baseline's persisted narrative text and its evidence-class values (`evidence[]`, `matrix_row`, `recommendation_body`), all decoded, for the agent to copy. So a carried string is escaped once per render (ADR-050 D2, N1) |
+| `units` | the batch's unit rows, as verbatim data. In `compensating-controls`, an UNCHANGED unit's row also holds its baseline's persisted narrative text and its evidence-class values (`evidence[]`, `matrix_row`, `recommendation_body`), all decoded, for the agent to copy. So a carried string is escaped once per render (ADR-050 D2, RR1) |
 | `refs` | an object mapping the stage's closed pointer names (architecture, threats, baseline files, target) to absolute paths that the command validated |
 | `params` | an object of the stage's closed parameters, for example `scoring_date` as `YYYY-MM-DD` |
 
@@ -79,7 +79,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `outputs` | `[{path, sha256}]` |
 | `error` | `null`, or `{code, message, batch_id, finding_ids, remedy}` |
 
-**§6 Check hand-off, `tachi.check-handoff/1`** (PR 2; Architect re-review N5). One file per main-session check, under the run-level plan's `threat-model/<plan_id>/checks/`, written by `attack-chains.py check` and `check-threat-model.py`. `close` and `fail` read it with the strict loader (closed keys, a size cap, no NaN, Infinity or duplicate keys) and fold its events into the stage record (ADR-050 D4, D15). Its keys are fixed with PR 2's checks, in lane OC.
+**§6 Check hand-off, `tachi.check-handoff/1`** (PR 2; Architect re-review RR5). One file per main-session check, under the run-level plan's `threat-model/<plan_id>/checks/`, written by `attack-chains.py check` and `check-threat-model.py`. `close` and `fail` read it with the strict loader (closed keys, a size cap, no NaN, Infinity or duplicate keys) and fold its events into the stage record (ADR-050 D4, D15). Its keys are fixed with PR 2's checks, in lane OC.
 
 ## Stage payloads: the scorer and controls items (ADR-050 D2, D9, D10)
 
@@ -111,6 +111,6 @@ Both payloads use closed key sets, and any other key is rejected, renderer-compu
 - **Narrative:** `rationale.*`, `metric_rationale.*`, `subscore_rationale.*` and each `evidence[].assessment.*` rationale.
 - **Evidence:** `evidence[].snippet`, `evidence[].summary`, `matrix_row` and `recommendation_body`.
 - **Closed values:** every other string, checked against its pattern, enum or input. `reachability.zone` must name a §2 row.
-- **Carried text (Architect re-review N1):** the renderers persist each narrative field's validated, slotted text, escaped on write: in `risk-scores.md` §6's `### Scoring Inputs` and `compensating-controls.md` §7's `### Assessment Inputs`. The scorer renderer carries it, and the controls agent copies it from its batch input (§3). Either way it is decoded first, then re-validated as narrative and re-resolved against this run's values, with the per-field fallback. Only legacy prose, which has no slots, is evidence-class (ADR-050 D9).
+- **Carried text (Architect re-review RR1):** the renderers persist each narrative field's validated, slotted text, escaped on write: in `risk-scores.md` §6's `### Scoring Inputs` and `compensating-controls.md` §7's `### Assessment Inputs`. The scorer renderer carries it, and the controls agent copies it from its batch input (§3). Either way it is decoded first, then re-validated as narrative and re-resolved against this run's values, with the per-field fallback. Only legacy prose, which has no slots, is evidence-class (ADR-050 D9).
 
 **Renderer-computed, never in a part:** every field that D2's tables give to the renderer, plus flags, corrections, control IDs, the row-check results, and §3's prose carried from the baseline: persisted slotted text, re-validated as narrative, or a legacy file's prose, which is evidence-class (ADR-050 D9).
