@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-11-22T00:32:55Z.
+> Auto-generated from GitHub Issues on 2026-11-22T04:31:24Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -50,7 +50,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| #374 | Large-architecture pipeline resilience: skipped attack-chain phase, single-response output overflow, controls table drift | — | 2026-11-22 |
+| — | *No items in this stage* | | |
 
 ## Plan
 
@@ -82,6 +82,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #374 | Large-architecture pipeline resilience: skipped attack-chain phase, single-response output overflow, controls table drift | OPEN | 2026-11-22 |
 | #370 | Covering test for the FR-012b form-drift guard in extract-report-data.py | CLOSED | 2026-10-10 |
 | #369 | CI manifest-integrity check for adapter VERSION attestations (+ copilot-aware generator) | OPEN | 2026-11-21 |
 | #368 | check-catalog-drift: _canonical() widening — decided DEFER with rationale; plus false-docstring defect (docstring :95 vs fail-closed fallback :105) | OPEN | 2026-08-12 |
