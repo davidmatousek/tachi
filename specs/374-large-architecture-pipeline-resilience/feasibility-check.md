@@ -59,9 +59,9 @@ estimate:
 
 | Band | Days | Conditions |
 |---|---|---|
-| **floor** | **5.5** | At `/aod.tasks`, SV-1, SV-2b and SV-3 fire (§8), FR-C.1 becomes a superseded-by note, and chain formation stays spec-only with SC-2 reworded. Every wave goes green on its first CI cycle, and every live run passes on its first attempt. What ships: the shared contracts; the renderer for risk scores and controls (N/N, totals, recompute-and-flag); the scorer and controls contracts with command-layer batching; K8; typed dispatch, the hand-off and the trace check; the K4.1 outcome record; a bounded Section 5; `threats.sarif` from a shipped generator; bounded `threats.md` emission. |
+| **floor** | **5.5** | SV-1 and SV-2b fire at `/aod.tasks`, and SV-3's technical trigger fires at ADR-050 (§8), FR-C.1 becomes a superseded-by note, and chain formation stays spec-only with SC-2 reworded. Every wave goes green on its first CI cycle, and every live run passes on its first attempt. What ships: the shared contracts; the renderer for risk scores and controls (N/N, totals, recompute-and-flag); the scorer and controls contracts with command-layer batching; K8; typed dispatch, the hand-off and the trace check; the K4.1 outcome record; a bounded Section 5; `threats.sarif` from a shipped generator; bounded `threats.md` emission. |
 | **planning (central)** | **8.0** | Full scope plus the C-2 and C-6 additions. Assumes ADR-050 rules every open question in one plan pass. Chain formation moves to a script. `threats.sarif` comes from a shipped generator that shares the renderer's D-5 emitter. `threats.md` uses bounded emission, not table rendering. One CI fix-forward. 7 fixture live runs, 1 small smoke run and 1 retry. N3 lands before W2. Five concurrent lanes hold up in W2. |
-| **ceiling** | **13.0** | Full scope, and everything grows. Contract gaps in the renderer (R-7) add a day. The `threats.md` tables are rendered by code. The 5 Whys points at context pressure, but the bundle stays together. Three CI fix-forwards. Two stages need a fix and a second live attempt. Fixture threat-model runs take 5 hours each and hit usage limits. Rebases across N3 and `main`. A fourth build session. |
+| **ceiling** | **13.0** | Full scope, and everything grows. Contract gaps in the renderer (RK-7) add a day. The `threats.md` tables are rendered by code. The 5 Whys points at context pressure, but the bundle stays together. Three CI fix-forwards. Two stages need a fix and a second live attempt. Fixture threat-model runs take 5 hours each and hit usage limits. Rebases across N3 and `main`. A fourth build session. |
 
 `floor ≤ planning ≤ ceiling` holds (5.5 ≤ 8.0 ≤ 13.0).
 
@@ -82,7 +82,7 @@ Track: **R** is the renderer track (scorer and controls), **O** is the orchestra
 | 5 | Renderer core | D-2 | R | 0.80 | 0.60 | 1.20 | part-file validation (C-9); CVSS calculator promoted to shipped code; SARIF base; `sarif_common.py` installed, with bytecode suppressed |
 | 6 | Renderer: risk scores | FR-N14.2, FR-K6.1–6.2, FR-N16.1, D-6 (b)(c) | R | 1.60 | 1.10 | 2.60 | parity with the agent's §10 SARIF contract (R-7); governance carry-forward; arithmetic pins (C-10) |
 | 7 | Renderer: controls | FR-K7.1–7.3, K8 tables | R | 1.00 | 0.70 | 1.60 | residuals, and totals as sums of rows; Sections 2, 4 and 5; each peer counted once |
-| 8 | Identity mechanism and the two-run test | D-5, FR-E.2 | R | 0.40 | 0.00 | 0.80 | the floor is 0 because SV-3 fires |
+| 8 | Identity mechanism and the two-run test | D-5, FR-E.2 | R | 0.40 | 0.00 | 0.80 | the floor is 0 if SV-3's technical trigger fires at ADR-050 |
 | 9 | Orchestrator outputs at scale | FR-O.1 | O | 1.20 | 0.80 | 2.20 | `threats.sarif` from a shipped generator (0.8, kept per C-1) plus bounded `threats.md` emission (0.4); at the ceiling, code renders the tables |
 | 10 | Scorer contract and command | FR-K6.3, FR-N14.1, FR-N15.1, D-6 (a) | R | 0.80 | 0.60 | 1.20 | rewrite of the 550-line spec; batch-and-resume loop in `/tachi.risk-score` |
 | 11 | Adapter copy | FR-C.1 | R | 0.40 | 0.10 | 0.70 | a 1,419-line hand-maintained copy (C-12) |
@@ -100,7 +100,7 @@ Track: **R** is the renderer track (scorer and controls), **O** is the orchestra
 | 23 | Live verification | D-7, SC-1, SC-3 | S | 1.20 | 0.80 | 2.20 | §5 |
 | 24 | CI cycles and session handoffs | NFR-7 | S | 0.40 | 0.25 | 0.80 | §6 |
 | 25 | Architect checkpoints, code review, security review | — | S | 0.50 | 0.35 | 0.80 | the renderer is a new trust boundary (C-9) |
-| 26 | Deliver | SC-7 | S | 0.30 | 0.25 | 0.40 | release notes state the identity change (R-8); CHANGELOG; release check |
+| 26 | Deliver | SC-7 | S | 0.30 | 0.25 | 0.40 | release notes state the identity change (RK-8); CHANGELOG; release check |
 | 27 | Rebase and coordination | N3, `main` | S | 0.20 | 0.10 | 0.50 | §7 |
 | | **Effort total** | | | **17.85** | **11.25** | **29.65** | |
 | | **Duration, branch to merge** | | | **8.0** | **5.5** | **13.0** | |
@@ -240,17 +240,19 @@ Each lane's share of its wave window:
   - Track R: lanes R, C and D, plus lane P's K8 work.
   - Track O: lanes O, OC and T, lane P's K4.1 work, and the `threats.sarif` generator (R3).
 - **Track R goes first.** It carries N14's code hand-back (the #360 exposure) and the observed SARIF overflow, and its live runs don't need an orchestrator run (§5).
-- **Carve order** (used by TW-0 and TW-ESC):
-  1. the full port of FR-C.1;
-  2. SV-2b, rendering the `threats.md` tables (bounded emission stays);
-  3. SV-3;
-  4. SV-1;
-  5. splitting Track O into PR 2.
+- **Carve order** (used by TW-0, TW-R and TW-ESC; PRD ruling R-23). Budget carves go in reverse PM priority, and only carves that shorten the projection count:
+  1. SV-2b, rendering the `threats.md` tables (bounded emission stays);
+  2. SV-1;
+  3. TW-R's fallback: the controls Sections 2 and 4 are authored against the single template;
+  4. SV-4, splitting Track O into PR 2.
+
+  The full port of FR-C.1 is already out (PRD ruling R-17). SV-3 is not a budget carve; it fires only on its technical trigger, at ADR-050.
 - **Never carved:**
-  - the K4.1 outcome record, which is cheap and is the observability fix;
+  - the K4.1 outcome record and its check, which are cheap and are the observability fix;
   - FR-N14.1: no code hand-back, and the overflow contract;
   - the risk-scores renderer;
-  - `threats.sarif` membership and identity. The only exception is SV-3 carving identity for all three SARIF files, in which case US-6 and SC-6 come out of the release claim (C-1).
+  - FR-N4.5 to FR-N4.7: the provenance, completeness and Phase 2 overflow checks;
+  - D-5's membership and identity for all three SARIF files. The only exception is SV-3's technical trigger, in which case US-6 and SC-6 come out of the release claim (C-1).
 
 ---
 
@@ -260,7 +262,7 @@ Each lane's share of its wave window:
 
 - **TW-0, aggregate.** Compute the projected duration from tasks.md: the sum of each wave's pacing-lane estimate × 1.25, plus plan and deliver.
   - If it exceeds **9.0 d** (planning + 1.0), carve in the §3.4 order until it is 9.0 or less.
-  - If it still exceeds 9.0 after SV-1, split Track O into its own PR and re-baseline Track R.
+  - If it still exceeds 9.0 after TW-R's fallback, SV-4 splits Track O into its own PR, and Track R is re-baselined.
 - **TW-ADR, rulings present.** No build wave starts on a contract that hasn't been ruled. plan.md and ADR-050 must rule on:
   - the D-5 mechanism and per-finding identity, including `threats.sarif` (C-1);
   - D-6 (b) and (c);
@@ -272,7 +274,7 @@ Each lane's share of its wave window:
   - the #396 rule (C-4).
 
   An item that isn't ruled is carved together with its dependents, or its tasks stay `[BLOCKED]`.
-- **TW-R, renderer budget.** If the tasks for work packages 5–8 add up to more than **5.3 effort-days** (1.4 × the 3.8 central), carve SV-3 first. If that isn't enough, the controls renderer keeps only the totals and SARIF, and Sections 2 and 4 stay agent-authored against the single template (K8 through the template plus tolerant parsers).
+- **TW-R, renderer budget.** If the tasks for work packages 5–8 add up to more than **5.3 effort-days** (1.4 × the 3.8 central), apply TW-R's fallback: the controls renderer keeps only the totals and SARIF, and Sections 2 and 4 stay agent-authored against the single template (K8 through the template plus tolerant parsers). It is the only carve that shortens the renderer lane. If it isn't enough, the overrun feeds TW-0, where SV-4 ships Track R first. SV-3 is never a budget carve (PRD ruling R-23).
 - **TW-N3, ordering.** If N3's fix hasn't merged by the start of W2:
   - the lanes that own a spec the N3 fix edits leave alone the sections it edits, which the private track's notes list;
   - the task records which side rebases (C-5).
@@ -384,7 +386,7 @@ Each lane's share of its wave window:
 - **SV-2 (FR-O.1): split it in two.**
   - **SV-2a**, `threats.sarif` membership and identity, stays. It is where N12 was observed, and it is the file adopters upload (C-1).
   - **SV-2b**, rendering the `threats.md` tables in code, may be carved at TW-0 or TW-R. Bounded emission stays either way, because at fixture scale `threats.md` sits near the output cap. The committed examples run about 250–360 tokens per finding.
-- **SV-3 (implementing N12): don't fire it now.** ADR-050 rules on it. It fires only if the chosen mechanism needs cross-run state beyond the baseline that the stage already reads. If it fires, US-6 and SC-6 come out of the release claim, and the release notes say so.
+- **SV-3 (implementing N12): don't fire it now.** ADR-050 rules on it. It fires only if the chosen mechanism needs cross-run state beyond the baseline that the stage already reads. If it fires, US-6 and SC-6 come out of the release claim, and the release notes say so. It is never fired at `/aod.tasks` or to cut schedule (PRD ruling R-23).
 - **Add SV-4 (the track split) to PRD §10.** It is pre-authorized and fires only through TW-0 or TW-ESC. Track R ships first.
 
 ---
@@ -474,7 +476,7 @@ Each lane's share of its wave window:
   - For (c): FR-K5.1 bounds the delta agent's batches, and the shipped assembly step copies the carried-forward trees. FR-K5.3 then holds by construction, and its check stays as a guard.
   - About +0.6 d, already in the central estimate.
 
-### C-7 (MEDIUM): R-4's mitigation doesn't hold under NG8.
+### C-7 (MEDIUM): RK-4's mitigation doesn't hold under NG8.
 
 - **Persisting the findings doesn't take them out of the orchestrator's context.**
   - The threat agents can't write, so their returns reach the orchestrator as tool results in any design.
@@ -482,7 +484,7 @@ Each lane's share of its wave window:
   - If Phase 3 "compiles from the persisted records" by reading them back, that adds a third copy.
 - **The hand-off buys reproducibility and the trace check, not context relief.** Only moving computation and emission out of the orchestrator lightens its load: C-2's chain script, and FR-O.1's rendering.
 - **Fix:**
-  - Reword R-4.
+  - Reword RK-4.
   - The plan states whether Phase 3 reads the records back or compiles from the returns, with the records kept as the audit copy.
   - Adopt TW-CTX.
   - Dispatching Phase 2 from the command layer is the architectural escalation. It is a follow-up, not part of this bundle.
@@ -563,7 +565,7 @@ Each lane's share of its wave window:
 - **§10:** split SV-2 into 2a and 2b, and add SV-4 (the track split).
 - **§12:** add #408, #409 and #412 to the coordinate list.
 - **ICE:** recheck Effort 4. It predates the fold-in from #397, and an 8-day central suggests 3.
-- **R-1:** its mitigation line should reference TW-0 and TW-ESC.
+- **RK-1:** its mitigation line should reference TW-0 and TW-ESC.
 
 ---
 
@@ -579,7 +581,7 @@ T0 is the day the plan stage starts. The dates assume back-to-back sessions; gap
 | M4: Implementation complete (W3 and W4) | offline end-to-end run on the fixture green; architect P1 checkpoint; code and security reviews | T0 + 6.25 | T0 + 4.3 | T0 + 9.75 |
 | M5: Live verification recorded (W5) | the §5 matrix is in the PR; TW-L1 to TW-L3 recorded | T0 + 7.5 | T0 + 5.1 | T0 + 12.25 |
 | M6: Deliver | `fix(374)` squash-merged; patch-release PR verified | **T0 + 8.0** | **T0 + 5.5** | **T0 + 13.0** |
-| SC-8: live confirmation | the next large real-world run | lagging; tracked outside this feature | | |
+| SC-9: live confirmation | the next large real-world run | lagging; tracked outside this feature | | |
 
 If the plan starts on 2026-11-23 and the work runs on consecutive working days, M6 lands around 2026-12-02 at the central estimate, 2026-11-30 at the floor and 2026-12-09 at the ceiling.
 

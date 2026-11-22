@@ -9,8 +9,8 @@ triad:
   pm_signoff:
     agent: product-manager
     date: 2026-11-21
-    status: CHANGES_REQUESTED
-    notes: "v1.1 re-review: CHANGES_REQUESTED. All six v1.0 HIGH findings are resolved; of the 27 v1.0 findings, 24 are resolved, 2 are settled by rulings and 1 is open (27, the trip-wires against R-12). 16 new findings (2 HIGH, 5 MEDIUM, 9 LOW): the carve order cut D-5's identity rule before lower-priority items (28), and the feasibility check's TW-N3 bullet disclosed the private N3 fix's reach (29). Drafting v1.1 in the define session is accepted, on conditions. v1.2 folds the re-review's rulings; its proposed rulings R-25 to R-31 await the PM's ruling. Full reviews: .aod/results/product-manager-374.md and product-manager-374-r2.md."
+    status: APPROVED_WITH_CONCERNS
+    notes: "v1.2 delta re-review: APPROVED_WITH_CONCERNS. All 16 findings of the v1.1 re-review are resolved, both HIGH included (budget carves follow R-12 and SV-3 fires only on its technical trigger; TW-N3 is generic), and the hygiene re-scan of the PRD and the feasibility check is clean. R-28 and R-29 are accepted as proposed, and R-25, R-26, R-27, R-30 and R-31 bind as amended in product-manager-374-r3.md; 5 new LOW findings. The bundle corrects what tachi already promises (complete outputs, agents on contract, alert identity that stays stable), so it ships as fix(374) with binding release notes, once the feasibility check matches R-23 and the team-lead's pricing addendum lands, both before /aod.plan. Full reviews: .aod/results/product-manager-374.md, product-manager-374-r2.md and product-manager-374-r3.md."
   architect_signoff:
     agent: architect
     date: 2026-11-21
@@ -123,7 +123,7 @@ Two stock runs on large real-world architectures failed the same way. **tachi's 
   - rule R-02 and MAESTRO matching;
   - the scoring ambiguities.
 
-  Where a check here depends on an N17 ambiguity, the case is reported as "unchecked", never as a violation (D-4). Those ambiguities are the 9.2 ceiling's scope, compound trust labels, and the bound for cross-category peers.
+  Where a check here depends on an N17 ambiguity, the case is reported as "unchecked", never as a violation (D-4). Those ambiguities are compound trust labels and the bound for cross-category peers. The 9.2 ceiling's scope (N17a) is settled here by R-25, and the scoring/delta bundle inherits that reading.
 - **NG3: the hygiene items** (#397 N1, N2, N6, N7 and N8). N7's run-directory auto-detection stays there. This bundle resolves the baseline from `threats.md`'s own `baseline.source` (D-6), so it needs no auto-detect change.
 - **NG4: #356**, the Phase 3 compilation that can fold findings into the AI tables' sequences. `OI-` and `MI-` findings fold into `LLM-N`, and `TE-` findings into `AG-N` (`orchestrator.md:373-374`; `output-schemas.md:297`). *Ruling (v1.1):*
   - if FR-O.1 moves Phase 3's table emission into code, that code must pick an AI-table prefix rule, so #356 folds in and closes;
@@ -201,7 +201,7 @@ F2 takes #374's K4–K8 and #397's N4, N12, N14, N15 and N16.
   |---|---|
   | Dimension sub-scores | Their averages (exploitability, scalability) |
   | CVSS vectors | The base score from the vector, plus the documented clamps |
-  | — (the asset tags come from the populator, not the agent) | The asset-modifier elevation: the tags' forced vector bits, the recomputed base score, and the 9.2 ceiling on modifier-raised scores (R-25) |
+  | — (the asset tags come from the populator, not the agent) | The asset-modifier elevation: the tags' forced vector bits, the recomputed base score, and the 9.2 ceiling, which never lowers an assessed score (R-25) |
   | Reachability inputs: zone, trust level, barrier counts | The reachability baseline, its adjustments and its clamps |
   | Rationale, and the prose fragments for narrative sections | Composites, severity bands and governance fields (SLA, disposition, review date), plus every number the prose states, filled from renderer slots so the prose can't contradict the tables |
   | Control status, evidence and recommendations | Residual scores, residual bands, totals, percentages, and the Section 5 aggregate and band-shift tables |
@@ -281,7 +281,7 @@ F2 takes #374's K4–K8 and #397's N4, N12, N14, N15 and N16.
 - **Parity is checked by code on the compiled artifacts**, against one reference finding set, never against what an agent parsed (KB Entry 22).
   - **The reference set** is defined once, in code: reuse `tachi_parsers.parse_threats_findings`, which reads Section 7, where every finding appears exactly once. It settles:
     - which prefixes count, `AGP-NN` included, plus `OI-`, `MI-` and `TE-` while #356 is open;
-    - whether RESOLVED findings in Section 4c count, and where RESOLVED rows appear in each file (R-30);
+    - how RESOLVED findings count: `risk-scores.md`'s open rows are compared with Section 7, its RESOLVED rows with Section 4c, and the `.md`–`.sarif` agreement check compares open rows only (R-30);
     - how the `threats.sarif` fallback input is handled.
   - **Parse errors.** Today both agents skip malformed rows and "report them as parsing errors" with no defined place in the output. Parse errors get a defined place in the output.
   - **The checks:**
@@ -298,7 +298,7 @@ F2 takes #374's K4–K8 and #397's N4, N12, N14, N15 and N16.
   - **NEW and UPDATED peers copy their primary's vector along with its scores** (R-31). So the vector check needs no peer exception; the peer exception belongs to the ±1.0 bound check (N17c, NG2).
   - **Every ID prefix gets a category**, `AGP`, `OI`, `MI` and `TE` included, because category resolution covers only eight prefixes today.
   - **Reachability** is checked against its trust-level range only for labels that normalize unambiguously.
-  - **Unchecked cases.** A stored value whose check depends on an N17 ambiguity, such as a compound trust label, is reported as "unchecked", never as a violation (ruling R-10). For computed values, R-25 settles the 9.2 ceiling's scope.
+  - **Unchecked cases.** A stored value whose check depends on an N17 ambiguity, such as a compound trust label, is reported as "unchecked", never as a violation (ruling R-10). R-25 settles the 9.2 ceiling's scope. A carried legacy finding whose outcome would depend on an unrecorded assessed score keeps its stored score, and is reported as unchecked.
   - **Rounding.** A difference that comes only from rounding is normalized and counted in the run summary, not flagged per finding, provided the band, SLA, disposition and review date all stay the same. A rounding difference that moves the band is flagged as a band correction, with rounding as its cause, and R-5 applies (ruling R-11, amended; ADR-050 pins the rounding).
 
 ### D-5: SARIF completeness and identity, for all three files
@@ -318,16 +318,16 @@ F2 takes #374's K4–K8 and #397's N4, N12, N14, N15 and N16.
   - the `artifactLocation.uri`.
 
   Only a top-level result counts as present; a peer listed in `relatedLocations` isn't one. GitHub reads neither `baselineState` nor custom fingerprint keys such as `findingId/v1`. ADR-050 pins all four parts for all three files:
-  - **one constant tool name per file, distinct across the three files** (R-33). Today's names are `Tachi`, `tachi-risk-scorer` and `tachi-control-analyzer`, and one example has drifted from them. Under a single shared name, uploading one file would overwrite another's alerts, which GitHub does for the same tool and category;
+  - **one constant tool name per file, distinct across the three files**, keeping today's names verbatim: `Tachi`, `tachi-risk-scorer` and `tachi-control-analyzer` (R-33). Renaming a tool re-keys its alerts, and one example has drifted from these names. Under a single shared name, uploading one file would overwrite another's alerts, which GitHub does for the same tool and category;
   - **the user's repo-relative architecture path.** Nothing records it today: `/tachi.threat-model` copies the architecture into the run directory, and the downstream commands find that snapshot.
     - `/tachi.threat-model` writes the path as a body line in `threats.md`, which needs no schema bump.
-    - The scorer and controls commands read it, with an override flag that defaults to `docs/security/architecture.md`.
-    - A path outside the repository falls back to a stated value, with a warning.
+    - The scorer and controls commands read it. The precedence is the override flag if given, then the body line, then `docs/security/architecture.md`.
+    - The path is validated as NFR-10 prescribes and normalized as repo-relative before it is emitted. A path outside the repository falls back to a stated value, with a warning.
     - The carrier lands in Track R if SV-4 can fire, and ADR-050 item 7 designs it;
   - **a hash recipe built from a stable per-finding key.** Finding IDs are stable only under baseline carry-forward; stateless runs renumber;
   - **RESOLVED findings are never results.** GitHub doesn't read `baselineState`, so a RESOLVED result counts as present in the run that resolves it, and its alert closes one run late.
 
-  The upload instructions show all three uploads, each with its own category. Today's guide uploads only `docs/security/threats.sarif`, a path a default run doesn't write (FR-E.11).
+  The upload instructions show all three uploads, each with its own category. Today's guide has two snippets that disagree. One uploads only `docs/security/threats.sarif`, with no category, from a path a default run doesn't write. The other uses `category: threat-model`, which `threats.sarif` keeps (FR-E.11).
 - **The N/N rule.** Each SARIF file accounts for every finding exactly once, so a consumer can count findings from the file alone. ADR-050 states the counting rule for the mechanism it picks.
   - A finding reference in `relatedLocations` needs a machine-readable marker, because the controls SARIF also lists code-evidence locations there.
   - The controls renderer needs a named source for correlation-group membership: `threats.md` Section 4a, or a group map in the scorer's output.
@@ -348,13 +348,14 @@ F2 takes #374's K4–K8 and #397's N4, N12, N14, N15 and N16.
   - `risk-scorer.md:450`, `:456`, `:474` and `:548`;
   - `control-analyzer.md:345`, `:394` and `:402`.
 - **(b) Peers vs zero drift.** In rank order (ruling R-4):
-  1. **A finding's own inputs carry forward.** A carried finding's inputs are the most granular values its baseline stores, inherited verbatim until one of them changes: the vector, the dimension sub-scores, the reachability inputs and the human governance fields (risk owner, overrides). Today's baselines are coarser. No committed example stores sub-score tables, and the markdown carries only some vectors. For such a legacy baseline, the four dimension values are the inputs, and the vector comes from the markdown or else from the baseline SARIF's `cvss-vector` property (R-26). Group membership and the identity of the primary are not inputs. A regroup or a new primary never changes a carried score, band or SLA on its own. Today the primary is the first ID listed in the group, and groups are recomputed on every run.
-  2. **Derived fields are always recomputed:** the composite, the band, and the SLA, disposition and review date that follow from the band. This supersedes `risk-scorer.md:71-76` for derived fields.
+  1. **A finding's own inputs carry forward.** A carried finding's inputs are the most granular values its baseline stores, inherited verbatim until one of them changes: the vector, the dimension sub-scores, the reachability inputs and the human governance fields (risk owner, overrides). Today's baselines are coarser. No committed example stores sub-score tables, and the markdown carries only some vectors. For such a legacy baseline, the exploitability, scalability and reachability values are the inputs, kept verbatim. The CVSS base score is checked against the vector under R-9, with the vector taken from the markdown or else from the baseline SARIF's `cvss-vector` property (R-26). Group membership and the identity of the primary are not inputs. A regroup or a new primary never changes a carried score, band or SLA on its own. Today the primary is the first ID listed in the group, and groups are recomputed on every run.
+  2. **Derived fields are always recomputed:** the composite, the band, and the SLA, disposition and review date that follow from the band. RESOLVED rows are excepted (R-30). This supersedes `risk-scorer.md:71-76` for derived fields.
   3. **One score per group, at the group level.** A group shows its primary's score. A NEW or UPDATED peer inherits from its primary, as today (R-31). An UNCHANGED peer keeps its carried score; when that differs from the primary's, the output flags the divergence instead of overwriting the score.
   4. **Every change to a carried value is flagged, with its cause.**
 - **Edges, for ADR-050 item 9** (R-31):
-  - The original scoring date isn't stored. It is derived as the stored review date minus the stored SLA.
-  - An override is recognized by rule. An Accept or Transfer disposition is always human, and so is any SLA or disposition that differs from the stored band's default.
+  - The original scoring date isn't stored. It is derived as the stored review date minus the stored SLA. Where either is missing, ADR-050 item 9 picks a fallback that never restarts the clock silently, and the case is flagged.
+  - An override is recognized by rule. An Accept or Transfer disposition is always human, and so is any SLA or disposition that differs from the **stored** band's default, never the recomputed band's.
+  - Overrides are carried verbatim and marked as overrides in the output. A model slip that the rule takes for an override then stays visible.
 - **The SLA clock** (ruling R-5). A band corrected by recomputation keeps the finding's original scoring date, so its review date moves to the corrected SLA from that date. Only an input change restarts the clock (today's UPDATED rule, `risk-scorer.md:378-382`).
 - **(c) One baseline per run** (ruling R-6).
   - Every stage inherits from the baseline run the threat model used: the scorer and the control analyzer read their baseline files from the directory of `threats.md`'s `baseline.source`.
@@ -369,8 +370,8 @@ F2 takes #374's K4–K8 and #397's N4, N12, N14, N15 and N16.
   - an architecture description of about 25 components;
   - a synthetic baseline run directory: a `threats.md` with 200+ findings and 40+ Critical, correlation groups and chain material, plus `attack-trees/`, `risk-scores.md`, `compensating-controls.md` and all three SARIF files;
   - a seeded-error variant: wrong composites, bands, vectors and reachability values, missing vectors, and the documented exceptions as controls, for each prefix;
-  - a legacy-format baseline variant, like the baselines adopters have today: no sub-score tables, partial vectors in the markdown, full vectors in the SARIF (R-26);
-  - a tagged component for the asset-modifier step (R-25), and boundary ties for a composite and a residual (R-11);
+  - a legacy-format baseline variant, like the baselines adopters have today: no sub-score tables, partial vectors in the markdown, full vectors in the SARIF, with seeded composite and vector errors (R-26);
+  - a tagged component for the asset-modifier step, including a finding assessed above 9.2 and a carried legacy finding of that kind (R-25), and boundary ties for a composite and a residual (R-11);
   - the two-run pair in which correlation regroups carried findings;
   - a stub codebase for the controls stage.
 
@@ -391,7 +392,11 @@ F2 takes #374's K4–K8 and #397's N4, N12, N14, N15 and N16.
   - If TW-L1 fires, the scorer and controls keep both levels, while the threat-model and PDF runs use the default only. That drops the report's max run, which the PM re-review accepted.
 - **SC-8's baseline.** In the same session as the pre-fix run, one v4.48.4 run of the scorer and controls stages on one shipped example's `threats.md`. SC-8 gates on output tokens, with a stated tolerance. Wall time is recorded but not gated.
 - **Code Scanning evidence** (optional). If it fits W5, the two-run fixture's SARIF is uploaded once to a scratch repository with Code Scanning, and the PR records which alerts close and reopen. Otherwise the release notes say that the alert behavior is modeled from GitHub's documentation (FR-E.2).
-- **The isolated-operation runbook is re-validated** (R-27). The bundle adds write locations and changes four agents' write sets, which trips the runbook's own refresh trigger. So the small smoke run runs under the published session profile, with a before-and-after write listing like re-check R6, and the runbook's "Last validated" header is updated.
+- **The isolated-operation runbook is re-validated** (R-27). The bundle adds write locations and changes the write sets of agents and commands, which trips the runbook's own refresh trigger.
+  - **The run.** The small smoke run runs under the published session profile, covering `/tachi.threat-model`, `/tachi.risk-score` and `/tachi.compensating-controls`, with a before-and-after write listing like re-check R6.
+  - **The header.** It advances only on a pass. Under TW-L2, a shipped-code defect is fixed and the run repeated once; otherwise the header says it predates this release, and a follow-up is filed.
+  - **The PDF stage.** `/tachi.security-report` stays outside the profile on macOS.
+  - **SC-8.** The scorer and controls part can double as SC-8's post-fix comparison run.
 - **Budget gates.**
   - **Attempts:** at most two live attempts per stage and effort level, with the disposition decided in advance: fix a shipped-code defect and re-run once, or record an agent leaving its contract honestly and file a follow-up (KB Entry 22).
   - **TW-L1 to TW-L3** (feasibility check §4) re-plan the matrix if the first fixture threat-model run exceeds its budget.
@@ -427,15 +432,15 @@ F2 takes #374's K4–K8 and #397's N4, N12, N14, N15 and N16.
 | R-22 | FR-N4.4 scope | Binds the orchestrator. The infographic and report-assembler agents, which are Bash-capable by design, are out of scope here | Arch 26 |
 | R-23 | Carve order *(v1.2)* | SV-3 is not a budget carve: it fires only on its technical trigger, at ADR-050. Budget carves go in reverse PM priority, and only carves that shorten the projection count: SV-2b, then SV-1, then TW-R's fallback (controls Sections 2 and 4 authored against the single template), then the SV-4 track split. "Never carved" gains D-5's membership and identity for all three files, except through SV-3's technical trigger, and FR-N4.5 to FR-N4.7 | PM r2 28; Arch L9 |
 | R-24 | Phase 3.5 record *(v1.2)* | A missing or inconsistent record never ends the run. It becomes "skipped" with the reason, is reported and warned on, and is covered by a test. D-3's list of run-ending paths stays at three | PM r2 30; Arch M4 (deferred to the PM) |
-| R-25 | Asset-modifier ceiling for computed values *(proposed)* | The 9.2 ceiling caps only scores the asset modifier raised. A finding whose assessed score already exceeds 9.2 without a modifier keeps it, which is the reading of `asset-modifiers.md:59`. NG7 stands: the ceiling doesn't move | Arch M7 |
-| R-26 | Legacy baselines *(proposed)* | A carried finding's inputs are the most granular values its baseline stores. For a legacy baseline, the four dimension values are the inputs, and only the composite, band and governance fields are recomputed. The vector comes from the markdown, or else from the baseline SARIF | Arch M8 |
-| R-27 | Runbook re-validation *(proposed)* | The small smoke run runs under the published session profile, with a before-and-after write listing, and the runbook's "Last validated" header is updated | Arch M10 |
-| R-28 | Report stage, live *(proposed)* | The report runs live only through the threat-model runs' Phase 5, with no harness dispatch. Its max coverage is the threat model's max run, which the TW-L1 fallback drops | Arch M11 |
-| R-29 | Identity scope *(proposed)* | Principle 1 and US-6 cover baseline-aware runs. A stateless re-run re-keys its alerts, and the release notes recommend baseline-aware runs for Code Scanning | Arch L3 |
-| R-30 | RESOLVED rows *(proposed)* | `risk-scores.md` keeps RESOLVED rows with their inherited scores, as today. The controls report omits them, as today. No SARIF file carries them | Arch L4 |
-| R-31 | Peers and overrides *(proposed)* | UPDATED peers inherit from their primary, as NEW peers do. The original scoring date is the stored review date minus the stored SLA. A human override is any Accept or Transfer disposition, or any SLA or disposition that differs from the band's default | Arch L5 |
+| R-25 | Asset-modifier ceiling *(v1.2; PM r3, amended)* | The asset modifier never lowers a finding's score. A tag raises the base score to the elevated vector's score, capped at 9.2, and a finding whose assessed (pre-modifier) score is already above 9.2 keeps it. In effect the result is the larger of the assessed score and the capped elevated score, which is the reading of `asset-modifiers.md:59` and the floor-only rule at `:41`. **R-9:** its vector check treats these outcomes as documented clamps. **Legacy baselines:** some carried findings store only the elevated vector and an elevated score above 9.2, so the outcome would depend on an unrecorded assessed score; they keep the stored score, reported as unchecked (R-10). **NG7** stands: the ceiling's value doesn't move. **N17(a):** settled here for this bundle, NG2's list drops it, and the scoring/delta bundle inherits this reading. **Fixture:** the tagged component includes a finding assessed above 9.2, and a carried legacy finding of that kind | Arch M7; PM r3 |
+| R-26 | Legacy baselines *(v1.2; PM r3, amended)* | A carried finding's inputs are the most granular values its baseline stores. A legacy baseline stores no sub-scores or barrier counts, so three rules apply to it. The exploitability, scalability and reachability values are the inputs, kept verbatim. The CVSS base score is checked against the vector under R-9, because the vector is the more granular value: it comes from the markdown, or else from the baseline SARIF's `cvss-vector` property; if both carry one and they differ, the markdown's is used and the disagreement is flagged; if neither does, R-7 applies. The composite, the band and the governance fields are recomputed. The legacy-format fixture variant carries seeded composite and vector errors, so SC-4 shows correction on the format adopters have today | Arch M8; PM r3 |
+| R-27 | Runbook re-validation *(v1.2; PM r3, amended)* | The small smoke run runs under the published session profile and covers every command whose write set this bundle changes: `/tachi.threat-model`, `/tachi.risk-score` and `/tachi.compensating-controls`. It records a before-and-after write listing, as re-check R6 did, and the runbook's "Last validated" header moves to the build that ran. `/tachi.security-report` stays outside the profile on macOS (runbook §6), and this bundle doesn't change its write set. If the run finds an undeclared write or an unexpected denial, TW-L2's dispositions apply: a defect in shipped code is fixed and the run repeated once; otherwise the header isn't advanced, it says it predates this release, and a follow-up is filed. The runbook never claims a validation that didn't pass | Arch M10; PM r3 |
+| R-28 | Report stage, live *(v1.2; PM r3, accepted)* | The report runs live only through the threat-model runs' Phase 5, with no harness dispatch. Its max coverage is the threat model's max run, which the TW-L1 fallback drops | Arch M11; PM r3 |
+| R-29 | Identity scope *(v1.2; PM r3, accepted)* | Principle 1 and US-6 cover baseline-aware runs. A stateless re-run re-keys its alerts, and the release notes recommend keeping successive runs under the same output directory, so each run carries the previous run's IDs forward | Arch L3; PM r3 |
+| R-30 | RESOLVED rows *(v1.2; PM r3, amended)* | **`risk-scores.md`** keeps them as history, as today. Their last-known values, governance fields included, are kept verbatim: never recomputed or flagged, and outside the SLA clock. Each is marked as resolved, so no reader can take it for an open finding; ADR-050 picks the marker, which must be additive and readable by tachi's parsers (NFR-1). The Executive Summary counts them separately, never in its severity distribution. **The controls report** omits them, as today. **No SARIF file** carries them, either as a result or in `relatedLocations`. The parity check compares `risk-scores.md`'s open rows with Section 7 and its RESOLVED rows with Section 4c, and the `.md`–`.sarif` agreement check compares open rows only | Arch L4; PM r3 |
+| R-31 | Peers and overrides *(v1.2; PM r3, amended)* | UPDATED peers inherit from their primary, as NEW peers do and as today (`severity-bands.md:81`). The original scoring date is the stored review date minus the stored SLA; where either is missing, ADR-050 item 9 picks a fallback that never restarts the clock silently, and the case is flagged. A human override is any Accept or Transfer disposition, or any SLA or disposition that differs from the **stored** band's default, never the recomputed band's. Overrides are carried verbatim and marked as overrides in the output, so a model slip that the rule takes for an override stays visible instead of becoming permanent baseline data | Arch L5; PM r3 |
 | R-32 | Scoring constants *(v1.2)* | Embedded in the renderer, with a drift test against `schemas/risk-scoring.yaml`. The core path needs nothing beyond the standard library, and PyYAML stays optional, for the PDF only | PM r2 43 |
-| R-33 | SARIF tool names *(v1.2)* | One constant tool name per file, distinct across the three files. FR-E.2 asserts that the three (tool, category) pairs differ | PM r2 39; Arch M5 |
+| R-33 | SARIF tool names *(v1.2; amended in v1.3)* | One constant tool name per file, distinct across the three files, keeping today's names verbatim: `Tachi`, `tachi-risk-scorer` and `tachi-control-analyzer`. Renaming a tool re-keys its alerts. FR-E.1 corrects `risk-scorer.md:462`, which spells the first one in lowercase. FR-E.2 asserts that the three (tool, category) pairs differ | PM r2 39; Arch M5; PM r3 44 |
 
 ---
 
@@ -533,7 +538,7 @@ Files: `risk-scorer.md`, `.claude/commands/tachi.risk-score.md`, `.claude/skills
   - give every prefix a category;
   - report "unchecked" and rounding-only cases.
 
-  The asset-modifier step is computed under R-25. A tolerant baseline parser reads legacy baselines under R-26.
+  The asset-modifier step is computed under R-25, and the formula in `asset-modifiers.md:56` is corrected to match when the renderer takes the step over. A tolerant baseline parser reads legacy baselines under R-26.
 - **FR-N15.1 (inheritance).** (a) The rewording happens once, after ADR-050 fixes membership. (b) and (c) follow D-6.
 - **FR-C.1 (adapter copies).** Ruling R-17.
 
@@ -569,7 +574,7 @@ Files: `control-analyzer.md`, `.claude/commands/tachi.compensating-controls.md`,
 - **FR-E.8 (#409).** The dispatch-target static check, if it folds in (R-15).
 - **FR-E.9 (#412).** The renderer writes the real `informationUri`, and the templates and instructions that carry the placeholder are corrected (R-16).
 - **FR-E.10 (Section 6 parity).** `threats.md` Section 6's counts and percentages are checked against the reference finding set (D-4). They stay model-written unless SV-2b's table rendering ships.
-- **FR-E.11 (upload instructions).** The developer guide's Code Scanning snippet uploads all three SARIF files, each with its own category, from a run's timestamped output directory (D-5; R-33).
+- **FR-E.11 (upload instructions).** Both of the developer guide's Code Scanning snippets (`DEVELOPER_GUIDE_TACHI.md:1118-1135` and `:1692-1712`) upload all three SARIF files, each with its own category, from a run's timestamped output directory. `threats.sarif` keeps `category: threat-model` (D-5; R-33).
 
 ---
 
@@ -636,12 +641,13 @@ Files: `control-analyzer.md`, `.claude/commands/tachi.compensating-controls.md`,
   - the part files and the dispatch records;
   - `threats.md` and its parts;
   - `risk-scores.md`, which is the controls renderer's input;
-  - the tree files and `.manifest.json`.
+  - the tree files and `.manifest.json`;
+  - the baseline run's `risk-scores.md`, `compensating-controls.md` and SARIF files (D-6, R-26).
 
   The rules:
   - **Strict JSON.** JSON inputs are parsed against a closed, versioned key set, with types and ranges. Unknown keys, NaN, Infinity, duplicate IDs and IDs outside the batch's list are all rejected.
   - **IDs before paths.** The finding-ID allow-list `^(S|T|R|I|D|E|AG|AGP|LLM|OI|MI|TE)-\d+$` is applied before any ID becomes part of a path, with a resolved-path containment check as a backstop (the KB Entry 24 class).
-  - **Paths come from the command**, never from file content. Two paths must be read from files: `threats.md`'s `baseline.source` and `risk-scores.md`'s `source_file`. They are validated as KB Entry 24 prescribes: a regular file, not a symlink, with the expected name, under the working directory, compared by resolved identity. The command's override flag takes precedence.
+  - **Paths come from the command**, never from file content. Three paths must be read from files: `threats.md`'s `baseline.source`, `risk-scores.md`'s `source_file`, and the architecture path in `threats.md`'s body (D-5). That last one becomes every SARIF result's `artifactLocation.uri`, so it is also normalized as repo-relative before it is emitted. They are validated as KB Entry 24 prescribes: a regular file, not a symlink, with the expected name, under the working directory, compared by resolved identity. The command's override flag takes precedence.
   - **No forged structure.**
     - `|`, backticks and newlines are escaped in table cells, and SARIF's string rules are followed.
     - After rendering, no prose line begins with `#` or `|`, so a fragment can't forge a heading that the parsers, which find sections by substring, would pick up.
@@ -676,22 +682,23 @@ Files: `control-analyzer.md`, `.claude/commands/tachi.compensating-controls.md`,
 - **ADR-050** is accepted at the plan stage, before any build wave (TW-ADR). It covers §13's list.
 - **Install manifest and S-13.** Every new script and the helpers it imports are listed, bytecode is suppressed, and the #373 completeness check is green.
 - **Privilege declarations** are updated (NFR-3), and `tachi-permissions-verify.yml` is green.
-- **The isolated-operation runbook** is re-validated, and its "Last validated" header is updated (R-27).
+- **The isolated-operation runbook** is re-validated and its "Last validated" header updated, or the header is marked as predating this release, under R-27.
 - **The small-run oracle** passes (NFR-1), in a scratch clone.
 - **Release notes**, binding (ruling R-1). They say plainly:
   1. **SARIF:**
      - whether any alerts close and reopen once, and if so which ones, and that dismissals must then be re-applied;
      - that scorer and controls alerts stop churning from then on;
      - whether the alert count rises, up to one per deduplicated finding;
-     - that each file now has its own tool name and must be uploaded with its own category, as the updated snippet shows;
-     - that identity is stable across baseline-aware runs, while a stateless re-run re-keys its alerts, and that moving or renaming the architecture file re-keys every alert once;
+     - that each file keeps its tool name and is uploaded with its own category, as the updated snippets show, and that an earlier `threats.sarif` upload without a category can remain in Code Scanning as a stale configuration, which adopters remove once;
+     - that identity is stable across baseline-aware runs, so successive runs belong under the same output directory, while a stateless re-run re-keys its alerts; and that moving or renaming the architecture file re-keys every alert once;
      - if no scratch-repository check ran, that the alert behavior is modeled from GitHub's documentation;
   2. **Runs that stop.** A run now stops when a typed agent can't be spawned, a finding can't be traced or accounted for, or a batch can't finish. The notes say what to do: re-run `install.sh` for an install gap;
   3. **Scores:**
      - that carried scores are recomputed, and how to read the correction, "unverifiable" and "unchecked" flags;
      - which baseline the scorer and controls now inherit from (`threats.md`'s `baseline.source`), and the override flag;
      - that a corrected band keeps its original scoring date, so some findings can become due or overdue at once, and that the correction flag tells these apart from real slips;
-  4. **Rendering.** The scorer and controls files are now rendered, and the controls Section 2 schema changes;
+     - that human overrides are carried verbatim and marked as overrides;
+  4. **Rendering.** The scorer and controls files are now rendered, and the controls Section 2 schema changes. RESOLVED rows in `risk-scores.md` are marked as resolved and counted separately;
   5. **Split valves.** If a split valve fired, what still isn't resilient.
 - **PR and release.** The PR is titled `fix(374): …` from the draft onward, and the release is a patch.
 - **Hand-offs.** This bundle lands before #364's re-score, and N16's example audit leads are posted to #364.
@@ -702,6 +709,7 @@ Files: `control-analyzer.md`, `.claude/commands/tachi.compensating-controls.md`,
   - Close #356 if R-13 folds it in.
   - File R-17's follow-up for the adapter copies, in the #369 family.
   - If SV-1 fires, file FR-K4.2 to FR-K4.4 as their own issue.
+  - Note on #397 that N17(a), the 9.2 ceiling's scope, is settled here (R-25).
 - **Public text** describes the defects generically (NFR-6). No real-world run output is committed.
 - **Live confirmation** happens on the next large real-world run, after the release. It is tracked outside this feature.
 
@@ -778,6 +786,8 @@ The full adapter port is already out (R-17), and the optional fold-ins under R-1
 - **SV-3 (implementing N12).** This fires only if ADR-050's mechanism needs cross-run state beyond the baseline the stage already reads. The rule is then decided here and implemented in the scoring/delta bundle. US-6 and SC-6 come out of the release claim, and the release notes say so. SV-3 is never used to cut schedule (R-23).
 - **SV-4 (the track split).** Pre-authorized, and fires only through TW-0 or TW-ESC. Track R ships first as `fix(374)` PR 1, once its live runs pass. Track O follows as PR 2 under the same issue, **based on `main`, not on PR 1's branch**, so that merging PR 1 with `--delete-branch` can't close it (KB Entry 25). PR 1's notes don't claim SC-2, SC-3 or US-4, and claim identity only for the scorer and controls SARIF. The architecture-path carrier (D-5) lands in Track R.
 
+Where `feasibility-check.md` §3.4 or §4 differs from this section, this section governs.
+
 **Trip-wires** (definitions in `feasibility-check.md` §4):
 - at `/aod.tasks`: TW-0 (aggregate, 9.0 days), TW-ADR (rulings present), TW-R (renderer budget) and TW-N3 (ordering);
 - at the end of W0: TW-K4;
@@ -795,7 +805,15 @@ Sized 1:1 from the team-lead's feasibility check (`specs/374-large-architecture-
 - the small-run oracle (NFR-1), and the two v4.48.4 baseline runs (D-7, SC-8);
 - the smaller checks: FR-N4.6's dispositions, FR-K5.5, FR-K5.7, FR-E.7, FR-E.10, and a defined place for parse errors;
 - NFR-10's wider scope, the legacy-format baseline (R-26), the architecture-path carrier (D-5) and the runbook re-validation (R-27);
-- the conditional fold-ins under R-14 and R-15, and FR-N4.3's brief script.
+- the conditional fold-ins under R-14 and R-15, and FR-N4.3's brief script;
+- from v1.2:
+  - the renderer's asset-modifier step and its tagged fixture cases (R-25);
+  - R-31's mechanics;
+  - the per-batch tree manifests and their merge (D-3, FR-K5.6);
+  - the persisted Phase 1 inventory and dispatch table, and the fixed dispatch prompt with its SC-3 comparison (FR-N4.3);
+  - FR-E.11's upload snippets, and FR-E.2's cross-file assertion;
+  - the larger precomputed scorer input that D-7's twice-the-cap rule implies (roughly 325 findings);
+- from the PM's v1.2 rulings: R-27's wider smoke run, R-30's resolved marker and its split parity check, and R-31's override marker.
 
 R-17 removes the full adapter port, which offsets part of this. A team-lead addendum to `feasibility-check.md` prices the delta before `/aod.plan`, and this section adopts it. TW-0 re-tests the projection at `/aod.tasks` either way, and the optional fold-ins count against TW-0 and drop first.
 
@@ -875,11 +893,11 @@ The Architect's list, plus TW-ADR. Each item must be ruled before the build wave
 2. **The judgment/computation line**, field by field (D-2's table).
 3. **The part-file contract:** schema and version (the encoding is JSON, fixed by NFR-10), batch granularity, `.tachi-build/` location, prose fragments, plan and batch IDs, retention and stale parts, validation, and who names the paths.
 4. **Where each script runs and in what order:** Phase 5 sequencing, exit codes, behavior on failure, and the provenance stamp.
-5. **The scoring constants and arithmetic:** the source of the constants (embedded with a drift test, or PyYAML), one band helper, `Decimal` half-up rounding, and the date as an input.
+5. **The scoring constants and arithmetic:** the embedded constants and their drift test (R-32), one band helper, `Decimal` half-up rounding, and the date as an input.
 6. **Batching and overflow:** thresholds; the planner and slicing (the planner runs only where Bash runs); the error schema; resume from disk; ownership per agent, including which layer dispatches the tree batches; and the retry cap.
 7. **SARIF identity:** GitHub's key; the hash recipe and its stable per-finding key; the repo-relative URI and its carrier; a tool name and category per file (R-33); the `:339` / `:612` contradiction; and the migration.
 8. **SARIF membership:** one result per finding or stable primaries (with the asymmetry and SV-3 in view), the peer marker, how correlation is expressed, RESOLVED excluded, the reference finding set, and the `threats.sarif` fallback input.
-9. **Score-inheritance mechanics:** how recomputed values, flags, "unverifiable" and "unchecked" appear in the `.md` and the SARIF; the tolerant parser for legacy baselines (R-26); and the derivation of the original scoring date and the override rule (R-31).
+9. **Score-inheritance mechanics:** how recomputed values, flags, "unverifiable" and "unchecked" appear in the `.md` and the SARIF; the tolerant parser for legacy baselines (R-26); the resolved marker (R-30); and the derivation of the original scoring date, its fallback, the override rule and the override marker (R-31).
 10. **The exception rules:** a category for every prefix, and the vector check separated from the bound check.
 11. **The dispatch records:** attribution envelope or `schemas/finding.yaml` bump, the ID map, whether code or the model compiles Phase 3, and the coupling to FR-O.1 and SV-2b.
 12. **The provenance check:** its classes, and what it proves and doesn't.
@@ -955,7 +973,7 @@ The Architect's list, plus TW-ADR. Each item must be ruled before the build wave
 
 | Role | Agent | Status | Date | Notes |
 |------|-------|--------|------|-------|
-| Product Manager | product-manager | 🔄 Changes Requested (v1.1 re-review); v1.2 delta re-review pending | 2026-11-21 | All v1.0 HIGH resolved; 2 new HIGH folded in v1.2; R-25 to R-31 await the PM's ruling |
+| Product Manager | product-manager | 🟡 Approved with Concerns (v1.2 delta re-review) | 2026-11-21 | 16 of 16 v1.1 re-review findings resolved; R-25 to R-31 ruled (2 accepted, 5 amended, folded verbatim in v1.3); 5 LOW |
 | Architect | architect | 🟡 Approved with Concerns (v1.1 re-review) | 2026-11-21 | 2 inaccuracies corrected in v1.2 (Appendix A); 22 new findings folded |
 | Team-Lead | team-lead | 🟡 Approved with Concerns | 2026-11-21 | 8.0 / 5.5 / 13.0 eng-days; 14 concerns folded |
 
