@@ -3,7 +3,8 @@ prd:
   number: 374
   topic: large-architecture-pipeline-resilience
   created: 2026-11-21
-  status: In Review
+  status: Approved
+  approved: 2026-11-21   # v1.3; all three Triad roles APPROVED_WITH_CONCERNS
   type: feature
 triad:
   pm_signoff:
@@ -20,7 +21,7 @@ triad:
     agent: team-lead
     date: 2026-11-21
     status: APPROVED_WITH_CONCERNS
-    notes: "FEASIBLE WITH MODIFICATIONS; neither veto exercised. Estimate: planning 8.0 / floor 5.5 / ceiling 13.0 eng-days, branch to merge (effort 17.9 / 11.3 / 29.7; confidence LOW–MEDIUM). 14 concerns (3 HIGH, 8 MEDIUM, 3 LOW), all folded in v1.1: threats.sarif identity in scope (C-1), chain formation in shipped code (C-2), the live matrix restructured (C-3), merge order with #396 and the N3 track (C-4, C-5), three uncovered overflow surfaces (C-6), RK-4 corrected (C-7), provenance back-references (C-8), part files as a trust boundary (C-9), pinned arithmetic (C-10), fixture design (C-11), the adapter copies (C-12), K4 evidence (C-13), text fold-ins (C-14). No split at Define; SV-4 is armed through TW-0 and TW-ESC. Full review: specs/374-large-architecture-pipeline-resilience/feasibility-check.md."
+    notes: "FEASIBLE WITH MODIFICATIONS; neither veto exercised. Estimate: planning 8.0 / floor 5.5 / ceiling 13.0 eng-days, branch to merge (effort 17.9 / 11.3 / 29.7; confidence LOW–MEDIUM). 14 concerns (3 HIGH, 8 MEDIUM, 3 LOW), all folded in v1.1: threats.sarif identity in scope (C-1), chain formation in shipped code (C-2), the live matrix restructured (C-3), merge order with #396 and the N3 track (C-4, C-5), three uncovered overflow surfaces (C-6), RK-4 corrected (C-7), provenance back-references (C-8), part files as a trust boundary (C-9), pinned arithmetic (C-10), fixture design (C-11), the adapter copies (C-12), K4 evidence (C-13), text fold-ins (C-14). No split at Define; SV-4 is armed through TW-0 and TW-ESC. Addendum (2026-11-21, §13 of the check): the v1.1–v1.3 delta is priced at +6.25 effort-days central, giving bands of 9.5 / 6.5 / 17.5 eng-days (effort 24.1 / 15.1 / 40.7; confidence LOW–MEDIUM). The 9.5 central assumes ADR-050 gives the scoring rules their own module; without that it is about 10.5. TW-0 stays at 9.0. The new central pre-fires carves (TW-0, TW-R, TW-ESC), so the PM rules; the team-lead recommends accepting TW-R's fallback and SV-4 now. Full review: specs/374-large-architecture-pipeline-resilience/feasibility-check.md."
 source:
   idea_id: 374        # equals prd.number (GitHub Issue #374)
   story_id: null
@@ -31,13 +32,14 @@ bundle:
   folds_in: [408-body-instruction, 409-if-small, 412]
   companion: 373      # K1–K3, K9–K15; delivered in v4.48.1
   coordinate: [356, 357, 360, 364, 365, 396, 399, 400, 408, 409, 412]
-  split_valve_candidates: [SV-1-K4, SV-2b-threats-md-tables, SV-3-N12, SV-4-track-split]
-  release: "patch — PR titled fix(374); #364 blocks the next minor release; release-note content is binding (§8)"
+  split_valve_candidates: [SV-1-K4, SV-2b-threats-md-tables, SV-3-N12]
+  pre_fired: [SV-4-track-split, TW-R-fallback]   # R-34: PR 1 = Track R, PR 2 = Track O
+  release: "patch — two PRs titled fix(374): PR 1 (Track R) then PR 2 (Track O), based on main; #364 blocks the next minor release; release-note content is binding (§8)"
 ---
 
 # PRD-374 — Large-Architecture Pipeline Resilience
 
-**Status**: In Review (v1.2, 2026-11-21). Lead issue [#374](https://github.com/davidmatousek/tachi/issues/374) carries K4–K8. Five defects from [#397](https://github.com/davidmatousek/tachi/issues/397) fold in: N4, N12, N14, N15 and N16. The bundle ships as a **patch release** (`fix(374):`), because #364 blocks the next minor release.
+**Status**: Approved (v1.3, 2026-11-21). The PM, the Architect and the Team-Lead each approved it with concerns. Lead issue [#374](https://github.com/davidmatousek/tachi/issues/374) carries K4–K8, and five defects from [#397](https://github.com/davidmatousek/tachi/issues/397) fold in: N4, N12, N14, N15 and N16. The bundle ships as **patch releases** (`fix(374):`), because #364 blocks the next minor release. Under R-34 it ships in two PRs: Track R first, then Track O.
 
 > **Bundle PRD.** K-numbers and N-numbers are stable defect IDs. K1–K3 and K9–K15 shipped in #373 (v4.48.1). #397 tracks N1–N17 from a second real-world run; N5 and N13 shipped in Patch A (#421, v4.48.4). This PRD owns the items whose fix is one mechanism. Output doesn't fit one response. Agents leave their contracts when it doesn't. Nobody checks the values.
 >
@@ -52,7 +54,12 @@ bundle:
 > - **PM**: CHANGES_REQUESTED. Two new HIGH findings, on the carve order and on hygiene in the feasibility check, plus five MEDIUM and nine LOW, and six rulings.
 > - **Architect**: APPROVED_WITH_CONCERNS. Two inaccuracies remained (Appendix A), plus 11 MEDIUM and 11 LOW findings.
 >
-> Rulings R-23 to R-33 are new. R-25 to R-31 settle decisions the Architect said the PRD must make, and are marked *proposed* until the PM rules on them. Risks are renumbered RK-1 to RK-10, so that their IDs no longer collide with the rulings.
+> Rulings R-23 to R-33 are new. R-25 to R-31 settle decisions the Architect said the PRD must make. Risks are renumbered RK-1 to RK-10, so that their IDs no longer collide with the rulings.
+>
+> **v1.3** closes the define stage:
+> - **The PM's delta re-review** (APPROVED_WITH_CONCERNS) accepted R-28 and R-29 and amended R-25, R-26, R-27, R-30 and R-31. The amendments are folded in verbatim, along with LOW findings 44 to 48.
+> - **The team-lead's addendum** priced the delta at 9.5 / 6.5 / 17.5 eng-days. That pre-fired carves, so the PM ruled R-34: TW-R's fallback and the SV-4 track split fire now.
+> - **The feasibility check's** carve order and trip-wires now follow R-23.
 
 ---
 
@@ -194,6 +201,7 @@ F2 takes #374's K4–K8 and #397's N4, N12, N14, N15 and N16.
 
 - **Decision.** The risk scorer and the control analyzer keep authoring judgment. A **shipped, tested renderer**, run where Bash already runs, **owns each whole output file**: `risk-scores.md`, `risk-scores.sarif`, `compensating-controls.md` and `compensating-controls.sarif`.
   - **What the agents write.** Bounded part files, one per batch. They hold structured judgment and the prose fragments for the narrative sections. The agent specs drop their output-format instructions, so K8's single schema becomes a property of the renderer, and the output-schema template documents it.
+  - **PR 1 exception (R-34).** For controls Sections 2 and 4, TW-R's fallback applies: they stay model-authored inside the part files, the renderer still writes the whole file, and their scores and bands are filled or checked by code (§10).
   - **Why part files.** The writer agents hold Write but not Edit, and one Write replaces a whole file from one response. An agent can't share a file with a script. At about 395 tokens per finding, an agent-written `risk-scores.md` passes the 64k cap at roughly 160 findings.
 - **The line between judgment and computation** (the Architect's field-by-field list is ADR-050 item 2):
 
@@ -440,6 +448,7 @@ F2 takes #374's K4–K8 and #397's N4, N12, N14, N15 and N16.
 | R-30 | RESOLVED rows *(v1.2; PM r3, amended)* | **`risk-scores.md`** keeps them as history, as today. Their last-known values, governance fields included, are kept verbatim: never recomputed or flagged, and outside the SLA clock. Each is marked as resolved, so no reader can take it for an open finding; ADR-050 picks the marker, which must be additive and readable by tachi's parsers (NFR-1). The Executive Summary counts them separately, never in its severity distribution. **The controls report** omits them, as today. **No SARIF file** carries them, either as a result or in `relatedLocations`. The parity check compares `risk-scores.md`'s open rows with Section 7 and its RESOLVED rows with Section 4c, and the `.md`–`.sarif` agreement check compares open rows only | Arch L4; PM r3 |
 | R-31 | Peers and overrides *(v1.2; PM r3, amended)* | UPDATED peers inherit from their primary, as NEW peers do and as today (`severity-bands.md:81`). The original scoring date is the stored review date minus the stored SLA; where either is missing, ADR-050 item 9 picks a fallback that never restarts the clock silently, and the case is flagged. A human override is any Accept or Transfer disposition, or any SLA or disposition that differs from the **stored** band's default, never the recomputed band's. Overrides are carried verbatim and marked as overrides in the output, so a model slip that the rule takes for an override stays visible instead of becoming permanent baseline data | Arch L5; PM r3 |
 | R-32 | Scoring constants *(v1.2)* | Embedded in the renderer, with a drift test against `schemas/risk-scoring.yaml`. The core path needs nothing beyond the standard library, and PyYAML stays optional, for the PDF only | PM r2 43 |
+| R-34 | Pre-fired carves *(v1.3; PM r4)* | Option (a): row 13 drops, and TW-R's fallback and SV-4 fire at `/aod.tasks` on §10's conditions. No trip-wire is re-based | TL §13.4; PM r4 |
 | R-33 | SARIF tool names *(v1.2; amended in v1.3)* | One constant tool name per file, distinct across the three files, keeping today's names verbatim: `Tachi`, `tachi-risk-scorer` and `tachi-control-analyzer`. Renaming a tool re-keys its alerts. FR-E.1 corrects `risk-scorer.md:462`, which spells the first one in lowercase. FR-E.2 asserts that the three (tool, category) pairs differ | PM r2 39; Arch M5; PM r3 44 |
 
 ---
@@ -548,12 +557,12 @@ Files: `control-analyzer.md`, `.claude/commands/tachi.compensating-controls.md`,
 
 - **FR-K7.1 (SARIF N/N).** `compensating-controls.sarif` is complete and identity-stable under D-5. Each peer is counted once, never as both a result and a `relatedLocations` entry.
 - **FR-K7.2 (totals).** The renderer computes the residuals, the totals and the Section 5 tables (D-2), so totals equal the sum of the rows by construction. A test keeps that from regressing. Today `residual-risk.md` defines the totals as row sums, but the agent's check verifies counts only (`control-analyzer.md:353`).
-- **FR-K7.3 (agreement).** The `.md` and the `.sarif` agree, by construction.
+- **FR-K7.3 (agreement).** The `.md` and the `.sarif` agree, by construction. Under R-34's fallback, a shipped check covers Sections 2 and 4.
 - **FR-K7.4 (the scorer's gaps).** Three of the scorer's fixes apply here too:
   - `/tachi.compensating-controls` owns batching and resume (`control-analyzer.md:133`);
   - the baseline is resolved under D-6(c) (`:116`);
   - the agent's input contract matches what the command passes. It says it receives file contents (`:52-62`), while the command passes paths.
-- **FR-K8.1 (one Section 2 schema).** The schema includes MAESTRO Layer and Control Category. It is a renderer property, and the output-schema template documents it. The agent spec (`control-analyzer.md:349`) stops restating it. `CF` is the carried-forward marker (R-20).
+- **FR-K8.1 (one Section 2 schema).** The schema includes MAESTRO Layer and Control Category. It is a renderer property, and the output-schema template documents it. *For PR 1 (R-34), Sections 2 and 4 stay model-authored against the single template inside the part files, with their scores and bands filled or checked by code; rendering them is a follow-up.* The agent spec (`control-analyzer.md:349`) stops restating it. `CF` is the carried-forward marker (R-20).
 - **FR-K8.2 (every table, and Section 4).** Every band table uses the schema, and Section 4 uses one block per finding, each joined to its finding. #373's K9 and K13 parsers read both the corrected and the pre-fix formats.
 - **FR-K8.3 (the installed SARIF guide).** Once the renderer writes the controls SARIF, the guide that tells agents how to author it (`adapters/claude-code/agents/references/sarif-generation.md`) is updated or retired.
 
@@ -580,7 +589,7 @@ Files: `control-analyzer.md`, `.claude/commands/tachi.compensating-controls.md`,
 
 ## 6. Interface Contract
 
-- **`compensating-controls.md` Sections 2 and 4.** The renderer writes them, the output-schema template documents them, and #373's parsers still accept the pre-fix format.
+- **`compensating-controls.md` Sections 2 and 4.** The renderer writes them, the output-schema template documents them, and #373's parsers still accept the pre-fix format. Under R-34, in PR 1 they are model-authored against the template inside the part files, with their scores and bands filled or checked by code, and the renderer assembles the whole file.
 - **Phase 3.5 outcome.** Always recorded in `threats.md`, and checked by the main session. A bad record becomes "skipped" and never ends the run (R-24). Consumers fall back to file presence when it is absent. #396 coordinates (FR-K4.1).
 - **SARIF, all three files.** One N/N rule, and identity pinned to GitHub's matching key: a constant tool name per file, distinct across the three (R-33); the repo-relative architecture path, carried in `threats.md`'s body; and a per-finding hash recipe. RESOLVED findings are never results. A peer marker sits in `relatedLocations` (D-5).
 - **Dispatch records.** One per dispatch, under `.tachi-build/`, attributed to the agent, with the Phase 3 ID map (FR-N4.2).
@@ -698,12 +707,12 @@ Files: `control-analyzer.md`, `.claude/commands/tachi.compensating-controls.md`,
      - which baseline the scorer and controls now inherit from (`threats.md`'s `baseline.source`), and the override flag;
      - that a corrected band keeps its original scoring date, so some findings can become due or overdue at once, and that the correction flag tells these apart from real slips;
      - that human overrides are carried verbatim and marked as overrides;
-  4. **Rendering.** The scorer and controls files are now rendered, and the controls Section 2 schema changes. RESOLVED rows in `risk-scores.md` are marked as resolved and counted separately;
+  4. **Rendering.** The scorer and controls files are now rendered, and the controls Section 2 schema changes. In PR 1, controls Sections 2 and 4 remain model-authored against the single template, with their scores and bands checked by code (R-34). RESOLVED rows in `risk-scores.md` are marked as resolved and counted separately;
   5. **Split valves.** If a split valve fired, what still isn't resilient.
 - **PR and release.** The PR is titled `fix(374): …` from the draft onward, and the release is a patch.
 - **Hand-offs.** This bundle lands before #364's re-score, and N16's example audit leads are posted to #364.
 - **Issue bookkeeping.**
-  - Tick N4, N12, N14, N15 and N16 in #397 (N12 unless SV-3 fires).
+  - Under R-34, PR 1 says "Refs #374", and #374 closes with PR 2. Tick N14, N15 and N16 in #397 at PR 1, and N4 and N12 at PR 2 (N12 unless SV-3 fires).
   - Close #357 if subsumed, and #412.
   - Update #408 and #409 per rulings R-14 and R-15.
   - Close #356 if R-13 folds it in.
@@ -784,7 +793,29 @@ The full adapter port is already out (R-17), and the optional fold-ins under R-1
   - SV-2a: `threats.sarif` membership and identity stay, always.
   - SV-2b: rendering `threats.md`'s tables in code may be carved. If it fires, bounded emission still keeps `threats.md` complete, so SC-1 still applies to the threat-model stage, and the dispatch records shrink to a manifest (FR-N4.2).
 - **SV-3 (implementing N12).** This fires only if ADR-050's mechanism needs cross-run state beyond the baseline the stage already reads. The rule is then decided here and implemented in the scoring/delta bundle. US-6 and SC-6 come out of the release claim, and the release notes say so. SV-3 is never used to cut schedule (R-23).
-- **SV-4 (the track split).** Pre-authorized, and fires only through TW-0 or TW-ESC. Track R ships first as `fix(374)` PR 1, once its live runs pass. Track O follows as PR 2 under the same issue, **based on `main`, not on PR 1's branch**, so that merging PR 1 with `--delete-branch` can't close it (KB Entry 25). PR 1's notes don't claim SC-2, SC-3 or US-4, and claim identity only for the scorer and controls SARIF. The architecture-path carrier (D-5) lands in Track R.
+- **SV-4 (the track split).** Pre-authorized through TW-0 or TW-ESC, and **pre-fired at `/aod.tasks` by R-34** (below). Track R ships first as `fix(374)` PR 1, once its live runs pass. Track O follows as PR 2 under the same issue, **based on `main`, not on PR 1's branch**, so that merging PR 1 with `--delete-branch` can't close it (KB Entry 25). PR 1's notes don't claim SC-2, SC-3 or US-4, and claim identity only for the scorer and controls SARIF. The architecture-path carrier (D-5) lands in Track R.
+
+**Pre-fired carves (R-34).** The priced delta (`feasibility-check.md` §13) fails three gates: TW-0 (9.4 against 9.0), TW-R (5.65 against 5.3) and the projected TW-ESC (4.7 against 4.0).
+- **What fires.** At `/aod.tasks`, row 13's optional fold-ins drop, and TW-R's fallback and SV-4 fire. No threshold is re-based: TW-0 and TW-ESC now bound PR 1. If either fires on PR 1, no carve is left, and the decision comes back to the PM.
+- **The fallback holds only on these conditions.**
+  - Controls Sections 2 and 4 stay in the per-batch parts, and the renderer writes the whole file, so SC-1 holds for the controls stage.
+  - No score or band in them goes unchecked: the renderer fills those cells, or a shipped check flags each mismatch (ADR-050 item 2 picks which).
+  - SC-5 and US-3 are then shown on the fixture's live runs, not by construction.
+  - For Sections 2 and 4, this overrides D-2, FR-K7.3, FR-K8.1, §6 and §8 item 4. Rendering them becomes a follow-up, which PR 2 may take on if that doesn't move its date.
+- **SV-4 defers; it carves nothing.** PR 2 carries Track O's "Never carved" items. PR 1 says "Refs #374", and #374 closes with PR 2. In #397, N14, N15 and N16 are ticked at PR 1, and N4 and N12 at PR 2.
+- **PR 1 claims:**
+  - SC-4, SC-5, SC-7, SC-8, US-3 and US-5;
+  - SC-1 and US-1 for the scorer and controls stages;
+  - SC-6 and US-6 for those stages' two SARIF files.
+
+  Its notes report the N4 and N14 text it carries as a contract change under §8 item 2. That text ships only after one small `/tachi.threat-model` smoke run on a shipped example (R-27) is recorded in PR 1.
+- **PR 1 doesn't claim:**
+  - SC-2, SC-3, US-2 or US-4;
+  - the threat-model or report stages;
+  - a wholly rendered controls file;
+  - any `threats.sarif` change. That file's identity and its upload line change together in PR 2, so its alerts re-key only once.
+
+  §8 item 5 says what stays fragile until PR 2.
 
 Where `feasibility-check.md` §3.4 or §4 differs from this section, this section governs.
 
@@ -799,7 +830,7 @@ Where `feasibility-check.md` §3.4 or §4 differs from this section, this sectio
 
 Sized 1:1 from the team-lead's feasibility check (`specs/374-large-architecture-pipeline-resilience/feasibility-check.md`; APPROVED_WITH_CONCERNS). An eng-day is an attention-day at the agent-orchestrated pace, measured from branch to merge.
 
-**Scope covered.** The estimate covers v1.0 plus the team-lead's own fold-ins (C-1 to C-14). These v1.1 and v1.2 additions aren't priced yet:
+**Scope covered.** The estimate covers v1.0 plus the team-lead's own fold-ins (C-1 to C-14). These v1.1 and v1.2 additions are priced in `feasibility-check.md` §13:
 - the whole-report assembly (FR-K5.1), beyond the bounded Section 5;
 - D-3's failure behavior on three paths (FR-E.6), and one batch planner shared by three layers, with plan IDs (FR-E.3);
 - the small-run oracle (NFR-1), and the two v4.48.4 baseline runs (D-7, SC-8);
@@ -815,15 +846,12 @@ Sized 1:1 from the team-lead's feasibility check (`specs/374-large-architecture-
   - the larger precomputed scorer input that D-7's twice-the-cap rule implies (roughly 325 findings);
 - from the PM's v1.2 rulings: R-27's wider smoke run, R-30's resolved marker and its split parity check, and R-31's override marker.
 
-R-17 removes the full adapter port, which offsets part of this. A team-lead addendum to `feasibility-check.md` prices the delta before `/aod.plan`, and this section adopts it. TW-0 re-tests the projection at `/aod.tasks` either way, and the optional fold-ins count against TW-0 and drop first.
-
-| Band | Eng-days | Conditions |
-|---|---|---|
-| Floor | 5.5 | SV-1, SV-2b and SV-3 fire at `/aod.tasks`. The adapter port is out, and chain formation stays spec-only with SC-2 reworded. Every wave goes green on its first CI cycle, and every live run passes first time |
-| **Planning (central)** | **8.0** | Full scope, with chain formation in a script, `threats.sarif` from a shipped generator, and bounded `threats.md` emission. One CI fix-forward. Seven fixture live runs, one small smoke run and one retry. N3 lands before W2 |
-| Ceiling | 13.0 | Everything grows. Renderer contract gaps; `threats.md` tables rendered by code; the 5 Whys points at context pressure but the bundle stays together; three CI fix-forwards; two stages need a second attempt; long fixture runs that hit usage limits; a fourth build session |
-
-**Confidence: LOW–MEDIUM.** It is medium for the renderer track and low for the orchestrator track. Bottom-up effort is 17.9 eng-days (11.3 to 29.7), about 2.1× F-373 and 2.3× F-391: the largest bundle tachi has attempted. With TW-0 enforced, the projection stays at 9.0 days or less by carving scope.
+**Bands (R-34).**
+- **As one bundle**, the scope runs 9.5 / 6.5 / 17.5 days (central / floor / ceiling) on 24.1 eng-days of effort (15.1 to 40.7). Without ADR-050's scoring-rules module, the central is about 10.5. That is about 2.9× F-373's effort and 3.1× F-391's: the largest bundle tachi has attempted.
+- **As two PRs.** The one-bundle central fails TW-0, so the scope ships as two `fix(374)` PRs: PR 1 (Track R) at about T0 + 8.0, and PR 2 (Track O) at about T0 + 11 to 12. If T0 is 2026-11-23, that is around 2026-12-02 and around 2026-12-07 or 2026-12-08.
+- **Not a commitment.** The one-bundle bands record the scope.
+- **At `/aod.tasks`**, the team-lead re-baselines PR 1's floor and ceiling under TW-0's 9.0 days, sets PR 2's bound once at its planning central + 1.0, and splits M5 and M6 per PR.
+- **Confidence** stays LOW–MEDIUM: medium for the renderer track, low for the orchestrator track.
 
 | Milestone | Gate | Central | Floor | Ceiling |
 |---|---|---|---|---|
@@ -832,10 +860,11 @@ R-17 removes the full adapter port, which offsets part of this. A team-lead adde
 | M3: End of build session 1 (W2) | architect P0 checkpoint; TW-ESC evaluated; NEXT-SESSION handoff | T0 + 4.0 | T0 + 2.9 | T0 + 6.25 |
 | M4: Implementation complete (W3, W4) | offline end-to-end run on the fixture green; architect P1 checkpoint; code and security reviews | T0 + 6.25 | T0 + 4.3 | T0 + 9.75 |
 | M5: Live verification recorded (W5) | the live matrix in the PR; TW-L1 to TW-L3 recorded | T0 + 7.5 | T0 + 5.1 | T0 + 12.25 |
-| **M6: Deliver** | `fix(374)` squash-merged; patch-release PR verified | **T0 + 8.0** | **T0 + 5.5** | **T0 + 13.0** |
+| **M6a: Deliver PR 1 (Track R)** | `fix(374)` PR 1 squash-merged; patch-release PR verified | **about T0 + 8.0** | re-baselined at `/aod.tasks` | under TW-0's 9.0 |
+| **M6b: Deliver PR 2 (Track O)** | `fix(374)` PR 2 squash-merged; patch-release PR verified; #374 closes | **about T0 + 11 to 12** | re-baselined at `/aod.tasks` | its planning central + 1.0 |
 | SC-9: Live confirmation | the next large real-world run | lagging; tracked outside this feature | | |
 
-T0 is the day the plan stage starts. If T0 is 2026-11-23 and sessions run on consecutive working days, M6 lands around 2026-12-02 at the central estimate (floor 2026-11-30, ceiling 2026-12-09). Gaps between sessions push the dates out without adding effort. *ICE note:* the issue's Effort 4 predates the fold-in from #397, and an 8-day central suggests 3, giving an ICE of 17.
+T0 is the day the plan stage starts. M1 to M5 above are the v1.0 one-bundle schedule. At `/aod.tasks` the team-lead splits M5 and M6 per PR (R-34). Gaps between sessions push the dates out without adding effort. *ICE note:* the issue's Effort 4 predates the fold-in from #397, and an 8-day central suggests 3, giving an ICE of 17.
 
 ---
 
@@ -885,17 +914,19 @@ OQ-1 to OQ-4 from v1.0 are now rulings (§4) or ADR-050 items.
 
 The Architect's list, plus TW-ADR. Each item must be ruled before the build wave that depends on it.
 
+Under R-34, each ruling names its track (R, O or both), so that PR 1 rests only on the cut line's and Track R's rulings. All sixteen items are still ruled at the plan stage, because PR 2 is sized on them. Any Track O text committed before the split either ships in PR 1 inert and readable by today's readers, or waits for PR 2. One example is O1's K4.1 record text.
+
 1. **Which surfaces leave the model tier**, and how ADR-046 (D1, D4), ADR-047 and ADR-049 (D7, with D5 and D8 applied) change. The candidates:
    - `risk-scores.{md,sarif}` and `compensating-controls.{md,sarif}`;
    - `threats.sarif`, and the `threats.md` tables;
    - the report's assembly;
    - Phase 3.5's computation.
-2. **The judgment/computation line**, field by field (D-2's table).
+2. **The judgment/computation line**, field by field (D-2's table). Under R-34's fallback this also lists each computed cell in controls Sections 2 and 4: inherent and residual score and severity, and the band a row sits under. For each one, it rules whether the renderer fills it or a check covers it. ADR-046's tier change for `compensating-controls.md` is then partial (items 1 to 3).
 3. **The part-file contract:** schema and version (the encoding is JSON, fixed by NFR-10), batch granularity, `.tachi-build/` location, prose fragments, plan and batch IDs, retention and stale parts, validation, and who names the paths.
 4. **Where each script runs and in what order:** Phase 5 sequencing, exit codes, behavior on failure, and the provenance stamp.
-5. **The scoring constants and arithmetic:** the embedded constants and their drift test (R-32), one band helper, `Decimal` half-up rounding, and the date as an input.
+5. **The scoring constants and arithmetic:** the embedded constants and their drift test (R-32), one band helper, `Decimal` half-up rounding, and the date as an input. Also the **scoring-rules module**: PR 1's 8.0 days assume that R-25, R-26 and R-31 sit in their own module, written by a second W2 lane. If ADR-050 rules the module out, the team-lead re-projects PR 1 before `/aod.tasks` signs off, and a PR 1 above 9.0 comes back to the PM.
 6. **Batching and overflow:** thresholds; the planner and slicing (the planner runs only where Bash runs); the error schema; resume from disk; ownership per agent, including which layer dispatches the tree batches; and the retry cap.
-7. **SARIF identity:** GitHub's key; the hash recipe and its stable per-finding key; the repo-relative URI and its carrier; a tool name and category per file (R-33); the `:339` / `:612` contradiction; and the migration.
+7. **SARIF identity:** GitHub's key; the hash recipe and its stable per-finding key; the repo-relative URI and its carrier; a tool name and category per file (R-33); the `:339` / `:612` contradiction; and the migration. Under R-34 the migration has two re-key events, at most one per file: the scorer and controls files at PR 1, and `threats.sarif`, with its FR-E.11 upload line, at PR 2.
 8. **SARIF membership:** one result per finding or stable primaries (with the asymmetry and SV-3 in view), the peer marker, how correlation is expressed, RESOLVED excluded, the reference finding set, and the `threats.sarif` fallback input.
 9. **Score-inheritance mechanics:** how recomputed values, flags, "unverifiable" and "unchecked" appear in the `.md` and the SARIF; the tolerant parser for legacy baselines (R-26); the resolved marker (R-30); and the derivation of the original scoring date, its fallback, the override rule and the override marker (R-31).
 10. **The exception rules:** a category for every prefix, and the vector check separated from the bound check.
@@ -904,7 +935,7 @@ The Architect's list, plus TW-ADR. Each item must be ruled before the build wave
 13. **Phase 3.5:** code or model for the computational steps; the outcome record's format and writer; the mechanism that keeps an inconsistent record's chains from reading as complete (R-24); the order across prefixes; redundancy and surfacing; and whether the transitive-closure link test stays.
 14. **Report assembly:** part granularity, who runs the step, tree batching, and carry-forward by copy.
 15. **Schema versions:** `threats.md` (with #396's 1.5), `risk-scores.md` and `compensating-controls.md`, and the part and record schemas.
-16. **Test and CI placement:** the workflow per suite, S-13's list and allowance, the write-confinement extension, the lock-step anchors, and the offline identity test.
+16. **Test and CI placement:** the workflow per suite, S-13's list and allowance, the write-confinement extension, the lock-step anchors, the offline identity test, and the test for R-34's controls Sections 2 and 4 check.
 
 ---
 
@@ -975,7 +1006,7 @@ The Architect's list, plus TW-ADR. Each item must be ruled before the build wave
 |------|-------|--------|------|-------|
 | Product Manager | product-manager | 🟡 Approved with Concerns (v1.2 delta re-review) | 2026-11-21 | 16 of 16 v1.1 re-review findings resolved; R-25 to R-31 ruled (2 accepted, 5 amended, folded verbatim in v1.3); 5 LOW |
 | Architect | architect | 🟡 Approved with Concerns (v1.1 re-review) | 2026-11-21 | 2 inaccuracies corrected in v1.2 (Appendix A); 22 new findings folded |
-| Team-Lead | team-lead | 🟡 Approved with Concerns | 2026-11-21 | 8.0 / 5.5 / 13.0 eng-days; 14 concerns folded |
+| Team-Lead | team-lead | 🟡 Approved with Concerns (with the addendum) | 2026-11-21 | 8.0 / 5.5 / 13.0 re-priced to 9.5 / 6.5 / 17.5 eng-days (§13 of the check); 14 concerns folded; the pre-fired carves were ruled by the PM (R-34) |
 
 Legend: ✅ Approved | 🟡 Approved with Concerns | 🔄 Changes Requested | ⛔ Blocked | 📋 Pending
 
@@ -988,3 +1019,4 @@ Legend: ✅ Approved | 🟡 Approved with Concerns | 🔄 Changes Requested | �
 | 1.0 | 2026-11-21 | product-manager (via /aod.define) | Initial PRD from lead issue #374 with the #397 fold-ins (N4, N14, N15, N16) and the N12 identity decision |
 | 1.1 | 2026-11-21 | /aod.define orchestrator (PM rulings adopted; PM re-review validates) | Folds in the Triad review of v1.0 (PM 27 findings, Architect 28 plus 6 inaccuracies, Team-Lead 14 concerns and the estimate). `threats.sarif` and GitHub's matching key are in scope (D-5); the renderer owns whole files and the controls arithmetic (D-2); the dispatching layer owns batching, and Phase 2 overflow is covered (D-3); provenance and completeness checks replace the v1.0 trace check (FR-N4.5, FR-N4.6); the whole report is bounded (Group B); D-6 is ranked; 22 rulings; §10–§11 are sized from the feasibility check; §12 is generalized for public hygiene. Written in the define session from the three reviews, adopting the PM review's rulings, rather than by a separate product-manager agent; the PM re-review validated it and accepted the deviation, on conditions |
 | 1.2 | 2026-11-21 | /aod.define orchestrator (PM rulings adopted; PM re-review validates) | Folds in the v1.1 re-reviews (PM CHANGES_REQUESTED: 2 HIGH, 5 MEDIUM, 9 LOW; Architect APPROVED_WITH_CONCERNS: 2 inaccuracies, 11 MEDIUM, 11 LOW). Budget carves follow R-12, and SV-3 fires only on its technical trigger (R-23); TW-N3 is generalized in the feasibility check; a bad Phase 3.5 record never ends the run (R-24); band-moving rounding is flagged (R-11); the regroup case is tested (US-5, SC-4); tree batching moves to a layer with Bash, and stale parts are rejected (D-3); per-file tool names and the architecture-path carrier (D-5); NFR-10's scope is widened; legacy baselines (R-26); the release notes are extended; §11 lists the unpriced delta. R-25 to R-31 are proposed for the PM's ruling. Risks are renumbered RK-1 to RK-10 |
+| 1.3 | 2026-11-21 | /aod.define orchestrator (PM rulings adopted verbatim) | **Approved.** Folds in the PM's delta re-review of v1.2 (APPROVED_WITH_CONCERNS): R-28 and R-29 accepted; R-25, R-26, R-27, R-30 and R-31 amended and folded in verbatim with their consequential edits; LOW findings 44 to 48 (R-33 keeps today's tool names; NFR-10 gains the baseline files and the architecture path; ADR-050 item 5; §10 governs over the check; §11's list). The team-lead's addendum re-prices the scope at 9.5 / 6.5 / 17.5 eng-days, and its pre-fired carves are ruled by the PM as R-34 (TW-R's fallback and SV-4 now: PR 1 Track R at about T0 + 8.0, PR 2 Track O at about T0 + 11 to 12). §11 adopts the bands. The feasibility check's carve order and trip-wires follow R-23 |

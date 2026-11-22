@@ -6,9 +6,9 @@ date: 2026-11-21
 prd_number: 374
 status: draft
 estimate:
-  planning_days: 8.0
-  floor_days: 5.5
-  ceiling_days: 13.0
+  planning_days: 9.5
+  floor_days: 6.5
+  ceiling_days: 17.5
 ---
 
 # Team-Lead Feasibility Check: Feature 374, Large-Architecture Pipeline Resilience
@@ -16,7 +16,7 @@ estimate:
 **STATUS: APPROVED_WITH_CONCERNS**
 
 - **Verdict:** FEASIBLE WITH MODIFICATIONS (§1).
-- **Estimate:** planning **8.0** · floor **5.5** · ceiling **13.0** eng-days, branch to merge. Bottom-up effort 17.9 / 11.3 / 29.7 eng-days. Confidence **LOW–MEDIUM**: medium for the renderer track, low for the orchestrator track.
+- **Estimate:** planning **9.5** · floor **6.5** · ceiling **17.5** eng-days, branch to merge, with the v1.1–v1.3 delta priced in §13 (v1.0 scope: 8.0 / 5.5 / 13.0). Bottom-up effort 24.1 / 15.1 / 40.7 eng-days. At this central TW-0 and TW-R already fail, so carves are pre-fired and the PM must rule (§13.4). Confidence **LOW–MEDIUM**: medium for the renderer track, low for the orchestrator track.
 - **Scope reviewed:** PRD-374 v1.0, which covers K4–K8, N4, N14, N15, N16 and the N12 decision (D-1 to D-7, FR Groups A to E). Pointers come from `.aod/results/pointer-refresh-374.md` (60 checked at `b040fa1`: 47 hold, 9 moved, 4 changed, 0 gone), plus the re-reads cited below.
 - **Lenses:** Constraint Analysis (§2.3 and §12) and Systems Thinking (the file-ownership map, §3.1).
 - **Vetoes:** neither is exercised. PRD §11 has no timeline to veto yet, and no lane is planned above 80% of its wave.
@@ -638,3 +638,74 @@ Durations are branch to merge, taken from the delivery records:
 - **Subordinate.** Lanes C and D feed the renderer's part schema. Nothing runs live until W4 is green.
 - **Elevate.** The chain script and the rendered SARIF move computation out of the orchestrator. The baseline-aware fixture makes the scale deterministic.
 - **Repeat.** TW-ESC at the end of S1, and TW-L1 after the first live run, check whether the constraint has moved.
+
+---
+
+## 13. Addendum: pricing the v1.1–v1.3 delta (2026-11-21)
+
+This prices the scope that PRD §11 lists as added after this check by the v1.1 and v1.2 revisions and the PM's v1.2 rulings. §2.1 to §2.3 stay as the v1.0 record; where they differ, this section supersedes them. The carve order (§3.4) and the trip-wires (§4) are unchanged.
+
+### 13.1 Pricing (effort-days)
+
+| # | Item (PRD §11) | Joins WP | Central | Floor | Ceiling |
+|---|---|---|---|---|---|
+| 1 | Whole-report assembly beyond Section 5 (FR-K5.1) | 20 | 0.50 | 0.35 | 0.90 |
+| 2 | One batch planner for three layers, with plan IDs, input digests and a stale-part test (FR-E.3), net of the slicing already in WPs 10, 12 and 19 | new (28, shared) | 0.50 | 0.35 | 0.90 |
+| 3 | D-3's failure behavior on three paths, one test each (FR-E.6) | 10, 12, 19 | 0.25 | 0.15 | 0.45 |
+| 4 | Small-run oracle over the shipped examples, with the parser round-trip (NFR-1) | 22 | 0.40 | 0.25 | 0.80 |
+| 5 | Two v4.48.4 baseline runs: the pre-fix scorer run on the fixture, and SC-8's scorer and controls run (D-7) | 23 | 0.25 | 0.15 | 0.45 |
+| 6 | FR-N4.6's dispositions, FR-E.10's parity check and a defined place for parse errors | 18 | 0.35 | 0.20 | 0.60 |
+| 7 | Tree-count and mode-2 checks (FR-K5.5, FR-K5.7) | 20 | 0.25 | 0.15 | 0.40 |
+| 8 | In-run signals: the provenance stamp and the declared-paths check (FR-E.7) | 5, 21 | 0.20 | 0.15 | 0.35 |
+| 9 | NFR-10's wider input set, with the three paths read from files | 5 | 0.40 | 0.25 | 0.70 |
+| 10 | Legacy-format baseline: the renderer's input rules and the fixture variant (R-26) | 6, 3 | 0.45 | 0.30 | 0.75 |
+| 11 | Architecture-path carrier (D-5) | 8 | 0.20 | 0.10 | 0.35 |
+| 12 | Runbook re-validation, with R-27's wider smoke run | 23 | 0.25 | 0.15 | 0.45 |
+| 13 | Optional: R-14's run-time bound, R-15's dispatch-target check, FR-N4.3's brief script | 17 | 0.45 | 0.00 | 0.90 |
+| 14 | Asset-modifier step and its tagged fixture cases (R-25) | 6, 3 | 0.40 | 0.25 | 0.65 |
+| 15 | R-31's mechanics and its override marker | 6 | 0.35 | 0.20 | 0.55 |
+| 16 | Per-batch tree manifests and their merge (D-3, FR-K5.6) | 20 | 0.45 | 0.30 | 0.80 |
+| 17 | Persisted Phase 1 inventory and dispatch table; the fixed dispatch prompt and its SC-3 comparison (FR-N4.3) | 17 | 0.30 | 0.20 | 0.50 |
+| 18 | Upload snippets (FR-E.11) and the cross-file assertion (FR-E.2) | 26, 8 | 0.15 | 0.05 | 0.25 |
+| 19 | The ~325-finding precomputed scorer input (D-7) and its longer scorer runs | 3, 23 | 0.15 | 0.05 | 0.35 |
+| 20 | R-30's resolved marker and its split parity check | 6, 13 | 0.30 | 0.20 | 0.50 |
+| | **Added** | | **6.55** | **3.80** | **11.60** |
+| | Offset, R-17: WP 11 keeps only the superseded-by header, the README warning and the follow-up (0.10 / 0.10 / 0.15) | 11 | −0.30 | 0.00 | −0.55 |
+| | **Net delta** | | **+6.25** | **+3.80** | **+11.05** |
+
+Floors follow the floor band: row 13 drops first, and SV-3 takes FR-E.2's assertion out with WP 8. Row 9 sits in WP 5 because that validation module serves every new script.
+
+### 13.2 New totals
+
+| | Central | Floor | Ceiling |
+|---|---|---|---|
+| Effort, eng-days | 24.10 | 15.05 | 40.70 |
+| **Duration, branch to merge** | **9.5** | **6.5** | **17.5** |
+
+- **Wave model** (§2.3; pacing lane × 1.25, banded to the nearest 0.5):
+  - central: plan 0.6 + W0 0.35 + W1 1.2 + W2 2.3 + W3 1.85 + W4 0.8 + W5 1.55 + W6 0.5 + coordination 0.25 = 9.4;
+  - floor: 0.4 + 0.3 + 0.95 + 1.6 + 1.1 + 0.6 + 1.05 + 0.35 + 0.1 = 6.45;
+  - ceiling: 1.0 + 0.5 + 2.0 + 5.5 + 3.0 + 1.35 + 3.4 + 0.5 + 0.35 = 17.6.
+- **Where it lands:** spread over W1 to W5 (+0.2, +0.3, +0.35, +0.15, +0.3). W2 stays at +0.3 only if ADR-050 puts the scoring rules (R-25, R-26, R-31) in their own module, written by a second lane while lane P moves to W3 (§3.3's fallback). Without that split, the risk-scores lane carries 2.7 days, W2 absorbs +1.4 and the central is about 10.5; the ceiling assumes this.
+
+### 13.3 TW-0
+
+TW-0 doesn't move. Its threshold stays at **9.0 d**, the bound PRD §11 states, and doesn't re-base to the new planning + 1.0: a trip-wire that moves with each repricing bounds nothing. Only an explicit PM ruling re-bases it.
+
+### 13.4 Pre-fired carves
+
+**Yes. The new central pre-fires carves before `/aod.tasks`.** Three gates already fail on it:
+- TW-0: 9.4 against 9.0.
+- TW-R: work packages 5–8 now sum to 5.65 effort-days against 5.3 (the renderer shares of rows 8–11, 14, 15, 18 and 20).
+- TW-ESC, projected: about 4.7 d remain after S1, against 4.0.
+
+The carve walk (§3.4 order; only carves that shorten the projection count):
+1. Row 13's optional fold-ins drop first. They sit off the pacing lanes, so they save 0.45 effort-days but almost no duration.
+2. SV-2b doesn't apply: the central already uses bounded emission.
+3. SV-1 doesn't shorten it measurably: lane OC doesn't pace W2.
+4. TW-R's fallback, already fired by TW-R, frees lane R2 in W3. That is worth about 0.2 d and leaves about 9.2.
+5. SV-4 is the first carve that reaches 9.0: Track R ships as PR 1 at about 8.0, and Track O follows as PR 2 at about T0 + 11 to 12.
+
+**The PM must rule before `/aod.tasks`:** (a) accept TW-R's fallback and SV-4 now; (b) re-base TW-0, TW-R and TW-ESC by explicit ruling and keep one bundle at 9.5; or (c) cut named rows from §13.1. PRD §11 then adopts the bands of the option chosen. **Team-lead recommendation: (a).** TW-ESC would split the bundle at the end of S1 anyway, planning the split now is cheaper than finding it mid-build, and Track R's code hand-back fix ships sooner.
+
+**Confidence: LOW–MEDIUM, unchanged.** The delta is small, specified items that price well, but the central rests on the W2 module split and a duration-to-effort ratio of 0.39, below both precedents (0.48 and 0.65; at 0.65 this bundle takes about 15.7 days).
