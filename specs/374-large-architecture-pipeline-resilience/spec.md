@@ -53,7 +53,7 @@ triad:
 | **Batch plan** | The shipped planner's output: a fresh plan ID, the digests of its inputs, and the batches, each with its list of finding IDs (FR-E.3) |
 | **Batched path** | A stage path on which the planner splits the work into two or more batches |
 | **Renderer** | Shipped, tested, stdlib-only code that owns a whole output file and computes D-2's right-hand column |
-| **Dispatch record** | One file per Phase 2 dispatch: the agent type, its scope, and its findings verbatim, possibly none (FR-N4.2) |
+| **Dispatch record** | One file per Phase 2 dispatch. SV-2b is carved at the plan stage (ADR-050 D1), so it is a manifest: the agent type, its scope, the count and the provisional IDs, possibly none (FR-N4.2, R-8) |
 | **Brief** | The scope file for one dispatch, under `.tachi-build/briefs/`. It holds only the brief template's closed set of fields (FR-N4.3) |
 | **ID map** | Phase 3's map from each final finding ID to its source record, and from each record finding to its disposition (FR-N4.2, FR-N4.6) |
 | **Provenance entry** | One of three kinds per finding: a dispatch record, a baseline carry-forward reference, or a named deterministic rule (FR-N4.5) |
@@ -61,7 +61,7 @@ triad:
 | **Stage record** | One small JSON file per stage: counts, batches, overflow events and retries (NFR-5) |
 | **Matching key** | GitHub's alert key: the tool and upload category, the `ruleId`, `partialFingerprints.primaryLocationLineHash` and `artifactLocation.uri` (D-5) |
 | **Re-key event** | A release after which some alerts close and reopen once. Under R-34 there are at most two, at most one per file |
-| **Flags** | **Corrected**, with its cause; **unverifiable** (no vector, R-7); **unchecked** (an N17 ambiguity, R-10); **divergent** (an UNCHANGED peer whose score differs from its primary's, R-4); **override** (a human governance value, R-31); **resolved** (a RESOLVED row in `risk-scores.md`, R-30). A rounding-only difference is **normalized** and counted, not flagged (R-11) |
+| **Flags** | **Corrected**, with its cause; **unverifiable** (no vector, R-7); **unchecked** (an N17 ambiguity, R-10); **divergent** (an UNCHANGED peer whose score differs from its primary's, R-4); **override** (a human governance value, R-31); **resolved** (a RESOLVED row in `risk-scores.md`, R-30); **retagged** (a value the asset tags alone moved: the band, or a value on the way to it such as `cvss_base` or `composite_score`, even when the band holds; never `corrected`, ruling A); **reused-id** (a NEW finding whose ID the baseline used, ruling B); **input** (a kept input with a problem, such as two sources that disagree or a reachability outside its range; a narrative field replaced by its fixed sentence, PM plan-review finding 1; or a prose field cut at its length limit, Architect re-review N2). A rounding-only difference is **normalized** and counted, not flagged (R-11) |
 | **Adopter default effort** | A session launched with no effort override (R-18) |
 
 ---
@@ -266,6 +266,13 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
 12. **Given** a tagged component, **When** the asset-modifier step runs, **Then**:
     - a finding's score is the larger of its assessed score and its elevated score capped at 9.2, so a finding assessed above 9.2 keeps its score;
     - a carried legacy finding that stores only an elevated score above 9.2 keeps its stored score and is reported as unchecked (R-25).
+13. **Given** a carried finding whose band rises only because of its asset tags, **When** the renderer runs, **Then**:
+    - the change isn't flagged `corrected`; it gets its own `retagged` flag;
+    - its review date becomes this run's scoring date plus the new SLA, unless the stored review date is earlier, in which case the stored date is kept;
+    - an SLA override still keeps its review date.
+
+    "Only because of its asset tags" means that recomputing with the baseline's recorded tags gives the stored band. A legacy row records no tags, so there it means a band change that comes only from the elevation this run's tags apply. That covers the first run after upgrading (ruling A).
+14. **Given** a carried finding whose band falls only because a tag was removed, **When** the renderer runs, **Then** the original scoring date is kept, as for a correction (R-5). A deadline already missed under the lower band's SLA stays missed (ruling A).
 
 ---
 
@@ -293,6 +300,8 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
 7. **Given** the scorer or controls command run with the architecture-path override flag, **When** it writes its SARIF, **Then** every `artifactLocation.uri` is the flag's path, validated and repo-relative (FR-E.18).
 8. **Given** no flag and a `threats.md` that carries the architecture-path body line, **When** the command writes its SARIF, **Then** every URI is the body line's path, validated and repo-relative.
 9. **Given** no flag and a pre-fix `threats.md` with no body line, **When** the command writes its SARIF, **Then** every URI is `docs/security/architecture.md`, and the command warns that the body line is absent and names the override flag.
+10. **Given** a NEW finding whose ID appears in the baseline `risk-scores.md`, **When** the scorer and controls render, **Then** both files flag it `reused-id`, and PR 1's release notes state the exposure until PR 2 and name the flag (ruling B).
+11. **Given** a correlated result, **When** the emitter writes it, **Then** its `message.text` ends with one sentence. On a peer, the sentence names its group and its primary. On a primary, it names its group and its peers, up to the shared reference's cap, then a count. A regroup changes that text, never a key (ruling C).
 
 ---
 
@@ -310,6 +319,9 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
 2. **Given** two distinct findings with the same rule and component, **When** `threats.sarif` is generated, **Then** their keys differ.
 3. **Given** an unchanged re-run, **When** the keys are compared, **Then** every key is identical.
 4. **Given** the developer guide, **When** PR 2 merges, **Then** both Code Scanning snippets upload `threats.sarif` with `category: threat-model` from a run's timestamped output directory (FR-E.11).
+5. **Given** a baseline with live and resolved IDs, **When** Phase 3 numbers NEW findings, **Then**:
+   - each prefix's new IDs sit above a per-prefix high-water mark, which shipped code writes as a `threats.md` body line. The first PR 2 run seeds it from the baseline's live IDs and Section 4c;
+   - `check-threat-model.py` warns (exit 5) on any NEW finding whose ID the baseline used, or that sits at or below the mark, and the run continues (ruling B).
 
 ---
 
@@ -384,7 +396,7 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
   - tells the orchestrator to stop with an actionable error when a typed agent can't be spawned (FR-E.6).
 
   This implements #408's body-instruction option (R-14). No agent's `tools:` list carries an `Agent(...)` type list (S-10). → US-4 #1, #5
-- **FR-N4.2 (dispatch records) [O; record template S]** — The orchestrator MUST persist one record per dispatch under the run's `.tachi-build/` (R-8): the agent type, the scope, and the agent's findings verbatim, possibly none. Phase 3 writes the ID map. If SV-2b fires, the record shrinks to a per-dispatch manifest (agent, scope, count and provisional IDs). The threat agents stay read-only (NG8). → US-1b #2, US-4 #2
+- **FR-N4.2 (dispatch records) [O; record template S]** — The orchestrator MUST persist one record per dispatch under the run's `.tachi-build/` (R-8). SV-2b is carved at the plan stage (ADR-050 D1), so the record is a per-dispatch manifest: the agent type, the scope, the count and the provisional IDs, possibly none. Phase 3 writes the ID map. The threat agents stay read-only (NG8). → US-1b #2, US-4 #2
 - **FR-N4.3 (briefs) [O; brief template S]** — A brief MUST hold only the brief template's closed set of fields: the target components, the agent's input pointers and the baseline focus. It points at the architecture snapshot, and at the Phase 1 inventory and dispatch table persisted under `.tachi-build/`. Each agent is dispatched with the fixed one-line prompt, and the SC-3 audit compares each actual prompt with it. The recommended brief-rendering script drops under R-34 (feasibility row 13). → US-4 #3
 - **FR-N4.4 (no ad-hoc scripts) [S]** — The orchestrator MUST run only shipped scripts (R-22). Its fenced commands use `python3` with no `$(`, backticks, `xargs` or `bash -c` (guard C6), so the resume reconciliation is a shipped script. *Scenario:* **Given** the orchestrator spec, **When** guard C6 and a static assertion scan its fenced commands, **Then** each one runs a shipped script by name.
 - **FR-N4.5 (provenance check) [O]** — After the orchestrator returns, the main session MUST check that every finding in `threats.md` has exactly one provenance entry (Terminology). A run with no dispatch records fails, which catches failure mode 3. The check confirms the orchestrator's own record; it doesn't prove provenance, which is #399's job. → US-4 #2
@@ -484,7 +496,7 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
 - **FR-E.8 (#409's dispatch-target check)** — *Drops at `/aod.tasks` under R-34 (feasibility row 13).* #409 is sequenced right after this bundle (R-15), and #408 stays open for R-14's run-time bound.
 - **FR-E.9 (#412) [R; `threats.sarif` O]** — Each emitter MUST write the real `informationUri`, and the templates and instructions that carry the placeholder are corrected (R-16). *Scenario:* **Given** any SARIF file a shipped emitter writes, **When** its `tool.driver.informationUri` is read, **Then** it is the real repository URL, never the placeholder.
 - **FR-E.10 (Section 6 parity) [O]** — `threats.md` Section 6's counts and percentages MUST be checked against the reference finding set (D-4), classifying MAESTRO applicability through ADR-047 D2's helper, never re-deriving it from Section 1. They stay model-written unless SV-2b's rendering ships. *Scenario:* **Given** a compiled `threats.md` whose Section 6 disagrees with the reference set, **When** the check runs, **Then** it reports each mismatched count or percentage, and a Section 6 that agrees passes.
-- **FR-E.11 (upload instructions) [R+O] *(per S-15)*** — Both Code Scanning snippets in the developer guide (`DEVELOPER_GUIDE_TACHI.md:1118-1135` and `:1692-1712`) MUST upload from a run's timestamped output directory, each file with its own category. PR 1 adds the scorer and controls uploads and leaves the `threats.sarif` line as it is. PR 2 changes the `threats.sarif` line together with its identity, keeping `category: threat-model`. → US-6b #4
+- **FR-E.11 (upload instructions) [R+O] *(per S-15)*** — Both Code Scanning snippets in the developer guide (`DEVELOPER_GUIDE_TACHI.md:1118-1135` and `:1692-1712`) MUST upload from a run's timestamped output directory, each file with its own category. PR 1 adds the scorer and controls uploads and leaves the `threats.sarif` line as it is. PR 2 changes the `threats.sarif` line together with its identity, keeping `category: threat-model`. The batch files hold absolute local paths, so PR 1's edit also tells adopters to ignore `**/.tachi-build/`, as tachi's own `.gitignore` does (PM plan review, finding 6). → US-6b #4
 - **FR-E.12 (SARIF identity fields) [R; `threats.sarif` O] *(spec S-6)*** — Every result in every tachi SARIF file MUST carry tachi's own `partialFingerprints.primaryLocationLineHash`, and no file MAY carry `runAutomationDetails`. → US-6a #4
 - **FR-E.13 (correlation matching unchanged) [O] *(spec S-7)*** — Phase 3's baseline correlation MUST keep matching findings exactly as it does today. *Scenario:* **Given** the regroup pair, **When** correlation runs before and after the SARIF recipe changes, **Then** it produces the same matches. → US-6b #1
 - **FR-E.14 (dispatch limits) [R+O] *(spec S-8)*** — No dispatching layer MAY have more than 20 subagents in flight, no dispatch path MAY nest more than three layers below the main session, and every re-dispatch and batch MUST run in the foreground. → US-1a #4, US-1b #5, #6
@@ -499,11 +511,25 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
   - **Coordination.** P-2's #396 anchors bind this edit.
 
   → US-6a #4, #7, #8, #9
+- **FR-E.19 (no reissued IDs) [R; O] *(PM plan review, ruling B)*** — Finding IDs MUST never be reissued.
+  - **PR 2.** Phase 3 numbers each prefix above a per-prefix high-water mark, kept as a `threats.md` body line under P-2's anchors, with no schema bump. Shipped code, not the model, writes the mark: the larger of the baseline's mark and this run's highest ID. The first PR 2 run seeds it from the baseline's live IDs and Section 4c.
+  - **The check.** `check-threat-model.py` warns (exit 5) and counts any NEW finding whose ID the baseline used, or that sits at or below the mark. It doesn't end the run.
+  - **PR 1.** The scorer and the controls renderer flag `reused-id` on a NEW finding whose ID appears in the baseline `risk-scores.md`.
+  - **The limit**, which ADR-050 records: an ID resolved before the baseline run, which the baseline no longer lists, can still be reissued once.
+
+  → US-6a #10, US-6b #5
+- **FR-E.20 (correlation in the message) [R; O] *(PM plan review, ruling C)*** — Each correlated result's `message.text` MUST end with one sentence that names its group, plus either its primary (on a peer) or its peers (on a primary, up to a cap the shared reference sets, then a count). The message isn't identity (D7), so a regroup changes the text and never a key. → US-6a #11
 
 ### Non-Functional Requirements
 
 - **NFR-1: compatibility.**
-  - **A small-run oracle**, run in a scratch clone, covers each shipped example that has scorer or controls output, the PRD's rule. The renderer's output keeps every section and field, and every value diff is attributed to a corrected value or to D-5. The three examples whose files use a drift form are drift-form cases that assert S-12(a) to (d).
+  - **A small-run oracle**, run in a scratch clone, covers each shipped example that has scorer or controls output, the PRD's rule. The renderer's output keeps every section and field. It is compared on decoded values (ADR-050 D3), and every value diff is attributed to one of four classes:
+    - a flagged value (corrected, or retagged under ruling A);
+    - D-5;
+    - S-2's reorder of rows with equal scores;
+    - text the renderer takes from the reference set where today's agent paraphrased it: a field that ADR-050 D2 has the renderer take from the reference set, whose rendered value equals that finding's reference-set value on decoded values, after the documented truncation. A diff in such a field that fails this test is unattributed (PM confirmation, ruling 4).
+
+    The three examples whose files use a drift form are drift-form cases that assert S-12(a) to (d).
   - **Parsers keep working.** They read by header name. A round-trip test checks that the renderer's output, parsed by `tachi_parsers`, equals the renderer's input.
   - **Old inputs render the same.** The PDF and the infographics render them byte-identically.
   - **Schemas change additively.** The frozen enum and the ceiling are unchanged (NG7).
@@ -554,7 +580,7 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
 
   The rules:
   - **Strict JSON.** JSON inputs are parsed against a closed, versioned key set, with types and ranges. Unknown keys, NaN, Infinity, duplicate IDs and IDs outside the batch's list are rejected.
-  - **IDs before paths.** The allow-list `^(S|T|R|I|D|E|AG|AGP|LLM|OI|MI|TE)-\d+$` is applied before an ID becomes part of a path, with a resolved-path containment check as a backstop.
+  - **IDs before paths.** The allow-list is applied before an ID becomes part of a path, with a resolved-path containment check as a backstop. An ID is one of the prefixes S, T, R, I, D, E, AG, AGP, LLM, OI, MI and TE, a hyphen, and ASCII digits `[0-9]`, matched against the whole string: never `\d`, which accepts non-ASCII digits, and never `$`, which accepts a trailing newline (KB 24; ADR-050 D3's identifier module).
   - **Paths come from the command**, never from file content. The exceptions are three paths read from files: `baseline.source`, `risk-scores.md`'s `source_file`, and the architecture path in `threats.md`'s body. Each is validated as KB Entry 24 prescribes: a regular file, not a symlink, under the working directory, compared by resolved identity.
     - **Expected names.** `baseline.source`, `source_file`, and the baseline files read from that directory must also have the expected name.
     - **The architecture path** has no fixed name, so its name check is replaced by a match against the run: its basename must equal that of the architecture snapshot that `/tachi.threat-model` copied into the run directory, which keeps the source's basename. ADR-050 item 7 designs the check, including the case where the snapshot is absent. The path is also normalized as repo-relative, in one canonical spelling.
@@ -600,7 +626,7 @@ The Terminology table defines each entity. Their relationships:
 | E | NFR-3 | modified | `docs/standards/CLAUDE_PERMISSIONS.md` §8.3–§8.5, `docs/guides/ISOLATED_OPERATION_TACHI.md` (§5 and its header) | R, O |
 | E | FR-E.11 | modified | `docs/guides/DEVELOPER_GUIDE_TACHI.md` (two snippets) | R, O |
 | E | D-2, #357 | replaced or fenced (ADR-050) | `scripts/generate-threats-sarif.py`, `scripts/generate-risk-scores-sarif.py`, `scripts/sarif_common.py` | R, O |
-| E | P-1 | **new** and modified | `docs/architecture/02_ADRs/ADR-050-*.md`; dated notes or amendments in ADR-013, 017, 018, 020, 046, 047, 048 and 049 | S |
+| E | P-1 | **new** and modified | `docs/architecture/02_ADRs/ADR-050-*.md`; dated notes or amendments in ADR-013, 017, 018, 020, 026, 046, 048 and 049 (ADR-047 is unchanged, because SV-2b is carved) | S |
 | E | FR-C.1 | modified | `adapters/claude-code/agents/*` copies (header), `adapters/claude-code/README.md` (warning) | R, O |
 
 ### Consequence scope
@@ -635,23 +661,38 @@ These consumers read what the bundle changes. They form T001's pre-state census 
 | **SC-5** | Controls report | R | Drifting tables; totals ≠ sum of rows; blank recommendations | One schema in every band table; totals equal the sums of the rows; `.md` and `.sarif` agree; 0 unjoined Section 4 recommendations; #373's parsers read the corrected and the pre-fix fixtures. In PR 1, shown on the fixture's live runs (R-34) |
 | **SC-6** | SARIF identity under the matching key, per file, on the baseline-aware regroup pair (offline) | R (scorer, controls); O (`threats.sarif`) | Scorer and controls alerts churn on every run; regrouped `threats.sarif` results drop out | For each file: 0 still-present findings lose their key; an unchanged re-run's keys are identical; no two present findings share a key; the three (tool, category) pairs differ |
 | **SC-7** | Release | S, R, O | — | Each PR yields a `fix(374)` patch release whose notes carry what "Release notes, per PR" (below) lists |
-| **SC-8** | Small runs | R | One v4.48.4 run of the scorer and controls on one shipped example's `threats.md` (D-7) | The small-run oracle passes. Output tokens on that example are no worse than the baseline, within the tolerance fixed by plan input P-7. Wall time is recorded, not gated |
+| **SC-8** | Small runs | R | One v4.48.4 run of the scorer and controls on one shipped example's `threats.md` (D-7) | The small-run oracle passes. For `/tachi.risk-score` and `/tachi.compensating-controls` separately, output tokens are at most 10% above that stage's v4.48.4 baseline. **The runs:** the same shipped example, named before W1's baseline run and below both stages' batching thresholds, at the adopter default effort, under the same session conditions (if the post-fix run doubles as R-27's smoke run, the baseline also runs under the profile). **Output tokens** are what Claude Code reports for the whole stage (the command's turns and every subagent, thinking included), read from the session's usage records. **Reporting:** the PR records each stage's delta, and public text claims a stage got cheaper only if its delta is below zero. **Overage:** a stage still over 10% after TW-L2's second attempt goes back to the PM before PR 1 merges. Wall time is recorded, not gated (P-7, as ruled) |
 | **SC-9** | Live confirmation *(lagging; tracked outside this feature)* | — | — | The next large real-world run completes every stage with no stand-ins, no hand assembly and no code hand-back |
 
 ### Release notes, per PR (R-1, binding)
 
 - **PR 1 carries all five §8 items.**
-  - **Item 1 (SARIF)**, for the scorer and controls files: their one re-key event, their stable identity from then on, the alert count, and the per-file tool names and categories. It also tells adopters whose architecture file isn't at `docs/security/architecture.md` to re-run `/tachi.threat-model` first, or to pass the override flag (FR-E.18).
+  - **Item 1 (SARIF)**, for the scorer and controls files:
+    - their one re-key event, their stable identity from then on, the alert count, and the per-file tool names and categories;
+    - advice to adopters whose architecture file isn't at `docs/security/architecture.md`: re-run `/tachi.threat-model` first, or pass the override flag (FR-E.18);
+    - the ID-reuse exposure until PR 2, and the `reused-id` flag that marks it (ruling B);
+    - each correlated result's message now names its group (ruling C).
   - **Item 2 (runs that stop)**:
-    - the new stops and their remedies, including the unreadable-Section-7 stop (S-12(c));
+    - the new stops and their remedies, including the unreadable-Section-7 stop (S-12(c)), and the stop when inputs change during a run (ADR-050 D6), whose remedy is to re-run;
     - a Python 3.9+ renderer now writes the scorer and controls outputs, so `/tachi.compensating-controls` needs `python3` for the first time.
-  - **Items 3 (scores) and 4 (rendering)**, as §8 states them, with item 4's PR 1 caveat for controls Sections 2 and 4 (R-34).
+  - **Item 3 (scores)**, as §8 states it, plus:
+    - asset tags now apply to carried findings, so on the first run after upgrading their scores can rise, flagged `retagged`, and some move up a band;
+    - ruling A's review-date rule for tag-driven changes, beside the correction rule.
+  - **Item 4 (rendering)**, as §8 states it, with its PR 1 caveat for controls Sections 2 and 4 (R-34), plus:
+    - both files move to schema 1.1, additively: `risk-scores.md` gains §2a, the `Flags` column, and §6 with the scoring inputs; the controls file gains K8's columns, `CF` and §7;
+    - the Executive Summary of `risk-scores.md` becomes one templated sentence;
+    - the batch files under `.tachi-build/`, which adopters should ignore in version control (PM plan review, finding 6).
+  - **SC-8.** A stage is claimed cheaper only as P-7 allows: its measured delta is below zero.
   - **Item 5** says what stays fragile until PR 2:
     - large threat-model runs, and the report, can still overflow;
     - the N4 text now forbids stand-ins, but Phase 2 re-dispatch ships only in PR 2, so a large threat-model run that used to finish by improvising may stop or come out incomplete;
     - Phase 3.5 can still be skipped silently;
     - `threats.sarif` alerts still churn.
-- **PR 2 carries items 1, 2 and 5**, each for its own scope.
+- **PR 2 carries items 1, 2 and 5**, each for its own scope. Item 1 adds that IDs are no longer reissued, so numbering can skip (ruling B). Item 5 adds that SV-2b is carved: `threats.md`'s tables and Section 6 stay model-authored (Section 6 is checked), and the dispatch records are manifests.
+- **Both PRs, the narrative fallback** (PM confirmation, ruling 2):
+  - Each PR's notes cover the stages that PR changes.
+  - They name each field's fixed sentence, the `input:<field>:narrative-fallback` flag, and the `input:<field>:truncated` flag for prose cut at its length limit (Architect re-review N2).
+  - They link the follow-up for any stage whose W5 fallback rate is above 10%.
 
 ---
 
@@ -750,7 +791,7 @@ Definitions are in PRD §10:
   - It is stdlib-only, with a fixed seed.
   - Every choice is derived from `random()` or from a hash of a label, never from `choice`, `sample` or `randint`, whose sequences Python doesn't guarantee across versions.
   - Its outputs are byte-identical on Python 3.9 to 3.13.
-  - Component names are synthetic.
+  - Component names are synthetic. Some carry digits (for example `worker-2` and `s3-archive`), so the numeral and slot rules are exercised (Architect plan review, F1).
 - **One base set.**
   - **The architecture:** 25 components over at least four trust zones and all seven MAESTRO layers. It includes at least two LLM components and two agentic components, so every threat agent dispatches.
   - **The baseline run directory:** its `threats.md` holds at least **390 open findings**, raised until the sizing check passes, up to a ceiling of **450**, across all 12 prefixes, with at least 40 Critical. If the check still fails at the ceiling, the fixture is adjusted once, as TW-L3 does it. It has at least 20 correlation groups, one of them cross-category, and at least 5 RESOLVED findings in Section 4c. Its chain material forms at least three chains, with at least two distinct terminal impacts. The directory also holds `attack-trees/` with its manifest, `risk-scores.md`, `compensating-controls.md`, and all three SARIF files.
@@ -758,7 +799,8 @@ Definitions are in PRD §10:
 - **Variants:**
   - **seeded-error:** for each prefix, at least one each of: a wrong composite, a wrong band, an out-of-clamp vector score, an out-of-range reachability value with an unambiguous label, and a missing vector. Plus the documented exceptions as controls (clamped scores, R-25 outcomes, rounding-only differences) and N17-dependent cases;
   - **legacy-format:** no sub-score tables; vectors on only some markdown rows; full vectors in the SARIF; one markdown-versus-SARIF disagreement; and seeded composite and vector errors (R-26);
-  - **tagged:** a tagged component with a finding assessed above 9.2, one that the tag elevates, and a carried legacy finding that stores only an elevated score above 9.2 (R-25);
+  - **tagged:** a tagged component with a finding assessed above 9.2, one that the tag elevates, and a carried legacy finding that stores only an elevated score above 9.2 (R-25). It also covers ruling A's tag-driven band changes in both directions, and their legacy case;
+  - **id-reuse:** one case for each PR. For PR 1, a NEW finding whose ID the baseline `risk-scores.md` used. For PR 2, a baseline whose high-water mark sits above its live IDs (ruling B);
   - **ties:** a band-moving composite tie, a rounding-only tie that doesn't move the band, and a residual tie (R-11);
   - **regroup pair:** two runs in which correlation regroups carried findings and changes a primary. The pair includes an UNCHANGED peer whose carried score differs from its new primary's, a NEW peer and an UPDATED peer, plus an unchanged re-run;
   - **chain-cap:** chain material that yields more than 105 consolidated chains, for S-3(g)'s offline test;
@@ -874,13 +916,39 @@ The PM signed APPROVED_WITH_CONCERNS, with 13 findings (2 HIGH, 5 MEDIUM, 6 LOW)
 - **Condition 4:** the unpriced additions, finding 1's reader work included, count toward the TW-0 of the PR that carries them, and a PR 1 projection above 9.0 days comes back to the PM (see Assumptions).
 - **Full review:** `.aod/results/product-manager-374-spec.md`.
 
+### PM rulings from the plan review (2026-11-22; binding for `/aod.tasks` and the build)
+
+The PM signed the plan APPROVED_WITH_CONCERNS, with 8 findings (1 HIGH, 3 MEDIUM, 4 LOW). Its rulings are folded here and in ADR-050, verbatim where the PM gave text:
+- **A (asset tags and the SLA clock): AMENDED.** A tag change is an input change, not a correction. A raise restarts the clock, but never past the stored review date; a lowering keeps the original scoring date. So the upgrade can't make carried findings overdue (US-5 #13, #14; the `retagged` flag).
+- **B (ID reuse): AMENDED.** IDs are never reissued. PR 2 adds a high-water mark that shipped code writes, and a check that warns. PR 1's scorer and controls renderer flag `reused-id`. Both PRs' notes say so (FR-E.19; US-6a #10, US-6b #5).
+- **C (correlation fields): AMENDED, placement accepted.** Each correlated result's message names its group and its primary or peers (FR-E.20; US-6a #11).
+- **P-7 (SC-8's tolerance): AMENDED.** At most 10% per stage, measured over the whole stage's output tokens, thinking included (SC-8).
+- **Findings.**
+  - Finding 4 (the release notes), finding 6 (ignoring `.tachi-build/`, FR-E.11) and finding 8's spec half (the dispatch-record wording) are folded here.
+  - Findings 1 to 3, 5, 7 and the rest of 8 are folded in ADR-050 and the plan (rev. 1).
+- **Condition.** A PR 1 projection above 9.0 days comes back to the PM before `/aod.tasks` signs off, with the items that drive it named.
+- **Full review:** `.aod/results/product-manager-374-plan.md`.
+- **Confirmation of rev. 1's dispositions (condition 3): CONFIRMED_WITH_AMENDMENTS, 2026-11-22.**
+  - **`retagged` scope: CONFIRMED.**
+    - It covers every value the tags alone move, including the values that follow a band the tags moved (the SLA and the review date).
+    - None is flagged `corrected`, `follows-band` included.
+  - **TW-L2's narrative fallback: AMENDED.**
+    - A stage above 10% of its narrative fields gets a follow-up, which that PR's notes link.
+    - A stage above 25% in any W5 run, the SC-8 small runs included, comes back to the PM before that PR merges, with a sample of the rejected fields. The exception: a contract-text fix and TW-L2's second attempt bring it to 25% or below.
+    - The contract text states the check: no digit outside a slot.
+  - **Ruling C's peer cap: CONFIRMED** at 10 peers, then a count.
+  - **NFR-1's reference-set oracle class: AMENDED.** It is bounded to the fields that ADR-050 D2 takes from the reference set. The first class reads "a flagged value (corrected, or retagged under ruling A)".
+  - **PM 1(b)'s `ref` narrowing: ACCEPTED.** `ref` has no CVE form, so a cited CVE takes the fallback.
+  - **Full text:** `.aod/results/product-manager-374-plan-confirm.md`.
+
 ### Registered as plan inputs (the architect's domain; not ambiguities)
 
 - **P-1: ADR-050.**
   - **Scope.** It rules all sixteen items of PRD §13, each naming its track, before the build wave that depends on it (TW-ADR).
   - **The ADRs it changes:**
     - ADR-046 (D1, D4, D5);
-    - ADR-047, only if SV-2b's rendering ships;
+    - ADR-047: unchanged, because SV-2b is carved at the plan stage (ADR-050 D1);
+    - ADR-026 (Phase 3.5 now runs after the join);
     - ADR-049 D7, by a dated note, because #396 adds D10;
     - ADR-013 (D1, D4, D5);
     - ADR-018 (delta classes);
@@ -914,7 +982,7 @@ The PM signed APPROVED_WITH_CONCERNS, with 13 findings (2 HIGH, 5 MEDIUM, 6 LOW)
 - **P-4: the failed-output mechanism** (D-3). It needs no N7 change.
 - **P-5: who runs report assembly, and who dispatches the tree batches** (ADR-050 items 6 and 14), within S-8.
 - **P-6: the `.tachi-build/` layout** for parts, records, briefs, plans, the persisted Phase 1 tables and the stage records, with every path declared (NFR-3).
-- **P-7: SC-8's tolerance**, stated as a number before the baseline run.
+- **P-7: SC-8's tolerance.** Ruled by the PM at the plan review: at most 10% per stage, measured as SC-8 states.
 - **P-8: the retry cap**, per dispatching layer.
 - **P-9: TW-N3's ordering**, kept generic in public text.
 - **P-10: the consequence-scope list**, which becomes T001's pre-state census.
