@@ -259,6 +259,14 @@ Quickstart §3 and §4 now follow it, and read tokens from the session's usage r
 
 The lanes follow the feasibility check's §3.1. Each hot file has one lane per wave, code lanes are separate from contract-text lanes, and lane X applies the cross-cutting rows once per wave. R-34 splits the waves by PR.
 
+> **Superseded at `/aod.tasks` (2026-11-22).** tasks.md v1.1 now owns four things:
+> - **The windows.** Each comes from its wave's longest dependency chain plus its push-and-gate tail.
+> - **PR 1's projection.** Its central is T0 + 10.05, and TW-0 is re-based to T0 + 11.0 under the PM's condition-4 ruling, Option A.
+> - **PR 2's projection.** Its central is T0 + 13.75, against a bound of T0 + 14.75.
+> - **PR 2's post-squash integration.** T127 names the method and the full-tree parity check, a departure from the rebase described below.
+>
+> The windows and centrals below are the plan stage's.
+
 **PR 1: Tracks S and R** (planning central about T0 + 8.0; TW-0 bounds it at 9.0 days)
 - **W0 (0.35 d).**
   - `devops`: T001's pre-state census in a scratch clone. It records each gate's literal totals and the consequence-scope list (P-10), and confirms that #365's known reds are attributed.

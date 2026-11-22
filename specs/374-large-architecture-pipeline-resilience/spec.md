@@ -443,7 +443,7 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
   - (b) and (c) follow D-6.
 
   → US-5
-- **FR-C.1 (adapter copies) [R+O]** — Each adapter copy of an edited spec MUST follow R-17: a superseded-by header and a follow-up in the #369 family. A warning at the top of the adapter README says to install with `scripts/install.sh`, never by copying that directory over `.claude/agents/tachi/`. *Scenario:* **Given** an edited spec that has a copy under `adapters/claude-code/`, **When** its PR merges, **Then** the copy carries the header and the follow-up issue exists.
+- **FR-C.1 (adapter copies) [S+R+O]** — Each adapter copy of an edited spec MUST follow R-17: a superseded-by header and a follow-up in the #369 family. A warning at the top of the adapter README says to install with `scripts/install.sh`, never by copying that directory over `.claude/agents/tachi/`. *Scenario:* **Given** an edited spec that has a copy under `adapters/claude-code/`, **When** its PR merges, **Then** the copy carries the header and the follow-up issue exists.
 
 #### Group D — Control analyzer (`control-analyzer.md`, `.claude/commands/tachi.compensating-controls.md`, `templates/tachi/output-schemas/compensating-controls.md`, `.claude/skills/tachi-control-analysis/references/`)
 
@@ -627,7 +627,7 @@ The Terminology table defines each entity. Their relationships:
 | E | FR-E.11 | modified | `docs/guides/DEVELOPER_GUIDE_TACHI.md` (two snippets) | R, O |
 | E | D-2, #357 | replaced or fenced (ADR-050) | `scripts/generate-threats-sarif.py`, `scripts/generate-risk-scores-sarif.py`, `scripts/sarif_common.py` | R, O |
 | E | P-1 | **new** and modified | `docs/architecture/02_ADRs/ADR-050-*.md`; dated notes or amendments in ADR-013, 017, 018, 020, 026, 046, 048 and 049 (ADR-047 is unchanged, because SV-2b is carved) | S |
-| E | FR-C.1 | modified | `adapters/claude-code/agents/*` copies (header), `adapters/claude-code/README.md` (warning) | R, O |
+| E | FR-C.1 | modified | `adapters/claude-code/agents/*` copies (header), `adapters/claude-code/README.md` (warning) | S, R, O |
 
 ### Consequence scope
 
@@ -927,6 +927,13 @@ The PM signed the plan APPROVED_WITH_CONCERNS, with 8 findings (1 HIGH, 3 MEDIUM
   - Finding 4 (the release notes), finding 6 (ignoring `.tachi-build/`, FR-E.11) and finding 8's spec half (the dispatch-record wording) are folded here.
   - Findings 1 to 3, 5, 7 and the rest of 8 are folded in ADR-050 and the plan (rev. 1).
 - **Condition.** A PR 1 projection above 9.0 days comes back to the PM before `/aod.tasks` signs off, with the items that drive it named.
+- **Condition 4 at `/aod.tasks` (2026-11-22): TRIGGERED, ruled Option A.**
+  - **The re-derivation.** tasks.md v1.1 derives each window from its wave's longest dependency chain plus its push-and-gate tail. That puts PR 1's central at T0 + 10.05.
+  - **The re-base.** TW-0 for PR 1 is re-based once, to T0 + 11.0, and PR 1 keeps every S-5 claim.
+  - **PR 2's bound** is its central plus 1.0: T0 + 13.75 + 1.0 = T0 + 14.75.
+  - **The caps.** A PR 1 central above T0 + 10.5, or a PR 2 central above T0 + 15.0, would have come back to the PM.
+  - **TW-ESC for PR 1** is restated as a re-projection at M3 against the re-based TW-0, and the "4.0 d remaining" test retires.
+  - **Full review:** `.aod/results/product-manager-374-tasks.md`.
 - **Full review:** `.aod/results/product-manager-374-plan.md`.
 - **Confirmation of rev. 1's dispositions (condition 3): CONFIRMED_WITH_AMENDMENTS, 2026-11-22.**
   - **`retagged` scope: CONFIRMED.**
@@ -1007,7 +1014,7 @@ The PM signed the plan APPROVED_WITH_CONCERNS, with 8 findings (1 HIGH, 3 MEDIUM
 
 ## Assumptions
 
-- **T0 is 2026-11-21**, the day the plan stage started. PR 1 lands at about T0 + 8.0 and PR 2 at about T0 + 11 to 12 (PRD §11), and `/aod.tasks` re-baselines both.
+- **T0 is 2026-11-22**, the day the plan stage started (the 21st was the define day). M1, the tasks sign-off, is also 2026-11-22. PR 1 lands at about T0 + 8.0 and PR 2 at about T0 + 11 to 12 (PRD §11), and `/aod.tasks` re-baselines both: tasks.md v1.1 puts them at about T0 + 10.05 and T0 + 13.75, under the PM's condition-4 ruling.
 - **Unpriced spec additions.** A few spec rulings add small items that the feasibility check doesn't price:
   - S-9's spike, S-11's checks and S-14's census;
   - S-3's rules and S-4's larger single base set;
