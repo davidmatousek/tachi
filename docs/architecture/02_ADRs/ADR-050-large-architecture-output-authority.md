@@ -124,6 +124,9 @@ Each decision names its track. PR 1 rests only on decisions tagged S (the cut li
   | Rationale per dimension; optional per-metric and per-sub-score rationale | agent, as prose with slots |
 
   Per file, the scorer renderer writes everything, the SARIF included. The Executive Summary's one sentence is templated from computed counts, because no batch sees every finding.
+  - **The Executive Summary's reading (W1, 2026-11-22, T023, from T027).**
+    - §1's first table is the severity band table: Severity, Count and Percentage, with percentages by largest remainder (D5), and a Total row equal to the open count. `parse_risk_scores_severity` reads it unchanged (NFR-1), so lane P has nothing to teach.
+    - The sentence's wording is the template's (T031). The goldens pin what it states and in what order: the open count, then Critical, High, Medium and Low.
 
   | Controls field | Author |
   |---|---|

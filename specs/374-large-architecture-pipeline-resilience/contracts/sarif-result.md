@@ -50,6 +50,11 @@
     - No new code imports it. T054 (W3) retires one user, and PR 2's rewrite of `generate-threats-sarif.py` on the shared emitter (lane R3b, W2′) deletes the map with its last user.
   - **The taxa names.** PR 1 keeps the names the scorer and controls files carry today: ASI01 "Agent Autonomy Abuse", and the short CWE-78, CWE-79 and CWE-89 names. A rename would be adopter-visible and is outside this bundle. Aligning ASI and CWE names with the catalogs, and extending the drift test from IDs to names, is a close-out follow-up (T080) that goes to the PM. The OWASP-LLM taxa stay equal to the 2026 catalog, value by value.
   - **JSON** is ASCII-only (`ensure_ascii=True`), and `findingId/v1` is written as Section 7 gives it.
+  - **The message (from T027).** `message.text` is the reference set's threat text, as `risk-scorer.md:195` maps it today, with ruling C's sentence appended.
+    - A file whose contract maps `message.markdown` keeps it, after `text`. NFR-1 keeps adopter fields, and the message isn't identity.
+    - So `risk-scores.sarif` carries `markdown` = the reference set's mitigation text (`risk-scorer.md:196`), which today's shipped scorer files carry.
+    - The controls file follows `control-analyzer.md` Phase 6c's own mapping by the same rule (lane D, W3).
+    - Before W1's push, R0b lets `build_result` take an optional `markdown`, and the self-check accepts it. R1t's golden expects `{"text": threat, "markdown": mitigation}`.
 - **Test vectors:**
   - `tachi-plh/1|tachi-risk-scorer|S-1` → `4395a0c67e904b90:1`
   - `tachi-plh/1|Tachi|S-1` → `6a1fd93f275ff00b:1`

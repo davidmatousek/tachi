@@ -76,4 +76,5 @@ T017's tests pin these readings for T018. The plan's halving and retry readings 
 - **`architecture-source`** writes from the command's own path only. When the resolver fails that path, it removes any existing line, warns on stderr and exits 5. It never falls back to the constant.
   - It keeps one line, between the frontmatter and the first `## ` heading, outside code fences.
   - A forged copy inside a fence is neither read nor changed.
+- **The stamp's `renderer`** is the entry's installed file name, with `.py`, as a literal constant in each entry: `render-risk-scores.py`, `render-compensating-controls.py`, and in PR 2 `join-threats-md.py`, `assemble-report.py`, `attack-chains.py` and `generate-threats-sarif.py`. That one spelling goes in the markdown comment, in SARIF's `tachi_provenance` and in every file an entry stamps, so the name matches `INSTALL_MANIFEST.md` and `REQUIRED_SCRIPT_NAMES`.
 - **`--version`** prints `tachi_parts.VERSION` and the interpreter's version on stdout, and exits 0. The refusal below 3.9 goes to stderr, with exit 2. Tests may accept either stream.
