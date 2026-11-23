@@ -61,7 +61,7 @@ triad:
 | **Stage record** | One small JSON file per stage: counts, batches, overflow events and retries (NFR-5) |
 | **Matching key** | GitHub's alert key: the tool and upload category, the `ruleId`, `partialFingerprints.primaryLocationLineHash` and `artifactLocation.uri` (D-5) |
 | **Re-key event** | A release after which some alerts close and reopen once. Under R-34 there are at most two, at most one per file |
-| **Flags** | **Corrected**, with its cause; **unverifiable** (no vector, R-7); **unchecked** (an N17 ambiguity, R-10); **divergent** (an UNCHANGED peer whose score differs from its primary's, R-4); **override** (a human governance value, R-31); **resolved** (a RESOLVED row in `risk-scores.md`, R-30); **retagged** (a value the asset tags alone moved: the band, or a value on the way to it such as `cvss_base` or `composite_score`, even when the band holds; never `corrected`, ruling A); **reused-id** (a NEW finding whose ID the baseline used, ruling B); **input** (a kept input with a problem, such as two sources that disagree or a reachability outside its range; a narrative field replaced by its fixed sentence, PM plan-review finding 1; or a prose field cut at its length limit, Architect re-review RR2). A rounding-only difference is **normalized** and counted, not flagged (R-11) |
+| **Flags** | **Corrected**, with its cause; **unverifiable** (no vector, R-7); **unchecked** (an N17 ambiguity, R-10); **divergent** (an UNCHANGED peer whose score differs from its primary's, R-4; *W3 erratum (2026-11-23, PM): or a NEW or UPDATED peer whose own asset tags moved its score, PM W3 ruling 1*); **override** (a human governance value, R-31); **resolved** (a RESOLVED row in `risk-scores.md`, R-30); **retagged** (a value the asset tags alone moved: the band, or a value on the way to it such as `cvss_base` or `composite_score`, even when the band holds; never `corrected`, ruling A); **reused-id** (a NEW finding whose ID the baseline used, ruling B); **input** (a kept input with a problem, such as two sources that disagree or a reachability outside its range; a narrative field replaced by its fixed sentence, PM plan-review finding 1; or a prose field cut at its length limit, Architect re-review RR2). A rounding-only difference is **normalized** and counted, not flagged (R-11) |
 | **Adopter default effort** | A session launched with no effort override (R-18) |
 
 ---
@@ -101,6 +101,7 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
 7. **Given** a shipped example below the batching threshold, **When** both stages run, **Then**:
    - each agent is invoked once (NFR-4);
    - the outputs keep every section and field (NFR-1);
+     - *W3 erratum (2026-11-23, PM): the text stays as signed. Under PM W3 ruling 2 this means every section and field that the file's contract names, as NFR-1's W3 erratum reads it.*
    - output tokens are no worse than the v4.48.4 baseline, within the stated tolerance (SC-8).
 
    `[MANUAL-ONLY] needs live runs on a shipped example and the v4.48.4 baseline run`
@@ -247,6 +248,7 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
    - no carried finding's score, band or SLA changes because of the regroup alone;
    - an UNCHANGED peer whose carried score differs from its new primary's keeps its score and is flagged divergent;
    - NEW and UPDATED peers inherit their primary's vector and scores (R-31).
+     - *W3 erratum (2026-11-23, PM): the text stays as signed. PM W3 ruling 1 supersedes it: NEW and UPDATED peers inherit their primary's assessment (vector, bounds, sub-scores and reachability inputs) and are scored with their own asset tags, so with equal tags they show their primary's scores (R-31). A peer whose own tags move its score is flagged divergent on the run that scores it, and the next run changes neither its values nor its flags (see "PM rulings from the build, W3" under Rulings).*
 7. **Given** a band that recomputation corrects, **When** the review date is set, **Then** it moves to the corrected SLA counted from the original scoring date, which is the stored review date minus the stored SLA. Only an input change restarts the clock (R-5). Where either stored value is missing, ADR-050 item 9's fallback applies, and the case is flagged.
 8. **Given** an Accept or Transfer disposition, or an SLA or disposition that differs from the **stored** band's default, **When** the renderer runs, **Then** the value is carried verbatim and marked as an override (R-31).
 9. **Given** RESOLVED findings in the baseline, **When** `risk-scores.md` is rendered, **Then**:
@@ -530,8 +532,16 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
     - D-5;
     - S-2's reorder of rows with equal scores;
     - text the renderer takes from the reference set where today's agent paraphrased it: a field that ADR-050 D2 has the renderer take from the reference set, whose rendered value equals that finding's reference-set value on decoded values, after the documented truncation. A diff in such a field that fails this test is unattributed (PM confirmation, ruling 4).
+    - *W3 erratum (2026-11-23, PM), the fifth class (PM W3 ruling 2b):* a NEW finding's score that v4.48.4 held to its category's ±1.0 bound and that the renderer scores without it, because the run read no usable baseline `risk-scores.md` (ADR-050 D10, as P0-9 amends it), together with the values that follow from that score (composite, band, SLA, review date, the row's position and §1's counts) and the same values on the NEW or UPDATED peers that copy it (R-31). The test: the rendered `cvss_base` equals the finding's chain on its own vector and tags without the bound; the shipped value equals that chain with the bound; and the stage record states the missing or unreadable baseline. A diff in such a finding that fails the test is unattributed.
 
     The three examples whose files use a drift form are drift-form cases that assert S-12(a) to (d).
+
+    *W3 erratum (2026-11-23, PM): the text stays as signed. PM W3 rulings 2 and 2b supersede it as follows.*
+    - **Five classes.** Read "one of four classes" as "one of five": the fifth, P0-9's bound, is the last item of the list above (ruling 2b).
+    - **Which fields: the contract reading.** "Keeps every section and field" means every section and field that the file's contract names (ruling 2). A file's contract is the union of v4.48.4's and 1.1's. v4.48.4's is the file's template on `main` and the agent's mapping for that file: `risk-scorer.md`'s SARIF section, `control-analyzer.md`'s Phase 6c for the controls file, and for the markdown files the 1.0 templates and `output-formatting.md`. 1.1's is the 1.1 templates, ADR-050 (D2, D3 and D7 to D10) and `contracts/`.
+      - A contract field that a shipped file carries is in the renderer's output, unless an ADR-050 decision removes it by name and the oracle's record cites that decision. Otherwise the drop is an unattributed NFR-1 failure.
+      - A key no contract names isn't written, and its absence isn't a diff. The oracle's record lists each such key per example and per file, with its count and where its information is in the rendered run. A key whose information is in no contract field of the rendered files and isn't in the reference set comes back to the PM before PR 1 merges.
+      - A key that duplicates a contract field under another spelling is compared as that field wherever the shipped file lacks the contract spelling, so no value leaves the comparison because it was misspelled.
   - **Parsers keep working.** They read by header name. A round-trip test checks that the renderer's output, parsed by `tachi_parsers`, equals the renderer's input.
   - **Old inputs render the same.** The PDF and the infographics render them byte-identically.
   - **Schemas change additively.** The frozen enum and the ceiling are unchanged (NG7).
@@ -684,10 +694,12 @@ These consumers read what the bundle changes. They form T001's pre-state census 
   - **Item 3 (scores)**, as §8 states it, plus:
     - asset tags now apply to carried findings, so on the first run after upgrading their scores can rise, flagged `retagged`, and some move up a band;
     - ruling A's review-date rule for tag-driven changes, beside the correction rule.
+    - *W3 erratum (2026-11-23, PM):* a correlated finding is now scored with its own component's asset tags. It takes its group primary's assessment, so a group whose members share tags still shows one score; a member whose own tags change its score shows that score and is flagged `divergent` (PM W3 ruling 1).
   - **Item 4 (rendering)**, as §8 states it, with its PR 1 caveat for controls Sections 2 and 4 (R-34), plus:
     - both files move to schema 1.1, additively: `risk-scores.md` gains §2a, the `Flags` column, and §6 with the scoring inputs; the controls file gains K8's columns, `CF` and §7;
     - the Executive Summary of `risk-scores.md` becomes one templated sentence;
     - the batch files under `.tachi-build/`, which adopters should ignore in version control (PM plan review, finding 6).
+    - *W3 erratum (2026-11-23, PM):* each SARIF result now carries exactly the properties its contract names. Keys that some earlier outputs added on their own, such as result-level `tags`, `owasp-reference` and `source-attribution`, are no longer written; their information is in the contract properties or in `threats.md` and `threats.sarif` (PM W3 ruling 2).
   - **SC-8.** A stage is claimed cheaper only as P-7 allows: its measured delta is below zero.
   - **Item 5** says what stays fragile until PR 2:
     - large threat-model runs, and the report, can still overflow;
@@ -955,6 +967,48 @@ The PM signed the plan APPROVED_WITH_CONCERNS, with 8 findings (1 HIGH, 3 MEDIUM
   - **NFR-1's reference-set oracle class: AMENDED.** It is bounded to the fields that ADR-050 D2 takes from the reference set. The first class reads "a flagged value (corrected, or retagged under ruling A)".
   - **PM 1(b)'s `ref` narrowing: ACCEPTED.** `ref` has no CVE form, so a cited CVE takes the fallback.
   - **Full text:** `.aod/results/product-manager-374-plan-confirm.md`.
+
+### PM rulings from the build, W3 (2026-11-23; errata to the signed spec)
+
+In W3 the PM ruled on P0-6 and on T066's oracle questions from the architect's P0 checkpoint (T061), and signed APPROVED_WITH_CONCERNS. These rulings are errata: the signed text stays as signed, and each place they change carries a *W3 erratum (2026-11-23, PM)* note that points here. The PRD stays at v1.3: this record and ADR-050 carry the rulings, as they carry rulings A to C.
+- **W3 ruling 1 (P0-6, peers and asset tags): APPROVED, with one amendment.**
+  - **The rule.** A NEW or UPDATED peer takes its primary's assessment and is scored with its own asset tags.
+    - It copies its primary's judgment inputs: the assessed vector before any elevation, `score_bounds`, the eight sub-scores (or a legacy-carried primary's stored exploitability, scalability and reachability), and the reachability inputs (zone, trust level and the two barrier counts).
+    - The renderer then runs ADR-050 D10's fresh chain (the bound, R-25's elevation and the 9.2 cap) with the tags that S-13's one source gives the peer's own finding. The composite, band and governance follow as for any NEW or UPDATED finding.
+    - The peer's `affected_assets` and its §6 tags are its own.
+    - This refines R-31 without reversing it: "one score per group" becomes "one assessment per group, and one score wherever the members share asset tags". That still covers every shipped group, so no shipped output changes and NFR-1's oracle sees no diff from this ruling.
+  - **The amendment.** A NEW or UPDATED peer whose composite differs from its primary's after the chain is flagged `divergent:composite_score:primary=<ID>` on the run that scores it, through the existing `peer_divergence` rule. Since every judgment input is copied, only the peer's own tags can cause that difference. The fix removes the score flip, and the flag removes the flag flip. There is no new vocabulary.
+  - **Conditions** (binding for the renderer and its acceptance tests):
+    1. **Equal tags give equal values.** A peer whose tags equal its primary's gets its primary's vector, `cvss_base`, means, reachability, composite and band exactly, with no `divergent` flag. This also holds when the primary was carried from a legacy baseline whose assessed score isn't recorded (D10 steps 2 and 5). How to guarantee it is the architect's choice.
+    2. **Different tags.** A peer that has a forcing tag its primary lacks gets R-25's outcome on the primary's assessment under its own tags. A peer that lacks its primary's forcing tag gets the assessment without that elevation. Either way its band, SLA and review date follow its own band (fresh governance when NEW, the UPDATED rule otherwise), and the amendment flags it.
+    3. **No flip.** On the next run the peer is carried as UNCHANGED with no `retagged` flag and no value change, and its `divergent` flag is the same as on the run that scored it.
+    4. **Its own tags, always.** The peer's `affected_assets` in `risk-scores.sarif` and its §6 tags equal what S-13's source gives that finding. That is F-302's per-finding equivalence across the three surfaces, which D2's F-302 sentence states and which now holds for peers too.
+    5. **Never silent.** Where the peer's score can't be computed under its own tags, for example from a legacy-carried primary whose assessed score isn't recorded, the renderer doesn't guess. It keeps the primary's value and flags `unchecked` with D10's existing `assessed-unrecorded` cause, as D10 does for the primary. The architect rules the mechanics in the same W3 slice.
+  - **Folded** as W3 errata in the Terminology's `divergent`, US-5 #6 and PR 1's release-notes item 3. ADR-050 D9 carries the rule (the architect's fold).
+- **W3 ruling 2 (T066's oracle: the contract reading, with no class for dropped keys).** NFR-1's "keeps every section and field" means every section and field that the file's contract names. A key that no contract names falls outside it: the renderer doesn't write it, its absence isn't an NFR-1 diff, and no class is added for it. The classes are for value diffs, and a dropped key is a question of field scope.
+  - **A file's contract** is the union of two sets.
+    - v4.48.4's: the file's template on `main`; the agent's mapping for that file, which is `risk-scorer.md`'s SARIF section (including `maestro-layer` and F-302's `affected_assets`) or, for the controls file, `control-analyzer.md`'s Phase 6c; and, for the markdown files, the 1.0 templates and `output-formatting.md`.
+    - 1.1's: the 1.1 templates, ADR-050 (D2, D3 and D7 to D10) and `contracts/`.
+  - **Conditions.**
+    1. **Contract fields are kept.** A contract field that a shipped file carries must be in the renderer's output, unless an ADR-050 decision removes it by name and T066 cites that decision. Otherwise the drop is an unattributed NFR-1 failure. P0-5's §3 fields and P0-8's empty `message.markdown` fall under this rule, and no class is made for them.
+    2. **Dropped keys are listed, never silent.** T066's record lists every uncontracted key per example and per file, with its count and where its information now sits in the rendered run. A key whose information is in no contract field of the rendered files and isn't in the reference set (`threats.md`, `threats.sarif`) comes back to the PM before PR 1 merges. Ruled out now, because they hold build scaffolding or generic text rather than finding data: `feature`, `asi07_emission`, and the rule-level `name` and `help`.
+    3. **A misspelled key stays in the comparison.** A key that duplicates a contract field under another spelling is compared as that field wherever the shipped file lacks the contract spelling, so no value leaves the comparison because it was misspelled.
+  - **Two gaps, for W3.**
+    - **A. The scorer rules' `relationships`.** Both scorer SARIF templates and `risk-scorer.md`'s mapping name them, two shipped examples carry them on every rule, and the renderer leaves them out. No ADR-050 decision removes them, so under condition 1 this is an unattributed NFR-1 failure. Either the renderer emits them in W3, from the rules' taxonomy IDs in the 1.1 template's form, or the architect names the ADR-050 decision that removes them and brings it to the PM.
+    - **B. The controls file's `maestro-layer`.** `control-analyzer.md`'s Phase 6c names it, and four of the five shipped controls files carry it on every result, but neither controls template shows it. Under condition 1 the controls renderer writes it, and the 1.1 controls template shows it.
+  - **Folded** as W3 errata in NFR-1, US-1a #7 and PR 1's release-notes item 4. The same reading goes into the plan's Verification 7, T066's task line, ADR-050 D3's copy of the class list and `contracts/sarif-result.md` (whose Properties bullet gains "and no other key is written"), each folded by its owner.
+  - **For T080 (an idea, no PR 1 work).** No tachi contract names a rule's `name` or `help`, so this ruling drops the improvised ones. A stable, contracted rule `name` and `help` in both SARIF templates could join T080's list of ideas.
+- **W3 ruling 2b (P0-9's bound): a fifth value class, bounded by a test.**
+  - **The gap.** P0-9 keeps the renderer's predicate: a NEW finding is bounded only when a usable baseline `risk-scores.md` was read. None of NFR-1's four classes covers the diff this makes, because the renderer doesn't flag it.
+  - **The ruling.** NFR-1 gains a fifth class, in the PM's wording, folded verbatim. It meets the standard of ruling 4's reference-set class: a ruled decision that shows in the diff, bounded by a test that can't absorb an unexplained diff. It agrees with S-12(d): a missing or unreadable baseline counts as missing, and the stage scores fresh. PR 1's release-notes item 3 already covers baseline resolution.
+  - **For T066.** Class 1, a flagged value, needs a stored value to flag against. Where the oracle runs an example with no usable baseline, the renderer's fix of a shipped slip carries no flag, so class 1 can't explain it. Such diffs come back to the PM with the record, and they are never attributed by analogy. Which baseline each example runs with is T066's and the architect's choice.
+  - **Folded** as a W3 erratum in NFR-1. The plan's Verification 7, T066's task line and ADR-050 D3's copy follow, each folded by its owner.
+- **Effort.** About 0.15 d of unpriced W3 additions: about 0.02 d for ruling 1's flag, on top of the architect's 0.08 d for the peer fix and its tests, and about 0.05 d for gap A. Like any unpriced addition, they count toward PR 1's TW-0, and the lead re-prices them.
+- **Back to the PM:**
+  - a dropped key whose information is nowhere in the rendered run (ruling 2, condition 2), before PR 1 merges;
+  - any oracle diff that none of the five classes explains;
+  - gap A, if the architect rules the rules' `relationships` out instead of emitting them.
+- **Full text:** `.aod/results/product-manager-374-w3-rulings.md`.
 
 ### Registered as plan inputs (the architect's domain; not ambiguities)
 
