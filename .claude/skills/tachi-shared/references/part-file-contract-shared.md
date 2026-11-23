@@ -496,7 +496,7 @@ The model keeps no state of its own. The reconciler classifies each batch from t
 ### Limits
 
 - At most 16 batches are in flight per wave, which leaves margin under the platform's limit of 20.
-- Every dispatch runs in the foreground, and the dispatcher waits for it.
+- **Wait for completion.** The Agent tool has no option to wait for an agent inline, so every dispatch runs in the background, and a dispatcher waits by ending its turn and resuming on each completion notice. The rule is ADR-050 D6's (its dated note under "Limits"), word for word: "Run `reconcile` only after every agent in the wave has reported completion. While an agent you dispatched is still running, don't run the renderer, report a result or end the stage. If you end your turn to wait, resume this loop on each completion notice."
 - The scorer and controls dispatch one layer below the main session.
 
 ### Stage record keys
