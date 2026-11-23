@@ -37,6 +37,8 @@ import sys
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -62,6 +64,8 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     warn_delta_scope,
     parse_resolved_findings,
     compute_risk_posture,
+    ReferenceSetError,
+    parse_reference_set,
 )
 
 FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "fidelity_373"
@@ -801,3 +805,153 @@ def test_compute_risk_posture_runs_on_post_clamp_counts_from_a_real_parse():
     content = _read_fixture("posture_mmdc_free", "compensating-controls.md")
     data = parse_compensating_controls_md(content)
     assert compute_risk_posture(data["severity"]) == ("high", "HIGH RISK")
+
+
+# =============================================================================
+# Feature 374 (W1, T018): the reference finding set (S-12, FR-E.16)
+#
+# parse_reference_set wraps parse_threats_findings. It reads Section 7's table form (T032 adds the
+# drift forms), checks every ID against tachi_parts' allow-list, builds each finding once, and raises
+# ReferenceSetError on anything it can't read, so a run ends before any agent is dispatched.
+# =============================================================================
+
+_REF_HEADER = (
+    "| Finding ID | Status | Category | Pattern | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |\n"
+    "|---|---|---|---|---|---|---|---|---|"
+)
+
+
+def _ref_row(finding_id, status="NEW", component="Gateway", threat="A threat", risk="High"):
+    return "| %s | %s | Spoofing | \u2014 | %s | L4 | %s | %s | A fix |" % (finding_id, status, component, threat, risk)
+
+
+def _ref_md(rows, resolved=(), header=_REF_HEADER, heading="## 7. Recommended Actions"):
+    """A small threats.md: Section 4c (when ``resolved`` is given) and Section 7 over ``rows``."""
+    parts = ["# Report\n\n## 1. Overview\n\nText.\n"]
+    if resolved:
+        parts.append("## 4c. Resolved Findings\n\n| ID | Component | Threat | Last Risk Level | Resolution Reason |\n"
+                     "|----|-----------|--------|-----------------|-------------------|\n" + "\n".join(
+                         "| %s | Old | An old threat | High | Removed |" % fid for fid in resolved) + "\n")
+    if heading is not None:
+        parts.append(heading + "\n\n" + (header + "\n" + "\n".join(rows) + "\n" if header else "Nothing is listed here.\n"))
+    return "\n".join(parts)
+
+
+def test_markdown_table_reports_the_rows_it_drops_only_when_asked(capsys):
+    content = "## 7. Recommended Actions\n\n| A | B | C |\n|---|---|---|\n| 1 | 2 | 3 |\n| short |\n| 4 | 5 | 6 |\n| also | short |\n"
+    skipped = []
+    rows = parse_markdown_table(content, "## 7. Recommended Actions", skipped=skipped)
+    assert [row["A"] for row in rows] == ["1", "4"]
+    assert skipped == [6, 8], "1-based line numbers of the rows that were dropped"
+    assert capsys.readouterr().err.count("skipping malformed row") == 2
+    assert parse_markdown_table(content, "## 7. Recommended Actions") == rows, "the default is as it always was"
+
+
+def test_reference_set_reads_section_7_and_section_4c_in_s2_order(capsys):
+    """Open findings come in S-2 order, with each ID spelled as the file spells it. Section 4c's come as resolved."""
+    content = _ref_md([_ref_row("T-10", "UNCHANGED"), _ref_row("S-2", "[UPDATED]"), _ref_row("AGP-01", "NEW", "Agent"),
+                       _ref_row("T-9", "NEW"), _ref_row("LLM-3", "NEW")], resolved=["R-4", "E-1"])
+    reference = parse_reference_set(content, source="run/threats.md")
+    assert [finding["id"] for finding in reference["open"]] == ["S-2", "T-9", "T-10", "AGP-01", "LLM-3"]
+    assert [finding["id"] for finding in reference["resolved"]] == ["R-4", "E-1"]
+    assert reference["duplicates"] == []
+    first = reference["open"][0]
+    assert (first["component"], first["threat"], first["risk_level"], first["mitigation"]) == ("Gateway", "A threat", "High", "A fix")
+    assert first["delta_status"] == "UPDATED", "the Status cell is normalized, as the other readers do"
+    assert reference["open"][3]["agentic_pattern"] == "none" and reference["open"][3]["component"] == "Agent"
+    assert capsys.readouterr().err == "", "a readable file prints nothing"
+
+
+def test_reference_set_resolved_is_empty_without_section_4c_and_accepts_the_legacy_4b_heading():
+    assert parse_reference_set(_ref_md([_ref_row("S-1")]))["resolved"] == []
+    legacy = _ref_md([_ref_row("S-1")]).replace("## 1. Overview", "## 4b. Resolved Findings\n\n| ID | Component | Threat | Last Risk Level | Resolution Reason |\n"
+                                                 "|----|---|---|---|---|\n| T-2 | Old | Old | Low | Gone |\n\n## 1. Overview")
+    assert [finding["id"] for finding in parse_reference_set(legacy)["resolved"]] == ["T-2"]
+
+
+def test_reference_set_reads_the_older_six_column_table_and_a_table_with_no_status_column():
+    content = _ref_md(["| S-1 | Gateway | A threat | High | A fix |", "| T-1 | Gateway | Another | Low | Another fix |"],
+                      header="| Finding ID | Component | Threat | Risk Level | Mitigation |\n|---|---|---|---|---|")
+    reference = parse_reference_set(content)
+    assert [finding["id"] for finding in reference["open"]] == ["S-1", "T-1"]
+    assert all("delta_status" not in finding for finding in reference["open"]), "no Status column, no delta_status"
+
+
+def test_reference_set_drops_placeholder_rows_and_keeps_the_rest():
+    content = _ref_md([_ref_row("S-1"), _ref_row("\u2014"), _ref_row(""), _ref_row("T-1")])
+    assert [finding["id"] for finding in parse_reference_set(content)["open"]] == ["S-1", "T-1"]
+
+
+@pytest.mark.parametrize("problem,content", [
+    ("is missing", _ref_md([], heading=None)),
+    ("holds no table rows", _ref_md([], header=None)),
+    ("holds no table rows", _ref_md([])),
+    ("has no 'Finding ID' column", _ref_md(["| S-1 | NEW | x | y | z |"], header="| ID | Status | Component | Threat | Mitigation |\n|---|---|---|---|---|")),
+    ("lists no findings", _ref_md([_ref_row("\u2014"), _ref_row("-")])),
+    ("which is not a finding ID", _ref_md([_ref_row("S-1"), _ref_row("X-9")])),
+    ("which is not a finding ID", _ref_md([_ref_row("S-1a")])),
+    ("which is not a finding ID", _ref_md([_ref_row("S-\u0661")])),
+    ("which is not a finding ID", _ref_md([_ref_row("S-1234567")])),
+    ("has a malformed row", _ref_md([_ref_row("S-1"), "| T-1 | NEW | too few cells |"])),
+], ids=["no-section", "no-table", "header-only", "no-id-column", "only-placeholders", "unknown-prefix",
+        "trailing-letter", "unicode-digit", "seven-digits", "short-row"])
+def test_reference_set_raises_on_anything_it_cannot_read(problem, content):
+    """S-12(c): the run ends before dispatch. An empty extraction is an error, never a pass (KB 22)."""
+    with pytest.raises(ReferenceSetError) as raised:
+        parse_reference_set(content, source="run/threats.md")
+    error = raised.value
+    assert problem in error.reason
+    assert error.reason.startswith("run/threats.md: Section 7 (Recommended Actions) ")
+    assert "'Finding ID' column" in error.expected and error.remedy
+    assert str(error) == "%s. Expected %s. Remedy: %s" % (error.reason, error.expected, error.remedy)
+
+
+def test_reference_set_raises_on_a_resolved_id_that_is_not_a_finding_id():
+    with pytest.raises(ReferenceSetError) as raised:
+        parse_reference_set(_ref_md([_ref_row("S-1")], resolved=["T-2", "bogus"]))
+    assert "Section 4c (Resolved Findings)" in raised.value.reason and "'bogus'" in raised.value.reason
+
+
+def test_reference_set_error_never_echoes_a_long_id():
+    with pytest.raises(ReferenceSetError) as raised:
+        parse_reference_set(_ref_md([_ref_row("S-" + "9" * 500)]))
+    assert len(raised.value.reason) < 300
+
+
+def test_reference_set_holds_each_finding_once_the_first_row_wins_and_the_repeats_are_reported():
+    """D-4. Two spellings of one canonical ID are one finding. An open finding beats a resolved one."""
+    content = _ref_md([_ref_row("AGP-01", threat="first"), _ref_row("T-1"), _ref_row("AGP-1", threat="second"),
+                       _ref_row("T-1", threat="third")], resolved=["T-1", "R-1", "R-01"])
+    reference = parse_reference_set(content)
+    assert [(finding["id"], finding["threat"]) for finding in reference["open"]] == [("T-1", "A threat"), ("AGP-01", "first")]
+    assert [finding["id"] for finding in reference["resolved"]] == ["R-1"]
+    assert reference["duplicates"] == ["T-1", "R-1", "AGP-1"], "each repeated canonical ID once, in S-2 order"
+
+
+def test_reference_set_agrees_with_the_wrapped_parser_on_a_shipped_sample():
+    content = (REPO_ROOT / "examples" / "agentic-app" / "sample-report" / "threats.md").read_text(encoding="utf-8")
+    reference = parse_reference_set(content, source="sample")
+    wrapped = [finding for finding in parse_threats_findings(content) if not is_placeholder_id(finding["id"])]
+    assert len(reference["open"]) == len(wrapped) > 20
+    assert {finding["id"] for finding in reference["open"]} == {finding["id"] for finding in wrapped}
+    assert sorted(reference["open"], key=lambda finding: finding["id"]) == sorted(wrapped, key=lambda finding: finding["id"])
+    assert reference["duplicates"] == []
+
+
+def test_reference_set_uses_the_first_row_of_a_shipped_sample_that_lists_one_finding_twice():
+    """``maestro-reference``'s Section 7 lists I-17 twice. A shipped example must keep working (NFR-1), so the wrapper
+    reports the repeat instead of refusing the file."""
+    content = (REPO_ROOT / "examples" / "maestro-reference" / "threats.md").read_text(encoding="utf-8")
+    reference = parse_reference_set(content, source="maestro-reference")
+    assert reference["duplicates"] == ["I-17"]
+    ids = [finding["id"] for finding in reference["open"]]
+    assert ids.count("I-17") == 1 and len(ids) == len(set(ids))
+    kept = next(finding for finding in reference["open"] if finding["id"] == "I-17")
+    assert "detailed error messages" in kept["threat"], "the first of the two rows"
+
+
+def test_the_wrapped_parser_keeps_its_empty_list_and_warning_for_the_extractors(capsys):
+    """S-12: ``parse_threats_findings`` is unchanged, because the extractors rely on ``[]`` with a warning."""
+    assert parse_threats_findings("# no section seven here\n") == []
+    assert "could not find Recommended Actions table" in capsys.readouterr().err
+

@@ -21,17 +21,12 @@ sizes only through the planner's function interface")::
 ``None``, so a size reaches the planner only through it. ``Harness.plan`` below is the one place the
 tests call it.
 
-Where the contract leaves a shape open, these tests pin the reading the contract implies, marked
-``# reading:``. T018 and the architect may confirm or amend each, and only that line changes:
-
-* ``reconcile``'s ``done`` is the list of finished batch IDs, and ``waves`` has ``plan``'s shape;
-* a halving's children are ``<parent>-1`` and ``<parent>-2``, split contiguously, and carry
-  ``attempt = parent's attempt + 1``, which is how "at most 2 retries per lineage" and ``attempt``
-  of 1 to 3 fit together. An ``invalid`` retry keeps the batch ID and raises ``attempt``;
-* ``fail``'s ``moved`` and ``restored`` are lists of canonical file names, and ``record`` is the
-  stage record's path. The record's ``error.code`` is the ``--reason``;
-* the four moments of KB 21 (re-run, resume, failed run, ``--output-dir``) are the four times a
-  ``fail`` can meet earlier outputs: the docstrings below define each.
+Where the contract left a shape open, these tests pinned a reading, marked ``# reading:``. The architect ruled
+every one at W1 (2026-11-22, T023; ``contracts/cli.md`` and ``contracts/part-files.md``, "Readings ruled at
+W1") and confirmed them with three additions that the tests below follow: a one-unit batch retries with the
+same member and ID, ``error`` names the first exhausted lineage in plan order while ``batches.exhausted`` counts
+them all, and ``--version`` prints to stdout (its refusal below 3.9 goes to stderr). The marker stays where a
+test depends on one of those readings.
 
 Standard library and pytest only, and Python 3.9 syntax.
 """
@@ -41,6 +36,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import re
 import subprocess
 import sys
@@ -540,6 +536,12 @@ def test_a_batch_size_is_not_an_environment_setting(stage, cli, tmp_path, monkey
     assert len(h.plan_json()["batches"]) == 1, "six units fit one batch whatever the environment says"
 
 
+def test_batch_sizes_are_one_module_level_mapping_of_the_amended_w0_constants(stage):
+    """ADR-050 D6's "Amended at W0" table, as the one mapping that T020's sizing check reads. A change to a size is
+    an ADR amendment (T021(a) may make one), so it changes the table and this pin in the same commit."""
+    assert stage.BATCH_SIZES == {"risk-score": 16, "compensating-controls": 13, "trees": 12}
+
+
 @pytest.mark.parametrize("name", STAGE_NAMES)
 @pytest.mark.parametrize("size", [3, 5, 7])
 def test_every_batched_path_gets_two_or_more_balanced_contiguous_batches(stage, cli, tmp_path, name, size):
@@ -684,6 +686,193 @@ def test_plan_without_threats_exits_2_for_a_batched_stage(stage, cli, tmp_path):
     h = Harness(stage, cli, tmp_path, "risk-score")
     res = h.cli("plan", "--stage", "risk-score", "--out", h.out, "--date", DATE)
     assert res.code == 2, res.describe()
+
+
+def test_plan_records_the_optional_pointers_as_refs_and_the_risk_scores_file_as_an_input(stage, cli, tmp_path):
+    """``contracts/cli.md``'s optional flags reach each batch input as absolute ``refs``, and a file the stage reads is
+    a digest-checked input, so a change during the run is caught (D6)."""
+    h = Harness(stage, cli, tmp_path, "compensating-controls", ids=MIXED_IDS[:6])
+    scores = h.out / "risk-scores.md"
+    scores.write_text("# the scores\n", encoding="utf-8")
+    baseline, target = tmp_path / "baseline", tmp_path / "target"
+    baseline.mkdir()
+    target.mkdir()
+    architecture = tmp_path / "architecture.md"
+    architecture.write_text("# architecture\n", encoding="utf-8")
+
+    res = h.plan_cli("--risk-scores", scores, "--baseline-dir", baseline, "--architecture", architecture, "--target", target)
+    assert res.code == 0, res.describe()
+    assert h.batch_input("B001")["refs"] == {
+        "threats": str(h.threats), "risk_scores": str(scores), "baseline_dir": str(baseline),
+        "architecture": str(architecture), "target": str(target)}
+    assert set(h.plan_json()["inputs"]) == {"threats", "risk_scores"}
+    scores.write_text("# edited since plan\n", encoding="utf-8")
+    assert h.reconcile().code == 2
+
+
+@pytest.mark.parametrize("flag", ["--risk-scores", "--baseline-dir", "--target"])
+def test_a_pointer_that_names_nothing_exits_1(stage, cli, tmp_path, flag):
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    assert h.plan_cli(flag, tmp_path / "absent").code == 1
+    assert not (h.build / "current.json").exists()
+
+
+def test_a_risk_scores_pointer_must_be_a_file_and_a_target_a_directory(stage, cli, tmp_path):
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    assert h.plan_cli("--risk-scores", tmp_path).code == 1
+    assert h.plan_cli("--target", h.threats).code == 1
+
+
+def test_an_architecture_candidate_that_is_not_a_file_is_dropped_with_a_warning(stage, cli, tmp_path):
+    """ADR-050 D7's fallback: a stage never stops for the architecture path."""
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=MIXED_IDS[:6])
+    res = h.plan_cli("--architecture", tmp_path / "docs" / "absent.md")
+    assert res.code == 0, res.describe()
+    assert "architecture" not in h.batch_input("B001")["refs"]
+    assert "WARNING" in res.err and "absent.md" in res.err
+
+
+@pytest.mark.parametrize("flag", ["--risk-scores", "--baseline-dir", "--architecture", "--target", "--threats"])
+def test_a_pointer_with_a_forbidden_character_exits_2(stage, cli, tmp_path, flag):
+    """Each pointer becomes an absolute path in a document, so it must pass D7's syntactic rule first."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    argv = ["plan", "--stage", "risk-score", "--out", h.out, "--date", DATE, "--threats", h.threats]
+    if flag == "--threats":
+        argv[argv.index("--threats") + 1] = str(h.out) + "/a\\b.md"
+    else:
+        argv += [flag, str(tmp_path) + "/a\\b"]
+    res = cli(*argv)
+    assert res.code == 2, res.describe()
+    assert not (h.build / "current.json").exists()
+
+
+@pytest.mark.parametrize("size", [0, -1, 501, True, "4"], ids=["zero", "negative", "over-500", "bool", "text"])
+def test_plan_stage_refuses_a_batch_size_outside_1_to_500(stage, cli, tmp_path, size):
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    with pytest.raises(stage.StageError) as info:
+        h.plan(batch_size=size)
+    assert info.value.code == 2
+
+
+def test_plan_stage_refuses_a_stage_this_version_does_not_plan(stage, cli, tmp_path):
+    """``tachi_parts.STAGE_AGENTS`` holds PR 1's two stages, and PR 1 rejects every other (ruled at W1)."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    with pytest.raises(stage.StageError) as info:
+        stage.plan_stage(stage="trees", out=h.out, date=DATE, threats=h.threats)
+    assert info.value.code == 2
+
+
+def test_plan_refuses_more_batches_than_a_batch_id_can_name(stage, cli, tmp_path):
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=["T-%d" % n for n in range(1, 1001)])
+    with pytest.raises(stage.StageError) as info:
+        h.plan(batch_size=1)  # 1,000 batches, and a batch ID is B and three digits
+    assert info.value.code == 2 and "999" in str(info.value)
+    assert not (h.out / ".tachi-build").exists(), "nothing is written before the check"
+
+
+def test_plan_reads_threats_as_strict_utf8_of_bounded_size(stage, cli, tmp_path, monkeypatch):
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    h.threats.write_bytes(b"\xff\xfe not utf-8")
+    assert h.plan_cli().code == 2
+    h.threats.write_text(make_threats_md(h.ids), encoding="utf-8")
+    monkeypatch.setattr(stage.tp, "MAX_AGENT_INPUT_BYTES", 200)  # D3 step 2's 16 MiB, made small
+    res = h.plan_cli()
+    assert res.code == 2 and "200" in res.err
+
+
+def test_plan_refuses_an_out_directory_that_documents_cannot_carry_or_that_is_missing(stage, cli, tmp_path):
+    odd = tmp_path / "a`b"
+    odd.mkdir()
+    (odd / "threats.md").write_text(make_threats_md(MIXED_IDS[:3]), encoding="utf-8")
+    res = cli("plan", "--stage", "risk-score", "--out", odd, "--date", DATE, "--threats", odd / "threats.md")
+    assert res.code == 2, res.describe()
+    assert not (odd / ".tachi-build").exists()
+    missing = cli("plan", "--stage", "risk-score", "--out", tmp_path / "nothing", "--date", DATE, "--threats", odd / "threats.md")
+    assert missing.code == 1, missing.describe()
+
+
+def test_a_writer_never_writes_a_document_over_its_cap(stage, cli, tmp_path):
+    """Ruled at W1: a batch input is capped at 4 MiB, and a writer never exceeds its own cap. The stop names the cap,
+    and the pointer is never replaced, so the failed plan is never the current one."""
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=["T-1"])
+    h.threats.write_text(make_threats_md(["T-1"]).replace("Threat text for T-1", "x" * (4 * 1024 * 1024 + 100)), encoding="utf-8")
+    res = h.plan_cli()
+    assert res.code == 2, res.describe()
+    assert "cap" in res.err and "tachi.batch-input/1" in res.err
+    assert not (h.build / "current.json").exists()
+
+
+def test_a_plan_file_over_its_cap_leaves_the_pointer_on_the_earlier_plan(stage, cli, tmp_path, monkeypatch):
+    """The pointer is the last thing ``plan`` writes, so a plan that fails part way is never the current one."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    h.plan(batch_size=4)
+    earlier = h.plan_id
+    monkeypatch.setitem(stage.tp.MAX_DOCUMENT_BYTES, stage.tp.PLAN_SCHEMA, 100)  # the plan's 8 MiB cap, made small
+    res = h.plan_cli()
+    assert res.code == 2 and "tachi.plan/1" in res.err, res.describe()
+    assert h.read_json(h.build / "current.json")["plan_id"] == earlier
+
+
+def test_plan_exits_2_when_a_section_7_row_is_malformed(stage, cli, tmp_path):
+    """A row with too few cells is dropped by the table reader, which would shrink the reference set without a word.
+    The wrapper refuses, naming the line, so no finding is silently left unscored."""
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=["S-1", "S-2", "T-1"])
+    lines = h.threats.read_text(encoding="utf-8").split("\n")
+    at = next(i for i, line in enumerate(lines) if line.startswith("| S-2 "))
+    lines[at] = "| S-2 | NEW | only three cells"
+    h.threats.write_text("\n".join(lines), encoding="utf-8")
+    res = h.plan_cli()
+    assert res.code == 2, res.describe()
+    assert "malformed row" in res.err and "line %d" % (at + 1) in res.err
+    assert not (h.build / "current.json").exists()
+
+
+def test_a_writer_checks_what_it_writes_against_its_readers_validator(stage, cli, tmp_path, monkeypatch):
+    """A document that this step's own reader would refuse is never written: the stop names the document, and the
+    pointer is not replaced."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+
+    def refuse(_document):
+        raise stage.tp.PartError("invalid", "a synthetic problem")
+
+    monkeypatch.setattr(stage.tp, "validate_plan", refuse)
+    res = h.plan_cli()
+    assert res.code == 2 and "fails its own contract" in res.err and "a synthetic problem" in res.err, res.describe()
+    assert not (h.build / "current.json").exists()
+
+
+@pytest.mark.skipif(not hasattr(os, "geteuid") or os.geteuid() == 0, reason="needs an ordinary user: root ignores permission bits")
+def test_plan_exits_cleanly_when_an_input_or_the_stage_directory_cannot_be_used(stage, cli, tmp_path):
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    scores = h.out / "risk-scores.md"
+    scores.write_text("# scores\n", encoding="utf-8")
+    scores.chmod(0)
+    try:
+        res = h.plan_cli("--risk-scores", scores)
+        assert res.code == 1 and "cannot read" in res.err, res.describe()
+    finally:
+        scores.chmod(0o644)
+
+    h.build.mkdir(parents=True)
+    h.build.chmod(0o500)  # no write permission: the plan directory can't be made
+    try:
+        res = h.plan_cli()
+        assert res.code == 2 and "cannot make the plan directory" in res.err, res.describe()
+    finally:
+        h.build.chmod(0o755)
+    assert not (h.build / "current.json").exists()
+
+
+def test_two_spellings_of_one_finding_plan_once_and_warn(stage, cli, tmp_path):
+    """D-4: a finding appears once in the reference set. ``maestro-reference``'s shipped Section 7 lists one twice,
+    so the first row is used and the repeat is reported, never a reason to refuse a readable file."""
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=["AGP-01", "AGP-1", "T-1"])
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
+    assert "WARNING" in res.err and "AGP-1" in res.err
+    plan = h.plan_json()
+    assert plan["unit_count"] == 2
+    assert [fid for b in plan["batches"] for fid in b["finding_ids"]] == ["T-1", "AGP-1"]
 
 
 @pytest.mark.parametrize("link", [".tachi-build", ".tachi-build/risk-score"])
@@ -940,6 +1129,46 @@ def test_reconcile_exits_2_after_an_input_changes(stage, cli, tmp_path):
     assert re.search(r"re-?run", res.err, re.I), "the stop names its remedy: %r" % res.err
 
 
+def test_reconcile_exits_2_when_plan_json_is_another_plans_file(stage, cli, tmp_path):
+    """The digest can match and the file still be for another plan, so the IDs inside are checked as well."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    h.plan(batch_size=8)
+    first_digest = h.digest
+    first_bytes = (h.plan_dir / "plan.json").read_bytes()
+    h.plan(batch_size=8)
+    (h.plan_dir / "plan.json").write_bytes(first_bytes)  # the first plan's file in the second plan's directory
+    res = h.reconcile(digest=first_digest)
+    assert res.code == 2, res.describe()
+
+
+def test_reconcile_exits_2_when_plan_json_is_a_symlink(stage, cli, tmp_path):
+    h = _planned(stage, cli, tmp_path)
+    real = h.plan_dir / "plan.real"
+    (h.plan_dir / "plan.json").rename(real)
+    (h.plan_dir / "plan.json").symlink_to(real)
+    assert h.reconcile().code == 2
+
+
+def test_reconcile_exits_2_when_the_pointer_is_not_a_pointer(stage, cli, tmp_path):
+    h = _planned(stage, cli, tmp_path)
+    (h.build / "current.json").write_text('{"schema": "nope"}', encoding="utf-8")
+    assert h.reconcile().code == 2
+
+
+def test_reconcile_exits_2_when_a_batch_input_becomes_a_symlink_or_an_input_vanishes(stage, cli, tmp_path):
+    h = _planned(stage, cli, tmp_path)
+    real = tmp_path / "copy-of-input.json"
+    path = h.plan_dir / "inputs" / "B001.json"
+    real.write_bytes(path.read_bytes())
+    path.unlink()
+    path.symlink_to(real)  # the same bytes, behind a link
+    assert h.reconcile().code == 2
+
+    other = _planned(stage, cli, tmp_path / "second")
+    other.threats.unlink()  # an input that vanished is a changed input
+    assert other.reconcile().code == 2
+
+
 def test_reconcile_exits_1_when_the_plan_file_is_missing(stage, cli, tmp_path):
     h = _planned(stage, cli, tmp_path)
     (h.plan_dir / "plan.json").unlink()
@@ -991,6 +1220,23 @@ def test_a_missing_part_halves_the_batch_into_two_contiguous_children(stage, cli
     done = h.reconcile()
     assert done.code == 0, done.describe()
     assert sorted(done.json["done"]) == ["B001-1", "B001-2", "B002"]
+
+
+def test_children_sit_beside_their_parent_so_the_plan_and_done_stay_in_s2_order(stage, cli, tmp_path):
+    """``done`` lists finished batches "in plan order" (ruled at W1). A halving puts its children right after the
+    parent, so the plan, and ``done``, stay in S-2 order however late each lineage halves."""
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=["T-%d" % n for n in range(1, 17)])
+    h.plan(batch_size=4)
+    h.write_valid_parts(only=["B001", "B003", "B004"])  # B002 wrote nothing, so it halves
+    res = h.reconcile()
+    assert res.code == 3 and h.pending(res.json) == ["B002-1", "B002-2"]
+    assert [b["batch_id"] for b in h.plan_json()["batches"]] == ["B001", "B002", "B002-1", "B002-2", "B003", "B004"]
+    h.write_valid_parts()
+    done = h.reconcile()
+    assert done.code == 0, done.describe()
+    assert done.json["done"] == ["B001", "B002-1", "B002-2", "B003", "B004"]
+    flat = [fid for batch_id in done.json["done"] for fid in h.batches()[batch_id]["finding_ids"]]
+    assert flat == ["T-%d" % n for n in range(1, 17)], "the finished batches, in plan order, are the units in S-2 order"
 
 
 def test_an_odd_batch_halves_to_sizes_that_differ_by_one(stage, cli, tmp_path):
@@ -1229,6 +1475,34 @@ def test_a_single_unit_batch_cannot_retry_forever(stage, cli, tmp_path):
     assert codes[-1] == 4 and 0 not in codes, codes
 
 
+@pytest.mark.parametrize("kind", ["missing", "overflow", "unparseable"])
+def test_a_one_unit_batch_retries_with_the_same_member_and_id(stage, cli, tmp_path, kind):
+    """Ruled at W1: a one-unit batch can't halve. When it is missing, overflowed or unparseable it is retried with
+    the same member and ID, attempt + 1, at a cost of 1, as an invalid retry is. Then the cap ends it."""
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=["T-1"])
+    h.plan(batch_size=1)
+
+    def write_attempt():
+        if kind == "overflow":
+            h.write_part("B001", raw=json.dumps(h.overflow_object("B001")).encode("utf-8"))
+        elif kind == "unparseable":
+            h.write_part("B001", raw=b"I could not write this.")
+
+    for attempt in (2, 3):
+        write_attempt()
+        res = h.reconcile()
+        assert res.code == 3 and h.pending(res.json) == ["B001"], res.describe()
+        plan = h.plan_json()
+        assert [(b["batch_id"], b["attempt"], b["state"], b["parent"]) for b in plan["batches"]] == [("B001", attempt, "pending", None)]
+        assert plan["retry_budget"] == {"limit": 2, "used": attempt - 1}
+        bi = h.batch_input("B001")
+        assert (bi["attempt"], bi["finding_ids"]) == (attempt, ["T-1"])
+        assert Path(bi["part_path"]).name == "B001.a%d.json" % attempt
+    write_attempt()
+    res = h.reconcile()
+    assert res.code == 4 and res.json["exhausted"] == [{"batch_id": "B001", "finding_ids": ["T-1"]}], res.describe()
+
+
 def test_reconcile_after_exhaustion_keeps_exiting_4(stage, cli, tmp_path):
     h = Harness(stage, cli, tmp_path, "risk-score", ids=["T-%d" % n for n in range(1, 5)])
     h.plan(batch_size=4)
@@ -1279,6 +1553,118 @@ def test_fail_records_the_unrecoverable_lineage(stage, cli, tmp_path, tachi_vers
     assert error["finding_ids"] and set(error["finding_ids"]) <= {"T-1", "T-2", "T-3", "T-4"}
     assert isinstance(error["remedy"], str) and error["remedy"].strip()
     assert rec["batches"]["exhausted"] >= 1 and rec["batches"]["split"] == 1
+
+
+def _lineage_that_ran_out(stage, cli, tmp_path):
+    """T-1 to T-16 in four batches. B001's first attempt is invalid, its second is missing so it halves, B001-1's
+    part is an overflow object, and everything else is done. Returns the harness once ``reconcile`` has exited 4."""
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=["T-%d" % n for n in range(1, 17)])
+    h.plan(batch_size=4)
+    h.write_valid_parts(only=["B002", "B003", "B004"])
+    h.write_part("B001", mutate=lambda p: p.__setitem__("extra", 1))
+    assert h.reconcile().code == 3
+    assert h.reconcile().code == 3  # attempt 2 wrote nothing: B001 halves
+    h.write_part("B001-2")
+    h.write_part("B001-1", raw=json.dumps(h.overflow_object("B001-1")).encode("utf-8"))
+    assert h.reconcile().code == 4
+    return h
+
+
+def test_fail_derives_the_retry_history_from_the_parts_on_disk(stage, cli, tmp_path, tachi_version):
+    """The stage record's ``overflow_events`` and ``retries`` (NFR-5), and the counts that follow from the plan."""
+    h = _lineage_that_ran_out(stage, cli, tmp_path)
+    assert h.fail("unrecoverable-batch").code == 0
+    rec = h.read_json(h.plan_dir / "stage-record.json")
+    check_record(rec, "risk-score", h.plan_id, tachi_version)
+    assert rec["overflow_events"] == [
+        {"batch_id": "B001", "attempt": 1, "kind": "invalid"},
+        {"batch_id": "B001", "attempt": 2, "kind": "missing"},
+        {"batch_id": "B001-1", "attempt": 3, "kind": "overflow-reported"}]
+    assert rec["retries"] == [
+        {"batch_id": "B001", "attempt": 1, "cause": "invalid", "children": []},
+        {"batch_id": "B001", "attempt": 2, "cause": "missing", "children": ["B001-1", "B001-2"]}]
+    assert rec["batches"] == {"planned": 4, "dispatched": 7, "done": 4, "retried": 3, "split": 1, "exhausted": 1}
+    assert rec["counts"] == {"units": 16, "open": 16}
+    assert (rec["error"]["batch_id"], rec["error"]["finding_ids"]) == ("B001-1", ["T-1", "T-2"])
+
+
+def test_several_exhausted_lineages_are_all_counted_and_the_first_in_plan_order_is_named(stage, cli, tmp_path):
+    """Ruled at W1: ``error`` names the first exhausted lineage in plan order, and ``batches.exhausted`` counts them all.
+    The plan keeps children beside their parent, so plan order is S-2 order."""
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=["T-%d" % n for n in range(1, 13)])
+    h.plan(batch_size=4)
+    assert h.reconcile().code == 3  # all three halve, which spends the whole budget
+    exhausted = h.reconcile()
+    assert exhausted.code == 4 and len(exhausted.json["exhausted"]) == 6
+    assert [b["batch_id"] for b in exhausted.json["exhausted"]] == ["B001-1", "B001-2", "B002-1", "B002-2", "B003-1", "B003-2"]
+
+    assert h.fail("unrecoverable-batch").code == 0
+    rec = h.read_json(h.plan_dir / "stage-record.json")
+    assert rec["batches"]["exhausted"] == 6
+    assert (rec["error"]["batch_id"], rec["error"]["finding_ids"]) == ("B001-1", ["T-1", "T-2"])
+    assert "B001-1" in exhausted.err and "6 batches" in exhausted.err, "the message names the first and says how many"
+
+
+def test_fail_lists_the_undeclared_paths_the_run_left(stage, cli, tmp_path):
+    """D4's declared paths: a path that is new or changed since the plan, and that isn't one of the stage's canonical
+    files or D3's exact layout, is recorded, sorted. Declared paths are never listed."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    h.earlier()
+    h.plan(batch_size=8)
+    h.write_part("B001")  # declared: parts/B001.a1.json
+    h.render()  # declared: the stage's own canonical files
+    (h.plan_dir / "staged").mkdir()
+    (h.plan_dir / "staged" / h.md).write_bytes(b"declared\n")
+    undeclared = ["gen.py", "scratch/x.txt", "notes.md", ".tachi-build/compensating-controls/x.json",
+                  ".tachi-build/risk-score/20200101T000000Z-000000000000/y.json"]
+    for relative in undeclared:
+        (h.out / relative).parent.mkdir(parents=True, exist_ok=True)
+        (h.out / relative).write_text("an improvised file\n", encoding="utf-8")
+    inside = ["parts/B001.a9.json", "inputs/not-a-batch.json", "staged/other.md", "extra.txt", "parts/B001.a1.json.bak"]
+    for relative in inside:
+        (h.plan_dir / relative).write_text("not in D3's layout\n", encoding="utf-8")
+    undeclared += [".tachi-build/risk-score/%s/%s" % (h.plan_id, relative) for relative in inside]
+
+    assert h.fail("render-failed").code == 0
+    assert h.read_json(h.plan_dir / "stage-record.json")["undeclared_paths"] == sorted(undeclared)
+
+
+def test_a_record_keeps_at_most_1000_undeclared_paths_and_warns_with_the_full_count(stage, cli, tmp_path):
+    """Ruled at W1: a writer never exceeds its cap, and the warning ``undeclared-paths-truncated`` carries the count."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    h.plan(batch_size=8)
+    (h.out / "stray").mkdir()
+    for number in range(stage.tp.MAX_UNDECLARED_PATHS + 3):
+        (h.out / "stray" / ("f%04d.txt" % number)).write_bytes(b"x")
+    assert h.fail("check-failed").code == 0
+    rec = h.read_json(h.plan_dir / "stage-record.json")
+    assert rec["undeclared_paths"] == ["stray/f%04d.txt" % n for n in range(1000)]
+    assert [w for w in rec["warnings"] if w["code"] == "undeclared-paths-truncated"] == [
+        {"code": "undeclared-paths-truncated", "detail": "1003 undeclared paths in all; the first 1000 are listed"}]
+
+
+def test_a_name_a_record_cannot_hold_is_counted_not_listed(stage, cli, tmp_path):
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    h.plan(batch_size=8)
+    (h.out / "gen.py").write_bytes(b"x")
+    (h.out / "back\\slash.txt").write_bytes(b"x")  # D7's path rule refuses a backslash, so no record could hold it
+    assert h.fail("check-failed").code == 0
+    rec = h.read_json(h.plan_dir / "stage-record.json")
+    assert rec["undeclared_paths"] == ["gen.py"]
+    assert [w["code"] for w in rec["warnings"]] == ["undeclared-paths-unrecordable"]
+
+
+def test_a_plan_with_no_snapshot_skips_the_declared_paths_check_with_a_warning(stage, cli, tmp_path):
+    """ADR-050 D4: the snapshot is skipped, with a warning, for a name the plan can't record (or above 20,000 files)."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    (h.out / "odd\\name.txt").write_bytes(b"x")
+    res = h.plan_cli()
+    assert res.code == 0 and "snapshot is skipped" in res.err, res.describe()
+    assert h.plan_json()["out_snapshot"] is None
+    (h.out / "gen.py").write_bytes(b"x")
+    assert h.fail("check-failed").code == 0
+    rec = h.read_json(h.plan_dir / "stage-record.json")
+    assert rec["undeclared_paths"] == [] and [w["code"] for w in rec["warnings"]] == ["declared-paths-skipped"]
 
 
 def test_fail_leaves_earlier_outputs_alone_on_a_re_run(stage, cli, tmp_path):
@@ -1419,6 +1805,10 @@ def test_new_outputs_with_no_earlier_run_are_moved_and_nothing_is_restored(stage
     assert not (h.out / h.md).exists() and not (h.out / h.sarif).exists()
     assert (h.plan_dir / "failed" / h.md).read_bytes() == NEW_MD
     assert (h.plan_dir / "failed" / h.sarif).read_bytes() == NEW_SARIF
+    kept = ".tachi-build/risk-score/%s/failed/" % h.plan_id
+    assert h.read_json(h.plan_dir / "stage-record.json")["outputs"] == [
+        {"path": kept + h.md, "sha256": hashlib.sha256(NEW_MD).hexdigest()},
+        {"path": kept + h.sarif, "sha256": hashlib.sha256(NEW_SARIF).hexdigest()}]
 
 
 @pytest.mark.parametrize("name", STAGE_NAMES)
@@ -1477,6 +1867,31 @@ def test_fail_never_overwrites_a_failed_copy(stage, cli, tmp_path):
     assert (h.plan_dir / "stage-record.json").is_file()
 
 
+def test_fail_refuses_a_failed_directory_that_is_a_file_and_a_move_the_filesystem_refuses(stage, cli, tmp_path, monkeypatch):
+    """A refusal is a guard's 2 with the record written, never a traceback, and the changed file stays where it was."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    h.earlier()
+    h.plan(batch_size=4)
+    h.render(sarif=False)
+    (h.plan_dir / "failed").write_bytes(b"a file where the directory goes\n")
+    res = h.fail("render-failed")
+    assert res.code == 2 and res.json["moved"] == [], res.describe()
+    assert (h.out / h.md).read_bytes() == NEW_MD and (h.plan_dir / "stage-record.json").is_file()
+    (h.plan_dir / "failed").unlink()
+
+    real_replace = os.replace
+
+    def refuse_into_failed(source, destination):
+        if "/failed/" in str(destination):
+            raise OSError(18, "Invalid cross-device link")
+        return real_replace(source, destination)
+
+    monkeypatch.setattr(os, "replace", refuse_into_failed)
+    res = h.fail("render-failed")
+    assert res.code == 2 and res.json["moved"] == [] and "cross-device" in res.err, res.describe()
+    assert (h.out / h.md).read_bytes() == NEW_MD
+
+
 def test_fail_does_not_restore_a_pre_image_whose_digest_no_longer_matches(stage, cli, tmp_path):
     """D4: the copy goes back only when its digest matches the one the plan recorded."""
     h = Harness(stage, cli, tmp_path, "risk-score")
@@ -1485,10 +1900,12 @@ def test_fail_does_not_restore_a_pre_image_whose_digest_no_longer_matches(stage,
     (h.plan_dir / "preimage" / h.md).write_bytes(b"# a tampered copy\n")
     h.render(sarif=False)
     res = h.fail("render-failed")
-    assert res.code in (0, 2), res.describe()  # reading: the table doesn't say which, only that the copy isn't restored
-    if res.code == 0:
-        assert res.json["restored"] == []
+    assert res.code == 2, res.describe()  # a restore that can't happen is a guard's refusal
+    assert res.json["moved"] == [h.md] and res.json["restored"] == []
+    assert (h.plan_dir / "failed" / h.md).read_bytes() == NEW_MD, "the failed render is still kept for diagnosis"
     assert b"# a tampered copy" not in b"".join(p.read_bytes() for p in h.out.iterdir() if p.is_file())
+    record = h.read_json(h.plan_dir / "stage-record.json")
+    assert any(w["code"] == "move-refused" and h.md in w["detail"] for w in record["warnings"]), record["warnings"]
 
 
 def test_fail_exits_2_on_a_digest_mismatch_and_still_writes_the_record(stage, cli, tmp_path, tachi_version):
@@ -1525,6 +1942,73 @@ def test_fail_accepts_a_detail_at_the_limit_and_one_with_a_newline_and_a_tab(sta
     h.plan(batch_size=4)
     assert h.fail("check-failed", detail="x" * 500).code == 0
     assert h.fail("check-failed", detail="two lines\n\tindented").code == 0
+
+
+def test_fail_does_not_act_on_a_plan_the_pointer_no_longer_names(stage, cli, tmp_path):
+    """A newer plan owns the canonical files now, so an older plan's pre-images are stale. The record is still written."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    h.earlier()
+    h.plan(batch_size=4)
+    older_id, older_digest = h.plan_id, h.digest
+    h.render()
+    h.plan(batch_size=4)  # the pointer moves to a newer plan
+    res = h.fail("render-failed", plan_id=older_id, digest=older_digest)
+    assert res.code == 2, res.describe()
+    assert res.json["moved"] == [] and res.json["restored"] == []
+    assert (h.out / h.md).read_bytes() == NEW_MD and (h.out / h.sarif).read_bytes() == NEW_SARIF
+    record = h.read_json(h.build / older_id / "stage-record.json")
+    assert [w["code"] for w in record["warnings"]] == ["pointer-mismatch"]
+
+
+def test_fail_with_a_garbled_pointer_acts_on_nothing(stage, cli, tmp_path):
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    h.earlier()
+    h.plan(batch_size=4)
+    h.render()
+    (h.build / "current.json").write_text("not json", encoding="utf-8")
+    res = h.fail("render-failed")
+    assert res.code == 2 and res.json["moved"] == []
+    assert (h.out / h.md).read_bytes() == NEW_MD
+
+
+def test_fail_with_an_unreadable_plan_writes_no_record_and_exits_2(stage, cli, tmp_path):
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    h.plan(batch_size=4)
+    (h.plan_dir / "plan.json").write_text("{}", encoding="utf-8")
+    res = h.fail("check-failed", digest=sha256_of(h.plan_dir / "plan.json"))
+    assert res.code == 2, res.describe()
+    assert not (h.plan_dir / "stage-record.json").exists()
+
+
+def test_fail_with_a_missing_out_directory_exits_2(stage, cli, tmp_path):
+    """``fail`` has no exit 1, so a directory that isn't there is its 2, like a plan that isn't there."""
+    res = cli("fail", "--stage", "risk-score", "--out", tmp_path / "nothing", "--plan", "20261122T000000Z-0123456789ab",
+              "--plan-digest", "0" * 64, "--reason", "check-failed")
+    assert res.code == 2, res.describe()
+
+
+def test_fail_stage_refuses_an_unknown_reason_through_the_function_too(stage, cli, tmp_path):
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    h.plan(batch_size=4)
+    with pytest.raises(stage.StageError) as info:
+        stage.fail_stage("risk-score", h.out, h.plan_id, h.digest, "because")
+    assert info.value.code == 2
+
+
+@pytest.mark.parametrize("reason,fragment", [
+    ("agent-not-spawned", "scripts/install.sh"), ("unrecoverable-batch", "report the kept plan directory"),
+    ("check-failed", "re-run"), ("render-failed", "re-run")])
+def test_fail_prints_d4s_message_with_its_remedy_and_the_kept_directory(stage, cli, tmp_path, reason, fragment):
+    """AR-T5: every entry prints ``TACHI <STAGE> FAILED`` on a failure path. ``agent-not-spawned`` names the agent and
+    the install remedy (D4's path 1)."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    h.plan(batch_size=4)
+    res = h.fail(reason, detail="tachi-risk-scorer")
+    assert res.code == 0, res.describe()
+    assert re.search(r"^TACHI RISK-SCORE FAILED: ", res.err, re.M) and "Remedy: " in res.err
+    assert fragment in res.err and "Kept for diagnosis: %s" % h.plan_dir in res.err
+    if reason == "agent-not-spawned":
+        assert "Agent: tachi-risk-scorer" in res.err
 
 
 def test_fail_rejects_an_unknown_reason(stage, cli, tmp_path):
@@ -1733,8 +2217,7 @@ def test_version_prints_the_script_and_interpreter_versions(stage, cli, tachi_ve
 
     res = cli("--version")
     assert res.code == 0, res.describe()
-    shown = res.out + res.err
-    assert tachi_version in shown and platform.python_version() in shown
+    assert tachi_version in res.out and platform.python_version() in res.out, "the version goes to stdout (ruled at W1)"
 
 
 def test_help_exits_0_and_names_every_command(stage, cli):

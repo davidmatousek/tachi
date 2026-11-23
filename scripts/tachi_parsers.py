@@ -346,7 +346,7 @@ def classify_maestro_coverage_state(finding_count: int, highest_severity: str) -
 # Generic Table Parsers
 # =============================================================================
 
-def parse_markdown_table(content: str, section_header: str = None, start_line: int = None) -> list:
+def parse_markdown_table(content: str, section_header: str = None, start_line: int = None, skipped: list = None) -> list:
     """Parse a markdown table found after a section header.
 
     Args:
@@ -359,6 +359,10 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
             match never falls back to a substring re-search (data-model.md §3,
             rev. 1). Callers must pass ``section_header`` or ``start_line``;
             ``[]`` is returned when ``section_header`` matches nothing.
+        skipped: An optional list. When given, the 1-based line number of each
+            row dropped as malformed (fewer cells than the header) is appended
+            to it, so a caller that can't afford to lose a row (the F-374
+            reference set) can tell. The default leaves every caller unchanged.
 
     Returns:
         List of dicts, one per row, with keys from the header row.
@@ -446,6 +450,8 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
         cells = [strip_bold(c.strip()) for c in line.split("|")[1:-1]]
         if len(cells) < len(columns):
             print(f"Warning: skipping malformed row at line {i + 1}: expected {len(columns)} columns, got {len(cells)}", file=sys.stderr)
+            if skipped is not None:
+                skipped.append(i + 1)
             continue
         row = {}
         for j, col in enumerate(columns):
@@ -1237,6 +1243,99 @@ def parse_threats_findings(content: str) -> list:
             finding["source_attribution"] = attribution
         findings.append(finding)
     return findings
+
+
+# =============================================================================
+# The reference finding set (F-374 S-12, FR-E.16): one reader for every stage
+# =============================================================================
+
+REFERENCE_SET_SECTION = "## 7. Recommended Actions"
+REFERENCE_SET_FORM = "a table whose header row has a 'Finding ID' column and one row for each open finding"
+REFERENCE_SET_REMEDY = "regenerate threats.md with /tachi.threat-model, or correct the section to that table form"
+
+
+class ReferenceSetError(ValueError):
+    """A ``threats.md`` whose findings can't serve as the reference finding set (S-12(c)).
+
+    ``reason`` names the file, the section and the problem, ``expected`` is the form that is read, and
+    ``remedy`` says what to do, so an entry can print the remedy on its own line (ADR-050 D4). ``str(error)``
+    joins the three.
+    """
+
+    def __init__(self, source: str, section: str, problem: str, remedy: str = REFERENCE_SET_REMEDY):
+        self.reason = "%s: %s %s" % (source, section, problem)
+        self.expected = REFERENCE_SET_FORM
+        self.remedy = remedy
+        super().__init__("%s. Expected %s. Remedy: %s" % (self.reason, self.expected, self.remedy))
+
+
+def _checked_findings(findings: list, section: str, source: str, seen: set, duplicates: set) -> list:
+    """The findings whose IDs pass the allow-list, each canonical ID once (the first row wins), in S-2 order.
+
+    A repeat is dropped and its canonical ID added to ``duplicates``, so the caller can warn: a finding appears
+    once in the reference set (D-4), and a shipped example's Section 7 does list one twice.
+    """
+    # Imported here, not at the top: the extractors import this module and never call this function, so they
+    # needn't have tachi_parts installed (the install-manifest and confinement tests copy them without it). The
+    # F-374 entries import tachi_parts themselves. The import moves to the top once the manifest closure covers it.
+    import tachi_parts
+
+    kept = []
+    for finding in findings:
+        finding_id = finding["id"]
+        if not tachi_parts.id_matches("finding", finding_id):
+            raise ReferenceSetError(source, section, "names %r, which is not a finding ID" % finding_id[:40])
+        canonical = tachi_parts.canonical_finding_id(finding_id)
+        if canonical in seen:
+            duplicates.add(canonical)
+            continue
+        seen.add(canonical)
+        kept.append(finding)
+    return sorted(kept, key=lambda finding: tachi_parts.finding_sort_key(finding["id"]))
+
+
+def parse_reference_set(content: str, source: str = "threats.md") -> dict:
+    """The reference finding set of a ``threats.md``: ``{"open": [...], "resolved": [...], "duplicates": [...]}``.
+
+    ``open`` is one finding dict per Section 7 row, exactly as :func:`parse_threats_findings` builds it (``id``,
+    ``component``, ``threat``, ``risk_level``, ``mitigation``, ``agentic_pattern`` and, when the table has a Status
+    column, ``delta_status``). ``resolved`` is Section 4c's rows as :func:`parse_resolved_findings` builds them,
+    and is empty when the file has none. Both are in S-2 order. ``id`` keeps the spelling the file uses
+    (``AGP-01``), because ``findingId/v1`` prints it: compare IDs only through ``tachi_parts.canonical_finding_id``.
+
+    Every ID passes ``tachi_parts``' finding allow-list, and each canonical ID appears once across both lists
+    (D-4): the first row wins, an open finding beats a resolved one, and ``duplicates`` lists, in S-2 order, the
+    canonical IDs that were repeated, so the caller can warn. Placeholder rows (an empty or dash-only ID) are
+    dropped, as in the other Section 7 readers.
+
+    ``source`` names the file in error messages. This reads the table form only (T032 adds the drift forms). It
+    raises :class:`ReferenceSetError`, which ends a run before any agent is dispatched, when Section 7 is missing,
+    holds no table or no findings, has no ``Finding ID`` column, loses a malformed row, or names an ID that isn't a
+    finding ID. An empty extraction is an error, never a pass (KB 22). ``parse_threats_findings`` is unchanged,
+    because the extractors rely on its ``[]``-with-a-warning behavior.
+    """
+    section = "Section 7 (Recommended Actions)"
+    if not any(REFERENCE_SET_SECTION in line for line in content.split("\n")):
+        raise ReferenceSetError(source, section, "is missing")
+    skipped: list = []
+    rows = parse_markdown_table(content, REFERENCE_SET_SECTION, skipped=skipped)
+    if skipped:
+        raise ReferenceSetError(source, section, "has a malformed row (line %s)" % ", ".join(str(n) for n in skipped[:5]))
+    if not rows:
+        raise ReferenceSetError(source, section, "holds no table rows")
+    if "Finding ID" not in rows[0]:
+        raise ReferenceSetError(source, section, "has no 'Finding ID' column")
+    listed = [finding for finding in parse_threats_findings(content) if not is_placeholder_id(finding["id"])]
+    if not listed:
+        raise ReferenceSetError(source, section, "lists no findings")
+    seen: set = set()
+    repeated: set = set()
+    open_rows = _checked_findings(listed, section, source, seen, repeated)
+    resolved = _checked_findings(parse_resolved_findings(content), "Section 4c (Resolved Findings)", source, seen, repeated)
+    import tachi_parts  # already loaded by _checked_findings
+
+    return {"open": open_rows, "resolved": resolved,
+            "duplicates": sorted(repeated, key=tachi_parts.finding_sort_key)}
 
 
 # Tier 2 referential-integrity validator: resolves each record's id against
