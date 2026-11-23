@@ -85,7 +85,8 @@ SCRIPT_REF_RE = re.compile(r"(?<![\w./-])(?:\./)?scripts/[\w-]+\.py")
 # test_referenced_scripts_covered. Every other distributed reference
 # (extract-report-data.py, extract-infographic-data.py,
 # populate-affected-assets.py, tachi_parsers.py, tachi_parts.py,
-# sarif_common.py) is a required script.
+# tachi_scoring.py, tachi_scoring_rules.py, sarif_common.py, tachi-stage.py,
+# render-risk-scores.py) is a required script.
 EXCLUDED: dict[str, str] = {
     # F-374 (T022). sarif-identity-shared.md's dormant `threats.sarif` section names the generator that takes over
     # when it ships. Until then the file is still written under sarif-specification.md, and the script stays
@@ -96,9 +97,10 @@ EXCLUDED: dict[str, str] = {
 
 # The distributable scripts (spec FR-K2.1, NFR-2, S-13) -- named
 # explicitly rather than derived from the reference scan, so S-13 keeps
-# checking each of them even if the scan's result set ever changes. The four
-# F-374 scripts (ADR-050 D16) join the original four: the three helpers are
-# imported by the entries, and tachi-stage.py is itself an entry.
+# checking each of them even if the scan's result set ever changes. The F-374
+# scripts (ADR-050 D16) join the original four, wave by wave: W1's three
+# helpers (imported by the entries) and tachi-stage.py (an entry), then W2's
+# tachi_scoring_rules.py (a helper) and render-risk-scores.py (an entry).
 REQUIRED_SCRIPT_NAMES = (
     "extract-report-data.py",
     "extract-infographic-data.py",
@@ -108,11 +110,15 @@ REQUIRED_SCRIPT_NAMES = (
     "tachi_scoring.py",
     "sarif_common.py",
     "tachi-stage.py",
+    "tachi_scoring_rules.py",
+    "render-risk-scores.py",
 )
 
 # The sibling modules a distributable script may import at module load besides the standard library: the
 # distributed helpers themselves. S-13 widens from tachi_parsers alone to each helper as it ships (ADR-050 D16).
-DISTRIBUTED_HELPERS = frozenset({"tachi_parsers", "tachi_parts", "tachi_scoring", "sarif_common"})
+DISTRIBUTED_HELPERS = frozenset(
+    {"tachi_parsers", "tachi_parts", "tachi_scoring", "tachi_scoring_rules", "sarif_common"}
+)
 
 
 # ---------------------------------------------------------------------------
@@ -417,8 +423,8 @@ def test_distributable_imports_stdlib_only() -> None:
     """S-13/NFR-2: required distributable scripts import only stdlib or a distributed helper.
 
     A distributed helper is one of ``DISTRIBUTED_HELPERS``: ``tachi_parsers`` and, from F-374
-    (ADR-050 D16), ``tachi_parts``, ``tachi_scoring`` and ``sarif_common``. Each is itself a
-    required script, so an import of one can never name a file that isn't installed.
+    (ADR-050 D16), ``tachi_parts``, ``tachi_scoring``, ``tachi_scoring_rules`` and ``sarif_common``.
+    Each is itself a required script, so an import of one can never name a file that isn't installed.
 
     Checks module-level imports only (see ``_module_level_import_nodes``);
     needs Python 3.10+ for ``sys.stdlib_module_names``.

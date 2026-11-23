@@ -35,16 +35,24 @@ What each group proves:
   mmdc starts and before anything is written. Needs no Typst.
 - legacy mode (``--output``) still writes next to the artifacts, as before.
 - AR-14: a stock ``python3 scripts/<entry> --help`` of each installed entry
-  script that imports ``tachi_parsers`` (the three extractors and
-  ``tachi-stage.py``), with its local-import closure installed beside it, leaves
-  no bytecode cache, in the project or under a test-owned ``PYTHONPYCACHEPREFIX``.
+  script that imports ``tachi_parsers`` (the three extractors, ``tachi-stage.py``
+  and ``render-risk-scores.py``), with its local-import closure installed beside
+  it, leaves no bytecode cache, in the project or under a test-owned
+  ``PYTHONPYCACHEPREFIX``.
 - F-374 (ADR-050 D16): ``tachi-stage.py`` runs ``plan``, ``reconcile`` and
   ``fail`` for each batched stage on the gated fixture, in a throwaway project,
   and every write lands under ``--out``. Its ``architecture-source`` command is
   the one write outside ``--out``: it edits only the ``--threats`` file, and it
   refuses a symlinked or non-regular one with exit 2. No run writes bytecode.
   Needs no Typst.
-- AR-1 case 4 and the T015 static assertion: no fenced block in the five
+- F-374 (ADR-050 D16): ``render-risk-scores.py`` runs on the same fixture, after
+  ``tachi-stage.py`` has planned and reconciled the ``risk-score`` stage and this
+  module has written its parts as the scorer agent does. The renderer loads
+  ``populate-affected-assets.py`` by path at run time, so the project installs that
+  file beside it, and a case holds the install manifest to listing it. Every write
+  of a first run, and of a run over earlier outputs, lands under ``--out``; a
+  refused run writes nothing; no run writes bytecode. Needs no Typst.
+- AR-1 case 4 and the T015 static assertion: no fenced block in the seven
   recipe documents names ``templates/tachi/`` as a write target or uses ``/tmp``.
 
 Typst gating: tests that compile are skipped when ``typst`` is not on PATH,
@@ -86,8 +94,9 @@ from typing import Dict, Iterator, List, Optional, Set, Tuple
 
 import pytest
 
-# The one definition of what a script needs installed beside it: the manifest test's import closure (ADR-050 D16).
-from .test_install_manifest_completeness import _import_closure
+# The one definition of what a script needs installed beside it: the manifest test's import closure (ADR-050 D16),
+# and its reader of the installer's machine-readable block.
+from .test_install_manifest_completeness import MANIFEST_PATH, _import_closure, read_manifest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -1057,20 +1066,43 @@ ENTRY_SCRIPTS_IMPORTING_PARSERS = (
     "extract-infographic-data.py",
     "populate-affected-assets.py",
     "tachi-stage.py",
+    "render-risk-scores.py",
 )
+
+# The scripts an entry loads by path when it runs. No import statement names them, so the import closure can't see
+# them, and an install places them beside the entry all the same (the manifest lists each). ``render-risk-scores.py``
+# takes the populator's component join (ADR-050 D2), and stops with exit 1 when the file is not installed.
+LOADED_BY_PATH = {
+    "render-risk-scores.py": ("populate-affected-assets.py",),
+}  # type: Dict[str, Tuple[str, ...]]
 
 
 def _install_with_closure(entry: str, scripts: Path) -> List[str]:
-    """Copy ``entry`` and its local-import closure into ``scripts``, as an install places them.
+    """Copy ``entry``, its local-import closure and what it loads by path into ``scripts``, as an install places them.
 
     The closure is the manifest test's own (``_import_closure``), so a script that gains an import is installed
-    with it here, and the manifest must list it. Returns the names of the siblings copied.
+    with it here, and the manifest must list it. ``LOADED_BY_PATH`` adds the scripts that the entry loads at run
+    time, and the closure of those too. Returns the names of the siblings copied.
     """
-    closure = sorted(Path(ref).name for ref in _import_closure({"scripts/" + entry}))
+    loaded = LOADED_BY_PATH.get(entry, ())
+    seeds = {"scripts/" + name for name in (entry,) + loaded}
+    closure = sorted({Path(ref).name for ref in _import_closure(seeds)} | set(loaded))
     assert closure, "%s imports no sibling script, so the closure is empty: update this case" % entry
-    for name in [entry] + closure:
+    for name in sorted({entry} | set(closure)):
         shutil.copy2(str(SCRIPTS_DIR / name), str(scripts / name))
     return closure
+
+
+@pytest.mark.parametrize("entry", sorted(LOADED_BY_PATH))
+def test_each_script_loaded_by_path_is_in_the_install_manifest(entry: str):
+    """The manifest test's import closure can't see a script that an entry loads by path, so this names each one.
+
+    ``LOADED_BY_PATH`` says an install places these beside the entry. This holds the manifest to it, so an entry
+    that starts to load another script at run time fails here, and not in an adopter's project.
+    """
+    listed = read_manifest(MANIFEST_PATH.read_text(encoding="utf-8"))
+    for name in (entry,) + LOADED_BY_PATH[entry]:
+        assert "scripts/" + name in listed, "INSTALL_MANIFEST.md doesn't list scripts/%s (%s loads it by path)" % (name, entry)
 
 
 @pytest.mark.parametrize("entry", ENTRY_SCRIPTS_IMPORTING_PARSERS)
@@ -1168,12 +1200,16 @@ class StageProject:
 
     def run(self, *args: str) -> "subprocess.CompletedProcess":
         """``python3 scripts/tachi-stage.py ARGS``: the stock invocation, with bytecode caching left on."""
+        return self.run_entry(STAGE_ENTRY, *args)
+
+    def run_entry(self, entry: str, *args: str) -> "subprocess.CompletedProcess":
+        """``python3 scripts/<entry> ARGS`` in the project: the stock invocation, with bytecode caching left on."""
         env = dict(os.environ)
         env["TMPDIR"] = str(self.systmp)
         env["PYTHONPYCACHEPREFIX"] = str(self.prefix)  # a cache written outside the project lands where this reads
         env.pop("PYTHONDONTWRITEBYTECODE", None)  # a developer's setting must not mask a regression (AR-14)
         return subprocess.run(
-            [sys.executable, "scripts/" + STAGE_ENTRY] + list(args),
+            [sys.executable, "scripts/" + entry] + list(args),
             cwd=str(self.cwd),
             env=env,
             capture_output=True,
@@ -1287,16 +1323,174 @@ def test_tachi_stage_architecture_source_refuses_a_link_or_a_non_regular_threats
 
 
 # =============================================================================
+# F-374 (ADR-050 D16): render-risk-scores.py writes only under {out} and leaves no bytecode
+# =============================================================================
+#
+# The renderer reads what ``tachi-stage.py`` planned and what the scorer agent wrote, so its project is a
+# ``StageProject`` that also holds the renderer and writes the parts. A run is the command's Steps 2 to 5 on the
+# gated fixture: plan, one part per batch, reconcile, render. The renderer loads ``populate-affected-assets.py`` by
+# path (``LOADED_BY_PATH``), so that file is installed beside it, as an install places it.
+
+RENDER_ENTRY = "render-risk-scores.py"
+SCORER_STAGE = "risk-score"
+SUBSCORE_NAMES = (
+    "known_techniques", "attack_complexity", "tooling_availability", "skill_level",
+    "scriptability", "target_scope", "resource_requirements", "detection_difficulty",
+)
+# A narrative field keeps its digits in slots, which the renderer fills (ADR-050 D3). Free digits would take the
+# fallback sentence and a flag, and this check wants a clean run.
+SCORER_RATIONALE = {
+    "cvss": "The base score is {{score:cvss_base}} for {{name:component}}.",
+    "exploitability": "Public techniques give a mean of {{score:exploitability}}.",
+    "scalability": "Repeatable at scale, with a mean of {{score:scalability}}.",
+    "reachability": "{{name:zone}} yields {{score:reachability}}, with {{count:auth_barriers}} authentication "
+                    "layers and {{count:network_boundaries}} network boundaries.",
+}
+TRUST_LEVELS = {"untrusted": "Untrusted", "semi-trusted": "Semi-Trusted", "trusted": "Trusted"}
+# What an earlier run left in ``{out}``: the renderer replaces both, and the plan records them as its preimage.
+EARLIER_OUTPUTS = {"risk-scores.md": b"# the earlier run's markdown\n", "risk-scores.sarif": b'{"earlier": "run"}\n'}
+
+
+def _trust_zones(threats_text: str) -> Dict[str, Tuple[str, str]]:
+    """``{component: (zone, trust level)}`` from the ``### Trust Zones`` table of a ``threats.md``.
+
+    The level is the agent's spelling (``Semi-Trusted``), not the table's label (``Semi-trusted``).
+    """
+    zones = {}  # type: Dict[str, Tuple[str, str]]
+    for line in threats_text.split("### Trust Zones", 1)[1].splitlines():
+        if line.startswith("#"):  # the next heading ends the table
+            break
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if not line.startswith("|") or cells[0] == "Zone" or not cells[0].strip("-"):
+            continue  # prose, the header row or the rule under it
+        for member in cells[2].split(","):
+            zones[member.strip()] = (cells[0], TRUST_LEVELS[cells[1].lower()])
+    assert zones, "the fixture's Section 2 lists no trust zone"
+    return zones
+
+
+class RenderProject(StageProject):
+    """A ``StageProject`` that also installs ``render-risk-scores.py`` and writes the scorer's parts.
+
+    ``write_parts`` stands in for the scorer agent (``contracts/part-files.md``): one part file per batch, holding one
+    valid item for every finding that the batch input lists. Each item's zone and trust level are what Section 2 of
+    the fixture's ``threats.md`` gives its component, so the renderer has nothing to correct.
+    """
+
+    def __init__(self, root: Path):
+        super().__init__(root)
+        _install_with_closure(RENDER_ENTRY, self.cwd / "scripts")
+        self.zones = _trust_zones((self.inputs / "threats.md").read_text(encoding="utf-8"))
+
+    def write_parts(self, planned: dict) -> None:
+        """One part file per batch of the plan that ``planned`` is the output of, at the path its batch input names."""
+        for wave in planned["waves"]:
+            for entry in wave:
+                batch = json.loads(Path(entry["input_path"]).read_text(encoding="utf-8"))
+                items = []
+                for unit in batch["units"]:
+                    zone, trust = self.zones[unit["component"]]
+                    items.append({
+                        "finding_id": unit["finding_id"],
+                        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+                        "exploitability": dict(zip(SUBSCORE_NAMES[:4], (5, 5, 5, 5))),
+                        "scalability": dict(zip(SUBSCORE_NAMES[4:], (4, 4, 4, 4))),
+                        "reachability": {"zone": zone, "trust_level": trust, "auth_barriers": 1, "network_boundaries": 0},
+                        "rationale": dict(SCORER_RATIONALE),
+                    })
+                part = {
+                    "schema": "tachi.part/1", "plan_id": batch["plan_id"], "batch_id": batch["batch_id"],
+                    "stage": batch["stage"], "agent_type": batch["agent_type"], "finding_ids": list(batch["finding_ids"]),
+                    "items": items, "fragments": [],
+                }
+                path = Path(batch["part_path"])
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(part), encoding="utf-8")
+
+    def prepare(self) -> Tuple[str, str]:
+        """The command's Steps 2 to 4: plan, write the parts, reconcile. Returns ``(plan_id, plan_digest)``."""
+        plan = self.run("plan", "--stage", SCORER_STAGE, "--out", "out", "--date", STAGE_DATE,
+                        "--threats", "run/threats.md", "--architecture", "run/architecture.md")
+        assert plan.returncode == 0, _describe(plan)
+        planned = json.loads(plan.stdout)
+        self.write_parts(planned)
+        reconcile = self.run("reconcile", "--stage", SCORER_STAGE, "--out", "out",
+                             "--plan", planned["plan_id"], "--plan-digest", planned["plan_digest"])
+        assert reconcile.returncode == 0, _describe(reconcile)
+        return planned["plan_id"], json.loads(reconcile.stdout)["plan_digest"]
+
+    def render(self, plan_id: str, digest: str) -> "subprocess.CompletedProcess":
+        """``python3 scripts/render-risk-scores.py --out out --plan ID --plan-digest HEX``: the command's Step 5."""
+        return self.run_entry(RENDER_ENTRY, "--out", "out", "--plan", plan_id, "--plan-digest", digest)
+
+
+@pytest.mark.parametrize("earlier", (False, True), ids=("first-run", "over-earlier-outputs"))
+def test_render_risk_scores_writes_only_under_out(tmp_path: Path, earlier: bool):
+    """The renderer writes both files and its record under ``--out``, and leaves the inputs and the scripts alone.
+
+    Exit 5 is a success with warnings (the fixture's baseline is not on disk), so 0 and 5 both write both files.
+    Over earlier outputs the two canonical files change instead of appearing. ``$TMPDIR`` stays as it was: the
+    renderer stages inside the plan directory. The loaded-by-path populator caches no bytecode either.
+    """
+    project = RenderProject(tmp_path)
+    if earlier:
+        for name, content in EARLIER_OUTPUTS.items():
+            (project.out / name).write_bytes(content)
+    start = project.state()
+
+    plan_id, digest = project.prepare()
+    project.assert_writes_only_under_out(start, project.state(), "after plan, the parts and reconcile")
+
+    rendered = project.render(plan_id, digest)
+    assert rendered.returncode in (0, 5), _describe(rendered)
+    end = project.state()
+    added, changed, _ = project.assert_writes_only_under_out(start, end, "after render")
+    outputs = {"out/risk-scores.md", "out/risk-scores.sarif"}
+    assert outputs <= (changed if earlier else added), "both files must be written: %s" % sorted(added | changed)
+    assert any(p.endswith("/stage-record.json") for p in added), "the snapshot must see the stage record"
+    if earlier:
+        assert all((project.out / name).read_bytes() != content for name, content in EARLIER_OUTPUTS.items())
+
+    # The inputs and the installed scripts are byte-unchanged end to end, and nothing wrote bytecode.
+    assert _under(end[0], "run") == _under(start[0], "run"), "the renderer changed one of its inputs"
+    assert _under(end[0], "scripts") == _under(start[0], "scripts"), "the renderer changed an installed script"
+    assert (project.cwd / "scripts" / "populate-affected-assets.py").is_file(), "the populator must be installed"
+    project.assert_no_bytecode()
+
+
+@pytest.mark.parametrize("case", ("digest-mismatch", "no-plan"))
+def test_render_risk_scores_refuses_without_writing(tmp_path: Path, case: str):
+    """A digest that differs exits 2 and a run directory with no plan exits 1, and neither writes anything."""
+    project = RenderProject(tmp_path)
+    if case == "digest-mismatch":
+        plan_id, _ = project.prepare()
+        digest, code = "0" * 64, 2
+    else:
+        plan_id, digest, code = "20261122T100000Z-0123456789ab", "0" * 64, 1
+    before = project.state()
+
+    refused = project.render(plan_id, digest)
+    assert refused.returncode == code, _describe(refused)
+    assert "TACHI RISK-SCORE FAILED" in refused.stderr, _describe(refused)
+    assert project.state() == before, "a refused run must write nothing"
+    project.assert_no_bytecode()
+
+
+# =============================================================================
 # Static assertion (T015) and AR-1 case 4: the recipes never name a bad write target
 # =============================================================================
 
-# The three documents T015 names, plus the two skill references AR-1 case 4 adds.
+# The three documents T015 names, plus the two skill references AR-1 case 4 adds, plus the two commands whose
+# fences run F-374's scripts (ADR-050 D16): /tachi.risk-score and /tachi.threat-model. Each wave that adds a
+# command to the batched pipeline adds it here (W3: /tachi.compensating-controls).
 RECIPE_DOCS = (
     ".claude/agents/tachi/report-assembler.md",
     ".claude/agents/tachi/threat-infographic.md",
     ".claude/commands/tachi.infographic.md",
     ".claude/skills/tachi-infographics/references/gemini-prompt-construction.md",
     ".claude/skills/tachi-report-assembly/references/typst-artifacts.md",
+    ".claude/commands/tachi.risk-score.md",
+    ".claude/commands/tachi.threat-model.md",
 )
 METADATA_LANGUAGES = ("yaml", "yml")
 
