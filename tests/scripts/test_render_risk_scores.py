@@ -1,0 +1,1904 @@
+"""Goldens for ``scripts/render-risk-scores.py``, written before the script (F-374 T027; TDD).
+
+They target ``contracts/cli.md`` (the CLI and the exit table), ``contracts/part-files.md`` (the scorer payload,
+the stage record), ``contracts/module-signatures.md`` (the persisted-inputs format), ``contracts/sarif-result.md``
+and ADR-050 D2 (field ownership), D3 (escaping, slots), D4 (the write order, failure, the stamp, declared paths),
+D5 (arithmetic), D6 (batching), D7 and D8 (SARIF identity and membership), D9 (RESOLVED rows, Section 6, flags)
+and D15 (schema 1.1), never an implementation. T028 writes the renderer to them (T045 and T046 add the recompute,
+the flags, governance, peers, Section 2a and Section 6, and T050 emits the SARIF). Until then they fail: the
+script does not exist. T041 adds SC-4's goldens (the seeded-error, legacy, tagged and carry-forward variants) to
+this module, and T049 puts FR-E.2's two-run model in ``test_sarif_identity.py``.
+
+How they run (ADR-050 D16, H15): the entry is loaded through ``tests/conftest.py``'s ``_load_hyphenated_script``
+and driven in-process through ``main(argv)``, so pytest-cov counts it. Nothing here starts a subprocess: the one
+thing a process alone shows, the 3.9 refusal before any import, is ``test_runtime_floor_374.py``'s.
+
+What these goldens assume of ``render-risk-scores.py`` (R1 follows them; where a contract left a form open the
+test says ``# reading:`` and the architect rules it at integration):
+
+1. **The CLI** is ``render-risk-scores.py --out DIR --plan ID --plan-digest HEX`` with ``--help`` and ``--version``
+   (``contracts/cli.md``). ``main(argv=None) -> int``. The exit codes are the table's: 0 and 5 write both files,
+   1 is a missing input, 2 a validation or guard failure (a digest or pointer mismatch), 4 a failed completeness
+   or parity check. Anything else that is not 0 or 5 is a failure. The renderer never rewrites ``plan.json``.
+2. **Where it reads.** The plan names ``threats.md`` (the reference set, Section 1's components, Section 2's zones,
+   Section 4a's groups, the ``## Affected Assets`` block), the scoring date is the plan's ``params.scoring_date``,
+   and the architecture candidate is the batch inputs' ``refs.architecture`` (else the body line, else the
+   default). The parts are the current plan's ``done`` batches, each re-validated with ``tachi_parts.read_part``.
+3. **Where it writes.** Both files go to ``<plan>/staged/`` first, are read back from disk and checked, and only
+   then move onto the canonical names with ``os.replace``. The stage record is ``<plan>/stage-record.json``.
+   stdout carries summary lines (not JSON), and every failure prints D4's ``TACHI RISK-SCORE FAILED:`` message.
+4. **The files.** ``risk-scores.md`` is schema 1.1 with Sections 1 to 6 and 2a, ending in the stamp comment, and
+   ``risk-scores.sarif`` is the shared emitter's file. The renderer's name in both stamps is ``render-risk-scores``
+   or ``render-risk-scores.py`` (D4 says ``<entry>``; W1's two modules spelled it both ways), and the three
+   digests (the two stamps and the stage record) are one value.
+
+The renderer's rows are checked in two ways: ``GOLDEN`` holds literal numbers that
+``test_harness_the_literal_goldens_equal_the_shipped_arithmetic`` re-derives from the shipped arithmetic (``tachi_scoring``), and every other test reads the literals, so a
+wrong number in a test fails there first. Fixtures are synthetic (H8).
+
+The groups of tests, by the task that turns them green:
+
+* ``test_harness_*``: no renderer needed; they check the synthetic inputs and the literals.
+* ``test_cli_*``: T028 (the entry, the exit table).
+* ``test_md_*``: T028, T045 and T046 (the file's sections, rows, Section 6).
+* ``test_sarif_*``: T050 (the shared emitter's file).
+* ``test_agree_*`` and ``test_readers_*``: the ``.md``-``.sarif`` agreement and NFR-1's round trip.
+* ``test_staged_*`` and ``test_failure_*``: D4's write order and the ``fail`` step (F2).
+* ``test_record_*``: the stamp, the stage record and the declared-paths check.
+* ``test_batching_*`` and ``test_determinism_*``: NFR-4 and NFR-2.
+* ``test_issues_*`` and ``test_narrative_*``: Input Issues, the slots, the fallback and hostile text.
+* ``test_template_*``: the 1.1 templates and the renderer agree (D15). They pass when T031 (lane C) lands, whatever
+  the renderer does, and they fail until then.
+* ``test_peers_*``: correlation groups. They need T044's routing (the planner leaves a peer out of the plan) and
+  T048's parser, so they fail first on that precondition until both land.
+
+Standard library and pytest only, and Python 3.9 syntax.
+"""
+from __future__ import annotations
+
+import ast
+import contextlib
+import copy
+import datetime
+import hashlib
+import inspect
+import io
+import json
+import math
+import os
+import re
+import sys
+import time
+from decimal import Decimal
+from pathlib import Path
+
+import pytest
+
+from ..conftest import _load_hyphenated_script
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS_DIR))
+
+import sarif_common as sc  # noqa: E402  -- after the sys.path mutation
+import tachi_parsers  # noqa: E402
+import tachi_parts as tp  # noqa: E402
+import tachi_scoring as ts  # noqa: E402
+
+RENDERER = SCRIPTS_DIR / "render-risk-scores.py"
+GATED_SUBSET = REPO_ROOT / "tests" / "scripts" / "fixtures" / "large_arch" / "gated-subset"
+
+STAGE = "risk-score"
+MD, SARIF = "risk-scores.md", "risk-scores.sarif"
+TOOL = "tachi-risk-scorer"
+DATE = "2026-11-22"
+RENDERER_NAMES = ("render-risk-scores", "render-risk-scores.py")
+DIGEST = re.compile(r"^sha256:[0-9a-f]{64}\Z")
+DASH = "—"
+
+# =============================================================================
+# 1. The synthetic project: components, zones, findings and their goldens
+# =============================================================================
+#
+# Nine open findings on six components in four zones, and three RESOLVED ones. They were chosen so that one
+# render shows: all four bands; a four-way tie at 5.9 that S-2's order breaks (S-2 before S-10 by number, then
+# T-1, then AG-1 by prefix); a mean that rounds half-up (7.25 gives 7.3); a composite whose sum ends in 5
+# (5.875 gives 5.9); a reachability that a keyword raises, one that the architecture counts clamp at the zone's
+# floor, and one that they pull below the floor; a leading-zero ID (AGP-01 compares as AGP-1); a component of
+# 36 characters (the table shortens it); a threat over 60 characters; markup, a backtick and a ``{{`` in one
+# threat; and non-ASCII text.
+
+LONG_COMPONENT = "model-gateway-for-hosted-completions"  # 36 characters: Section 2 shortens it to 27 and "..."
+
+# (zone, the label Section 2 gives its trust level, the level the agent writes, its components).
+ZONES = (
+    ("Internet Clients", "Untrusted", "Untrusted", ("client-portal",)),
+    ("Edge DMZ", "Semi-trusted", "Semi-Trusted", ("edge-gateway", "auth-broker")),
+    ("Agent Runtime Zone", "Trusted", "Trusted", ("planner-agent", LONG_COMPONENT)),
+    ("Data Zone", "Trusted", "Trusted", ("vector-store",)),
+)
+COMPONENTS = {  # name -> (DFD type, MAESTRO layer)
+    "client-portal": ("External Entity", "L7 " + DASH + " Agent Ecosystem"),
+    "edge-gateway": ("Process", "L4 " + DASH + " Deployment Infrastructure"),
+    "auth-broker": ("Process", "L6 " + DASH + " Security and Compliance"),
+    "planner-agent": ("Process", "L3 " + DASH + " Agent Framework"),
+    LONG_COMPONENT: ("Process", "L1 " + DASH + " Foundation Model"),
+    "vector-store": ("Data Store", "L2 " + DASH + " Data Operations"),
+}
+KIND_OF = {"External Entity": "external-entity", "Process": "process", "Data Store": "data"}  # the legacy generator's kinds
+CATEGORY_NAME = {
+    "S": "Spoofing", "T": "Tampering", "R": "Repudiation", "I": "Information Disclosure", "D": "Denial of Service",
+    "E": "Elevation of Privilege", "AG": "Agentic", "AGP": "Agentic", "LLM": "LLM", "OI": "LLM", "MI": "LLM", "TE": "Agentic",
+}
+
+HOSTILE_THREAT = ("Untrusted <b>markup</b> and a `backtick` and {{7*7}} reach the model through the gateway "
+                  "with no filter in between.")
+
+
+def spec(finding_id, component, threat, risk, status, vector, e, s, zone, trust, auth, net, metric=None, subscore=None):
+    return {"id": finding_id, "component": component, "threat": threat, "risk": risk, "status": status,
+            "vector": vector, "e": e, "s": s, "zone": zone, "trust": trust, "auth": auth, "net": net,
+            "metric": metric, "subscore": subscore}
+
+
+SPECS = [
+    spec("S-2", "edge-gateway", "Shared tokens let callers impersonate each other.", "High", "NEW",
+         "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N", (5, 5, 5, 5), (4, 4, 4, 4), "Edge DMZ", "Semi-Trusted", 1, 0,
+         metric={"AV": "Reachable over the network."}, subscore={"known_techniques": "Documented in public write-ups."}),
+    spec("S-10", "auth-broker", "Étienne's service token " + DASH + " long-lived and shared " + DASH + " is accepted at the broker.",
+         "Medium", "UPDATED", "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N", (6, 6, 6, 6), (4, 4, 4, 4),
+         "Edge DMZ", "Semi-Trusted", 0, 0),
+    spec("T-1", "auth-broker", "Backups of session grants are writable by operators.", "High", "UNCHANGED",
+         "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L", (6, 6, 6, 6), (5, 5, 5, 5), "Edge DMZ", "Semi-Trusted", 1, 0),
+    spec("E-3", "edge-gateway", "Admin routes skip the role check.", "High", "NEW",
+         "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H", (6, 6, 6, 6), (5, 5, 5, 5), "Edge DMZ", "Semi-Trusted", 1, 1),
+    spec("E-5", "client-portal", "Role claims in tokens presented to the portal are trusted without a second check, "
+         "so any caller can act as an administrator.", "Critical", "NEW",
+         "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H", (9, 9, 9, 9), (9, 8, 9, 8), "Internet Clients", "Untrusted", 0, 0),
+    spec("AG-1", "planner-agent", "Memory entries written by the planner are trusted on later runs.", "Medium", "NEW",
+         "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L", (5, 4, 5, 4), (4, 4, 4, 4), "Agent Runtime Zone", "Trusted", 0, 0),
+    spec("AGP-01", "vector-store", "Worker agents coordinate through a shared bus and accept each other's instructions "
+         "without verification.", "High", "NEW",
+         "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L", (9, 8, 9, 8), (8, 8, 8, 8), "Data Zone", "Trusted", 0, 0),
+    spec("LLM-4", LONG_COMPONENT, HOSTILE_THREAT, "Medium", "NEW",
+         "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N", (7, 7, 7, 7), (5, 5, 5, 5), "Agent Runtime Zone", "Trusted", 2, 0),
+    spec("R-1", "planner-agent", "Actions taken through the portal are logged without the acting identity.", "Low", "UPDATED",
+         "CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:U/C:L/I:N/A:N", (2, 2, 2, 2), (2, 2, 2, 2), "Agent Runtime Zone", "Trusted", 0, 0),
+]
+
+# Section 4c. None of these IDs is open, and no open threat names one.
+RESOLVED = [
+    ("S-1", "legacy-gateway", "An unauthenticated callback route accepted requests from anyone.", "High", "Component removed from the architecture"),
+    ("T-3", "edge-gateway", "Exports were writable by operators.", "Medium", "Threat no longer applies to the component"),
+    ("LLM-2", "legacy-gateway", "Prompt content was logged and replayed to other users.", "Low", "Component removed from the architecture"),
+]
+RESOLVED_IDS = ["S-1", "T-3", "LLM-2"]  # in S-2 order
+
+# What the renderer computes for each open finding: (CVSS, exploitability, scalability, reachability, composite, band).
+# Derived by hand from the contract, and re-derived from the shipped arithmetic by the first harness test.
+#   reachability: a trust level's baseline (9.0, 5.5, 2.5), plus a zone-name keyword (+0.5 for "internet" and
+#   "client", "dmz"), less 1.5 per authentication layer and 1.0 per network boundary (three of each at most),
+#   then clamped to the trust level's range (8.0-10.0, 4.0-7.0, 1.0-4.0) and rounded to one decimal.
+GOLDEN = {
+    "E-5": ("9.9", "9.0", "8.5", "10.0", "9.4", "Critical"),  # 9.0 + 1.0 = 10.0
+    "AGP-01": ("9.9", "8.5", "8.0", "2.5", "7.7", "High"),    # 3.465 + 2.55 + 1.2 + 0.5 = 7.715
+    "E-3": ("9.9", "6.0", "5.0", "4.0", "6.8", "Medium"),     # 5.5 + 0.5 - 1.5 - 1.0 = 3.5, raised to the floor
+    "LLM-4": ("9.3", "7.0", "5.0", "1.0", "6.3", "Medium"),   # 2.5 - 3.0 = -0.5, raised to the floor
+    "S-2": ("8.2", "5.0", "4.0", "4.5", "5.9", "Medium"),     # 5.87
+    "S-10": ("6.5", "6.0", "4.0", "6.0", "5.9", "Medium"),    # 5.875: a sum that ends in 5 rounds up
+    "T-1": ("7.1", "6.0", "5.0", "4.5", "5.9", "Medium"),     # 5.935
+    "AG-1": ("9.9", "4.5", "4.0", "2.5", "5.9", "Medium"),    # 5.915
+    "R-1": ("1.8", "2.0", "2.0", "2.5", "2.0", "Low"),        # 2.03
+}
+ORDER = ["E-5", "AGP-01", "E-3", "LLM-4", "S-2", "S-10", "T-1", "AG-1", "R-1"]  # composite descending, then S-2
+OPEN_IDS = list(ORDER)
+S2_ORDER = ["S-2", "S-10", "T-1", "R-1", "E-3", "E-5", "AG-1", "AGP-01", "LLM-4"]
+GOVERNANCE = {  # band -> (SLA, disposition, the review date for DATE)
+    "Critical": ("24h", "Mitigate", "2026-11-23"),
+    "High": ("7d", "Mitigate", "2026-11-29"),
+    "Medium": ("30d", "Review", "2026-12-22"),
+    "Low": ("90d", "Review", "2027-02-20"),
+}
+BAND_COUNTS = {"Critical": 1, "High": 1, "Medium": 6, "Low": 1}
+
+METRIC_VALUES = {
+    "AV": {"N": "Network", "A": "Adjacent", "L": "Local", "P": "Physical"},
+    "AC": {"L": "Low", "H": "High"},
+    "PR": {"N": "None", "L": "Low", "H": "High"},
+    "UI": {"N": "None", "R": "Required"},
+    "S": {"U": "Unchanged", "C": "Changed"},
+    "C": {"N": "None", "L": "Low", "H": "High"},
+    "I": {"N": "None", "L": "Low", "H": "High"},
+    "A": {"N": "None", "L": "Low", "H": "High"},
+}
+METRIC_LABEL = {"AV": "Attack Vector (AV)", "AC": "Attack Complexity (AC)", "PR": "Privileges Required (PR)",
+                "UI": "User Interaction (UI)", "S": "Scope (S)", "C": "Confidentiality (C)", "I": "Integrity (I)",
+                "A": "Availability (A)"}
+SUBSCORE_LABEL = {"known_techniques": "Known Techniques", "attack_complexity": "Attack Complexity",
+                  "tooling_availability": "Tooling Availability", "skill_level": "Skill Level",
+                  "scriptability": "Scriptability", "target_scope": "Target Scope",
+                  "resource_requirements": "Resource Requirements", "detection_difficulty": "Detection Difficulty"}
+
+# The agent's narrative: digits only through slots (ADR-050 D3's table for the scorer).
+RATIONALE = {
+    "cvss": "The base score is {{score:cvss_base}} for {{name:component}}.",
+    "exploitability": "Public techniques give a mean of {{score:exploitability}}.",
+    "scalability": "Repeatable at scale, with a mean of {{score:scalability}}.",
+    "reachability": "{{name:zone}} yields {{score:reachability}}, with {{count:auth_barriers}} authentication layers "
+                    "and {{count:network_boundaries}} network boundaries.",
+}
+
+SECTION_2_HEADER = ["ID", "Source", "Component", "Threat", "CVSS", "Exploit.", "Scale.", "Reach.", "Composite",
+                    "Severity", "SLA", "Disposition", "Flags"]
+SECTION_4_HEADER = ["ID", "Severity", "Owner", "SLA", "Disposition", "Review Date"]
+SECTION_TITLES = ["## 1. Executive Summary", "## 2. Scored Threat Table", "## 2a. Resolved Findings",
+                  "## 3. Dimensional Breakdown", "## 4. Governance Fields", "## 5. Scoring Methodology",
+                  "## 6. Score Integrity"]
+SECTION_6_PARTS = ["### Integrity Summary", "### Score Flags", "### Input Issues", "### Scoring Inputs"]
+EARLIER_MD = b"# the earlier run's markdown\n"
+EARLIER_SARIF = b'{"earlier": "run"}\n'
+
+
+def canon(finding_id):
+    return tp.canonical_finding_id(finding_id)
+
+
+def s2_key(finding_id):
+    return tp.finding_sort_key(finding_id)
+
+
+def truncate(text, limit):
+    """Output-formatting's rule: over ``limit`` characters, keep ``limit - 3`` and append three dots."""
+    return text if len(text) <= limit else text[:limit - 3] + "..."
+
+
+def golden(finding_id):
+    """The goldens of a finding by its canonical ID, whatever spelling the caller has (``AGP-01`` is ``AGP-1``)."""
+    for key, value in GOLDEN.items():
+        if canon(key) == canon(finding_id):
+            return value
+    raise KeyError(finding_id)
+
+
+def by_id(finding_id, specs=None):
+    for item in SPECS if specs is None else specs:
+        if canon(item["id"]) == canon(finding_id):
+            return item
+    raise KeyError(finding_id)
+
+
+def sha256_of(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+# --------------------------------------------------------------------------- the agent's part
+
+def scorer_item(item, rationale=None):
+    """One valid ``risk-score`` item (``contracts/part-files.md``) for a synthetic finding."""
+    out = {
+        "finding_id": item["id"],
+        "cvss_vector": item["vector"],
+        "exploitability": dict(zip(tp.SUBSCORE_NAMES[:4], item["e"])),
+        "scalability": dict(zip(tp.SUBSCORE_NAMES[4:], item["s"])),
+        "reachability": {"zone": item["zone"], "trust_level": item["trust"], "auth_barriers": item["auth"],
+                         "network_boundaries": item["net"]},
+        "rationale": dict(RATIONALE if rationale is None else rationale),
+    }
+    if item.get("metric"):
+        out["metric_rationale"] = dict(item["metric"])
+    if item.get("subscore"):
+        out["subscore_rationale"] = dict(item["subscore"])
+    return out
+
+
+def lookup_for(item, composite=None):
+    """The slot lookup the renderer must give a finding: this item's rendered values (ADR-050 D3's table)."""
+    cvss, e, s, r, comp, band = golden(item["id"]) if composite is None else composite
+    sla, _disposition, review = GOVERNANCE[band]
+    values = {("score", "cvss_base"): cvss, ("score", "exploitability"): e, ("score", "scalability"): s,
+              ("score", "reachability"): r, ("score", "composite"): comp, ("band", "severity"): band,
+              ("date", "scored"): DATE, ("date", "review"): review, ("name", "component"): item["component"],
+              ("name", "zone"): item["zone"], ("count", "auth_barriers"): str(item["auth"]),
+              ("count", "network_boundaries"): str(item["net"])}
+    for name, number in zip(tp.SUBSCORE_NAMES, tuple(item["e"]) + tuple(item["s"])):
+        values[("score", name)] = str(number)
+
+    def lookup(kind, argument):
+        return values.get((kind, argument))
+
+    return lookup
+
+
+def narrative(item, text, sink="cell"):
+    """What the renderer writes for a narrative field of ``item``: the slots filled, then escaped."""
+    return tp.resolve_narrative(text, STAGE, lookup_for(item), sink=sink)
+
+
+# --------------------------------------------------------------------------- threats.md and the architecture file
+
+def make_architecture_md():
+    return ("# Synthetic platform: architecture\n\n"
+            "A small invented system for the tests. Operators reach a portal, a gateway screens requests, a broker "
+            "issues tokens, a planner agent works through a model gateway, and a vector store holds documents.\n\n"
+            "No component in this description carries an asset-sensitivity tag.\n")
+
+
+def make_threats_md(specs=None, resolved=None, groups=(), repeated=(), affected="block", body_line=None,
+                    baseline_source=None):
+    """A synthetic ``threats.md`` with the sections the renderer reads.
+
+    ``groups`` is ``[(group ID, [member IDs])]`` for Section 4a. ``repeated`` is ``[(ID, component)]``: extra
+    Section 7 rows for an ID the file already lists (the architect's duplicate form). ``affected`` is ``block``
+    (a row of ``[]`` for every open finding), ``missing`` (no block) or ``stale`` (a block that misses one finding).
+    """
+    specs = SPECS if specs is None else specs
+    resolved = RESOLVED if resolved is None else resolved
+    lines = ["---", 'schema_version: "1.4"', 'date: "%s"' % DATE, 'input_format: "mermaid"',
+             'classification: "confidential"', 'run_id: "2026-11-22T10-00-00"', "baseline:",
+             "  source: %s" % ('"%s"' % baseline_source if baseline_source else "null"),
+             "  date: null", "  finding_count: null", "  run_id: null", "coverage_gate:", '  status: "pass"',
+             "  gaps: []", "---", "", "# Threat Model: Synthetic Platform", ""]
+    if body_line:
+        lines += [sc.format_architecture_source_line(body_line), ""]
+    lines += ["## 1. System Overview", "", "A synthetic system for the tests.", "", "### Components", "",
+              "| Component | Type | MAESTRO Layer | Description |", "|-----------|------|---------------|-------------|"]
+    for name, (kind, layer) in COMPONENTS.items():
+        lines.append("| %s | %s | %s | A synthetic %s. |" % (name, kind, layer, kind.lower()))
+    lines += ["", "---", "", "## 2. Trust Boundaries", "", "### Trust Zones", "",
+              "| Zone | Trust Level | Components |", "|------|-------------|------------|"]
+    for zone, label, _level, members in ZONES:
+        lines.append("| %s | %s | %s |" % (zone, label, ", ".join(members)))
+    lines.append("")
+    if groups:
+        lines += ["## 4a. Correlated Findings", "", "| Group | Findings | Component | Threat Summary | Risk Level |",
+                  "|-------|----------|-----------|----------------|------------|"]
+        for group, members in groups:
+            lines.append("| %s | %s | %s | Related threats on one component. | High |" % (group, ", ".join(members), by_id(members[0], specs)["component"]))
+        lines.append("")
+    if resolved:
+        lines += ["## 4c. Resolved Findings", "", "| ID | Component | Threat | Last Risk Level | Resolution Reason |",
+                  "|----|-----------|--------|-----------------|-------------------|"]
+        lines += ["| %s | %s | %s | %s | %s |" % row for row in resolved]
+        lines.append("")
+    lines += ["## 6. Risk Summary", "", "The counts here are not read by the renderer.", "", "## 7. Recommended Actions", "",
+              "| Finding ID | Status | Category | Pattern | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |",
+              "|---|---|---|---|---|---|---|---|---|"]
+    rows = []
+    for item in specs:
+        prefix = item["id"].partition("-")[0]
+        rows.append("| %s | %s | %s | %s | %s | %s | %s | %s | Mitigation text for %s. |" % (
+            item["id"], item["status"], CATEGORY_NAME[prefix], DASH, item["component"], COMPONENTS[item["component"]][1],
+            item["threat"], item["risk"], item["id"]))
+    for finding_id, component in repeated:
+        rows.append("| %s | NEW | Spoofing | %s | %s | %s | A second row for the same finding. | Low | Mitigation. |" % (
+            finding_id, DASH, component, COMPONENTS[component][1]))
+    lines += rows + [""]
+    if affected != "missing":
+        shown = [item["id"] for item in specs]
+        if affected == "stale":
+            shown = shown[:-1]
+        lines += ["## Affected Assets", "", "| Finding ID | Affected Assets |", "|------------|-----------------|"]
+        lines += ["| %s | [] |" % finding_id for finding_id in shown]
+        lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def scope_of(threats_text):
+    """``{component: (zone, the agent's trust level)}`` read from a threats.md, for the generic items."""
+    levels = {"untrusted": "Untrusted", "semi-trusted": "Semi-Trusted", "trusted": "Trusted"}
+    out = {}
+    for row in tachi_parsers.parse_scope_data(threats_text)["trust_boundaries"]:
+        for member in [m.strip() for m in row["components"].split(",") if m.strip()]:
+            out[member] = (row["zone"], levels[row["trust-level"].strip().lower()])
+    return out
+
+
+def generic_item(finding_id, component, scope):
+    """A valid item for any synthetic finding: its category's default vector and numbers from its ID."""
+    prefix = finding_id.partition("-")[0]
+    seed = sum(ord(char) for char in finding_id)
+    zone, trust = scope[component]
+    return spec(finding_id, component, "", "Medium", "NEW",
+                ts.CATEGORY_DEFAULT_VECTORS[ts.category_for_prefix(prefix)],
+                tuple(1 + (seed + 3 * n) % 9 for n in range(4)), tuple(1 + (seed + 5 * n) % 9 for n in range(4)),
+                zone, trust, seed % 3, (seed // 3) % 2)
+
+
+# =============================================================================
+# 2. Reading the output
+# =============================================================================
+
+_REFERENCE = re.compile("|".join(re.escape(reference) for reference in tp.ESCAPE_REFERENCES))
+
+
+def decode(text):
+    """ADR-050 D3's closed decoder: exactly the eight references, in one left-to-right pass."""
+    return _REFERENCE.sub(lambda match: tp.ESCAPE_REFERENCES[match.group(0)], text)
+
+
+def _level(line):
+    """A heading's level (the count of leading ``#`` followed by a space), or 0 for any other line."""
+    stripped = line.lstrip("#")
+    hashes = len(line) - len(stripped)
+    return hashes if hashes and stripped.startswith(" ") else 0
+
+
+def split_headings(md, prefix):
+    """``[(heading line, body text)]`` for every heading that starts with ``prefix`` (``## `` or ``### ``), in order.
+
+    A body runs to the next heading of the same or a higher level, so a ``###`` subsection keeps its ``####`` blocks.
+    """
+    lines = md.split("\n")
+    level = len(prefix.split(" ")[0])
+    heads = [(n, line) for n, line in enumerate(lines) if _level(line)]
+    found = []
+    for index, (n, line) in enumerate(heads):
+        if not line.startswith(prefix):
+            continue
+        end = len(lines)
+        for later, other in heads[index + 1:]:
+            if _level(other) <= level:
+                end = later
+                break
+        found.append((line, "\n".join(lines[n + 1:end])))
+    return found
+
+
+def section(md, title):
+    """The body of the one ``## `` section whose heading starts with ``title``."""
+    found = split_headings(md, "## ")
+    matches = [body for heading, body in found if heading.startswith(title)]
+    assert len(matches) == 1, "expected one section %r, found %d (headings: %s)" % (title, len(matches), [h for h, _ in found])
+    return matches[0]
+
+
+def has_section(md, title):
+    return any(heading.startswith(title) for heading, _ in split_headings(md, "## "))
+
+
+def tables(body):
+    """Every markdown table in ``body``: ``[(header cells, [row cells])]``, cells decoded after the split on raw ``|``."""
+    found, current = [], None
+    for line in body.split("\n"):
+        stripped = line.strip()
+        if not (stripped.startswith("|") and stripped.endswith("|") and len(stripped) > 1):
+            current = None
+            continue
+        raw = [cell.strip() for cell in stripped[1:-1].split("|")]
+        if current is None:
+            current = ([decode(cell) for cell in raw], [])
+            found.append(current)
+        elif all(re.fullmatch(r":?-+:?", cell) for cell in raw):
+            continue
+        else:
+            current[1].append([decode(cell) for cell in raw])
+    return found
+
+
+def table_of(body, first_column=None):
+    """The first table in ``body``, or the first whose header starts with ``first_column``, as ``(header, rows)``."""
+    for header, rows in tables(body):
+        if first_column is None or header[0] == first_column:
+            return header, rows
+    raise AssertionError("no table%s in %r" % (" starting with %r" % first_column if first_column else "", body[:200]))
+
+
+def records(header, rows):
+    """Table rows as dicts keyed by the header (every row has exactly the header's cell count)."""
+    for row in rows:
+        assert len(row) == len(header), "a row has %d cells under a %d-column header: %s" % (len(row), len(header), row)
+    return [dict(zip(header, row)) for row in rows]
+
+
+def subsection_for(md, finding_id):
+    """The text of Section 3's subsection for one finding, or ``None`` when it has none."""
+    for heading, body in split_headings(section_text(md, "## 3. Dimensional Breakdown"), "### "):
+        if heading.startswith("### " + finding_id + " " + DASH + " "):
+            return heading + "\n" + body
+    return None
+
+
+def section_text(md, title):
+    """A section as a heading and its body, so ``split_headings`` can see the subsections' own level."""
+    return title + "\n" + section(md, title)
+
+
+def frontmatter_text(md):
+    match = re.match(r"^---\s*\n(.*?)\n---", md, re.DOTALL) or re.search(r"```yaml\s*\n---\s*\n(.*?)\n---\s*\n```", md, re.DOTALL)
+    assert match, "no frontmatter"
+    return match.group(1)
+
+
+# =============================================================================
+# 3. The harness
+# =============================================================================
+
+
+class Result(object):
+    def __init__(self, code, out, err):
+        self.code, self.out, self.err = code, out, err
+
+    def describe(self):
+        return "exit %r\n--- stdout ---\n%s\n--- stderr ---\n%s" % (self.code, self.out, self.err)
+
+
+@contextlib.contextmanager
+def working_directory(path):
+    previous = os.getcwd()
+    os.chdir(str(path))
+    try:
+        yield
+    finally:
+        os.chdir(previous)
+
+
+def invoke(module, argv, cwd):
+    """``module.main(argv)`` in-process, in ``cwd``, with stdout and stderr captured. ``SystemExit`` becomes the code."""
+    out, err = io.StringIO(), io.StringIO()
+    with working_directory(cwd), contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        try:
+            code = module.main([str(a) for a in argv])
+        except SystemExit as exc:  # argparse's usage errors, --help and --version
+            code = exc.code
+            if code is None:
+                code = 0
+            elif not isinstance(code, int):
+                err.write(str(code))
+                code = 1
+    return Result(code, out.getvalue(), err.getvalue())
+
+
+@pytest.fixture(scope="module")
+def stage():
+    return _load_hyphenated_script("tachi_stage_for_render_tests", "tachi-stage.py")
+
+
+@pytest.fixture(scope="module")
+def renderer():
+    if not RENDERER.is_file():
+        pytest.fail("scripts/render-risk-scores.py does not exist yet: T028 writes it to these goldens (TDD)", pytrace=False)
+    return _load_hyphenated_script("render_risk_scores_under_test", "render-risk-scores.py")
+
+
+class Project(object):
+    """One synthetic project: a working directory, an architecture file, a run directory and its ``threats.md``."""
+
+    def __init__(self, stage_module, renderer_module, root, specs=None, resolved=None, threats_text=None, items=None,
+                 **threats_options):
+        self.stage, self.renderer = stage_module, renderer_module
+        self.item_factory = items
+        self.root = Path(root)
+        self.out = self.root / "run"
+        self.architecture = self.root / "docs" / "security" / "architecture.md"
+        self.threats = self.out / "threats.md"
+        self.specs = list(SPECS if specs is None else specs)
+        self.resolved = list(RESOLVED if resolved is None else resolved)
+        self.plan_id = self.digest = None
+        self.plan_stderr = ""
+        self.last = None
+        self.architecture.parent.mkdir(parents=True)
+        self.out.mkdir(parents=True)
+        self.architecture.write_text(make_architecture_md(), encoding="utf-8")
+        self.threats.write_text(make_threats_md(self.specs, self.resolved, **threats_options) if threats_text is None else threats_text,
+                                encoding="utf-8")
+
+    # ---- layout
+    @property
+    def plan_dir(self):
+        return Path(tp.plan_dir(self.out, STAGE, self.plan_id))
+
+    def read_json(self, path):
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+
+    def plan_json(self):
+        return self.read_json(self.plan_dir / "plan.json")
+
+    def batches(self):
+        return {entry["batch_id"]: entry for entry in self.plan_json()["batches"]}
+
+    def batch_input(self, batch_id):
+        return self.read_json(tp.input_path(self.out, STAGE, self.plan_id, batch_id))
+
+    # ---- earlier outputs
+    def earlier(self):
+        (self.out / MD).write_bytes(EARLIER_MD)
+        (self.out / SARIF).write_bytes(EARLIER_SARIF)
+
+    def assert_earlier_outputs_untouched(self):
+        assert (self.out / MD).read_bytes() == EARLIER_MD
+        assert (self.out / SARIF).read_bytes() == EARLIER_SARIF
+
+    # ---- plan, parts, reconcile
+    def plan(self, batch_size=None, date=DATE, architecture=True):
+        """The planner through its function interface, as ``test_tachi_stage.py`` calls it (ADR-050 D6)."""
+        err = io.StringIO()
+        with working_directory(self.root), contextlib.redirect_stderr(err):
+            result = self.stage.plan_stage(stage=STAGE, out=self.out, date=date, threats=self.threats,
+                                           architecture=self.architecture if architecture else None, batch_size=batch_size)
+        self.plan_stderr = err.getvalue()
+        self.plan_id, self.digest = result["plan_id"], result["plan_digest"]
+        return result
+
+    def item_for(self, finding_id):
+        if self.item_factory is not None:
+            return self.item_factory(finding_id)
+        return scorer_item(by_id(finding_id, self.specs))
+
+    def part_for(self, batch_id, mutate=None):
+        bi = self.batch_input(batch_id)
+        part = {"schema": "tachi.part/1", "plan_id": bi["plan_id"], "batch_id": bi["batch_id"], "stage": bi["stage"],
+                "agent_type": bi["agent_type"], "finding_ids": list(bi["finding_ids"]),
+                "items": [self.item_for(finding_id) for finding_id in bi["finding_ids"]], "fragments": []}
+        if mutate is not None:
+            mutate(part)
+        return part
+
+    def write_part(self, batch_id, mutate=None, raw=None):
+        path = Path(self.batch_input(batch_id)["part_path"])
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if raw is not None:
+            path.write_bytes(raw)
+        else:
+            path.write_text(json.dumps(self.part_for(batch_id, mutate)), encoding="utf-8")
+        return path
+
+    def write_parts(self, only=None, mutate=None):
+        for batch_id, entry in self.batches().items():
+            if entry["state"] != "split" and (only is None or batch_id in only):
+                self.write_part(batch_id, mutate)
+
+    def reconcile(self):
+        res = invoke(self.stage, ["reconcile", "--stage", STAGE, "--out", self.out, "--plan", self.plan_id,
+                                  "--plan-digest", self.digest], self.root)
+        if res.code in (0, 3, 4):
+            self.digest = json.loads(res.out)["plan_digest"]
+        return res
+
+    def prepare(self, batch_size=None, date=DATE, mutate=None, architecture=True):
+        """Plan, write a valid part for every batch and reconcile to complete (the command's Steps 2 to 4)."""
+        self.plan(batch_size, date, architecture)
+        self.write_parts(mutate=mutate)
+        res = self.reconcile()
+        assert res.code == 0, res.describe()
+
+    def render(self, *extra):
+        self.last = invoke(self.renderer, ["--out", self.out, "--plan", self.plan_id, "--plan-digest", self.digest, *extra], self.root)
+        return self.last
+
+    def run(self, batch_size=None, date=DATE, mutate=None, architecture=True):
+        self.prepare(batch_size, date, mutate, architecture)
+        return self.render()
+
+    def fail(self, reason="check-failed", detail=None):
+        extra = ["--detail", detail] if detail is not None else []
+        return invoke(self.stage, ["fail", "--stage", STAGE, "--out", self.out, "--plan", self.plan_id,
+                                   "--plan-digest", self.digest, "--reason", reason, *extra], self.root)
+
+    # ---- what the render wrote
+    @property
+    def md(self):
+        return (self.out / MD).read_text(encoding="utf-8")
+
+    @property
+    def sarif_text(self):
+        return (self.out / SARIF).read_text(encoding="utf-8")
+
+    @property
+    def sarif(self):
+        return json.loads(self.sarif_text)
+
+    @property
+    def record(self):
+        return self.read_json(tp.stage_record_path(self.out, STAGE, self.plan_id))
+
+    def outputs(self):
+        return {name: ((self.out / name).read_bytes() if (self.out / name).exists() else None) for name in (MD, SARIF)}
+
+
+@pytest.fixture(scope="module")
+def base(stage, renderer, tmp_path_factory):
+    """One clean render of the nine-finding project, shared by the read-only goldens below."""
+    project = Project(stage, renderer, tmp_path_factory.mktemp("base"))
+    res = project.run()
+    assert res.code in (0, 5), "the base render must finish for the goldens below to read it:\n" + res.describe()
+    return project
+
+
+@pytest.fixture
+def project(stage, renderer, tmp_path):
+    return Project(stage, renderer, tmp_path)
+
+
+@contextlib.contextmanager
+def watching_replace(log):
+    """Record every ``os.replace(src, dst)`` as ``(absolute src, absolute dst, staged names then present, src's sha256)``."""
+    real = os.replace
+
+    def replace(src, dst, *args, **kwargs):
+        source, destination = os.path.abspath(str(src)), os.path.abspath(str(dst))
+        present = [name for name in (MD, SARIF) if os.path.exists(os.path.join(os.path.dirname(source), name))]
+        seen = hashlib.sha256(Path(source).read_bytes()).hexdigest() if os.path.isfile(source) else None
+        log.append((source, destination, present, seen))
+        return real(src, dst, *args, **kwargs)
+
+    os.replace = replace
+    try:
+        yield
+    finally:
+        os.replace = real
+
+
+@contextlib.contextmanager
+def tampering_with_staged(name, edit):
+    """While active, the staged file ``name`` is edited on disk right after the renderer writes it.
+
+    The renderer then reads it back from disk (ADR-050 D4), so this is a seeded renderer bug that only a
+    from-disk check can see. It hooks ``os.replace``, which ``tachi_parts.atomic_write`` ends with.
+    """
+    real = os.replace
+
+    def replace(src, dst, *args, **kwargs):
+        result = real(src, dst, *args, **kwargs)
+        destination = str(dst)
+        if os.path.basename(destination) == name and (os.sep + "staged" + os.sep) in destination:
+            text = Path(destination).read_text(encoding="utf-8")
+            Path(destination).write_text(edit(text), encoding="utf-8")
+        return result
+
+    os.replace = replace
+    try:
+        yield
+    finally:
+        os.replace = real
+
+
+@contextlib.contextmanager
+def failing_replace(name):
+    """While active, moving a staged file onto the canonical name ``name`` fails with an I/O error."""
+    real = os.replace
+
+    def replace(src, dst, *args, **kwargs):
+        if os.path.basename(str(dst)) == name and (os.sep + "staged" + os.sep) in str(src) and (os.sep + "staged" + os.sep) not in str(dst):
+            raise OSError(5, "Input/output error")
+        return real(src, dst, *args, **kwargs)
+
+    os.replace = replace
+    try:
+        yield
+    finally:
+        os.replace = real
+
+
+# =============================================================================
+# 4. Harness checks: no renderer needed
+# =============================================================================
+
+
+def reference_reachability(trust, zone, auth, net):
+    """The reachability reference's reachability, restated for the cross-check only (``reachability-analysis.md``)."""
+    low, high = ts.REACHABILITY_RANGES[trust]
+    score = ts.REACHABILITY_BASELINES[trust]
+    lowered = zone.lower()
+    for keywords, adjustment in ts.REACHABILITY_KEYWORDS:
+        score += adjustment * sum(1 for keyword in keywords if keyword in lowered)
+    score += ts.AUTH_BARRIER_ADJUSTMENT * min(auth, ts.AUTH_BARRIER_CAP) + ts.NETWORK_BOUNDARY_ADJUSTMENT * min(net, ts.NETWORK_BOUNDARY_CAP)
+    return ts.q1(max(low, min(high, score)))
+
+
+def test_harness_the_literal_goldens_equal_the_shipped_arithmetic():
+    """The expectations below are literals, so this is where a wrong number is caught: each one is re-derived."""
+    assert sorted(GOLDEN) == sorted(item["id"] for item in SPECS)
+    for item in SPECS:
+        cvss, e, s, r, comp, band = GOLDEN[item["id"]]
+        got_cvss = ts.base_score(item["vector"])
+        got_e, got_s = ts.sub_score_mean(item["e"]), ts.sub_score_mean(item["s"])
+        got_r = reference_reachability(item["trust"], item["zone"], item["auth"], item["net"])
+        got_composite = ts.composite(got_cvss, got_e, got_s, got_r)
+        assert (str(got_cvss), str(got_e), str(got_s), str(got_r), str(got_composite), ts.band(got_composite)) == (
+            cvss, e, s, r, comp, band), item["id"]
+    for band, (sla, disposition, review) in GOVERNANCE.items():
+        assert ts.SEVERITY_BANDS[band]["sla"] == sla and ts.SEVERITY_BANDS[band]["disposition"] == disposition
+        assert ts.review_date(DATE, sla) == review
+    counts = {band: sum(1 for value in GOLDEN.values() if value[5] == band) for band in GOVERNANCE}
+    assert counts == BAND_COUNTS
+
+
+def test_harness_the_orders_are_composite_descending_then_s2():
+    by_score = sorted(GOLDEN, key=lambda finding_id: (-Decimal(GOLDEN[finding_id][4]), s2_key(finding_id)))
+    assert by_score == ORDER
+    assert sorted(ORDER, key=s2_key) == S2_ORDER
+    assert sorted(RESOLVED_IDS, key=s2_key) == RESOLVED_IDS
+    tied = [finding_id for finding_id in ORDER if GOLDEN[finding_id][4] == "5.9"]
+    assert tied == ["S-2", "S-10", "T-1", "AG-1"], "S-2 breaks the tie: by number within a prefix, then by prefix rank"
+
+
+def test_harness_the_synthetic_threats_md_is_a_valid_reference_set():
+    reference = tachi_parsers.parse_reference_set(make_threats_md())
+    assert [canon(row["id"]) for row in reference["open"]] == [canon(i) for i in S2_ORDER]
+    assert [row["id"] for row in reference["resolved"]] == RESOLVED_IDS
+    assert reference["duplicates"] == []
+    assert {row["id"]: row["delta_status"] for row in reference["open"]}["AGP-01"] == "NEW"
+    assert sc.parse_affected_assets(make_threats_md()) == {item["id"]: [] for item in SPECS}
+    scope = scope_of(make_threats_md())
+    for item in SPECS:
+        assert scope[item["component"]] == (item["zone"], item["trust"]), item["id"]
+    assert tachi_parsers.parse_resolved_findings(make_threats_md())[0]["id"] == "S-1"
+
+
+def test_harness_the_synthetic_parts_pass_the_shipped_validator(stage, tmp_path):
+    root = Project(stage, None, tmp_path)
+    root.prepare(batch_size=4)
+    assert sorted(root.batches()) == ["B001", "B002", "B003"]
+    seen = []
+    for batch_id, entry in root.batches().items():
+        result = tp.read_part(root.batch_input(batch_id)["part_path"], root.out, root.plan_id, batch_id, STAGE,
+                              "tachi-risk-scorer", entry["finding_ids"])
+        assert result.state == "done", (batch_id, result.detail)
+        assert result.counts == {"narrative_fallbacks": 0, "truncations": 0} and result.flags == {}
+        seen += [item["finding_id"] for item in result.part["items"]]
+    assert sorted(seen, key=s2_key) == [canon(finding_id) for finding_id in S2_ORDER], "a validated part carries canonical IDs"
+
+
+def test_harness_the_slot_lookup_resolves_every_slot_the_narrative_uses():
+    for item in SPECS:
+        for field, text in RATIONALE.items():
+            assert narrative(item, text) is not None, (item["id"], field)
+    assert narrative(by_id("S-2"), RATIONALE["cvss"]) == "The base score is 8.2 for edge-gateway."
+    assert narrative(by_id("E-3"), RATIONALE["reachability"]) == (
+        "Edge DMZ yields 4.0, with 1 authentication layers and 1 network boundaries.")
+
+
+def test_harness_the_table_reader_decodes_after_the_split_on_raw_pipes():
+    body = "| A | B |\n|---|---|\n| x &#124; y | &lt;b&gt; |\n| plain | &amp;lt; |\n"
+    assert tables(body) == [(["A", "B"], [["x | y", "<b>"], ["plain", "&lt;"]])]
+    assert decode("&amp;#124;") == "&#124;", "a decoded reference is never decoded again"
+
+
+# =============================================================================
+# 5. The entry: arguments and the exit table (T028; contracts/cli.md)
+# =============================================================================
+
+URI = "docs/security/architecture.md"
+
+
+def tree_state(root):
+    """``{relative path: sha256}`` for every file under ``root``, to prove that nothing there changed."""
+    root = Path(root)
+    return {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(root.rglob("*")) if p.is_file() and not p.is_symlink()}
+
+
+def assert_failure_message(res, plan_id=None):
+    """D4's failure message: the first line names the stage, then the remedy and where the plan was kept."""
+    assert res.err.startswith("TACHI RISK-SCORE FAILED:") or "\nTACHI RISK-SCORE FAILED:" in res.err, res.describe()
+    assert "Remedy:" in res.err, res.describe()
+    if plan_id is not None:
+        assert re.search(r"Kept for diagnosis: .*%s" % re.escape(plan_id), res.err), res.describe()
+
+
+def test_cli_help_and_version_are_supported(renderer, tmp_path):
+    helped = invoke(renderer, ["--help"], tmp_path)
+    assert helped.code == 0 and all(flag in helped.out for flag in ("--out", "--plan", "--plan-digest")), helped.describe()
+    versioned = invoke(renderer, ["--version"], tmp_path)
+    assert versioned.code == 0, versioned.describe()
+    assert tp.VERSION in versioned.out + versioned.err  # reading: cli.md says tests may accept either stream
+    assert "%d.%d" % sys.version_info[:2] in versioned.out + versioned.err, "the interpreter's version too"
+
+
+def test_cli_a_missing_plan_digest_is_a_usage_error(renderer, tmp_path):
+    res = invoke(renderer, ["--out", tmp_path, "--plan", "20261122T100000Z-0123456789ab"], tmp_path)
+    assert res.code == 2, res.describe()
+
+
+def test_cli_a_run_directory_with_no_plan_is_a_missing_input(renderer, tmp_path):
+    (tmp_path / "run").mkdir()
+    res = invoke(renderer, ["--out", tmp_path / "run", "--plan", "20261122T100000Z-0123456789ab", "--plan-digest", "0" * 64], tmp_path)
+    assert res.code == 1, res.describe()
+    assert_failure_message(res)
+    assert not (tmp_path / "run" / MD).exists() and not (tmp_path / "run" / SARIF).exists()
+
+
+def test_cli_a_plan_digest_that_differs_exits_2_and_writes_nothing(project):
+    project.earlier()
+    project.prepare()
+    before = tree_state(project.out)
+    res = invoke(project.renderer, ["--out", project.out, "--plan", project.plan_id, "--plan-digest", "0" * 64], project.root)
+    assert res.code == 2, res.describe()
+    assert_failure_message(res)
+    assert tree_state(project.out) == before, "a refused plan leaves every file as it was"
+    project.assert_earlier_outputs_untouched()
+
+
+def test_cli_a_plan_that_current_json_does_not_name_exits_2(project):
+    project.prepare()
+    older_id, older_digest = project.plan_id, project.digest
+    project.plan()  # a newer plan replaces the pointer
+    res = invoke(project.renderer, ["--out", project.out, "--plan", older_id, "--plan-digest", older_digest], project.root)
+    assert res.code == 2, res.describe()
+    assert not (project.out / MD).exists() and not (project.out / SARIF).exists()
+
+
+def test_cli_a_changed_plan_input_exits_2(project):
+    project.prepare()
+    project.threats.write_text(project.threats.read_text(encoding="utf-8") + "\nAn edit after plan.\n", encoding="utf-8")
+    res = project.render()
+    assert res.code == 2, res.describe()
+    assert not (project.out / MD).exists() and not (project.out / SARIF).exists()
+
+
+def test_cli_the_summary_goes_to_stdout_and_the_renderer_leaves_the_plan_alone(base):
+    assert base.last.code == 0, base.last.describe()
+    assert base.last.out.strip(), "the renderer prints summary lines, so the command restates no number (D4 Step 6)"
+    assert not base.last.out.lstrip().startswith("{"), "summary lines, not one JSON object (cli.md)"
+    for number in (len(ORDER), len(RESOLVED_IDS)):
+        assert re.search(r"(?<![\w.])%d(?![\w.])" % number, base.last.out), "the summary has the count %d: %s" % (number, base.last.out)
+    assert tp.file_digest(base.plan_dir / "plan.json") == base.digest, "only plan and reconcile write the plan (contracts/part-files.md)"
+    assert tp.read_document(tp.pointer_path(base.out, STAGE), base.out, tp.POINTER_SCHEMA)["plan_id"] == base.plan_id
+
+
+# =============================================================================
+# 6. risk-scores.md (T028, T045, T046; ADR-050 D2, D9, D15)
+# =============================================================================
+
+
+def test_md_the_run_is_clean(base):
+    assert base.last.code == 0, base.last.describe()
+    assert base.record["warnings"] == [] and base.record["status"] == "success"
+
+
+def test_md_the_frontmatter_is_schema_1_1(base):
+    front = tachi_parsers.parse_frontmatter(base.md)
+    assert (front["schema_version"], front["date"], front["classification"]) == ("1.1", DATE, "confidential")
+    text = frontmatter_text(base.md)
+    for name, weight in (("cvss_base", "0.35"), ("exploitability", "0.30"), ("scalability", "0.15"), ("reachability", "0.20")):
+        assert re.search(r"(?m)^\s+%s:\s*\"?%s\"?\s*$" % (name, re.escape(weight)), text), name
+    baseline = tachi_parsers.parse_baseline_frontmatter(base.md)
+    assert baseline["has_baseline"] is False and baseline["source"] is None
+    for key in ("inherited_count", "fresh_count"):  # reading: the template says "null when no baseline"
+        assert re.search(r"(?m)^\s+%s:\s*(null|~)?\s*$" % key, text), key
+    source = re.search(r"(?m)^source_file:\s*\"?([^\"\n]+)\"?\s*$", text)
+    assert source, "source_file names the input threats.md: the controls command reaches it from here (D7, D9)"
+    assert os.path.samefile(str(base.root / source.group(1)), str(base.threats))
+
+
+def test_md_the_sections_come_in_order(base):
+    lines = base.md.split("\n")
+    positions = []
+    for title in SECTION_TITLES:
+        found = [n for n, line in enumerate(lines) if line.startswith(title)]
+        assert len(found) == 1, "%s: %d headings" % (title, len(found))
+        positions.append(found[0])
+    assert positions == sorted(positions), "Sections 1 to 6, with 2a after Section 2 (R-30)"
+
+
+def test_md_section_2_holds_exactly_the_open_rows_in_score_order(base):
+    header, rows = table_of(section(base.md, "## 2. Scored Threat Table"), "ID")
+    assert header == SECTION_2_HEADER
+    found = records(header, rows)
+    assert [row["ID"] for row in found] == ORDER, "composite descending, then S-2's total order (ADR-050 D5)"
+    for row in found:
+        item = by_id(row["ID"])
+        cvss, e, s, reach, composite, band = golden(row["ID"])
+        sla, disposition, _review = GOVERNANCE[band]
+        assert row["Source"] == "fresh"
+        assert row["Component"] == truncate(item["component"], 30)
+        assert row["Threat"] == truncate(item["threat"], 60)
+        assert (row["CVSS"], row["Exploit."], row["Scale."], row["Reach."]) == (cvss, e, s, reach)
+        assert (row["Composite"], row["Severity"], row["SLA"], row["Disposition"]) == (composite, band, sla, disposition)
+        assert row["Flags"] == DASH, "a clean row has no flags"
+
+
+def test_md_section_2_shortens_long_names_and_text_before_it_escapes(base):
+    rows = {row["ID"]: row for row in records(*table_of(section(base.md, "## 2. Scored Threat Table"), "ID"))}
+    assert len(LONG_COMPONENT) == 36 and rows["LLM-4"]["Component"] == LONG_COMPONENT[:27] + "..."
+    assert rows["E-5"]["Threat"] == by_id("E-5")["threat"][:57] + "..." and len(rows["E-5"]["Threat"]) == 60
+    assert rows["E-3"]["Threat"] == by_id("E-3")["threat"], "a short threat is shown whole"
+    # The cut comes first, so no escape reference is ever cut in two (ADR-050 D3, "Output").
+    line = raw_row(base.md, "## 2. Scored Threat Table", "LLM-4")
+    assert tp.escape_cell(truncate(HOSTILE_THREAT, 60)) in line
+
+
+def test_md_section_2a_holds_exactly_the_resolved_rows(base):
+    header, rows = table_of(section(base.md, "## 2a. Resolved Findings"), "ID")
+    assert header[-1] == "Flags" and set(SECTION_2_HEADER[:-1]) | {"Status", "Owner", "Review Date"} <= set(header)
+    found = records(header, rows)
+    assert [row["ID"] for row in found] == RESOLVED_IDS, "Section 4c's findings, in S-2 order: the split parity of R-30"
+    for row, (finding_id, component, threat, _risk, _reason) in zip(found, RESOLVED):
+        assert row["Status"] == "RESOLVED" and row["Flags"] == "resolved"
+        assert row["Component"] == truncate(component, 30) and row["Threat"] == truncate(threat, 60)
+        for column in ("CVSS", "Exploit.", "Scale.", "Reach.", "Composite"):
+            assert not re.fullmatch(r"\d+\.\d", row[column]), "%s: a RESOLVED row is never recomputed (R-30)" % column
+        assert not re.search(r"\d{4}-\d{2}-\d{2}", row["Review Date"]), "and it is outside the SLA clock"
+
+
+def test_md_resolved_findings_appear_only_in_section_2a(base):
+    md = base.md
+    for finding_id in RESOLVED_IDS:
+        assert subsection_for(md, finding_id) is None, "Section 3 has no RESOLVED finding"
+        for title, first_column in (("## 2. Scored Threat Table", "ID"), ("## 4. Governance Fields", "ID")):
+            assert finding_id not in [row[0] for row in table_of(section(md, title), first_column)[1]], title
+        inputs = table_of(subsection_of(md, "## 6. Score Integrity", "### Scoring Inputs"), "ID")[1]
+        assert finding_id not in [row[0] for row in inputs]
+
+
+def test_md_section_3_has_one_subsection_per_open_finding_in_section_2_order(base):
+    found = split_headings(section_text(base.md, "## 3. Dimensional Breakdown"), "### ")
+    assert [re.match(r"### (\S+) " + DASH + " ", heading).group(1) for heading, _ in found] == ORDER
+    for heading, _ in found:
+        finding_id = heading.split(" ")[1]
+        assert heading == "### %s %s %s" % (finding_id, DASH, tp.escape_prose(by_id(finding_id)["component"]))
+
+
+def test_md_section_3_shows_each_findings_scores_and_inputs(base):
+    for finding_id in ORDER:
+        item, body = by_id(finding_id), subsection_for(base.md, finding_id)
+        cvss, e, s, reach, composite, band = golden(finding_id)
+        prefix = item["id"].partition("-")[0]
+        assert "**Threat**: " + tp.escape_prose(item["threat"]) in body, finding_id
+        assert "**Category**: %s | **Original Risk Level**: %s | **Composite**: %s (%s)" % (
+            ts.category_for_prefix(prefix), item["risk"], composite, band) in body, finding_id
+        assert "**Score**: %s | **Vector**: `%s`" % (cvss, item["vector"]) in body, finding_id
+        assert "**Score**: %s (average of sub-dimensions)" % e in body, finding_id
+        assert "**Score**: %s (average of sub-dimensions)" % s in body, finding_id
+        assert "**Score**: %s | **Trust Zone**: %s (%s)" % (reach, tp.escape_prose(item["zone"]), item["trust"]) in body, finding_id
+        letters = dict(part.split(":") for part in item["vector"].split("/")[1:])
+        metrics = {row[0]: row[1] for row in table_of(body, "Metric")[1]}
+        assert metrics == {METRIC_LABEL[m]: METRIC_VALUES[m][letters[m]] for m in tp.METRIC_NAMES}, finding_id
+        sub = [table for table in tables(body) if table[0][0] == "Sub-Dimension"]
+        assert len(sub) == 2, "one table for exploitability and one for scalability"
+        for (_header, rows), names, scores in zip(sub, (tp.SUBSCORE_NAMES[:4], tp.SUBSCORE_NAMES[4:]), (item["e"], item["s"])):
+            assert [(row[0], row[1]) for row in rows] == [(SUBSCORE_LABEL[n], str(v)) for n, v in zip(names, scores)], finding_id
+
+
+def test_md_section_3_fills_the_slots_of_the_agents_narrative(base):
+    for finding_id in ORDER:
+        item, body = by_id(finding_id), subsection_for(base.md, finding_id)
+        for field, text in RATIONALE.items():
+            assert narrative(item, text, "prose") in body or narrative(item, text, "cell") in body, (finding_id, field)
+        assert "{{" not in body, "no slot token survives into Section 3: %s" % finding_id
+    body = subsection_for(base.md, "S-2")
+    metric = {row[0]: row[2] for row in table_of(body, "Metric")[1]}
+    assert metric["Attack Vector (AV)"] == "Reachable over the network."
+    known = [row for _h, rows in tables(body) if _h[0] == "Sub-Dimension" for row in rows if row[0] == "Known Techniques"][0]
+    assert known[2] == "Documented in public write-ups."
+
+
+def test_md_section_4_holds_the_governance_fields_of_every_open_finding(base):
+    header, rows = table_of(section(base.md, "## 4. Governance Fields"), "ID")
+    assert header == SECTION_4_HEADER
+    found = records(header, rows)
+    assert [row["ID"] for row in found] == ORDER, "Section 4 follows Section 2; RESOLVED rows are outside the SLA clock"
+    for row in found:
+        band = golden(row["ID"])[5]
+        sla, disposition, review = GOVERNANCE[band]
+        assert (row["Severity"], row["Owner"], row["SLA"], row["Disposition"], row["Review Date"]) == (
+            band, "Unassigned", sla, disposition, review)
+
+
+def test_md_section_5_states_the_formula_and_the_bands(base):
+    body = section(base.md, "## 5. Scoring Methodology")
+    assert "(0.35 x CVSS Base) + (0.30 x Exploitability) + (0.15 x Scalability) + (0.20 x Reachability)" in body
+    for band in GOVERNANCE:
+        assert band in body
+
+
+def test_md_section_6_has_its_four_subsections_in_order(base):
+    body = section(base.md, "## 6. Score Integrity")
+    assert [line for line in body.split("\n") if line.startswith("### ")] == SECTION_6_PARTS
+
+
+def expected_scoring_inputs(finding_ids, scored_on=DATE, specs=None, tags=()):
+    """The ``### Scoring Inputs`` rows (``contracts/module-signatures.md``): one per value, in S-2 order of ID and then
+    the payload's key order, with the renderer's own step-1 inputs last. Values are the decoded cells."""
+    rows = []
+    for finding_id in sorted(finding_ids, key=s2_key):
+        item = by_id(finding_id, specs)
+        part = scorer_item(item)
+        rows.append((finding_id, "cvss_vector", item["vector"]))
+        for group, names in (("exploitability", tp.SUBSCORE_NAMES[:4]), ("scalability", tp.SUBSCORE_NAMES[4:])):
+            rows += [(finding_id, "%s.%s" % (group, name), str(part[group][name])) for name in names]
+        for name in ("zone", "trust_level", "auth_barriers", "network_boundaries"):
+            rows.append((finding_id, "reachability." + name, str(part["reachability"][name])))
+        rows += [(finding_id, "rationale." + name, part["rationale"][name]) for name in ("cvss", "exploitability", "scalability", "reachability")]
+        rows += [(finding_id, "metric_rationale." + name, part["metric_rationale"][name]) for name in tp.METRIC_NAMES if name in part.get("metric_rationale", {})]
+        rows += [(finding_id, "subscore_rationale." + name, part["subscore_rationale"][name]) for name in tp.SUBSCORE_NAMES if name in part.get("subscore_rationale", {})]
+        rows += [(finding_id, "tags", ",".join(sorted(tags))), (finding_id, "scored_on", scored_on)]
+    return rows
+
+
+def subsection_of(md, title, subtitle):
+    """The body of a ``###`` subsection of one ``##`` section."""
+    found = [body for heading, body in split_headings(section_text(md, title), "### ") if heading.startswith(subtitle)]
+    assert len(found) == 1, "%s under %s: %d" % (subtitle, title, len(found))
+    return found[0]
+
+
+def test_md_section_6_scoring_inputs_are_the_persisted_format_exactly(base):
+    header, rows = table_of(subsection_of(base.md, "## 6. Score Integrity", "### Scoring Inputs"), "ID")
+    assert header == ["ID", "Field", "Value"]
+    got = [(canon(row[0]), row[1], row[2]) for row in rows]
+    want = [(canon(finding_id), field, value) for finding_id, field, value in expected_scoring_inputs(OPEN_IDS)]
+    assert got == want  # reading: an ID's spelling is Section 7's or the canonical one; both compare as one
+
+
+def test_md_section_6_keeps_the_agents_slots_in_the_persisted_text_and_escapes_them_on_write(base):
+    raw = subsection_of(base.md, "## 6. Score Integrity", "### Scoring Inputs")
+    assert "{{score:cvss_base}}" in raw and "{{name:zone}}" in raw, "narrative values keep their slot tokens (RR1)"
+    line = raw_row(base.md, "## 6. Score Integrity", "S-2", field="rationale.reachability")
+    assert tp.escape_cell(RATIONALE["reachability"], keep_slots=True) in line
+
+
+def test_md_section_6_is_empty_of_flags_and_issues_for_a_clean_run(base):
+    flags = tables(subsection_of(base.md, "## 6. Score Integrity", "### Score Flags"))
+    assert flags == [] or (flags[0][0] == ["ID", "Flag", "Field", "Stored", "Rendered", "Cause"] and flags[0][1] == [])
+    issues = subsection_of(base.md, "## 6. Score Integrity", "### Input Issues")
+    assert all(not rows for _header, rows in tables(issues)), "Input Issues lists nothing for a clean run"
+    for finding_id in OPEN_IDS:
+        assert "**Integrity**:" not in subsection_for(base.md, finding_id), "only a flagged finding has an Integrity line"
+
+
+def numbers_in(line):
+    """The integers in a line of prose, with any ISO date taken out first."""
+    return re.findall(r"\d+", re.sub(r"\d{4}-\d{2}-\d{2}", "", line))
+
+
+def test_md_the_executive_summary_is_one_templated_sentence_with_the_computed_counts(base):
+    body = section(base.md, "## 1. Executive Summary")
+    prose = [re.sub(r"[*`>]", "", line).strip() for line in body.split("\n")
+             if line.strip() and not line.strip().startswith(("|", "---", "<!--", "#"))]
+    counts = ["%d" % n for n in (len(ORDER), BAND_COUNTS["Critical"], BAND_COUNTS["High"], BAND_COUNTS["Medium"], BAND_COUNTS["Low"])]
+    sentences = [line for line in prose if numbers_in(line)[:5] == counts]
+    # reading: ADR-050 D2 says "one sentence, templated from computed counts"; the wording is the template's, so the
+    # golden pins what it must state and in what order: the open count, then Critical, High, Medium and Low.
+    assert len(sentences) == 1, "one line states the open count, then the four bands: %s" % prose
+    sentence = sentences[0]
+    positions = [sentence.index(band) for band in ("Critical", "High", "Medium", "Low")]
+    assert positions == sorted(positions)
+    assert len(re.findall(r"[.!?](?:\s|$)", sentence)) == 1, "one sentence"
+    resolved_lines = [line for line in prose if line != sentence and "resolved" in line.lower() and str(len(RESOLVED_IDS)) in numbers_in(line)]
+    assert resolved_lines, "RESOLVED findings are counted on a separate line (D9): %s" % prose
+    for header, rows in tables(body):  # if a distribution table stays, it never counts them
+        if "Severity" in header and "Count" in header:
+            counted = {re.sub(r"\*", "", row[header.index("Severity")]): re.sub(r"\*", "", row[header.index("Count")]) for row in rows}
+            assert {band: int(counted[band]) for band in GOVERNANCE} == BAND_COUNTS
+            assert counted.get("Total", str(len(ORDER))) == str(len(ORDER))
+
+
+def test_md_the_file_ends_with_the_stamp(base):
+    md = base.md
+    stamp = tp.read_stamp(md)
+    assert stamp is not None and md.rstrip("\n").split("\n")[-1] == tp.stamp_comment(stamp["renderer"], stamp["input_digest"])
+    assert stamp["renderer"] in RENDERER_NAMES and stamp["version"] == tp.VERSION and DIGEST.match(stamp["input_digest"])
+
+
+def test_md_every_table_row_has_the_columns_of_its_header(base):
+    for header, rows in tables(base.md):
+        for row in rows:
+            assert len(row) == len(header), "a cell broke its row: %s under %s" % (row, header)
+
+
+def test_md_untrusted_text_is_escaped_in_every_markdown_sink(base):
+    md = base.md
+    assert "<b>" not in md and "{{7*7}}" not in md and "<script" not in md
+    line = raw_row(md, "## 2. Scored Threat Table", "LLM-4")
+    assert "&lt;b&gt;" in line and "&#96;" in line and "&#123;&#123;" in line
+    heading = [h for h, _ in split_headings(section_text(md, "## 3. Dimensional Breakdown"), "### ") if h.startswith("### LLM-4 ")][0]
+    assert heading == "### LLM-4 %s %s" % (DASH, LONG_COMPONENT)
+    body = subsection_for(md, "LLM-4")
+    assert "**Threat**: " + tp.escape_prose(HOSTILE_THREAT) in body
+    assert "\u00c9tienne" in md, "the markdown is UTF-8 and keeps non-ASCII text as it is"
+
+
+def raw_row(md, title, first_cell, field=None):
+    """The raw line of the row in ``title`` whose first cell is ``first_cell`` (and second ``field``, when given)."""
+    for line in section(md, title).split("\n"):
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if line.startswith("|") and cells[0] == first_cell and (field is None or (len(cells) > 1 and cells[1] == field)):
+            return line
+    raise AssertionError("no row %r in %s" % (first_cell, title))
+
+
+# =============================================================================
+# 7. risk-scores.sarif (T050; ADR-050 D7, D8; contracts/sarif-result.md)
+# =============================================================================
+
+
+def results_by_id(doc):
+    return {result["partialFingerprints"]["findingId/v1"]: result for result in doc["runs"][0]["results"]}
+
+
+def test_sarif_the_document_is_the_shared_emitters_two_space_ascii_json(base):
+    text, doc = base.sarif_text, base.sarif
+    assert text == json.dumps(doc, indent=2, ensure_ascii=True) + "\n", "the bytes are the emitter's: two spaces, ASCII, a final newline"
+    assert text.isascii()
+    assert doc["version"] == "2.1.0" and doc["$schema"] == sc.SARIF_SCHEMA_URI
+    assert len(doc["runs"]) == 1
+    run = doc["runs"][0]
+    assert "automationDetails" not in run, "the upload step's category governs, and tachi never writes one (D7)"
+    driver = run["tool"]["driver"]
+    assert driver["name"] == TOOL == sc.TOOL_NAMES[SARIF]
+    assert driver["informationUri"] == sc.INFORMATION_URI, "the real URI, never a placeholder (FR-E.9)"
+    assert driver["supportedTaxonomies"] == sc.supported_taxonomies()
+    assert run["taxonomies"] == sc.TAXONOMIES
+
+
+def test_sarif_one_result_per_open_finding_and_none_for_a_resolved_one(base):
+    doc = base.sarif
+    results = doc["runs"][0]["results"]
+    assert len(results) == len(ORDER), "N is the number of open findings (D8's counting rule)"
+    assert sorted(results_by_id(doc)) == sorted(ORDER), "findingId/v1 keeps Section 7's spelling, AGP-01 included"
+    for finding_id in RESOLVED_IDS:
+        assert not re.search(r"(?<![A-Za-z0-9-])%s(?![A-Za-z0-9-])" % re.escape(finding_id), base.sarif_text), finding_id
+
+
+def test_sarif_every_result_passes_the_shared_emitters_self_check(base):
+    results = base.sarif["runs"][0]["results"]
+    sc.self_check(results, tool=TOOL, member_ids=OPEN_IDS, assignments={}, resolved_ids=RESOLVED_IDS, uri=URI)
+
+
+def test_sarif_each_result_carries_its_goldens(base):
+    results = results_by_id(base.sarif)
+    for finding_id in ORDER:
+        item, result = by_id(finding_id), results[finding_id]
+        cvss, e, s, reach, composite, band = golden(finding_id)
+        sla, disposition, review = GOVERNANCE[band]
+        assert result["ruleId"] == sc.rule_id_for(finding_id)
+        assert result["level"] == sc.level_for_band(band)
+        assert result["message"] == {"text": item["threat"]}  # reading: the file's own text is the reference set's threat text
+        assert result["partialFingerprints"] == sc.partial_fingerprints(TOOL, finding_id)
+        assert "relatedLocations" not in result, "the scorer's file has no related locations (D8)"
+        location = result["locations"][0]
+        assert location["physicalLocation"] == {"artifactLocation": {"uri": URI}, "region": {"startLine": 1}}
+        assert location["logicalLocations"] == [{
+            "name": item["component"], "fullyQualifiedName": "%s/%s" % (item["zone"], item["component"]),
+            "kind": KIND_OF[COMPONENTS[item["component"]][0]]}]
+        properties = result["properties"]
+        for key, value in {
+                "security-severity": composite, "cvss-base-score": cvss, "cvss-vector": item["vector"],
+                "exploitability": e, "scalability": s, "reachability": reach, "composite-weights": "0.35/0.30/0.15/0.20",
+                "score-source": "fresh", "severity-band": band, "risk-owner": "Unassigned", "remediation-sla": sla,
+                "risk-disposition": disposition, "review-date": review, "affected_assets": []}.items():
+            assert properties[key] == value, (finding_id, key)
+        assert properties["score-flags"] == [], "always present, and sorted (D9)"
+        assert properties.get("score-corrections", []) == []
+        assert not [key for key in properties if key.startswith("correlation-")]
+
+
+def test_sarif_each_rule_carries_the_highest_composite_of_its_findings(base):
+    run = base.sarif["runs"][0]
+    rules = {rule["id"]: rule for rule in run["tool"]["driver"]["rules"]}
+    highest = {}
+    for result in run["results"]:
+        score = Decimal(result["properties"]["security-severity"])
+        highest[result["ruleId"]] = max(highest.get(result["ruleId"], score), score)
+    assert set(highest) <= set(rules)
+    for rule_id, score in highest.items():
+        assert rules[rule_id]["properties"]["security-severity"] == str(score), rule_id
+
+
+def test_sarif_carries_the_provenance_stamp(base):
+    stamp = base.sarif["runs"][0]["properties"]["tachi_provenance"]
+    assert list(stamp) == ["renderer", "version", "input_digest"]
+    assert stamp["renderer"] in RENDERER_NAMES and stamp["version"] == tp.VERSION and DIGEST.match(stamp["input_digest"])
+
+
+# =============================================================================
+# 8. The two files agree, and the existing readers still read them (FR-K6.2; NFR-1)
+# =============================================================================
+
+
+def test_agree_the_md_and_the_sarif_agree_on_every_open_finding(base):
+    results = results_by_id(base.sarif)
+    scored = {row["ID"]: row for row in records(*table_of(section(base.md, "## 2. Scored Threat Table"), "ID"))}
+    governed = {row["ID"]: row for row in records(*table_of(section(base.md, "## 4. Governance Fields"), "ID"))}
+    assert set(scored) == set(governed) == set(results)
+    for finding_id, result in results.items():
+        properties, row, gov = result["properties"], scored[finding_id], governed[finding_id]
+        assert (row["Composite"], row["Severity"], row["CVSS"], row["Exploit."], row["Scale."], row["Reach."]) == (
+            properties["security-severity"], properties["severity-band"], properties["cvss-base-score"],
+            properties["exploitability"], properties["scalability"], properties["reachability"])
+        assert (row["SLA"], row["Disposition"], gov["Owner"], gov["Review Date"]) == (
+            properties["remediation-sla"], properties["risk-disposition"], properties["risk-owner"], properties["review-date"])
+        assert "`%s`" % properties["cvss-vector"] in subsection_for(base.md, finding_id)
+
+
+def test_readers_the_existing_parsers_read_the_rendered_md_back(base):
+    md = base.md
+    rows = tachi_parsers.parse_risk_scores_findings(md)
+    assert [row["id"] for row in rows] == ORDER, "Section 2's readers stop at the first table, so Section 2a never counts as open (D9)"
+    for row in rows:
+        cvss, e, _s, _r, composite, band = golden(row["id"])
+        assert (row["cvss"], row["exploitability"], row["composite_score"], row["severity"]) == (cvss, e, composite, band)
+    assert {key: str(value) for key, value in tachi_parsers.composite_scores_by_id(rows).items()} == {
+        finding_id: golden(finding_id)[4] for finding_id in ORDER}
+    # reading: the report and infographic extractors read the severity distribution from Section 1 (NFR-1, "parsers keep working")
+    assert tachi_parsers.parse_risk_scores_severity(md) == {"critical": 1, "high": 1, "medium": 6, "low": 1, "note": 0, "total": len(ORDER)}
+    resolved = tachi_parsers.parse_markdown_table(md, "## 2a. Resolved Findings")
+    assert [row["ID"] for row in resolved] == RESOLVED_IDS
+
+
+# =============================================================================
+# 9. The staged write, and what a failure leaves behind (F2; ADR-050 D4; KB 21, 22)
+# =============================================================================
+
+
+def first_line_edit(prefix, change):
+    """An edit of a staged markdown file: ``change`` applied to the first line that starts with ``prefix``."""
+    def edit(text):
+        lines = text.split("\n")
+        index = next(n for n, line in enumerate(lines) if line.startswith(prefix))
+        replaced = change(lines[index])
+        if replaced is None:
+            del lines[index]
+        else:
+            lines[index] = replaced
+        return "\n".join(lines)
+    return edit
+
+
+def json_edit(change):
+    """An edit of a staged SARIF file: parse it, change the document, write it back in the emitter's form."""
+    def edit(text):
+        document = json.loads(text)
+        change(document)
+        return json.dumps(document, indent=2, ensure_ascii=True) + "\n"
+    return edit
+
+
+def duplicate_a_result(document):
+    document["runs"][0]["results"].append(copy.deepcopy(document["runs"][0]["results"][0]))
+
+
+def lower_a_score(document):
+    document["runs"][0]["results"][0]["properties"]["security-severity"] = "1.0"
+
+
+def add_a_resolved_result(document):
+    extra = copy.deepcopy(document["runs"][0]["results"][0])
+    extra["partialFingerprints"] = sc.partial_fingerprints(TOOL, "S-1")
+    document["runs"][0]["results"].append(extra)
+
+
+# Each case seeds one renderer bug that only a check on the files read back from disk can see, and every one of them
+# must stop the run before any canonical file is replaced (ADR-050 D4, steps 5 and 6).
+CHECK_FAILURES = [
+    ("md-lost-an-open-row", MD, first_line_edit("| E-5 |", lambda line: None)),
+    ("md-lost-a-resolved-row", MD, first_line_edit("| S-1 |", lambda line: None)),
+    ("md-a-composite-the-sarif-does-not-have", MD, first_line_edit("| E-5 |", lambda line: line.replace("| 9.4 |", "| 9.5 |", 1))),
+    ("sarif-lost-a-result", SARIF, json_edit(lambda document: document["runs"][0]["results"].pop(0))),
+    ("sarif-has-a-result-twice", SARIF, json_edit(duplicate_a_result)),
+    ("sarif-names-a-resolved-finding", SARIF, json_edit(add_a_resolved_result)),
+    ("sarif-score-the-md-does-not-have", SARIF, json_edit(lower_a_score)),
+]
+
+
+def test_staged_both_files_are_checked_on_disk_before_either_replaces_a_canonical_file(project):
+    log = []
+    with watching_replace(log):
+        res = project.run()
+    assert res.code == 0, res.describe()
+    out = os.path.abspath(str(project.out))
+    moves = [entry for entry in log if os.path.dirname(entry[1]) == out and os.path.basename(entry[1]) in (MD, SARIF)]
+    assert sorted(os.path.basename(dst) for _src, dst, _present, _seen in moves) == [MD, SARIF], "each canonical file is replaced once"
+    for src, dst, _present, seen in moves:
+        assert os.sep + "staged" + os.sep in src and os.path.basename(src) == os.path.basename(dst), "only a staged file replaces a canonical one"
+        assert seen == sha256_of(dst), "the bytes that were staged are the bytes now in place"
+    assert sorted(moves[0][2]) == [MD, SARIF], "both staged files are on disk before the first move, so the checks ran on them"
+    assert max(log.index(entry) for entry in log if os.sep + "staged" + os.sep in entry[1]) < min(log.index(entry) for entry in moves)
+
+
+@pytest.mark.parametrize("name,target,edit", CHECK_FAILURES, ids=[case[0] for case in CHECK_FAILURES])
+def test_staged_a_failing_check_leaves_the_canonical_files_untouched(project, name, target, edit):
+    project.earlier()
+    project.prepare()
+    with tampering_with_staged(target, edit):
+        res = project.render()
+    assert res.code == 4, "a completeness or parity check that fails is exit 4 (cli.md): %s" % res.describe()
+    assert_failure_message(res, project.plan_id)
+    project.assert_earlier_outputs_untouched()
+    assert (project.plan_dir / "staged" / target).is_file(), "the staged file stays for diagnosis (KB 21)"
+    failed = project.fail("check-failed")
+    assert failed.code == 0, failed.describe()
+    assert json.loads(failed.out)["moved"] == [] and json.loads(failed.out)["restored"] == [], "there was nothing to put back"
+    project.assert_earlier_outputs_untouched()
+    assert project.record["status"] == "failed" and project.record["error"]["code"] == "check-failed"
+
+
+def test_staged_a_failing_check_on_a_first_run_leaves_no_canonical_file(project):
+    project.prepare()
+    with tampering_with_staged(MD, first_line_edit("| E-5 |", lambda line: None)):
+        res = project.render()
+    assert res.code == 4, res.describe()
+    assert not (project.out / MD).exists() and not (project.out / SARIF).exists(), "a failed run never leaves a file under a canonical name"
+
+
+def test_failure_render_failed_a_move_that_fails_half_way_is_undone_by_fail(project):
+    project.earlier()
+    project.prepare()
+    with failing_replace(SARIF):  # the markdown moves, then the SARIF's move fails: a half-applied pair
+        res = project.render()
+    assert res.code not in (0, 5), res.describe()
+    assert_failure_message(res, project.plan_id)
+    assert tp.file_digest(project.plan_dir / "plan.json") == project.digest
+    failed = project.fail("render-failed", detail="the move failed")
+    assert failed.code == 0, failed.describe()
+    project.assert_earlier_outputs_untouched()
+    assert project.record["status"] == "failed" and project.record["error"]["code"] == "render-failed"
+
+
+def test_failure_render_failed_on_a_first_run_moves_the_half_written_file_aside(project):
+    project.prepare()
+    with failing_replace(SARIF):
+        res = project.render()
+    assert res.code not in (0, 5), res.describe()
+    failed = project.fail("render-failed")
+    assert failed.code == 0, failed.describe()
+    assert not (project.out / MD).exists() and not (project.out / SARIF).exists()
+    assert (project.plan_dir / "failed" / MD).is_file(), "kept for diagnosis, and under no name any auto-detect site would take"
+
+
+def test_failure_a_cvss_calculator_that_fails_its_self_test_stops_the_run_before_any_write(project, monkeypatch):
+    project.earlier()
+    project.prepare()
+    monkeypatch.setattr(ts, "base_score", lambda vector: Decimal("0.0"))
+    res = project.render()
+    assert res.code in (2, 4), "fails closed: a guard failure, before a score is written: %s" % res.describe()
+    assert_failure_message(res)
+    assert "self-test" in res.err.lower(), res.describe()  # reading: the message names the self-test
+    project.assert_earlier_outputs_untouched()
+    assert not (project.plan_dir / "staged").exists() or not list((project.plan_dir / "staged").iterdir())
+
+
+@pytest.mark.parametrize("damage", ["missing", "invalid", "stale"])
+def test_failure_a_batch_without_a_valid_part_is_never_rendered(project, damage):
+    project.earlier()
+    project.prepare(batch_size=4)  # three batches, all reconciled as done
+    path = Path(project.batch_input("B002")["part_path"])
+    if damage == "missing":
+        path.unlink()
+    elif damage == "invalid":
+        path.write_bytes(b'{"schema": "tachi.part/1"}')
+    else:  # a part that is valid for this batch but belongs to another plan
+        stale = project.part_for("B002")
+        stale["plan_id"] = "20250101T000000Z-0123456789ab"
+        path.write_text(json.dumps(stale), encoding="utf-8")
+    res = project.render()
+    assert res.code in (1, 2, 4), "the renderer re-validates every part it reads: %s" % res.describe()
+    assert_failure_message(res, project.plan_id)
+    assert "B002" in res.err, "the message names the batch"
+    project.assert_earlier_outputs_untouched()
+
+
+# =============================================================================
+# 10. Records: the stamp, the stage record, the declared-paths check (FR-E.7; NFR-5)
+# =============================================================================
+
+
+def test_record_the_stamp_and_the_digest_are_one_value_in_three_places(base):
+    stamp = tp.read_stamp(base.md)
+    sarif_stamp = base.sarif["runs"][0]["properties"]["tachi_provenance"]
+    assert (sarif_stamp["renderer"], sarif_stamp["version"], sarif_stamp["input_digest"]) == (
+        stamp["renderer"], stamp["version"], stamp["input_digest"])
+    assert base.record["input_digest"] == stamp["input_digest"]
+
+
+def test_record_the_stamp_reads_the_shipped_version_constant(project, monkeypatch):
+    monkeypatch.setattr(tp, "VERSION", "9.8.7")
+    res = project.run()
+    assert res.code == 0, res.describe()
+    assert tp.read_stamp(project.md)["version"] == "9.8.7", "the goldens read tachi_parts.VERSION, never a literal (D4)"
+    assert project.sarif["runs"][0]["properties"]["tachi_provenance"]["version"] == "9.8.7"
+    assert project.record["tachi_version"] == "9.8.7"
+
+
+def test_record_the_stage_record_is_valid_and_complete(base):
+    record = base.record
+    tp.validate_stage_record(record)
+    assert (record["schema"], record["stage"], record["plan_id"]) == ("tachi.stage-record/1", STAGE, base.plan_id)
+    assert (record["status"], record["error"], record["tachi_version"]) == ("success", None, tp.VERSION)
+    assert DIGEST.match(record["input_digest"])
+    assert record["started_utc"] <= record["finished_utc"]
+    counts = record["counts"]
+    assert (counts["units"], counts["open"], counts["resolved"]) == (len(ORDER), len(ORDER), len(RESOLVED_IDS))
+    assert [counts.get(key, 0) for key in ("parse_errors", "narrative_fallbacks", "truncations")] == [0, 0, 0]
+    assert record["batches"] == {"planned": 1, "dispatched": 1, "done": 1, "retried": 0, "split": 0, "exhausted": 0}
+    assert (record["overflow_events"], record["retries"], record["warnings"], record["undeclared_paths"]) == ([], [], [], [])
+    assert sorted(record["outputs"], key=lambda entry: entry["path"]) == sorted(
+        [{"path": MD, "sha256": sha256_of(base.out / MD)}, {"path": SARIF, "sha256": sha256_of(base.out / SARIF)}],
+        key=lambda entry: entry["path"]), "paths are relative to --out, and each digest is the file in place"
+
+
+def test_record_an_undeclared_path_exits_5_and_still_writes_both_files(project):
+    project.prepare()
+    (project.out / "gen.py").write_text("print('a helper nobody declared')\n", encoding="utf-8")
+    res = project.render()
+    assert res.code == 5, res.describe()
+    record = project.record
+    assert (record["status"], record["undeclared_paths"]) == ("success-with-warnings", ["gen.py"]), "SC-3 is measured, not gated (KB 17)"
+    assert len(project.sarif["runs"][0]["results"]) == len(ORDER) and has_section(project.md, "## 6. Score Integrity")
+    tp.validate_stage_record(record)
+
+
+def test_record_a_path_the_run_changed_but_declared_is_not_reported(project):
+    project.earlier()  # the earlier outputs are in the plan's snapshot, so the render changes them: declared
+    project.prepare()
+    res = project.render()
+    assert res.code == 0, res.describe()
+    assert project.record["undeclared_paths"] == []
+
+
+def test_record_every_file_the_run_wrote_is_a_declared_path(base):
+    """The renderer's own writes are the stage's canonical files and D3's layout, nothing else (ADR-050 D4)."""
+    snapshot = base.plan_json()["out_snapshot"]
+    written = []
+    for path in sorted(base.out.rglob("*")):
+        if path.is_file():
+            relpath = path.relative_to(base.out).as_posix()
+            status = path.stat()
+            if snapshot.get(relpath) != [status.st_size, status.st_mtime_ns]:
+                written.append(relpath)
+    assert written, "the render wrote files"
+    assert [relpath for relpath in written if not tp.is_declared_path(relpath, STAGE, base.plan_id)] == []
+    assert {MD, SARIF, ".tachi-build/%s/%s/stage-record.json" % (STAGE, base.plan_id)} <= set(written)
+
+
+def test_record_a_record_lists_at_most_the_cap_of_undeclared_paths_and_warns_with_the_full_count(project):
+    project.prepare()
+    extra = 5
+    for number in range(tp.MAX_UNDECLARED_PATHS + extra):
+        (project.out / ("stray-%04d.txt" % number)).write_text("x\n", encoding="utf-8")
+    res = project.render()
+    assert res.code == 5, res.describe()
+    record = project.record
+    assert record["undeclared_paths"] == sorted(record["undeclared_paths"]) and len(record["undeclared_paths"]) == tp.MAX_UNDECLARED_PATHS
+    truncated = [warning for warning in record["warnings"] if warning["code"] == "undeclared-paths-truncated"]
+    assert len(truncated) == 1 and str(tp.MAX_UNDECLARED_PATHS + extra) in truncated[0]["detail"], "ruled at W1: the full count is in the warning"
+    tp.validate_stage_record(record)
+    assert len(project.sarif["runs"][0]["results"]) == len(ORDER), "a stray file never stops the render (KB 17)"
+
+
+# =============================================================================
+# 11. Batching: more than one batch, one batch, and a halved batch (NFR-4; ADR-050 D6)
+# =============================================================================
+
+
+def test_batching_a_run_below_the_threshold_invokes_the_agent_once(project, stage):
+    res = project.run()
+    assert res.code == 0, res.describe()
+    plan = project.plan_json()
+    assert plan["unit_count"] == len(ORDER) <= stage.BATCH_SIZES[STAGE] and [b["batch_id"] for b in plan["batches"]] == ["B001"]
+    assert project.record["batches"]["planned"] == 1 and project.record["batches"]["dispatched"] == 1
+
+
+def test_batching_the_gated_subset_plans_two_or_more_batches_and_renders_every_row(stage, renderer, tmp_path):
+    text = (GATED_SUBSET / "baseline" / "threats.md").read_text(encoding="utf-8")
+    # reading: the subset's correlation groups are cut out. T044's planner leaves a peer out of the plan, and the
+    # peer cases are test_peers_*, so this case needs no routing.
+    text = re.sub(r"(?ms)^## 4a\. Correlated Findings.*?(?=^## )", "", text)
+    assert "## 4a." not in text
+    reference = tachi_parsers.parse_reference_set(text)
+    scope = scope_of(text)
+    component = {canon(row["id"]): row["component"] for row in reference["open"]}
+    project = Project(stage, renderer, tmp_path, threats_text=text,
+                      items=lambda finding_id: scorer_item(generic_item(finding_id, component[canon(finding_id)], scope)))
+    project.architecture.write_text((GATED_SUBSET / "architecture" / "architecture.md").read_text(encoding="utf-8"), encoding="utf-8")
+    res = project.run()
+    assert res.code in (0, 5), res.describe()  # the subset's Affected Assets block lists only some findings: a stale block warns
+
+    plan = project.plan_json()
+    size = stage.BATCH_SIZES[STAGE]
+    planned = [entry for entry in plan["batches"] if entry["parent"] is None]
+    assert plan["batch_size"] == size and plan["unit_count"] == len(reference["open"]) == 42
+    assert len(planned) == math.ceil(42 / size) >= 2, "every batched path gets two or more batches at the stage's size"
+    assert project.record["batches"]["planned"] == len(planned) and project.record["batches"]["done"] == len(planned)
+
+    open_ids = sorted((row["id"] for row in reference["open"]), key=s2_key)
+    rows = records(*table_of(section(project.md, "## 2. Scored Threat Table"), "ID"))
+    assert sorted((row["ID"] for row in rows), key=s2_key) == open_ids, "one open row per reference-set finding"
+    resolved = records(*table_of(section(project.md, "## 2a. Resolved Findings"), "ID"))
+    assert [row["ID"] for row in resolved] == [row["id"] for row in reference["resolved"]]
+    results = project.sarif["runs"][0]["results"]
+    assert len(results) == 42
+    sc.self_check(results, tool=TOOL, member_ids=open_ids, assignments={},
+                  resolved_ids=[row["id"] for row in reference["resolved"]], uri=URI)
+    sorted_rows = sorted(rows, key=lambda row: (-Decimal(row["Composite"]), s2_key(row["ID"])))
+    assert [row["ID"] for row in rows] == [row["ID"] for row in sorted_rows], "composite descending, then S-2's order"
+    assert project.record["counts"]["open"] == 42 and project.record["counts"]["resolved"] == 3
+
+
+@pytest.mark.parametrize("batch_size", [1, 2, 4])
+def test_batching_a_run_in_several_batches_writes_the_same_bytes_as_one_batch(project, batch_size):
+    assert project.run().code == 0
+    one = project.outputs()
+    res = project.run(batch_size=batch_size)  # the planner's function interface: the one way a test sets a smaller size
+    assert res.code == 0, res.describe()
+    assert project.record["batches"]["planned"] == math.ceil(len(ORDER) / batch_size) > 1
+    assert project.outputs() == one, "the batch boundaries show nowhere in the output (NFR-2)"
+
+
+def test_batching_a_halved_batch_writes_the_same_bytes_as_one_batch(project):
+    assert project.run().code == 0
+    one = project.outputs()
+    project.plan(batch_size=3)  # B001, B002, B003
+    project.write_parts(only={"B002", "B003"})  # B001's agent ran out of room, so it wrote nothing
+    first = project.reconcile()
+    assert first.code == 3, first.describe()
+    pending = sorted(batch["batch_id"] for wave in json.loads(first.out)["waves"] for batch in wave)
+    assert pending == ["B001-1", "B001-2"]
+    project.write_parts(only=set(pending))
+    assert project.reconcile().code == 0
+    res = project.render()
+    assert res.code == 0, res.describe()
+    assert project.outputs() == one
+    record = project.record
+    # reading: counted as `tachi-stage.py fail` counts them: a halving spends 2 of the retry budget (ADR-050 D6)
+    assert record["batches"] == {"planned": 3, "dispatched": 5, "done": 4, "retried": 2, "split": 1, "exhausted": 0}
+    events, retries = tp.retry_history(STAGE, project.out, project.plan_json())
+    assert events == [{"batch_id": "B001", "attempt": 1, "kind": "missing"}]
+    assert (record["overflow_events"], record["retries"]) == (events, retries)
+
+
+# =============================================================================
+# 12. Determinism: the clock, the plan ID, the date and the digest (NFR-2; ADR-050 D4, D5)
+# =============================================================================
+
+
+@contextlib.contextmanager
+def frozen_clock(moment):
+    """Every clock the standard library offers reads ``moment`` (a UTC ``datetime``) while this is active."""
+    real_datetime, real_date = datetime.datetime, datetime.date
+    real_time, real_ns, real_gmtime, real_localtime = time.time, time.time_ns, time.gmtime, time.localtime
+
+    class FrozenDatetime(real_datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return moment if tz is not None else moment.replace(tzinfo=None)
+
+        @classmethod
+        def utcnow(cls):
+            return moment.replace(tzinfo=None)
+
+        @classmethod
+        def today(cls):
+            return moment.replace(tzinfo=None)
+
+    class FrozenDate(real_date):
+        @classmethod
+        def today(cls):
+            return real_date(moment.year, moment.month, moment.day)
+
+    datetime.datetime, datetime.date = FrozenDatetime, FrozenDate
+    time.time, time.time_ns = (lambda: moment.timestamp()), (lambda: int(moment.timestamp()) * 10 ** 9)
+    time.gmtime = lambda seconds=None: real_gmtime(moment.timestamp() if seconds is None else seconds)
+    time.localtime = lambda seconds=None: real_localtime(moment.timestamp() if seconds is None else seconds)
+    try:
+        yield
+    finally:
+        datetime.datetime, datetime.date = real_datetime, real_date
+        time.time, time.time_ns, time.gmtime, time.localtime = real_time, real_ns, real_gmtime, real_localtime
+
+
+def test_determinism_the_output_is_byte_identical_under_a_patched_clock(project):
+    moments = [datetime.datetime(2020, 2, 29, 12, 0, 0, tzinfo=datetime.timezone.utc),
+               datetime.datetime(2031, 12, 31, 23, 59, 59, tzinfo=datetime.timezone.utc)]
+    runs = []
+    for moment in moments:
+        with frozen_clock(moment):
+            res = project.run()
+        assert res.code == 0, res.describe()
+        runs.append((project.outputs(), project.plan_id, project.record))
+    res = project.run()  # the real clock
+    assert res.code == 0, res.describe()
+    runs.append((project.outputs(), project.plan_id, project.record))
+    assert runs[0][0] == runs[1][0] == runs[2][0], "the clock never enters a rendered file (ADR-050 D5), and the plan ID never does (D4)"
+    assert len({plan_id for _outputs, plan_id, _record in runs}) == 3
+    for moment, (_outputs, _plan, record) in zip(moments, runs):
+        assert record["finished_utc"] == moment.strftime("%Y-%m-%dT%H:%M:%SZ"), "the clock reaches the stage record, and only there"
+
+
+def test_determinism_rendering_the_same_plan_again_changes_no_byte(project):
+    assert project.run().code == 0
+    first = project.outputs()
+    again = project.render()
+    assert again.code == 0, again.describe()
+    assert project.outputs() == first
+
+
+def test_determinism_the_scoring_date_is_the_plans_and_moves_every_date(project):
+    assert project.run().code == 0
+    first = tp.read_stamp(project.md)["input_digest"]
+    res = project.run(date="2027-03-05")
+    assert res.code == 0, res.describe()
+    assert tachi_parsers.parse_frontmatter(project.md)["date"] == "2027-03-05"
+    governed = {row["ID"]: row for row in records(*table_of(section(project.md, "## 4. Governance Fields"), "ID"))}
+    for finding_id in ORDER:
+        sla = GOVERNANCE[golden(finding_id)[5]][0]
+        assert governed[finding_id]["Review Date"] == ts.review_date("2027-03-05", sla)
+        assert results_by_id(project.sarif)[finding_id]["properties"]["review-date"] == ts.review_date("2027-03-05", sla)
+    assert tp.read_stamp(project.md)["input_digest"] != first, "the date is a parameter of the input digest (ADR-050 D4)"
+    scored = [row for row in table_of(subsection_of(project.md, "## 6. Score Integrity", "### Scoring Inputs"), "ID")[1] if row[1] == "scored_on"]
+    assert {row[2] for row in scored} == {"2027-03-05"} and len(scored) == len(ORDER)
+
+
+def test_determinism_the_input_digest_follows_the_inputs_and_not_the_plan(project):
+    assert project.run().code == 0
+    first = tp.read_stamp(project.md)["input_digest"]
+    assert project.run().code == 0 and tp.read_stamp(project.md)["input_digest"] == first, "a fresh plan ID, the same digest"
+
+    def reword(part):
+        part["items"][0]["rationale"]["cvss"] = "A different judgment of the base score."
+
+    assert project.run(mutate=reword).code == 0
+    assert tp.read_stamp(project.md)["input_digest"] != first, "an accepted part's items are in the digest"
+
+
+def test_determinism_no_local_path_reaches_either_file(base):
+    for text in (base.md, base.sarif_text):
+        for path in {str(base.root), str(base.out), os.path.realpath(str(base.root)), str(Path.home()), "/private/var", "/tmp/"}:
+            assert path not in text, "a local path in the output makes it differ between machines and leaks the layout (NFR-2, NFR-6): %s" % path
+
+
+# =============================================================================
+# 13. Input Issues: a repeated reference-set ID (the architect's W1 ruling; FR-K6.1)
+# =============================================================================
+
+
+def test_issues_a_repeated_id_is_read_listed_and_warned_and_the_run_exits_5(stage, renderer, tmp_path):
+    """The first row wins, and an open row beats a resolved one. ``plan`` warns and exits 0. The renderer lists the IDs
+    under Input Issues, writes the warning ``duplicate-finding-id`` and exits 5 (``contracts/part-files.md``)."""
+    resolved = RESOLVED + [("E-3", "legacy-gateway", "An older threat on a route that no longer exists.", "Low", "Component removed")]
+    project = Project(stage, renderer, tmp_path, resolved=resolved, repeated=[("S-2", "auth-broker")])
+    res = project.run()
+    assert project.plan_json()["unit_count"] == len(ORDER), "a repeated ID is one unit"
+    assert "S-2" in project.plan_stderr and "E-3" in project.plan_stderr, "plan warns on stderr"
+    assert res.code == 5, res.describe()
+    record = project.record
+    assert record["status"] == "success-with-warnings"
+    warnings = [warning for warning in record["warnings"] if warning["code"] == "duplicate-finding-id"]
+    assert warnings and all(finding_id in " ".join(w["detail"] for w in warnings) for finding_id in ("S-2", "E-3"))
+    issues = subsection_of(project.md, "## 6. Score Integrity", "### Input Issues")
+    assert "S-2" in issues and "E-3" in issues, "the IDs are listed in the defined place (FR-K6.1)"
+    rows = records(*table_of(section(project.md, "## 2. Scored Threat Table"), "ID"))
+    assert [row["ID"] for row in rows] == ORDER, "each repeated ID is one open row"
+    assert {row["ID"]: row for row in rows}["S-2"]["Component"] == "edge-gateway", "the first row wins"
+    resolved_rows = records(*table_of(section(project.md, "## 2a. Resolved Findings"), "ID"))
+    assert [row["ID"] for row in resolved_rows] == RESOLVED_IDS, "an open row beats a resolved one: E-3 is not in Section 2a"
+    assert len(project.sarif["runs"][0]["results"]) == len(ORDER)
+    assert record["counts"]["open"] == len(ORDER) and record["counts"]["resolved"] == len(RESOLVED_IDS)
+
+
+# =============================================================================
+# 14. The agent's narrative: slots, the per-field fallback, cuts and hostile text (ADR-050 D3; PM rulings 1 and 2)
+# =============================================================================
+
+
+def damage_two_fields(part):
+    for item in part["items"]:
+        if canon(item["finding_id"]) == "T-1":
+            item["rationale"]["exploitability"] = "There are 3 known exploits."  # a digit outside a slot
+        if canon(item["finding_id"]) == "R-1":
+            item["rationale"]["cvss"] = "x" * 401  # one over the limit of 400
+
+
+def test_narrative_a_bad_field_takes_its_fixed_sentence_and_a_long_one_is_cut_and_both_are_flagged(project):
+    res = project.run(mutate=damage_two_fields)
+    assert res.code in (0, 5), res.describe()  # reading: a fallback is a flag and a count, not a warning
+    fallback_flag, cut_flag = "input:rationale.exploitability:narrative-fallback", "input:rationale.cvss:truncated"
+
+    assert tp.FALLBACK_SENTENCES["rationale.exploitability"] in subsection_for(project.md, "T-1")
+    assert "known exploits" not in project.md, "the field's text is gone, and the row is not"
+    assert "x" * 400 in subsection_for(project.md, "R-1") and "x" * 401 not in project.md
+
+    flagged = {row["ID"]: row for row in records(*table_of(section(project.md, "## 2. Scored Threat Table"), "ID"))}
+    assert flagged["T-1"]["Flags"] == "input" and flagged["R-1"]["Flags"] == "input"
+    assert all(flagged[i]["Flags"] == DASH for i in ORDER if i not in ("T-1", "R-1"))
+
+    header, rows = table_of(subsection_of(project.md, "## 6. Score Integrity", "### Score Flags"), "ID")
+    found = [(row["ID"], row["Flag"], row["Field"], row["Cause"]) for row in records(header, rows)]
+    assert found == [("T-1", "input", "rationale.exploitability", "narrative-fallback"), ("R-1", "input", "rationale.cvss", "truncated")], \
+        "in S-2 order of ID, with the flag's three parts in their columns"
+    for finding_id, text in (("T-1", "narrative-fallback"), ("R-1", "truncated")):
+        line = [line for line in subsection_for(project.md, finding_id).split("\n") if line.startswith("**Integrity**:")]
+        assert len(line) == 1 and text in line[0], "an Integrity line for each flagged finding (D9)"
+    assert "**Integrity**:" not in subsection_for(project.md, "S-2")
+
+    results = results_by_id(project.sarif)
+    assert results["T-1"]["properties"]["score-flags"] == [fallback_flag]
+    assert results["R-1"]["properties"]["score-flags"] == [cut_flag]
+    assert all(results[i]["properties"]["score-flags"] == [] for i in ORDER if i not in ("T-1", "R-1"))
+
+    counts = project.record["counts"]
+    assert counts["narrative_fallbacks"] == 1 and counts["truncations"] == 1 and counts["input"] >= 2
+
+    persisted = {(canon(row[0]), row[1]): row[2] for row in table_of(subsection_of(project.md, "## 6. Score Integrity", "### Scoring Inputs"), "ID")[1]}
+    assert persisted[("T-1", "rationale.exploitability")] == tp.FALLBACK_SENTENCES["rationale.exploitability"], "the validated text is what is carried"
+    assert persisted[("R-1", "rationale.cvss")] == "x" * 400
+
+
+def test_narrative_hostile_text_is_raw_in_the_sarif_and_escaped_in_the_markdown(base):
+    result = results_by_id(base.sarif)["LLM-4"]
+    assert result["message"]["text"] == HOSTILE_THREAT, "SARIF strings go through json.dumps only (ADR-050 D3)"
+    assert results_by_id(base.sarif)["S-10"]["message"]["text"] == by_id("S-10")["threat"]
+    assert "\\u00c9tienne" in base.sarif_text and "\\u2014" in base.sarif_text, "non-ASCII is written as an escape"
+
+
+# =============================================================================
+# 14a. The 1.1 template and the renderer agree (D15; they pass when T031 lands, whatever the renderer does)
+# =============================================================================
+
+TEMPLATES = REPO_ROOT / "templates" / "tachi" / "output-schemas"
+
+
+def test_template_the_markdown_template_is_schema_1_1_and_has_the_renderers_headings():
+    text = (TEMPLATES / MD).read_text(encoding="utf-8")
+    assert re.search(r"Schema version\s*:\s*1\.1\b", text), "D15: risk-scores.md goes from 1.0 to 1.1"
+    for heading in SECTION_TITLES + SECTION_6_PARTS:
+        assert re.search(r"(?m)^%s\b" % re.escape(heading), text), "the template has no %r, which the renderer writes" % heading
+    assert re.search(r"(?m)^\|[^\n]*\| Flags \|\s*$", text), "Sections 2 and 2a gain a trailing Flags column"
+    assert "**Integrity**:" in text, "Section 3 gains an Integrity line for each flagged finding"
+
+
+def test_template_the_sarif_template_carries_the_real_information_uri():
+    document = json.loads((TEMPLATES / SARIF).read_text(encoding="utf-8"))
+    assert document["runs"][0]["tool"]["driver"]["informationUri"] == sc.INFORMATION_URI, "FR-E.9 (#412)"
+
+
+# =============================================================================
+# 15. The entry's shape (H15)
+# =============================================================================
+
+
+def test_cli_the_entry_keeps_the_populators_shape(renderer):
+    parameters = inspect.signature(renderer.main).parameters
+    assert list(parameters) == ["argv"] and parameters["argv"].default is None
+    tree = ast.parse(RENDERER.read_text(encoding="utf-8"))
+    guards = [node for node in tree.body if isinstance(node, ast.If) and isinstance(node.test, ast.Compare)
+              and isinstance(node.test.left, ast.Name) and node.test.left.id == "__name__"]
+    assert guards, "a __main__ guard"
+    guard = guards[-1]
+    assert len(guard.body) == 1 and "main" in ast.dump(guard.body[0]), "a thin guard: the work is in main(argv)"
+
+
+# =============================================================================
+# 16. Peers: correlation groups (D8, D9; needs T044's routing and T048's parser)
+# =============================================================================
+
+GROUPS = [("CG-1", ["S-2", "S-10", "T-1"])]  # S-2 is first listed, so it is the primary; S-10 and T-1 are its peers
+
+
+def test_peers_the_planner_leaves_a_peer_out_and_the_renderer_copies_the_primary(stage, renderer, tmp_path):
+    project = Project(stage, renderer, tmp_path, groups=GROUPS)
+    project.plan()
+    planned = [canon(finding_id) for entry in project.plan_json()["batches"] for finding_id in entry["finding_ids"]]
+    assert "S-10" not in planned and "T-1" not in planned, "precondition (T044): a peer is not dispatched, its primary's values are copied (D2)"
+    assert "S-2" in planned and len(planned) == len(ORDER) - 2
+    project.write_parts()
+    assert project.reconcile().code == 0
+    res = project.render()
+    assert res.code in (0, 5), res.describe()
+
+    rows = {row["ID"]: row for row in records(*table_of(section(project.md, "## 2. Scored Threat Table"), "ID"))}
+    assert sorted(rows) == sorted(ORDER), "peers are rows"
+    cvss, e, s, reach, composite, band = golden("S-2")
+    for peer in ("S-10", "T-1"):
+        assert (rows[peer]["CVSS"], rows[peer]["Exploit."], rows[peer]["Scale."], rows[peer]["Reach."], rows[peer]["Composite"],
+                rows[peer]["Severity"]) == (cvss, e, s, reach, composite, band), "NEW and UPDATED peers copy their primary (R-31)"
+        assert rows[peer]["Component"] == truncate(by_id(peer)["component"], 30), "but keep their own identity"
+        body = subsection_for(project.md, peer)
+        assert [line for line in body.split("\n") if line.startswith("**Correlation Group**:") and "S-2" in line], peer
+    assert project.record["counts"]["units"] == len(ORDER) - 2 and project.record["counts"]["open"] == len(ORDER)
+
+    results = results_by_id(project.sarif)
+    assert len(results) == len(ORDER), "every peer is a result, once (D8)"
+    assignments = sc.correlation_assignments([(group, members) for group, members in GROUPS], ORDER)
+    assert sorted(assignments) == ["S-10", "S-2", "T-1"]
+    sc.self_check(project.sarif["runs"][0]["results"], tool=TOOL, member_ids=ORDER, assignments=assignments,
+                  resolved_ids=RESOLVED_IDS, uri=URI)
+    for finding_id, correlation in assignments.items():
+        spelled = finding_id
+        properties = results[spelled]["properties"]
+        assert (properties["correlation-group"], properties["correlation-role"], properties["correlation-primary"]) == (
+            correlation.group, correlation.role, correlation.primary)
+        assert results[spelled]["message"]["text"] == sc.correlated_message(by_id(spelled)["threat"], correlation), \
+            "ruling C's sentence ends the message"
+        assert "relatedLocations" not in results[spelled], "a peer is a result and never a related location"
