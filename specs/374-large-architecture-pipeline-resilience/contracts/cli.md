@@ -54,3 +54,5 @@ Orchestrator fences pass literal arguments only (C6). `PLAN` below stands for `-
 - `tachi_scoring_rules.py`: R-6, R-25, R-26 and R-31 (D5, D9);
 - `sarif_common.py`: the shared emitter (D7, D8);
 - `tachi_parsers.py`: extended with the reference-set wrapper, `parse_correlation_groups`, the shared reference decoder (D3) and (PR 2) `parse_chain_outcome`.
+
+The signatures of `tachi_scoring_rules.py` and of lane P's new `tachi_parsers` functions are frozen in [module-signatures.md](module-signatures.md) (W1, T023), together with the persisted-inputs format of `risk-scores.md` §6 and `compensating-controls.md` §7.

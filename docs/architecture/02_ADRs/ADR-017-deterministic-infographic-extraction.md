@@ -5,6 +5,8 @@
 **Deciders**: Architect
 **Feature**: 071 (Deterministic Infographic Extraction)
 
+> **Note (2026-11-22, Feature 374)**: Under [ADR-050](ADR-050-large-architecture-output-authority.md) D5, D2's largest remainder extends to the new renderers' percentages, from one integer implementation in `scripts/tachi_scoring.py`. It takes floors of `100·n // total` and gives the remaining units to the largest remainders, `100·n % total` descending, with ties by label ascending, and all zero when the total is 0. It serves every distribution that must sum to 100: the scorer and controls renderers' from PR 1, and the report's `pct` slots from PR 2 (ADR-050 D3). D1, D3 and D4 stand.
+
 ---
 
 ## Context
