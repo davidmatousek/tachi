@@ -536,10 +536,10 @@ def test_a_batch_size_is_not_an_environment_setting(stage, cli, tmp_path, monkey
     assert len(h.plan_json()["batches"]) == 1, "six units fit one batch whatever the environment says"
 
 
-def test_batch_sizes_are_one_module_level_mapping_of_the_amended_w0_constants(stage):
-    """ADR-050 D6's "Amended at W0" table, as the one mapping that T020's sizing check reads. A change to a size is
-    an ADR amendment (T021(a) may make one), so it changes the table and this pin in the same commit."""
-    assert stage.BATCH_SIZES == {"risk-score": 16, "compensating-controls": 13, "trees": 12}
+def test_batch_sizes_are_one_module_level_mapping_of_the_amended_constants(stage):
+    """ADR-050 D6's "Amended at W1" table, as the one mapping that T020's sizing check reads. A change to a size is
+    an ADR amendment, so it changes the table and this pin in the same commit."""
+    assert stage.BATCH_SIZES == {"risk-score": 13, "compensating-controls": 11, "trees": 12}
 
 
 @pytest.mark.parametrize("name", STAGE_NAMES)

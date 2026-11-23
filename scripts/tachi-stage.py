@@ -52,9 +52,9 @@ import sarif_common as sc  # noqa: E402
 import tachi_parts as tp  # noqa: E402
 from tachi_parsers import ReferenceSetError, parse_reference_set  # noqa: E402
 
-# ADR-050 D6, "Amended at W0": the output budget per stage in units per batch. A stage at or below its size
+# ADR-050 D6, "Amended at W1": the output budget per stage in units per batch. A stage at or below its size
 # plans one batch, so its agent runs once (NFR-4). `trees` is PR 2's stage, listed so the sizes live in one table.
-BATCH_SIZES = {"risk-score": 16, "compensating-controls": 13, "trees": 12}
+BATCH_SIZES = {"risk-score": 13, "compensating-controls": 11, "trees": 12}
 
 WAVE_SIZE = 16          # S-8: at most 16 in flight per wave, which leaves margin under Claude Code's 20
 MAX_ATTEMPT = 3         # P-8: the original and at most two retries per lineage
