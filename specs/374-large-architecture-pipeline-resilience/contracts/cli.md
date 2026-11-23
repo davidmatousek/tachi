@@ -30,7 +30,7 @@ Orchestrator fences pass literal arguments only (C6). `PLAN` below stands for `-
 
 | Invocation | Exit codes |
 |---|---|
-| `python3 scripts/tachi-stage.py plan --stage S --out DIR --date YYYY-MM-DD [--threats FILE] [--risk-scores FILE] [--baseline-dir DIR] [--architecture PATH] [--target DIR]` → `{plan_id, plan_digest, waves: [[{batch_id, input_path}]]}`. `--threats` is required except for `threat-model`, the run-level plan, which plans no units. `--architecture` is a candidate path that the shared resolver checks in code (D7) | 0, 1, 2 |
+| `python3 scripts/tachi-stage.py plan --stage S --out DIR --date YYYY-MM-DD [--threats FILE] [--risk-scores FILE] [--baseline-dir DIR] [--architecture PATH] [--target DIR]` → `{plan_id, plan_digest, waves: [[{batch_id, input_path}]]}`. `--threats` is required except for `threat-model`, the run-level plan, which plans no units. `--architecture` is a candidate path that the shared resolver checks in code (D7). A candidate it refuses, whatever check fails, syntactic ones included, is left out of `refs`, printed on stderr and recorded as the plan's `architecture_warning`, and `plan` still exits 0 (ruled at W2) | 0, 1, 2 |
 | `python3 scripts/tachi-stage.py reconcile --stage S --out DIR PLAN` → `{status: complete \| pending \| exhausted, plan_digest, done, waves, exhausted: [{batch_id, finding_ids}]}` | 0, 1, 2, 3, 4 |
 | `python3 scripts/tachi-stage.py fail --stage S --out DIR PLAN --reason agent-not-spawned \| unrecoverable-batch \| check-failed \| render-failed [--detail TEXT]` → `{moved, restored, record}`. `--detail` is at most 500 characters and is validated as a string field | 0; 2 if a guard refuses a move or the digest differs (the record is still written) |
 | `python3 scripts/render-risk-scores.py --out DIR PLAN`, and `render-compensating-controls.py` with the same arguments | 0, 1, 2, 4, 5 |
@@ -78,3 +78,10 @@ T017's tests pin these readings for T018. The plan's halving and retry readings 
   - A forged copy inside a fence is neither read nor changed.
 - **The stamp's `renderer`** is the entry's installed file name, with `.py`, as a literal constant in each entry: `render-risk-scores.py`, `render-compensating-controls.py`, and in PR 2 `join-threats-md.py`, `assemble-report.py`, `attack-chains.py` and `generate-threats-sarif.py`. That one spelling goes in the markdown comment, in SARIF's `tachi_provenance` and in every file an entry stamps, so the name matches `INSTALL_MANIFEST.md` and `REQUIRED_SCRIPT_NAMES`.
 - **`--version`** prints `tachi_parts.VERSION` and the interpreter's version on stdout, and exits 0. The refusal below 3.9 goes to stderr, with exit 2. Tests may accept either stream.
+
+### Readings ruled at W2 (2026-11-23)
+
+- **`plan --architecture`** goes through the resolver's own first step, `sarif_common.resolve_explicit`, which `resolve_architecture` also runs. So `plan` and the renderer agree on every check and on the warning's code and text (ADR-050 D7). `architecture-source` makes the same checks under the same code, and keeps its own detail, which says what it did to the line.
+  - The pre-check that every other pointer gets (`tachi_parts.path_problem`, which exits 2) doesn't apply to `--architecture`. A control character, backslash or backtick is a refused candidate, as it is for `architecture-source`, and nothing in D7 stops a run.
+  - stderr keeps its `WARNING` line, which names the candidate in escaped form and the failed check.
+- **The renderers** read `refs` and `architecture_warning` from the plan, never from a batch input (`part-files.md`, "Readings ruled at W2").

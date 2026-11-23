@@ -10,7 +10,7 @@ Every key is required, and an absent value is written as `null` or `[]`. IDs pas
 - batch: `B[0-9]{3}(-[12]){0,2}`;
 - finding: `(S|T|R|I|D|E|AG|AGP|LLM|OI|MI|TE)-[0-9]{1,6}`.
 
-Scripts recompute every path from `--out` and these IDs, never from a path stored in a file, except the plan's digest-checked `inputs` (ADR-050 D3).
+Scripts recompute every path from `--out` and these IDs, never from a path stored in a file, except the plan's digest-checked `inputs` and its `refs`, which are re-checked before any use (ADR-050 D3; `refs` ruled at W2).
 
 **§1 Part, `tachi.part/1`** (agent-written; untrusted)
 
@@ -39,7 +39,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `part_path` | an absolute path under `<plan_id>/parts/` |
 | `tree_paths` | in `trees`, `{finding_id: absolute path under <plan_id>/trees/}`, one per ID; `{}` elsewhere |
 | `units` | the batch's unit rows, as verbatim data. In `compensating-controls`, an UNCHANGED unit's row also holds its baseline's persisted narrative text and its evidence-class values (`evidence[]`, `matrix_row`, `recommendation_body`), all decoded, for the agent to copy. So a carried string is escaped once per render (ADR-050 D2, RR1) |
-| `refs` | an object mapping the stage's closed pointer names (architecture, threats, baseline files, target) to absolute paths that the command validated |
+| `refs` | an object mapping the stage's closed pointer names (architecture, threats, baseline files, target) to absolute paths that the command validated. It is a verbatim copy of the plan's `refs` (§4), written for the agent, and no script reads it (ruled at W2) |
 | `params` | an object of the stage's closed parameters, for example `scoring_date` as `YYYY-MM-DD` |
 
 **§4 Batch plan, `tachi.plan/1`** (written only by `tachi-stage.py`, and replaced atomically)
@@ -50,6 +50,8 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `created_utc` | ISO 8601, ending in `Z` |
 | `tachi_version` | `X.Y.Z` |
 | `inputs` | `{logical name: {path, sha256, bytes}}` |
+| `refs` | the stage's pointers, with §3's rules. `plan` writes them once here and copies them into each batch input, and every script reads them from here, so a plan with no units keeps them (ruled at W2) |
+| `architecture_warning` | `null`, or the one warning `{code, detail}` that `plan` raised when it refused the `--architecture` candidate. Its code is `architecture-path:explicit:<check>`, and it follows the rules of a stage record's `warnings` entry (§5). Every stage record of the plan lists it first (ADR-050 D7, ruled at W2) |
 | `params` | as in §3 |
 | `batch_size` | an integer, 1–500, or `null` for a plan with no units (the run-level `threat-model` plan) |
 | `unit_count` | an integer, 0 or more |
@@ -181,3 +183,23 @@ Each reading is one the sources left open. `tachi_parts` (T012, T013), `tachi-st
 - **Retries.** An `invalid` retry keeps the batch ID and raises `attempt`. Each retry rewrites the batch input with its new `attempt` and `part_path`, and the plan's `input_sha256` follows it. So two retries per lineage fit `attempt` 1–3 and the batch-ID pattern.
 - **A one-unit batch can't halve.** When it is `missing`, `overflow` or `unparseable`, it is retried once more with the same member and batch ID, `attempt` + 1, at a cost of 1, as an `invalid` retry is. No batch ever has zero units.
 - **The budget.** A retry costs 1 against `retry_budget.used`, and a halving costs 2. A retry is refused when `used + cost > limit`, or when the batch is already at attempt 3, and either way `reconcile` exits 4.
+
+## Readings ruled at W2 (2026-11-23, before T045 and T046)
+
+**The plan's `refs` (§4).**
+- **Why.** A plan whose findings are all carried has no batches, so pointers kept only in batch inputs were lost. That run then resolved its URI without the command's `--architecture-path`, warned and exited 5. Worse, its URI could differ from the one an earlier run with units used, which re-keys every alert (ADR-050 D7).
+- **The rule.** `plan` builds `refs` once, after routing, because the scorer's routing adds `baseline_dir`. It writes them into the plan, and copies them verbatim into each batch input it writes. `reconcile` writes each retry's batch input from the plan's `refs`, not from its parent's input. The renderers, `fail` and PR 2's `close` read the plan's copy. A `refs` path is a candidate: the renderer re-checks it with the shared resolver (D7) or R-6's checks before it reads anything.
+- **`params`** already lives at plan level, and each batch input copies it. Nothing changes there.
+
+**The plan's `architecture_warning` (§4).**
+- It holds the warning the shared resolver's first step (`sarif_common.resolve_explicit`) built when `plan` refused the candidate, and `null` when the flag was absent or accepted.
+- The renderer's stage record lists it first, then its own resolver's warnings, so the record keeps D7's order: explicit, then the body line, then the default. `fail`'s record lists it too, when the plan passes its trust checks.
+- It is plan-level only. A batch input's `refs` hold only validated paths, and an agent reads every path that `refs` names.
+
+**One commit.** `validate_plan` requires every §4 key, so four edits land in one commit:
+- `tachi_parts.KEY_SETS["plan"]` and `validate_plan` gain the two keys;
+- the shared reference's "Plan keys" table gains them (its drift test reads that table);
+- `test_tachi_parts.py`'s plan key list and valid plan gain them;
+- `plan` writes them.
+
+The renderer's read lands in that commit or after it. The schema string stays `tachi.plan/1`, because no release has shipped the old key set.

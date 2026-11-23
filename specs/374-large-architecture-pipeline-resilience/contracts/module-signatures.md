@@ -8,6 +8,7 @@
 **The freeze.**
 - Additive changes keep it: a new keyword argument with a default, or a new dataclass field or dict key with a default, added last. The owning lane names each one in its commit message.
 - A rename, removal, reorder or type change needs an architect amendment to this file.
+- **Additions ruled at W2 (2026-11-23), all additive:** `BaselineRow.component`, `.threat` and `.risk_level`; `ScorerRouting.status`; `route_scorer_units(..., lacking=None)`; `parse_markdown_table`'s `row_lines` and `keep_bold` (lane P's, recorded here); and `sarif_common.resolve_explicit`. The scorer's closed flag vocabulary gains four strings.
 
 **Shared conventions.**
 - Every module has `from __future__ import annotations` and runs on Python 3.9 (S-11). Annotations use `typing` forms, so nothing here needs 3.10.
@@ -22,7 +23,7 @@ It imports only the standard library, `tachi_scoring`, `tachi_parsers` and `tach
 ```python
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -92,6 +93,9 @@ class BaselineRow:
     narrative: Mapping[str, str]                     # renderer form: field path -> decoded slotted text
     legacy_prose: Mapping[str, str]                  # legacy form: field path -> prose, evidence-class
     flags: Tuple[str, ...]                           # raised while reading, such as input:cvss_vector:sources-disagree
+    component: Optional[str] = None                  # W2: the row's component, for S-12(b)'s supply (D9)
+    threat: Optional[str] = None                     # W2: the row's threat text, for S-12(b)'s supply
+    risk_level: Optional[str] = None                 # W2: the row's original risk level, for S-12(b)'s supply
 
 @dataclass(frozen=True)
 class BaselineScores:
@@ -111,6 +115,16 @@ def read_baseline_scores(md_path: Optional[Path], *, sarif_path: Optional[Path] 
 - **Unreadable files.** A file that is missing, isn't UTF-8, is too large or yields no row comes back with `readable=False`, and counts as missing (S-12(d)).
 - **Vectors.** A legacy vector comes from the markdown, or else from `sarif_path`'s `cvss-vector`, keyed by `findingId/v1`. When both exist and differ, the markdown's is used, flagged `input:cvss_vector:sources-disagree`.
 - **Prose.** Narrative text is decoded with `tachi_parsers.decode_references` and returned unvalidated, because the renderer re-validates it and re-resolves its slots (D3). Legacy prose comes back as evidence-class text, and nothing reads a number from it.
+- **Identity values (ruled at W2, for S-12(b)).** `component`, `threat` and `risk_level` are what the row records, decoded once, or `None`.
+  - The component comes from the §3 heading `### ID — component`, or else the §2 Component cell. A `### ID: title` heading names a title, not a component.
+  - The threat comes from §3's `**Threat**:` line, or else the §2 Threat cell, which the renderer shortens.
+  - The risk level comes from §3's `**Original Risk Level**:` value.
+  - The renderer uses them only for a carried finding whose input form lacks the value (D9).
+- **Governance cells, by value class (ruled at W2, from R1b's check; D9's "verbatim").**
+  - **The owner is free text** (`risk_owner`). It is read as the cell holds it, decoded once with edge whitespace stripped, and its `**` is kept. So `**Platform** team` carries byte for byte. The renderer escapes on write by D3's table-cell rule, which leaves `*` alone. A cell is no owner only when it is a placeholder once its `**` is set aside: empty, a dash or `n/a`. Today's `_text_value` drops the `**`, so the owner needs its own reader (R1b's fix).
+  - **The SLA and the disposition** keep today's reading, without `**`. The disposition is an enum and the SLA a duration, and the override test compares each with the band's default, so the emphasis is formatting, not value. A bolded legacy `**Accept**` or `**7d**` then reads as the value the test compares.
+  - **The band and the review date** are parsed as before.
+  - These rules hold for §2, §2a and §4 in every form.
 
 ### S-13: the one tag source (T042)
 
@@ -139,8 +153,10 @@ def select_tag_source(*, open_ids: Sequence[str], block: Mapping[str, Sequence[s
   The outcomes:
   - the block equals the recomputation on every open ID: `block`;
   - the block is absent, differs, or misses an open ID: `recomputed`, with a warning;
-  - no architecture file: `block-unverified`, and the block is used as it is;
+  - no architecture file: `block-unverified`, and the block is used as it is. It always carries a warning, cause `no-architecture-file`, which the renderer records as `tag-source:no-architecture-file`. The warning says the block's tags were applied unverified, and names any tag outside the closed set that was dropped (ruled at W2, ADR-050 D2). Today's code warns only for a dropped tag, so `select_tag_source` and its test change (R1b);
   - neither source: `none`. No finding is elevated, and the run warns, records the cause and continues.
+
+  So every outcome except `block` warns under `tag-source:<cause>`, and the renderer's existing `run.warn("tag-source:%s" % cause, ...)` needs no change.
 
 ### R-25 and the CVSS chain (T043)
 
@@ -180,12 +196,17 @@ def check_carried_vector(row: BaselineRow, *, tags: Sequence[str]) -> VectorChec
 - **Renderer form.** It recomputes `cvss_chain` from the stored vector, `score_bounds` and this run's `tags`. A difference is `corrected:cvss_base:vector`, unless recomputing with `row.tags_used` gives the stored value, in which case it is `retagged:cvss_base:asset-tags` (ruling A).
 - **Legacy form.** It runs D10's steps 1–6 in order, testing this run's tags first (PM plan review, finding 2). The candidates are `base(v)` and its own-category bound clamp.
 - **Flag names (ratified at W1, from T043).** A flag's `<field>` is the value whose status the flag describes, by its `schemas/risk-scoring.yaml` name, and its `<cause>` is kebab-case. So a missing vector is `unverifiable:cvss_base:no-vector`, like `unchecked:cvss_base:assessed-unrecorded`. The governance flags name `remediation_sla` and `risk_disposition`, beside `severity_band`, `composite_score` and `review_date`, for example `override:remediation_sla:human`.
+  - **Two more sources of names (ruled at W2).**
+    - A value of the reference set takes its `schemas/finding.yaml` name: `component`, `threat`, `delta_status` and `risk_level`.
+    - `trust_level` is ADR-050 D2's name for the payload's `reachability.trust_level`, which the risk-scoring schema doesn't name, and the flag keeps D2's text.
+    - The prose fields keep their dotted payload names (`part-files.md`).
 - **The scorer's flag vocabulary, closed** (ruled at W1 from T040 and T043). The renderer (T045, T046), the goldens (T041) and the fixture's expected outcomes (T040) use exactly these strings. A finding carries at most one flag per kind and field.
   - **`corrected:<field>:<cause>`.** The cause names the derivation step that produced the field's new value (D9's four words):
     - `cvss_base:vector`;
     - `composite_score:arithmetic`, and `exploitability`, `scalability` or `reachability` with `:arithmetic`;
     - `severity_band:band-mapping`, or `severity_band:rounding` when only rounding moved the band;
-    - `remediation_sla`, `risk_disposition` or `review_date` with `:follows-band`.
+    - `remediation_sla`, `risk_disposition` or `review_date` with `:follows-band`;
+    - `trust_level:trust-label`, verbatim from ADR-050 D2 (added at W2). The renderer replaces an agent's trust level that contradicts an unambiguous §2 label with the label's level. The cause names the value's source, the label, as D2 words it, and §6's Score Flags row shows the agent's level as Stored and the label's as Rendered.
   - **The review date's fallbacks.** When a fallback set the date, `review_date:baseline-date` or `review_date:clock-restarted` replaces `follows-band`, so the field carries one flag.
   - **A rounding-only composite difference** is normalized and counted, never flagged. Only a band it moves is flagged, as `severity_band:rounding`.
   - **Ruling A.** `retagged:<field>:asset-tags` goes on every field that the tags alone moved, the values that follow the band included. None of those fields is also flagged `corrected`.
@@ -197,8 +218,10 @@ def check_carried_vector(row: BaselineRow, *, tags: Sequence[str]) -> VectorChec
     - `reused-id:finding_id:baseline`, verbatim from D7;
     - `input:cvss_vector:sources-disagree` and `input:reachability:out-of-range`;
     - `input:<field>:narrative-fallback` and `input:<field>:truncated`, over the 28 field names (`part-files.md`);
+    - `input:cvss_base:missing` and `input:review_date:missing` (added at W2, from R1b's code). The baseline row's form has a place for the value, but the row leaves it empty or unreadable. The score is then rendered from the chain (`check_carried_vector`), and the review date by R-5's rules (`governance_for`). `governance_for` adds `input:review_date:missing` only when no other flag already explains the review date, so the date carries one explanation. A missing owner, SLA or disposition takes its default with no flag (ADR-050 D9);
+    - `input:<field>:not-in-form`, with `component`, `threat`, `delta_status` or `risk_level` (added at W2, from T032: `tachi_parsers.FORM_LACKS_FLAG` and `FORM_LACKS_CAUSE`). Section 7's form, or D8's SARIF fallback for `delta_status`, has no place for the value. The flag stays whether or not the baseline supplied the value (R-31, below);
     - `resolved`, alone, with no field or cause.
-  - **One open string.** The cause for a value that the input's form lacks (S-12(b)) is named by T032 in this form, and added here.
+  - **No open string is left.** A new string needs an amendment here. The controls renderer (W3) uses the same `input:<field>:not-in-form` strings for its reference-set values.
 
 ### R-31: routing, peers, dates and governance (T043, T044)
 
@@ -209,8 +232,10 @@ class ScorerRouting:
     carried: Tuple[str, ...]          # UNCHANGED findings with a usable row, peers included
     copy_primary: Mapping[str, str]   # every other peer -> its group's primary
     carried_peers: Mapping[str, str]  # each carried peer -> its primary, for the divergence check
+    status: Mapping[str, str] = field(default_factory=dict)  # W2: each open ID -> the status it was routed under
 
-def route_scorer_units(open_rows: Sequence[Mapping[str, str]], *, groups: Sequence[Mapping[str, object]], baseline: Optional[BaselineScores]) -> ScorerRouting: ...
+def route_scorer_units(open_rows: Sequence[Mapping[str, str]], *, groups: Sequence[Mapping[str, object]], baseline: Optional[BaselineScores],
+                       lacking: Optional[Mapping[str, Sequence[str]]] = None) -> ScorerRouting: ...
 
 def peer_divergence(*, peer_composite: Decimal, primary_id: str, primary_composite: Decimal) -> Optional[str]: ...
 
@@ -236,9 +261,12 @@ def governance_for(status: str, *, rendered_band: str, run_date: date, row: Opti
 ```
 
 - **`route_scorer_units`** is the one partition. Both the planner (T044) and the renderer (T028, T045) call it, so they always agree (D2).
-  - `open_rows` are the reference-set wrapper's open rows, with at least `id`, `component` and `delta_status`. A row without `delta_status` counts as NEW, unless T032's drift-form rule derives it from the baseline (S-12(b)).
+  - `open_rows` are the reference-set wrapper's open rows, with at least `id`, `component` and `delta_status`. Unless `lacking` names `delta_status` for it (below), a row with no usable `delta_status` counts as NEW, as today. That covers an absent value and a value that isn't NEW, UPDATED or UNCHANGED, and the default `lacking=None` changes no caller.
   - `groups` is `parse_correlation_groups(...)["groups"]`, filtered to the open IDs.
   - A usable row is an entry of `baseline.rows`. A NEW finding whose ID is in `baseline.ids_in_any_row` goes to the agent, never to `carried` (ruling B).
+  - **S-12(b)'s derivation (ruled at W2; ADR-050 D9).** `lacking` is the reference set's `lacking` map, canonical ID to the names of the values its form lacks. For D8's SARIF fallback it is `{id: ["delta_status"]}` for every member. When `lacking` names `delta_status` for an ID, its status is UNCHANGED if `baseline.rows` holds the ID, so it is carried, and NEW otherwise, so it goes to the agent under ruling B as any NEW finding does. A status is derived here and nowhere else.
+  - **`status`** maps every open ID to the status it was routed under, the Section 7 value or the derived one. The renderer takes each row's status from it, for governance, ruling B's test and the bounds of a NEW finding. So the planner (T044) and the renderer (T045) can't disagree. Both pass the same `lacking`: the planner gets it from the reference set it read, or builds the SARIF fallback's.
+  - **The renderer's supply (T045).** For each carried ID, each of `component`, `threat` and `risk_level` that `lacking` names takes the `BaselineRow`'s value, when the row records one. It happens before S-13's tag join, so the join, the zone lookup and §1's type lookup use the supplied component. A fresh ID is never supplied. Each lacking value keeps `input:<field>:not-in-form`, supplied or not, and the stage record's `value-not-in-form` warning lists the IDs.
 - **`peer_divergence`** gives `divergent:composite_score:primary=<ID>` when the two composites differ, and otherwise `None`.
 - **`original_scoring_date`** returns the stored scored-on date (renderer form), or the stored review date minus the stored SLA (legacy). If neither exists, D9's fallbacks apply in order:
   1. the baseline file's frontmatter date, flagged `corrected:review_date:baseline-date`;
@@ -263,9 +291,16 @@ def governance_for(status: str, *, rendered_band: str, run_date: date, row: Opti
 **Settled by T018 (ruled at W1, 2026-11-22, T023):**
 
 ```python
-def parse_reference_set(content: str, source: str = "threats.md") -> dict: ...  # {"open", "resolved", "duplicates"}
-def parse_markdown_table(content: str, section_header: str = None, start_line: int = None, skipped: list = None) -> list: ...
+def parse_reference_set(content: str, source: str = "threats.md") -> dict: ...  # {"open", "resolved", "duplicates", "form", "lacking", "flags"}
+def parse_markdown_table(content: str, section_header: str = None, start_line: int = None, skipped: list = None,
+                         row_lines: list = None, keep_bold: bool = False) -> list: ...
 ```
+
+- **Updated at W2 (2026-11-23), from lane P's code.** Each addition below is additive, with a default that leaves every caller unchanged.
+  - `parse_reference_set` returns three more keys from T032: `form`, `lacking` and `flags` (S-12(b), R-31 below).
+  - `parse_markdown_table` takes two more keywords:
+    - `row_lines` receives the 1-based line of each *returned* row, in step with the rows, so a caller can name a row's line in a message, as the Section 4a reader does;
+    - `keep_bold=True` keeps the `**` markers in data cells, and header cells always lose them. The persisted-inputs readers ask for it, because a persisted value is stored exactly as written (the persisted-inputs format, below).
 
 - **`parse_reference_set`** returns `open` (Section 7, as `parse_threats_findings` builds each row) and `resolved` (Section 4c), each in S-2 order. Every ID passes the allow-list, and `id` keeps the file's spelling. It raises `ReferenceSetError`, a `ValueError`, so the stage stops before dispatch (S-12(c)).
 - **A repeated canonical ID is read, never refused.** The first row wins, and an open row beats a resolved one. `duplicates` lists the repeated IDs in S-2 order.
@@ -316,6 +351,19 @@ def parse_controls_assessment_inputs(content: str) -> dict: ...
   - A pre-1.1 file, which has no `### Assessment Inputs`, gives `{"inputs": {}, "errors": []}`.
   - A row whose field isn't in the controls payload's closed key set goes to `errors`.
 
+## `scripts/sarif_common.py`: one W2 addition (lane R0b, ruled at W2, 2026-11-23)
+
+```python
+def resolve_explicit(candidate: object, *, root: Optional[str] = None, fs: Any = None) -> Tuple[Optional[ResolvedPath], Optional[Dict[str, str]]]: ...
+```
+
+- **What it is.** D7's first candidate, split out of `resolve_architecture` so that `tachi-stage.py plan` runs the same step.
+  - It returns `(resolved, None)` when `resolve_file(candidate, root=root, allow_absolute=True, fs=fs)` passes.
+  - Otherwise it returns `(None, warning)`. The warning is the `{code, detail}` that `resolve_architecture` lists for that failure: code `architecture-path:explicit:<check>`, and a detail that names the candidate in its escaped short form, the check and `--architecture-path`.
+- **`resolve_architecture`'s step 1 calls it.** Its signature, outputs and warnings don't change.
+- **The planner** records the warning as the plan's `architecture_warning` (`part-files.md` §4). The renderer lists it ahead of its own resolver's warnings.
+- **Order.** It lands before R1b's planner change that calls it.
+
 ## The persisted-inputs format: `risk-scores.md` §6 and `compensating-controls.md` §7
 
 `render-risk-scores.py` writes `### Scoring Inputs` under `## 6. Score Integrity` (D9). `render-compensating-controls.py` writes `### Assessment Inputs` under `## 7. Analysis Integrity` (D2). The next run reads each back: §6 through `read_baseline_scores`, and §7 through `parse_controls_assessment_inputs`.
@@ -335,6 +383,7 @@ Both sections use one table, so the writers (R1, R2), the readers (R1b, P) and t
   - §7 holds the whole controls item (D2, AR-T3's reading).
 - **Values** are escaped on write by D3's table-cell rule, and decoded on read with `decode_references`. Narrative values keep their slot tokens. Booleans are `true` or `false`, and integers are written in decimal. No value has edge whitespace, because `tachi_parts` removes it at intake (`part-files.md`), so the readers' cell strip loses nothing.
 - **Reading.**
+  - A value is read as the cell holds it, decoded once, and keeps its `**` (ruled at W2). `read_baseline_scores` reads the raw Value cell, and `parse_controls_assessment_inputs` passes `keep_bold=True`. So prose emphasis round-trips byte for byte, as the edge-whitespace rule intends.
   - A reader re-checks each value's class: closed values against their pattern or enum, and narrative values by D3's step 11 when they're re-resolved.
   - A row with an unknown field goes to the reader's issues or errors.
   - No number is ever read from a narrative value.
