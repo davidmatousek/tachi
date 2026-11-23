@@ -1,0 +1,2108 @@
+{
+  "chains": [
+    {
+      "against_flow": false,
+      "breaking_target": "E-4",
+      "converging": 1,
+      "id": "CHAIN-001",
+      "kind": "v-arms",
+      "layers": [
+        "L5",
+        "L6",
+        "L3",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-23",
+        "T-58",
+        "E-4",
+        "E-33"
+      ],
+      "surfaced": true
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-7",
+      "id": "CHAIN-002",
+      "kind": "v-arms",
+      "layers": [
+        "L4",
+        "L6",
+        "L3",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-24",
+        "T-7",
+        "E-25",
+        "E-33"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-59",
+      "converging": 0,
+      "id": "CHAIN-003",
+      "kind": "path-4",
+      "layers": [
+        "L4",
+        "L6",
+        "L3",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-29",
+        "T-59",
+        "E-13",
+        "E-38"
+      ],
+      "surfaced": true
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-44",
+      "converging": 0,
+      "id": "CHAIN-004",
+      "kind": "path-3",
+      "layers": [
+        "L5",
+        "L6",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-35",
+        "T-44",
+        "E-7"
+      ],
+      "surfaced": true
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-65",
+      "converging": 0,
+      "id": "CHAIN-005",
+      "kind": "path-3",
+      "layers": [
+        "L4",
+        "L3",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-12",
+        "I-65",
+        "I-30"
+      ],
+      "surfaced": true
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-59",
+      "converging": 0,
+      "id": "CHAIN-006",
+      "kind": "path-3",
+      "layers": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-18",
+        "I-59",
+        "I-60"
+      ],
+      "surfaced": true
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "S-19",
+      "id": "CHAIN-007",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "S-14",
+        "S-19"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "S-16",
+      "id": "CHAIN-008",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "S-16",
+        "S-12"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "T-5",
+      "id": "CHAIN-009",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-5",
+        "T-32"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "T-4",
+      "id": "CHAIN-010",
+      "kind": "closure-3",
+      "layers": [
+        "L7",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-8",
+        "T-4"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "E-37",
+      "id": "CHAIN-011",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-10",
+        "E-37"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "E-27",
+      "id": "CHAIN-012",
+      "kind": "mutual",
+      "layers": [
+        "L2",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-11",
+        "E-27"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-13",
+      "id": "CHAIN-013",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-13",
+        "E-18"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "S-2",
+      "id": "CHAIN-014",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-15",
+        "S-2"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-16",
+      "id": "CHAIN-015",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-16",
+        "S-7"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-20",
+      "id": "CHAIN-016",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-20",
+        "E-30"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "T-43",
+      "id": "CHAIN-017",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-22",
+        "T-43"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-36",
+      "id": "CHAIN-018",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-36",
+        "T-21"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-28",
+      "id": "CHAIN-019",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-37",
+        "T-28"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-38",
+      "id": "CHAIN-020",
+      "kind": "plain",
+      "layers": [
+        "L7",
+        "L2"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-38",
+        "T-45"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-40",
+      "id": "CHAIN-021",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-40",
+        "S-18"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-42",
+      "id": "CHAIN-022",
+      "kind": "plain",
+      "layers": [
+        "L7",
+        "L2"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-42",
+        "T-25"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-17",
+      "id": "CHAIN-023",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-48",
+        "T-17"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-50",
+      "id": "CHAIN-024",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-50",
+        "S-11"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-2",
+      "id": "CHAIN-025",
+      "kind": "plain",
+      "layers": [
+        "L7",
+        "L2"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-53",
+        "T-2"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-54",
+      "id": "CHAIN-026",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-54",
+        "T-3"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "T-55",
+      "id": "CHAIN-027",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-55",
+        "S-9"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "E-16",
+      "id": "CHAIN-028",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-60",
+        "E-16"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-64",
+      "id": "CHAIN-029",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-64",
+        "T-12"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-67",
+      "id": "CHAIN-030",
+      "kind": "plain",
+      "layers": [
+        "L7",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-67",
+        "T-62"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-68",
+      "id": "CHAIN-031",
+      "kind": "plain",
+      "layers": [
+        "L7",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "T-68",
+        "T-41"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "R-1",
+      "id": "CHAIN-032",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "R-1",
+        "R-3"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "R-5",
+      "id": "CHAIN-033",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "R-5",
+        "R-11"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "R-4",
+      "id": "CHAIN-034",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "R-7",
+        "R-4"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "R-2",
+      "id": "CHAIN-035",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "R-8",
+        "R-2"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "R-10",
+      "id": "CHAIN-036",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "R-10",
+        "R-18"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "R-14",
+      "id": "CHAIN-037",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "R-14",
+        "R-17"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-34",
+      "id": "CHAIN-038",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-2",
+        "I-34"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-9",
+      "id": "CHAIN-039",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-9",
+        "I-6"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-13",
+      "id": "CHAIN-040",
+      "kind": "plain",
+      "layers": [
+        "L3",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-13",
+        "I-19"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-22",
+      "id": "CHAIN-041",
+      "kind": "plain",
+      "layers": [
+        "L3",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-22",
+        "I-81"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-28",
+      "id": "CHAIN-042",
+      "kind": "closure-2",
+      "layers": [
+        "L3",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-24",
+        "I-28"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-66",
+      "id": "CHAIN-043",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-25",
+        "I-66"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-57",
+      "id": "CHAIN-044",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-32",
+        "I-57"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-38",
+      "id": "CHAIN-045",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-38",
+        "I-35"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-47",
+      "id": "CHAIN-046",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-47",
+        "I-31"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-51",
+      "id": "CHAIN-047",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-51",
+        "I-41"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-61",
+      "id": "CHAIN-048",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-61",
+        "I-54"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-63",
+      "id": "CHAIN-049",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-63",
+        "I-42"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-8",
+      "id": "CHAIN-050",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L2"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-68",
+        "I-8"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-17",
+      "id": "CHAIN-051",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-69",
+        "I-17"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-29",
+      "id": "CHAIN-052",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-70",
+        "I-29"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-75",
+      "id": "CHAIN-053",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-75",
+        "I-71"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-1",
+      "id": "CHAIN-054",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-76",
+        "I-1"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-79",
+      "id": "CHAIN-055",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-79",
+        "I-3"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-10",
+      "id": "CHAIN-056",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "I-82",
+        "I-10"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "D-10",
+      "id": "CHAIN-057",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "D-5",
+        "D-10"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "D-4",
+      "id": "CHAIN-058",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L6"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "D-6",
+        "D-4"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "D-8",
+      "id": "CHAIN-059",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "D-8",
+        "D-18"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "D-20",
+      "id": "CHAIN-060",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "D-9",
+        "D-20"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "D-7",
+      "id": "CHAIN-061",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "D-11",
+        "D-7"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "D-3",
+      "id": "CHAIN-062",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "D-14",
+        "D-3"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "D-16",
+      "id": "CHAIN-063",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "D-16",
+        "D-15"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "E-3",
+      "id": "CHAIN-064",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "E-3",
+        "E-24"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "E-5",
+      "id": "CHAIN-065",
+      "kind": "plain",
+      "layers": [
+        "L3",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "E-5",
+        "E-29"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "E-9",
+      "id": "CHAIN-066",
+      "kind": "plain",
+      "layers": [
+        "L3",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "E-9",
+        "E-35"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "E-15",
+      "id": "CHAIN-067",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "E-17",
+        "E-15"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "E-41",
+      "id": "CHAIN-068",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "E-26",
+        "E-41"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "E-21",
+      "id": "CHAIN-069",
+      "kind": "plain",
+      "layers": [
+        "L3",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "E-32",
+        "E-21"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "E-36",
+      "id": "CHAIN-070",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L7"
+      ],
+      "max_severity": "Critical",
+      "members": [
+        "E-36",
+        "E-23"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "S-3",
+      "id": "CHAIN-071",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "S-4",
+        "S-3"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "S-10",
+      "id": "CHAIN-072",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "S-6",
+        "S-10"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "T-47",
+      "id": "CHAIN-073",
+      "kind": "plain",
+      "layers": [
+        "L7",
+        "L2"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-6",
+        "T-47"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "S-13",
+      "id": "CHAIN-074",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-9",
+        "S-13"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-14",
+      "id": "CHAIN-075",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-14",
+        "E-40"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-18",
+      "id": "CHAIN-076",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-18",
+        "E-6"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-19",
+      "id": "CHAIN-077",
+      "kind": "mutual",
+      "layers": [
+        "L1",
+        "L2"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-19",
+        "T-34"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-26",
+      "id": "CHAIN-078",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-26",
+        "S-1"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-27",
+      "id": "CHAIN-079",
+      "kind": "plain",
+      "layers": [
+        "L7",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-27",
+        "T-46"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-69",
+      "id": "CHAIN-080",
+      "kind": "plain",
+      "layers": [
+        "L7",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-31",
+        "T-69"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "T-33",
+      "id": "CHAIN-081",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L6"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-33",
+        "T-51"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "T-49",
+      "id": "CHAIN-082",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-49",
+        "S-5"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "T-52",
+      "id": "CHAIN-083",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-52",
+        "E-1"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-30",
+      "id": "CHAIN-084",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L6"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-56",
+        "T-30"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "S-17",
+      "id": "CHAIN-085",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-57",
+        "S-17"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "T-61",
+      "id": "CHAIN-086",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-61",
+        "E-2"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-63",
+      "id": "CHAIN-087",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-63",
+        "S-8"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "T-66",
+      "id": "CHAIN-088",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "T-66",
+        "E-20"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "R-13",
+      "id": "CHAIN-089",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L6"
+      ],
+      "max_severity": "High",
+      "members": [
+        "R-15",
+        "R-13"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "R-12",
+      "id": "CHAIN-090",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "R-16",
+        "R-12"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-7",
+      "id": "CHAIN-091",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-7",
+        "I-50"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-39",
+      "id": "CHAIN-092",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-11",
+        "I-39"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-64",
+      "id": "CHAIN-093",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-15",
+        "I-64"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-88",
+      "id": "CHAIN-094",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L7"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-21",
+        "I-88"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-67",
+      "id": "CHAIN-095",
+      "kind": "plain",
+      "layers": [
+        "L3",
+        "L7"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-26",
+        "I-67"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-27",
+      "id": "CHAIN-096",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L7"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-27",
+        "I-33"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-48",
+      "id": "CHAIN-097",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L7"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-37",
+        "I-48"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-40",
+      "id": "CHAIN-098",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-40",
+        "I-83"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-5",
+      "id": "CHAIN-099",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L6"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-44",
+        "I-5"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-46",
+      "id": "CHAIN-100",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-46",
+        "I-56"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-53",
+      "id": "CHAIN-101",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L2"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-53",
+        "I-36"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-43",
+      "id": "CHAIN-102",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L2"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-58",
+        "I-43"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-62",
+      "id": "CHAIN-103",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L2"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-62",
+        "I-20"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "I-72",
+      "id": "CHAIN-104",
+      "kind": "plain",
+      "layers": [
+        "L1",
+        "L2"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-72",
+        "I-55"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-73",
+      "id": "CHAIN-105",
+      "kind": "plain",
+      "layers": [
+        "L3",
+        "L7"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-73",
+        "I-52"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-14",
+      "id": "CHAIN-106",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-74",
+        "I-14"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-77",
+      "id": "CHAIN-107",
+      "kind": "plain",
+      "layers": [
+        "L3",
+        "L7"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-77",
+        "I-16"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-78",
+      "id": "CHAIN-108",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L6"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-78",
+        "I-85"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-45",
+      "id": "CHAIN-109",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-84",
+        "I-45"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-49",
+      "id": "CHAIN-110",
+      "kind": "plain",
+      "layers": [
+        "L4",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-86",
+        "I-49"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "I-87",
+      "id": "CHAIN-111",
+      "kind": "plain",
+      "layers": [
+        "L2",
+        "L7"
+      ],
+      "max_severity": "High",
+      "members": [
+        "I-87",
+        "I-23"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "D-2",
+      "id": "CHAIN-112",
+      "kind": "mutual",
+      "layers": [
+        "L4",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "D-2",
+        "D-21"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "D-12",
+      "id": "CHAIN-113",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L6"
+      ],
+      "max_severity": "High",
+      "members": [
+        "D-12",
+        "D-13"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "D-1",
+      "id": "CHAIN-114",
+      "kind": "plain",
+      "layers": [
+        "L5",
+        "L6"
+      ],
+      "max_severity": "High",
+      "members": [
+        "D-22",
+        "D-1"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": true,
+      "breaking_target": "E-8",
+      "id": "CHAIN-115",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L7"
+      ],
+      "max_severity": "High",
+      "members": [
+        "E-8",
+        "E-42"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "E-10",
+      "id": "CHAIN-116",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "E-10",
+        "E-39"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "E-11",
+      "id": "CHAIN-117",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L3"
+      ],
+      "max_severity": "High",
+      "members": [
+        "E-11",
+        "E-34"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "E-31",
+      "id": "CHAIN-118",
+      "kind": "plain",
+      "layers": [
+        "L6",
+        "L7"
+      ],
+      "max_severity": "High",
+      "members": [
+        "E-14",
+        "E-31"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "E-22",
+      "id": "CHAIN-119",
+      "kind": "plain",
+      "layers": [
+        "L3",
+        "L7"
+      ],
+      "max_severity": "High",
+      "members": [
+        "E-22",
+        "E-19"
+      ],
+      "surfaced": false
+    },
+    {
+      "against_flow": false,
+      "breaking_target": "E-12",
+      "id": "CHAIN-120",
+      "kind": "plain",
+      "layers": [
+        "L3",
+        "L7"
+      ],
+      "max_severity": "High",
+      "members": [
+        "E-28",
+        "E-12"
+      ],
+      "surfaced": false
+    }
+  ],
+  "compact_rows": [
+    "| CHAIN-002 | L4 \u2192 L6 \u2192 L3 \u2192 L7 | T-24 \u2192 T-7 \u2192 E-25 \u2192 E-33 | Critical | T-7 |",
+    "| CHAIN-007 | L6 \u2192 L3 | S-14 \u2192 S-19 | Critical | S-19 |",
+    "| CHAIN-008 | L6 \u2192 L3 | S-16 \u2192 S-12 | Critical | S-16 |",
+    "| CHAIN-009 | L4 \u2192 L6 | T-5 \u2192 T-32 | Critical | T-5 |",
+    "| CHAIN-010 | L7 \u2192 L3 | T-8 \u2192 T-4 | Critical | T-4 |",
+    "| CHAIN-011 | L1 \u2192 L3 | T-10 \u2192 E-37 | Critical | E-37 |",
+    "| CHAIN-012 | L2 \u2192 L3 | T-11 \u2192 E-27 | Critical | E-27 |",
+    "| CHAIN-013 | L1 \u2192 L3 | T-13 \u2192 E-18 | Critical | T-13 |",
+    "| CHAIN-014 | L2 \u2192 L3 | T-15 \u2192 S-2 | Critical | S-2 |",
+    "| CHAIN-015 | L1 \u2192 L3 | T-16 \u2192 S-7 | Critical | T-16 |",
+    "| CHAIN-016 | L1 \u2192 L3 | T-20 \u2192 E-30 | Critical | T-20 |",
+    "| CHAIN-017 | L4 \u2192 L6 | T-22 \u2192 T-43 | Critical | T-43 |",
+    "| CHAIN-018 | L4 \u2192 L6 | T-36 \u2192 T-21 | Critical | T-36 |",
+    "| CHAIN-019 | L5 \u2192 L6 | T-37 \u2192 T-28 | Critical | T-28 |",
+    "| CHAIN-020 | L7 \u2192 L2 | T-38 \u2192 T-45 | Critical | T-38 |",
+    "| CHAIN-021 | L2 \u2192 L3 | T-40 \u2192 S-18 | Critical | T-40 |",
+    "| CHAIN-022 | L7 \u2192 L2 | T-42 \u2192 T-25 | Critical | T-42 |",
+    "| CHAIN-023 | L5 \u2192 L6 | T-48 \u2192 T-17 | Critical | T-17 |",
+    "| CHAIN-024 | L2 \u2192 L3 | T-50 \u2192 S-11 | Critical | T-50 |",
+    "| CHAIN-025 | L7 \u2192 L2 | T-53 \u2192 T-2 | Critical | T-2 |",
+    "| CHAIN-026 | L4 \u2192 L6 | T-54 \u2192 T-3 | Critical | T-54 |",
+    "| CHAIN-027 | L1 \u2192 L3 | T-55 \u2192 S-9 | Critical | T-55 |",
+    "| CHAIN-028 | L6 \u2192 L3 | T-60 \u2192 E-16 | Critical | E-16 |",
+    "| CHAIN-029 | L5 \u2192 L6 | T-64 \u2192 T-12 | Critical | T-64 |",
+    "| CHAIN-030 | L7 \u2192 L3 | T-67 \u2192 T-62 | Critical | T-67 |",
+    "| CHAIN-031 | L7 \u2192 L3 | T-68 \u2192 T-41 | Critical | T-68 |",
+    "| CHAIN-032 | L5 \u2192 L3 | R-1 \u2192 R-3 | Critical | R-1 |",
+    "| CHAIN-033 | L5 \u2192 L3 | R-5 \u2192 R-11 | Critical | R-5 |",
+    "| CHAIN-034 | L5 \u2192 L6 | R-7 \u2192 R-4 | Critical | R-4 |",
+    "| CHAIN-035 | L5 \u2192 L3 | R-8 \u2192 R-2 | Critical | R-2 |",
+    "| CHAIN-036 | L5 \u2192 L6 | R-10 \u2192 R-18 | Critical | R-10 |",
+    "| CHAIN-037 | L5 \u2192 L6 | R-14 \u2192 R-17 | Critical | R-14 |",
+    "| CHAIN-038 | L2 \u2192 L3 | I-2 \u2192 I-34 | Critical | I-34 |",
+    "| CHAIN-039 | L1 \u2192 L7 | I-9 \u2192 I-6 | Critical | I-9 |",
+    "| CHAIN-040 | L3 \u2192 L7 | I-13 \u2192 I-19 | Critical | I-13 |",
+    "| CHAIN-041 | L3 \u2192 L7 | I-22 \u2192 I-81 | Critical | I-22 |",
+    "| CHAIN-042 | L3 \u2192 L7 | I-24 \u2192 I-28 | Critical | I-28 |",
+    "| CHAIN-043 | L1 \u2192 L7 | I-25 \u2192 I-66 | Critical | I-66 |",
+    "| CHAIN-044 | L1 \u2192 L7 | I-32 \u2192 I-57 | Critical | I-57 |",
+    "| CHAIN-045 | L4 \u2192 L6 | I-38 \u2192 I-35 | Critical | I-38 |",
+    "| CHAIN-046 | L2 \u2192 L3 | I-47 \u2192 I-31 | Critical | I-47 |",
+    "| CHAIN-047 | L2 \u2192 L3 | I-51 \u2192 I-41 | Critical | I-51 |",
+    "| CHAIN-048 | L4 \u2192 L6 | I-61 \u2192 I-54 | Critical | I-61 |",
+    "| CHAIN-049 | L2 \u2192 L3 | I-63 \u2192 I-42 | Critical | I-63 |",
+    "| CHAIN-050 | L1 \u2192 L2 | I-68 \u2192 I-8 | Critical | I-8 |",
+    "| CHAIN-051 | L4 \u2192 L6 | I-69 \u2192 I-17 | Critical | I-17 |",
+    "| CHAIN-052 | L2 \u2192 L7 | I-70 \u2192 I-29 | Critical | I-29 |",
+    "| CHAIN-053 | L2 \u2192 L7 | I-75 \u2192 I-71 | Critical | I-75 |",
+    "| CHAIN-054 | L6 \u2192 L3 | I-76 \u2192 I-1 | Critical | I-1 |",
+    "| CHAIN-055 | L1 \u2192 L7 | I-79 \u2192 I-3 | Critical | I-79 |",
+    "| CHAIN-056 | L6 \u2192 L3 | I-82 \u2192 I-10 | Critical | I-10 |",
+    "| CHAIN-057 | L5 \u2192 L6 | D-5 \u2192 D-10 | Critical | D-10 |",
+    "| CHAIN-058 | L5 \u2192 L6 | D-6 \u2192 D-4 | Critical | D-4 |",
+    "| CHAIN-059 | L4 \u2192 L7 | D-8 \u2192 D-18 | Critical | D-8 |",
+    "| CHAIN-060 | L4 \u2192 L7 | D-9 \u2192 D-20 | Critical | D-20 |",
+    "| CHAIN-061 | L4 \u2192 L7 | D-11 \u2192 D-7 | Critical | D-7 |",
+    "| CHAIN-062 | L4 \u2192 L7 | D-14 \u2192 D-3 | Critical | D-3 |",
+    "| CHAIN-063 | L4 \u2192 L7 | D-16 \u2192 D-15 | Critical | D-16 |",
+    "| CHAIN-064 | L6 \u2192 L3 | E-3 \u2192 E-24 | Critical | E-3 |",
+    "| CHAIN-065 | L3 \u2192 L7 | E-5 \u2192 E-29 | Critical | E-5 |",
+    "| CHAIN-066 | L3 \u2192 L7 | E-9 \u2192 E-35 | Critical | E-9 |",
+    "| CHAIN-067 | L6 \u2192 L7 | E-17 \u2192 E-15 | Critical | E-15 |",
+    "| CHAIN-068 | L6 \u2192 L3 | E-26 \u2192 E-41 | Critical | E-41 |",
+    "| CHAIN-069 | L3 \u2192 L7 | E-32 \u2192 E-21 | Critical | E-21 |",
+    "| CHAIN-070 | L6 \u2192 L7 | E-36 \u2192 E-23 | Critical | E-36 |",
+    "| CHAIN-071 | L6 \u2192 L3 | S-4 \u2192 S-3 | High | S-3 |",
+    "| CHAIN-072 | L6 \u2192 L3 | S-6 \u2192 S-10 | High | S-10 |",
+    "| CHAIN-073 | L7 \u2192 L2 | T-6 \u2192 T-47 | High | T-47 |",
+    "| CHAIN-074 | L1 \u2192 L3 | T-9 \u2192 S-13 | High | S-13 |",
+    "| CHAIN-075 | L6 \u2192 L3 | T-14 \u2192 E-40 | High | T-14 |",
+    "| CHAIN-076 | L6 \u2192 L3 | T-18 \u2192 E-6 | High | T-18 |",
+    "| CHAIN-077 | L1 \u2192 L2 | T-19 \u2192 T-34 | High | T-19 |",
+    "| CHAIN-078 | L1 \u2192 L3 | T-26 \u2192 S-1 | High | T-26 |",
+    "| CHAIN-079 | L7 \u2192 L3 | T-27 \u2192 T-46 | High | T-27 |",
+    "| CHAIN-080 | L7 \u2192 L3 | T-31 \u2192 T-69 | High | T-69 |",
+    "| CHAIN-081 | L4 \u2192 L6 | T-33 \u2192 T-51 | High | T-33 |",
+    "| CHAIN-082 | L2 \u2192 L3 | T-49 \u2192 S-5 | High | T-49 |",
+    "| CHAIN-083 | L1 \u2192 L3 | T-52 \u2192 E-1 | High | T-52 |",
+    "| CHAIN-084 | L5 \u2192 L6 | T-56 \u2192 T-30 | High | T-30 |",
+    "| CHAIN-085 | L2 \u2192 L3 | T-57 \u2192 S-17 | High | S-17 |",
+    "| CHAIN-086 | L6 \u2192 L3 | T-61 \u2192 E-2 | High | T-61 |",
+    "| CHAIN-087 | L1 \u2192 L3 | T-63 \u2192 S-8 | High | T-63 |",
+    "| CHAIN-088 | L1 \u2192 L3 | T-66 \u2192 E-20 | High | T-66 |",
+    "| CHAIN-089 | L5 \u2192 L6 | R-15 \u2192 R-13 | High | R-13 |",
+    "| CHAIN-090 | L5 \u2192 L3 | R-16 \u2192 R-12 | High | R-12 |",
+    "| CHAIN-091 | L4 \u2192 L3 | I-7 \u2192 I-50 | High | I-7 |",
+    "| CHAIN-092 | L6 \u2192 L3 | I-11 \u2192 I-39 | High | I-39 |",
+    "| CHAIN-093 | L4 \u2192 L3 | I-15 \u2192 I-64 | High | I-64 |",
+    "| CHAIN-094 | L1 \u2192 L7 | I-21 \u2192 I-88 | High | I-88 |",
+    "| CHAIN-095 | L3 \u2192 L7 | I-26 \u2192 I-67 | High | I-67 |",
+    "| CHAIN-096 | L2 \u2192 L7 | I-27 \u2192 I-33 | High | I-27 |",
+    "| CHAIN-097 | L2 \u2192 L7 | I-37 \u2192 I-48 | High | I-48 |",
+    "| CHAIN-098 | L6 \u2192 L3 | I-40 \u2192 I-83 | High | I-40 |",
+    "| CHAIN-099 | L4 \u2192 L6 | I-44 \u2192 I-5 | High | I-5 |",
+    "| CHAIN-100 | L2 \u2192 L3 | I-46 \u2192 I-56 | High | I-46 |",
+    "| CHAIN-101 | L1 \u2192 L2 | I-53 \u2192 I-36 | High | I-53 |",
+    "| CHAIN-102 | L1 \u2192 L2 | I-58 \u2192 I-43 | High | I-43 |",
+    "| CHAIN-103 | L1 \u2192 L2 | I-62 \u2192 I-20 | High | I-62 |",
+    "| CHAIN-104 | L1 \u2192 L2 | I-72 \u2192 I-55 | High | I-72 |",
+    "| CHAIN-105 | L3 \u2192 L7 | I-73 \u2192 I-52 | High | I-73 |"
+  ],
+  "counts": {
+    "against_flow": 45,
+    "candidates": 136,
+    "compact_rows": 100,
+    "components": 265,
+    "consolidated": 120,
+    "dropped": {
+      "deduplicated": 3,
+      "filtered": 4,
+      "folded": 9
+    },
+    "findings_in_chains": 248,
+    "findings_in_section_7": 262,
+    "islands": 123,
+    "not_listed": 15,
+    "surfaced": 5
+  },
+  "frontmatter_counts": {
+    "candidate_count": 136,
+    "chain_count": 120,
+    "surfaced_count": 5
+  },
+  "notes": [
+    "The material is 123 islands and no flow joins two. Each island is a short list of components with findings, and the chains it gives are declared with it, so the counts below are by construction. The test re-derives them from the committed files with its own coding of S-3, which is the check that the declaration and the files agree.",
+    "120 consolidated chains: more than the 105 at which S-3(g)'s bound bites. At most five surface, so 115 are not shown in full, 100 of them get a compact row and the last line states how many are not listed (15).",
+    "Surfacing (S-3(f)): the V island's two chains end at one finding. Whichever ranks first surfaces, and carries converging 1; the other ranks within the first few places and is passed over. It is not surfaced, so it has a compact row.",
+    "candidates minus consolidated is the sum of the three drops: tails that fold into a longer chain, a mutual pair's second chain, and chains with no Critical or High finding. chains.json does not carry the drops, so only their sum is checkable against a script.",
+    "Closure: closure-2 and closure-3 have no flow between the two components that carry findings. The link exists only through the transitive closure.",
+    "Direction: in closure-3, in some other special islands and in one plain island in three, the flow runs against the link, so the link's source component cannot reach its target and only the other way round holds. Such a chain has against_flow true. It exists only if reachability counts in either direction (orchestrator.md Phase 3.5 step 2, 'or vice versa'; ADR-050 D13, 'one component is reachable from the other'), which is how the rule stands (S-3(b), unchanged). Narrowing it to the link's direction is an R-21 change, and the chains that need it are counts.against_flow of the consolidated ones.",
+    "Left out of chain formation: AG and LLM findings, and STRIDE findings on an unclassified layer. Six such findings sit on components that a flow joins to a chain's components, so a script that forgot the rule would see them.",
+    "A chain's breaking target follows the orchestrator's Step 4. The V island's two arms use both tie-breaks of the 4-finding rule: the higher severity, then the earlier position.",
+    "The compact rows are in the shipped format of contracts/threat-model-records.md. A row's layers and findings are in chain order.",
+    "Not reached here: a finding with more than one onward link (S-3(c)'s choice among candidates, which no island needs), and a chain that is a run in the middle of another. The tests of attack-chains.py build those inline.",
+    "How to run: copy run/ to a working directory and rename its tachi-build/ to .tachi-build/ (.gitignore excludes that name, so the committed copy cannot hold it). Then run attack-chains.py with --run-dir on the working directory."
+  ],
+  "outcome_record": "chains written (120); candidates 136; surfaced 5",
+  "remainder_line": "**Consolidated chains not listed**: 15",
+  "run": {
+    "date": "2026-11-23",
+    "how": "copy run/ to a working directory and rename tachi-build/ to .tachi-build/; the committed copy cannot hold that name",
+    "inventory": "run/tachi-build/phase1/inventory.json",
+    "inventory_in_a_run_directory": ".tachi-build/phase1/inventory.json",
+    "threats": "run/threats.md"
+  },
+  "scenario": "main",
+  "schema": "tachi.fixture-expected/1",
+  "skipped_for_a_shared_terminal": [
+    "CHAIN-002"
+  ],
+  "stage": "chains",
+  "summary": "S-4's chain-cap variant: chain material with more than 105 consolidated chains, for S-3(g)'s bound, the remainder line and FR-K4.1b's check.",
+  "surfaced": [
+    "CHAIN-001",
+    "CHAIN-003",
+    "CHAIN-004",
+    "CHAIN-005",
+    "CHAIN-006"
+  ],
+  "variant": "chain-cap"
+}

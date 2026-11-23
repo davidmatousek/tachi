@@ -1,0 +1,176 @@
+{
+  "baseline": {
+    "mark": null,
+    "mark_above_open": [],
+    "mark_above_seed": [],
+    "mark_line": null,
+    "mark_present": false,
+    "open_highest": {
+      "AG": 5,
+      "AGP": 1,
+      "D": 3,
+      "E": 3,
+      "I": 4,
+      "LLM": 6,
+      "MI": 2,
+      "OI": 3,
+      "R": 4,
+      "S": 4,
+      "T": 3,
+      "TE": 2
+    },
+    "resolved_highest": {
+      "S": 6,
+      "T": 4
+    },
+    "seed": {
+      "AG": 5,
+      "AGP": 1,
+      "D": 3,
+      "E": 3,
+      "I": 4,
+      "LLM": 6,
+      "MI": 2,
+      "OI": 3,
+      "R": 4,
+      "S": 6,
+      "T": 4,
+      "TE": 2
+    },
+    "threats": "baseline/threats.md"
+  },
+  "id_mark": {
+    "kept": [
+      "S",
+      "R",
+      "D",
+      "E",
+      "AGP",
+      "OI",
+      "MI",
+      "TE"
+    ],
+    "line": "**ID high-water mark**: `S-6, T-5, R-4, I-5, D-3, E-3, AG-6, AGP-1, LLM-7, OI-3, MI-2, TE-2`",
+    "moved": [
+      "T",
+      "I",
+      "AG",
+      "LLM"
+    ],
+    "reference": {
+      "AG": 5,
+      "AGP": 1,
+      "D": 3,
+      "E": 3,
+      "I": 4,
+      "LLM": 6,
+      "MI": 2,
+      "OI": 3,
+      "R": 4,
+      "S": 6,
+      "T": 4,
+      "TE": 2
+    },
+    "result": {
+      "AG": 6,
+      "AGP": 1,
+      "D": 3,
+      "E": 3,
+      "I": 5,
+      "LLM": 7,
+      "MI": 2,
+      "OI": 3,
+      "R": 4,
+      "S": 6,
+      "T": 5,
+      "TE": 2
+    },
+    "run_highest": {
+      "AG": 6,
+      "AGP": 1,
+      "D": 3,
+      "E": 3,
+      "I": 5,
+      "LLM": 7,
+      "MI": 2,
+      "OI": 3,
+      "R": 4,
+      "S": 6,
+      "T": 5,
+      "TE": 2
+    },
+    "spelling": "canonical, no leading zeros: the run's own AGP row is AGP-01 and its mark entry AGP-1"
+  },
+  "notes": [
+    "The run is the gated world's threats.md, complete, with its NEW findings renumbered where the case needs it. Its baseline is a stub of Section 4c and Section 7, with the mark line where the baseline has one. Every carried finding in the run is in the baseline's Section 7, and so are the three findings that the run resolved.",
+    "id_mark.result is what `tachi-stage.py id-mark` must write (ruling B, ADR-050 D7): per prefix, the larger of the run's highest ID and the baseline's mark, or, where the baseline has none, its highest live or Section 4c ID. The run's own Section 4c never decides a prefix here, so the case does not depend on how 'highest' is read. The line is in canonical spelling and in S-2's prefix order. (No script exists yet: the values come from the ruling's words, and T092 and T095 are the first to run a script on them.)",
+    "reissue.flagged is what `check-threat-model.py` must report with the reused-id code (D12): a NEW finding whose ID the baseline used, or that sits at or below the baseline's mark. It warns and exits 5. Carried findings (UNCHANGED, UPDATED) are never flagged, whatever their numbers are.",
+    "The baseline has no mark line, as every pre-PR 2 baseline. The seed is each prefix's highest live or Section 4c ID: S-6 and T-4 come from Section 4c, and a seed from the live IDs alone would be S-4 and T-3.",
+    "S-6 is a NEW finding whose number only Section 4c holds: flagged as used by the baseline. T-5 numbers just above the seeded T-4, and I-5, AG-6 and LLM-7 just above their seeds: none is flagged.",
+    "The case holds no NEW finding that sits under a seed without being used by the baseline (the generator refuses to build one), because whether the check reads a seeded mark as a mark is not ruled. ADR-050 D7's limit stays: an ID resolved before the baseline run, which the baseline no longer lists, can still be reissued once, and nothing here can show it."
+  ],
+  "reissue": {
+    "count": 1,
+    "exit_code": 5,
+    "flagged": [
+      "S-6"
+    ],
+    "new_findings": {
+      "AG-6": {
+        "baseline_highest_open": 5,
+        "boundary": false,
+        "flagged": false,
+        "mark": null,
+        "reasons": []
+      },
+      "I-5": {
+        "baseline_highest_open": 4,
+        "boundary": false,
+        "flagged": false,
+        "mark": null,
+        "reasons": []
+      },
+      "LLM-7": {
+        "baseline_highest_open": 6,
+        "boundary": false,
+        "flagged": false,
+        "mark": null,
+        "reasons": []
+      },
+      "S-6": {
+        "baseline_highest_open": 4,
+        "boundary": false,
+        "flagged": true,
+        "mark": null,
+        "reasons": [
+          "baseline-resolved"
+        ]
+      },
+      "T-5": {
+        "baseline_highest_open": 3,
+        "boundary": false,
+        "flagged": false,
+        "mark": null,
+        "reasons": []
+      }
+    },
+    "reads": "the baseline's mark, or with none the seed from its live IDs and Section 4c",
+    "unflagged_new": [
+      "T-5",
+      "I-5",
+      "AG-6",
+      "LLM-7"
+    ]
+  },
+  "run": {
+    "baseline_source": "baseline/threats.md",
+    "date": "2026-11-23",
+    "how": "copy the scenario directory to a working directory and run from there: the front matter's baseline.source and every path here are relative to it. id-mark takes run/threats.md as --threats and baseline/threats.md as --baseline, and writes the mark into a copy",
+    "threats": "run/threats.md"
+  },
+  "scenario": "pr2-no-mark",
+  "schema": "tachi.fixture-expected/1",
+  "stage": "id-mark+reissue-check",
+  "summary": "S-4's id-reuse variant for PR 2, first run: a baseline with no mark at all, seeded from its live IDs and Section 4c (PM-T7).",
+  "variant": "id-reuse"
+}

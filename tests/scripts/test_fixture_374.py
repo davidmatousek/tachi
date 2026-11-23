@@ -464,6 +464,411 @@ def test_the_gated_subset_is_a_smaller_copy_with_no_mermaid_and_no_trees(committ
     assert sum(len(data) for data in gated.values()) < 1_000_000
 
 
+# =========================================================================== PR 2's cases (T148; S-4, S-3, ADR-050 D7, D12, D13)
+# Three scenarios that wait on no ruling: chain-cap/main (more than 105 consolidated chains, for S-3(g)'s bound and FR-K4.1b's check),
+# id-reuse/pr2 (a baseline whose high-water mark sits above its live IDs) and id-reuse/pr2-no-mark (a baseline with no mark, as every
+# pre-PR 2 baseline). No chain script and no reissue check exists yet, so these tests run neither. Each derives its values from the
+# committed files with its own coding of the rules and compares them with expected-outcomes.json. The generator declares the chains by
+# construction and these tests re-derive them, so a mistake on either side shows. T115 and T095 then run the real scripts on the same files.
+# Every name here starts pr2_ or PR2_, so that T040's tests, merged in beside this section, can't meet them.
+PR2_SCENARIOS = ("chain-cap/main", "id-reuse/pr2", "id-reuse/pr2-no-mark")
+PR2_TABLE = HERE.parents[1] / ".claude" / "skills" / "tachi-shared" / "references" / "attack-chain-patterns-shared.md"
+PR2_CATEGORY = {"Spoofing": "S", "Tampering": "T", "Repudiation": "R", "Info-Disclosure": "I", "Denial-of-Service": "D",
+                "Privilege-Escalation": "E"}
+PR2_OUTCOME = re.compile(r"chains written \([1-9][0-9]{0,5}\); candidates [0-9]{1,6}; surfaced [1-5]")
+PR2_ROW = re.compile(r"\| CHAIN-[0-9]{3,6} \| L[1-7]( \u2192 L[1-7])+ \| [A-Z]+-[0-9]+( \u2192 [A-Z]+-[0-9]+)+ \| (Critical|High|Medium|Low) \| [A-Z]+-[0-9]+ \|")
+PR2_MARK_LINE = re.compile(r"\*\*ID high-water mark\*\*: ")
+PR2_MARKS = re.compile(r"\*\*ID high-water mark\*\*: `((?:S|T|R|I|D|E|AG|AGP|LLM|OI|MI|TE)-[1-9][0-9]*(?:, (?:S|T|R|I|D|E|AG|AGP|LLM|OI|MI|TE)-[1-9][0-9]*)*)`")
+
+
+@pytest.fixture(scope="module")
+def pr2_docs(committed) -> dict:
+    return {name: json.loads(committed["%s/expected-outcomes.json" % name].decode("utf-8")) for name in PR2_SCENARIOS}
+
+
+@pytest.fixture(scope="module")
+def pr2_parsers():
+    """scripts/tachi_parsers.py, the reference-set reader that every chain and check script reads Section 7 through."""
+    import sys  # a local import: the module's own import lines belong to other tasks
+    keep = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True  # a .pyc under scripts/ would dirty the tree under test (ADR-049 D8)
+    sys.path.insert(0, str(HERE.parents[1] / "scripts"))
+    try:
+        import tachi_parsers
+    finally:
+        sys.dont_write_bytecode = keep
+    return tachi_parsers
+
+
+def pr2_text(committed: dict, name: str, rel: str) -> str:
+    return committed["%s/%s" % (name, rel)].decode("utf-8")
+
+
+def pr2_s2(finding_id: str) -> tuple:
+    """S-2's total order: the prefix's rank, then the number as an integer."""
+    return (PREFIXES.index(prefix_of(finding_id)), number_of(finding_id))
+
+
+def pr2_norm(name: str) -> str:
+    """D13: component names are compared after casefolding and collapsing whitespace."""
+    return " ".join(name.casefold().split())
+
+
+def pr2_transitions() -> set:
+    """attack-chain-patterns-shared.md's transition lookup table, read from the file: {((category, layer), (category, layer))}."""
+    pairs, layer = set(), None
+    for line in PR2_TABLE.read_text(encoding="utf-8").split("\n"):
+        heading = re.match(r"### Source: L([1-7]) ", line)
+        if heading:
+            layer = int(heading.group(1))
+            continue
+        row = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if layer and line.startswith("|") and len(row) == 5 and re.fullmatch(r"L[1-7]", row[1]):
+            pairs.add(((PR2_CATEGORY[row[0]], layer), (PR2_CATEGORY[row[2]], int(row[1][1:]))))
+    return pairs
+
+
+def pr2_breaking(ids: list, risks: list) -> str:
+    """Step 4 of orchestrator.md's Phase 3.5, coded from its words."""
+    size = len(ids)
+    if size == 2:
+        return ids[1] if RISK_RANK[risks[1]] > RISK_RANK[risks[0]] else ids[0]
+    if size == 3:
+        return ids[1]
+    scored = [(i * (size - 1 - i), RISK_RANK[risks[i]], -i) for i in range(1, size - 1)]
+    return ids[1 + scored.index(max(scored))]
+
+
+def pr2_derive_chains(threats: str, inventory: dict) -> dict:
+    """S-3 and ADR-050 D13 over the committed files: finding set, links, assembly, deduplication, filter, folding, rank, surfacing."""
+    table = pr2_transitions()
+    layer_of = {pr2_norm(c["name"]): c["maestro_layer"] for c in inventory["components"]}
+    nodes = []
+    for row in table_after(threats, "## 7. Recommended Actions"):
+        layer = re.match(r"L([1-7])\b", row["MAESTRO Layer"]) or re.fullmatch(r"L([1-7])", layer_of.get(pr2_norm(row["Component"]), ""))
+        if prefix_of(row["Finding ID"]) in STRIDE and layer:  # STRIDE prefixes only, and a layer from L1 to L7
+            nodes.append({"id": row["Finding ID"], "prefix": prefix_of(row["Finding ID"]), "layer": int(layer.group(1)),
+                          "comp": pr2_norm(row["Component"]), "risk": row["Risk Level"]})
+    ahead: dict = {}
+    for flow in inventory["data_flows"]:
+        ahead.setdefault(pr2_norm(flow["source"]), []).append(pr2_norm(flow["destination"]))
+
+    def reach(start: str) -> set:
+        seen, stack = set(), list(ahead.get(start, ()))
+        while stack:
+            name = stack.pop()
+            if name not in seen:
+                seen.add(name)
+                stack.extend(ahead.get(name, ()))
+        return seen
+
+    reachable = {comp: reach(comp) for comp in {node["comp"] for node in nodes}}
+    order = sorted(nodes, key=lambda n: (-RISK_RANK[n["risk"]], pr2_s2(n["id"])))  # S-3(c): severity, highest first, then S-2
+
+    def links(a: dict, b: dict) -> bool:
+        return (a["layer"] != b["layer"] and (b["comp"] in reachable[a["comp"]] or a["comp"] in reachable[b["comp"]])
+                and ((a["prefix"], a["layer"]), (b["prefix"], b["layer"])) in table)
+
+    onward = {a["id"]: [b for b in order if b is not a and links(a, b)] for a in order}
+    assembled = []
+    for start in order:
+        if not onward[start["id"]]:
+            continue
+        chain = [start]
+        while True:  # greedy: the first candidate, in that order, on a layer the chain does not have yet
+            nxt = next((b for b in onward[chain[-1]["id"]] if b["layer"] not in {m["layer"] for m in chain}), None)
+            if nxt is None:
+                break
+            chain.append(nxt)
+        assembled.append(chain)
+
+    def rank_key(chain: list) -> tuple:  # S-3(e)
+        return (-max(RISK_RANK[m["risk"]] for m in chain), -len({m["layer"] for m in chain}), tuple(pr2_s2(m["id"]) for m in chain))
+
+    best: dict = {}
+    for chain in assembled:  # identical finding sets: the higher-ranked chain stays
+        key = frozenset(m["id"] for m in chain)
+        if key not in best or rank_key(chain) < rank_key(best[key]):
+            best[key] = chain
+    unique = list(best.values())
+    passing = [c for c in unique if len({m["layer"] for m in c}) >= 2 and max(RISK_RANK[m["risk"]] for m in c) >= RISK_RANK["High"]]
+
+    def inside(short: list, long: list) -> bool:
+        a, b = [m["id"] for m in short], [m["id"] for m in long]
+        return len(b) > len(a) and any(b[i:i + len(a)] == a for i in range(len(b) - len(a) + 1))
+
+    kept = sorted((c for c in passing if not any(inside(c, other) for other in passing)), key=rank_key)
+    chains, shown = [], []
+    for position, chain in enumerate(kept, start=1):
+        ids, risks = [m["id"] for m in chain], [m["risk"] for m in chain]
+        chains.append({"id": "CHAIN-%03d" % position, "members": ids, "layers": ["L%d" % m["layer"] for m in chain], "risks": risks,
+                       "max_severity": max(risks, key=RISK_RANK.get), "breaking_target": pr2_breaking(ids, risks), "surfaced": False,
+                       "against_flow": any(b["comp"] not in reachable[a["comp"]] for a, b in zip(chain, chain[1:]))})  # reachable only the other way
+    for chain in chains:  # S-3(f)
+        if len(shown) < 5 and not any(other["members"][-1] == chain["members"][-1] for other in shown):
+            chain["surfaced"] = True
+            chain["converging"] = sum(1 for other in chains if other is not chain and other["members"][-1] == chain["members"][-1])
+            shown.append(chain)
+    rest = [c for c in chains if not c["surfaced"]]
+    arrow = " \u2192 "
+    return {"candidates": len(assembled), "dropped": {"deduplicated": len(assembled) - len(unique), "filtered": len(unique) - len(passing),
+                                                       "folded": len(passing) - len(kept)},
+            "chains": chains, "surfaced": [c["id"] for c in shown], "not_listed": max(len(rest) - 100, 0),
+            "rows": ["| %s | %s | %s | %s | %s |" % (c["id"], arrow.join(c["layers"]), arrow.join(c["members"]), c["max_severity"], c["breaking_target"])
+                     for c in rest[:100]]}
+
+
+@pytest.fixture(scope="module")
+def pr2_chain_cap(committed, pr2_docs) -> types.SimpleNamespace:
+    threats = pr2_text(committed, "chain-cap/main", "run/threats.md")
+    inventory = json.loads(pr2_text(committed, "chain-cap/main", "run/tachi-build/phase1/inventory.json"))
+    return types.SimpleNamespace(threats=threats, inventory=inventory, doc=pr2_docs["chain-cap/main"],
+                                 derived=pr2_derive_chains(threats, inventory), rows=table_after(threats, "## 7. Recommended Actions"))
+
+
+# --------------------------------------------------------------------------- structure
+def test_pr2_every_scenario_is_committed_and_its_outcome_file_points_at_real_files(committed, pr2_docs):
+    assert {path.split("/")[0] for path in committed if path.endswith("/expected-outcomes.json")} >= {"chain-cap", "id-reuse"}
+    for name, doc in pr2_docs.items():
+        assert doc["schema"] == "tachi.fixture-expected/1"
+        assert "%s/%s" % (doc["variant"], doc["scenario"]) == name
+        assert doc["stage"] and doc["summary"] and doc["notes"], name
+        assert doc["run"]["date"] == "2026-11-23"
+        for rel in filter(None, (doc["run"].get(key) for key in ("threats", "inventory"))):
+            assert "%s/%s" % (name, rel) in committed, "%s names %s, which is not committed" % (name, rel)
+    assert "id-reuse/pr2/baseline/threats.md" in committed and "id-reuse/pr2-no-mark/baseline/threats.md" in committed
+
+
+# --------------------------------------------------------------------------- chain-cap
+def test_pr2_the_chain_material_is_read_by_the_shipped_reference_set_reader(pr2_chain_cap, pr2_parsers):
+    reference = pr2_parsers.parse_reference_set(pr2_chain_cap.threats, "chain-cap threats.md")
+    assert len(reference["open"]) == pr2_chain_cap.doc["counts"]["findings_in_section_7"] and not reference["resolved"]
+    assert not reference["duplicates"]
+    headings = [line for line in pr2_chain_cap.threats.split("\n") if line.startswith("## ")]
+    assert headings == ["## 5. Coverage Matrix", "## 6. Risk Summary", "## 7. Recommended Actions", "## 8. Delta Summary", "## Affected Assets"], (
+        "the outcome record lands before Section 5, or before Affected Assets: both must be there")
+    assert "Attack chain outcome" not in pr2_chain_cap.threats and "Attack Chain Outcome" not in pr2_chain_cap.threats, "the script writes the record"
+
+
+def test_pr2_the_inventory_follows_the_phase1_contract(committed, pr2_chain_cap):
+    """contracts/threat-model-records.md, 'Persisted Phase 1 tables': keys, sizes, enums, and every name a component."""
+    inventory = pr2_chain_cap.inventory
+    assert set(inventory) == {"schema", "components", "data_flows", "trust_zones"} and inventory["schema"] == "tachi.phase1-inventory/1"
+    assert len(committed["chain-cap/main/run/tachi-build/phase1/inventory.json"]) <= 512 * 1024
+    components = inventory["components"]
+    assert 1 <= len(components) <= 500 and len(inventory["data_flows"]) <= 5000 and len(inventory["trust_zones"]) <= 200
+    names = [pr2_norm(c["name"]) for c in components]
+    assert len(set(names)) == len(names), "names are unique after casefolding and collapsing whitespace"
+    for component in components:
+        assert set(component) == {"name", "dfd_type", "maestro_layer", "description"}
+        assert component["dfd_type"] in {"External Entity", "Process", "Data Store", "Data Flow"}
+        assert re.fullmatch(r"L[1-7]|Unclassified", component["maestro_layer"]) and len(component["description"]) <= 500
+        assert 1 <= len(component["name"]) <= 200 and not re.search(r"[\x00-\x1f]", component["name"])
+    for flow in inventory["data_flows"]:
+        assert set(flow) == {"source", "destination", "data", "protocol"} and len(flow["data"]) <= 200 and len(flow["protocol"]) <= 100
+        assert pr2_norm(flow["source"]) in names and pr2_norm(flow["destination"]) in names
+    listed = [name for zone in inventory["trust_zones"] for name in zone["components"]]
+    assert sorted(listed) == sorted(c["name"] for c in components), "every component sits in one zone"
+
+
+def test_pr2_every_finding_names_a_component_of_the_inventory_and_its_layer(pr2_chain_cap):
+    layer_of = {pr2_norm(c["name"]): c["maestro_layer"] for c in pr2_chain_cap.inventory["components"]}
+    for row in pr2_chain_cap.rows:
+        layer = layer_of[pr2_norm(row["Component"])]
+        assert row["MAESTRO Layer"].startswith(layer) if layer != "Unclassified" else row["MAESTRO Layer"] == "Unclassified", row["Finding ID"]
+    assert {r["Status"] for r in pr2_chain_cap.rows} == {"NEW"}
+
+
+def test_pr2_no_flow_joins_two_islands(pr2_chain_cap):
+    """The counts add up island by island only if the islands are separate: the undirected flow graph has as many parts as islands."""
+    parent = {pr2_norm(c["name"]): pr2_norm(c["name"]) for c in pr2_chain_cap.inventory["components"]}
+
+    def find(name: str) -> str:
+        while parent[name] != name:
+            parent[name] = parent[parent[name]]
+            name = parent[name]
+        return name
+
+    for flow in pr2_chain_cap.inventory["data_flows"]:
+        parent[find(pr2_norm(flow["source"]))] = find(pr2_norm(flow["destination"]))
+    assert len({find(name) for name in parent}) == pr2_chain_cap.doc["counts"]["islands"]
+
+
+def test_pr2_an_independent_coding_of_s3_gives_the_declared_chains(pr2_chain_cap):
+    derived, doc = pr2_chain_cap.derived, pr2_chain_cap.doc
+    counts = doc["counts"]
+    assert derived["candidates"] == counts["candidates"] and derived["dropped"] == counts["dropped"]
+    assert len(derived["chains"]) == counts["consolidated"] and derived["surfaced"] == doc["surfaced"]
+    assert derived["not_listed"] == counts["not_listed"] and derived["rows"] == doc["compact_rows"]
+    keys = ("id", "members", "layers", "max_severity", "breaking_target", "surfaced", "converging", "against_flow")
+    assert [{k: c[k] for k in keys if k in c} for c in derived["chains"]] == [{k: c[k] for k in keys if k in c} for c in doc["chains"]]
+    assert sum(1 for c in derived["chains"] if c["against_flow"]) == counts["against_flow"]
+    assert [c["id"] for c in derived["chains"] if not c["surfaced"] and any(
+        s["surfaced"] and s["members"][-1] == c["members"][-1] for s in derived["chains"])] == doc["skipped_for_a_shared_terminal"]
+
+
+def test_pr2_the_bound_has_something_to_cut_and_a_remainder_to_state(pr2_chain_cap):
+    """S-3(g) and FR-K4.1b: more than 105 consolidated chains, five in full, 100 compact rows and a last line for the rest."""
+    doc = pr2_chain_cap.doc
+    consolidated, shown, rows = doc["counts"]["consolidated"], len(doc["surfaced"]), doc["compact_rows"]
+    assert consolidated > 105 and shown == 5 and len(rows) == min(100, consolidated - shown) == 100
+    remainder = consolidated - shown - len(rows)
+    assert remainder >= 1 and doc["counts"]["not_listed"] == remainder
+    assert doc["remainder_line"] == "**Consolidated chains not listed**: %d" % remainder
+    assert PR2_OUTCOME.fullmatch(doc["outcome_record"]) and doc["outcome_record"] == "chains written (%d); candidates %d; surfaced %d" % (
+        consolidated, doc["counts"]["candidates"], shown)
+    assert doc["frontmatter_counts"] == {"chain_count": consolidated, "surfaced_count": shown, "candidate_count": doc["counts"]["candidates"]}
+    assert doc["counts"]["candidates"] >= consolidated
+    assert all(PR2_ROW.fullmatch(row) for row in rows)
+    listed = [row.split(" | ")[0].lstrip("| ") for row in rows]
+    assert listed == sorted(listed) and not set(listed) & set(doc["surfaced"]), "rank order, and nothing shown in full is listed again"
+
+
+def test_pr2_the_case_holds_each_rule_the_script_must_apply(pr2_chain_cap):
+    """The variant is only worth having if it reaches every branch of S-3: the generator's choice of islands must stay that way."""
+    derived, doc = pr2_chain_cap.derived, pr2_chain_cap.doc
+    assert all(derived["dropped"][kind] >= 1 for kind in ("deduplicated", "filtered", "folded")), derived["dropped"]
+    kinds = {c["kind"] for c in doc["chains"]}
+    assert {"v-arms", "path-4", "path-3", "mutual", "closure-2", "closure-3", "plain"} <= kinds
+    assert any(c["surfaced"] and c["converging"] >= 1 for c in doc["chains"]), "a surfaced chain shares its terminal finding with another"
+    against = [c for c in doc["chains"] if c["against_flow"]]
+    assert against and len(against) < len(doc["chains"]) and {"plain", "closure-3"} <= {c["kind"] for c in against}, (
+        "chains that need reachability against a link's direction (orchestrator.md: 'or vice versa'), and chains that do not")
+    positions = [i for i, c in enumerate(doc["chains"]) if c["id"] in doc["skipped_for_a_shared_terminal"]]
+    assert positions and min(positions) < 6, "a chain is passed over for surfacing, and within the first places of the ranking"
+    assert max(len(c["members"]) for c in doc["chains"]) == 4 and {len(c["members"]) for c in doc["chains"]} == {2, 3, 4}
+    in_chains = {i for c in doc["chains"] for i in c["members"]}
+    left_out = [r["Finding ID"] for r in pr2_chain_cap.rows if prefix_of(r["Finding ID"]) in ("AG", "LLM") or r["MAESTRO Layer"] == "Unclassified"]
+    assert len(left_out) == 6 and not set(left_out) & in_chains, "findings that the chain script must leave out are in Section 7 and in no chain"
+    arms = {tuple(c["layers"]): c for c in doc["chains"] if c["kind"] == "v-arms"}
+    first, second = arms[("L5", "L6", "L3", "L7")], arms[("L4", "L6", "L3", "L7")]
+    assert first["breaking_target"] == first["members"][2] and second["breaking_target"] == second["members"][1], (
+        "the two arms of the V use both tie-breaks of the four-finding rule: the higher severity, then the earlier position")
+
+
+# --------------------------------------------------------------------------- id-reuse, PR 2
+def pr2_mark_lines(text: str) -> list:
+    """The lines that read as the mark: after the front matter, before the first ## heading, outside code fences (the shipped rule)."""
+    lines = text.split("\n")
+    start = lines.index("---", 1) + 1
+    end = next(i for i, line in enumerate(lines) if i >= start and line.startswith("## "))
+    found, fenced = [], False
+    for line in lines[start:end]:
+        if line.startswith("```"):
+            fenced = not fenced
+        elif not fenced and PR2_MARK_LINE.match(line):
+            found.append(line)
+    return found
+
+
+def pr2_highest(ids: list) -> dict:
+    top: dict = {}
+    for finding_id in ids:
+        top[prefix_of(finding_id)] = max(top.get(prefix_of(finding_id), 0), number_of(finding_id))
+    return {prefix: top[prefix] for prefix in PREFIXES if prefix in top}
+
+
+def pr2_read_case(committed: dict, name: str) -> types.SimpleNamespace:
+    baseline, run = (pr2_text(committed, name, "%s/threats.md" % part) for part in ("baseline", "run"))
+    marks = pr2_mark_lines(baseline)
+    mark = None
+    if len(marks) == 1:  # zero or several read as absent
+        entries = PR2_MARKS.fullmatch(marks[0]).group(1).split(", ")
+        mark = {prefix_of(entry): number_of(entry) for entry in entries}
+        assert [prefix_of(entry) for entry in entries] == [p for p in PREFIXES if p in mark], "one entry for each prefix, in S-2's order"
+    live = [row["Finding ID"] for row in table_after(baseline, "## 7. Recommended Actions")]
+    earlier = [row["ID"] for row in table_after(baseline, "## 4c. Resolved Findings")]
+    rows = table_after(run, "## 7. Recommended Actions")
+    return types.SimpleNamespace(baseline=baseline, run=run, marks=marks, mark=mark, live=live, earlier=earlier, rows=rows,
+                                 new=[r["Finding ID"] for r in rows if r["Status"] == "NEW"], open=[r["Finding ID"] for r in rows],
+                                 run_resolved=[r["ID"] for r in table_after(run, "## 4c. Resolved Findings")])
+
+
+@pytest.mark.parametrize("name", ["id-reuse/pr2", "id-reuse/pr2-no-mark"])
+def test_pr2_the_reissue_rule_and_the_run_mark_follow_from_the_files(committed, pr2_docs, name):
+    case, doc = pr2_read_case(committed, name), pr2_docs[name]
+    seed = pr2_highest(case.live + case.earlier)  # where the baseline has no mark: its highest live or Section 4c ID
+    reference = case.mark if case.mark is not None else seed
+    flagged = {}
+    for finding_id in case.new:
+        why = (["baseline-open"] if finding_id in case.live else []) + (["baseline-resolved"] if finding_id in case.earlier else [])
+        if case.mark is not None and number_of(finding_id) <= case.mark[prefix_of(finding_id)]:
+            why.append("at-or-below-mark")
+        if case.mark is None:  # whether a seeded mark is read as a mark is not ruled, so no NEW ID may depend on it
+            assert why or number_of(finding_id) > seed.get(prefix_of(finding_id), 0), "%s sits under the seed, unused" % finding_id
+        flagged[finding_id] = why
+    reissue = doc["reissue"]
+    assert sorted((fid for fid, why in flagged.items() if why), key=pr2_s2) == reissue["flagged"] and reissue["count"] == len(reissue["flagged"])
+    assert {fid: j["reasons"] for fid, j in reissue["new_findings"].items()} == flagged
+    assert sorted((fid for fid, why in flagged.items() if not why), key=pr2_s2) == reissue["unflagged_new"]
+    assert reissue["exit_code"] == (5 if reissue["flagged"] else 0)
+    run_highest = pr2_highest(case.open)
+    result = {p: max(run_highest.get(p, 0), reference.get(p, 0)) for p in PREFIXES if p in run_highest or p in reference}
+    assert result == doc["id_mark"]["result"]
+    assert result == {p: max(pr2_highest(case.open + case.run_resolved).get(p, 0), reference.get(p, 0)) for p in result}, (
+        "the run's own Section 4c must not decide the mark: the case would then depend on how 'highest' is read")
+    assert doc["id_mark"]["line"] == "**ID high-water mark**: `%s`" % ", ".join("%s-%d" % (p, result[p]) for p in PREFIXES if p in result)
+    assert doc["id_mark"]["moved"] == [p for p in result if result[p] > reference.get(p, 0)] and doc["id_mark"]["run_highest"] == run_highest
+    assert doc["baseline"]["seed"] == seed and doc["baseline"]["mark"] == case.mark and doc["baseline"]["mark_present"] == (case.mark is not None)
+
+
+def test_pr2_the_baseline_mark_sits_above_its_live_ids(committed):
+    case = pr2_read_case(committed, "id-reuse/pr2")
+    assert len(case.marks) == 1 and "```" not in case.baseline
+    seed, live = pr2_highest(case.live + case.earlier), pr2_highest(case.live)
+    assert set(case.mark) == set(live) == set(PREFIXES), "a mark entry for every prefix in use"
+    assert all(case.mark[p] >= seed[p] for p in case.mark), "a mark never sits under an ID that the baseline used"
+    above = [p for p in case.mark if case.mark[p] > live[p]]
+    assert len(above) >= 5, "the case: the mark sits above the live IDs for several prefixes"
+    assert [p for p in case.mark if case.mark[p] > seed[p]], "and above what a seed from live IDs and Section 4c would give"
+    assert [p for p in case.mark if case.mark[p] == live[p]], "and equals them for some, so a mark without a gap is covered too"
+    # S-2's prefix order is not the order of the tables: TE comes last in the mark, and AGP between AG and LLM
+    assert list(case.mark)[-1] == "TE" and list(case.mark).index("AGP") == list(case.mark).index("AG") + 1
+
+
+def test_pr2_the_no_mark_baseline_has_no_mark_and_the_seed_needs_section_4c(committed, pr2_docs):
+    case = pr2_read_case(committed, "id-reuse/pr2-no-mark")
+    assert case.marks == [] and case.mark is None and not PR2_MARK_LINE.search(case.baseline)
+    assert pr2_docs["id-reuse/pr2-no-mark"]["baseline"]["mark_line"] is None
+    assert pr2_highest(case.live) != pr2_highest(case.live + case.earlier), "a seed from the live IDs alone would miss Section 4c's IDs"
+    assert any(finding_id in case.earlier for finding_id in case.new), "and a NEW finding takes one of them"
+
+
+def test_pr2_the_mark_case_holds_each_kind_of_new_finding(committed, pr2_docs):
+    case, doc = pr2_read_case(committed, "id-reuse/pr2"), pr2_docs["id-reuse/pr2"]
+    judged = doc["reissue"]["new_findings"]
+    assert [fid for fid, j in judged.items() if j["reasons"] == ["at-or-below-mark"] and number_of(fid) > pr2_highest(case.earlier + case.live)[prefix_of(fid)]], (
+        "an ID above everything that the baseline's lists hold, which only the mark catches")
+    assert [fid for fid, j in judged.items() if j["reasons"] == ["at-or-below-mark"]], "and one that no list holds at all"
+    assert [fid for fid, j in judged.items() if "baseline-resolved" in j["reasons"]], "an ID that Section 4c holds"
+    assert [fid for fid, j in judged.items() if j["boundary"] and j["flagged"]], "an ID equal to the mark"
+    above = [fid for fid, j in judged.items() if not j["flagged"] and number_of(fid) == case.mark[prefix_of(fid)] + 1]
+    skipped = [fid for fid, j in judged.items() if not j["flagged"] and number_of(fid) > pr2_highest(case.live)[prefix_of(fid)] + 1]
+    assert above and skipped, "numbers just above the mark, and numbers that skip some live IDs (PR 2 says numbering can skip)"
+    carried = [r for r in case.rows if r["Status"] != "NEW"]
+    assert carried and all(r["Finding ID"] in case.live for r in carried), "every carried finding is in the baseline"
+    assert [r for r in carried if number_of(r["Finding ID"]) < case.mark[prefix_of(r["Finding ID"])]], "carried findings under the mark are never flagged"
+    assert set(case.live) <= set(case.open) | set(case.run_resolved), "the run loses no baseline finding silently"
+
+
+@pytest.mark.parametrize("name", ["id-reuse/pr2", "id-reuse/pr2-no-mark"])
+def test_pr2_the_run_and_its_baseline_agree_and_both_pass_the_shipped_reader(committed, pr2_parsers, name):
+    case = pr2_read_case(committed, name)
+    run_set = pr2_parsers.parse_reference_set(case.run, "run threats.md")
+    assert [f["id"] for f in run_set["open"]] == sorted(case.open, key=pr2_s2) and not run_set["duplicates"]
+    base_set = pr2_parsers.parse_reference_set(case.baseline, "baseline threats.md")
+    assert sorted(f["id"] for f in base_set["open"]) == sorted(case.live) and sorted(r["id"] for r in base_set["resolved"]) == sorted(case.earlier)
+    front = case.run.split("---")[1]
+    assert re.search(r'^  source: "baseline/threats.md"$', front, re.MULTILINE)
+    assert re.search(r"^  finding_count: %d$" % len(case.live), front, re.MULTILINE), "the run counts the baseline's live findings"
+    assert not set(case.earlier) & set(case.run_resolved), "Section 4c of the baseline is not the run's"
+    assert not PR2_MARK_LINE.search(case.run), "id-mark writes the run's mark, so the run comes without one"
+    token = re.compile(r"\b(?:S|T|R|I|D|E|AG|AGP|LLM|OI|MI|TE)-[0-9]+\b")
+    assert set(token.findall(case.run)) == set(case.open) | set(case.run_resolved), "the renumbering left no ID of the gated world behind"
+    body = "\n".join(line for line in case.baseline.split("\n") if not PR2_MARK_LINE.match(line))  # the mark names numbers, not findings
+    assert set(token.findall(body)) == set(case.live) | set(case.earlier)
+
+
 # --------------------------------------------------------------------------- the base set's shape (S-4)
 def test_the_architecture_has_25_components_over_four_zones_and_all_seven_layers(base):
     names = [row["Component"] for row in base.components]

@@ -37,6 +37,15 @@ Scale of the base set: 408 open findings over all 12 prefixes (56 Critical), 6 R
 (13 span three or more categories). Each of its six targeted outputs is over twice the 64k cap by UTF-8 bytes / 4.
 Every score is internally consistent (CVSS from its vector, composite from its parts, no rounding tie), so the
 base set carries no seeded error; the seeded-error, legacy-format, tagged, ties and regroup parts add those.
+PR 2's cases (T148) wait on no ruling. They use the PR 1 variants' scenario layout and tachi.fixture-expected/1 envelope, and their code
+sits just above PARTS, so that it merges beside T040's code and never inside it:
+  chain-cap/main            attack-chains.py's input and S-3(g)'s offline test: run/threats.md (Sections 5 to 8 cut down, Section 7 whole),
+                            run/tachi-build/phase1/inventory.json (a working directory renames tachi-build/ to .tachi-build/, a name that
+                            .gitignore excludes) and more than 105 consolidated chains, built in islands that no flow joins
+  id-reuse/pr2              ruling B's high-water mark: a baseline whose mark sits above its live IDs, and a run with NEW findings under,
+                            at and above it
+  id-reuse/pr2-no-mark      the same baseline with no mark, as every pre-PR 2 baseline: the first PR 2 run seeds its mark from live IDs
+                            and Section 4c (PM-T7)
 """
 
 from __future__ import annotations
@@ -2561,12 +2570,528 @@ def part_regroup_pair(rng: Rng) -> dict:
 
 def part_chain_cap(rng: Rng) -> dict:
     """T148: chain material that yields more than 105 consolidated chains (S-3(g)'s offline test)."""
-    return {}
+    return chain_cap_files()
 
 
 def part_pr2_runs(rng: Rng) -> dict:
     """T103: threat-model run dirs (records, briefs, ID map, Phase 1 tables), tree batches, report parts."""
     return {}
+
+
+# --------------------------------------------------------------------------- T148: PR 2's fixture cases
+# Three cases that wait on no ruling, in the scenario layout and envelope of T040's variants (<variant>/<scenario>/, with
+# expected-outcomes.json in format tachi.fixture-expected/1): chain-cap/main, id-reuse/pr2 and id-reuse/pr2-no-mark. Every name
+# below starts cc_, ir2_ or pr2_ or is a PR2_ / CC_ / IR2_ constant, so that T040's module-level names (merged in at T085) can't meet them.
+# Expected values are worked out here from the spec and ADR-050, never read from a script: no chain script or reissue check exists yet.
+PR2_RUN_DATE = "2026-11-23"
+PR2_BASELINE_DATE = "2026-11-09"
+PR2_RUN_ID = "2026-11-23T10-00-00"
+PR2_BASELINE_RUN_ID = "2026-11-09T10-00-00"
+PR2_DROP_NOTE = "Remediate as described in the baseline report."
+
+
+def pr2_expected_document(variant: str, scenario: str, stage: str, summary: str, run: dict, extra: dict, notes: Sequence) -> str:
+    doc = {"schema": "tachi.fixture-expected/1", "variant": variant, "scenario": scenario, "stage": stage, "summary": summary,
+           "run": run, "notes": list(notes)}
+    doc.update(extra)
+    return dumps(doc)
+
+
+def pr2_section_row(finding: dict, layer_cell: str) -> tuple:
+    """One Section 7 row, in the shipped column order."""
+    return (finding["id"], finding["status"], CATEGORY_TITLE[finding["prefix"]], EM if finding["pattern"] == "none" else finding["pattern"],
+            finding["comp"], layer_cell, finding["short"], finding["risk"], finding["mit_short"])
+
+
+PR2_ACTION_COLUMNS = ("Finding ID", "Status", "Category", "Pattern", "Component", "MAESTRO Layer", "Threat", "Risk Level", "Mitigation")
+
+
+def pr2_frontmatter(date: str, run_id: str) -> list:
+    """The front matter of a run that has no baseline of its own (the form the shipped writer leaves for a first run)."""
+    return ["---", 'schema_version: "1.4"', 'date: "%s"' % date, 'input_format: "free-text"', 'classification: "confidential"',
+            'run_id: "%s"' % run_id, "baseline:", "  source: null", "  date: null", "  finding_count: null", "  run_id: null",
+            "coverage_gate:", '  status: "pass"', "  gaps: []", "---", ""]
+
+
+# --- chain-cap (S-4, S-3, FR-K4.1b) ----------------------------------------------------------------------------------------
+# Chain material for attack-chains.py: a threats.md cut down to the sections that the script reads and that its outcome record
+# lands between (5, 6, 7, 8 and Affected Assets), and the persisted Phase 1 inventory (contracts/threat-model-records.md). The
+# material is a set of islands, and no flow joins two islands, so each island forms its chains alone and the counts add up. Every
+# island is declared with the chains it must give. expected-outcomes.json is built from that declaration, and the test re-derives
+# the chains from the files with its own coding of S-3 and compares: a mistake in either shows. The links an island needs are rows
+# of attack-chain-patterns-shared.md's transition table. The plain pairs use only rows with no reverse row, so a pair has one link.
+CC_RISK = {"C": "Critical", "H": "High", "M": "Medium", "L": "Low"}
+CC_PLAIN_TYPES = (  # (source prefix, source layer, target prefix, target layer): table rows whose reverse is not a row
+    ("T", 1, "S", 3), ("T", 1, "E", 3), ("I", 1, "I", 2), ("I", 1, "I", 7), ("T", 2, "S", 3), ("I", 2, "I", 3),
+    ("I", 2, "I", 7), ("E", 3, "E", 7), ("I", 3, "I", 7), ("T", 4, "T", 6), ("I", 4, "I", 3), ("I", 4, "I", 6),
+    ("D", 4, "D", 7), ("T", 5, "T", 6), ("R", 5, "R", 6), ("R", 5, "R", 3), ("D", 5, "D", 6), ("T", 6, "E", 3),
+    ("S", 6, "S", 3), ("I", 6, "I", 3), ("E", 6, "E", 3), ("E", 6, "E", 7), ("T", 7, "T", 3), ("T", 7, "T", 2),
+)
+CC_SEVERITY_PAIRS = ("CH", "HC", "HH", "CC", "MC", "CL", "HM", "LH", "CM", "MH", "HL", "LC")  # at least one Critical or High each
+CC_PLAIN_ISLANDS = 109  # with the specials below: 120 consolidated chains, 16 more candidates than that
+CC_CAP, CC_SURFACED = 100, 5  # S-3(g): at most 100 compact rows. S-3(f): at most five full chains
+CC_STEMS = {1: ("model-host", "embed-node"), 2: ("feature-store", "vector-index"), 3: ("task-agent", "tool-router"),
+            4: ("runtime-pool", "deploy-hub"), 5: ("trace-sink", "eval-bench"), 6: ("policy-gate", "audit-vault"),
+            7: ("partner-api", "user-portal"), None: ("legacy-adapter", "legacy-adapter")}
+CC_KIND = {"partner-api": "External Entity", "user-portal": "External Entity", "feature-store": "Data Store",
+           "vector-index": "Data Store", "trace-sink": "Data Store"}
+CC_ABOUT = {"model-host": "Serves a hosted model endpoint to the agents", "embed-node": "Computes embeddings for retrieval",
+            "feature-store": "Keeps engineered features for the agents", "vector-index": "Holds the retrieval index",
+            "task-agent": "Plans and runs one class of task", "tool-router": "Routes tool calls from the agents",
+            "runtime-pool": "Hosts the agent workers", "deploy-hub": "Rolls out agent releases",
+            "trace-sink": "Collects traces from the agents", "eval-bench": "Scores agent runs against fixed cases",
+            "policy-gate": "Checks each action against policy", "audit-vault": "Keeps the signed audit records",
+            "partner-api": "Exposes the platform to a partner system", "user-portal": "Front end for operators",
+            "legacy-adapter": "Adapter whose layer was never classified"}
+CC_ZONE = {1: "Agent Runtime Zone", 2: "Data Zone", 3: "Agent Runtime Zone", 4: "Operations Zone", 5: "Operations Zone",
+           6: "Operations Zone", 7: "Edge DMZ", None: "Operations Zone"}
+CC_ASSETS = ("job queue entries", "model prompts", "feature vectors", "trace spans", "policy decisions", "partner requests", "audit records")
+CC_TOKENS = ("service credential", "API token", "signing key", "session token")
+CC_FLOW_DATA = (("Task requests", "HTTPS (TLS 1.3)"), ("Run events", "gRPC (mTLS)"), ("Model calls", "HTTPS (TLS 1.3)"),
+                ("Policy checks", "gRPC (mTLS)"))
+CC_ARROW = "\u2192"
+
+
+def cc_node(prefix, layer, risk=None, sub=None) -> dict:
+    """One component. prefix None: a hop with no finding. layer None: a component whose layer was never classified."""
+    return {"prefix": prefix, "layer": layer, "risk": CC_RISK[risk] if risk else None, "sub": sub}
+
+
+def cc_island(kind: str, nodes: list, flows: Sequence, chains: Sequence, candidates: int, dropped: dict = None, **more) -> dict:
+    island = {"kind": kind, "nodes": nodes, "flows": [tuple(flow) for flow in flows], "chains": [list(order) for order in chains],
+              "candidates": candidates, "dropped": dropped or {}}
+    island.update(more)
+    return island
+
+
+def cc_islands() -> list:
+    n = cc_node
+    out = [
+        # A V: two four-finding arms that end at one sink. Their initial exploits differ and neither chain is a run of the other, so
+        # both stay (S-3(d)), and only one surfaces (S-3(f)). The arms' tails fold into them: 2 + 2 chains that are not listed.
+        cc_island("v-arms", [n("T", 5, "H"), n("T", 6, "M"), n("E", 3, "H"), n("T", 4, "M"), n("T", 6, "H"), n("E", 3, "H"), n("E", 7, "C")],
+                  [(0, 1), (1, 2), (2, 6), (3, 4), (4, 5), (5, 6)], [[0, 1, 2, 6], [3, 4, 5, 6]], 6, {"folded": 4}),
+        # A path of four with its own end: its tails [1,2,3] and [2,3] fold into it.
+        cc_island("path-4", [n("T", 4, "H"), n("T", 6, "C"), n("E", 3, "H"), n("E", 7, "C")], [(0, 1), (1, 2), (2, 3)], [[0, 1, 2, 3]], 3,
+                  {"folded": 2}),
+        # Paths of three: the tail [1,2] folds into each.
+        cc_island("path-3", [n("I", 1, "H"), n("I", 2, "C"), n("I", 3, "M")], [(0, 1), (1, 2)], [[0, 1, 2]], 2, {"folded": 1}),
+        cc_island("path-3", [n("I", 4, "C"), n("I", 3, "H"), n("I", 7, "M")], [(0, 1), (1, 2)], [[0, 1, 2]], 2, {"folded": 1}),
+        cc_island("path-3", [n("T", 5, "M"), n("T", 6, "H"), n("E", 3, "C")], [(0, 1), (1, 2)], [[0, 1, 2]], 2, {"folded": 1}),
+        # A mutual pair: each finding has a link to the other, so two chains hold the same two findings. The better-ranked one stays.
+        cc_island("mutual", [n("T", 1, "H"), n("T", 2, "M")], [(0, 1)], [], 2, {"deduplicated": 1}, mutual=[(0, 1)]),
+        cc_island("mutual", [n("E", 3, "C"), n("T", 2, "H")], [(0, 1)], [], 2, {"deduplicated": 1}, mutual=[(0, 1)]),
+        cc_island("mutual", [n("D", 3, "H"), n("D", 4, "H")], [(1, 0)], [], 2, {"deduplicated": 1}, mutual=[(0, 1)]),
+        # Components that no flow joins directly: the link runs through the transitive closure (two hops, then three hops against
+        # the link's direction). Their flows pass through hops that carry no finding.
+        cc_island("closure-2", [n("I", 3, "H"), n(None, 4), n("I", 7, "C")], [(0, 1), (1, 2)], [[0, 2]], 1, closure=2),
+        cc_island("closure-3", [n("T", 7, "H"), n(None, 3), n(None, 2), n("T", 3, "C")], [(3, 2), (2, 1), (1, 0)], [[0, 3]], 1, closure=3),
+        # Pairs that form a chain with no Critical or High finding: candidates only.
+        cc_island("filtered", [n("T", 4, "M"), n("T", 6, "L")], [(0, 1)], [], 1, {"filtered": 1}),
+        cc_island("filtered", [n("I", 2, "L"), n("I", 3, "M")], [(0, 1)], [], 1, {"filtered": 1}),
+        cc_island("filtered", [n("R", 5, "M"), n("R", 3, "M")], [(1, 0)], [], 1, {"filtered": 1}),
+        cc_island("filtered", [n("D", 5, "L"), n("D", 6, "L")], [(0, 1)], [], 1, {"filtered": 1}),
+    ]
+    for index in range(CC_PLAIN_ISLANDS):
+        source, from_layer, target, to_layer = CC_PLAIN_TYPES[index % len(CC_PLAIN_TYPES)]
+        from_risk, to_risk = CC_SEVERITY_PAIRS[label_below("cc:severity:%d" % index, len(CC_SEVERITY_PAIRS))]
+        reverse = label_below("cc:direction:%d" % index, 3) == 0  # one in three: the flow runs against the link
+        out.append(cc_island("plain", [n(source, from_layer, from_risk), n(target, to_layer, to_risk)], [(1, 0) if reverse else (0, 1)], [[0, 1]], 1))
+    first = len(out) - CC_PLAIN_ISLANDS  # findings that the chain script must leave out, joined to the first plain islands by a flow
+    for offset, (prefix, layer, sub, risk) in enumerate((("AG", 3, "AG:autonomy", "C"), ("AG", 4, "AG:tool", "H"), ("LLM", 1, "LLM:inject", "C"),
+                                                         ("LLM", 2, "LLM:poison", "H"))):
+        island = out[first + offset]
+        island["nodes"].append(n(prefix, layer, risk, sub))
+        island["flows"].append((len(island["nodes"]) - 1, 0))
+    for offset, (prefix, risk, inbound) in enumerate((("S", "H", True), ("T", "C", False))):  # a STRIDE finding on an unclassified layer
+        island = out[first + 4 + offset]
+        island["nodes"].append(n(prefix, None, risk))
+        island["flows"].append((len(island["nodes"]) - 1, 0) if inbound else (0, len(island["nodes"]) - 1))
+    return out
+
+
+def cc_material() -> dict:
+    """Everything the chain-cap files and expectations need: names, finding IDs and texts, the inventory, and the declared chains."""
+    islands = cc_islands()
+    count = 0
+    for island in islands:  # component names: a stem for the layer and a running number, unique across the whole set
+        for node in island["nodes"]:
+            count += 1
+            stems = CC_STEMS[node["layer"]]
+            node["name"] = "%s-%d" % (stems[label_below("cc:stem:%d" % count, len(stems))], count)
+            node["stem"] = node["name"].rpartition("-")[0]
+    pool = [(i, j) for i, island in enumerate(islands) for j, node in enumerate(island["nodes"]) if node["prefix"] is not None]
+    pool.sort(key=lambda pair: label_hash("cc:id:%d:%d" % pair))  # numbers go out in an order unrelated to the islands'
+    numbers: dict = {}
+    for i, j in pool:
+        node = islands[i]["nodes"][j]
+        numbers[node["prefix"]] = numbers.get(node["prefix"], 0) + 1
+        node["num"], node["id"] = numbers[node["prefix"]], finding_id_text(node["prefix"], numbers[node["prefix"]])
+    used: dict = {}
+    for i, island in enumerate(islands):
+        for j, node in enumerate(island["nodes"]):
+            if node["prefix"] is None:
+                continue
+            near = [island["nodes"][a if b == j else b]["name"] for a, b in island["flows"] if j in (a, b)]
+            comp = {"name": node["name"], "dfd": "Process", "layer": node["layer"] or 3, "zone": CC_ZONE[node["layer"]],
+                    "asset": CC_ASSETS[label_below("cc:asset:" + node["name"], len(CC_ASSETS))],
+                    "tok": CC_TOKENS[label_below("cc:token:" + node["name"], len(CC_TOKENS))],
+                    "peers": [(name, "an internal channel") for name in near[:1]], "ai": (), "traits": ()}
+            _, _, short, mit_short, _ = compose_text({"observer": "the trace collector"}, comp, node["prefix"], node["sub"], node["id"], used)
+            node.update(short=short, mit_short=mit_short)
+    findings = [{"id": node["id"], "prefix": node["prefix"], "num": node["num"], "status": STATUS_NEW, "comp": node["name"],
+                 "layer": node["layer"], "risk": node["risk"], "pattern": "none", "short": node["short"], "mit_short": node["mit_short"]}
+                for island in islands for node in island["nodes"] if node["prefix"] is not None]
+    return {"islands": islands, "findings": findings, "chains": cc_chains(islands)}
+
+
+def cc_breaking_target(ids: list, risks: list) -> str:
+    """The orchestrator's Step 4: the higher-severity finding of a pair (the first on a tie), the middle of three, otherwise the
+    intermediate finding with the highest i x (n - 1 - i), the higher severity next and the earlier position last."""
+    size = len(ids)
+    if size == 2:
+        return ids[1] if RISK_RANK[risks[1]] > RISK_RANK[risks[0]] else ids[0]
+    if size == 3:
+        return ids[1]
+    return ids[max(range(1, size - 1), key=lambda i: (i * (size - 1 - i), RISK_RANK[risks[i]], -i))]
+
+
+def cc_reaches(island: dict, source: int, target: int) -> bool:
+    """Whether the island's flows lead from one node to another: a direct flow is one hop, and hops add up (the transitive closure)."""
+    ahead: dict = {}
+    for first, second in island["flows"]:
+        ahead.setdefault(first, []).append(second)
+    seen: set = set()
+    stack = list(ahead.get(source, ()))
+    while stack:
+        node = stack.pop()
+        if node not in seen:
+            seen.add(node)
+            stack.extend(ahead.get(node, ()))
+    return target in seen
+
+
+def cc_chains(islands: list) -> list:
+    """The consolidated chains the islands declare, ranked as S-3(e) says, each with its layers, surfacing and breaking target."""
+    chains = []
+    for island in islands:
+        orders = list(island["chains"])
+        for first, second in island.get("mutual", ()):  # identical finding sets: the chain whose IDs rank first stays
+            ranked = sorted(([first, second], [second, first]), key=lambda order: tuple(prefix_rank(island["nodes"][k]["id"]) for k in order))
+            orders.append(ranked[0])
+        for order in orders:
+            nodes = [island["nodes"][k] for k in order]
+            ids, risks = [node["id"] for node in nodes], [node["risk"] for node in nodes]
+            chains.append({"members": ids, "layers": ["L%d" % node["layer"] for node in nodes], "risks": risks,
+                           "max_severity": max(risks, key=RISK_RANK.get), "breaking_target": cc_breaking_target(ids, risks),
+                           "kind": island["kind"], "against_flow": any(not cc_reaches(island, a, b) for a, b in zip(order, order[1:]))})
+    chains.sort(key=lambda c: (-RISK_RANK[c["max_severity"]], -len(c["members"]), tuple(prefix_rank(i) for i in c["members"])))
+    ended: dict = {}
+    for rank, chain in enumerate(chains, start=1):
+        chain["id"] = "CHAIN-%03d" % rank
+        ended.setdefault(chain["members"][-1], []).append(chain["id"])
+    for chain in chains:
+        chain["surfaced"] = False
+    surfaced = 0
+    for chain in chains:  # S-3(f): in rank order, unless a surfaced chain already ends at the same finding; stop at five
+        terminal = chain["members"][-1]
+        if surfaced < CC_SURFACED and not any(other["surfaced"] for other in chains if other["members"][-1] == terminal):
+            chain["surfaced"] = True
+            chain["converging"] = len(ended[terminal]) - 1  # the other consolidated chains that end at this finding
+            surfaced += 1
+    return chains
+
+
+def cc_chain_record(chain: dict) -> dict:
+    keys = ("id", "members", "layers", "max_severity", "surfaced", "breaking_target", "kind", "against_flow") + (
+        ("converging",) if chain["surfaced"] else ())
+    return {key: chain[key] for key in keys}
+
+
+def cc_rows(chains: list) -> list:
+    """The compact rows of attack-chains.md Section 3 (contracts/threat-model-records.md): every chain that is not shown in full."""
+    rest = [chain for chain in chains if not chain["surfaced"]]
+    return ["| %s | %s | %s | %s | %s |" % (chain["id"], (" %s " % CC_ARROW).join(chain["layers"]), (" %s " % CC_ARROW).join(chain["members"]),
+                                         chain["max_severity"], chain["breaking_target"]) for chain in rest[:CC_CAP]]
+
+
+def cc_threats_md(material: dict) -> str:
+    """The chain material's threats.md: front matter, and the sections 5 to 8 and Affected Assets in their shipped order. Sections 5, 6
+    and 8 are cut to a sentence, because the script reads none of them. Section 7 is the reference set it reads."""
+    ranked = sorted(material["findings"], key=lambda f: (-RISK_RANK[f["risk"]], TABLE_ORDER.index(f["prefix"]), f["num"]))
+    rows = [pr2_section_row(f, layer_label(f["layer"]) if f["layer"] else "Unclassified") for f in ranked]
+    out = pr2_frontmatter(PR2_RUN_DATE, PR2_RUN_ID) + [
+        "# Threat Model Report", "",
+        "This file is the chain material of F-374's chain-cap variant: a threats.md cut down to the sections that attack-chains.py reads "
+        "and that its outcome record lands between. The inventory it reads is beside it, under tachi-build/phase1/.", "",
+        "---", "", "## 5. Coverage Matrix", "", "The coverage tables are left out of this cut.", "", "---", "",
+        "## 6. Risk Summary", "", "The risk summary is left out of this cut.", "", "---", "",
+        "## 7. Recommended Actions", "",
+        "All findings sorted by risk level descending, then by table order. Critical and High findings should be addressed before deployment.", "",
+        table(PR2_ACTION_COLUMNS, rows), "", "---", "", "## 8. Delta Summary", "",
+        "This run has no baseline, so every finding is NEW.", "", "---", "", "## Affected Assets", "",
+        table(("Finding ID", "Affected Assets"), [(f["id"], "[]") for f in ranked])]
+    return "\n".join(out)
+
+
+def cc_inventory(material: dict) -> str:
+    """tachi.phase1-inventory/1 (contracts/threat-model-records.md): every component, every flow, and the zones."""
+    components, flows, zones = [], [], {}
+    for island in material["islands"]:
+        for node in island["nodes"]:
+            layer = node["layer"]
+            components.append({"name": node["name"], "dfd_type": CC_KIND.get(node["stem"], "Process"),
+                               "maestro_layer": "L%d" % layer if layer else "Unclassified", "description": CC_ABOUT[node["stem"]]})
+            zones.setdefault(CC_ZONE[layer], []).append(node["name"])
+        for source, target in island["flows"]:
+            data, protocol = CC_FLOW_DATA[label_below("cc:flow:%s" % island["nodes"][source]["name"], len(CC_FLOW_DATA))]
+            flows.append({"source": island["nodes"][source]["name"], "destination": island["nodes"][target]["name"], "data": data, "protocol": protocol})
+    return dumps({"schema": "tachi.phase1-inventory/1", "components": components, "data_flows": flows,
+                  "trust_zones": [{"name": name, "components": zones[name]} for name in sorted(zones)]})
+
+
+def chain_cap_files() -> dict:
+    material = cc_material()
+    chains = material["chains"]
+    shown = [chain for chain in chains if chain["surfaced"]]
+    candidates, consolidated = sum(i["candidates"] for i in material["islands"]), len(chains)
+    dropped = {kind: sum(i["dropped"].get(kind, 0) for i in material["islands"]) for kind in ("deduplicated", "filtered", "folded")}
+    if candidates != consolidated + sum(dropped.values()) or consolidated <= CC_CAP + CC_SURFACED or len(shown) != CC_SURFACED:
+        raise ValueError("chain-cap: the declared islands do not add up (%d candidates, %d consolidated, %s dropped)" % (candidates, consolidated, dropped))
+    rows = cc_rows(chains)
+    listed = len(rows)
+    outcome = "chains written (%d); candidates %d; surfaced %d" % (consolidated, candidates, len(shown))
+    root = "chain-cap/main/"
+    notes = [
+        "The material is %d islands and no flow joins two. Each island is a short list of components with findings, and the chains it gives are "
+        "declared with it, so the counts below are by construction. The test re-derives them from the committed files with its own coding of "
+        "S-3, which is the check that the declaration and the files agree." % len(material["islands"]),
+        "%d consolidated chains: more than the 105 at which S-3(g)'s bound bites. At most five surface, so %d are not shown in full, 100 of them get "
+        "a compact row and the last line states how many are not listed (%d)." % (consolidated, consolidated - len(shown), consolidated - len(shown) - listed),
+        "Surfacing (S-3(f)): the V island's two chains end at one finding. Whichever ranks first surfaces, and carries converging 1; the other "
+        "ranks within the first few places and is passed over. It is not surfaced, so it has a compact row.",
+        "candidates minus consolidated is the sum of the three drops: tails that fold into a longer chain, a mutual pair's second chain, "
+        "and chains with no Critical or High finding. chains.json does not carry the drops, so only their sum is checkable against a script.",
+        "Closure: closure-2 and closure-3 have no flow between the two components that carry findings. The link exists only through the "
+        "transitive closure.",
+        "Direction: in closure-3, in some other special islands and in one plain island in three, the flow runs against the link, so the link's "
+        "source component cannot reach its target and only the other way round holds. Such a chain has against_flow true. It exists only if "
+        "reachability counts in either direction (orchestrator.md Phase 3.5 step 2, 'or vice versa'; ADR-050 D13, 'one component is reachable "
+        "from the other'), which is how the rule stands (S-3(b), unchanged). Narrowing it to the link's direction is an R-21 change, and the "
+        "chains that need it are counts.against_flow of the consolidated ones.",
+        "Left out of chain formation: AG and LLM findings, and STRIDE findings on an unclassified layer. Six such findings sit on components "
+        "that a flow joins to a chain's components, so a script that forgot the rule would see them.",
+        "A chain's breaking target follows the orchestrator's Step 4. The V island's two arms use both tie-breaks of the 4-finding rule: "
+        "the higher severity, then the earlier position.",
+        "The compact rows are in the shipped format of contracts/threat-model-records.md. A row's layers and findings are in chain order.",
+        "Not reached here: a finding with more than one onward link (S-3(c)'s choice among candidates, which no island needs), and a chain that "
+        "is a run in the middle of another. The tests of attack-chains.py build those inline.",
+        "How to run: copy run/ to a working directory and rename its tachi-build/ to .tachi-build/ (.gitignore excludes that name, so the "
+        "committed copy cannot hold it). Then run attack-chains.py with --run-dir on the working directory.",
+    ]
+    expected = {
+        "counts": {"candidates": candidates, "consolidated": consolidated, "surfaced": len(shown), "compact_rows": listed,
+                   "not_listed": consolidated - len(shown) - listed, "dropped": dropped, "findings_in_section_7": len(material["findings"]),
+                   "findings_in_chains": len({i for chain in chains for i in chain["members"]}),
+                   "against_flow": sum(1 for chain in chains if chain["against_flow"]),
+                   "components": sum(len(i["nodes"]) for i in material["islands"]), "islands": len(material["islands"])},
+        "outcome_record": outcome,
+        "frontmatter_counts": {"chain_count": consolidated, "surfaced_count": len(shown), "candidate_count": candidates},
+        "remainder_line": "**Consolidated chains not listed**: %d" % (consolidated - len(shown) - listed),
+        "chains": [cc_chain_record(chain) for chain in chains],
+        "compact_rows": rows,
+        "surfaced": [chain["id"] for chain in shown],
+        "skipped_for_a_shared_terminal": [chain["id"] for chain in chains if not chain["surfaced"] and any(
+            other["surfaced"] and other["members"][-1] == chain["members"][-1] for other in chains)],
+    }
+    run = {"date": PR2_RUN_DATE, "threats": "run/threats.md", "inventory": "run/tachi-build/phase1/inventory.json",
+           "inventory_in_a_run_directory": ".tachi-build/phase1/inventory.json",
+           "how": "copy run/ to a working directory and rename tachi-build/ to .tachi-build/; the committed copy cannot hold that name"}
+    return {
+        root + "run/threats.md": cc_threats_md(material),
+        root + "run/tachi-build/phase1/inventory.json": cc_inventory(material),
+        root + "expected-outcomes.json": pr2_expected_document(
+            "chain-cap", "main", "chains", "S-4's chain-cap variant: chain material with more than 105 consolidated chains, for S-3(g)'s bound, "
+            "the remainder line and FR-K4.1b's check.", run, expected, notes),
+    }
+
+
+# --- id-reuse, PR 2 (ruling B, ADR-050 D7, D12) -----------------------------------------------------------------------------
+# A baseline and a run, taken from the gated world, for PR 2's two parts of ruling B: `tachi-stage.py id-mark` writes the per-prefix
+# high-water mark (the larger of the baseline's mark and the run's highest ID, or, where the baseline has none, the baseline's highest
+# live or Section 4c ID), and `check-threat-model.py` reports any NEW finding whose ID the baseline used or that sits at or below the
+# baseline's mark. The baseline is a stub (its Section 4c, its Section 7 and the mark line), and the run is the world's complete
+# threats.md with a few NEW findings renumbered. Two scenarios share one baseline and differ in whether it holds the mark:
+#   id-reuse/pr2          the mark sits above the baseline's live IDs (above its Section 4c IDs too, for some prefixes)
+#   id-reuse/pr2-no-mark  no mark at all, as every pre-PR 2 baseline: the mark is seeded from the live IDs and Section 4c
+IR2_EARLIER = (  # what the baseline's own run resolved: its Section 4c, which holds IDs above the baseline's live ones
+    ("S-6", "label-printer-1", "A shared batch credential for label-printer-1 is accepted from any caller that can reach its callback route, "
+     "so one leaked copy authenticates as the batch job.", "Medium", "Component 'label-printer-1' removed from architecture"),
+    ("T-4", "label-printer-1", "Label files that label-printer-1 renders can be replaced in storage before they print, so a shipment may "
+     "carry the wrong destination.", "Low", "Component 'label-printer-1' removed from architecture"),
+)
+IR2_MARK = {"S": 8, "T": 6, "R": 6, "I": 5, "D": 9, "E": 3, "AG": 5, "AGP": 2, "LLM": 9, "OI": 3, "MI": 4, "TE": 2}  # the baseline's mark
+IR2_MARK_NAME = "**ID high-water mark**: "
+
+
+def ir2_highest(ids: Sequence) -> dict:
+    """The highest number of each prefix among some IDs, in S-2's prefix order. Canonical: AGP-01 counts as AGP-1."""
+    top: dict = {}
+    for finding_id in ids:
+        prefix, _, number = finding_id.rpartition("-")
+        top[prefix] = max(top.get(prefix, 0), int(number))
+    return {prefix: top[prefix] for prefix in PREFIX_ORDER if prefix in top}
+
+
+def ir2_line(numbers: dict) -> str:
+    return "%s`%s`" % (IR2_MARK_NAME, ", ".join("%s-%d" % (prefix, numbers[prefix]) for prefix in PREFIX_ORDER if prefix in numbers))
+
+
+def ir2_run_world(remap: dict) -> dict:
+    """The run: the gated world dated after its baseline, with the NEW findings in remap renumbered (old ID -> new ID)."""
+    master = build_world("gated")
+    findings = []
+    for source in master["findings"]:
+        new_id = remap.get(source["id"], source["id"])
+        findings.append(dict(source, id=new_id, num=int(new_id.rpartition("-")[2])))
+    findings.sort(key=lambda f: prefix_rank(f["id"]))
+    by_id = {f["id"]: f for f in findings}
+    groups = []
+    for source in master["groups"]:
+        members = [by_id[remap.get(m["id"], m["id"])] for m in source["members"]]
+        ordered = (sorted((m for m in members if m["prefix"] in STRIDE_PREFIXES_ORDER), key=lambda m: prefix_rank(m["id"])) +
+                   sorted((m for m in members if m["prefix"] not in STRIDE_PREFIXES_ORDER), key=lambda m: prefix_rank(m["id"])))
+        for position, member in enumerate(ordered):
+            member["group"], member["primary"] = source["id"], position == 0
+        groups.append(dict(source, members=ordered))
+    cfg = dict(master["cfg"], dates=dict(master["cfg"]["dates"], threats=PR2_RUN_DATE, baseline=PR2_BASELINE_DATE),
+               run_ids={"threats": PR2_RUN_ID, "baseline": PR2_BASELINE_RUN_ID})
+    return dict(master, findings=findings, groups=groups, cfg=cfg)
+
+
+def ir2_baseline_rows(world: dict) -> list:
+    """Section 7 of the baseline: the run's carried findings, and the ones that the run resolved, as they stood then."""
+    rows = [(f["risk"], f["prefix"], f["num"], pr2_section_row(dict(f, status=STATUS_UNCHANGED), layer_label(f["layer"])))
+            for f in world["findings"] if f["status"] != STATUS_NEW]
+    for item in world["resolved"]:
+        comp = world["by_name"].get(item["comp"])
+        layer = comp["layer"] if comp else RETIRED_COMPONENTS[item["comp"]][1]
+        row = {"id": item["id"], "status": STATUS_UNCHANGED, "prefix": item["prefix"], "pattern": "none", "comp": item["comp"],
+               "short": item["short"], "risk": item["risk"], "mit_short": PR2_DROP_NOTE}
+        rows.append((item["risk"], item["prefix"], item["num"], pr2_section_row(row, layer_label(layer))))
+    rows.sort(key=lambda r: (-RISK_RANK[r[0]], TABLE_ORDER.index(r[1]), r[2]))
+    return [r[3] for r in rows]
+
+
+def ir2_baseline_text(world: dict, mark) -> str:
+    """The baseline's threats.md, cut down to what the check and the mark's writer read. mark None: a pre-PR 2 baseline, with no mark."""
+    cut = ("This file is a baseline run's threats.md, cut down to Section 4c, Section 7 and the ID high-water mark line." if mark is not None else
+           "This file is a baseline run's threats.md, cut down to Section 4c and Section 7. It has no ID high-water mark line, as every "
+           "baseline that an earlier release wrote.")
+    out = pr2_frontmatter(PR2_BASELINE_DATE, PR2_BASELINE_RUN_ID) + ["# Threat Model Report", "", cut, ""]
+    if mark is not None:
+        out += [ir2_line(mark), ""]  # between the front matter and the first ## heading, outside any fence
+    out += ["## 4c. Resolved Findings", "",
+            "Findings from the baseline that no longer apply in the current architecture. Each keeps its original ID, description and last-known risk level.",
+            "", table(("ID", "Component", "Threat", "Last Risk Level", "Resolution Reason"), IR2_EARLIER), "", "---", "",
+            "## 7. Recommended Actions", "", table(PR2_ACTION_COLUMNS, ir2_baseline_rows(world))]
+    return "\n".join(out)
+
+
+def ir2_files(scenario: str, remap: dict, mark, summary: str, notes: Sequence) -> dict:
+    world = ir2_run_world(remap)
+    live = [row[0] for row in ir2_baseline_rows(world)]
+    earlier = [row[0] for row in IR2_EARLIER]
+    seed = ir2_highest(live + earlier)
+    reference = mark if mark is not None else seed  # what a run's numbering has to clear
+    run_open = [f["id"] for f in world["findings"]]
+    run_highest = ir2_highest(run_open)
+    result = {prefix: max(run_highest.get(prefix, 0), reference.get(prefix, 0)) for prefix in PREFIX_ORDER if prefix in run_highest or prefix in reference}
+    if result != {prefix: max(ir2_highest(run_open + [r["id"] for r in world["resolved"]]).get(prefix, 0), reference.get(prefix, 0))
+                  for prefix in result}:
+        raise ValueError("id-reuse/%s: the run's Section 4c would move the mark, so the case would depend on how 'highest' is read" % scenario)
+    judged = {}
+    for finding in world["findings"]:
+        if finding["status"] != STATUS_NEW:
+            continue
+        prefix, number = finding["id"].rpartition("-")[0], finding["num"]
+        why = (["baseline-open"] if finding["id"] in live else []) + (["baseline-resolved"] if finding["id"] in earlier else [])
+        below = number <= seed.get(prefix, 0)
+        if mark is not None and number <= mark[prefix]:
+            why.append("at-or-below-mark")
+        elif mark is None and below and not why:  # an unused number under the seeded mark: whether the check flags it is not ruled
+            raise ValueError("id-reuse/%s: %s sits under the seeded mark without being used, which the fixture must not decide" % (scenario, finding["id"]))
+        judged[finding["id"]] = {"flagged": bool(why), "reasons": why, "mark": None if mark is None else mark[prefix],
+                                 "baseline_highest_open": ir2_highest(live).get(prefix, 0), "boundary": mark is not None and number == mark[prefix]}
+    flagged = [fid for fid in judged if judged[fid]["flagged"]]
+    root = "id-reuse/%s/" % scenario
+    run_text = render_threats_md(world).replace("baseline-runs/%s/threats.md" % PR2_BASELINE_DATE, "baseline/threats.md")
+    expected = {
+        "baseline": {"threats": "baseline/threats.md", "mark_present": mark is not None, "mark": mark, "mark_line": None if mark is None else ir2_line(mark),
+                     "open_highest": ir2_highest(live), "resolved_highest": ir2_highest(earlier), "seed": seed,
+                     "mark_above_open": [p for p in PREFIX_ORDER if mark and p in mark and mark[p] > ir2_highest(live).get(p, 0)],
+                     "mark_above_seed": [p for p in PREFIX_ORDER if mark and p in mark and mark[p] > seed.get(p, 0)]},
+        "reissue": {"reads": "the baseline's mark, or with none the seed from its live IDs and Section 4c", "new_findings": judged,
+                    "flagged": flagged, "unflagged_new": [fid for fid in judged if fid not in flagged], "count": len(flagged), "exit_code": 5 if flagged else 0},
+        "id_mark": {"reference": reference, "run_highest": run_highest, "result": result, "line": ir2_line(result),
+                    "moved": [p for p in result if result[p] > reference.get(p, 0)], "kept": [p for p in result if result[p] == reference.get(p, 0)],
+                    "spelling": "canonical, no leading zeros: the run's own AGP row is AGP-01 and its mark entry AGP-%d" % result["AGP"]},
+    }
+    run = {"date": PR2_RUN_DATE, "threats": "run/threats.md", "baseline_source": "baseline/threats.md",
+           "how": "copy the scenario directory to a working directory and run from there: the front matter's baseline.source and every path "
+                  "here are relative to it. id-mark takes run/threats.md as --threats and baseline/threats.md as --baseline, and writes the mark "
+                  "into a copy"}
+    return {root + "baseline/threats.md": ir2_baseline_text(world, mark), root + "run/threats.md": run_text,
+            root + "expected-outcomes.json": pr2_expected_document("id-reuse", scenario, "id-mark+reissue-check", summary, run, expected, notes)}
+
+
+def id_reuse_pr2_files() -> dict:
+    common = [
+        "The run is the gated world's threats.md, complete, with its NEW findings renumbered where the case needs it. Its baseline is a stub "
+        "of Section 4c and Section 7, with the mark line where the baseline has one. Every carried finding in the run is in the baseline's "
+        "Section 7, and so are the three findings that the run resolved.",
+        "id_mark.result is what `tachi-stage.py id-mark` must write (ruling B, ADR-050 D7): per prefix, the larger of the run's highest ID and "
+        "the baseline's mark, or, where the baseline has none, its highest live or Section 4c ID. The run's own Section 4c never decides a "
+        "prefix here, so the case does not depend on how 'highest' is read. The line is in canonical spelling and in S-2's prefix order. "
+        "(No script exists yet: the values come from the ruling's words, and T092 and T095 are the first to run a script on them.)",
+        "reissue.flagged is what `check-threat-model.py` must report with the reused-id code (D12): a NEW finding whose ID the baseline used, "
+        "or that sits at or below the baseline's mark. It warns and exits 5. Carried findings (UNCHANGED, UPDATED) are never flagged, whatever "
+        "their numbers are.",
+    ]
+    with_mark = common + [
+        "The mark sits above the baseline's live IDs for eight prefixes (S, T, R, I, D, AGP, LLM and MI). The numbers between belong to findings "
+        "that earlier runs resolved and that no list holds any more, apart from S-6 and T-4, which Section 4c holds. It equals the highest live "
+        "ID for E, AG, OI and TE.",
+        "S-5 is the case that only the mark catches: no baseline list holds S-5, and it sits above the baseline's live IDs, but the mark is S-8. "
+        "T-4 is a NEW finding with a number that the baseline's Section 4c holds, so it is reused twice over. I-5 equals the mark exactly, and "
+        "'at or below' includes it.",
+        "AG-6 is the control: it numbers just above a mark that equals the highest live ID. LLM-10 numbers above the mark and skips LLM-7 to "
+        "LLM-9, which is what PR 2's item 1 says ('numbering can skip'). Neither is flagged.",
+        "The mark does not move down: for eight prefixes the run's highest ID is below the baseline's mark, and the result keeps the mark. It "
+        "moves for AG and LLM only.",
+    ]
+    no_mark = common + [
+        "The baseline has no mark line, as every pre-PR 2 baseline. The seed is each prefix's highest live or Section 4c ID: S-6 and T-4 come "
+        "from Section 4c, and a seed from the live IDs alone would be S-4 and T-3.",
+        "S-6 is a NEW finding whose number only Section 4c holds: flagged as used by the baseline. T-5 numbers just above the seeded T-4, "
+        "and I-5, AG-6 and LLM-7 just above their seeds: none is flagged.",
+        "The case holds no NEW finding that sits under a seed without being used by the baseline (the generator refuses to build one), "
+        "because whether the check reads a seeded mark as a mark is not ruled. ADR-050 D7's limit stays: an ID resolved before the baseline run, "
+        "which the baseline no longer lists, can still be reissued once, and nothing here can show it.",
+    ]
+    files = ir2_files("pr2", {"LLM-7": "LLM-10"}, IR2_MARK,
+                      "S-4's id-reuse variant for PR 2: a baseline whose high-water mark sits above its live IDs (ruling B).", with_mark)
+    files.update(ir2_files("pr2-no-mark", {"S-5": "S-6", "T-4": "T-5"}, None,
+                           "S-4's id-reuse variant for PR 2, first run: a baseline with no mark at all, seeded from its live IDs and Section 4c (PM-T7).",
+                           no_mark))
+    return files
+
+
+def part_id_reuse_pr1_pr2(rng: Rng) -> dict:
+    """T040's PR 1 case and T148's PR 2 cases, both under id-reuse/ (a part writes only under its own name)."""
+    files = part_id_reuse(rng)
+    files.update(id_reuse_pr2_files())
+    return files
 
 
 PARTS = {
@@ -2578,7 +3103,7 @@ PARTS = {
     "seeded-error": part_seeded_error,
     "legacy-format": part_legacy_format,
     "tagged": part_tagged,
-    "id-reuse": part_id_reuse,
+    "id-reuse": part_id_reuse_pr1_pr2,
     "ties": part_ties,
     "regroup-pair": part_regroup_pair,
     "chain-cap": part_chain_cap,
