@@ -33,6 +33,9 @@ Stdlib-only per PAT-014 — no PyYAML, no Path operations beyond importlib.
 
 from __future__ import annotations
 
+import ast
+import random
+import re
 import sys
 from decimal import Decimal
 from pathlib import Path
@@ -42,6 +45,8 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+import tachi_parts  # noqa: E402  -- the escapers whose references the decoder reverses
 
 from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     SEVERITY_ORDINAL,
@@ -66,6 +71,10 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     compute_risk_posture,
     ReferenceSetError,
     parse_reference_set,
+    decode_references,
+    parse_attack_chains,
+    strip_bold,
+    _find_table_with_column,
 )
 
 FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "fidelity_373"
@@ -955,3 +964,370 @@ def test_the_wrapped_parser_keeps_its_empty_list_and_warning_for_the_extractors(
     assert parse_threats_findings("# no section seven here\n") == []
     assert "could not find Recommended Actions table" in capsys.readouterr().err
 
+
+# =============================================================================
+# Feature 374 (W2, T033): the shared reference decoder (ADR-050 D3)
+#
+# decode_references reverses exactly the references that tachi_parts escapes (ESCAPE_REFERENCES), in one pass. A
+# reader runs it once on each value, after the row is split on raw "|": parse_markdown_table and every other
+# reader of rendered text, the extractors' own table readers included. GFM's "\|" is not decoded, so today's
+# examples parse as they always did (NFR-1).
+# =============================================================================
+
+# The closed set as D3 lists it, written out here so that a change to tachi_parts.ESCAPE_REFERENCES fails this file.
+_CLOSED_REFERENCES = {
+    "&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#"}
+_ESCAPERS = {
+    "cell": lambda text: tachi_parts.escape_cell(text),
+    "cell-keeping-slots": lambda text: tachi_parts.escape_cell(text, keep_slots=True),
+    "prose": lambda text: tachi_parts.escape_prose(text),
+    "prose-keeping-slots": lambda text: tachi_parts.escape_prose(text, keep_slots=True),
+}
+_ROUND_TRIP_TEXTS = [
+    "", "plain words", "a & b", "a | b || c", "if a < b && b > c", "`code` {{7*7}} {{{x}}", "two\nlines\n# not a heading",
+    "# heading first\n  # indented\n\t# tabbed\n| row", "{{score:cvss_base}}", "{{{score:cvss_base}}", "{{score:", "}}{{",
+    "a literal &lt; here", "tail &amp;lt; tail", "&#124; &#10; &#35; &#96; &#123; spelled out", "&amp;", "\n", "&", "<<>>",
+    "```", "||", "{{", "{", "#", "x {{name:component}} y {{score:cvss_base}}",
+]
+
+
+def _generated_texts(count=400):
+    """Texts built from the characters the escapers care about, with literal references among them. Seeded."""
+    rng = random.Random(374)
+    tokens = ["a", "b", "x", " ", "\t", "\n", "&", "<", ">", "|", "`", "{", "{{", "}", "}}", ":", "#", ";", "amp", "lt",
+              "#124", "#10", "&amp;", "&lt;", "&#124;", "&#35;", "{{score:cvss_base}}", "{{name:component}}"]
+    return ["".join(rng.choice(tokens) for _ in range(rng.randint(1, 12))) for _ in range(count)]
+
+
+def test_the_decoder_reads_the_closed_set_that_tachi_parts_escapes():
+    assert tachi_parts.ESCAPE_REFERENCES == _CLOSED_REFERENCES
+    for reference, char in _CLOSED_REFERENCES.items():
+        assert decode_references(reference) == char
+        assert decode_references("a%sb%sc" % (reference, reference)) == "a%sb%sc" % (char, char)
+    assert decode_references("&lt;b&gt;x&lt;/b&gt; &amp;&amp;") == "<b>x</b> &&"
+    assert decode_references("") == ""
+
+
+def test_the_references_the_escapers_write_are_exactly_the_ones_the_decoder_reads():
+    """No more and no fewer: between them, escape_cell and escape_prose write each reference of the set, and no other."""
+    probe = "&<>|`{{\n# x"
+    written = set()
+    for escape in (tachi_parts.escape_cell, tachi_parts.escape_prose):
+        written.update(re.findall(r"&[#A-Za-z0-9]+;", escape(probe)))
+    assert written == set(_CLOSED_REFERENCES)
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("&amp;lt;", "&lt;"), ("&amp;amp;", "&amp;"), ("&amp;#124;", "&#124;"), ("&amp;#10;", "&#10;"),
+    ("&amp;gt;&amp;lt;", "&gt;&lt;"), ("&#38;lt;", "&#38;lt;"), ("&&lt;", "&<"), ("&amp;&lt;", "&<"),
+])
+def test_the_decoder_is_one_pass_and_never_scans_replaced_text(text, expected):
+    assert decode_references(text) == expected
+
+
+@pytest.mark.parametrize("text", [
+    "&AMP;", "&Lt;", "&GT;", "&quot;", "&apos;", "&nbsp;", "&copy;", "&#x7c;", "&#X7C;", "&#0124;", "&#124", "&#12;", "&#1;",
+    "&#38;", "&#60;", "&#62;", "&#x26;", "&#036;", "&#35", "&#x23;", "&#9;", "&amp", "&lt", "& amp;", "&;", "&#;", "&",
+    ";", "#", "\\|", "a \\| b",
+])
+def test_the_decoder_leaves_every_other_text_as_written(text):
+    assert decode_references(text) == text
+
+
+@pytest.mark.parametrize("name", sorted(_ESCAPERS))
+def test_decoding_what_tachi_parts_escapes_gives_the_text_back(name):
+    """The round trip: escape, then decode, is the identity. So escaping never compounds across two runs either."""
+    escape = _ESCAPERS[name]
+    for text in _ROUND_TRIP_TEXTS + _generated_texts():
+        escaped = escape(text)
+        assert decode_references(escaped) == text, repr(text)
+        assert escape(decode_references(escaped)) == escaped, "a carried value is written the same bytes again: %r" % text
+        for ampersand in re.finditer("&", escaped):
+            assert escaped.startswith(tuple(_CLOSED_REFERENCES), ampersand.start()), \
+                "every & the escapers write starts one reference of the set: %r" % text
+
+
+def test_a_second_decode_corrupts_a_literal_reference():
+    """ADR-050 D16: the round trip includes a literal ``&lt;`` in agent text, so a double decode fails it."""
+    text = "compare a &lt; b before the &amp; step"
+    escaped = tachi_parts.escape_cell(text)
+    assert escaped == "compare a &amp;lt; b before the &amp;amp; step"
+    once = decode_references(escaped)
+    assert once == text
+    assert decode_references(once) == "compare a < b before the & step" != text
+
+
+def test_resolved_slot_values_decode_to_the_values():
+    """``resolve_narrative`` escapes the value it fills in. Reading it back gives the value, and a slot-like value stays text."""
+    values = {("name", "component"): "Gate & <Way> | “edge”", ("score", "cvss_base"): "9.1"}
+    resolved = tachi_parts.resolve_narrative("Reaches {{name:component}} at {{score:cvss_base}} now", "risk-score",
+                                             lambda kind, argument: values.get((kind, argument)))
+    assert "&amp;" in resolved and "&lt;Way&gt;" in resolved and "&#124;" in resolved
+    assert decode_references(resolved) == "Reaches Gate & <Way> | “edge” at 9.1 now"
+
+
+# ---- the table readers ---------------------------------------------------------------------------------------
+
+_TABLE_VALUES = [
+    "plain words", "a | b || c", "if a < b && b > c", "two\nlines\nof text", "`code` and {{7*7}} and {{{x}}",
+    "already &lt;escaped&gt; &amp; &#124; &#10; text", "tail &amp;lt; tail", "# looks like a heading", "&", "{{score:cvss_base}}",
+    "&#35;",
+]
+
+
+def test_a_table_read_back_gives_each_cell_as_it_was_written():
+    rows = [("S-%d" % (index + 1), value, "fix: " + value) for index, value in enumerate(_TABLE_VALUES)]
+    content = "## 7. Recommended Actions\n\n| ID | Threat | Mitigation |\n|----|--------|------------|\n" + "\n".join(
+        "| %s | %s | %s |" % (finding_id, tachi_parts.escape_cell(threat), tachi_parts.escape_cell(mitigation))
+        for finding_id, threat, mitigation in rows) + "\n"
+    parsed = parse_markdown_table(content, "## 7. Recommended Actions")
+    assert [(row["ID"], row["Threat"], row["Mitigation"]) for row in parsed] == rows
+    assert parse_markdown_table(content, "## 7. Recommended Actions") == parsed, "reading twice is reading once"
+
+
+def test_a_reference_never_splits_a_row_and_decoding_never_changes_its_cell_count(capsys):
+    content = "## 7. X\n\n| ID | Threat | Mitigation |\n|---|---|---|\n| S-1 | a &#124; b &#124;&#124; c | &#124; |\n"
+    skipped = []
+    rows = parse_markdown_table(content, "## 7. X", skipped=skipped)
+    assert rows == [{"ID": "S-1", "Threat": "a | b || c", "Mitigation": "|"}]
+    assert skipped == [] and capsys.readouterr().err == ""
+
+
+def test_a_header_cell_is_a_cell_and_is_decoded_too():
+    content = "## 7. X\n\n| ID | Threat &amp; Impact |\n|---|---|\n| S-1 | text |\n"
+    assert parse_markdown_table(content, "## 7. X") == [{"ID": "S-1", "Threat & Impact": "text"}]
+
+
+def test_gfm_escaped_pipe_is_not_decoded_the_row_splits_there_as_it_always_has():
+    content = "## 7. X\n\n| ID | Threat | Mitigation |\n|---|---|---|\n| S-1 | not {{ a\\|safe }} | fix |\n"
+    assert parse_markdown_table(content, "## 7. X") == [{"ID": "S-1", "Threat": "not {{ a\\", "Mitigation": "safe }}"}]
+
+
+@pytest.mark.parametrize("relative", ["agentic-app/sample-report/threats.md", "agentic-app/threats.md"])
+def test_the_shipped_rows_that_hold_a_gfm_pipe_parse_as_they_always_did(relative):
+    """NFR-1, ADR-050 D3: LLM-5's Mitigation holds ``{{ value\\|safe }}`` (sample-report/threats.md:315, threats.md:230).
+
+    The row has 12 raw cells for 11 columns. Its Mitigation ends at the backslash, the 12th cell is dropped, and no
+    cell is changed by the decoder."""
+    content = (REPO_ROOT / "examples" / relative).read_text(encoding="utf-8")
+    lines = content.split("\n")
+    at = [index for index, line in enumerate(lines) if "{{ value\\|safe }}" in line]
+    assert len(at) == 1 and lines[at[0]].startswith("| LLM-5 |")
+    heading = max(index for index in range(at[0]) if lines[index].startswith("#"))
+    row = next(row for row in parse_markdown_table(content, start_line=heading) if row["ID"] == "LLM-5")
+    raw = [strip_bold(cell.strip()) for cell in lines[at[0]].split("|")[1:-1]]
+    assert len(raw) == 12 and raw[10].endswith("not `{{ value\\") and raw[11].startswith("safe }}`)")
+    assert list(row.values()) == raw[:11]
+
+
+def test_find_table_with_column_decodes_its_cells_and_skips_the_table_without_the_column():
+    content = ("## 6. Risk Summary\n\n| Calibration | Note |\n|---|---|\n| a | b |\n\n"
+               "| Risk Level | Count | Note |\n|---|---|---|\n| Critical | 2 | x &lt; y |\n| High | 1 | a &#124; b |\n")
+    assert _find_table_with_column(content, "## 6. Risk Summary", "Risk Level") == [
+        {"Risk Level": "Critical", "Count": "2", "Note": "x < y"}, {"Risk Level": "High", "Count": "1", "Note": "a | b"}]
+
+
+# ---- the other readers of rendered text ----------------------------------------------------------------------
+
+_CONTROLS_WITH_REFERENCES = """\
+## 2. Coverage Matrix
+
+### High Residual Severity
+
+| Threat ID | CF | Component | Threat | Inherent | Inherent Severity | Status | Residual | Residual Sev. |
+|-----------|-----|-----------|--------|----------|--------------------|--------|----------|---------------|
+| T-1 | — | API &amp; Gateway | Input &lt;script&gt; reaches a &#96;sink&#96; &#124; unsanitized | 8.0 | High | No Control Found | 8.0 | High |
+
+## 3. Control Details
+
+### Input Validation
+
+#### CTRL-1 — Allow-list validation
+
+**Category**: Input Validation | **Status**: Found | **Effectiveness**: Medium
+
+**Detected in**: `src/a&amp;b&#96;c.py:12`
+
+**Threats Mitigated by This Control**:
+
+| Threat ID | Component | Threat | Inherent Score | Reduction Factor | Residual Score |
+|-----------|-----------|--------|----------------|------------------|----------------|
+| T-1 | Gate &amp; Way | A threat | 8.0 | 0.5 | 4.0 |
+| T-9 | Other | Another threat | 6.0 | 0.5 | 3.0 |
+
+---
+
+## 4. Recommendations
+
+#### 1. T-1 — API &amp; Gateway (Composite: 8.0, High)
+
+**What to Implement**: Check against an &lt;allow-list&gt; and escape the &#124; character.
+A second line keeps &amp;lt; as it was written.
+
+**Where to Implement**: `src/a.py`
+"""
+
+
+def test_the_controls_reader_decodes_the_text_it_takes_from_every_section():
+    data = parse_compensating_controls_md(_CONTROLS_WITH_REFERENCES)
+    (finding,) = data["findings"]
+    assert finding["component"] == "API & Gateway"
+    assert finding["threat"] == "Input <script> reaches a `sink` | unsanitized"
+    assert finding["recommendation"] == ("Check against an <allow-list> and escape the | character. "
+                                         "A second line keeps &lt; as it was written.")
+    assert data["controls"] == [{"component": "Gate & Way", "category": "Input Validation", "status": "Found",
+                                 "evidence": "src/a&b`c.py:12", "effectiveness": "Medium"}]
+
+
+_CHAINS_WITH_REFERENCES = """\
+# Attack Chains
+
+### CHAIN-001: Prompt &lt;injection&gt; to data theft
+
+**Layers**: L2 → L3
+**Max Severity**: High
+**Surfaced**: Yes
+
+#### Member Findings
+
+| Finding ID | MAESTRO Layer | Role | Component | Category | Severity |
+|------------|---------------|------|-----------|----------|----------|
+| S-1 | L2 | Entry | Web &amp; API | Spoofing | High |
+
+#### Attack Progression
+
+The attacker sends a &lt;payload&gt; and then &amp;lt; stays as written.
+It continues &#124; here.
+
+#### Chain-Breaking Controls
+
+**Target**: S-1 (L2)
+**Rationale**: Stops the &lt;entry&gt; step.
+**Recommendation**: Add an allow-list &#124; filter.
+"""
+
+
+def test_the_chain_reader_decodes_its_prose_and_its_member_table():
+    (chain,) = parse_attack_chains(_CHAINS_WITH_REFERENCES)
+    assert chain["title"] == "Prompt <injection> to data theft"
+    assert chain["findings"][0]["component"] == "Web & API"
+    assert chain["narrative"] == "The attacker sends a <payload> and then &lt; stays as written. It continues | here."
+    assert chain["chain_breaking_controls"] == [{
+        "target_finding_id": "S-1", "target_layer": "L2", "rationale": "Stops the <entry> step.",
+        "recommendation": "Add an allow-list | filter."}]
+
+
+_AGENT_TABLE_WITH_REFERENCES = """\
+### 3.1 Spoofing (S)
+
+| ID | Status | Component | MAESTRO Layer | Risk Level | Threat |
+|----|--------|-----------|---------------|------------|--------|
+| S-1 | NEW | API &amp; Gateway | L2 — Data Operations | High | Token &lt;replay&gt; &#124; theft |
+| S-2 | NEW | Web | L2 — Data Operations | Low | Not {{ a\\|safe }} |
+"""
+
+
+def test_the_report_extractors_maestro_reader_decodes_its_cells_and_keeps_a_gfm_pipe(extract_report_data):
+    result = extract_report_data.parse_maestro_data(_AGENT_TABLE_WITH_REFERENCES)
+    (layer,) = result["maestro_findings_by_layer"]
+    assert layer["findings"] == [
+        {"id": "S-1", "component": "API & Gateway", "severity": "High", "threat": "Token <replay> | theft"},
+        {"id": "S-2", "component": "Web", "severity": "Low", "threat": "Not {{ a\\"}]
+
+
+def test_the_infographic_extractors_readers_decode_their_cells(extract_infographic_data):
+    findings = extract_infographic_data.parse_per_finding_maestro(_AGENT_TABLE_WITH_REFERENCES)
+    assert [(f["id"], f["component"], f["threat"], f["risk_level"]) for f in findings] == [
+        ("S-1", "API & Gateway", "Token <replay> | theft", "High"), ("S-2", "Web", "Not {{ a\\", "Low")]
+    deduplicated = extract_infographic_data.deduplicate_findings(
+        _AGENT_TABLE_WITH_REFERENCES + "\n## 4a. Correlation Groups\n\n| Group | Findings | Description |\n|---|---|---|\n"
+        "| CG-1 | S-1, T-2 | An &amp; B |\n")
+    assert deduplicated["unique_ids"] == {"S-1", "S-2", "T-2"} and deduplicated["has_correlations"] is True
+
+
+def test_the_report_extractors_attack_tree_reader_decodes_the_metadata_table(extract_report_data, tmp_path):
+    tree = tmp_path / "AG-1-tree.md"
+    tree.write_text("# Attack Tree: AG-1 -- A title\n\n| Field | Value |\n|-------|-------|\n| Finding ID | AG-1 |\n"
+                    "| Component | Web &amp; API |\n| Risk Level | High |\n| Threat | Prompt &lt;injection&gt; &#124; theft |\n\n"
+                    "```mermaid\ngraph TD\n  A[\"Root\"]\n```\n", encoding="utf-8")
+    entry = extract_report_data._parse_attack_tree_file(tree, {})
+    assert (entry["id"], entry["component"], entry["title"], entry["severity"]) == (
+        "AG-1", "Web & API", "Prompt <injection> | theft", "High")
+    heading_only = tmp_path / "AG-2-tree.md"
+    heading_only.write_text("# Attack Tree: AG-2 -- Prompt &lt;injection&gt;\n\n```mermaid\ngraph TD\n  A[\"Root\"]\n```\n",
+                            encoding="utf-8")
+    assert extract_report_data._parse_attack_tree_file(heading_only, {})["title"] == "Prompt <injection>"
+
+
+def test_the_report_narrative_is_decoded_before_its_cut_so_the_cut_never_splits_a_reference(extract_report_data):
+    short = "## 1. Executive Summary\n\nExposed to &lt;script&gt; &amp; more.\n\n### Remediation Timeline\n\n- **Now** (2 High findings)\n"
+    result = extract_report_data.parse_threat_report_md(short)
+    assert result["executive_narrative"] == "Exposed to <script> & more."
+    assert result["remediation_timeline"] == [{"timeline": "Now", "count": 2, "severity": "High"}]
+    long = "## 1. Executive Summary\n\n" + "x" * 1993 + "&amp;" * 4 + "\n"
+    narrative = extract_report_data.parse_threat_report_md(long)["executive_narrative"]
+    assert narrative == "x" * 1993 + "&" * 4, "2,013 characters written, 1,997 read: one decode, then the cut at 2,000"
+
+
+# ---- every reader decodes -------------------------------------------------------------------------------------
+
+_BINARY_EXAMPLE_SUFFIXES = {".png", ".jpg", ".jpeg", ".pdf", ".baseline"}
+
+
+def test_no_shipped_example_holds_a_reference_the_decoder_would_change():
+    """ADR-050 D3: every shipped example parses as before, because none holds one of the references. Reads files only."""
+    scanned, holding = [], []
+    for path in sorted((REPO_ROOT / "examples").rglob("*")):
+        if not path.is_file() or path.suffix.lower() in _BINARY_EXAMPLE_SUFFIXES:
+            continue
+        text = path.read_bytes().decode("utf-8")  # strict: a text example that isn't UTF-8 is a failure, not a skip
+        scanned.append(path.relative_to(REPO_ROOT).as_posix())
+        if decode_references(text) != text:
+            for match in re.finditer("|".join(re.escape(reference) for reference in _CLOSED_REFERENCES), text):
+                holding.append("%s:%d %s" % (scanned[-1], text.count("\n", 0, match.start()) + 1, match.group(0)))
+    assert "examples/agentic-app/threats.md" in scanned and "examples/agentic-app/sample-report/threats.md" in scanned
+    assert len(scanned) > 100, "the scan found the examples' text files"
+    assert holding == []
+
+
+def test_the_extractors_take_the_decoder_from_tachi_parsers_and_carry_no_copy(extract_report_data, extract_infographic_data):
+    """One decoder. Not an identity check on the function: other modules load their own copy of ``tachi_parsers``
+    under the same name, so in a mixed session the extractors can hold that copy's function."""
+    for extractor in (extract_report_data, extract_infographic_data):
+        assert extractor.decode_references.__module__ == "tachi_parsers"
+        assert extractor.decode_references("&lt;&#124;&gt;") == "<|>"
+
+
+def _is_a_split_on_a_raw_pipe(node):
+    return (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "split"
+            and len(node.args) == 1 and isinstance(node.args[0], ast.Constant) and node.args[0].value == "|")
+
+
+def _raw_pipe_splits(source):
+    """``(splits, undecoded)``: the line of every ``.split("|")`` in ``source``, and those whose comprehension doesn't
+    wrap its cells in ``decode_references``."""
+    tree = ast.parse(source)
+    decoded = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.ListComp, ast.SetComp, ast.GeneratorExp)) and any(
+                isinstance(inner, ast.Call) and getattr(inner.func, "id", None) == "decode_references"
+                for inner in ast.walk(node.elt)):
+            decoded.update(id(inner) for generator in node.generators for inner in ast.walk(generator.iter))
+    splits = [node for node in ast.walk(tree) if _is_a_split_on_a_raw_pipe(node)]
+    return [node.lineno for node in splits], [node.lineno for node in splits if id(node) not in decoded]
+
+
+@pytest.mark.parametrize("module,at_least", [("tachi_parsers.py", 5), ("extract-report-data.py", 3), ("extract-infographic-data.py", 4)])
+def test_every_table_reader_decodes_its_cells_after_the_split_on_a_raw_pipe(module, at_least):
+    """D3: the decoder runs in every reader of rendered text. A reader that splits a row on ``|`` must decode each cell."""
+    splits, undecoded = _raw_pipe_splits((REPO_ROOT / "scripts" / module).read_text(encoding="utf-8"))
+    assert len(splits) >= at_least, "the guard still sees this module's table readers"
+    assert undecoded == [], "%s splits a row on a raw | without decode_references (lines %s)" % (module, undecoded)
+
+
+def test_the_guard_flags_a_row_split_that_is_not_decoded():
+    """The guard above is not vacuous: it passes a decoded comprehension and flags every other way to split a row."""
+    assert _raw_pipe_splits('cells = [decode_references(c.strip()) for c in line.split("|")[1:-1]]') == ([1], [])
+    assert _raw_pipe_splits('cells = [c.strip() for c in line.split("|")[1:-1]]') == ([1], [1])
+    assert _raw_pipe_splits('cells = line.split("|")') == ([1], [1])
+    assert _raw_pipe_splits('cells = [decode_references(c) for c in other]\nparts = line.split(",")') == ([], [])

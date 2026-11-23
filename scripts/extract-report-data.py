@@ -99,6 +99,7 @@ from tachi_parsers import (
     parse_compensating_controls_md,
     parse_attack_chains,
     strip_bold,
+    decode_references,
     _extract_source_attribution_block,
     _extract_source_attribution,
 )
@@ -191,7 +192,8 @@ def parse_threat_report_md(content: str) -> dict:
             narrative_parts.append(prose_text)
 
     if narrative_parts:
-        narrative = "\n\n".join(narrative_parts)
+        # D3: decode before the cut, so the cut never splits a reference
+        narrative = decode_references("\n\n".join(narrative_parts))
         if len(narrative) > 2000:
             narrative = narrative[:2000]
         result["executive_narrative"] = narrative
@@ -446,7 +448,7 @@ def parse_maestro_data(threats_content):
                 continue
             # Parse header row
             if header_cols is None:
-                cells = [strip_bold(c.strip()) for c in stripped.split("|")[1:-1]]
+                cells = [decode_references(strip_bold(c.strip())) for c in stripped.split("|")[1:-1]]
                 if cells and cells[0].lower() == "id":
                     header_cols = cells
                 continue
@@ -454,7 +456,7 @@ def parse_maestro_data(threats_content):
             if re.match(r"^\|[\s\-:|]+\|$", stripped):
                 continue
             # Data row
-            cells = [strip_bold(c.strip()) for c in stripped.split("|")[1:-1]]
+            cells = [decode_references(strip_bold(c.strip())) for c in stripped.split("|")[1:-1]]
             if not cells or not cells[0]:
                 continue
             fid = cells[0]
@@ -688,7 +690,7 @@ def _parse_attack_tree_file(filepath: Path, findings_by_id: dict) -> dict:
         if in_table and stripped.startswith("|---"):
             continue
         if in_table and stripped.startswith("|"):
-            cells = [c.strip() for c in stripped.split("|")[1:-1]]
+            cells = [decode_references(c.strip()) for c in stripped.split("|")[1:-1]]
             if len(cells) >= 2:
                 meta[cells[0]] = cells[1]
         elif in_table and not stripped.startswith("|"):
@@ -710,12 +712,12 @@ def _parse_attack_tree_file(filepath: Path, findings_by_id: dict) -> dict:
             m = re.match(r"^Attack Tree:\s+(\S+?):?\s+[-\u2014]+\s+(.*)$", heading)
             if m:
                 finding_id = m.group(1)
-                title = title or m.group(2).strip()
+                title = title or decode_references(m.group(2).strip())
                 break
             m = re.match(r"^([A-Za-z]+-\d+):\s+(.*)$", heading)
             if m:
                 finding_id = m.group(1)
-                title = title or m.group(2).strip()
+                title = title or decode_references(m.group(2).strip())
                 break
         if not finding_id:
             return None

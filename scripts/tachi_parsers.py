@@ -106,6 +106,29 @@ def strip_bold(s: str) -> str:
     return s.replace("**", "")
 
 
+# D3's one closed decoder (F-374, ADR-050). It is built from the constant that the escapers use, never from a
+# second list, so it reverses exactly the references ``tachi_parts.escape_cell`` and ``escape_prose`` write. No
+# reference is a prefix of another (each ends at its first ``;``), so the order of the alternatives doesn't matter.
+_REFERENCE_PATTERN = re.compile("|".join(re.escape(reference) for reference in tachi_parts.ESCAPE_REFERENCES))
+
+
+def decode_references(text: str) -> str:
+    """Decode the references ``tachi_parts`` escapes, and nothing else (ADR-050 D3, "Output").
+
+    The closed set is ``tachi_parts.ESCAPE_REFERENCES``: ``&amp;``, ``&lt;``, ``&gt;``, ``&#124;``, ``&#96;``,
+    ``&#123;``, ``&#10;`` and ``&#35;``. It is one left-to-right pass, and replaced text is never scanned again, so
+    ``&amp;lt;`` is ``&lt;`` and a second decode would be a bug. Anything else is left as written: another entity,
+    a hex or zero-padded numeric reference, a bare ``&`` and GFM's ``\\|`` (which would change how today's examples
+    parse, NFR-1).
+
+    Run it once on a value, after the row it came from is split on raw ``|``. A row can't split on a reference,
+    because no reference holds a ``|``. :func:`parse_markdown_table` and every other reader of rendered text decode
+    each value they return, so a caller of those never decodes it again. ``decode_references(escape_cell(text))``
+    and ``decode_references(escape_prose(text))`` are ``text``, with or without ``keep_slots``.
+    """
+    return _REFERENCE_PATTERN.sub(lambda match: tachi_parts.ESCAPE_REFERENCES[match.group(0)], text)
+
+
 def _parse_int(s: str) -> int:
     """Safely parse an integer from a string, stripping non-numeric chars."""
     match = re.search(r"\d+", s)
@@ -373,6 +396,12 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
         List of dicts, one per row, with keys from the header row.
         Returns empty list if table not found.
 
+    Each header and data cell is stripped, loses its ``**`` markers and is then decoded with
+    :func:`decode_references` (ADR-050 D3), after the row is split on raw ``|``. So the renderers' references
+    (``&#124;`` for a ``|`` in a cell, ``&lt;``, ``&#10;`` and the rest) read back as the text they stand for, and
+    decoding never changes a row's cell count. GFM's ``\\|`` is not decoded: a row that holds one splits there, as
+    it always has (NFR-1). A caller must not decode the returned values again.
+
     Stop rule (FR-K9.2; amended at P0, 2026-09-28, RC-3/architect finding
     F-1): scanning for the table stops at the next heading whose level
     (count of leading '#') is less than or equal to ``max(matched_level,
@@ -433,7 +462,7 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
 
     # Parse header row for column names
     header_line = lines[table_header_idx].strip()
-    columns = [strip_bold(c.strip()) for c in header_line.split("|")[1:-1]]
+    columns = [decode_references(strip_bold(c.strip())) for c in header_line.split("|")[1:-1]]
     columns = [c for c in columns if c]
 
     if not columns:
@@ -452,7 +481,7 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
         line = lines[i].strip()
         if not line.startswith("|"):
             break
-        cells = [strip_bold(c.strip()) for c in line.split("|")[1:-1]]
+        cells = [decode_references(strip_bold(c.strip())) for c in line.split("|")[1:-1]]
         if len(cells) < len(columns):
             print(f"Warning: skipping malformed row at line {i + 1}: expected {len(columns)} columns, got {len(cells)}", file=sys.stderr)
             if skipped is not None:
@@ -470,7 +499,8 @@ def _find_table_with_column(content: str, section_header: str, required_column: 
     """Find a markdown table within a section that has a specific column header.
 
     Scans all tables after section_header and returns the first one
-    whose header row contains required_column.
+    whose header row contains required_column. Cells are decoded as
+    :func:`parse_markdown_table` decodes them.
     """
     lines = content.split("\n")
     header_idx = None
@@ -492,7 +522,7 @@ def _find_table_with_column(content: str, section_header: str, required_column: 
     while i < section_end:
         stripped = lines[i].strip()
         if stripped.startswith("|") and "|" in stripped[1:]:
-            columns = [strip_bold(c.strip()) for c in stripped.split("|")[1:-1]]
+            columns = [decode_references(strip_bold(c.strip())) for c in stripped.split("|")[1:-1]]
             columns = [c for c in columns if c]
 
             if columns and required_column in columns:
@@ -508,7 +538,7 @@ def _find_table_with_column(content: str, section_header: str, required_column: 
                     row_line = lines[j].strip()
                     if not row_line.startswith("|"):
                         break
-                    cells = [strip_bold(c.strip()) for c in row_line.split("|")[1:-1]]
+                    cells = [decode_references(strip_bold(c.strip())) for c in row_line.split("|")[1:-1]]
                     if len(cells) < len(columns):
                         continue
                     row = {}
@@ -1598,7 +1628,8 @@ def parse_compensating_controls_md(content: str, composites_by_id: dict = None) 
                     if not next_line or next_line.startswith("**") or next_line.startswith("####") or next_line.startswith("###") or next_line.startswith("---"):
                         break
                     rec_text += " " + next_line
-                recommendations[current_threat_id] = rec_text.strip()
+                # D3: the text is decoded once, after the lines that bound it are found on the raw text.
+                recommendations[current_threat_id] = decode_references(rec_text.strip())
                 current_threat_id = None
 
     # ---- Section 2: Coverage Matrix findings ----
@@ -1841,7 +1872,7 @@ def parse_compensating_controls_md(content: str, composites_by_id: dict = None) 
                     if "**Detected in**:" in next_line:
                         ev_match = re.search(r"\*\*Detected in\*\*:\s*`([^`]+)`", next_line)
                         if ev_match:
-                            evidence = ev_match.group(1)
+                            evidence = decode_references(ev_match.group(1))
                     # Get component from first row of Threats Mitigated table
                     if "Threats Mitigated" in next_line:
                         k = j + 1
@@ -1851,9 +1882,9 @@ def parse_compensating_controls_md(content: str, composites_by_id: dict = None) 
                         if k + 2 < sec3_end:
                             k += 2
                         if k < sec3_end and lines[k].strip().startswith("|"):
-                            cells = [c.strip() for c in lines[k].split("|")[1:-1]]
+                            cells = [decode_references(strip_bold(c.strip())) for c in lines[k].split("|")[1:-1]]
                             if len(cells) >= 2:
-                                component = strip_bold(cells[1])
+                                component = cells[1]
 
                 result["controls"].append({
                     "component": component,
@@ -1887,6 +1918,9 @@ def parse_attack_chains(content: str) -> list:
                                  target_layer, rationale, recommendation
         surfaced: bool
 
+    The text values (title, narrative, rationale, recommendation and the member table's cells) are decoded with
+    :func:`decode_references`, as a renderer escapes them (ADR-050 D3).
+
     Returns empty list if content is empty or unparseable.
     """
     if not content or not content.strip():
@@ -1900,7 +1934,7 @@ def parse_attack_chains(content: str) -> list:
     for i, line in enumerate(lines):
         match = re.match(r"^###\s+(CHAIN-\d{3}):\s+(.+)$", line.strip())
         if match:
-            chain_starts.append((i, match.group(1), match.group(2).strip()))
+            chain_starts.append((i, match.group(1), decode_references(match.group(2).strip())))
 
     if not chain_starts:
         return []
@@ -1993,7 +2027,7 @@ def _parse_chain_narrative(section_lines: list) -> str:
         if line:
             text_lines.append(line)
 
-    return " ".join(text_lines)
+    return decode_references(" ".join(text_lines))
 
 
 def _parse_chain_breaking_controls(section_text: str) -> list:
@@ -2038,12 +2072,12 @@ def _parse_chain_breaking_controls(section_text: str) -> list:
 
         rationale_match = re.match(r"\*\*Rationale\*\*:\s*(.+)", line)
         if rationale_match and current:
-            current["rationale"] = rationale_match.group(1).strip()
+            current["rationale"] = decode_references(rationale_match.group(1).strip())
             continue
 
         rec_match = re.match(r"\*\*Recommendation\*\*:\s*(.+)", line)
         if rec_match and current:
-            current["recommendation"] = rec_match.group(1).strip()
+            current["recommendation"] = decode_references(rec_match.group(1).strip())
             continue
 
     if current:
