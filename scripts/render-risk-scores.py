@@ -45,7 +45,7 @@ import os
 import platform
 import re
 import stat
-from decimal import Decimal
+from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
@@ -232,8 +232,8 @@ def _read_plan_input(entry: Mapping[str, Any], name: str, kept: str) -> bytes:
 def _load_plan(out: str, plan_id: str, digest: str) -> Tuple[Dict[str, Any], Dict[str, bytes], Dict[str, str]]:
     """The plan ``--plan`` names, once the pointer, its digest, its inputs and every batch input check out.
 
-    Returns ``(plan, the bytes of each plan input, the refs of the first batch input)``. A plan with no units has no
-    batch input, so its refs are empty. Nothing is written.
+    Returns ``(plan, the bytes of each plan input, the plan's refs)``. The refs are the plan's own, so a plan with no
+    units (every finding carried) keeps its architecture path (ruled at W2, part-files.md §4). Nothing is written.
     """
     kept = tp.plan_dir(out, STAGE, plan_id)
     pointer = _document(tp.pointer_path(out, STAGE), out, tp.POINTER_SCHEMA, "the plan pointer")
@@ -262,8 +262,8 @@ def _load_plan(out: str, plan_id: str, digest: str) -> Tuple[Dict[str, Any], Dic
         stored = tp.input_path(out, STAGE, plan_id, entry["batch_id"])
         if tp.path_guard_problem(stored, out) is not None or tp.file_digest(stored) != entry["input_sha256"]:
             raise RenderError(2, "the batch input %s changed after plan" % entry["batch_id"], "re-run the command", kept=kept)
-    refs: Dict[str, str] = {}
-    if plan["batches"]:
+    refs: Dict[str, str] = dict(plan["refs"]) if isinstance(plan.get("refs"), dict) else {}
+    if "refs" not in plan and plan["batches"]:   # a plan from before the refs moved to the plan: its first batch input has them
         first_id = plan["batches"][0]["batch_id"]
         refs = dict(_document(tp.input_path(out, STAGE, plan_id, first_id), out, tp.BATCH_INPUT_SCHEMA, "the batch input %s" % first_id, kept)["refs"])
     return plan, inputs, refs
@@ -303,9 +303,12 @@ def _read_parts(out: str, plan: Mapping[str, Any]) -> Tuple[Dict[str, Dict[str, 
 # =============================================================================
 
 class Flag(object):
-    """One integrity flag, ``kind:field:cause``, with the stored and rendered values that Section 6's table shows."""
+    """One integrity flag, ``kind:field:cause``, with the stored and rendered values that Section 6's table shows.
 
-    def __init__(self, kind: str, field: str, cause: str, stored: str = DASH, rendered: str = DASH) -> None:
+    A value that isn't there is ``None``: the table writes a dash for it and the SARIF's ``score-corrections`` writes null.
+    """
+
+    def __init__(self, kind: str, field: str, cause: str, stored: Optional[str] = None, rendered: Optional[str] = None) -> None:
         self.kind, self.field, self.cause, self.stored, self.rendered = kind, field, cause, stored, rendered
 
     def text(self) -> str:
@@ -367,6 +370,9 @@ class Run(object):
         self.baseline: Any = None
         self.baseline_path: Optional[str] = None
         self.baseline_note = "none"
+        self.baseline_vectors: Dict[str, str] = {}  # canonical ID -> the baseline SARIF's ``cvss-vector`` (the second source, R-26)
+        self.lacking: Dict[str, List[str]] = {}     # canonical ID -> the values its input's form lacks (S-12(b))
+        self.routing: Any = None
         self.tag_source: Any = None
         self.tag_line = "none"
         self.zones: Dict[str, Tuple[str, str]] = {}
@@ -415,10 +421,19 @@ def _label_level(label: str) -> Optional[str]:
 
 
 def _relative(path: str, cwd: str) -> Optional[str]:
-    """``path`` relative to the working directory with ``/`` separators, or ``None`` when it isn't under it."""
+    """``path`` relative to the working directory with ``/`` separators, or ``None`` when it isn't under it.
+
+    The working directory is found by file identity, as ``under`` finds it, so a path that is spelled through a symbolic
+    link (macOS's ``/var`` for ``/private/var``) still reads as the tail below the directory, never as a ``..`` climb.
+    """
     if not tp.under(cwd, path):
         return None
-    return os.path.relpath(path, cwd).replace(os.sep, "/")
+    tail: List[str] = []
+    current = os.path.abspath(path)
+    while not (os.path.lexists(current) and os.path.samefile(current, cwd)):
+        tail.append(os.path.basename(current))
+        current = os.path.dirname(current)
+    return "/".join(reversed(tail)) or "."
 
 
 def _quoted(text: Optional[str]) -> str:
@@ -506,7 +521,9 @@ def _sarif_reference(text: str) -> Dict[str, Any]:
         rows.append({"id": member, "component": found.get("component", ""), "threat": found.get("threat", ""),
                      "mitigation": found.get("mitigation", ""), "risk_level": found.get("risk_level", DASH), "layer": found.get("layer", ""),
                      "type": found.get("type", ""), "agentic_pattern": "none"})
-    return {"open": rows, "resolved": [], "duplicates": [], "groups": tachi_parsers.parse_sarif_member_set(text)["groups"]}
+    lacking = {row["id"]: ["delta_status"] for row in rows}  # S-12(b): the file has no place for a status, on any member
+    return {"open": rows, "resolved": [], "duplicates": [], "groups": tachi_parsers.parse_sarif_member_set(text)["groups"],
+            "lacking": lacking, "flags": {finding_id: [tachi_parsers.FORM_LACKS_FLAG % "delta_status"] for finding_id in lacking}}
 
 
 def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], refs: Mapping[str, str], kept: str) -> Dict[str, Any]:
@@ -517,6 +534,9 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
         text = inputs["threats"].decode("utf-8")
     except UnicodeDecodeError:
         raise RenderError(2, "the threat model input is not strict UTF-8", "regenerate threats.md with /tachi.threat-model", kept=kept) from None
+    refused = plan.get("architecture_warning")   # D7: the planner refused the --architecture candidate, and the record lists that first
+    if isinstance(refused, dict):
+        run.warn(refused["code"], refused["detail"])
     run.threats_path = plan["inputs"]["threats"]["path"]
     run.source_file = _relative(run.threats_path, run.cwd)
     run.sources = {name: entry["sha256"] for name, entry in sorted(plan["inputs"].items())}
@@ -534,13 +554,14 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
             raise RenderError(2, "%s. Expected %s" % (exc.reason, exc.expected), exc.remedy, kept=kept) from None
 
     lacking = reference.get("lacking", {})
-    if lacking:
+    if lacking:   # S-12(b): each such finding carries the flags, and the stage record lists them
         names = sorted({name for found in lacking.values() for name in found})
-        run.issues.append("Section 7 of threats.md is in the %s form, which lacks %s for %d of %d findings: each carries the flag %s, "
-                          "and a finding with no status counts as NEW" % (reference["form"], ", ".join(names), len(lacking), len(reference["open"]),
-                                                                          ", ".join(tachi_parsers.FORM_LACKS_FLAG % name for name in names)))
-        run.warn("value-not-in-form", "Section 7 of threats.md lacks %s for %d findings, such as %s"
-                 % (", ".join(names), len(lacking), ", ".join(sorted(lacking, key=tp.finding_sort_key)[:5])))
+        where = "threats.sarif (the fallback input)" if from_sarif else "Section 7 of threats.md (the %s form)" % reference["form"]
+        run.issues.append("%s lacks %s for %d of %d findings: each carries the flag %s%s" % (
+            where, ", ".join(names), len(lacking), len(reference["open"]), ", ".join(tachi_parsers.FORM_LACKS_FLAG % name for name in names),
+            ". A status that the input lacks is taken from the baseline when it holds the finding, and is NEW otherwise" if "delta_status" in names else ""))
+        run.warn("value-not-in-form", "%s lacks %s for %d findings, such as %s"
+                 % (where, ", ".join(names), len(lacking), ", ".join(sorted(lacking, key=tp.finding_sort_key)[:5])))
     for canonical in reference["duplicates"]:
         run.issues.append("Section 7 or Section 4c of threats.md lists %s more than once: the first row is used, and an open row "
                           "beats a resolved one" % canonical)
@@ -577,6 +598,12 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
         run.groups = grouped["groups"]
     run.assignments = sc.correlation_assignments([(group["group_id"], group["members"]) for group in run.groups], open_ids)
 
+    # The baseline first: S-12(b) needs it to route and to supply a carried finding's component before the tag join.
+    run.lacking = {finding_id: list(names) for finding_id, names in reference.get("lacking", {}).items()}
+    _prepare_baseline(run, plan, refs, text if run.threats_text is not None else None, inputs)
+    run.routing = _route(run, reference)
+    _supply(run, reference)
+
     # The architecture file: the one path that gives the URI and the asset tags (ADR-050 D7, and D2's S-13).
     resolution = sc.resolve_architecture(refs.get("architecture"), threats_text=run.threats_text, run_dir=os.path.dirname(run.threats_path), root=run.cwd)
     run.uri = resolution.uri
@@ -607,11 +634,54 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
         "block-unverified": "the Affected Assets block of threats.md, unverified because there was no architecture file to check it against",
         "none": "none: no asset tags were applied",
     }[run.tag_source.source]
-    _prepare_baseline(run, plan, refs, text if run.threats_text is not None else None)
     return reference
 
 
-def _prepare_baseline(run: Run, plan: Mapping[str, Any], refs: Mapping[str, str], threats_text: Optional[str]) -> None:
+def _sarif_vectors(raw: bytes) -> Dict[str, str]:
+    """The baseline SARIF's ``cvss-vector`` of each result by canonical ID: R-26's second source of a vector, which
+    Section 6 shows as the stored value when it and the markdown's disagree. A file that doesn't read gives none."""
+    try:
+        results = json.loads(raw.decode("utf-8"))["runs"][0]["results"]
+    except (ValueError, KeyError, IndexError, TypeError, AttributeError):
+        return {}
+    found: Dict[str, str] = {}
+    for result in results if isinstance(results, list) else []:
+        try:
+            identifier, vector = result["partialFingerprints"]["findingId/v1"], result["properties"]["cvss-vector"]
+        except (KeyError, TypeError):
+            continue
+        if isinstance(identifier, str) and isinstance(vector, str) and tp.id_matches("finding", identifier):
+            found.setdefault(tp.canonical_finding_id(identifier), vector)
+    return found
+
+
+def _route(run: Run, reference: Mapping[str, Any]) -> Any:
+    """The partition of the open findings, by the one function the planner calls too (D2). ``lacking`` is S-12(b)'s, so the
+    router derives a status from the baseline for a value that the input's form has no place for; it is passed only
+    when there is something lacking, and the router's default leaves every other caller as it was."""
+    rows = [{"id": tp.canonical_finding_id(finding["id"]), "component": finding["component"], "delta_status": finding.get("delta_status")}
+            for finding in reference["open"]]
+    return rules.route_scorer_units(rows, groups=run.groups, baseline=run.baseline, **({"lacking": run.lacking} if run.lacking else {}))
+
+
+def _supply(run: Run, reference: Mapping[str, Any]) -> None:
+    """S-12(b): a carried finding's component, threat and risk level come from its baseline row when the input's form
+    lacks them, and only a value that the row records. It happens before S-13's tag join, so the tags follow the finding's
+    own component and a drift form raises no false ``retagged`` flag. A fresh finding is never supplied (D9)."""
+    carried = set(run.routing.carried)
+    for finding in reference["open"]:
+        canonical = tp.canonical_finding_id(finding["id"])
+        if canonical not in carried:
+            continue
+        stored = run.baseline.rows[canonical]
+        for name in run.lacking.get(canonical, ()):
+            value = getattr(stored, name, None) if name in ("component", "threat", "risk_level") else None
+            if value:
+                finding[name] = value
+
+
+def _prepare_baseline(run: Run, plan: Mapping[str, Any], refs: Mapping[str, str], threats_text: Optional[str],
+                      inputs: Mapping[str, bytes]) -> None:
     """The baseline the planner used: its recorded, digest-checked files. Why there is none is worked out again (R-6, D9)."""
     entry = plan["inputs"].get("baseline_risk_scores")
     if entry is not None:
@@ -622,24 +692,31 @@ def _prepare_baseline(run: Run, plan: Mapping[str, Any], refs: Mapping[str, str]
         if scores.readable:
             run.baseline, run.baseline_path = scores, _relative(entry["path"], run.cwd)
             run.baseline_note = run.baseline_path or "a baseline file"
+            if "baseline_risk_scores_sarif" in inputs:
+                run.baseline_vectors = _sarif_vectors(inputs["baseline_risk_scores_sarif"])
             return
         run.warn("baseline-unreadable", "the baseline %s could not be read (%s), so its owners, SLAs and dispositions were not carried" % (MD, scores.reason))
         run.issues.append("The baseline %s could not be read (%s): its owners, SLAs and dispositions were not carried" % (MD, scores.reason))
-        run.baseline_note = "none (unreadable: %s)" % scores.reason
         return
     source = tachi_parsers.parse_baseline_frontmatter(threats_text)["source"] if threats_text is not None else None
     resolution = rules.resolve_baseline(flag=refs.get("baseline_dir"), baseline_source=source, cwd=Path(run.cwd))
     if resolution.run_dir is None:
-        if resolution.reason not in ("not-named", "free-text"):
+        if resolution.reason != "not-named":   # free text, an unresolvable path or a failed check: scored fresh, and the record says why (D9)
             run.warn("baseline-unresolved", "the baseline named by %s was not used (%s), so every finding is scored fresh"
                      % ("--baseline" if resolution.origin == "flag" else "baseline.source", resolution.reason))
-            run.baseline_note = "none (%s)" % resolution.reason
         return
-    reason = resolution.file_reasons.get(MD, "missing")
-    if MD not in resolution.files and reason != "missing":
-        run.warn("baseline-unreadable", "the baseline %s was refused (%s), so its owners, SLAs and dispositions were not carried" % (MD, reason))
-        run.issues.append("The baseline %s was refused (%s): its owners, SLAs and dispositions were not carried" % (MD, reason))
-        run.baseline_note = "none (refused: %s)" % reason
+    path = resolution.files.get(MD)
+    if path is None:   # the run directory has no risk-scores.md that passes the checks: missing, a link, not a regular file
+        reason = resolution.file_reasons.get(MD, "missing")
+        if reason == "missing":
+            run.warn("baseline-unresolved", "the baseline run directory has no %s (%s), so every finding is scored fresh" % (MD, reason))
+            return
+        refused = "refused"
+    else:   # the file is there and the plan recorded no input for it, so the planner could not read it (S-12(d))
+        reason = rules.read_baseline_scores(path).reason or "changed-since-plan"
+        refused = "unreadable"
+    run.warn("baseline-unreadable", "the baseline %s was %s (%s), so its owners, SLAs and dispositions were not carried" % (MD, refused, reason))
+    run.issues.append("The baseline %s was %s (%s): its owners, SLAs and dispositions were not carried" % (MD, refused, reason))
 
 
 # =============================================================================
@@ -765,9 +842,15 @@ def _finish_numbers(row: Row) -> None:
     row.band = ts.band(row.composite)
 
 
-def _shown(value: Any) -> str:
+def _shown(value: Any) -> Optional[str]:
+    """A value as Section 6 shows it: a score on the 0.1 grid as one decimal, a score off it as written, a date as ISO text."""
+    if value is None:
+        return None
     if isinstance(value, Decimal):
-        return _one(value)
+        try:
+            return _one(value) if value == ts.q1(value) else str(value)
+        except ValueError:
+            return str(value)
     return value.isoformat() if hasattr(value, "isoformat") else str(value)
 
 
@@ -778,10 +861,7 @@ def _flag_with_values(text: str, stored: Any, row: Row) -> Flag:
         was = {"cvss_base": stored.stored.get("cvss_base"), "remediation_sla": stored.sla, "risk_disposition": stored.disposition,
                "review_date": stored.review_date}.get(flag.field)
         now = {"cvss_base": row.cvss, "remediation_sla": row.sla, "risk_disposition": row.disposition, "review_date": row.review_date}.get(flag.field)
-        if was is not None:
-            flag.stored = _shown(was)
-        if now is not None and flag.kind != "unverifiable":
-            flag.rendered = _shown(now)
+        flag.stored, flag.rendered = _shown(was), _shown(now)
     return flag
 
 
@@ -821,43 +901,123 @@ def _score_fresh(run: Run, row: Row, item: Mapping[str, Any], stored: Any, scori
     _narrate(run, row, texts, {})
 
 
-def _band_under(stored: Any, row: Row, tags: Sequence[str]) -> Optional[str]:
-    """The band a carried finding's other values give under ``tags``: the baseline's recorded ones, or none for a legacy row."""
-    vector_check = rules.check_carried_vector(stored, tags=tags)
-    if vector_check.cvss_base is None:
+def _exact_composite(cvss: Decimal, exploit: Decimal, scale: Decimal, reach: Decimal) -> Decimal:
+    """The weighted sum before it is rounded, so that a tie, a sum that ends in exactly ``.x5``, can be told from an error (R-11)."""
+    return sum((ts.WEIGHTS[name] * value for name, value in
+                (("cvss_base", cvss), ("exploitability", exploit), ("scalability", scale), ("reachability", reach))), Decimal(0))
+
+
+def _rounding_only(stored: Optional[Decimal], exact: Decimal) -> bool:
+    """R-11: whether ``stored`` is the one-decimal neighbour of ``exact`` that the half-up rounding did not pick."""
+    if stored is None or not stored.is_finite():
+        return False
+    below, above = exact.quantize(Decimal("0.1"), rounding=ROUND_FLOOR), exact.quantize(Decimal("0.1"), rounding=ROUND_CEILING)
+    return below != above and stored != ts.q1(exact) and stored in (below, above)
+
+
+def _mean(values: Sequence[int]) -> Tuple[Decimal, Decimal]:
+    """A sub-score mean as the renderer rounds it and as it is before it is rounded (the four values over four, exactly)."""
+    return ts.sub_score_mean(values), sum((Decimal(value) for value in values), Decimal(0)) / 4
+
+
+def _stored_grid(run: Run, row: Row, name: str, value: Optional[Decimal]) -> Decimal:
+    """A legacy row's stored value as a score the arithmetic can take. One off the grid or outside 0.0 to 10.0 is clamped
+    onto it, and an Input Issue says so, because the vocabulary has no flag for it and no step is silent."""
+    grid = _grid(value)
+    if value is not None and value != grid:
+        run.issues.append("%s: the stored %s %s is not a score from 0.0 to 10.0 on the 0.1 grid, so %s was used" % (
+            row.finding_id, name, str(value)[:20], grid))
+    return grid
+
+
+def _reach_flag(run: Run, row: Row, stored: Decimal) -> Optional[Flag]:
+    """D10's range check of a legacy finding's reachability (R-10). The component's Section 2 label gives the trust level,
+    and only when it names one (``trust-zones.md`` 2c). A value out of that level's range is kept and flagged ``input``,
+    and an ambiguous label is ``unchecked``, never a violation. A component with no label has nothing to check against."""
+    zone = run.component_zone.get(row.component.casefold())
+    entry = run.zones.get(zone) if zone is not None else None
+    if entry is None:
         return None
-    return ts.band(ts.composite(_grid(vector_check.cvss_base), row.exploit, row.scale, row.reach))
+    level = _label_level(entry[1])
+    if level is None:
+        return Flag("unchecked", "reachability", "compound-trust-label", stored=_shown(stored))
+    low, high = ts.REACHABILITY_RANGES[level]
+    return None if low <= stored <= high else Flag("input", "reachability", "out-of-range", stored=_shown(stored))
 
 
 def _carry(run: Run, row: Row, stored: Any, scoring_date: datetime.date) -> None:
-    """An UNCHANGED finding with a usable baseline row: its inputs come from the baseline, everything derived is
-    recomputed, and its owner, SLA, disposition and review date are carried (D2; D9 steps 1 and 2).
+    """An UNCHANGED finding with a usable baseline row (D9 steps 1 to 4, D10).
 
-    The CVSS value and its flag are ``check_carried_vector``'s (D10), and the governance and its flags are
-    ``governance_for``'s. Comparing the other recomputed values with the stored ones is T045's.
+    **Inherited verbatim** (step 1): from a renderer-form row the vector, bounds, sub-scores, zone, trust level, barrier
+    counts and tags used; from a legacy row the vector and the stored C, E, S and R; from either the owner, SLA,
+    disposition and review date. **Recomputed** (step 2): the CVSS chain through ``check_carried_vector``, then E, S and R
+    (a legacy R is only range-checked), then the composite and the band. **Compared** (steps 3 and 4): a difference that
+    is only rounding is normalized and counted when the band holds; one that the asset tags alone explain is ``retagged``
+    (ruling A: recomputing with the baseline's tags gives the stored value); anything else is ``corrected``, and a
+    missing vector is ``unverifiable``. The governance and its flags are ``governance_for``'s, unioned, never re-derived.
     """
     row.source = "inherited"
     row.tags = tuple(run.tag_source.tags.get(row.canon, ()))
-    check = rules.check_carried_vector(stored, tags=row.tags)
+    renderer_form = stored.form == "renderer"
+    baseline_tags = tuple(stored.tags_used or ()) if renderer_form else ()   # a legacy row records no tags (ruling A)
+    held = stored.stored
     row.vector, row.bounds, row.zone, row.trust = stored.cvss_vector, stored.score_bounds, stored.zone, stored.trust_level
+    check = rules.check_carried_vector(stored, tags=row.tags)
     row.cvss = _grid(check.cvss_base)
-    if stored.form == "renderer":
+    rounded = False   # some difference was only rounding (R-11)
+    if renderer_form:
         row.subs = dict(stored.subscores)
         row.auth, row.net = stored.auth_barriers or 0, stored.network_boundaries or 0
-        row.exploit = ts.sub_score_mean([row.subs[name] for name in tp.SUBSCORE_NAMES[:4]])
-        row.scale = ts.sub_score_mean([row.subs[name] for name in tp.SUBSCORE_NAMES[4:]])
-        row.reach = _reachability(row.trust, row.zone, row.auth, row.net)
         row.defaulted_reach = row.trust is None
+        row.exploit, exact_exploit = _mean([row.subs[name] for name in tp.SUBSCORE_NAMES[:4]])
+        row.scale, exact_scale = _mean([row.subs[name] for name in tp.SUBSCORE_NAMES[4:]])
+        row.reach = _reachability(row.trust, row.zone, row.auth, row.net)
+        for name, value, exact in (("exploitability", row.exploit, exact_exploit), ("scalability", row.scale, exact_scale),
+                                   ("reachability", row.reach, row.reach)):
+            was = held.get(name)
+            if was is not None and was != value:
+                if _rounding_only(was, exact):
+                    rounded = True
+                else:
+                    row.flags.append(Flag("corrected", name, "arithmetic", _shown(was), _shown(value)))
     else:
-        row.exploit, row.scale, row.reach = (_grid(stored.stored.get(key)) for key in ("exploitability", "scalability", "reachability"))
+        row.exploit, row.scale, row.reach = (_stored_grid(run, row, name, held.get(name)) for name in ("exploitability", "scalability", "reachability"))
+        flag = _reach_flag(run, row, row.reach)
+        if flag is not None:
+            row.flags.append(flag)
     _finish_numbers(row)
     if check.flag is not None:
         row.flags.append(_flag_with_values(check.flag, stored, row))
-    baseline_tags = (stored.tags_used or ()) if stored.form == "renderer" else ()
-    change = rules.classify_band_change(stored_band=stored.band, rendered_band=row.band, band_with_baseline_tags=_band_under(stored, row, baseline_tags))
+    for text in stored.flags:   # raised while the baseline was read: the markdown's vector was used over the SARIF's
+        flag = _flag_from_text(text)
+        if text == "input:cvss_vector:sources-disagree":
+            flag.stored, flag.rendered = run.baseline_vectors.get(row.canon), row.vector
+        row.flags.append(flag)
+
+    # The composite and the band, against what the baseline stored. "The tags alone" means that recomputing with the
+    # baseline's own tags gives the stored value (ruling A); a legacy row records none.
+    then_cvss = _grid(rules.check_carried_vector(stored, tags=baseline_tags).cvss_base)
+    then_composite = ts.composite(then_cvss, row.exploit, row.scale, row.reach)
+    was = held.get("composite")
+    rounding_composite = False
+    if was is not None and was != row.composite:
+        if was == then_composite:
+            row.flags.append(Flag("retagged", "composite_score", "asset-tags", _shown(was), _shown(row.composite)))
+        elif _rounding_only(was, _exact_composite(row.cvss, row.exploit, row.scale, row.reach)):
+            rounded = rounding_composite = True
+        else:
+            row.flags.append(Flag("corrected", "composite_score", "arithmetic", _shown(was), _shown(row.composite)))
+    change = rules.classify_band_change(stored_band=stored.band, rendered_band=row.band, band_with_baseline_tags=ts.band(then_composite))
+    if change == "corrected":   # only rounding moved the band when the composite is a tie that the stored band follows
+        cause = "rounding" if rounding_composite and ts.band(was) == stored.band else "band-mapping"
+        row.flags.append(Flag("corrected", "severity_band", cause, stored.band, row.band))
+    elif change != "none":
+        row.flags.append(Flag("retagged", "severity_band", "asset-tags", stored.band, row.band))
+    if rounded and change == "none":
+        run.normalized += 1
     _govern(run, row, stored, change, scoring_date)
     row.legacy_prose = dict(stored.legacy_prose)
-    _narrate(run, row, stored.narrative if stored.form == "renderer" else {}, row.legacy_prose)
+    _narrate(run, row, stored.narrative if renderer_form else {}, row.legacy_prose)
 
 
 def _copy_peer(run: Run, row: Row, primary: Row, stored: Any, scoring_date: datetime.date) -> None:
@@ -884,9 +1044,12 @@ def _score(run: Run, reference: Mapping[str, Any], items: Mapping[str, Mapping[s
     for row in run.rows:
         run.spelling[row.canon] = row.finding_id
     run.open_ids = set(run.spelling)
-    routing = rules.route_scorer_units([{"id": row.canon, "delta_status": finding.get("delta_status")}
-                                        for row, finding in zip(run.rows, reference["open"])],
-                                       groups=run.groups, baseline=run.baseline)
+    routing = run.routing
+    if run.lacking:   # S-12(b): the router derived a status for each finding whose form has none
+        derived = routing.status
+        for row in run.rows:
+            if "delta_status" in run.lacking.get(row.canon, ()):
+                row.status = derived[row.canon]
     carried, copied = set(routing.carried), routing.copy_primary
     stored_rows = run.baseline.rows if run.baseline is not None else {}
     by_canon = {row.canon: row for row in run.rows}
@@ -905,9 +1068,15 @@ def _score(run: Run, reference: Mapping[str, Any], items: Mapping[str, Mapping[s
         if row.canon in copied:
             _copy_peer(run, row, by_canon[copied[row.canon]], stored_rows.get(row.canon), scoring_date)
         if run.baseline is not None and row.status == "NEW" and row.canon in run.baseline.ids_in_any_row:
-            row.flags.append(Flag("reused-id", "finding_id", "baseline"))  # ruling B: scored fresh, and never from that row
-        for text in reference.get("flags", {}).get(row.canon, ()):  # S-12(b): a value that Section 7's form lacks
+            row.flags.append(Flag("reused-id", "finding_id", "baseline", stored=row.finding_id))  # ruling B: scored fresh, and never from that row
+        for text in reference.get("flags", {}).get(row.canon, ()):  # S-12(b): a value that the input's form lacks
             row.flags.append(_flag_from_text(text))
+    for peer, primary in routing.carried_peers.items():   # R-4: an UNCHANGED peer keeps its own score, and a difference is flagged
+        found = rules.peer_divergence(peer_composite=by_canon[peer].composite, primary_id=primary, primary_composite=by_canon[primary].composite)
+        if found is not None:
+            flag = _flag_from_text(found)
+            flag.stored, flag.rendered = _shown(by_canon[peer].composite), _shown(by_canon[primary].composite)
+            by_canon[peer].flags.append(flag)
     for row in run.rows:  # a finding carries each flag once, whichever step raised it (the closed vocabulary's rule)
         seen: set = set()
         row.flags = [flag for flag in row.flags if not (flag.text() in seen or seen.add(flag.text()))]
@@ -1188,8 +1357,8 @@ def _md_section_6(run: Run, out: List[str]) -> None:
             "**Baseline source**: %s" % ("`%s`" % tp.escape_prose(run.baseline_path) if run.baseline_path else tp.escape_prose(run.baseline_note)), "",
             "**Tag source**: %s" % tp.escape_prose(run.tag_line), "",
             "### Score Flags", "", "| ID | Flag | Field | Stored | Rendered | Cause |", "|----|------|-------|--------|----------|-------|"]
-    out += ["| %s | %s | %s | %s | %s | %s |" % (row.finding_id, flag.kind, tp.escape_cell(flag.field), tp.escape_cell(flag.stored),
-                                                  tp.escape_cell(flag.rendered), tp.escape_cell(flag.cause)) for row, flag in flagged]
+    out += ["| %s | %s | %s | %s | %s | %s |" % (row.finding_id, flag.kind, tp.escape_cell(flag.field), tp.escape_cell(flag.stored or DASH),
+                                                  tp.escape_cell(flag.rendered or DASH), tp.escape_cell(flag.cause)) for row, flag in flagged]
     out += ["", "### Input Issues", ""]
     out += ["- %s" % tp.escape_prose(issue) for issue in run.issues[:rules.ISSUE_LIMIT]] if run.issues else ["None."]
     if len(run.issues) > rules.ISSUE_LIMIT:

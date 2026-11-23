@@ -583,8 +583,20 @@ def _floor_item(finding_id):
     return item
 
 
+def _carry_threats_md():
+    """The first run's threat model with every finding UNCHANGED, and one NEW finding (S-2) beside them."""
+    new_row = "| S-2 | NEW | Category | \u2014 | Gateway 1 | L4 | Threat text for S-2 | High | Mitigation for S-2 |\n"
+    text = _floor_threats_md().replace("| NEW |", "| UNCHANGED |")
+    return text.replace("|\n\n## Affected Assets", "|\n" + new_row + "\n## Affected Assets") + "| S-2 | [] |\n"
+
+
 def _drive_render_risk_scores(interp, workdir):
-    """--version -> plan -> reconcile (complete) -> render. The render replaces the seeded earlier outputs."""
+    """--version -> plan -> reconcile (complete) -> render, then the same three steps again beside it as a baseline-aware run.
+
+    The render replaces the seeded earlier outputs. The second run reads the first's own ``risk-scores.md``, so the tolerant
+    reader, the vector check, the recompute and the governance of a carried finding run under the same block (T045, T046),
+    and one NEW finding gives the agent a unit to score.
+    """
     _seed(workdir, _floor_threats_md())
     stage, render = SCRIPTS_DIR / "tachi-stage.py", SCRIPTS_DIR / "render-risk-scores.py"
     out = workdir / "run"
@@ -596,21 +608,30 @@ def _drive_render_risk_scores(interp, workdir):
                       "stdout": _normalize(proc.stdout), "stderr": _normalize(proc.stderr)})
         return proc
 
+    def run_stage(directory, date, extra):
+        planned = json.loads(step(stage, ["plan", "--stage", "risk-score", "--out", directory, "--date", date, "--threats", directory / "threats.md",
+                                          "--architecture", "docs/security/architecture.md"] + extra).stdout)
+        for wave in planned["waves"]:
+            for batch in wave:
+                _write_valid_part(batch["input_path"], _floor_item)
+        reconciled = step(stage, ["reconcile", "--stage", "risk-score", "--out", directory, "--plan", planned["plan_id"],
+                                  "--plan-digest", planned["plan_digest"]])
+        step(render, ["--out", directory, "--plan", planned["plan_id"], "--plan-digest", json.loads(reconciled.stdout)["plan_digest"]])
+
     step(render, ["--version"])
-    planned = json.loads(step(stage, ["plan", "--stage", "risk-score", "--out", out, "--date", "2026-11-22",
-                                      "--threats", out / "threats.md", "--architecture", "docs/security/architecture.md"]).stdout)
-    plan_id = planned["plan_id"]
-    for wave in planned["waves"]:
-        for batch in wave:
-            _write_valid_part(batch["input_path"], _floor_item)
-    reconciled = step(stage, ["reconcile", "--stage", "risk-score", "--out", out, "--plan", plan_id, "--plan-digest", planned["plan_digest"]])
-    step(render, ["--out", out, "--plan", plan_id, "--plan-digest", json.loads(reconciled.stdout)["plan_digest"]])
+    run_stage(out, "2026-11-22", [])
+    second = workdir / "run2"
+    second.mkdir()
+    (second / "threats.md").write_bytes(_carry_threats_md().encode("utf-8"))
+    os.utime(str(second / "threats.md"), ns=(1700000000 * 10 ** 9, 1700000000 * 10 ** 9))
+    run_stage(second, "2026-11-23", ["--baseline-dir", out])
     return steps, _tree(workdir)
 
 
 # Exit codes of the steps above. tachi-stage.py: --version, plan, reconcile (halves), reconcile (complete), fail,
-# architecture-source. render-risk-scores.py: --version, plan, reconcile (complete), render.
-EXPECTED_CODES = {"tachi-stage.py": [0, 0, 3, 0, 0, 0], "render-risk-scores.py": [0, 0, 0, 0]}
+# architecture-source. render-risk-scores.py: --version, then plan, reconcile (complete) and render for a first run and again
+# for a second run that carries the first's findings.
+EXPECTED_CODES = {"tachi-stage.py": [0, 0, 3, 0, 0, 0], "render-risk-scores.py": [0, 0, 0, 0, 0, 0, 0]}
 
 # One driver per entry script, each `(Interpreter, workdir) -> (steps, tree)`. A later wave adds its entry's
 # driver here: render-compensating-controls.py (W3), and PR 2's entries.
