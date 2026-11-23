@@ -9,6 +9,7 @@
 - Additive changes keep it: a new keyword argument with a default, or a new dataclass field or dict key with a default, added last. The owning lane names each one in its commit message.
 - A rename, removal, reorder or type change needs an architect amendment to this file.
 - **Additions ruled at W2 (2026-11-23), all additive:** `BaselineRow.component`, `.threat` and `.risk_level`; `ScorerRouting.status`; `route_scorer_units(..., lacking=None)`; `parse_markdown_table`'s `row_lines` and `keep_bold` (lane P's, recorded here); and `sarif_common.resolve_explicit`. The scorer's closed flag vocabulary gains four strings.
+- **Additions ruled at the P0 checkpoint (2026-11-23, T061), all additive:** `BaselineResolution.file_reasons` (R1b's, named in T042's commit and recorded here, P0-12); `parse_sarif_member_set(..., with_details=False)` (P0-3); `tachi_parts.forbidden_character` (P0-4); and `"3a"` among `VectorCheck.step`'s values (P0-2). The comments on `BaselineRow.tags_used` and `.scored_on` now read "whenever §6 records them" (P0-2), which widens what the reader fills without changing a type.
 
 **Shared conventions.**
 - Every module has `from __future__ import annotations` and runs on Python 3.9 (S-11). Annotations use `typing` forms, so nothing here needs 3.10.
@@ -51,6 +52,7 @@ class BaselineResolution:
     origin: Optional[str]       # "flag" | "baseline.source"
     files: Mapping[str, Path]   # each BASELINE_FILE_NAMES entry in run_dir that passes check_run_file
     reason: Optional[str]       # why run_dir is None; the stage record carries it
+    file_reasons: Mapping[str, str] = field(default_factory=dict)  # T042: each BASELINE_FILE_NAMES entry not in files -> why check_run_file failed it; {} when run_dir is None
 
 def resolve_baseline(*, flag: Optional[str], baseline_source: Optional[str], cwd: Path) -> BaselineResolution: ...
 ```
@@ -82,8 +84,8 @@ class BaselineRow:
     trust_level: Optional[str]
     auth_barriers: Optional[int]
     network_boundaries: Optional[int]
-    tags_used: Optional[Tuple[str, ...]]             # renderer form only; None means no tags were recorded
-    scored_on: Optional[date]                        # renderer form only
+    tags_used: Optional[Tuple[str, ...]]             # whenever §6 records them (P0-2); None means no tags were recorded
+    scored_on: Optional[date]                        # whenever §6 records them (P0-2)
     stored: Mapping[str, Optional[Decimal]]          # cvss_base, exploitability, scalability, reachability, composite
     band: Optional[str]
     owner: Optional[str]
@@ -179,6 +181,7 @@ def cvss_chain(vector: str, *, tags: Sequence[str], score_bounds: Optional[Tuple
 - **`asset_outcome`** is R-25's t(a): `max(a, min(base(elevate(v)), 9.2))` when a tag forces a bit, otherwise `a`.
 - **`cvss_chain`** is D10's fresh-scoring chain.
   - The caller passes `score_bounds` in two cases only: for a NEW finding in a baseline-aware run, where `tachi_scoring` gives the finding's own category ±1.0, and for a carried renderer-form row, which passes its stored bounds.
+    - **"Baseline-aware" (ruled at the P0 checkpoint, 2026-11-23, P0-9)** means that a usable baseline `risk-scores.md` was read: `read_baseline_scores` returned `readable=True` for the file R-6 resolved, which is when the renderer holds a baseline. Only then is a NEW finding bounded, S-12(b)'s derived-NEW findings included. A missing or unreadable baseline bounds nothing (ADR-050 D10), and R1t pins this.
   - R1 calls it for every fresh item, and `check_carried_vector` calls it for renderer-form rows.
 
 ### D10: the vector check on a carried finding (T043)
@@ -188,13 +191,14 @@ def cvss_chain(vector: str, *, tags: Sequence[str], score_bounds: Optional[Tuple
 class VectorCheck:
     cvss_base: Optional[Decimal]   # the value to render: the stored one kept, or the corrected or retagged one
     flag: Optional[str]            # one kind:field:cause, or None when the carried value passes
-    step: str                      # "renderer", or "1" to "6": D10's legacy step that decided
+    step: str                      # "renderer", or "1" to "6" or "3a" (P0-2): D10's legacy step that decided
 
 def check_carried_vector(row: BaselineRow, *, tags: Sequence[str]) -> VectorCheck: ...
 ```
 
 - **Renderer form.** It recomputes `cvss_chain` from the stored vector, `score_bounds` and this run's `tags`. A difference is `corrected:cvss_base:vector`, unless recomputing with `row.tags_used` gives the stored value, in which case it is `retagged:cvss_base:asset-tags` (ruling A).
 - **Legacy form.** It runs D10's steps 1–6 in order, testing this run's tags first (PM plan review, finding 2). The candidates are `base(v)` and its own-category bound clamp.
+  - **Step 3a (ruled at the P0 checkpoint, 2026-11-23, P0-2)** runs after step 3, only when `row.tags_used` is not `None`. If the stored score is R-25's outcome under `row.tags_used` for either candidate, or the recorded tags give step 3's ceiling case, the result is `retagged:cvss_base:asset-tags` at `asset_outcome(a, vector, tags)` for that same candidate, with step `"3a"`. Candidates are tried in order, `base(v)` first, and the ceiling case takes `base(v)` (ADR-050 D10).
 - **Flag names (ratified at W1, from T043).** A flag's `<field>` is the value whose status the flag describes, by its `schemas/risk-scoring.yaml` name, and its `<cause>` is kebab-case. So a missing vector is `unverifiable:cvss_base:no-vector`, like `unchecked:cvss_base:assessed-unrecorded`. The governance flags name `remediation_sla` and `risk_disposition`, beside `severity_band`, `composite_score` and `review_date`, for example `override:remediation_sla:human`.
   - **Two more sources of names (ruled at W2).**
     - A value of the reference set takes its `schemas/finding.yaml` name: `component`, `threat`, `delta_status` and `risk_level`.
@@ -268,12 +272,12 @@ def governance_for(status: str, *, rendered_band: str, run_date: date, row: Opti
   - **`status`** maps every open ID to the status it was routed under, the Section 7 value or the derived one. The renderer takes each row's status from it, for governance, ruling B's test and the bounds of a NEW finding. So the planner (T044) and the renderer (T045) can't disagree. Both pass the same `lacking`: the planner gets it from the reference set it read, or builds the SARIF fallback's.
   - **The renderer's supply (T045).** For each carried ID, each of `component`, `threat` and `risk_level` that `lacking` names takes the `BaselineRow`'s value, when the row records one. It happens before S-13's tag join, so the join, the zone lookup and §1's type lookup use the supplied component. A fresh ID is never supplied. Each lacking value keeps `input:<field>:not-in-form`, supplied or not, and the stage record's `value-not-in-form` warning lists the IDs.
 - **`peer_divergence`** gives `divergent:composite_score:primary=<ID>` when the two composites differ, and otherwise `None`.
-- **`original_scoring_date`** returns the stored scored-on date (renderer form), or the stored review date minus the stored SLA (legacy). If neither exists, D9's fallbacks apply in order:
+- **`original_scoring_date`** returns the stored scored-on date (whenever §6 records one, P0-2), or the stored review date minus the stored SLA (legacy). If neither exists, D9's fallbacks apply in order:
   1. the baseline file's frontmatter date, flagged `corrected:review_date:baseline-date`;
   2. `None`, flagged `unchecked:review_date:scoring-date-unknown`, which tells `governance_for` to keep the stored review date.
 
   The last fallback, the run date plus the SLA (`corrected:review_date:clock-restarted`), is applied by `governance_for`.
-- **`classify_band_change`** returns `none`, `corrected`, `retagged-up` or `retagged-down`. `band_with_baseline_tags` is the band recomputed with the baseline's recorded tags, or with no tags for a legacy row (ruling A's legacy case). When it equals the stored band and the rendered band differs, the change is a retag, up or down by band order.
+- **`classify_band_change`** returns `none`, `corrected`, `retagged-up` or `retagged-down`. `band_with_baseline_tags` is the band recomputed with the baseline's recorded tags, or with no tags for a row that records none (ruling A's legacy case). A legacy-carried row records them, so its recorded tags are used (P0-2). When it equals the stored band and the rendered band differs, the change is a retag, up or down by band order.
 - **`governance_for`** applies D9's governance for `status`, which is NEW, UPDATED or UNCHANGED:
   - overrides are kept and flagged `override:<field>:human`;
   - the owner is always carried and never flagged;
@@ -318,12 +322,12 @@ from typing import Iterable, Optional
 
 def decode_references(text: str) -> str: ...
 def parse_correlation_groups(content: str, member_ids: Optional[Iterable[str]] = None) -> dict: ...
-def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False) -> dict: ...
+def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False, with_details: bool = False) -> dict: ...
 def parse_controls_assessment_inputs(content: str) -> dict: ...
 ```
 
 - **`decode_references` (T033)** is D3's one closed decoder.
-  - It decodes exactly `&amp;`, `&lt;`, `&gt;`, `&#124;`, `&#96;`, `&#123;`, `&#10;` and `&#35;`, in a single left-to-right pass, and leaves anything else as written. Replaced text is never re-scanned, so `&amp;lt;` decodes to `&lt;`.
+  - It decodes exactly `&amp;`, `&lt;`, `&gt;`, `&#124;`, `&#96;`, `&#123;`, `&#10;`, `&#35;` and `&#126;` (the ninth, added at the P0 checkpoint, P0-1), in a single left-to-right pass, and leaves anything else as written. Replaced text is never re-scanned, so `&amp;lt;` decodes to `&lt;`.
   - `parse_markdown_table` applies it to each cell after splitting the row on raw `|`, and so does every other reader of rendered text. GFM's `\|` isn't decoded.
 - **`parse_correlation_groups` (T048, D8)** returns `{"groups": [{"group_id", "primary", "members"}], "errors": [{"line", "row", "reason"}]}`.
   - Groups come in Section 4a's order. `members` are canonical, in listed order, with the primary first, and filtered to `member_ids` when that is given.
@@ -339,6 +343,8 @@ def parse_controls_assessment_inputs(content: str) -> dict: ...
   - `members` are canonical IDs in result order, from `findingId/v1`, plus legacy peer references. A legacy reference is an allow-listed ID at the start of a `relatedLocations` entry's `message.text`, followed by `: `, and each one is grouped under its result.
   - `groups` take the shape `parse_correlation_groups` returns. `group_id` comes from the `correlation-group` property, and is `None` where the file names none.
   - `scores` is filled only with `with_scores=True`, for `risk-scores.sarif`: `{id: {"composite": Decimal or None, "band": str or None}}`, read across the property names the shipped files use.
+  - **`details` (ruled at the P0 checkpoint, 2026-11-23, P0-3)** is filled only with `with_details=True`: `{id: {...}}`, one entry per member that has its own result, in either ID form. It holds D8's reading of that result: `component` (`logicalLocations[0].name`, else `properties.component`), `threat` (`message.text`), `mitigation` (`message.markdown`), `risk_level` (`properties.risk_level`, else `security-severity`) and `layer` (`maestro-layer`), each `None` when the result holds none. A member that only a legacy peer reference names has no entry. The planner's fallback units (R1b) and the renderer's fallback reference set (R1) both read it, so neither reads a result a second way. Any further key, such as the DFD kind the renderer reads from the same result, is named in the owning lane's commit, as the freeze asks.
+  - **A group whose `group_id` is `None` (ruled at the P0 checkpoint, P0-3)** still routes its peers (D9), but carries no `correlation-*` property and no ruling-C sentence: the renderer passes only named groups to `sarif_common.correlation_assignments`, and its stage record warns `correlation-group-unnamed`, with the count (ADR-050 D8).
   - Results whose `baselineState` or `baseline-state` property is `absent` are dropped, and no hash is ever read.
   - It raises `ValueError` on JSON that doesn't parse and on an empty extraction, so the stage stops before dispatch (KB 22).
   - **The legacy member form (ruled at W1, from T142).** A result with no `findingId/v1` takes its member ID from `properties.id`. This is a closed legacy form: tachi's own older SARIF writes it, and four shipped samples carry it (Constitution III; S-12's principle).
@@ -363,6 +369,16 @@ def resolve_explicit(candidate: object, *, root: Optional[str] = None, fs: Any =
 - **`resolve_architecture`'s step 1 calls it.** Its signature, outputs and warnings don't change.
 - **The planner** records the warning as the plan's `architecture_warning` (`part-files.md` §4). The renderer lists it ahead of its own resolver's warnings.
 - **Order.** It lands before R1b's planner change that calls it.
+
+## `scripts/tachi_parts.py`: one W3 addition (lane FX0, ruled at the P0 checkpoint, 2026-11-23)
+
+```python
+def forbidden_character(text: str) -> Optional[str]: ...
+```
+
+- **Published** by FX0's first slice, with this signature, and `tachi_parts`' step 10 now calls it.
+- **What it is.** The first character of `text` in D3's step-10 set, or `None`: a control character other than tab and newline (C0, DEL and C1), U+2028, U+2029, and the bidi controls U+200E, U+200F, U+061C, U+202A–U+202E and U+2066–U+2069. Step 10's length limit isn't part of it.
+- **Who calls it (P0-4, ADR-050 D3).** Step 10 itself, on every string of a part. A renderer, at the point it takes a value from an input that isn't a part, refusing the value with exit 2. `_check_staged`'s whole-file backstop, on the staged markdown and every decoded SARIF string, with exit 4. The controls renderer and PR 2's writers call it too, so the set has one definition.
 
 ## The persisted-inputs format: `risk-scores.md` §6 and `compensating-controls.md` §7
 

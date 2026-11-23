@@ -142,7 +142,7 @@ Each reading is one the sources left open. `tachi_parts` (T012, T013), `tachi-st
   - **Step 10 judges only what step 9 kept** (confirmed from `c37b353`; T061 and T064 re-check it). `str.strip()` removes some characters that step 10 forbids: `\r`, VT, FF, the C0 separators U+001C–U+001F, NEL (U+0085), U+2028 and U+2029. At an edge they are stripped away and never reach output, as text beyond a cut is. Inside the kept text they still reject the part. Bidi controls aren't whitespace, so they reject wherever they appear.
   - **Not chosen:**
     - stripping only on write, inside `escape_cell` and `escape_prose`, because SARIF strings and code fences would keep the whitespace and drift between runs;
-    - escaping edge whitespace as references, because that would turn D3's closed set of eight references into an open whitespace class.
+    - escaping edge whitespace as references, because that would turn D3's closed set of references, nine since P0-1 added `&#126;`, into an open whitespace class.
   - **Owner.** R0a makes the edit, as a T013 follow-up slice before W1's push, since it owns `tachi_parts.py` and `test_tachi_parts.py` in W1. Its test carries a value with edge spaces, a tab, a newline and an indented snippet through two write-and-read round trips.
 - **A cut that lands inside a slot token** leaves an unterminated slot, so that field takes the per-field fallback. This is accepted, with no extra rule: the field is flagged both `truncated` and `narrative-fallback`, and the part is never rejected.
 
