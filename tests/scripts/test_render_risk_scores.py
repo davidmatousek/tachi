@@ -6,8 +6,8 @@ and ADR-050 D2 (field ownership), D3 (escaping, slots), D4 (the write order, fai
 D5 (arithmetic), D6 (batching), D7 and D8 (SARIF identity and membership), D9 (RESOLVED rows, Section 6, flags)
 and D15 (schema 1.1), never an implementation. T028 writes the renderer to them (T045 and T046 add the recompute,
 the flags, governance, peers, Section 2a and Section 6, and T050 emits the SARIF). Until then they fail: the
-script does not exist. T041 adds SC-4's goldens (the seeded-error, legacy, tagged and carry-forward variants) to
-this module, and T049 puts FR-E.2's two-run model in ``test_sarif_identity.py``.
+script does not exist. T041's SC-4 goldens on T040's variants (the seeded-error, legacy-format, tagged, id-reuse, ties
+and regroup scenarios) are sections 17 to 27 below, and T049 puts FR-E.2's two-run model in ``test_sarif_identity.py``.
 
 How they run (ADR-050 D16, H15): the entry is loaded through ``tests/conftest.py``'s ``_load_hyphenated_script``
 and driven in-process through ``main(argv)``, so pytest-cov counts it. Nothing here starts a subprocess: the one
@@ -51,15 +51,23 @@ The groups of tests, by the task that turns them green:
   the renderer does, and they fail until then.
 * ``test_peers_*``: correlation groups. They need T044's routing (the planner leaves a peer out of the plan) and
   T048's parser, so they fail first on that precondition until both land.
+* ``test_variants_*``, ``test_sc4_*``, ``test_ruling_*``, ``test_s13_*``, ``test_regroup_*``, ``test_baseline_*``,
+  ``test_rr1_*``, ``test_vocabulary_*`` (T041, sections 17 to 25): each scenario's ``expected-outcomes.json``
+  (``tachi.fixture-expected/1``) is the golden, so a regenerated variant flows through and no test restates a value.
+  They fail until T045 and T046 land. ``test_harness_*`` and ``test_rules_*`` in those sections need no renderer: the
+  first check the outcomes files and this module's readers, the second drive ``tachi_scoring_rules`` on the
+  scenarios' baselines. ``basis`` ``pinned`` and ``derived`` flags are required, ``optional`` ones may be absent.
 
 Standard library and pytest only, and Python 3.9 syntax.
 """
 from __future__ import annotations
 
 import ast
+import collections
 import contextlib
 import copy
 import datetime
+import functools
 import hashlib
 import inspect
 import io
@@ -67,6 +75,7 @@ import json
 import math
 import os
 import re
+import shutil
 import sys
 import time
 from decimal import Decimal
@@ -84,6 +93,7 @@ import sarif_common as sc  # noqa: E402  -- after the sys.path mutation
 import tachi_parsers  # noqa: E402
 import tachi_parts as tp  # noqa: E402
 import tachi_scoring as ts  # noqa: E402
+import tachi_scoring_rules as rules  # noqa: E402
 
 RENDERER = SCRIPTS_DIR / "render-risk-scores.py"
 GATED_SUBSET = REPO_ROOT / "tests" / "scripts" / "fixtures" / "large_arch" / "gated-subset"
@@ -1962,3 +1972,1275 @@ def test_peers_the_planner_leaves_a_peer_out_and_the_renderer_copies_the_primary
         assert results[spelled]["message"] == {"text": sc.correlated_message(by_id(spelled)["threat"], correlation),
                                                "markdown": mitigation_of(by_id(spelled))}, "ruling C's sentence ends the text, not the markdown"
         assert "relatedLocations" not in results[spelled], "a peer is a result and never a related location"
+
+
+# =============================================================================
+# 17. S-4's variants: the scenarios, their outcomes, and one render of each (T041; SC-4)
+# =============================================================================
+#
+# T040's scenarios each hold a baseline, a run and ``expected-outcomes.json`` (``tachi.fixture-expected/1``): per
+# finding what the baseline ``stored``, what the renderer must write (``rendered``, its whole field set) and the
+# ``flags`` it must raise (``{flag, kind, field, cause, stored, rendered, basis}``). Every golden below reads that file,
+# so a regenerated variant flows through and no test restates a value. ``pinned`` and ``derived`` flags are required;
+# an ``optional`` one may be absent (today: the three missing-SLA flags that wait for S-12(b)'s cause).
+#
+# How a scenario is run (reading: the outcomes file's ``run.how``). The scenario directory is copied whole into a
+# working directory and the renderer runs from there, because ``baseline.source`` and every path are relative to it.
+# The architecture file is also put at the default place, ``docs/security/architecture.md``, as in an adopter's
+# project: a plan with no batch (every finding carried) holds no ``refs.architecture``, so the renderer finds it by the
+# default. The agent's judgment for a finding routed to it comes from the file's ``agent_inputs``.
+
+LARGE_ARCH = REPO_ROOT / "tests" / "scripts" / "fixtures" / "large_arch"
+OUTCOMES_NAME, OUTCOMES_SCHEMA = "expected-outcomes.json", "tachi.fixture-expected/1"
+SEEDED = "seeded-error/main"
+LEGACY_FORMAT = "legacy-format/main"
+NO_BASELINE_DATE = "legacy-format/no-baseline-date"
+ID_REUSE = "id-reuse/pr1"
+TIES = "ties/scorer"
+TAGGED = ("tagged/legacy-form", "tagged/renderer-form")
+S13 = ("tagged/s13-block-equal", "tagged/s13-stale-block", "tagged/s13-no-architecture", "tagged/s13-neither-source",
+       "tagged/s13-drift-form")
+SCORER_SCENARIOS = (SEEDED, LEGACY_FORMAT, NO_BASELINE_DATE, ID_REUSE, TIES) + TAGGED + S13
+REGROUP, REGROUP_RUNS = "regroup-pair/main", ("run1", "run2", "run3")
+CASES = SCORER_SCENARIOS + tuple("%s:%s" % (REGROUP, run) for run in REGROUP_RUNS)
+PREFIXES = ("S", "T", "R", "I", "D", "E", "AG", "AGP", "LLM", "OI", "MI", "TE")
+COLUMN_OF = {"cvss_base": "CVSS", "exploitability": "Exploit.", "scalability": "Scale.", "reachability": "Reach.",
+             "composite_score": "Composite", "severity_band": "Severity", "remediation_sla": "SLA", "risk_disposition": "Disposition"}
+RENDERED_KEYS = set(COLUMN_OF) | {"cvss_vector", "review_date", "risk_owner"}
+FRESH_KEYS = {"score_bounds", "score_source", "scored_on"}  # a fresh finding's rendered set also names these three
+VALUE_FIELDS = tuple(COLUMN_OF) + ("risk_owner", "review_date")  # what the markdown shows for a finding, besides the vector
+KIND_ORDER = ("corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input")  # the 1.1 template's
+S12B_OPEN = ("tagged/s13-drift-form",)  # S-12(b)'s derivation may add one ``input:`` flag, whose cause T032 names (module-signatures.md)
+
+# The scorer's flag vocabulary, closed (module-signatures.md, "The scorer's flag vocabulary, closed"): every string a renderer
+# may emit, and nothing else. A rounding-only composite difference has no flag, and a value a tag moved is ``retagged``.
+RETAGGED_FIELDS = ("cvss_base", "composite_score", "severity_band", "remediation_sla", "risk_disposition", "review_date")
+CLOSED_FLAGS = re.compile("(?:%s)" % "|".join([
+    r"corrected:cvss_base:vector",
+    r"corrected:(?:composite_score|exploitability|scalability|reachability):arithmetic",
+    r"corrected:severity_band:(?:band-mapping|rounding)",
+    r"corrected:(?:remediation_sla|risk_disposition):follows-band",
+    r"corrected:review_date:(?:follows-band|baseline-date|clock-restarted)",
+    r"retagged:(?:%s):asset-tags" % "|".join(RETAGGED_FIELDS),
+    r"unverifiable:cvss_base:no-vector",
+    r"unchecked:cvss_base:(?:assessed-unrecorded|bound-n17c)",
+    r"unchecked:reachability:compound-trust-label",
+    r"unchecked:review_date:scoring-date-unknown",
+    r"divergent:composite_score:primary=[A-Z]{1,4}-[0-9]{1,6}",
+    r"override:(?:remediation_sla|risk_disposition):human",
+    r"reused-id:finding_id:baseline",
+    r"input:cvss_vector:sources-disagree",
+    r"input:reachability:out-of-range",
+    r"input:(?:%s):narrative-fallback" % "|".join(re.escape(name) for name in tp.NARRATIVE_FIELDS),
+    r"input:(?:%s):truncated" % "|".join(re.escape(name) for name in tp.FLAG_FIELDS),
+    r"resolved",
+]))
+
+
+@functools.lru_cache(maxsize=None)
+def read_outcomes(name):
+    return json.loads((LARGE_ARCH / name / OUTCOMES_NAME).read_text(encoding="utf-8"))
+
+
+def split_case(case):
+    name, _, run = case.partition(":")
+    return name, (run or None)
+
+
+def outcomes_of(case):
+    """``(the whole outcomes file, the findings document)``: the same document for a scenario, a run's own for the regroup pair."""
+    name, run = split_case(case)
+    top = read_outcomes(name)
+    return top, (top["runs"][run] if run else top)
+
+
+def findings_of(case, *names):
+    """``[(finding ID, finding)]`` of a case, restricted to the named ``case`` labels when any are given, in file order."""
+    return [(finding_id, finding) for finding_id, finding in outcomes_of(case)[1]["findings"].items()
+            if not names or finding["case"] in names]
+
+
+def split_flags(finding):
+    """``(required, optional)``: the flag strings of one expected finding, by ``basis``."""
+    required = {flag["flag"] for flag in finding["flags"] if flag["basis"] != "optional"}
+    return required, {flag["flag"] for flag in finding["flags"] if flag["basis"] == "optional"}
+
+
+def kind_of(flag):
+    return flag.partition(":")[0]
+
+
+def matches_text(value, text):
+    """Whether a JSON ``value`` is the ``text`` the outcomes file holds (``None`` is a value that is not there)."""
+    return value is None if text is None else str(value) == text
+
+
+def brief(mapping, limit=5):
+    """A bounded description of a ``{key: detail}`` mapping, for an assertion message."""
+    items = sorted(mapping.items(), key=lambda pair: s2_key(pair[0]))[:limit]
+    return "%d finding(s), first %d: %s" % (len(mapping), len(items), json.dumps(dict(items), sort_keys=True)[:1600])
+
+
+def tags_of(top, finding):
+    """The tags this run applies to a finding's component, from the outcomes file's one named source."""
+    return tuple(top["tag_source"]["tags"].get(finding["component"], ()))
+
+
+# --------------------------------------------------------------------------- reading a render back
+
+class MdView(object):
+    """Sections 2, 2a and 4 of one ``risk-scores.md``, read back by canonical finding ID."""
+
+    def __init__(self, md):
+        self.md = md
+        self.rows = {canon(row["ID"]): row for row in records(*table_of(section(md, "## 2. Scored Threat Table"), "ID"))}
+        self.resolved = ({canon(row["ID"]): row for row in records(*table_of(section(md, "## 2a. Resolved Findings"), "ID"))}
+                         if has_section(md, "## 2a. Resolved Findings") else {})
+        self.governance = {canon(row["ID"]): row for row in records(*table_of(section(md, "## 4. Governance Fields"), "ID"))}
+
+    def values(self, finding_id):
+        """Section 2's eight fields, with the owner and review date of Section 4 (of Section 2a for a RESOLVED row)."""
+        key = canon(finding_id)
+        row = self.rows[key] if key in self.rows else self.resolved[key]
+        governance = self.governance[key] if key in self.rows else row
+        out = {field: row[column] for field, column in COLUMN_OF.items()}
+        out["risk_owner"], out["review_date"] = governance["Owner"], governance["Review Date"]
+        return out
+
+    def subsections(self):
+        """Section 3's subsections by canonical ID: the heading and its body."""
+        out = {}
+        for heading, body in split_headings(section_text(self.md, "## 3. Dimensional Breakdown"), "### "):
+            match = re.match(r"### (\S+) " + DASH + " ", heading)
+            if match:
+                out[canon(match.group(1))] = heading + "\n" + body
+        return out
+
+
+class Rendered(object):
+    """One render of a scenario's run, read back: the three tables, Section 3's subsections and the SARIF results."""
+
+    def __init__(self, case, project, result):
+        self.case, self.project, self.result = case, project, result
+        self.top, self.doc = outcomes_of(case)
+        self.view = MdView(project.md)
+        self.subsection = self.view.subsections()
+        self.results = {canon(key): value for key, value in results_by_id(project.sarif).items()}
+
+    @property
+    def md(self):
+        return self.project.md
+
+    @property
+    def record(self):
+        return self.project.record
+
+    def values(self, finding_id):
+        return self.view.values(finding_id)
+
+    def emitted(self, finding_id):
+        """The flags raised on a finding: the SARIF's ``score-flags`` for an open one, Section 2a's ``Flags`` cell for a RESOLVED one."""
+        key = canon(finding_id)
+        if key in self.results:
+            return set(self.results[key]["properties"]["score-flags"])
+        return {"resolved"} if "resolved" in self.view.resolved[key]["Flags"] else set()
+
+    def all_emitted(self):
+        return {finding_id: self.emitted(finding_id) for finding_id in self.doc["findings"]}
+
+
+class ScenarioProject(Project):
+    """The project harness over one run directory of a T040 scenario that was copied into ``root``."""
+
+    def __init__(self, stage_module, renderer_module, root, out_dir, has_architecture, baseline_dir, agent_inputs=None):
+        self.stage, self.renderer = stage_module, renderer_module
+        self.root = Path(root)
+        self.out = self.root / out_dir
+        self.threats = self.out / "threats.md"
+        self.architecture = (self.root / "docs" / "security" / "architecture.md") if has_architecture else None
+        self.baseline_dir = (self.root / baseline_dir) if baseline_dir else None
+        self.agent_inputs = {canon(key): value for key, value in (agent_inputs or {}).items()}
+        self.item_factory = self.agent_item
+        self.specs, self.resolved = [], []
+        self.plan_id = self.digest = None
+        self.plan_stderr = ""
+        self.last = None
+
+    def agent_item(self, finding_id):
+        assert canon(finding_id) in self.agent_inputs, "the plan routed %s to the agent, and the outcomes file holds no judgment for it" % finding_id
+        item = {"finding_id": finding_id}
+        item.update(copy.deepcopy(self.agent_inputs[canon(finding_id)]))
+        return item
+
+    def run_on(self, date):
+        return self.run(date=date, baseline_dir=self.baseline_dir)
+
+
+def copy_scenario(name, root, top):
+    """Copy the scenario into ``root`` (without its outcomes file) and put its architecture file at the default place."""
+    shutil.copytree(str(LARGE_ARCH / name), str(root), ignore=shutil.ignore_patterns(OUTCOMES_NAME), dirs_exist_ok=True)
+    architecture = top["run"].get("architecture")
+    if architecture:
+        target = Path(root) / "docs" / "security" / "architecture.md"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(str(Path(root) / architecture), str(target))
+    return bool(architecture)
+
+
+def finish(case, project, result):
+    assert result.code in (0, 5), "%s did not finish:\n%s" % (case, result.describe())
+    return Rendered(case, project, result)
+
+
+def render_scenario(stage_module, renderer_module, root, name):
+    top = read_outcomes(name)
+    has_architecture = copy_scenario(name, root, top)
+    project = ScenarioProject(stage_module, renderer_module, root, "run", has_architecture, top["run"].get("baseline_dir"),
+                              top.get("agent_inputs"))
+    return {name: finish(name, project, project.run_on(top["run"]["date"]))}
+
+
+def render_regroup(stage_module, renderer_module, root):
+    """The regroup pair: three runs in sequence, each run's output the next run's baseline (the outcomes file's ``run.how``)."""
+    top = read_outcomes(REGROUP)
+    copy_scenario(REGROUP, root, top)
+    out = {}
+    for run in top["run"]["sequence"]:
+        project = ScenarioProject(stage_module, renderer_module, root, top["run"]["out_dirs"][run], True, top["runs"][run]["baseline_dir"])
+        out["%s:%s" % (REGROUP, run)] = finish("%s:%s" % (REGROUP, run), project, project.run_on(top["run"]["date"]))
+    return out
+
+
+@pytest.fixture(scope="module")
+def scenarios(stage, renderer, tmp_path_factory):
+    """``scenarios(case)``: the ``Rendered`` of a scenario (the regroup pair's runs by ``regroup-pair/main:runN``), run once per module.
+
+    A failed render is kept and raised again, so the one cause is reported by every test that needs it and nothing re-runs.
+    """
+    cache = {}
+
+    def get(case):
+        name = split_case(case)[0]
+        if name not in cache:
+            root = tmp_path_factory.mktemp(name.replace("/", "-"))
+            try:
+                cache[name] = (render_regroup if name == REGROUP else render_scenario)(stage, renderer, root, *([] if name == REGROUP else [name]))
+            except Exception as failure:  # noqa: BLE001 -- kept for the next test that asks
+                cache[name] = failure
+        if isinstance(cache[name], Exception):
+            raise cache[name]
+        return cache[name][case]
+
+    return get
+
+
+# =============================================================================
+# 18. Harness checks for the variants: no renderer needed
+# =============================================================================
+
+
+def test_harness_every_outcomes_file_this_module_reads_is_well_formed():
+    for case in CASES:
+        top, doc = outcomes_of(case)
+        assert (top["schema"], top["stage"]) == (OUTCOMES_SCHEMA, "risk-score"), case
+        assert {"findings", "counts", "routing", "unflagged"} <= set(doc), case
+        assert doc["findings"], case
+        for finding_id, finding in doc["findings"].items():
+            where = "%s %s" % (case, finding_id)
+            assert {"case", "component", "flags", "rendered", "stored", "treatment", "form", "normalized"} <= set(finding), where
+            assert RENDERED_KEYS <= set(finding["rendered"]) <= RENDERED_KEYS | FRESH_KEYS, where
+            assert finding["treatment"] in ("carried", "agent", "copy-primary", "resolved"), where
+            for flag in finding["flags"]:
+                assert flag["basis"] in ("pinned", "derived", "optional"), where
+                assert flag["flag"] == ":".join(part for part in (flag["kind"], flag["field"], flag["cause"]) if part), where
+
+
+def test_harness_every_expected_flag_is_inside_the_closed_vocabulary():
+    """T040's strings and the scorer's closed vocabulary (``module-signatures.md``) are one set."""
+    for case in CASES:
+        outside = sorted({flag["flag"] for _id, finding in findings_of(case) for flag in finding["flags"]
+                          if not CLOSED_FLAGS.fullmatch(flag["flag"])})
+        assert not outside, "%s: outside the closed vocabulary: %s" % (case, outside)
+
+
+def test_harness_the_outcomes_counts_follow_their_own_flags():
+    for case in CASES:
+        _top, doc = outcomes_of(case)
+        findings = doc["findings"]
+        by_kind = collections.Counter(kind_of(flag) for finding in findings.values() for flag in split_flags(finding)[0])
+        assert doc["counts"]["flags_by_kind"] == dict(by_kind), case
+        assert doc["counts"]["findings"] == len(findings), case
+        assert doc["counts"]["normalized"] == sum(1 for finding in findings.values() if finding["normalized"]), case
+        with_flags = sum(1 for finding in findings.values() if split_flags(finding)[0])
+        anything = sum(1 for finding in findings.values() if finding["flags"])
+        assert with_flags <= doc["counts"]["findings_with_flags"] <= anything, case
+        assert set(doc["unflagged"]) <= {finding_id for finding_id, finding in findings.items() if not finding["flags"]}, case
+
+
+def test_harness_the_seeded_error_scenario_seeds_every_kind_in_every_one_of_the_12_prefixes():
+    """D10's list (PM plan review, finding 2): a wrong score corrected, an own-bound clamp passed and another category's
+    bound marked unchecked, for each prefix; and SC-4's other seeded kinds in each prefix too."""
+    for label in ("wrong-composite", "wrong-band", "bad-vector", "reach-out-of-range", "missing-vector", "clamp-control", "n17-bound"):
+        assert sorted({finding["prefix"] for _id, finding in findings_of(SEEDED, label)}) == sorted(PREFIXES), label
+    assert sorted({finding["prefix"] for _id, finding in findings_of(SEEDED)}) == sorted(PREFIXES)
+
+
+def test_harness_the_readers_read_a_renderer_form_baseline_as_its_stored_values():
+    """This module's table readers, run on the one renderer-form file T040 commits, give the values its outcomes call stored."""
+    top = read_outcomes("tagged/renderer-form")
+    view = MdView((LARGE_ARCH / "tagged/renderer-form" / top["run"]["baseline_dir"] / MD).read_text(encoding="utf-8"))
+    wrong = {}
+    for finding_id, finding in top["findings"].items():
+        got = view.values(finding_id)
+        want = {field: finding["stored"][field] for field in VALUE_FIELDS}
+        if got != want:
+            wrong[finding_id] = {field: (got[field], want[field]) for field in want if got[field] != want[field]}
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("composite,rounded,band", [
+    ("4.55", "4.6", "Medium"), ("4.0", "4.0", "Medium"), ("7.0", "7.0", "High"), ("9.0", "9.0", "Critical"),
+    ("3.95", "4.0", "Medium"), ("6.95", "7.0", "High"), ("8.95", "9.0", "Critical"), ("3.9", "3.9", "Low"), ("6.9", "6.9", "Medium"),
+    ("8.9", "8.9", "High"), ("0.05", "0.1", "Low"), ("9.95", "10.0", "Critical")])
+def test_arith_a_sum_that_ends_in_5_rounds_half_up_and_a_boundary_maps_to_the_higher_band(composite, rounded, band):
+    """The sums the renderer meets at a tie (R-11): half up to one decimal, then the band. Section 2's column definition
+    says 7.0 is High and 9.0 is Critical."""
+    assert str(ts.q1(Decimal(composite))) == rounded
+    assert ts.band(ts.q1(Decimal(composite))) == band
+
+
+# =============================================================================
+# 19. Every finding of every scenario: its values, its flags, and where each flag shows (SC-4; ADR-050 D9, D10)
+# =============================================================================
+
+
+def labelled(md, label):
+    """The text after ``**label**: `` in Section 6 (Integrity Summary's ``Normalized``, ``Baseline source`` and ``Tag source`` lines)."""
+    match = re.search(r"^\*\*%s[^*\n]*\*\*: (.*)$" % re.escape(label), section(md, "## 6. Score Integrity"), re.MULTILINE)
+    assert match, "Section 6 has no ``**%s**:`` line" % label
+    return match.group(1).strip()
+
+
+def integrity_line(body):
+    """The flags on a Section 3 subsection's ``**Integrity**:`` line (``kind:field:cause``, comma-separated), or ``None`` for no such line."""
+    lines = [line for line in body.split("\n") if line.startswith("**Integrity**:")]
+    assert len(lines) <= 1, "at most one Integrity line per finding"
+    if not lines:
+        return None
+    return {part.strip() for part in decode(lines[0][len("**Integrity**:"):]).split(",") if part.strip()}
+
+
+def score_flag_rows(md):
+    """``{canonical ID: {flag string}}`` of Section 6's Score Flags table, and the rows (a RESOLVED row has no field or cause)."""
+    header, rows = table_of(subsection_of(md, "## 6. Score Integrity", "### Score Flags"), "ID")
+    assert header == ["ID", "Flag", "Field", "Stored", "Rendered", "Cause"], header
+    found = collections.defaultdict(set)
+    for row in records(header, rows):
+        field, cause = [None if row[name] in (DASH, "") else row[name] for name in ("Field", "Cause")]
+        found[canon(row["ID"])].add(":".join(part for part in (row["Flag"], field, cause) if part))
+    return found, records(header, rows)
+
+
+def cell_of(value):
+    """A flag's stored or rendered value as its Score Flags cell reads (reading: a flag with no such value shows the dash)."""
+    return DASH if value is None else value
+
+
+def values_off(r):
+    """``{finding ID: {field: (what the renderer wrote, what the outcomes file says)}}`` for every finding that differs."""
+    wrong = {}
+    for finding_id, finding in r.doc["findings"].items():
+        got = r.values(finding_id)
+        bad = {field: (got[field], finding["rendered"][field]) for field in VALUE_FIELDS if got[field] != finding["rendered"][field]}
+        if bad:
+            wrong[finding_id] = bad
+    return wrong
+
+
+def flags_off(r):
+    """``{finding ID: {missing, unexpected}}``: a ``pinned`` or ``derived`` flag not raised, and a flag the outcomes don't list."""
+    wrong = {}
+    for finding_id, finding in r.doc["findings"].items():
+        required, optional = split_flags(finding)
+        got = r.emitted(finding_id)
+        extra = got - required - optional
+        if split_case(r.case)[0] in S12B_OPEN:
+            extra = {flag for flag in extra if not flag.startswith("input:")}  # reading: S-12(b)'s own ``input:`` string is not listed yet
+        if (required - got) or extra:
+            wrong[finding_id] = {"missing": sorted(required - got), "unexpected": sorted(extra)}
+    return wrong
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_variants_every_finding_is_rendered_with_the_values_of_its_outcomes(scenarios, case):
+    r = scenarios(case)
+    findings = r.doc["findings"]
+    open_ids = {canon(i) for i, f in findings.items() if f["treatment"] != "resolved"}
+    resolved_ids = {canon(i) for i, f in findings.items() if f["treatment"] == "resolved"}
+    assert (set(r.view.rows), set(r.view.resolved)) == (open_ids, resolved_ids), "Section 2 holds the open findings and Section 2a the RESOLVED ones"
+    wrong = values_off(r)
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_variants_every_finding_carries_exactly_the_flags_of_its_outcomes(scenarios, case):
+    r = scenarios(case)
+    wrong = flags_off(r)
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_variants_a_finding_carries_at_most_one_flag_for_each_kind_and_field_and_one_for_the_review_date(scenarios, case):
+    r = scenarios(case)
+    wrong = {}
+    for finding_id, flags in r.all_emitted().items():
+        pairs = collections.Counter(tuple(flag.split(":")[:2]) for flag in flags)
+        dates = [flag for flag in flags if flag.split(":")[1:2] == ["review_date"]]
+        if any(count > 1 for count in pairs.values()) or len(dates) > 1:
+            wrong[finding_id] = sorted(flags)
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_variants_each_flag_shows_in_the_flags_column_the_integrity_line_and_the_score_flags_table(scenarios, case):
+    r = scenarios(case)
+    in_table, _rows = score_flag_rows(r.md)
+    wrong = {}
+    for finding_id, finding in r.doc["findings"].items():
+        key, flags = canon(finding_id), r.emitted(finding_id)
+        row = r.view.resolved[key] if finding["treatment"] == "resolved" else r.view.rows[key]
+        shown = [] if row["Flags"].strip() in (DASH, "") else re.findall(r"[a-z]+(?:-[a-z]+)*", row["Flags"])
+        kinds = [kind for kind in KIND_ORDER + ("resolved",) if kind in {kind_of(flag) for flag in flags}]
+        problems = []
+        if shown != kinds:
+            problems.append("Flags column %r, the kinds in the template's order %r" % (row["Flags"], kinds))
+        if finding["treatment"] != "resolved":
+            line = integrity_line(r.subsection[key])
+            if line != (flags or None):
+                problems.append("Integrity line %r" % (sorted(line) if line is not None else None))
+            if in_table.get(key, set()) != flags:
+                problems.append("Score Flags rows %r" % sorted(in_table.get(key, set())))
+        if problems:
+            wrong[finding_id] = {"flags": sorted(flags), "problems": problems}
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_variants_the_score_flags_table_gives_each_flags_stored_and_rendered_values(scenarios, case):
+    r = scenarios(case)
+    _found, rows = score_flag_rows(r.md)
+    by_key = {canon(finding_id): finding for finding_id, finding in r.doc["findings"].items()}
+    wrong = {}
+    for row in rows:
+        want = [flag for flag in by_key[canon(row["ID"])]["flags"] if flag["kind"] == row["Flag"] and flag["field"] == row["Field"]]
+        if row["Flag"] == "resolved" or not want:
+            continue  # an optional flag the outcomes do not list, or an S-12(b) one: flags_off judges those
+        if (row["Stored"], row["Rendered"], row["Cause"]) != (cell_of(want[0]["stored"]), cell_of(want[0]["rendered"]), want[0]["cause"]):
+            wrong["%s %s" % (row["ID"], want[0]["flag"])] = (row["Stored"], row["Rendered"], row["Cause"])
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_variants_the_sarif_properties_carry_the_flags_the_vector_and_the_score_source(scenarios, case):
+    r = scenarios(case)
+    wrong = {}
+    for finding_id, finding in r.doc["findings"].items():
+        key = canon(finding_id)
+        if finding["treatment"] == "resolved":
+            assert key not in r.results, "no SARIF file carries a RESOLVED finding (R-30): %s" % finding_id
+            continue
+        props = r.results[key]["properties"]
+        problems = []
+        if props["score-flags"] != sorted(set(props["score-flags"])):
+            problems.append("score-flags is not sorted and unique: %r" % props["score-flags"])
+        if "cvss-vector" not in props or props["cvss-vector"] != finding["rendered"]["cvss_vector"]:
+            problems.append("cvss-vector %r, want %r (JSON null when unverifiable)" % (props.get("cvss-vector"), finding["rendered"]["cvss_vector"]))
+        want_source = finding["rendered"].get("score_source", "inherited" if finding["treatment"] == "carried" else None)
+        if want_source is not None and props.get("score-source") != want_source:  # reading: the template's two words for the Source column
+            problems.append("score-source %r, want %r" % (props.get("score-source"), want_source))
+        corrections = props.get("score-corrections", [])
+        for flag in finding["flags"]:
+            if flag["kind"] == "corrected" and flag["basis"] != "optional":
+                # reading: D9's {field, from, to, cause}, each value compared as the text the outcomes file holds
+                if not any(c.get("field") == flag["field"] and c.get("cause") == flag["cause"] and matches_text(c.get("from"), flag["stored"])
+                           and matches_text(c.get("to"), flag["rendered"]) for c in corrections):
+                    problems.append("no score-corrections entry for %s" % flag["flag"])
+        if problems:
+            wrong[finding_id] = problems
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_variants_the_source_column_says_inherited_for_a_carried_finding_and_fresh_for_the_agents(scenarios, case):
+    r = scenarios(case)
+    wrong = {}
+    for finding_id, finding in r.doc["findings"].items():
+        key = canon(finding_id)
+        want = {"carried": "inherited", "resolved": "inherited", "agent": "fresh"}.get(finding["treatment"])  # a copied peer: the template is silent
+        row = r.view.resolved[key] if finding["treatment"] == "resolved" else r.view.rows[key]
+        if want is not None and row["Source"] != want:
+            wrong[finding_id] = row["Source"]
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_variants_the_counts_of_the_record_section_6_and_the_executive_summary_are_the_outcomes_counts(scenarios, case):
+    r = scenarios(case)
+    findings, counts = r.doc["findings"], r.doc["counts"]
+    emitted = r.all_emitted()
+    got = collections.Counter(kind_of(flag) for flags in emitted.values() for flag in flags)
+    optional = collections.Counter(kind_of(flag) for finding in findings.values() for flag in split_flags(finding)[1])
+    want = counts["flags_by_kind"]
+    open_string = split_case(case)[0] in S12B_OPEN  # reading: S-12(b)'s derivation may add ``input:`` flags the outcomes do not list
+    for kind in set(want) | set(got):
+        upper = 10 ** 6 if open_string and kind == "input" else want.get(kind, 0) + optional.get(kind, 0)
+        assert want.get(kind, 0) <= got.get(kind, 0) <= upper, "%s: %s flags, outcomes %s" % (kind, got.get(kind, 0), want.get(kind, 0))
+    record = r.record["counts"]
+    opened = sum(1 for finding in findings.values() if finding["treatment"] != "resolved")
+    resolved = len(findings) - opened
+    assert (record["open"], record["resolved"], record["units"]) == (opened, resolved, len(r.doc["routing"]["to_agent"]))
+    for kind in set(got) & tp.COUNT_KEYS:
+        assert record.get(kind, 0) == got[kind], "the stage record's %s count is the number of such flags" % kind
+    assert [record.get(key, 0) for key in ("narrative_fallbacks", "truncations")] == [0, 0]
+    # Section 6: the table of counts by kind and cause, the normalized count, and the baseline source.
+    table = collections.Counter()
+    for row in records(*table_of(subsection_of(r.md, "## 6. Score Integrity", "### Integrity Summary"), "Kind")):
+        table[row["Kind"]] += int(row["Count"])
+    assert {kind: count for kind, count in table.items() if kind != "resolved"} == {kind: count for kind, count in got.items() if kind != "resolved"}
+    assert int(labelled(r.md, "Normalized")) == counts["normalized"], "rounding-only differences are counted, never flagged"
+    assert labelled(r.md, "Baseline source").lower() != "none", "every scenario has a baseline"
+    # Section 1: the one templated sentence, and RESOLVED findings counted apart from the distribution.
+    bands = collections.Counter(finding["rendered"]["severity_band"] for finding in findings.values() if finding["treatment"] != "resolved")
+    sentence = "%d open findings were scored on %s: %d Critical, %d High, %d Medium and %d Low." % (
+        opened, r.top["run"]["date"], bands["Critical"], bands["High"], bands["Medium"], bands["Low"])
+    summary = section(r.md, "## 1. Executive Summary")
+    assert sentence in summary
+    if resolved:
+        assert re.search(r"Resolved findings\*\*[^\n]*: %d\b" % resolved, summary)
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_variants_every_open_composite_and_band_follow_the_rendered_dimensions(scenarios, case):
+    """SC-4's first line: a carried error never survives. Whatever a finding's dimensions are (kept, corrected or retagged),
+    its composite is their weighted sum rounded half up and its band is the composite's."""
+    r = scenarios(case)
+    wrong = {}
+    for finding_id, finding in r.doc["findings"].items():
+        if finding["treatment"] == "resolved":
+            continue
+        got = r.values(finding_id)
+        composite = ts.composite(*(Decimal(got[field]) for field in ("cvss_base", "exploitability", "scalability", "reachability")))
+        if (str(composite), ts.band(composite)) != (got["composite_score"], got["severity_band"]):
+            wrong[finding_id] = (got["composite_score"], got["severity_band"], str(composite), ts.band(composite))
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_variants_the_planner_sends_the_agent_only_the_findings_the_outcomes_route_to_it(scenarios, case):
+    r = scenarios(case)
+    planned = {canon(finding_id) for entry in r.project.plan_json()["batches"] for finding_id in entry["finding_ids"]}
+    assert planned == {canon(finding_id) for finding_id in r.doc["routing"]["to_agent"]}
+
+
+def test_variants_a_fresh_finding_records_its_bounds_its_source_and_its_date(scenarios):
+    """The outcomes file names three more rendered values for a fresh finding in a baseline-aware run (D10: a NEW finding is held
+    to its own category's bound, stored as ``score_bounds``): the renderer's persisted inputs hold two of them (D9, Section 6)."""
+    r = scenarios(ID_REUSE)
+    inputs = collections.defaultdict(dict)
+    for row in table_of(subsection_of(r.md, "## 6. Score Integrity", "### Scoring Inputs"), "ID")[1]:
+        inputs[canon(row[0])][row[1]] = row[2]
+    seen = 0
+    for finding_id, finding in findings_of(ID_REUSE):
+        if finding["treatment"] != "agent":
+            continue
+        seen += 1
+        rendered = finding["rendered"]
+        assert inputs[canon(finding_id)]["score_bounds"] == ",".join(rendered["score_bounds"]), finding_id
+        assert inputs[canon(finding_id)]["scored_on"] == rendered["scored_on"], finding_id
+        assert r.results[canon(finding_id)]["properties"]["score-source"] == rendered["score_source"], finding_id
+    assert seen == len(r.doc["routing"]["to_agent"])
+
+
+# =============================================================================
+# 20. SC-4's statements, one test each (spec "Measurable Outcomes", SC-4; ADR-050 D9 steps 2 to 4 and D10)
+# =============================================================================
+
+SEEDED_ERRORS = (  # (the case label, the field its seed breaks, the flag that must correct it)
+    ("wrong-composite", "composite_score", "corrected:composite_score:arithmetic"),
+    ("wrong-band", "severity_band", "corrected:severity_band:band-mapping"),
+    ("bad-vector", "cvss_base", "corrected:cvss_base:vector"),
+    ("cascade-composite", "composite_score", "corrected:composite_score:arithmetic"),
+    ("cascade-band", "severity_band", "corrected:severity_band:band-mapping"),
+)
+BOUNDARIES = {"boundary-exact-40": ("4.0", "Medium"), "boundary-exact-70": ("7.0", "High"), "boundary-exact-90": ("9.0", "Critical")}
+
+
+def test_harness_the_documented_exceptions_and_the_ties_are_listed_as_unflagged():
+    """SC-4's "0 documented exceptions are flagged": the clean findings and the own-bound clamps of all 12 prefixes, the exact
+    boundaries and the tie that was stored half up, are the outcomes' own list of findings that carry no flag."""
+    assert {i for i, _f in findings_of(SEEDED, "clean", "clamp-control")} <= set(outcomes_of(SEEDED)[1]["unflagged"])
+    assert {i for i, _f in findings_of(TIES, "tie-stored-as-half-up", *BOUNDARIES)} <= set(outcomes_of(TIES)[1]["unflagged"])
+
+
+def test_sc4_every_seeded_composite_band_and_vector_error_is_corrected_and_flagged(scenarios):
+    r = scenarios(SEEDED)
+    missed = {}
+    for label, field, flag in SEEDED_ERRORS:
+        for finding_id, finding in findings_of(SEEDED, label):
+            now = r.values(finding_id)[field]
+            if now == finding["stored"][field] or flag not in r.emitted(finding_id):
+                missed[finding_id] = {"case": label, "stored": finding["stored"][field], "rendered": now, "flags": sorted(r.emitted(finding_id))}
+    assert not missed, brief(missed)
+    assert sum(len(findings_of(SEEDED, label)) for label, _field, _flag in SEEDED_ERRORS) >= 3 * len(PREFIXES), "the seed covers every prefix"
+
+
+def test_sc4_a_seeded_missing_vector_is_unverifiable_keeps_its_score_and_has_a_null_vector(scenarios):
+    r = scenarios(SEEDED)
+    found = findings_of(SEEDED, "missing-vector")
+    assert len(found) == len(PREFIXES)
+    wrong = {}
+    for finding_id, finding in found:
+        props = r.results[canon(finding_id)]["properties"]
+        if ("unverifiable:cvss_base:no-vector" not in r.emitted(finding_id) or r.values(finding_id)["cvss_base"] != finding["stored"]["cvss_base"]
+                or props.get("cvss-vector", "absent") is not None):
+            wrong[finding_id] = {"flags": sorted(r.emitted(finding_id)), "cvss-vector": props.get("cvss-vector", "absent")}
+    assert not wrong, brief(wrong)
+
+
+def test_sc4_an_out_of_range_reachability_under_an_unambiguous_label_is_flagged_and_kept(scenarios):
+    r = scenarios(SEEDED)
+    found = findings_of(SEEDED, "reach-out-of-range")
+    assert len(found) == len(PREFIXES)
+    wrong = {finding_id: sorted(r.emitted(finding_id)) for finding_id, finding in found
+             if "input:reachability:out-of-range" not in r.emitted(finding_id)
+             or r.values(finding_id)["reachability"] != finding["stored"]["reachability"]}
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_sc4_no_documented_exception_and_no_clean_finding_is_flagged(scenarios, case):
+    r = scenarios(case)
+    open_string = split_case(case)[0] in S12B_OPEN  # reading: an ``input:`` flag from S-12(b)'s derivation is outside that scenario's assertions
+    wrong = {}
+    for finding_id in r.doc["unflagged"]:
+        key = canon(finding_id)
+        row, line = r.view.rows[key], integrity_line(r.subsection[key])
+        flags = {flag for flag in r.emitted(finding_id) if not (open_string and flag.startswith("input:"))}
+        if flags or (not open_string and (row["Flags"].strip() != DASH or line is not None)):
+            wrong[finding_id] = {"flags": sorted(flags), "Flags column": row["Flags"], "Integrity line": line and sorted(line)}
+    assert not wrong, brief(wrong)
+
+
+def n17_flags(case):
+    """``[(finding ID, finding, flag)]``: the ``unchecked`` flags that name a score or a reachability, which a bound or a label leaves open."""
+    return [(i, f, flag) for i, f in findings_of(case) for flag in f["flags"]
+            if flag["kind"] == "unchecked" and flag["field"] in ("cvss_base", "reachability")]
+
+
+N17_CASES = tuple(case for case in SCORER_SCENARIOS if n17_flags(case))
+
+
+@pytest.mark.parametrize("case", N17_CASES)
+def test_sc4_n17_dependent_cases_are_unchecked_keep_their_value_and_are_never_reported_as_a_violation(scenarios, case):
+    unchecked = n17_flags(case)
+    r = scenarios(case)
+    wrong = {}
+    for finding_id, finding, flag in unchecked:
+        field, emitted = flag["field"], r.emitted(finding_id)
+        violation = [f for f in emitted if f.startswith("corrected:%s:" % field) or f == "input:reachability:out-of-range"]
+        if flag["flag"] not in emitted or r.values(finding_id)[field] != finding["stored"][field] or violation:
+            wrong[finding_id] = {"flags": sorted(emitted), "stored": finding["stored"][field], "rendered": r.values(finding_id)[field]}
+    assert not wrong, brief(wrong)
+
+
+def test_harness_the_n17_cases_cover_every_prefix_and_the_tagged_legacy_cases():
+    assert set(N17_CASES) >= {SEEDED, "tagged/legacy-form"}
+    seeded = [f for _i, f in findings_of(SEEDED) if any(x["kind"] == "unchecked" for x in f["flags"])]
+    assert {f["prefix"] for f in seeded if f["case"] == "n17-bound"} == set(PREFIXES)
+    assert {f["case"] for f in seeded} >= {"n17-bound", "compound-label"}
+    assert {f["case"] for _i, f in findings_of("tagged/legacy-form")} >= {"assessed-unrecorded", "n17-assessed-unrecorded"}
+
+
+@pytest.mark.parametrize("case", (SEEDED, TIES))
+def test_sc4_a_rounding_only_difference_is_normalized_and_counted_and_never_flagged(scenarios, case):
+    """R-11: the stored value is the exact value's other one-decimal neighbour and the band, SLA, disposition and review date
+    all hold. The composite is normalized to the half-up value, counted in Section 6, and nothing is flagged."""
+    r = scenarios(case)
+    normalized = [(i, f) for i, f in findings_of(case) if f["normalized"]]
+    assert normalized
+    wrong = {}
+    for finding_id, finding in normalized:
+        got, stored = r.values(finding_id), finding["stored"]
+        step = abs(Decimal(got["composite_score"]) - Decimal(stored["composite_score"]))
+        holds = all(got[field] == stored[field] for field in ("severity_band", "remediation_sla", "risk_disposition", "review_date", "risk_owner"))
+        if r.emitted(finding_id) or step != Decimal("0.1") or not holds:
+            wrong[finding_id] = {"flags": sorted(r.emitted(finding_id)), "stored": stored["composite_score"], "rendered": got["composite_score"]}
+    assert not wrong, brief(wrong)
+    assert int(labelled(r.md, "Normalized")) == len(normalized), "counted in the run summary"
+
+
+def test_sc4_a_rounding_tie_that_moves_the_band_is_a_band_correction_with_rounding_as_its_cause(scenarios):
+    """R-11 and R-5: flagged ``corrected:severity_band:rounding`` and never on the composite; the SLA, disposition and review date
+    follow the new band, counted from the original scoring date (the stored review date less the stored SLA)."""
+    r = scenarios(TIES)
+    found = findings_of(TIES, "tie-band-moves-40", "tie-band-moves-70", "tie-band-moves-90")
+    assert len(found) == 3
+    wrong = {}
+    for finding_id, finding in found:
+        got, stored, emitted = r.values(finding_id), finding["stored"], r.emitted(finding_id)
+        original = datetime.date.fromisoformat(stored["review_date"]) - datetime.timedelta(days=ts.sla_days(stored["remediation_sla"]))
+        if ("corrected:severity_band:rounding" not in emitted or any(f.startswith("corrected:composite_score:") for f in emitted)
+                or got["review_date"] != ts.review_date(original.isoformat(), got["remediation_sla"])
+                or got["severity_band"] == stored["severity_band"]):
+            wrong[finding_id] = {"flags": sorted(emitted), "review_date": got["review_date"], "original scoring date": original.isoformat()}
+    assert not wrong, brief(wrong)
+
+
+def test_sc4_a_composite_exactly_on_a_band_boundary_takes_the_higher_band_and_is_not_flagged(scenarios):
+    r = scenarios(TIES)
+    for label, want in BOUNDARIES.items():
+        (finding_id, finding), = findings_of(TIES, label)
+        got = r.values(finding_id)
+        assert (got["composite_score"], got["severity_band"]) == want and not r.emitted(finding_id) and not finding["normalized"], label
+
+
+def test_r26_the_legacy_baseline_takes_a_vector_from_the_markdown_else_the_sarif_and_flags_a_disagreement(scenarios):
+    """R-26 (US-5 #10): a vector comes from the baseline's markdown or else from its SARIF's ``cvss-vector``; when both carry one and
+    they differ the markdown's is used and the disagreement is flagged; with neither the finding is unverifiable and its vector is null."""
+    r = scenarios(LEGACY_FORMAT)
+    seen, wrong = collections.Counter(), {}
+    for finding_id, finding in findings_of(LEGACY_FORMAT):
+        markdown, sarif = finding["vector_sources"]["markdown"], finding["vector_sources"]["sarif"]
+        disagree = bool(markdown and sarif and markdown != sarif)
+        seen[("md" if markdown else "") + ("sarif" if sarif else "") + ("-disagree" if disagree else "")] += 1
+        emitted, props = r.emitted(finding_id), r.results[canon(finding_id)]["properties"]
+        if (props.get("cvss-vector", "absent") != (markdown or sarif or None) or ("input:cvss_vector:sources-disagree" in emitted) != disagree
+                or ("unverifiable:cvss_base:no-vector" in emitted) != (not (markdown or sarif))):
+            wrong[finding_id] = {"vector sources": finding["vector_sources"], "cvss-vector": props.get("cvss-vector", "absent"), "flags": sorted(emitted)}
+    assert not wrong, brief(wrong)
+    assert set(seen) >= {"md", "sarif", "mdsarif", "mdsarif-disagree", ""}, dict(seen)
+
+
+R25_KEPT = (  # (scenario, case label, where its stored score sits against the 9.2 ceiling)
+    ("tagged/renderer-form", "r25-assessed-above-ceiling", "above"), ("tagged/renderer-form", "r25-ceiling-binds", "at"),
+    ("tagged/renderer-form", "r25-tag-is-no-op", "below"), ("tagged/legacy-form", "ceiling-pass", "at"),
+    ("tagged/legacy-form", "documented-pass", "below"), ("tagged/legacy-form", "assessed-unrecorded", "above"),
+    ("tagged/legacy-form", "n17-assessed-unrecorded", "above"))
+
+
+@pytest.mark.parametrize("case,label,side", R25_KEPT)
+def test_r25_a_tagged_finding_that_already_holds_the_asset_outcome_keeps_its_score_and_is_flagged_only_when_unrecorded(scenarios, case, label, side):
+    """R-25: a finding's score is the larger of its assessed score and its elevated score capped at 9.2, so a finding assessed above
+    9.2 keeps its score and a no-op tag changes nothing. A carried legacy score above 9.2 that may be only an elevated one is
+    kept and reported ``unchecked``, never as a violation."""
+    r = scenarios(case)
+    (finding_id, finding), = findings_of(case, label)
+    got = Decimal(r.values(finding_id)["cvss_base"])
+    assert str(got) == finding["stored"]["cvss_base"], "kept"
+    assert {"above": got > ts.MODIFIER_CEILING, "at": got == ts.MODIFIER_CEILING, "below": got < ts.MODIFIER_CEILING}[side]
+    unrecorded = label.endswith("assessed-unrecorded")
+    assert r.emitted(finding_id) == ({"unchecked:cvss_base:assessed-unrecorded"} if unrecorded else set())
+
+
+# =============================================================================
+# 21. The regroup pair: a regroup alone moves no carried score, and peers follow R-31 (US-5 #6; D9 "Peers")
+# =============================================================================
+
+
+def regroup_runs(scenarios):
+    return [scenarios("%s:%s" % (REGROUP, run)) for run in REGROUP_RUNS]
+
+
+def test_regroup_a_regroup_alone_changes_no_carried_findings_score_band_sla_owner_or_review_date(scenarios):
+    runs = regroup_runs(scenarios)
+    compared, wrong = 0, {}
+    for before, after in zip(runs, runs[1:]):
+        for finding_id, finding in after.doc["findings"].items():
+            if finding["treatment"] == "carried" and canon(finding_id) in before.view.rows:
+                compared += 1
+                if after.values(finding_id) != before.values(finding_id):
+                    wrong["%s %s" % (after.case, finding_id)] = (before.values(finding_id), after.values(finding_id))
+    assert compared >= 2 * 8, "run 2 and run 3 carry every finding of the run before"
+    assert not wrong, brief(wrong)
+
+
+def test_regroup_new_and_updated_peers_copy_their_primary_and_an_unchanged_peer_keeps_its_own_score_and_is_flagged(scenarios):
+    divergent = []
+    wrong = {}
+    for r in regroup_runs(scenarios):
+        for peer, primary in r.doc["routing"]["copy_primary"].items():
+            a, b = r.values(peer), r.values(primary)
+            same = all(a[field] == b[field] for field in ("cvss_base", "exploitability", "scalability", "reachability", "composite_score", "severity_band"))
+            if not same or r.results[canon(peer)]["properties"]["cvss-vector"] != r.results[canon(primary)]["properties"]["cvss-vector"]:
+                wrong["%s %s" % (r.case, peer)] = "does not copy %s" % primary
+        for peer, primary in r.doc["routing"]["carried_peers"].items():
+            own, theirs = r.values(peer)["composite_score"], r.values(primary)["composite_score"]
+            flag = "divergent:composite_score:primary=%s" % primary
+            if (flag in r.emitted(peer)) != (own != theirs) or own != r.doc["findings"][peer]["stored"]["composite_score"]:
+                wrong["%s %s" % (r.case, peer)] = {"own": own, "primary": theirs, "flags": sorted(r.emitted(peer))}
+            if own != theirs:
+                divergent.append((r.case, peer))
+    assert not wrong, brief(wrong)
+    assert {case for case, _peer in divergent} == {"%s:run2" % REGROUP, "%s:run3" % REGROUP}, "the two divergent peers stay flagged on the re-run"
+
+
+# =============================================================================
+# 22. Ruling A (tag-driven moves), ruling B (a reused ID) and D9's review-date fallbacks
+# =============================================================================
+
+BAND_ORDER = ("Low", "Medium", "High", "Critical")
+RETAG_SCENARIOS = TAGGED + S13
+BAND_FOLLOWERS = ("severity_band", "remediation_sla", "risk_disposition", "review_date")
+
+
+def tag_moves(direction=None, cases=RETAG_SCENARIOS):
+    """``[(case, finding ID, finding, "up" | "down")]``: the findings of the tagged scenarios whose band only a tag moved."""
+    out = []
+    for case in cases:
+        for finding_id, finding in findings_of(case):
+            if "retagged:severity_band:asset-tags" in split_flags(finding)[0]:
+                way = "up" if BAND_ORDER.index(finding["rendered"]["severity_band"]) > BAND_ORDER.index(finding["stored"]["severity_band"]) else "down"
+                if direction in (None, way):
+                    out.append((case, finding_id, finding, way))
+    return out
+
+
+def band_holds_moves(cases=RETAG_SCENARIOS):
+    """The findings whose CVSS score or composite a tag moved and whose band it left (PM-T7)."""
+    return [(case, finding_id, finding) for case in cases for finding_id, finding in findings_of(case)
+            if split_flags(finding)[0] & {"retagged:cvss_base:asset-tags", "retagged:composite_score:asset-tags"}
+            and "retagged:severity_band:asset-tags" not in split_flags(finding)[0]]
+
+
+UP_CASES = tuple(case for case in RETAG_SCENARIOS if tag_moves("up", (case,)))
+DOWN_CASES = tuple(case for case in RETAG_SCENARIOS if tag_moves("down", (case,)))
+HOLD_CASES = tuple(case for case in RETAG_SCENARIOS if band_holds_moves((case,)))
+
+
+def test_harness_the_tagged_scenarios_cover_both_directions_both_review_date_cases_an_override_and_the_legacy_case():
+    ups, downs = tag_moves("up"), tag_moves("down")
+    assert ups and downs
+    date = outcomes_of(TAGGED[0])[0]["run"]["date"]
+    later = [m for m in ups if m[2]["stored"]["review_date"] > ts.review_date(date, m[2]["rendered"]["remediation_sla"])]
+    earlier = [m for m in ups if m[2]["stored"]["review_date"] <= ts.review_date(date, m[2]["rendered"]["remediation_sla"])]
+    assert later and earlier, "an up move whose stored review date is later, and one whose is earlier, than this run's date plus the new SLA"
+    assert [m for m in ups if "override:remediation_sla:human" in split_flags(m[2])[0]], "an SLA override on an up move"
+    assert [m for m in ups if m[0] == "tagged/legacy-form" and m[2]["form"] == "legacy"], "ruling A's legacy case"
+    assert band_holds_moves(), "PM-T7: a tag move that leaves the band"
+
+
+@pytest.mark.parametrize("case", UP_CASES)
+def test_ruling_a_a_band_that_only_the_tags_raise_restarts_the_clock_but_never_past_the_stored_review_date(scenarios, case):
+    """Up: the review date becomes this run's scoring date plus the new SLA, unless the stored review date is earlier, in which
+    case the stored date is kept. An SLA override still keeps its review date (R-31). Tagging never makes a finding overdue."""
+    moves = tag_moves("up", (case,))
+    r = scenarios(case)
+    wrong = {}
+    for _case, finding_id, finding, _way in moves:
+        got, stored = r.values(finding_id), finding["stored"]
+        if "override:remediation_sla:human" in r.emitted(finding_id):
+            want = stored["review_date"]
+        else:
+            want = min(stored["review_date"], ts.review_date(r.top["run"]["date"], got["remediation_sla"]))
+        if got["review_date"] != want:
+            wrong[finding_id] = {"review_date": got["review_date"], "want": want}
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", DOWN_CASES)
+def test_ruling_a_a_band_that_only_a_removed_tag_lowers_keeps_the_original_scoring_date(scenarios, case):
+    """Down: the original scoring date is kept, as for a correction (R-5), so a deadline missed under the lower band's SLA stays missed."""
+    moves = tag_moves("down", (case,))
+    r = scenarios(case)
+    wrong = {}
+    for _case, finding_id, finding, _way in moves:
+        got, stored = r.values(finding_id), finding["stored"]
+        original = datetime.date.fromisoformat(stored["review_date"]) - datetime.timedelta(days=ts.sla_days(stored["remediation_sla"]))
+        if got["review_date"] != ts.review_date(original.isoformat(), got["remediation_sla"]) or "retagged:review_date:asset-tags" not in r.emitted(finding_id):
+            wrong[finding_id] = {"review_date": got["review_date"], "original scoring date": original.isoformat(), "flags": sorted(r.emitted(finding_id))}
+    assert not wrong, brief(wrong)
+
+
+def test_ruling_a_a_legacy_row_that_records_no_tags_reads_the_elevation_this_runs_tags_apply_as_a_retag(scenarios):
+    """The first renderer run ends the UNCHANGED exemption (D9), so the upgrade itself must not read as a correction or make
+    a carried finding overdue: a legacy row's band change that only this run's tags explain is ``retagged``, and its review date is no later."""
+    r = scenarios("tagged/legacy-form")
+    moved = [(i, f) for case, i, f, _way in tag_moves() if case == "tagged/legacy-form"]
+    assert moved and all(finding["form"] == "legacy" for _i, finding in moved)
+    for finding_id, finding in moved:
+        emitted = r.emitted(finding_id)
+        assert "retagged:severity_band:asset-tags" in emitted and not [f for f in emitted if f.startswith("corrected:")], finding_id
+        assert r.values(finding_id)["review_date"] <= finding["stored"]["review_date"], "%s: the upgrade makes nothing overdue" % finding_id
+
+
+@pytest.mark.parametrize("case", RETAG_SCENARIOS)
+def test_ruling_a_no_value_that_a_tag_moves_or_that_follows_a_tag_moved_band_is_flagged_corrected(scenarios, case):
+    """PM confirmation, ruling 1: a retagged finding carries no ``corrected`` flag on any value the tags moved, ``follows-band`` included."""
+    r = scenarios(case)
+    wrong = {}
+    for finding_id, flags in r.all_emitted().items():
+        if any(flag.startswith("retagged:") for flag in flags):
+            bad = sorted(flag for flag in flags if flag.startswith("corrected:") and flag.split(":")[1] in RETAGGED_FIELDS)
+            if bad:
+                wrong[finding_id] = bad
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", HOLD_CASES)
+def test_ruling_a_a_tag_move_that_leaves_the_band_is_flagged_retagged_and_changes_nothing_that_follows_the_band(scenarios, case):
+    """PM-T7: the CVSS score and composite move and are flagged ``retagged``; the band, SLA, disposition and review date hold, and none is flagged."""
+    moves = band_holds_moves((case,))
+    r = scenarios(case)
+    wrong = {}
+    for _case, finding_id, finding in moves:
+        got, stored, emitted = r.values(finding_id), finding["stored"], r.emitted(finding_id)
+        followers = [flag for flag in emitted if flag.split(":")[1] in BAND_FOLLOWERS and flag.startswith(("retagged:", "corrected:"))]
+        if followers or any(got[field] != stored[field] for field in BAND_FOLLOWERS + ("risk_owner",)) or not split_flags(finding)[0] <= emitted:
+            wrong[finding_id] = {"flags": sorted(emitted), "values": got}
+    assert not wrong, brief(wrong)
+
+
+def test_ruling_b_a_new_finding_whose_id_the_baseline_used_is_flagged_scored_fresh_and_inherits_nothing(scenarios):
+    r = scenarios(ID_REUSE)
+    (finding_id, finding), = findings_of(ID_REUSE, "reused-id")
+    assert "reused-id:finding_id:baseline" in r.emitted(finding_id)
+    assert canon(finding_id) in {canon(i) for i in r.doc["routing"]["to_agent"]} and finding["treatment"] == "agent", "it goes to the agent, never to the carried set"
+    old = rules.read_baseline_scores(LARGE_ARCH / ID_REUSE / "baseline" / MD).rows[canon(finding_id)]
+    got = r.values(finding_id)
+    assert old.owner not in (None, "Unassigned"), "precondition: the baseline's row is another finding's, with a human owner"
+    assert got["risk_owner"] == "Unassigned" and got["risk_disposition"] != old.disposition and got["review_date"] != old.review_date.isoformat(), \
+        "nothing of the old row (its owner, disposition and review date) reaches the new finding"
+    props = r.results[canon(finding_id)]["properties"]
+    assert props["score-source"] == "fresh" and "reused-id:finding_id:baseline" in props["score-flags"]
+    (control_id, _control), = findings_of(ID_REUSE, "new-finding")
+    assert r.emitted(control_id) == set(), "a NEW finding with a number the baseline never used is scored fresh and not flagged"
+    (resolved_id, _resolved), = findings_of(ID_REUSE, "resolved")
+    assert r.emitted(resolved_id) == {"resolved"}, "a RESOLVED finding whose baseline row exists is carried verbatim, not a reuse"
+
+
+REVIEW_RUNGS = {  # D9's fallback, in order: the baseline file's front matter date, else the stored review date kept, else the run date plus the SLA
+    "corrected:review_date:baseline-date": "frontmatter_date",
+    "unchecked:review_date:scoring-date-unknown": "stored",
+    "corrected:review_date:clock-restarted": "run date",
+}
+
+
+def test_ruling_each_review_date_fallback_rung_raises_its_one_flag_and_counts_from_its_own_start(scenarios):
+    seen, wrong = collections.Counter(), {}
+    for case in (LEGACY_FORMAT, NO_BASELINE_DATE):
+        r = scenarios(case)
+        for finding_id, finding in findings_of(case):
+            rung = [flag for flag in split_flags(finding)[0] if flag in REVIEW_RUNGS]
+            if not rung:
+                continue
+            got = r.values(finding_id)
+            start = {"frontmatter_date": r.top["baseline"]["frontmatter_date"], "run date": r.top["run"]["date"], "stored": None}[REVIEW_RUNGS[rung[0]]]
+            want = finding["stored"]["review_date"] if start is None else ts.review_date(start, got["remediation_sla"])
+            dated = [flag for flag in r.emitted(finding_id) if flag.split(":")[1] == "review_date"]
+            seen[rung[0]] += 1
+            if dated != rung or got["review_date"] != want:
+                wrong["%s %s" % (case, finding_id)] = {"flags": dated, "review_date": got["review_date"], "want": want}
+    assert not wrong, brief(wrong)
+    assert set(seen) == set(REVIEW_RUNGS), dict(seen)
+
+
+# =============================================================================
+# 23. S-13: one source of asset tags for the whole run, never mixed (FR-N16.2; PM-T4, AR-T4)
+# =============================================================================
+
+
+def tag_source_matches(line, source):
+    """Whether Section 6's ``**Tag source**:`` line names ``source``. Reading: the 1.1 template's words are the ``threats.md``
+    block, the architecture file's own tags, or none, "marked unverified when the block was used and no architecture file existed"."""
+    low = line.lower()
+    return {"block": "block" in low and "unverified" not in low, "recomputed": "architecture" in low or "recomputed" in low,
+            "block-unverified": "block" in low and "unverified" in low, "none": "none" in low}[source]
+
+
+@pytest.mark.parametrize("case", S13)
+def test_s13_the_run_reads_its_asset_tags_from_one_source_and_never_mixes_two(scenarios, case):
+    """Each branch: a block equal to the recomputation, a stale block, no architecture file, neither source, and a drift form. The
+    source is chosen once, so every result's ``affected_assets`` (the SARIF's own property) is that source's tags for its component,
+    and the values are the ones that source gives (the generic goldens read those). A branch that cannot verify or find a source
+    warns, records its cause in the stage record and finishes: it never stops the run."""
+    r = scenarios(case)
+    source = r.top["tag_source"]
+    line = labelled(r.md, "Tag source")
+    assert tag_source_matches(line, source["source"]), "Section 6 names the %r source, not %r" % (source["source"], line)
+    wrong = {}
+    for finding_id, finding in r.doc["findings"].items():
+        want = sorted(source["tags"].get(finding["component"], []))
+        got = sorted(r.results[canon(finding_id)]["properties"].get("affected_assets", []))
+        if got != want:
+            wrong[finding_id] = {"component": finding["component"], "affected_assets": got, "the one source": want}
+    assert not wrong, brief(wrong)
+    if source["warning"] and source["source"] != "block-unverified":
+        # reading: ADR-050 D2 says an unverified block is "recorded as unverified" (Section 6 above) and warns only for the
+        # recomputed and the neither-source branches, while the outcomes file also warns for it: an open ruling, so it is not asserted.
+        detail = " ".join("%s %s" % (warning["code"], warning["detail"]) for warning in r.record["warnings"])
+        assert (r.result.code, r.record["status"]) == (5, "success-with-warnings"), r.result.describe()
+        assert re.search(r"tag|asset", detail, re.I), "the cause is in the stage record: %r" % detail
+
+
+# =============================================================================
+# 24. A baseline that cannot be used: free text, a missing file, an unreadable one (R-6; S-12(d); US-5 #11)
+# =============================================================================
+
+UNUSABLE_BASELINES = (("free-text", "free-text"), ("missing", "missing"), ("not-utf8", "not-utf8"), ("no-rows", "no-rows"))
+
+
+def unusable_baseline_project(stage_module, renderer_module, root, how):
+    """The nine-finding project whose ``baseline.source`` is free text, names a file that is not there, or names files that cannot be read."""
+    source = "the scan from last week, before the rewrite" if how == "free-text" else "earlier/threats.md"
+    project = Project(stage_module, renderer_module, root, baseline_source=source)
+    if how in ("not-utf8", "no-rows"):
+        earlier = Path(root) / "earlier"
+        earlier.mkdir()
+        shutil.copyfile(str(project.threats), str(earlier / "threats.md"))
+        (earlier / MD).write_bytes(b"# Risk Scores Report\n\xff\xfe not text \x80\n" if how == "not-utf8"
+                                   else "# Risk Scores Report\n\nNothing was scored.\n".encode("utf-8"))
+    return project
+
+
+@pytest.mark.parametrize("how,reason", UNUSABLE_BASELINES)
+def test_baseline_one_that_cannot_be_used_means_every_finding_is_scored_fresh_and_the_reason_is_recorded(stage, renderer, tmp_path, how, reason):
+    """D9: free text (#379), an unresolvable path, a failed check or a missing file means no baseline, and a present file that is not
+    UTF-8 or yields no row counts as missing, with Section 6 saying that its owners, SLAs and dispositions weren't carried (S-12(d))."""
+    project = unusable_baseline_project(stage, renderer, tmp_path, how)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert reason in project.plan_stderr, "the planner says why: %r" % project.plan_stderr
+    assert project.plan_json()["unit_count"] == len(ORDER), "every finding, UNCHANGED ones too, goes to the agent"
+    view = MdView(project.md)
+    for finding_id in ORDER:
+        cvss, e, s, reach, composite, band = golden(finding_id)
+        sla, _disposition, review = GOVERNANCE[band]
+        got = view.values(finding_id)
+        assert [got[f] for f in ("cvss_base", "exploitability", "scalability", "reachability", "composite_score", "severity_band")] == [cvss, e, s, reach, composite, band]
+        assert (got["risk_owner"], got["remediation_sla"], got["review_date"]) == ("Unassigned", sla, review), "fresh governance (R-5)"
+        assert view.rows[canon(finding_id)]["Source"] == "fresh"
+    integrity = section(project.md, "## 6. Score Integrity")
+    why = integrity + " " + " ".join("%s %s" % (warning["code"], warning["detail"]) for warning in project.record["warnings"])
+    assert reason in why, "the stage records why, in Section 6 or its warnings (D9)"
+    assert labelled(project.md, "Baseline source").lower() == "none"
+    if how in ("not-utf8", "no-rows"):
+        issues = subsection_of(project.md, "## 6. Score Integrity", "### Input Issues")
+        assert issues.strip() != "None." and MD in issues, "Input Issues names the unreadable file"
+
+
+# =============================================================================
+# 25. A second run on the first run's own 1.1 file: carried prose re-resolves against this run's values (RR1; AR-T4)
+# =============================================================================
+
+TAGGED_ARCHITECTURE = '```mermaid\nflowchart LR\n    edge_gateway["edge-gateway<br/>[asset:secrets]"]\n```\n'
+
+
+def edit_section_2_cell(md, finding_id, column, value):
+    """``md`` with one cell of one Section 2 row replaced: the stored value that the next run reads back."""
+    lines = md.split("\n")
+    start = next(n for n, line in enumerate(lines) if line.startswith("## 2. Scored Threat Table"))
+    header = None
+    for n in range(start + 1, len(lines)):
+        if lines[n].startswith("## "):
+            break
+        if header is None and lines[n].startswith("| ID |"):
+            header = [cell.strip() for cell in lines[n].strip().strip("|").split("|")]
+        elif header is not None and lines[n].startswith("| %s |" % finding_id):
+            cells = lines[n].split("|")
+            cells[header.index(column) + 1] = " %s " % value
+            lines[n] = "|".join(cells)
+            return "\n".join(lines)
+    raise AssertionError("no Section 2 row for %s" % finding_id)
+
+
+def second_run(stage_module, renderer_module, root, first, edit_baseline=None, architecture_text=None):
+    """The nine findings again, every one UNCHANGED, with the first run's own ``threats.md``, ``risk-scores.md`` and SARIF as the baseline."""
+    project = Project(stage_module, renderer_module, root, specs=[dict(item, status="UNCHANGED") for item in SPECS], baseline_source="baseline/threats.md")
+    baseline = Path(root) / "baseline"
+    baseline.mkdir()
+    for name in ("threats.md", MD, SARIF):
+        shutil.copyfile(str(first.out / name), str(baseline / name))
+    if edit_baseline is not None:
+        (baseline / MD).write_text(edit_baseline((baseline / MD).read_text(encoding="utf-8")), encoding="utf-8")
+    if architecture_text is not None:
+        project.architecture.write_text(architecture_text, encoding="utf-8")
+    return project
+
+
+def has_prose(body, item, field, values):
+    """Whether Section 3's ``body`` holds the agent's ``field`` sentence with its slots filled by ``values`` (a golden's six values)."""
+    return any(tp.resolve_narrative(RATIONALE[field], STAGE, lookup_for(item, composite=values), sink=sink) in body for sink in ("prose", "cell"))
+
+
+def test_rr1_a_second_run_on_the_first_runs_own_file_carries_every_finding_and_its_prose_with_no_fallback(stage, renderer, base, tmp_path):
+    project = second_run(stage, renderer, tmp_path, base)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert project.plan_json()["unit_count"] == 0, "the first run's file is a usable baseline: nothing goes to the agent"
+    counts = project.record["counts"]
+    assert (counts.get("narrative_fallbacks", 0), counts.get("truncations", 0)) == (0, 0), "zero fallbacks on carried prose"
+    first, view, results = MdView(base.md), MdView(project.md), results_by_id(project.sarif)
+    for finding_id in ORDER:
+        assert results[finding_id]["properties"]["score-flags"] == [], "nothing moved, so nothing is flagged: %s" % finding_id
+        assert view.values(finding_id) == first.values(finding_id), finding_id
+        body = subsection_for(project.md, finding_id)
+        for field in RATIONALE:
+            assert has_prose(body, by_id(finding_id), field, golden(finding_id)), (finding_id, field)
+        assert "{{" not in body, "no slot token survives into Section 3: %s" % finding_id
+
+
+def test_rr1_a_corrected_value_moves_in_the_carried_prose(stage, renderer, base, tmp_path):
+    stale = "3.3"
+    project = second_run(stage, renderer, tmp_path, base, edit_baseline=lambda text: edit_section_2_cell(text, "S-2", "CVSS", stale))
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    flags = results_by_id(project.sarif)["S-2"]["properties"]["score-flags"]
+    assert "corrected:cvss_base:vector" in flags and not [flag for flag in flags if flag.endswith(":narrative-fallback")], flags
+    body = subsection_for(project.md, "S-2")
+    assert has_prose(body, by_id("S-2"), "cvss", golden("S-2")), "the sentence's score slot takes this run's corrected value"
+    assert stale not in body, "and the baseline's stale value is nowhere in the prose"
+    assert project.record["counts"].get("narrative_fallbacks", 0) == 0
+
+
+def test_rr1_a_retagged_value_moves_in_the_carried_prose_and_leaves_the_band_with_no_correction(stage, renderer, base, tmp_path):
+    """A tag the first run did not apply raises S-2's CVSS score and composite and leaves its band (PM-T7); E-3 shares the component and
+    its vector already carries every bit the tag forces, so its tag is a no-op and it is not flagged."""
+    project = second_run(stage, renderer, tmp_path, base, architecture_text=make_architecture_md() + "\n" + TAGGED_ARCHITECTURE)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()  # reading: the input block names no tag, so S-13 recomputes it and warns
+    cvss, e, s, reach, _composite, band = golden("S-2")
+    raised = rules.cvss_chain(by_id("S-2")["vector"], tags=("secrets",), score_bounds=None).cvss_base
+    moved = ts.composite(raised, Decimal(e), Decimal(s), Decimal(reach))
+    assert raised > Decimal(cvss) and ts.band(moved) == band, "precondition: the tag raises the score and the band holds"
+    values = (str(raised), e, s, reach, str(moved), band)
+    view = MdView(project.md)
+    got = view.values("S-2")
+    assert (got["cvss_base"], got["composite_score"], got["severity_band"]) == (str(raised), str(moved), band)
+    before = MdView(base.md).values("S-2")
+    assert (got["remediation_sla"], got["review_date"], got["risk_owner"]) == (before["remediation_sla"], before["review_date"], before["risk_owner"])
+    results = results_by_id(project.sarif)
+    flags = results["S-2"]["properties"]["score-flags"]
+    assert {"retagged:cvss_base:asset-tags", "retagged:composite_score:asset-tags"} <= set(flags)
+    assert not [flag for flag in flags if flag.startswith("corrected:") or flag.split(":")[1] in BAND_FOLLOWERS], flags
+    assert results["E-3"]["properties"]["score-flags"] == [], "a no-op tag changes nothing and is not flagged"
+    assert has_prose(subsection_for(project.md, "S-2"), by_id("S-2"), "cvss", values), "the carried sentence shows the retagged score"
+    assert project.record["counts"].get("narrative_fallbacks", 0) == 0
+
+
+# =============================================================================
+# 26. tachi_scoring_rules at the renderer's boundary: the scenarios' baselines, read and checked directly (R-26, R-25, D10, S-13)
+# =============================================================================
+#
+# These need no renderer. They run the shipped rules module over the committed baselines and compare with what each outcomes file
+# says, so a disagreement between T040's expectations and R1b's module shows here, before it shows as a renderer failure. They do not
+# repeat ``test_tachi_scoring_rules.py``: that module's cases are synthetic, and these are the fixture's.
+
+RULE_CASES = SCORER_SCENARIOS + ("%s:run1" % REGROUP,)  # the regroup pair's runs 2 and 3 read a renderer's own output, which has no fixture file
+
+
+@pytest.fixture(scope="module")
+def populator():
+    return _load_hyphenated_script("populate_affected_assets_variants_test", "populate-affected-assets.py")
+
+
+def baseline_of(case):
+    """``(outcomes file, findings document, BaselineScores)`` for the baseline files that a scenario commits."""
+    name, _run = split_case(case)
+    top, doc = outcomes_of(case)
+    folder = LARGE_ARCH / name / doc.get("baseline_dir", top["run"].get("baseline_dir"))
+    sarif = folder / SARIF
+    return top, doc, rules.read_baseline_scores(folder / MD, sarif_path=sarif if sarif.is_file() else None)
+
+
+@pytest.mark.parametrize("case", RULE_CASES)
+def test_rules_the_tolerant_reader_gives_each_baseline_row_the_values_the_outcomes_call_stored(case):
+    top, doc, scores = baseline_of(case)
+    assert scores.readable, scores.reason
+    assert scores.form == ("renderer" if top["baseline"]["form"] == "renderer" else "legacy")
+    assert (scores.frontmatter_date.isoformat() if scores.frontmatter_date else None) == top["baseline"]["frontmatter_date"]
+    wrong = {}
+    for finding_id, finding in doc["findings"].items():
+        stored = finding["stored"]
+        if stored is None:
+            continue
+        key = canon(finding_id)
+        row = scores.rows.get(key) or scores.resolved_rows.get(key)
+        if row is None:
+            wrong[finding_id] = "no baseline row"
+            continue
+        have = {"cvss_base": row.stored.get("cvss_base"), "exploitability": row.stored.get("exploitability"), "scalability": row.stored.get("scalability"),
+                "reachability": row.stored.get("reachability"), "composite_score": row.stored.get("composite"), "severity_band": row.band,
+                "remediation_sla": row.sla, "risk_disposition": row.disposition, "risk_owner": row.owner, "cvss_vector": row.cvss_vector,
+                "review_date": row.review_date.isoformat() if row.review_date else None}
+        bad = {field: (None if have[field] is None else str(have[field]), stored[field]) for field in have
+               if stored.get(field) is not None and (None if have[field] is None else str(have[field])) != stored[field]}
+        sources = finding.get("vector_sources")
+        if sources is not None:
+            if row.vector_source != ("md" if sources["markdown"] else ("sarif" if sources["sarif"] else None)):
+                bad["vector_source"] = (row.vector_source, sources)
+            if ("input:cvss_vector:sources-disagree" in row.flags) != bool(sources["markdown"] and sources["sarif"] and sources["markdown"] != sources["sarif"]):
+                bad["sources-disagree"] = (list(row.flags), sources)
+        outside = [flag for flag in row.flags if not CLOSED_FLAGS.fullmatch(flag)]
+        if outside:
+            bad["flags"] = outside
+        if bad:
+            wrong[finding_id] = bad
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", RULE_CASES)
+def test_rules_the_vector_check_of_each_carried_finding_decides_at_the_step_the_outcomes_name(case):
+    """D10 (R-25, R-9, R-7, R-10's score half) at the fixture's scale: the step that decides, the one flag it raises on the CVSS score,
+    and the score it gives, for every carried finding of every scenario, under this run's tags for the finding's component."""
+    top, doc, scores = baseline_of(case)
+    wrong, checked = {}, 0
+    for finding_id, finding in doc["findings"].items():
+        if finding["treatment"] != "carried":
+            continue
+        checked += 1
+        check = rules.check_carried_vector(scores.rows[canon(finding_id)], tags=tags_of(top, finding))
+        want = {flag["flag"] for flag in finding["flags"] if flag["field"] == "cvss_base" and flag["basis"] != "optional"}
+        got = {check.flag} - {None}
+        rendered = None if check.cvss_base is None else str(check.cvss_base)
+        if str(check.step) != str(finding["d10_step"]) or got != want or rendered != finding["rendered"]["cvss_base"]:
+            wrong[finding_id] = {"step": check.step, "want step": finding["d10_step"], "flag": sorted(got), "want": sorted(want), "score": rendered,
+                                 "want score": finding["rendered"]["cvss_base"]}
+    assert checked
+    assert not wrong, brief(wrong)
+
+
+@pytest.mark.parametrize("case", RETAG_SCENARIOS)
+def test_rules_the_tag_source_selector_picks_the_source_the_outcomes_name(case, populator):
+    top = read_outcomes(case)
+    folder = LARGE_ARCH / case
+    text = (folder / "run" / "threats.md").read_text(encoding="utf-8")
+    open_rows = tachi_parsers.parse_reference_set(text)["open"]
+    architecture = top["run"].get("architecture")
+    recomputed = (rules.recompute_tags((folder / architecture).read_text(encoding="utf-8"), open_rows, populator.match_component)
+                  if architecture else None)
+    chosen = rules.select_tag_source(open_ids=[row["id"] for row in open_rows], block=sc.parse_affected_assets(text), recomputed=recomputed)
+    want = top["tag_source"]
+    assert chosen.source == want["source"], chosen
+    if want["source"] != "block-unverified":  # reading: the same open ruling as in test_s13_*: D2 records it as unverified, the outcomes also warn
+        assert bool(chosen.warning) == want["warning"], chosen
+    for row in open_rows:
+        assert tuple(chosen.tags[canon(row["id"])]) == tuple(sorted(want["tags"].get(row["component"], ()))), row["id"]
+
+
+# =============================================================================
+# 27. The closed vocabulary, on what the renderer emits (module-signatures.md, "The scorer's flag vocabulary, closed")
+# =============================================================================
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_vocabulary_every_flag_the_renderer_emits_is_in_the_closed_vocabulary(scenarios, case):
+    r = scenarios(case)
+    open_string = split_case(case)[0] in S12B_OPEN  # reading: the one open string, an ``input:`` flag for a value the input's form lacks (S-12(b))
+
+    def outside(flags):
+        return sorted(flag for flag in flags if not CLOSED_FLAGS.fullmatch(flag) and not (open_string and re.fullmatch(r"input:[a-z_.]+:[a-z0-9-]+", flag)))
+
+    wrong = {finding_id: outside(flags) for finding_id, flags in r.all_emitted().items() if outside(flags)}
+    in_table, _rows = score_flag_rows(r.md)
+    wrong.update({"Section 6, %s" % key: outside(flags) for key, flags in in_table.items() if outside(flags)})
+    assert not wrong, brief(wrong)
