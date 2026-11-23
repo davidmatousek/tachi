@@ -10,19 +10,22 @@ isn't, never from an agent's reply (ADR-050 D3, D4, D6; ``contracts/cli.md``).
     python3 scripts/tachi-stage.py plan      --stage S --out DIR --date YYYY-MM-DD --threats FILE [...]
     python3 scripts/tachi-stage.py reconcile --stage S --out DIR --plan ID --plan-digest HEX
     python3 scripts/tachi-stage.py fail      --stage S --out DIR --plan ID --plan-digest HEX --reason R [--detail TEXT]
+    python3 scripts/tachi-stage.py architecture-source --threats FILE --architecture PATH
 
 Each command prints one JSON object on stdout and errors on stderr, in D4's four-line form (``TACHI <STAGE>
 FAILED``, the batch or agent, ``Remedy:``, ``Kept for diagnosis:``). The exit codes are D4's:
 
     0 done           1 an input is missing or unreadable      2 a validation, usage or guard failure
     3 batches pending (``reconcile`` only)                    4 a cap or the retry budget is exhausted
+    5 done, with a warning (``architecture-source`` only, here)
 
 The planner is also a function, :func:`plan_stage`. Batch sizes are constants in ``BATCH_SIZES``, not adopter
 settings, so ``plan_stage``'s ``batch_size`` argument is the one way a test sets a smaller one (D6).
 
-Everything this script writes sits under ``--out``, and every path under it is recomputed from ``--out``, the
+Everything the batch commands write sits under ``--out``, and every path under it is recomputed from ``--out``, the
 stage and allow-listed IDs by ``tachi_parts``' layout builders, never read from a file, except the plan's
-digest-checked ``inputs``. Standard library only, and Python 3.9 syntax.
+digest-checked ``inputs``. ``architecture-source`` is the one other writer: it edits the one ``--threats`` file in
+place. Standard library only, and Python 3.9 syntax.
 """
 from __future__ import annotations
 
@@ -45,6 +48,7 @@ if __name__ == "__main__":  # pragma: no cover  (a process alone shows it: test_
     sys.dont_write_bytecode = True  # no bytecode cache for the local imports below (ADR-049 D8)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import sarif_common as sc  # noqa: E402
 import tachi_parts as tp  # noqa: E402
 from tachi_parsers import ReferenceSetError, parse_reference_set  # noqa: E402
 
@@ -742,6 +746,81 @@ def fail_stage(stage: str, out: Any, plan_id: str, digest: str, reason: str, det
 
 
 # =============================================================================
+# architecture-source (FR-E.18; ADR-050 D7 item 6)
+# =============================================================================
+
+def _edit_architecture_line(text: str, path: Optional[str]) -> tuple:
+    """``threats.md``'s text with its architecture-source lines removed and, given a ``path``, one put back.
+
+    Returns ``(new text, what happened)``: ``added``, ``replaced``, ``removed`` or ``unchanged``. Only the lines that
+    ``sarif_common``'s reader finds count (after the frontmatter, before the first ``## `` heading, outside code
+    fences), so a forged copy inside a fence is neither read nor changed. A removed line takes the one blank line
+    after it, so a line that an earlier run added leaves the text as it was, and a second upsert changes no byte.
+    The new line goes at the region's end, followed by a blank line when a heading follows.
+    """
+    found = sc.find_architecture_source_lines(text)
+    edited = text
+    for start, end, _path in reversed(found):  # from the end, so the earlier offsets stay true
+        for blank in ("\n", "\r\n"):
+            if edited.startswith(blank, end):
+                end += len(blank)
+                break
+        edited = edited[:start] + edited[end:]
+    if path is not None:
+        _begin, stop = sc.architecture_source_region(edited)
+        joiner = "" if stop == 0 or edited[stop - 1] == "\n" else "\n"
+        gap = "\n\n" if stop < len(edited) else "\n"
+        edited = edited[:stop] + joiner + sc.format_architecture_source_line(path) + gap + edited[stop:]
+    if edited == text:
+        return edited, "unchanged"
+    if path is None:
+        return edited, "removed"
+    return edited, "replaced" if found else "added"
+
+
+def architecture_source(threats: Any, candidate: str) -> tuple:
+    """Write, replace or remove the ``**Architecture source**`` line of a ``threats.md``, and return ``(code, printed)``.
+
+    ``candidate`` is the command's own path to the architecture file. The shared resolver checks it (ADR-050 D7) and
+    gives its canonical spelling, which the line carries. This never falls back to the body line or the default
+    constant (ruled at W1): if the resolver refuses the path, any line already in the file is removed, so a line that
+    the orchestrator wrote can't survive, a warning goes to stderr, and the exit code is 5. The run goes on.
+
+    ``threats`` is edited in place, atomically, and only when its text changes. It must be a regular file and not a
+    link, so the edit never detaches a link from its target.
+    """
+    stage = "threat-model"
+    path = os.path.abspath(os.fspath(threats))
+    try:
+        mode = os.lstat(path).st_mode
+    except OSError as exc:
+        raise StageError(1, stage, "cannot read %s (%s)" % (path, exc.strerror or "error"), "check the path and re-run") from None
+    if not stat.S_ISREG(mode):
+        raise StageError(2, stage, "%s is a link or not a regular file, so it is not edited in place" % path, "pass the threats.md itself")
+    _raw, text = _read_threats(stage, path)
+
+    resolved: Optional[str] = None
+    warnings: List[Dict[str, str]] = []
+    try:
+        resolved = sc.resolve_file(candidate, allow_absolute=True).path
+        sc.format_architecture_source_line(resolved)  # a canonical spelling the line can't carry is a failure too
+    except (sc.PathCheckError, ValueError) as exc:
+        check = exc.check if isinstance(exc, sc.PathCheckError) else "unrepresentable"
+        resolved = None
+        warnings.append({"code": "architecture-path:explicit:%s" % check,
+                         "detail": "the --architecture path %s failed the %s check, so no architecture-source line was written "
+                                   "and any existing one was removed. Pass %s with the repo-relative path of the architecture file."
+                                   % (repr(candidate)[:80], check, sc.ARCHITECTURE_FLAG)})
+    edited, action = _edit_architecture_line(text, resolved)
+    if edited != text:
+        try:
+            tp.atomic_write(path, edited)
+        except OSError as exc:
+            raise StageError(1, stage, "cannot write %s (%s)" % (path, exc.strerror or "error"), "check the directory's permissions and re-run") from None
+    return (5 if warnings else 0), {"architecture_source": resolved, "action": action, "warnings": warnings}
+
+
+# =============================================================================
 # The command line
 # =============================================================================
 
@@ -775,6 +854,14 @@ def _run_fail(args: argparse.Namespace) -> int:
     return code
 
 
+def _run_architecture_source(args: argparse.Namespace) -> int:
+    code, printed = architecture_source(args.threats, args.architecture)
+    _emit(printed)
+    for warning in printed["warnings"]:
+        sys.stderr.write("WARNING: %s\n" % warning["detail"])
+    return code
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="tachi-stage.py", description="Plan, reconcile and fail a batched tachi stage (F-374).")
     parser.add_argument("--version", action="version",
@@ -804,6 +891,11 @@ def _build_parser() -> argparse.ArgumentParser:
             command.add_argument("--reason", required=True, choices=sorted(REASONS))
             command.add_argument("--detail", help="at most 500 characters of plain text, such as the agent that failed")
         command.set_defaults(run=run)
+
+    source = commands.add_parser("architecture-source", help="write the threats.md line that names the architecture file")
+    source.add_argument("--threats", required=True, help="the threats.md to edit in place")
+    source.add_argument("--architecture", required=True, help="the command's own path to the architecture file; the shared resolver checks it")
+    source.set_defaults(run=_run_architecture_source)
     return parser
 
 

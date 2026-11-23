@@ -2197,6 +2197,121 @@ def test_architecture_source_with_no_line_and_a_bad_path_changes_nothing(stage, 
     assert threats.read_bytes() == before
 
 
+ARCH_LINE_TEXT = "**Architecture source**: `docs/security/architecture.md`"
+
+
+def test_architecture_source_prints_what_it_did_and_every_warning(stage, cli, repo):
+    """One JSON object: the canonical path it wrote (or null), what it did, and the warnings, each ``{code, detail}``.
+    The warning's code is the resolver's own naming (``architecture-path:explicit:<check>``) and its detail names the flag."""
+    (repo / "docs" / "other").mkdir()
+    (repo / "docs" / "other" / "architecture.md").write_text("# Another\n", encoding="utf-8")
+    steps = [
+        (("docs/security/architecture.md",), 0, "docs/security/architecture.md", "added"),
+        (("docs/security/architecture.md",), 0, "docs/security/architecture.md", "unchanged"),
+        (("docs/other/architecture.md",), 0, "docs/other/architecture.md", "replaced"),
+        (("docs/other/absent.md",), 5, None, "removed"),
+        (("docs/other/absent.md",), 5, None, "unchanged"),
+    ]
+    for (candidate,), code, written, action in steps:
+        res = arch_source(cli, candidate)
+        assert res.code == code, res.describe()
+        printed = res.json
+        assert set(printed) == {"architecture_source", "action", "warnings"}
+        assert (printed["architecture_source"], printed["action"]) == (written, action)
+        assert (printed["warnings"] != []) == (code == 5)
+    warning = printed["warnings"][0]
+    assert warning["code"] == "architecture-path:explicit:missing"
+    assert "'docs/other/absent.md'" in warning["detail"] and "--architecture-path" in warning["detail"]
+    assert warning["detail"] in res.err
+
+
+@pytest.mark.parametrize("kind", ["symlink", "directory"])
+def test_architecture_source_edits_only_a_regular_threats_file(stage, cli, repo, kind):
+    """The edit replaces the file whole, so a link would be detached from its target and a directory can't be edited."""
+    threats = repo / "run" / "threats.md"
+    before = threats.read_bytes()
+    if kind == "symlink":
+        (repo / "run" / "link.md").symlink_to(threats)
+        res = arch_source(cli, threats="run/link.md")
+        assert (repo / "run" / "link.md").is_symlink()
+    else:
+        res = arch_source(cli, threats="run")
+    assert res.code == 2, res.describe()
+    assert re.search(r"^TACHI THREAT-MODEL FAILED: ", res.err, re.M) and "Remedy: " in res.err
+    assert threats.read_bytes() == before
+
+
+def test_architecture_source_refuses_a_threats_file_that_is_not_utf8(stage, cli, repo):
+    (repo / "run" / "threats.md").write_bytes(b"# \xff\xfe not utf-8\n")
+    res = arch_source(cli)
+    assert res.code == 2 and "UTF-8" in res.err, res.describe()
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("", ARCH_LINE_TEXT + "\n"),
+    ("# Title\n", "# Title\n" + ARCH_LINE_TEXT + "\n"),
+    ("# Title", "# Title\n" + ARCH_LINE_TEXT + "\n"),
+    ("---\nk: v\n---\n## 1. A\n", "---\nk: v\n---\n" + ARCH_LINE_TEXT + "\n\n## 1. A\n"),
+    ("# Title\n\n## 1. A\n", "# Title\n\n" + ARCH_LINE_TEXT + "\n\n## 1. A\n"),
+    ("~~~\n## fake\n~~~\n## 1. A\n", "~~~\n## fake\n~~~\n" + ARCH_LINE_TEXT + "\n\n## 1. A\n"),
+    ("# T\n\n    ## code, not a heading\n\n## 1. A\n", "# T\n\n    ## code, not a heading\n\n" + ARCH_LINE_TEXT + "\n\n## 1. A\n"),
+], ids=["empty", "no-heading", "no-final-newline", "frontmatter-then-heading", "no-frontmatter", "tilde-fence", "indented-code"])
+def test_architecture_source_places_the_line_in_files_of_every_shape(stage, cli, repo, text, expected):
+    """D7 item 6: one line between the frontmatter and the first ``## `` heading, outside code fences. A second run
+    changes no byte."""
+    threats = repo / "run" / "threats.md"
+    threats.write_text(text, encoding="utf-8")
+    assert arch_source(cli).code == 0
+    assert threats.read_text(encoding="utf-8") == expected
+    assert arch_source(cli).json["action"] == "unchanged"
+    assert threats.read_text(encoding="utf-8") == expected
+
+
+def test_a_line_that_an_earlier_run_added_comes_out_whole(stage, cli, repo):
+    """The removal takes the blank line the insert added, so insert and then a refusal give back the original bytes."""
+    threats = repo / "run" / "threats.md"
+    original = threats.read_bytes()
+    assert arch_source(cli).code == 0 and threats.read_bytes() != original
+    assert arch_source(cli, "docs/security/absent.md").code == 5
+    assert threats.read_bytes() == original
+
+
+def test_architecture_source_removes_a_stale_line_from_a_file_with_crlf_endings(stage, cli, repo):
+    threats = repo / "run" / "threats.md"
+    threats.write_bytes(b"---\r\nk: v\r\n---\r\n\r\n**Architecture source**: `docs/old.md`\r\n\r\n## 1. A\r\n")
+    assert arch_source(cli, "docs/security/absent.md").code == 5
+    assert threats.read_bytes() == b"---\r\nk: v\r\n---\r\n\r\n## 1. A\r\n"
+
+
+def test_architecture_source_never_falls_back_to_the_default_path_or_the_body_line(stage, cli, repo):
+    """Ruled at W1: it writes from the command's own path only. ``docs/security/architecture.md`` exists, and so does a
+    line naming it, yet a refused path writes nothing and removes the line."""
+    assert arch_source(cli).code == 0 and real_lines((repo / "run" / "threats.md").read_text(encoding="utf-8"))
+    res = arch_source(cli, "docs/security/not-there.md")
+    assert res.code == 5 and res.json["architecture_source"] is None
+    assert real_lines((repo / "run" / "threats.md").read_text(encoding="utf-8")) == []
+
+
+def test_architecture_source_treats_a_canonical_spelling_the_line_cannot_carry_as_a_refusal(stage, cli, repo, monkeypatch):
+    def cannot_carry(_path):
+        raise ValueError("a synthetic problem")
+
+    monkeypatch.setattr(stage.sc, "format_architecture_source_line", cannot_carry)
+    res = arch_source(cli)
+    assert res.code == 5 and res.json["warnings"][0]["code"] == "architecture-path:explicit:unrepresentable", res.describe()
+    assert real_lines((repo / "run" / "threats.md").read_text(encoding="utf-8")) == []
+
+
+@pytest.mark.skipif(not hasattr(os, "geteuid") or os.geteuid() == 0, reason="needs an ordinary user: root ignores permission bits")
+def test_architecture_source_exits_1_when_it_cannot_write_beside_the_file(stage, cli, repo):
+    (repo / "run").chmod(0o500)
+    try:
+        res = arch_source(cli)
+    finally:
+        (repo / "run").chmod(0o755)
+    assert res.code == 1 and "cannot write" in res.err, res.describe()
+
+
 def test_architecture_source_exits_1_for_a_missing_threats_file(stage, cli, repo):
     res = arch_source(cli, threats="run/absent.md")
     assert res.code == 1, res.describe()
