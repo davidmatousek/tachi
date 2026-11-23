@@ -84,8 +84,10 @@ Finding IDs follow the pattern `{PREFIX}-{N}` where PREFIX indicates the threat 
 | I | Information Disclosure | tachi-info-disclosure |
 | D | Denial of Service | tachi-denial-of-service |
 | E | Elevation of Privilege | tachi-privilege-escalation |
-| AG | Agentic Threats | tachi-agent-autonomy, tachi-tool-abuse |
-| LLM | LLM Threats | tachi-prompt-injection, tachi-data-poisoning, tachi-model-theft |
+| AG | Agentic Threats | tachi-agent-autonomy, tachi-tool-abuse, tachi-human-trust-exploitation |
+| LLM | LLM Threats | tachi-prompt-injection, tachi-data-poisoning, tachi-model-theft, tachi-output-integrity, tachi-misinformation |
+
+The agent names above are a projection of the canonical roster in `.claude/skills/tachi-shared/references/agent-roster-shared.md`. Each is the typed `subagent_type` that dispatches the agent, and the roster governs if the two differ.
 
 ### ID Rules
 
@@ -200,8 +202,13 @@ Each threat agent owns a single prefix from the ID Prefix Table. Producers assig
 | tachi-prompt-injection | llm | LLM |
 | tachi-data-poisoning | llm | LLM |
 | tachi-model-theft | llm | LLM |
+| tachi-output-integrity | llm | OI |
+| tachi-misinformation | llm | MI |
 | tachi-tool-abuse | agentic | AG |
 | tachi-agent-autonomy | agentic | AG |
+| tachi-human-trust-exploitation | agentic | TE |
+
+This table is a projection of the canonical roster in `.claude/skills/tachi-shared/references/agent-roster-shared.md`, which also records how Phase 3 folds `OI`, `MI` and `TE` into the `LLM` and `AG` tables.
 
 ### Field Construction Guidance
 
