@@ -785,6 +785,7 @@ Each decision names its track. PR 1 rests only on decisions tagged S (the cut li
     - **The member set** is the SARIF's results, by `findingId/v1`, plus any legacy peer references in `relatedLocations`. A legacy reference is an allow-listed ID at the start of `message.text`, followed by `: ` (`sarif-specification.md:209`). Each one is grouped under its result.
     - **Dropped:** results whose `baselineState` or `baseline-state` property is `absent`. Correlation properties supply groups where present.
     - **An empty extraction** stops the run before dispatch (KB 22; S-12(c)'s path).
+    - **The legacy member form (W1, 2026-11-22, T023).** A result with no `findingId/v1` takes its member ID from `properties.id`, the form tachi's older SARIF writes. It must pass the finding allow-list. Any other form still stops the run, with the regenerate remedy (`contracts/module-signatures.md`).
     - **Hashes** are recomputed (D7), never read.
   - **SV-3's trigger doesn't fire.**
     - Each key is a function of the file's constants, the finding's own ID, and the chain's architecture path.
@@ -1205,6 +1206,12 @@ Each decision names its track. PR 1 rests only on decisions tagged S (the cut li
   | `threat-report.md`; `finding.yaml` (1.9); `output.yaml` | unchanged | — | D11 and D14 add no field to them. `output.yaml` stays untouched (C-4) |
   | `tachi.part/1`, `tachi.overflow/1`, `tachi.batch-input/1`, `tachi.plan/1`, `tachi.plan-pointer/1`, `tachi.stage-record/1` | 1 | 1 (S) | `contracts/part-files.md`; `tachi_parts.py` is the authority |
   | D11's and D13's files, and the checks' hand-off files | 1 | 2 | The same rule: `tachi.dispatch-record/1`, `tachi.brief/1`, `tachi.idmap/1`, `tachi.phase1-inventory/1`, `tachi.phase1-dispatch/1`, `tachi.chains/1`, `tachi.chain-narratives/1` and `tachi.check-handoff/1`, which `close` and `fail` strict-load (D4; RR5). The merged tree manifest keeps its own schema 1.0 key |
+
+  **`risk-scores.md` 1.1's §2a when it would be empty (W1, 2026-11-22, T023).** It is omitted, as the 1.1 template says, so a file with no Section 4c finding keeps 1.0's layout. tachi's other conditional sections, such as `threats.md`'s 4c on a first run and the controls' empty bands, are omitted the same way. No reader depends on the heading:
+  - §2's reader stops at the first table;
+  - `parse_markdown_table(…, "## 2a. Resolved Findings")` returns `[]` without it;
+  - R-26's tolerant reader reads its absence as no RESOLVED rows;
+  - no extractor reads §2a.
 
   **The rule.**
   - Every JSON file names `schema: "tachi.<kind>/<major>"`.

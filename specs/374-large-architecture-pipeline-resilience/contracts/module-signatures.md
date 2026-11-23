@@ -279,12 +279,18 @@ def parse_controls_assessment_inputs(content: str) -> dict: ...
     - Any rule it re-applies must give the same result on the same input, and one test runs the same edge cases through both: a member in two groups, and a first group that falls away.
   - A row whose group ID fails `tachi_parts`' group pattern, or whose members fail its finding pattern, goes to `errors`.
   - A missing or empty Section 4a gives `{"groups": [], "errors": []}`.
+  - **A repeated group ID (confirmed from T048).** A later row with an earlier row's group ID is a malformed row: it goes to `errors` (Input Issues), the first row wins, and the repeat claims none of its members. That keeps one primary per group, which the emitter's self-check needs.
 - **`parse_sarif_member_set` (T142, D8's fallback)** returns `{"members": [...], "groups": [...], "scores": {...}}`.
   - `members` are canonical IDs in result order, from `findingId/v1`, plus legacy peer references. A legacy reference is an allow-listed ID at the start of a `relatedLocations` entry's `message.text`, followed by `: `, and each one is grouped under its result.
   - `groups` take the shape `parse_correlation_groups` returns. `group_id` comes from the `correlation-group` property, and is `None` where the file names none.
   - `scores` is filled only with `with_scores=True`, for `risk-scores.sarif`: `{id: {"composite": Decimal or None, "band": str or None}}`, read across the property names the shipped files use.
   - Results whose `baselineState` or `baseline-state` property is `absent` are dropped, and no hash is ever read.
   - It raises `ValueError` on JSON that doesn't parse and on an empty extraction, so the stage stops before dispatch (KB 22).
+  - **The legacy member form (ruled at W1, from T142).** A result with no `findingId/v1` takes its member ID from `properties.id`. This is a closed legacy form: tachi's own older SARIF writes it, and four shipped samples carry it (Constitution III; S-12's principle).
+    - `findingId/v1` wins whenever both are present.
+    - The value must pass the finding allow-list, and a result whose value fails it is skipped.
+    - Any other form still makes an empty extraction, whose error names the file and the remedy: regenerate the markdown input with its command.
+    - **Lane P lands it now, as a T142 follow-up in W2.** The four shipped samples are its read-only test inputs.
 - **`parse_controls_assessment_inputs` (T143, AR-T3)** returns `{"inputs": {id: item}, "errors": [...]}`.
   - Each item is the controls payload as `contracts/part-files.md` keys it, without `finding_id`, decoded. Narrative values keep their slot tokens, and evidence-class values come back as written.
   - A pre-1.1 file, which has no `### Assessment Inputs`, gives `{"inputs": {}, "errors": []}`.
