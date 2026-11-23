@@ -64,6 +64,20 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
       preimage_path(out, stage, plan_id, name)         <plan dir>/preimage/<name>
       staged_path(out, stage, plan_id, name)           <plan dir>/staged/<name>
       failed_path(out, stage, plan_id, name)           <plan dir>/failed/<name>
+
+**Step 11, slots, escaping and the file guards (T013, slice 2):**
+
+* ``SLOT_TABLE`` (stage -> kind -> arguments), ``narrative_problem(text, stage)`` and ``FALLBACK_SENTENCES``, with
+  ``narrative_fallback(field)``: step 11. A narrative field that breaks the slot grammar or the numeral ban takes
+  its fixed sentence and is flagged ``input:<field>:narrative-fallback``; the part is never rejected for it.
+  ``FLAG_FIELDS`` are the 28 names a flag's ``<field>`` can take (the first 24 are ``NARRATIVE_FIELDS``).
+* ``resolve_narrative(text, stage, lookup, sink="cell")``: fills the slots from ``lookup(kind, argument)``, escapes
+  the result, and returns ``None`` when the text or a slot doesn't resolve.
+* ``ESCAPE_REFERENCES`` (the closed set that ``tachi_parsers`` decodes), ``escape_cell(text, keep_slots=False)``,
+  ``escape_prose(text, keep_slots=False)`` and ``fence_for(snippet)``. SARIF strings go through ``json.dumps`` only.
+* ``expected_file_problem(path, base, names=None)``: KB 24's guard for a path that a file names.
+  ``evidence_path_problem(file, target)``: F16's check of an evidence ``file`` against the target directory.
+* ``MAX_UNDECLARED_PATHS`` (1,000): the most ``undeclared_paths`` a stage record keeps.
 """
 from __future__ import annotations
 
@@ -295,6 +309,9 @@ MAX_INT_DIGITS = 20
 MAX_STRING_CHARS = 16384
 MAX_SNAPSHOT_ENTRIES = 20000
 MAX_IDS = 500
+# A stage record keeps at most this many `undeclared_paths`, sorted. Past it the writer adds the warning
+# `undeclared-paths-truncated`, whose detail carries the full count (ruled at W1, T023).
+MAX_UNDECLARED_PATHS = 1000
 
 
 # =============================================================================
@@ -324,6 +341,24 @@ def under(base: object, path: object) -> bool:
         current = parent
 
 
+def _walk_problem(base: str, names: List[str]) -> Optional[str]:
+    """Walk ``names`` down from ``base`` with ``lstat``, never following a link.
+
+    ``None`` when every component exists, none is a symlink and the last is a regular file. Otherwise
+    ``missing``, ``symlink`` or ``not-regular``. ``base`` itself may be a link; only what is below it may not.
+    """
+    walk, mode = base, 0
+    for name in names:
+        walk = os.path.join(walk, name)
+        try:
+            mode = os.lstat(walk).st_mode
+        except OSError:
+            return "missing"
+        if stat.S_ISLNK(mode):
+            return "symlink"
+    return None if names and stat.S_ISREG(mode) else "not-regular"
+
+
 def path_guard_problem(path: object, out: object) -> Optional[str]:
     """ADR-050 D3 step 1: ``None`` when ``path`` is a regular file under ``out`` with no symlink below it.
 
@@ -343,16 +378,39 @@ def path_guard_problem(path: object, out: object) -> Optional[str]:
             current = parent
     except OSError:
         return "outside"
-    walk, mode = out, 0
-    for name in reversed(names):
-        walk = os.path.join(walk, name)
-        try:
-            mode = os.lstat(walk).st_mode
-        except OSError:
-            return "missing"
-        if stat.S_ISLNK(mode):
-            return "symlink"
-    return None if names and stat.S_ISREG(mode) else "not-regular"
+    return _walk_problem(out, list(reversed(names)))
+
+
+def expected_file_problem(path: object, base: object, names: Any = None) -> Optional[str]:
+    """KB 24 and NFR-10, for a path that a file names (``baseline.source``, ``source_file``, the architecture path).
+
+    ``None`` when ``path`` passes D7's syntactic rule (absolute allowed, so no control byte, backslash, backtick or
+    ``..``), is a regular file under ``base`` by identity with no symlink below it (a relative path means the
+    working directory), and, when ``names`` is given, has one of those base names. Otherwise the first problem:
+    ``path_problem``'s names, then ``outside``, ``missing``, ``symlink``, ``not-regular`` or ``unexpected-name``.
+    """
+    text = os.fspath(path)
+    problem = path_problem(text, allow_absolute=True)
+    if problem is None:
+        problem = path_guard_problem(text, base)
+    if problem is None and names is not None and os.path.basename(text) not in names:
+        problem = "unexpected-name"
+    return problem
+
+
+def evidence_path_problem(file: object, target: object) -> Optional[str]:
+    """F16: an evidence ``file`` value against the target directory, by the resolver's checks (ADR-050 D7).
+
+    D7's relative-path rule first (``path_problem``: no scheme, leading ``/``, backslash, drive letter or ``..``),
+    then a walk down from ``target`` without following a link: every component exists, none is a symlink, and the
+    last is a regular file. ``None`` when it passes, else the problem's name (``missing``, ``symlink``,
+    ``not-regular`` or one of ``path_problem``'s). The part validator applies only the first step, because the
+    target's files are not its input; the controls renderer applies both.
+    """
+    problem = path_problem(file)
+    if problem is not None:
+        return problem
+    return _walk_problem(os.path.abspath(os.fspath(target)), list(path_parts(file)))
 
 
 # =============================================================================
@@ -480,6 +538,255 @@ def load_json(path: object, out: object, max_bytes: int = MAX_PART_BYTES) -> Dic
 
 
 # =============================================================================
+# Step 11 and the output rules (T013, slice 2): slots, the numeral ban, the fixed sentences, escaping
+# =============================================================================
+
+# The 28 names of a flag's `<field>`: the 24 narrative fields, which serve `input:<field>:narrative-fallback`,
+# and four evidence-class prose fields. All 28 serve `input:<field>:truncated` (contracts/part-files.md).
+FLAG_FIELDS: Tuple[str, ...] = NARRATIVE_FIELDS + ("evidence.snippet", "evidence.summary", "matrix_row", "recommendation_body")
+
+# Slots (ADR-050 D3's table; part-file-contract-shared.md, "Slots in use"): stage -> kind -> the arguments that
+# stage accepts. `None` marks an argument checked another way: a finding ID by its allow-list, and a taxonomy
+# ID by the slot's argument pattern and then the caller's lookup.
+SLOT_TABLE: Dict[str, Dict[str, Optional[frozenset]]] = {
+    "risk-score": {
+        "score": frozenset(("cvss_base", "exploitability", "scalability", "reachability", "composite") + SUBSCORE_NAMES),
+        "count": frozenset(("auth_barriers", "network_boundaries")),
+        "band": frozenset(("severity",)),
+        "date": frozenset(("scored", "review")),
+        "finding": None,
+        "ref": None,
+        "name": frozenset(("component", "zone")),
+    },
+    "compensating-controls": {
+        "score": frozenset(("inherent", "residual")),
+        "count": frozenset(("evidence",)),
+        "band": frozenset(("inherent", "residual")),
+        "pct": frozenset(("reduction",)),
+        "finding": None,
+        "ref": None,
+        "name": frozenset(("component",)),
+    },
+}
+
+# A slot is recognized only as `{{`, a kind, then `:`. Every kind that any stage will ever have is listed, so a
+# kind that this stage doesn't accept (a slot reserved for a later stage) fails the grammar instead of passing as text.
+_SLOT_OPEN = re.compile(r"\{\{(score|count|band|pct|date|finding|ref|name):")
+_SLOT_ARG = re.compile(r"[A-Za-z0-9_.:-]{1,64}", re.ASCII)
+
+FALLBACK_SENTENCES: Dict[str, str] = {
+    "rationale.cvss":
+        "No CVSS rationale is shown because the text the agent wrote broke the narrative rules.",
+    "rationale.exploitability":
+        "No exploitability rationale is shown because the text the agent wrote broke the narrative rules.",
+    "rationale.scalability":
+        "No scalability rationale is shown because the text the agent wrote broke the narrative rules.",
+    "rationale.reachability":
+        "No reachability rationale is shown because the text the agent wrote broke the narrative rules.",
+    "metric_rationale.AV":
+        "No attack vector metric rationale is shown because the text the agent wrote broke the narrative rules.",
+    "metric_rationale.AC":
+        "No attack complexity metric rationale is shown because the text the agent wrote broke the narrative rules.",
+    "metric_rationale.PR":
+        "No privileges required metric rationale is shown because the text the agent wrote broke the narrative rules.",
+    "metric_rationale.UI":
+        "No user interaction metric rationale is shown because the text the agent wrote broke the narrative rules.",
+    "metric_rationale.S":
+        "No scope metric rationale is shown because the text the agent wrote broke the narrative rules.",
+    "metric_rationale.C":
+        "No confidentiality impact metric rationale is shown because the text the agent wrote broke the narrative rules.",
+    "metric_rationale.I":
+        "No integrity impact metric rationale is shown because the text the agent wrote broke the narrative rules.",
+    "metric_rationale.A":
+        "No availability impact metric rationale is shown because the text the agent wrote broke the narrative rules.",
+    "subscore_rationale.known_techniques":
+        "No known techniques sub-score rationale is shown because the text the agent wrote broke the narrative rules.",
+    "subscore_rationale.attack_complexity":
+        "No attack complexity sub-score rationale is shown because the text the agent wrote broke the narrative rules.",
+    "subscore_rationale.tooling_availability":
+        "No tooling availability sub-score rationale is shown because the text the agent wrote broke the narrative rules.",
+    "subscore_rationale.skill_level":
+        "No skill level sub-score rationale is shown because the text the agent wrote broke the narrative rules.",
+    "subscore_rationale.scriptability":
+        "No scriptability sub-score rationale is shown because the text the agent wrote broke the narrative rules.",
+    "subscore_rationale.target_scope":
+        "No target scope sub-score rationale is shown because the text the agent wrote broke the narrative rules.",
+    "subscore_rationale.resource_requirements":
+        "No resource requirements sub-score rationale is shown because the text the agent wrote broke the narrative rules.",
+    "subscore_rationale.detection_difficulty":
+        "No detection difficulty sub-score rationale is shown because the text the agent wrote broke the narrative rules.",
+    "evidence.assessment.coverage":
+        "No coverage assessment rationale is shown because the text the agent wrote broke the narrative rules.",
+    "evidence.assessment.configuration":
+        "No configuration assessment rationale is shown because the text the agent wrote broke the narrative rules.",
+    "evidence.assessment.currency":
+        "No currency assessment rationale is shown because the text the agent wrote broke the narrative rules.",
+    "evidence.assessment.completeness":
+        "No completeness assessment rationale is shown because the text the agent wrote broke the narrative rules.",
+}
+
+ESCAPE_REFERENCES: Dict[str, str] = {
+    "&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#"}
+_REFERENCE_OF = {char: reference for reference, char in ESCAPE_REFERENCES.items()}
+_CELL_TRANSLATION = {ord(char): _REFERENCE_OF[char] for char in "&<>|`\n"}
+_PROSE_TRANSLATION = {ord(char): _REFERENCE_OF[char] for char in "&<>|`"}
+_BRACE_OF_A_PAIR = re.compile(r"\{(?=\{)|(?<=\{)\{")
+_HEADING_START = re.compile(r"(?m)^([ \t]*)#")
+
+
+def _tokens(text: str, stage: str) -> List[Tuple[str, ...]]:
+    """Split a narrative into ``("text", plain)`` and ``("slot", kind, argument)`` tokens.
+
+    Raises ``ValueError`` naming the first problem: ``slot-syntax`` (an unterminated slot, or an argument outside
+    its pattern), ``slot-kind`` (a kind this stage doesn't have), ``slot-argument`` (an argument this stage's table
+    doesn't give that kind, or a finding slot that isn't an allow-listed ID) or ``numeral``.
+    """
+    table = SLOT_TABLE[stage]
+    tokens: List[Tuple[str, ...]] = []
+    position = 0
+    while True:
+        opener = _SLOT_OPEN.search(text, position)
+        if opener is None:
+            break
+        argument = _SLOT_ARG.match(text, opener.end())
+        if argument is None or text[argument.end():argument.end() + 2] != "}}":
+            raise ValueError("slot-syntax")
+        kind, name = opener.group(1), argument.group(0)
+        if kind not in table:
+            raise ValueError("slot-kind")
+        allowed = table[kind]
+        if (allowed is not None and name not in allowed) or (kind == "finding" and not id_matches("finding", name)):
+            raise ValueError("slot-argument")
+        if opener.start() > position:
+            tokens.append(("text", text[position:opener.start()]))
+        tokens.append(("slot", kind, name))
+        position = argument.end() + 2
+    if position < len(text):
+        tokens.append(("text", text[position:]))
+    for token in tokens:
+        if token[0] == "text" and any(char.isnumeric() for char in token[1]):
+            raise ValueError("numeral")
+    return tokens
+
+
+def narrative_problem(text: str, stage: str) -> Optional[str]:
+    """Step 11's check: ``None`` when ``text`` follows the stage's slot grammar and holds no numeral outside a slot.
+
+    Otherwise the first problem's name (see ``_tokens``). "No numeral" means no character for which
+    ``str.isnumeric()`` is true, so every Unicode numeral is out as well as ``0`` to ``9``. A number word such as
+    "two-factor" passes. Raises ``KeyError`` for a stage with no slot table.
+    """
+    if not isinstance(text, str):
+        return "type"
+    try:
+        _tokens(text, stage)
+    except ValueError as exc:
+        return str(exc)
+    return None
+
+
+def narrative_fallback(field: str) -> str:
+    """The fixed sentence for one of the 24 narrative fields (``FALLBACK_SENTENCES``). ``KeyError`` for any other name."""
+    if not isinstance(field, str) or field not in FALLBACK_SENTENCES:
+        raise KeyError(field)
+    return FALLBACK_SENTENCES[field]
+
+
+def _escape_text(text: str, cell: bool) -> str:
+    translated = text.translate(_CELL_TRANSLATION if cell else _PROSE_TRANSLATION)
+    return _BRACE_OF_A_PAIR.sub(_REFERENCE_OF["{"], translated)
+
+
+def _split_slots(text: str) -> List[Tuple[bool, str]]:
+    """Cut ``text`` into ``(is_slot, piece)`` at each complete slot (a recognized opener, an argument and ``}}``)."""
+    pieces: List[Tuple[bool, str]] = []
+    plain_from = position = 0
+    while True:
+        opener = _SLOT_OPEN.search(text, position)
+        if opener is None:
+            break
+        argument = _SLOT_ARG.match(text, opener.end())
+        if argument is None or text[argument.end():argument.end() + 2] != "}}":
+            position = opener.start() + 1
+            continue
+        if opener.start() > plain_from:
+            pieces.append((False, text[plain_from:opener.start()]))
+        plain_from = position = argument.end() + 2
+        pieces.append((True, text[opener.start():plain_from]))
+    if plain_from < len(text):
+        pieces.append((False, text[plain_from:]))
+    return pieces
+
+
+def _escape(text: str, keep_slots: bool, cell: bool) -> str:
+    if not keep_slots:
+        return _escape_text(text, cell)
+    return "".join(piece if is_slot else _escape_text(piece, cell) for is_slot, piece in _split_slots(text))
+
+
+def _guard_headings(text: str) -> str:
+    return _HEADING_START.sub(lambda match: match.group(1) + _REFERENCE_OF["#"], text)
+
+
+def escape_cell(text: str, keep_slots: bool = False) -> str:
+    """Escape untrusted text for a markdown table cell (ADR-050 D3, "Output"), with the closed ``ESCAPE_REFERENCES``.
+
+    ``&``, ``<``, ``>``, ``|`` and a backtick become references, each ``{`` of a ``{{`` becomes ``&#123;`` and a
+    newline becomes ``&#10;``. With ``keep_slots`` a complete slot stays as it is, for the narrative text that a
+    renderer persists with its slots (carried text, RR1). The one decoder in ``tachi_parsers`` reverses exactly these.
+    """
+    return _escape(text, keep_slots, True)
+
+
+def escape_prose(text: str, keep_slots: bool = False) -> str:
+    """Escape untrusted text for prose: the cell rules, but line breaks stay and no line starts with ``#`` or ``|``.
+
+    A line that would start with ``#`` (after any spaces or tabs) starts with ``&#35;`` instead, and a ``|`` is
+    always ``&#124;``, so agent text can neither forge a heading nor a table row.
+    """
+    return _guard_headings(_escape(text, keep_slots, False))
+
+
+def fence_for(snippet: str) -> str:
+    """A code fence of backticks, at least three and longer than the longest backtick run in ``snippet``."""
+    return "`" * max(3, max((len(run) for run in re.findall(r"`+", snippet)), default=0) + 1)
+
+
+def resolve_narrative(text: str, stage: str, lookup: Any, sink: str = "cell") -> Optional[str]:
+    """Fill a narrative's slots from ``lookup(kind, argument)`` and escape the result for ``sink``.
+
+    ``sink`` is ``cell`` (a table cell, the default) or ``prose``. Returns ``None``, and the caller writes the
+    field's fixed sentence, when the text breaks the grammar or the numeral ban or when a slot doesn't resolve
+    (the lookup returned ``None``). A finding slot is canonicalized before it is looked up. A lookup that returns
+    anything but text or ``None`` is a bug and raises ``TypeError``. Every resolved value is untrusted text: it is
+    escaped, and never read for slots again.
+    """
+    if sink not in ("cell", "prose"):
+        raise ValueError("sink is cell or prose")
+    if not isinstance(text, str):
+        return None
+    try:
+        tokens = _tokens(text, stage)
+    except ValueError:
+        return None
+    cell = sink == "cell"
+    pieces = []
+    for token in tokens:
+        if token[0] == "text":
+            pieces.append(_escape_text(token[1], cell))
+            continue
+        kind, name = token[1], token[2]
+        value = lookup(kind, canonical_finding_id(name) if kind == "finding" else name)
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise TypeError("a slot lookup returns text or None")
+        pieces.append(_escape_text(value, cell))
+    result = "".join(pieces)
+    return result if cell else _guard_headings(result)
+
+
+# =============================================================================
 # Steps 5 to 10: classifying a part
 # =============================================================================
 
@@ -503,7 +810,8 @@ class PartResult:
 class _ItemState(object):
     """The flags and counts that validating one item collects."""
 
-    def __init__(self) -> None:
+    def __init__(self, stage: str) -> None:
+        self.stage = stage
         self.flags: set = set()
         self.fallbacks = 0
         self.truncations = 0
@@ -551,11 +859,16 @@ def _enum(value: Any, allowed: Tuple[str, ...], what: str) -> str:
 
 
 def _narrative(text: str, field: str, state: _ItemState) -> str:
-    """Step 11, the narrative check, is T013's: the slot grammar, the numeral ban and the per-field fallback.
+    """Step 11: a narrative field that breaks the slot grammar or the numeral ban takes its fixed sentence.
 
-    Until it lands, a narrative field is kept as written (after step 9's cut and step 10's characters).
+    The field is flagged ``input:<field>:narrative-fallback`` and counted, and the part is never rejected for it.
+    A field that passes is kept with its slots as written.
     """
-    return text
+    if narrative_problem(text, state.stage) is None:
+        return text
+    state.flags.add("input:%s:narrative-fallback" % field)
+    state.fallbacks += 1
+    return FALLBACK_SENTENCES[field]
 
 
 def _prose(value: Any, limit: int, field: str, state: _ItemState, narrative: bool = False,
@@ -714,7 +1027,7 @@ def _classify(obj: Any, plan_id: Any, batch_id: Any, stage: Any, agent_type: Any
     for key in planned:
         item = copy.deepcopy(by_id[key])
         item["finding_id"] = key
-        state = _ItemState()
+        state = _ItemState(stage)
         _PAYLOADS[stage](item, state)
         if state.flags:
             flags[key] = sorted(state.flags)
@@ -853,8 +1166,8 @@ def validate_plan(obj: Any) -> Dict[str, Any]:
     if obj["batch_size"] is not None:
         _int(obj["batch_size"], 1, MAX_IDS, "batch_size")
     _int(obj["unit_count"], 0, 1000000, "unit_count")
-    if not isinstance(obj["preimage"], dict) or not set(obj["preimage"]) <= set(CANONICAL_OUTPUTS[obj["stage"]]):
-        _fail("preimage names a file outside the stage's canonical outputs")
+    if not isinstance(obj["preimage"], dict) or set(obj["preimage"]) != set(CANONICAL_OUTPUTS[obj["stage"]]):
+        _fail("preimage does not name exactly the stage's canonical outputs")
     for name, digest in obj["preimage"].items():
         if digest is not None:
             _stamp(digest, _HEX64, "preimage.%s" % name)
@@ -950,7 +1263,7 @@ def validate_stage_record(obj: Any) -> Dict[str, Any]:
     for name in KEY_SETS["stage-batches"][0]:
         _int(obj["batches"][name], 0, 1000000, "batches.%s" % name)
     for field, limit in (("overflow_events", 10000), ("retries", 10000), ("warnings", 1000),
-                         ("undeclared_paths", 10000), ("outputs", 100)):
+                         ("undeclared_paths", MAX_UNDECLARED_PATHS), ("outputs", 100)):
         if not isinstance(obj[field], list) or len(obj[field]) > limit:
             _fail("%s is not a list of at most %d entries" % (field, limit))
     for event in obj["overflow_events"]:

@@ -1707,6 +1707,10 @@ PLAN_VIOLATIONS = {
     "unit count negative": setter(("unit_count",), -1), "unit count float": setter(("unit_count",), 1.5),
     "preimage digest bad": setter(("preimage", "risk-scores.md"), "xyz"),
     "preimage name with a dot-dot": setter(("preimage",), {"../x": None}),
+    "preimage missing a canonical output": setter(("preimage",), {"risk-scores.md": None}),
+    "preimage with another stage's output": setter(("preimage",), {"risk-scores.md": None, "risk-scores.sarif": None,
+                                                                   "compensating-controls.md": None}),
+    "preimage empty": setter(("preimage",), {}),
     "snapshot entry short": setter(("out_snapshot", "threats.md"), [1]),
     "snapshot entry long": setter(("out_snapshot", "threats.md"), [1, 2, 3]),
     "snapshot entry text": setter(("out_snapshot", "threats.md"), ["a", 1]),
@@ -1871,6 +1875,7 @@ STAGE_RECORD_VIOLATIONS = {
     "warning detail with a control character": setter(("warnings", 0, "detail"), "a\x00b"),
     "warning unknown key": setter(("warnings", 0, "level"), "high"),
     "undeclared path with a dot-dot": setter(("undeclared_paths",), ["../x"]),
+    "undeclared paths over 1000": setter(("undeclared_paths",), ["f%d.py" % n for n in range(1001)]),
     "undeclared path absolute": setter(("undeclared_paths",), ["/etc/x"]),
     "output digest bad": setter(("outputs", 0, "sha256"), "zz"),
     "output path with a dot-dot": setter(("outputs", 0, "path"), "../x"),
@@ -2148,3 +2153,190 @@ def test_the_module_docstring_names_every_builder_and_every_io_helper():
     for name in LAYOUT_NAMES + ["atomic_write", "sha256_hex", "file_digest", "input_digest", "stamp_comment", "read_stamp",
                                 "VERSION", "BUILD_DIR", "PLAN_SUBDIRS"]:
         assert name in doc, name
+
+
+# =============================================================================
+# 17. Slice 2's extras: KB 24's guard for a path read from a file, F16's walk for an evidence path,
+#     the resolver's edges and the fixed sentences
+# =============================================================================
+
+def test_a_path_read_from_a_file_must_be_a_regular_file_inside_base_with_an_expected_name(tmp_path, monkeypatch):
+    problem = _api("expected_file_problem")
+    base = tmp_path / "proj"
+    (base / "run").mkdir(parents=True)
+    good = base / "run" / "threats.md"
+    good.write_text("x", encoding="utf-8")
+    assert problem(good, base) is None
+    assert problem(str(good), str(base), ("threats.md",)) is None
+    assert problem(good, base, {"threats.md", "risk-scores.md"}) is None
+    assert problem(good, base, ["risk-scores.md"]) == "unexpected-name"
+    assert problem(base / "run" / "absent.md", base) == "missing"
+    other = tmp_path / "other.md"
+    other.write_text("x", encoding="utf-8")
+    assert problem(other, base) == "outside"
+    (base / "run" / "linked.md").symlink_to(good)
+    assert problem(base / "run" / "linked.md", base) == "symlink"
+    (base / "alias").symlink_to(base / "run")
+    assert problem(base / "alias" / "threats.md", base) == "symlink"
+    (base / "run" / "dir.md").mkdir()
+    assert problem(base / "run" / "dir.md", base) == "not-regular"
+    monkeypatch.chdir(base)
+    assert problem("run/threats.md", base) is None                      # a relative path means the working directory
+    alias = tmp_path / "base-alias"
+    alias.symlink_to(base)
+    assert problem(good, alias) is None                                  # a spelling of the same base
+
+
+@pytest.mark.parametrize("raw,reason", [
+    ("run/thr\nats.md", "control-char"), ("run/thr\tats.md", "control-char"), ("run\\threats.md", "backslash"),
+    ("run/`threats`.md", "backtick"), ("run/../run/threats.md", "parent-reference"), ("", "empty"),
+    ("a" * 5000, "too-long"), ("https://example.test/threats.md", "scheme"),
+])
+def test_a_path_read_from_a_file_is_checked_for_delimiter_bytes_before_the_filesystem(tmp_path, raw, reason):
+    base = tmp_path / "proj"
+    base.mkdir()
+    assert _api("expected_file_problem")(raw, base) == reason
+
+
+def test_an_evidence_file_is_walked_down_from_the_target_without_following_a_link(tmp_path):
+    problem = _api("evidence_path_problem")
+    target = tmp_path / "target"
+    (target / "src" / "auth").mkdir(parents=True)
+    (target / "src" / "auth" / "login.py").write_text("x", encoding="utf-8")
+    outside = tmp_path / "secret.txt"
+    outside.write_text("x", encoding="utf-8")
+    (target / "src" / "escape.py").symlink_to(outside)
+    (target / "leak").symlink_to(tmp_path)
+    assert problem("src/auth/login.py", target) is None
+    assert problem("./src//auth/login.py", target) is None
+    assert problem("src/auth/absent.py", target) == "missing"
+    assert problem("absent/dir/file.py", target) == "missing"
+    assert problem("src/auth", target) == "not-regular"
+    assert problem("src/", target) == "not-regular"
+    assert problem("src/escape.py", target) == "symlink"
+    assert problem("leak/secret.txt", target) == "symlink"
+    assert problem("src/auth/login.py/extra", target) in ("missing", "not-regular")
+    alias = tmp_path / "target-alias"
+    alias.symlink_to(target)
+    assert problem("src/auth/login.py", alias) is None                   # the target may be a link; what is below it may not
+
+
+@pytest.mark.parametrize("raw,reason", [
+    ("../secret.txt", "parent-reference"), ("src/../../secret.txt", "parent-reference"), ("/etc/passwd", "leading-slash"),
+    ("a\\b.py", "backslash"), ("C:/Windows/x", "drive-letter"), ("https://example.test/x", "scheme"),
+    ("src/a\nb.py", "control-char"), ("src/`x`.py", "backtick"), ("", "empty"), (".", "empty"),
+])
+def test_an_evidence_file_that_breaks_d7s_rule_never_reaches_the_filesystem(tmp_path, raw, reason):
+    assert _api("evidence_path_problem")(raw, tmp_path) == reason
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs POSIX named pipes")
+def test_an_evidence_file_that_is_a_named_pipe_is_not_a_regular_file(tmp_path):
+    os.mkfifo(str(tmp_path / "pipe"))
+    assert _api("evidence_path_problem")("pipe", tmp_path) == "not-regular"
+
+
+def test_the_resolver_canonicalizes_a_finding_id_before_it_asks_the_lookup():
+    asked = []
+
+    def lookup(kind, arg):
+        asked.append((kind, arg))
+        return arg
+
+    out = _api("resolve_narrative")("Related to {{finding:AGP-01}} and {{finding:S-1}}.", SCORER_STAGE, lookup)
+    assert out == "Related to AGP-1 and S-1."
+    assert asked == [("finding", "AGP-1"), ("finding", "S-1")]
+
+
+def test_a_finding_slot_names_an_allow_listed_id_or_the_field_falls_back():
+    problem = _api("narrative_problem")
+    assert problem("See {{finding:T-9}}.", SCORER_STAGE) is None
+    for bad in ("{{finding:foo}}", "{{finding:S-1\u0661}}", "{{finding:S-}}", "{{finding:s-1}}"):
+        assert problem(bad, SCORER_STAGE) is not None, bad
+
+
+def test_a_lookup_that_returns_something_other_than_text_or_none_is_a_bug_that_fails_loudly():
+    with pytest.raises(TypeError):
+        _api("resolve_narrative")("Base {{score:cvss_base}}.", SCORER_STAGE, lambda kind, arg: 7.5)
+
+
+def test_the_prose_sink_keeps_line_breaks_and_guards_a_line_that_a_value_would_turn_into_a_heading():
+    lookup = lookup_from({("name", "component"): "# Evil | <b>"})
+    text = "First line.\n# Second line.\n{{name:component}} sits here."
+    prose = _api("resolve_narrative")(text, SCORER_STAGE, lookup, sink="prose")
+    assert prose == "First line.\n&#35; Second line.\n&#35; Evil &#124; &lt;b&gt; sits here."
+    cell = _api("resolve_narrative")(text, SCORER_STAGE, lookup)
+    assert cell == "First line.&#10;# Second line.&#10;# Evil &#124; &lt;b&gt; sits here."
+    with pytest.raises(ValueError):
+        _api("resolve_narrative")(text, SCORER_STAGE, lookup, sink="sarif")
+
+
+def test_the_fixed_sentences_are_one_per_flag_field_and_follow_t006s_shape():
+    sentences = _api("FALLBACK_SENTENCES")
+    assert list(sentences) == NARRATIVE_FIELDS
+    assert len(set(sentences.values())) == 24
+    for field, sentence in sentences.items():
+        assert re.fullmatch(r"No [A-Za-z -]+ is shown because the text the agent wrote broke the narrative rules\.", sentence), field
+        assert _api("narrative_fallback")(field) == sentence
+        assert _api("narrative_problem")(sentence, SCORER_STAGE) is None
+        assert _api("narrative_problem")(sentence, CONTROLS_STAGE) is None
+
+
+def test_the_module_docstring_names_slice_twos_api():
+    for name in ("SLOT_TABLE", "narrative_problem", "narrative_fallback", "FALLBACK_SENTENCES", "resolve_narrative",
+                 "ESCAPE_REFERENCES", "escape_cell", "escape_prose", "fence_for", "expected_file_problem",
+                 "evidence_path_problem"):
+        assert name in tachi_parts.__doc__, name
+
+
+# =============================================================================
+# 18. The architect's rulings (T023, commit cc45993) folded into slice 2
+# =============================================================================
+
+def test_a_stage_record_keeps_at_most_1000_undeclared_paths_and_may_carry_the_truncation_warning():
+    record = valid_stage_record()
+    record["undeclared_paths"] = ["gen-%04d.py" % n for n in range(1000)]
+    record["warnings"] = [{"code": "undeclared-paths-truncated", "detail": "1523 undeclared paths; 1000 are listed"}]
+    assert _api("validate_stage_record")(record) is record
+    record["undeclared_paths"].append("one-more.py")
+    raises_invalid(_api("validate_stage_record"), record)
+
+
+def test_a_plan_records_a_pre_image_for_every_canonical_output_of_its_stage_and_for_nothing_else():
+    plan = valid_plan()
+    assert set(plan["preimage"]) == set(_api("CANONICAL_OUTPUTS")["risk-score"])
+    assert _api("validate_plan")(plan) is plan
+    controls = dict(valid_plan(), stage="compensating-controls", agent_type="tachi-control-analyzer",
+                    preimage={"compensating-controls.md": HEX, "compensating-controls.sarif": None})
+    assert _api("validate_plan")(controls) is controls
+    controls["preimage"] = {"risk-scores.md": None, "risk-scores.sarif": None}
+    raises_invalid(_api("validate_plan"), controls)
+
+
+def test_the_flag_fields_are_the_28_names_of_the_contract():
+    fields = list(_api("FLAG_FIELDS"))
+    assert fields == NARRATIVE_FIELDS + ["evidence.snippet", "evidence.summary", "matrix_row", "recommendation_body"]
+    assert len(set(fields)) == 28
+    assert {case[3] for case in truncation_cases()} <= set(fields)
+
+
+def test_prose_of_any_length_is_cut_and_flagged_even_above_the_16384_character_string_limit():
+    result = classify(with_text(SCORER, ("rationale", "cvss"), "a" * 20000), ids=("S-1",))
+    assert result.state == "done", result.detail
+    assert result.part["items"][0]["rationale"]["cvss"] == "a" * 400
+    assert result.flags["S-1"] == ["input:rationale.cvss:truncated"]
+
+
+@pytest.mark.parametrize("stage", [SCORER_STAGE, CONTROLS_STAGE])
+@pytest.mark.parametrize("slot", ["{{count:members}}", "{{count:layers}}", "{{count:converging}}", "{{count:open}}",
+                                  "{{count:resolved}}", "{{count:Critical}}", "{{pct:Critical}}", "{{name:component:S-1}}"])
+def test_the_slots_reserved_for_later_stages_are_not_accepted_yet(stage, slot):
+    assert _api("narrative_problem")("Held in %s." % slot, stage) is not None
+
+
+def test_a_cut_inside_a_slot_token_is_flagged_both_truncated_and_narrative_fallback_and_never_rejects():
+    text = "x" * 388 + "{{score:cvss_base}}"   # the cut at 400 leaves "{{score:cvss", an unterminated slot
+    result = classify(with_text(SCORER, ("rationale", "cvss"), text), ids=("S-1",))
+    assert result.state == "done"
+    assert sorted(result.flags["S-1"]) == ["input:rationale.cvss:narrative-fallback", "input:rationale.cvss:truncated"]
+    assert result.counts == {"narrative_fallbacks": 1, "truncations": 1}
