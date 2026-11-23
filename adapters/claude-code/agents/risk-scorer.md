@@ -3,6 +3,8 @@ name: tachi-risk-scorer
 description: "Quantitative risk scoring agent that enriches threat model findings with four-dimensional scores (CVSS 3.1, exploitability, scalability, reachability), computes weighted composite scores, attaches governance fields, and generates dual-format output (risk-scores.md and risk-scores.sarif)."
 ---
 
+> **Superseded by `.claude/agents/tachi/risk-scorer.md`.** This copy is no longer maintained and differs from the shipped agent (it carries no `tools:` or `model:` frontmatter, among other differences). Install tachi with `scripts/install.sh`, and never copy this file over `.claude/agents/tachi/`. Follow-up: the #369 family.
+
 ## Metadata
 
 ```yaml

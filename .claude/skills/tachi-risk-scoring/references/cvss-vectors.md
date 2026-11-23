@@ -8,11 +8,13 @@ version: 1.0.0
 
 CVSS 3.1 base vector mappings, metric assessment guidance, AI-specific refinements, and category default vectors for the risk scoring pipeline.
 
+The risk-scorer agent assesses a vector for each finding and writes it as `cvss_vector`. The shipped renderer (`scripts/render-risk-scores.py`, over `scripts/tachi_scoring.py`) does the arithmetic: it computes the base score from that vector, applies the bound and the asset-sensitivity elevation, and records the final `cvss_base`. This reference documents both halves, and marks which is which.
+
 ---
 
 ## Scoring Methodology
 
-Assign a CVSS 3.1 base score and full vector string to each parsed finding. The score reflects the inherent severity of the vulnerability described in the threat, independent of environmental context (which is captured by the reachability dimension).
+Assess a CVSS 3.1 vector for each finding in the batch. The vector reflects the inherent severity of the vulnerability described in the threat, independent of environmental context (which is captured by the reachability dimension). The score that follows from it is the renderer's.
 
 **Step 1 -- Load category default vector**: Look up the finding's `category` in the `category_defaults` section of `schemas/risk-scoring.yaml`. This provides a baseline CVSS 3.1 vector string for the threat category.
 
@@ -29,11 +31,12 @@ Assign a CVSS 3.1 base score and full vector string to each parsed finding. The 
 | Integrity | I | N (None), L (Low), H (High) | How much data can the attacker modify? Full control = High; limited fields = Low |
 | Availability | A | N (None), L (Low), H (High) | How much service disruption? Complete outage = High; degraded performance = Low |
 
-**Step 3 -- Compute CVSS 3.1 base score**: Calculate the base score from the refined vector using the CVSS 3.1 specification formulas. The score must be a value between 0.0 and 10.0, rounded to one decimal place.
+**Step 3 -- Compute CVSS 3.1 base score (the renderer)**: The renderer calculates the base score from the refined vector with the CVSS 3.1 specification's equations and its Roundup function (`tachi_scoring.base_score`). The score is a value between 0.0 and 10.0, rounded to one decimal place. The agent doesn't compute it.
 
-**Step 4 -- Record outputs**: For each finding, store:
-- `cvss_base`: The numeric base score (0.0-10.0)
+**Step 4 -- Record outputs**: The agent records, for each finding:
 - `cvss_vector`: The full vector string (e.g., `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H`)
+
+The renderer records `cvss_base`, the numeric score (0.0-10.0) after the bound and the elevation below, and the vector the score came from. A part that carries a `cvss_base` key is rejected, because the key set is closed.
 
 ---
 
@@ -77,12 +80,12 @@ These defaults from `schemas/risk-scoring.yaml` serve as baselines. Per-threat r
 
 ## Bounded Scoring for NEW Findings (Baseline Mode)
 
-When a finding has `delta_status: NEW` (discovered in Phase 2 of a baseline-aware run), its CVSS base score must fall within ±1.0 of the category default CVSS base score defined in `schemas/risk-scoring.yaml` → `category_defaults`.
+When a finding has `delta_status: NEW` (discovered in Phase 2 of a baseline-aware run), the renderer holds its CVSS base score within ±1.0 of the category default CVSS base score defined in `schemas/risk-scoring.yaml` → `category_defaults`. The bound applies to the assessed score, and the vector stays as the agent wrote it.
 
 **Bounding formula**:
 - `min_score = max(0.0, category_default - 1.0)`
 - `max_score = min(10.0, category_default + 1.0)`
-- If the assessed `cvss_base` falls outside `[min_score, max_score]`, clamp it to the nearest bound.
+- If the assessed `cvss_base` falls outside `[min_score, max_score]`, the renderer clamps it to the nearest bound, and records the bound as `score_bounds`.
 
 **Category defaults with bounded ranges**:
 
@@ -94,12 +97,12 @@ When a finding has `delta_status: NEW` (discovered in Phase 2 of a baseline-awar
 | info-disclosure | I | 6.5 | 5.5 – 7.5 |
 | denial-of-service | D | 7.5 | 6.5 – 8.5 |
 | privilege-escalation | E | 9.9 | 8.9 – 10.0 |
-| agentic | AG | 9.9 | 8.9 – 10.0 |
-| llm | LLM | 9.3 | 8.3 – 10.0 |
+| agentic | AG, AGP, TE | 9.9 | 8.9 – 10.0 |
+| llm | LLM, OI, MI | 9.3 | 8.3 – 10.0 |
 
-**Category resolution**: Determine the category from the finding's ID prefix (S→spoofing, T→tampering, R→repudiation, I→info-disclosure, D→denial-of-service, E→privilege-escalation, AG→agentic, LLM→llm). The default CVSS base score is computed from the corresponding default vector in `schemas/risk-scoring.yaml`.
+**Category resolution**: The renderer resolves the category from the finding's ID prefix through `tachi_scoring`'s one prefix resolver (`category_for_prefix`), which covers all 12 prefixes: S→spoofing, T→tampering, R→repudiation, I→info-disclosure, D→denial-of-service, E→privilege-escalation, AG, AGP and TE→agentic, and LLM, OI and MI→llm (ADR-050 D10). The same resolver serves the CVSS defaults and bounds, the controls' STRIDE-to-control mapping and the SARIF rule IDs. The default CVSS base score is computed from the corresponding default vector in `schemas/risk-scoring.yaml`.
 
-**When bounding applies**: Only to `NEW` findings from Phase 2 isolated discovery. `UPDATED` findings are re-scored fresh without bounding (they have established context). `UNCHANGED` and `RESOLVED` findings inherit scores verbatim.
+**When bounding applies**: Only to `NEW` findings from Phase 2 isolated discovery. `UPDATED` findings are re-scored fresh without bounding (they have established context). `UNCHANGED` findings keep their inherited inputs, and the renderer re-checks their stored score against the vector without re-clamping it (a difference is flagged, with its cause). `RESOLVED` findings are carried verbatim and never recomputed.
 
 **When no baseline is present**: Bounding does not apply. All findings are scored using the standard CVSS assessment without constraints.
 

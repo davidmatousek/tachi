@@ -18,13 +18,13 @@ FR-E.17 and spec S-14 require each PR to carry a ledger for the occurrences in i
 | ID | Group | Occurrence at `b040fa1` | Track | PR | Owner | Disposition |
 |----|-------|-------------------------|-------|----|-------|-------------|
 | A1 | SARIF contract copy | `.claude/skills/tachi-orchestration/references/sarif-specification.md`: the identity and membership sections (`:197-280`, `:329-413`, `:570`, `:585`, `:593-624`) | O | 2 | O3, T101 (W3′) | deferred to PR 2. PR 1 leaves the file untouched (T005) |
-| A2 | SARIF contract copy | `.claude/agents/tachi/risk-scorer.md` §10, SARIF output generation (`:454-550`) | R | 1 | lane C, T029 (W2) | pending |
+| A2 | SARIF contract copy | `.claude/agents/tachi/risk-scorer.md` §10, SARIF output generation (`:454-550`) | R | 1 | lane C, T029 (W2) | changed (§10's SARIF authoring is retired. The section points at `sarif-identity-shared.md`, and §10a, §10e and §10h are superseded by it) |
 | A3 | SARIF contract copy | `adapters/claude-code/agents/references/sarif-generation.md`, the installed SARIF guide (the whole file) | R | 1 | lane D (W3), FR-K8.3 | pending |
 | A4 | SARIF contract copy | `.claude/agents/tachi/control-analyzer.md` Phase 6c, SARIF output generation (`:371-397`) | R | 1 | lane D, T037 (W3) | pending |
-| B1 | D-6(a) rewording | `risk-scorer.md:450`, §9h: the two outputs are consistent on "finding count" | R | 1 | lane C, T029 (W2) | pending |
-| B2 | D-6(a) rewording | `risk-scorer.md:456`, §10: "All scored findings MUST appear in the SARIF output" | R | 1 | lane C, T029 (W2) | pending |
-| B3 | D-6(a) rewording | `risk-scorer.md:474`, §10c: "one result object per scored finding" | R | 1 | lane C, T029 (W2) | pending |
-| B4 | D-6(a) rewording | `risk-scorer.md:548`, §10j: the SARIF is consistent with the markdown on "finding count" | R | 1 | lane C, T029 (W2) | pending |
+| B1 | D-6(a) rewording | `risk-scorer.md:450`, §9h: the two outputs are consistent on "finding count" | R | 1 | lane C, T029 (W2) | changed (reworded in §9's "Consistency" paragraph: each file holds one entry for each open finding) |
+| B2 | D-6(a) rewording | `risk-scorer.md:456`, §10: "All scored findings MUST appear in the SARIF output" | R | 1 | lane C, T029 (W2) | changed (reworded in §10's first paragraph: one result for each open finding) |
+| B3 | D-6(a) rewording | `risk-scorer.md:474`, §10c: "one result object per scored finding" | R | 1 | lane C, T029 (W2) | changed (reworded in §10's "Results" bullet: each result is one open finding, correlated peers included) |
+| B4 | D-6(a) rewording | `risk-scorer.md:548`, §10j: the SARIF is consistent with the markdown on "finding count" | R | 1 | lane C, T029 (W2) | changed (reworded in §10's "Consistency with the markdown" bullet: both files count the same open findings) |
 | B5 | D-6(a) rewording | `control-analyzer.md:345`, Phase 6: the two files are consistent on "finding count" | R | 1 | lane D, T037 (W3) | pending |
 | B6 | D-6(a) rewording | `control-analyzer.md:394`, §6c check 5: "Result count matches Phase 1 finding count" | R | 1 | lane D, T037 (W3) | pending |
 | B7 | D-6(a) rewording | `control-analyzer.md:402`, §6d check 1: "Coverage Matrix entries MUST equal SARIF result count" | R | 1 | lane D, T037 (W3) | pending |
@@ -35,7 +35,7 @@ FR-E.17 and spec S-14 require each PR to carry a ledger for the occurrences in i
 | C5 | Platform-neutral clause | `.claude/agents/tachi/report-assembler.md:52` | S | 1 | O1, T009 (W1) | changed (rewritten) |
 | C6 | Platform-neutral clause | `.claude/agents/tachi/threat-infographic.md:99` | S | 1 | O1, T009 (W1) | changed (rewritten) |
 
-**Tally.** PR 1 owes 16 dispositions: 6 Track S (C1–C6) and 10 Track R (A2–A4, B1–B7). PR 2 owes 1 (A1). At the end of W1, 6 are recorded (C1–C6), 1 is deferred (A1) and 10 are pending.
+**Tally.** PR 1 owes 16 dispositions: 6 Track S (C1–C6) and 10 Track R (A2–A4, B1–B7). PR 2 owes 1 (A1). At the end of W1, 6 were recorded (C1–C6), 1 was deferred (A1) and 10 were pending. At the end of W2, lane C has recorded A2 and B1–B4, so 11 are recorded, 1 is deferred and 5 are pending (A3, A4 and B5–B7, with note row N1).
 
 ## Note row (outside the 17)
 
@@ -60,3 +60,20 @@ All six clauses read: "You are platform-neutral. You do not reference any specif
 
 - **Adapter copies (R-17, FR-C.1).** The Claude Code adapter copies of the specs edited in W1 (`orchestrator.md`, `threat-report.md` and `threat-infographic.md`) carry a superseded-by header and no ported text. The adapter copies of `orchestrator.md`, `risk-scorer.md` and `threat-infographic.md` hold the same clause, and R-17 leaves it in place by design. The `risk-scorer` copy's header comes with T030. The follow-up issue in the #369 family is filed at T080.
 - **Other adapters.** The Copilot, Cursor and generic adapters also carry the clause. NG10 leaves them out of scope, and they aren't census rows.
+
+## The five lane C rows: what each one became (recorded at W2, T029 and T030)
+
+`risk-scorer.md` is judgment-only. It writes one part per batch under the part contract, and the renderer writes both output files. Its SARIF section now holds no authoring instruction.
+
+| ID | What the new text says |
+|----|------------------------|
+| A2 | §10 reads "SARIF Output (risk-scores.sarif)". It states that the agent writes no SARIF, and points at `sarif-identity-shared.md` (T005) for the tools and categories, the rule IDs, the hash, the URI, membership and correlation. §10a (tool driver), §10e (fingerprints) and §10h (correlation) are superseded by that reference and carry no text of their own. R-33's case at `:462` is fixed: the tool names are `tachi-risk-scorer` and, for `threats.sarif`, `Tachi` with a capital T |
+| B1 | §9's "Consistency" paragraph: the two files agree on every value, and each holds one entry for each open finding, which the renderer checks before it replaces a canonical file |
+| B2 | §10's first paragraph: the renderer writes `risk-scores.sarif` with one result for each open finding |
+| B3 | §10's "Results" bullet: each result is one open finding, correlated peers included, and a RESOLVED finding has none |
+| B4 | §10's "Consistency with the markdown" bullet: the SARIF agrees with `risk-scores.md` on every value, and both files count the same open findings |
+
+Two lines of the old §10g.1 are not census rows, and are recorded here so that none is lost:
+
+- **F-302's `:528`** ("Provenance only — does NOT affect scoring") is reworded per ADR-050 D2 and now stands in §3.5: `affected_assets` lists the tags the asset-modifier step used for this finding. Emitting it changes no score; only the modifier step does, and it reads the same tags from the same source.
+- **`:519`'s copy-verbatim line** is retired. The agent no longer writes `affected_assets`, so there is nothing to copy. The same instruction retired from `/tachi.risk-score` (`:83-90` and `:135-140`), where the command's new Step 1.5 states the one tag source instead.

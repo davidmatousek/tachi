@@ -59,17 +59,31 @@ Single-command entry point for tachi threat modeling. Validates prerequisites, i
 
 ## Step 1: Validate Prerequisites
 
-1. **Check tachi agents are installed**:
-   - Verify `.claude/agents/tachi/orchestrator.md` exists
-   - If missing, display:
+1. **Check tachi agents and scripts are installed**:
+   - Verify `.claude/agents/tachi/orchestrator.md` and `scripts/tachi-stage.py` exist
+   - If either is missing, display:
      ```
      TACHI NOT INSTALLED
+     Missing: {path of the first missing file}
      Re-run the installer from this project's root: <tachi-repo>/scripts/install.sh
      See: https://github.com/davidmatousek/tachi
      ```
    - Halt if missing.
 
-2. **Check architecture file exists**:
+2. **Check Python 3.9 or later is present** (the presence check). Run:
+
+   ```bash
+   python3 scripts/tachi-stage.py --version
+   ```
+
+   - Exit code 0 means Python 3.9 or later is present. Continue.
+   - Any other result stops the run. That covers a missing `python3`, and exit code 2, which is the script refusing to run below the 3.9 floor. Display, with the Python version the script reported, or `none`:
+     ```
+     PYTHON 3.9+ NOT FOUND — tachi renders this stage with Python 3.9 or later (found: {version, or none}); install it and re-run
+     ```
+   - This command makes no plan, so there is nothing to fail: stop here and dispatch nothing.
+
+3. **Check architecture file exists**:
    - Verify the architecture file path resolves to an existing file
    - If missing, display:
      ```
@@ -80,7 +94,7 @@ Single-command entry point for tachi threat modeling. Validates prerequisites, i
      ```
    - Halt if missing.
 
-3. **Check output directory**:
+4. **Check output directory**:
    - Create `output_dir` if it does not exist
    - If `version_tag` is set and the version directory already exists, warn:
      ```
@@ -192,6 +206,27 @@ python3 scripts/populate-affected-assets.py \
 > before scoring). This keeps the deterministic populator the single value
 > authority across `threats.md` and every SARIF surface (plan AD-1; NFR-3).
 
+## Step 2.7: Write the Architecture Source Line
+
+`/tachi.risk-score` and `/tachi.compensating-controls` put one architecture file in the location of every SARIF alert they write, and they read its path from `threats.md` (FR-E.18, ADR-050 D7). This step writes that path. It runs after Step 2.5, so the populator's block is already in place, and before Step 3.
+
+1. Run the shipped upsert with this command's own architecture path, the `{architecture_path}` that Step 0 resolved, and never the snapshot in `{output_dir}`:
+
+```bash
+python3 scripts/tachi-stage.py architecture-source --threats {output_dir}/threats.md --architecture {architecture_path}
+```
+
+2. It writes one `**Architecture source**` line into `threats.md`, between the frontmatter and the first `## ` heading, naming the path in its canonical repo-relative spelling. When the path fails its checks, it removes any such line already in the file, including one the orchestrator wrote, and prints a warning. A second run changes no byte.
+
+3. Route by the exit code:
+
+   | Exit | What to do |
+   |------|------------|
+   | 0 | Continue to Step 3 |
+   | 5 | The carrier warning is on stderr. Print it and continue to Step 3: the run goes on, and the scorer commands warn and fall back to `docs/security/architecture.md` |
+   | 1 | Stop and print the error |
+   | 2 | Stop and print the error. This command makes no plan, so there is nothing to fail |
+
 ## Step 3: Report Results
 
 Display summary (output_dir now includes the timestamped subfolder):
@@ -225,7 +260,7 @@ Next steps:
 
 ## Usage Examples
 
-```bash
+```text
 # Minimal — uses defaults
 /threat-model
 
@@ -242,9 +277,11 @@ Next steps:
 ## Quality Checklist
 
 - [ ] Tachi agents installed in `.claude/agents/tachi/` (14 files + templates/)
+- [ ] Python 3.9 or later present (the presence check passed)
 - [ ] Architecture file exists and contains identifiable components + data flows
 - [ ] Output directory created and writable
 - [ ] All output files generated (threats.md, threats.sarif, threat-report.md, attack-trees/)
+- [ ] `threats.md` carries one `**Architecture source**` line, or the run printed the carrier warning (Step 2.7)
 - [ ] Finding IDs follow format: S-N, T-N, R-N, I-N, D-N, E-N, AG-N, LLM-N
 - [ ] Coverage matrix includes all components from architecture input
 - [ ] Risk levels follow OWASP 3x3 matrix (Critical, High, Medium, Low, Note)

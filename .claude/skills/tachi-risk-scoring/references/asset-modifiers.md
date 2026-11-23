@@ -12,11 +12,11 @@ Apply optional CVSS impact-bit floors to a finding based on tags declared on its
 
 ## Where This Sits in the Pipeline
 
-The modifier pass is the final step of Section 3 (CVSS 3.1 Base Scoring), executed **after** the `score_bounds` +/-1.0 clamp from `schemas/risk-scoring.yaml -> category_defaults`:
+The modifier pass is the final step of Section 3 (CVSS 3.1 Base Scoring), executed **after** the `score_bounds` +/-1.0 clamp from `schemas/risk-scoring.yaml -> category_defaults`. The shipped renderer runs it (`scripts/render-risk-scores.py`, with the rules in `scripts/tachi_scoring_rules.py`); the risk-scorer agent assesses its vector as if no tag existed and never applies it:
 
-1. Assess the finding's CVSS vector and base score against the category default.
+1. The agent assesses the finding's CVSS vector, and the renderer computes its base score against the category default.
 2. **Clamp** to `[category_default - 1.0, category_default + 1.0]` for `delta_status: NEW` findings (Phase 2 bounded discovery).
-3. **Apply asset modifiers** (this reference): force impact bits to `H` when the finding's target component carries asset tags; recompute `cvss_base` from the elevated vector; clamp at `modifier_ceiling`.
+3. **Apply asset modifiers** (this reference): force impact bits to `H` when the finding's target component carries asset tags; recompute `cvss_base` from the elevated vector; clamp the recomputed score at `modifier_ceiling`, and keep the larger of that and the assessed score (R-25).
 4. Continue to Section 4 (Exploitability).
 
 The clamp-then-modify order is deliberate. The clamp encodes "what info-disclosure looks like on average for this category." The modifier's purpose is "this isn't average — the target stores PHI." Clamping after the modifier would defeat it; modifying after the clamp lets a high-asset target's CVSS exceed the category default range as intended.
@@ -50,13 +50,13 @@ Modifiers raise impact bits but never lower them. If a category default already 
 
 ## Modifier Ceiling
 
-After bit elevation and CVSS base recomputation, clamp the result at `asset_modifiers.modifier_ceiling` (architect-pinned at `9.2` during PR #262 review, 2026-05-06) so a single tag cannot push a finding to `10.0`. The ceiling pin is defensive: it preserves modifier band-crossing for genuinely-elevated findings while requiring non-CVSS signal for Critical-band entry. The full rationale lives in the schema comment block above `asset_modifiers` in `schemas/risk-scoring.yaml`.
+After bit elevation and CVSS base recomputation, clamp the recomputed score at `asset_modifiers.modifier_ceiling` (architect-pinned at `9.2` during PR #262 review, 2026-05-06) so a single tag cannot push a finding to `10.0`. The ceiling pin is defensive: it preserves modifier band-crossing for genuinely-elevated findings while requiring non-CVSS signal for Critical-band entry. The full rationale lives in the schema comment block above `asset_modifiers` in `schemas/risk-scoring.yaml`.
 
 ```
-cvss_base_after_modifier = min(modifier_ceiling, recompute_cvss(elevated_vector))
+cvss_base_after_modifier = max(assessed_cvss_base, min(modifier_ceiling, recompute_cvss(elevated_vector)))
 ```
 
-The ceiling applies to the modifier-recomputed score only — findings that organically score above the ceiling without modifiers retain their assessed value.
+The ceiling applies to the modifier-recomputed score only, and the `max` is what keeps it so (R-25): a finding that organically scores above the ceiling without modifiers retains its assessed value, and no tag can lower a score.
 
 ## Architecture Tag Syntax
 
@@ -108,10 +108,10 @@ For each scored finding:
 2. **Collect forced bits** by unioning `asset_modifiers.tags[<tag>].forces` across every tag the component carries.
 3. **Elevate the assessed vector** by taking the per-bit max with the forced bits (`H > L > N`).
 4. **Recompute** `cvss_base` from the elevated vector using the standard CVSS 3.1 formula.
-5. **Clamp** at `asset_modifiers.modifier_ceiling`.
-6. **Update** `cvss_vector` to the elevated string and overwrite `cvss_base` with the recomputed score.
+5. **Clamp** the recomputed score at `asset_modifiers.modifier_ceiling`, and keep the larger of it and the assessed score (the formula above).
+6. **Record** the result as the finding's final `cvss_base`.
 
-Record the original (pre-modifier) score in the finding's dimensional breakdown narrative (Section 9d of `risk-scores.md`) so the modifier's effect is auditable.
+The assessed vector and the tags the pass used are persisted in Section 6 (Scoring Inputs) of `risk-scores.md`, so the modifier's effect is auditable and a later run can repeat it.
 
 ## Worked Example
 
@@ -158,21 +158,23 @@ The same sorted enum array appears in three places, byte-equivalent per finding 
 |--------|----------|----------------|------------|
 | IR / schema | `schemas/finding.yaml` | `affected_assets: [pii, phi]` (enum-constrained array, default `[]`) | `affected_assets: []` |
 | `threats.md` | the always-present `## Affected Assets` block, keyed by finding ID, written by the deterministic populator (the value authority) | `S-1: [phi, pii]` | `S-1: []` |
-| SARIF (both `threats.sarif` + `risk-scores.sarif`) | `result.properties.affected_assets` (snake_case key, flat sorted array) — copied verbatim from the `threats.md` block | `"affected_assets": ["phi", "pii"]` | `"affected_assets": []` |
+| SARIF (both `threats.sarif` + `risk-scores.sarif`) | `result.properties.affected_assets` (snake_case key, flat sorted array) — the tags the modifier step used, which are the `threats.md` block's value | `"affected_assets": ["phi", "pii"]` | `"affected_assets": []` |
 
-The `threats.md` block is the deterministic source of truth; both production SARIF surfaces copy that single value verbatim (the production `.sarif` files are LLM-authored, so this equality is test-checked, not structural). The SARIF property key MUST be `affected_assets` (snake_case) in both emitters and MUST NOT collide with the reserved `tags` key.
+The `threats.md` block is the deterministic source of truth. `threats.sarif` copies its value, and the `risk-scores.sarif` renderer writes the same value from the same source (ADR-050 D2): the block when it equals what the architecture file gives, and the architecture file's own tags otherwise, chosen once per run. For `risk-scores.sarif` the equality is therefore structural. The SARIF property key MUST be `affected_assets` (snake_case) in both emitters and MUST NOT collide with the reserved `tags` key.
 
-### Provenance only — no scoring effect (NFR-2)
+### What `affected_assets` records, and what it changes (NFR-2)
 
-Recording `affected_assets` is **provenance only**. It MUST NOT alter `cvss_base`, the composite score, the severity band, or any modifier / `9.2`-ceiling behavior. The CVSS asset-MODIFIER logic (which *does* affect the score) stays in the sections above; this field is the separate, score-neutral record of which assets a finding's component exposes.
+`affected_assets` lists the tags the asset-modifier step used for this finding. Emitting it changes no score; only the modifier step does, and it reads the same tags from the same source (ADR-050 D2). It never alters `cvss_base`, the composite score, the severity band, or any modifier / `9.2`-ceiling behavior. The CVSS asset-MODIFIER logic (which *does* affect the score) stays in the sections above; this field is the record of which assets a finding's component exposes. The renderer writes it, and no agent does.
 
 ## When This Phase Is Skipped
 
-The modifier pass is a no-op (and silently skipped) under any of these conditions:
+The modifier pass is a no-op (and silently skipped) under either of these conditions:
 
 - The architecture description does not contain `[asset:...]` blocks (`component_asset_map` is empty).
 - The finding's component does not appear in `component_asset_map`.
-- The finding has `delta_status: UNCHANGED` or `RESOLVED` — those inherit baseline scores verbatim and never re-enter the dimensional scoring pipeline.
-- The finding has `score_source: inherited` — same reason.
 
-`UPDATED` and `NEW` findings receive modifier treatment.
+A `RESOLVED` finding skips the pass too: its row is carried verbatim from the baseline and never recomputed (R-30).
+
+**An `UNCHANGED` finding is no longer exempt** (ADR-050 D9). Its inputs are inherited from the baseline, and the renderer recomputes its CVSS chain from the inherited vector with this run's tags, so a tag added since the baseline now raises the score. The change is flagged `retagged`, and never `corrected`, when the tags alone explain it, and the review date follows the tag-driven rule in `severity-bands.md`. The first renderer run after an upgrade can therefore raise carried scores, and some of them move up a band.
+
+`NEW`, `UPDATED` and `UNCHANGED` findings receive modifier treatment.

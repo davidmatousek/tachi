@@ -1,15 +1,18 @@
-"""Contract-text tests for F-374, W1 (T010; ADR-050 D16; spec US-4 #5, FR-N4.1, FR-N4.4, FR-E.1, FR-E.3).
+"""Contract-text tests for F-374, W1 and W2 (T010, T029 to T031, T051; ADR-050 D16; spec US-4 #5, FR-N4.1,
+FR-N4.4, FR-E.1, FR-E.3, FR-K6.3, FR-N14.1).
 
 The agent specs, the shared references and the shipped helpers state one contract in three places.
 This module keeps the places in step. It reads text, and it never runs a script, writes a file or
 touches the network. It is the first writer's module (lane O1, W1); later lanes add their sections
-after section 10 and reuse the helpers in sections 1 and 3 to 9: ``text_of``, ``table_after``,
-``fences``, ``command_problems``, ``directive_hits``, ``diff`` and ``Family``.
+after section 12 and reuse the helpers in sections 1 and 3 to 9 and 12: ``text_of``, ``table_after``,
+``fences``, ``command_problems``, ``directive_hits``, ``diff``, ``Family``, ``calls`` and ``routes``.
 
 Inputs (read-only; repository-relative; every one matches an existing ``paths:`` glob of
 ``tachi-install-fidelity.yml``):
 
 - ``.claude/agents/tachi/*.md``: the 21 agent specs, and ``.claude/commands/tachi.*.md``.
+- ``templates/tachi/output-schemas/risk-scores.md`` and ``.sarif``, and the scorer's references under
+  ``.claude/skills/tachi-risk-scoring/references/`` (section 12).
 - ``.claude/skills/tachi-shared/SKILL.md`` and its references ``agent-roster-shared.md``,
   ``sarif-identity-shared.md``, ``part-file-contract-shared.md``, ``finding-format-shared.md``,
   ``stride-categories-shared.md`` and ``dispatch-record-brief-shared.md``.
@@ -46,6 +49,13 @@ What each section proves:
    each narrative slip takes the table's sentence.
 11. The two extraction preflights (report assembler, infographic agent) check the extractor and every
    helper that it imports at load, which is its module-level import closure over ``scripts/``.
+12. W2, lane C. The risk scorer's spec is judgment-only: it loads the part contract, states the check in
+   the reference's words, and its example part passes the validator. ``/tachi.risk-score`` runs the
+   presence check, plans once, dispatches the typed agent with the fixed prompt, waits for completion
+   (ADR-050 D6's dated note), reconciles from disk, renders, and fails through ``tachi-stage.py fail``;
+   each step routes every exit code of its script, and only shipped scripts run. ``/tachi.threat-model``
+   gains its presence check (Step 1) and the architecture-source upsert (Step 2.7) under P-2's anchors.
+   The scorer's template and references document the renderer and agree with the code.
 
 Every comparison parses the reference and compares it with the code, so it fails when either side
 drifts. Each comparison has a negative control that edits one side and expects a mismatch. A parser
@@ -113,8 +123,8 @@ ADAPTER_AGENTS = "adapters/claude-code/agents"
 SIX_SPECS = ("orchestrator", "risk-scorer", "control-analyzer", "threat-report", "report-assembler",
              "threat-infographic")
 DISPATCHING_SPECS = ("orchestrator", "threat-report")
-# The adapter copies that carry R-17's header. T030 adds ``risk-scorer`` with the scorer's rewrite.
-ADAPTER_COPIES_WITH_HEADER = ("orchestrator", "threat-report", "threat-infographic")
+# The adapter copies that carry R-17's header. ``risk-scorer`` came with the scorer's rewrite (T030, W2).
+ADAPTER_COPIES_WITH_HEADER = ("orchestrator", "risk-scorer", "threat-report", "threat-infographic")
 
 # S1: the no-hand-back sentence (US-4 #5). Every spec in SIX_SPECS carries it, in its ``**Contract.**`` paragraph.
 NO_HAND_BACK = ("You return no code: you never hand back a program for your caller to run, "
@@ -1762,3 +1772,523 @@ def test_a_preflight_that_drops_a_helper_is_noticed(stem):
     assert without_check != text and without_listing != text
     assert preflight_files(without_check)[0][0] != expected
     assert preflight_files(without_listing)[1][0] != expected
+
+
+# =============================================================================
+# 12. W2, lane C: the risk scorer, /tachi.risk-score and /tachi.threat-model (T029, T030, T031, T051)
+# =============================================================================
+
+RISK_SCORER_SPEC = "%s/risk-scorer.md" % AGENTS_DIR
+RISK_SCORE_COMMAND = "%s/tachi.risk-score.md" % COMMANDS_DIR
+THREAT_MODEL_COMMAND = "%s/tachi.threat-model.md" % COMMANDS_DIR
+RISK_SCORING_REFERENCES = SKILLS_DIR + "/tachi-risk-scoring/references"
+RISK_SCORES_TEMPLATE = "templates/tachi/output-schemas/risk-scores.md"
+RISK_SCORES_SARIF_TEMPLATE = "templates/tachi/output-schemas/risk-scores.sarif"
+STAGE_SCRIPT = SCRIPTS_DIR / "tachi-stage.py"
+
+# ADR-050 D4's stop message (KB 20, PM finding 7), word for word. A command puts the Python version it found in the braces.
+PYTHON_STOP_MESSAGE = ("PYTHON 3.9+ NOT FOUND \u2014 tachi renders this stage with Python 3.9 or later "
+                       "(found: {version, or none}); install it and re-run")
+
+# ADR-050 D6's dated note (2026-11-22, T023): Claude Code's Agent tool has no foreground option, so a command waits by
+# ending its turn and resuming on each completion notice. These three sentences replace the word "foreground", and the
+# commands carry them word for word.
+COMPLETION_RULE = (
+    "Run `reconcile` only after every agent in the wave has reported completion. "
+    "While an agent you dispatched is still running, don't run the renderer, report a result or end the stage. "
+    "If you end your turn to wait, resume this loop on each completion notice.")
+
+# A script that a W2 text names and that lane R1 writes in the same wave. T047 wires it into INSTALL_MANIFEST.md
+# after the lanes return, so until the script is in the tree, naming it is allowed. Once the file exists, only
+# the manifest makes it shipped, so a wiring commit that forgets the manifest fails here.
+WIRED_BY_T047 = frozenset({"scripts/render-risk-scores.py"})
+
+# The codes each script returns (ADR-050 D4, contracts/cli.md). A command routes every one of them.
+SCRIPT_EXITS = {
+    "version": {"0", "2"},
+    "plan": {"0", "1", "2"},
+    "reconcile": {"0", "1", "2", "3", "4"},
+    "render": {"0", "4", "5", "anything else"},  # 1 and 2 are "anything else": a plan exists, so Step F runs
+    "architecture-source": {"0", "1", "2", "5"},
+}
+
+RISK_SCORE_CALLS = [
+    "python3 scripts/tachi-stage.py --version",
+    "python3 scripts/populate-affected-assets.py --architecture {architecture_path} --threats {input_file}",
+    "python3 scripts/tachi-stage.py plan --stage risk-score --out {output_dir} --date {scoring_date} --threats {input_dir}/threats.md",
+    "python3 scripts/tachi-stage.py reconcile --stage risk-score --out {output_dir} --plan {plan_id} --plan-digest {plan_digest}",
+    "python3 scripts/render-risk-scores.py --out {output_dir} --plan {plan_id} --plan-digest {plan_digest}",
+    "python3 scripts/tachi-stage.py fail --stage risk-score --out {output_dir} --plan {plan_id} --plan-digest {plan_digest} --reason {reason}",
+]
+THREAT_MODEL_CALLS = [
+    "python3 scripts/tachi-stage.py --version",
+    "python3 scripts/populate-affected-assets.py --architecture {output_dir}/architecture.md --threats {output_dir}/threats.md",
+    "python3 scripts/tachi-stage.py architecture-source --threats {output_dir}/threats.md --architecture {architecture_path}",
+]
+
+
+def shipped_or_wired_by_t047() -> Set[str]:
+    """The manifest's scripts, plus a W2 script that is neither in the manifest nor in the tree yet."""
+    return shipped_scripts() | {name for name in WIRED_BY_T047 if not (REPO_ROOT / name).exists()}
+
+
+def calls(text: str) -> List[str]:
+    """The command of every shell fence in ``text``, comments dropped, continuations joined and spaces collapsed."""
+    found: List[str] = []
+    for fence in fences(text):
+        if fence.label.lower() in SHELL_LABELS:
+            lines = [line for line in fence.body.splitlines() if line.strip() and not line.strip().startswith("#")]
+            found.append(" ".join(re.sub(r"\\\n\s*", " ", "\n".join(lines)).split()))
+    return found
+
+
+def routes(text: str, anchor: str, where: str) -> Dict[str, str]:
+    """One step's exit-code table: the code, as written, to what the command does."""
+    table = table_after(text, anchor, where=where)
+    assert table.header[0] == "Exit", "%s: the table after %r is not an exit table: %s" % (where, anchor, table.header)
+    return {row[0]: row[-1] for row in table.rows}
+
+
+def step_of(text: str, anchor: str, where: str) -> str:
+    return section_text(text, anchor, where=where, keep_fences=True)
+
+
+def the_fixed_prompt() -> str:
+    """The one-line dispatch prompt, as the part contract quotes it (ADR-050 D3)."""
+    found = re.findall(r"`(Read and follow the batch input at <input_path>\. Write only the part file it names\.)`",
+                       text_of(PART_CONTRACT))
+    assert len(found) >= 1 and len(set(found)) == 1, "the part contract no longer quotes one fixed prompt: %s" % found
+    return found[0]
+
+
+def stage_reasons() -> Set[str]:
+    """The ``--reason`` values of ``tachi-stage.py fail``: the keys of its ``REASONS`` table."""
+    tree = ast.parse(STAGE_SCRIPT.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "REASONS" for t in node.targets):
+            return {key.value for key in node.value.keys}  # type: ignore[attr-defined]
+    raise ReferenceDrift("tachi-stage.py has no REASONS table")
+
+
+def check_statement(text: str) -> str:
+    """The one line of ``text`` that states the narrative check, which is a blockquote."""
+    lines = [line for line in text.splitlines() if line.startswith("> **No digit outside a slot.**")]
+    assert len(lines) == 1, "expected one check statement, found %d" % len(lines)
+    return lines[0]
+
+
+# --- the helpers, on samples ---------------------------------------------------------------------
+
+
+def test_calls_joins_continuations_drops_comments_and_ignores_other_fences():
+    sample = "```bash\n# note\npython3 scripts/a.py \\\n  --x 1 \\\n  --y 2\n```\n\n```text\nnot a call\n```\n"
+    assert calls(sample) == ["python3 scripts/a.py --x 1 --y 2"]
+
+
+def test_routes_reads_the_exit_table_after_an_anchor():
+    sample = "## Step 9: x\n\n   | Exit | What to do |\n   |------|------------|\n   | 0 | Go on |\n   | anything else | Stop |\n"
+    assert routes(sample, "## Step 9:", "the sample") == {"0": "Go on", "anything else": "Stop"}
+    with pytest.raises(AssertionError):
+        routes("## Step 9: x\n\n| Code | Meaning |\n|---|---|\n| 0 | x |\n", "## Step 9:", "the sample")
+
+
+# --- the presence check (ADR-050 D4, KB 20, PM finding 7) -------------------------------------------
+
+
+@pytest.mark.parametrize("path, no_plan_words", [
+    (RISK_SCORE_COMMAND, "No plan exists yet"),
+    (THREAT_MODEL_COMMAND, "nothing to fail"),
+])
+def test_step_1_runs_the_presence_check_and_stops_below_the_python_floor(path, no_plan_words):
+    step = step_of(text_of(path), "## Step 1:", path)
+    assert "python3 scripts/tachi-stage.py --version" in calls(step)
+    assert PYTHON_STOP_MESSAGE in step
+    assert "exit code 2" in step and "below the 3.9 floor" in step and "`python3`" in step, "Step 1 must route the floor's exit code 2"
+    assert no_plan_words in step, "Step 1 stops before any plan exists, so it runs no fail step"
+    # the check runs before the command dispatches or plans anything
+    text = text_of(path)
+    assert text.index("python3 scripts/tachi-stage.py --version") < min(
+        i for i in (text.find("Agent tool"), text.find("scripts/tachi-stage.py plan"), text.find("`tachi-orchestrator` agent")) if i >= 0)
+
+
+def test_the_script_the_presence_check_runs_prints_its_version_and_enforces_the_floor():
+    source = STAGE_SCRIPT.read_text(encoding="utf-8")
+    assert 'parser.add_argument("--version", action="version"' in source
+    assert source.index("sys.version_info < (3, 9)") < source.index("import argparse"), "the floor is checked before any import"
+    assert "sys.exit(2)" in source[source.index("sys.version_info < (3, 9)"):source.index("import argparse")]
+
+
+# --- /tachi.risk-score (T030) ---------------------------------------------------------------------
+
+
+def test_risk_score_runs_only_the_shipped_scripts_it_names_and_each_fence_is_one_python3_call():
+    text = text_of(RISK_SCORE_COMMAND)
+    allowed = shipped_or_wired_by_t047()
+    assert calls(text) == RISK_SCORE_CALLS
+    for fence in fences(text):
+        if fence.label.lower() in SHELL_LABELS:
+            assert not command_problems(fence.body, allowed), fence.body
+    named = set(re.findall(r"scripts/[A-Za-z0-9_.-]+\.py", text))
+    assert named <= allowed, "the command names a script that isn't shipped: %s" % sorted(named - allowed)
+    assert directive_hits(text) == []
+
+
+def test_risk_score_step_0_adds_the_two_flags_and_no_date_flag():
+    text = text_of(RISK_SCORE_COMMAND)
+    step = step_of(text, "## Step 0:", RISK_SCORE_COMMAND)
+    for flag in ("--output-dir <path>", "--baseline <run-dir>", "--architecture-path <path>"):
+        assert flag in step, flag
+    assert "--date" not in step, "the command exposes no --date flag (PM-T5)"
+    assert text.count("--date") == 1, "the one --date is the planner's, and the command computes the date once"
+    assert "Set `scoring_date` to today's date" in step_of(text, "## Step 2:", RISK_SCORE_COMMAND)
+    assert "the plan's date" in step_of(text, "## Step 2:", RISK_SCORE_COMMAND), "a resumed run uses the plan's date"
+
+
+def test_risk_score_step_1_5_keeps_the_populator_and_retires_the_copy_verbatim_instructions():
+    text = text_of(RISK_SCORE_COMMAND)
+    step = step_of(text, "## Step 1.5:", RISK_SCORE_COMMAND)
+    assert calls(step) == [RISK_SCORE_CALLS[1]]
+    for skip in ("`input_format == sarif`", "`architecture_path == null`", "`--output-dir` names a directory other"):
+        assert skip in step, "Step 1.5 lost a skip rule: %s" % skip
+    lowered = text.lower()
+    for gone in ("verbatim", "author", "copies it as it stands", "affected_assets` value", "single value authority"):
+        assert gone not in lowered, "the command still says %r" % gone
+    assert "one source per run" in step, "Step 1.5 states the one tag source (ADR-050 D2, S-13)"
+
+
+def test_risk_score_plans_once_with_the_command_date_and_the_canonical_threats_path():
+    step = step_of(text_of(RISK_SCORE_COMMAND), "## Step 2:", RISK_SCORE_COMMAND)
+    assert calls(step) == [RISK_SCORE_CALLS[2]]
+    assert "--baseline-dir {baseline_dir}" in step and "--architecture {architecture_flag}" in step
+    assert "and only then" in step, "only the explicit flag may reach --architecture, or a per-run snapshot would set every SARIF URI"
+    assert "`plan` reads `threats.sarif` when `threats.md` is absent" in step, "AR-T2: the SARIF fallback is the planner's"
+
+
+@pytest.mark.parametrize("anchor, script", [("## Step 2:", "plan"), ("## Step 4:", "reconcile"), ("## Step 5:", "render")])
+def test_risk_score_routes_every_exit_code_of_each_script(anchor, script):
+    table = routes(text_of(RISK_SCORE_COMMAND), anchor, RISK_SCORE_COMMAND)
+    assert set(table) == SCRIPT_EXITS[script], "%s routes %s, and the script returns %s" % (anchor, sorted(table), sorted(SCRIPT_EXITS[script]))
+
+
+def test_risk_score_routing_follows_the_exit_table():
+    text = text_of(RISK_SCORE_COMMAND)
+    plan = routes(text, "## Step 2:", RISK_SCORE_COMMAND)
+    assert plan["0"] == "Go to Step 3" and plan["1"].startswith("Stop and print the error")
+    assert plan["2"].startswith("Stop and print the error") and "nothing to fail" in plan["2"], "2 runs fail only once a plan exists"
+    reconcile = routes(text, "## Step 4:", RISK_SCORE_COMMAND)
+    assert reconcile["0"] == "Go to Step 5"
+    assert reconcile["3"].startswith("Dispatch exactly the batches `waves` lists") and "while the exit code is 3" in reconcile["3"]
+    assert reconcile["4"] == "Go to Step F with `--reason unrecoverable-batch`"
+    assert reconcile["2"] == "Go to Step F with `--reason check-failed`"
+    assert reconcile["1"] == "Stop and print the error"
+    render = routes(text, "## Step 5:", RISK_SCORE_COMMAND)
+    assert render["0"] == "Success. Go to Step 6"
+    assert render["5"].startswith("Success with warnings. Print the warnings")
+    assert render["4"] == "A completeness or parity check failed. Go to Step F with `--reason check-failed`"
+    assert render["anything else"] == "Go to Step F with `--reason render-failed`"
+
+
+def test_risk_score_dispatches_the_typed_agent_with_the_fixed_prompt_and_waits_for_completion():
+    text = text_of(RISK_SCORE_COMMAND)
+    step = step_of(text, "## Step 3:", RISK_SCORE_COMMAND)
+    prompts = [f.body for f in fences(step) if "Read and follow" in f.body]
+    assert prompts == [the_fixed_prompt()], "the dispatch prompt is the part contract's one fixed line, and nothing else"
+    assert "`subagent_type` set to `tachi-risk-scorer`" in step
+    assert "tachi-risk-scorer" in roster_names()
+    assert named_tachi_tokens(text) <= roster_names() | skill_directories()
+    assert COMPLETION_RULE in step, "ADR-050 D6's completion rule, word for word"
+    assert "foreground" not in text.lower(), "the Agent tool has no foreground option"
+    assert "Never send more than 16 in one message" in step and "at most 16 batches each" in step_of(text, "## Step 2:", RISK_SCORE_COMMAND)
+    assert "end the run there" in step and "Run no substitute" in step
+    assert "`--reason agent-not-spawned` and `--detail tachi-risk-scorer`" in step
+    # the old prompt, which handed the agent the whole pipeline and the output files, is gone
+    for gone in ("Score the threat model output using your complete scoring pipeline", "Input format:", "Scoring date:",
+                 "Write output files", "Read the input file yourself"):
+        assert gone not in text, gone
+
+
+def test_risk_score_step_f_runs_fail_with_one_of_the_scripts_reasons_and_never_twice():
+    text = text_of(RISK_SCORE_COMMAND)
+    step = step_of(text, "## Step F:", RISK_SCORE_COMMAND)
+    assert calls(step) == [RISK_SCORE_CALLS[5]]
+    reasons = stage_reasons()
+    assert reasons == {"agent-not-spawned", "unrecoverable-batch", "check-failed", "render-failed"}
+    named = set(re.findall(r"`(--reason )?(agent-not-spawned|unrecoverable-batch|check-failed|render-failed)`", step))
+    assert {reason for _, reason in named} == reasons, "Step F names every reason, and the routing above uses only these"
+    used = set(re.findall(r"--reason ([a-z-]+)`", text))
+    assert used <= reasons, "a step sends Step F a reason the script doesn't have: %s" % sorted(used - reasons)
+    assert "`fail` never runs a second time" in step and "Whatever `fail` exits with, stop there" in step
+
+
+def test_risk_score_reports_the_renderers_summary_and_restates_no_number():
+    text = text_of(RISK_SCORE_COMMAND)
+    step = step_of(text, "## Step 6:", RISK_SCORE_COMMAND)
+    assert "exactly as it wrote them" in step and "Restate no number" in step
+    for gone in ("RISK SCORING COMPLETE", "Severity Distribution", "{count}", "Highest-Risk Component", "(supersedes threats.sarif)"):
+        assert gone not in text, "the model-composed summary and its stale claim are gone: %s" % gone
+
+
+# --- /tachi.threat-model (T051) --------------------------------------------------------------------
+
+
+def test_threat_model_runs_only_shipped_scripts_in_one_python3_call_per_fence():
+    text = text_of(THREAT_MODEL_COMMAND)
+    allowed = shipped_or_wired_by_t047()
+    assert calls(text) == THREAT_MODEL_CALLS
+    for fence in fences(text):
+        if fence.label.lower() in SHELL_LABELS:
+            assert not command_problems(fence.body, allowed), fence.body
+    assert set(re.findall(r"scripts/[A-Za-z0-9_.-]+\.py", text)) <= allowed
+    assert directive_hits(text) == []
+
+
+def test_threat_model_keeps_p2_s_anchors_and_adds_step_2_7_between_them():
+    text = text_of(THREAT_MODEL_COMMAND)
+    headings = [line for line in text.splitlines() if line.startswith("## Step ")]
+    numbers = [re.match(r"## Step ([0-9.]+):", h).group(1) for h in headings]
+    assert numbers == ["0", "1", "1.4", "2", "2.5", "2.7", "3"], numbers
+    assert not re.search(r"^## Step 2\.6", text, re.MULTILINE), "Step 2.6 stays free for #396 (P-2)"
+    assert text.count("## Step 2.5: Re-assert Affected Assets Block (idempotent safety net)") == 1
+    assert text.count("## Step 3: Report Results") == 1
+
+
+def test_threat_model_step_2_7_writes_the_architecture_source_from_the_commands_own_path():
+    text = text_of(THREAT_MODEL_COMMAND)
+    step = step_of(text, "## Step 2.7:", THREAT_MODEL_COMMAND)
+    assert calls(step) == [THREAT_MODEL_CALLS[2]]
+    assert "the `{architecture_path}` that Step 0 resolved, and never the snapshot in `{output_dir}`" in step
+    assert "FR-E.18" in step and "ADR-050 D7" in step
+    # the same call, and the same flags, are what the script's parser takes
+    source = STAGE_SCRIPT.read_text(encoding="utf-8")
+    assert 'commands.add_parser("architecture-source"' in source
+    assert 'source.add_argument("--threats", required=True' in source and 'source.add_argument("--architecture", required=True' in source
+
+
+def test_threat_model_routes_the_presence_check_and_the_carrier_write_by_the_exit_table():
+    text = text_of(THREAT_MODEL_COMMAND)
+    carrier = routes(text, "## Step 2.7:", THREAT_MODEL_COMMAND)
+    assert set(carrier) == SCRIPT_EXITS["architecture-source"]
+    assert carrier["0"] == "Continue to Step 3"
+    assert carrier["5"].startswith("The carrier warning is on stderr. Print it and continue to Step 3"), "5 prints the warning and continues (AR-T5)"
+    assert carrier["1"] == "Stop and print the error"
+    assert carrier["2"].startswith("Stop and print the error") and "nothing to fail" in carrier["2"], "this command makes no plan"
+
+
+# --- the scorer's spec (T029) ----------------------------------------------------------------------
+
+
+def test_the_scorer_loads_the_part_contract_and_states_its_check_in_the_references_words():
+    spec = text_of(RISK_SCORER_SPEC)
+    assert "**MANDATORY**: Read `%s` before you write anything" % PART_CONTRACT in spec
+    assert check_statement(spec) == check_statement(text_of(PART_CONTRACT))
+    assert "Reachability prose uses slots only" in spec
+    assert text_of(SARIF_IDENTITY).count("**You never write SARIF.**") == 1 and SARIF_IDENTITY in spec
+
+
+def test_every_slot_the_scorer_names_is_a_slot_of_its_stage():
+    spec = text_of(RISK_SCORER_SPEC)
+    tokens = set(re.findall(r"\{\{[^{}]*\}\}", spec)) - {"{{kind:arg}}"}
+    assert len(tokens) >= 8, tokens
+    for token in sorted(tokens):
+        assert tachi_parts.narrative_problem(token, "risk-score") is None, token
+
+
+def test_the_scorers_example_part_is_accepted_by_the_validator_with_no_flag():
+    blocks = [f.body for f in fences(text_of(RISK_SCORER_SPEC)) if f.label == "json"]
+    assert len(blocks) == 1, "the spec carries one example part"
+    part = json.loads(blocks[0])
+    assert part["stage"] == "risk-score" and part["agent_type"] == "tachi-risk-scorer"
+    result = tachi_parts.classify_part(part, part["plan_id"], part["batch_id"], "risk-score", part["agent_type"], part["finding_ids"])
+    assert result.state == "done" and result.flags == {}, (result.state, result.detail, result.flags)
+
+
+def test_the_scorer_example_reachability_sentence_is_a_valid_narrative():
+    spec = text_of(RISK_SCORER_SPEC)
+    example = re.search(r"For example: `([^`]+)`", spec)
+    assert example, "the reachability section carries an example sentence"
+    assert tachi_parts.narrative_problem(example.group(1), "risk-score") is None
+
+
+def test_the_scorer_is_judgment_only_and_authors_no_output_file():
+    spec = text_of(RISK_SCORER_SPEC)
+    assert text_of(RISK_SCORER_SPEC).count(NO_HAND_BACK) == 1
+    assert not re.search(r"^#{2,4} (9[a-h]|10[a-j])\.", spec, re.MULTILINE), "the per-section output instructions are gone"
+    for gone in ("partialFingerprints", "relatedLocations", "semanticVersion", "owner/tachi", "Never modify, regenerate, or re-hash",
+                 "Generate a `risk-scores.md`", "Generate a `risk-scores.sarif`", "MUST conform", "Value source", "byte-for-byte",
+                 "dfd_element_type", "Post-Parsing Gate", "Rule ID to Category Reverse Mapping"):
+        assert gone not in spec, "the scorer spec still carries %r" % gone
+    for kept in ("`tachi.part/1`", "`tachi.overflow/1`", "`part_path`", "`cvss_vector`", "`tachi_scoring`'s prefix resolver (`category_for_prefix`)"):
+        assert kept in spec, kept
+    names = set(re.findall(r"scripts/[A-Za-z0-9_.-]+\.py", spec))
+    assert names <= shipped_or_wired_by_t047(), sorted(names - shipped_or_wired_by_t047())
+
+
+def test_the_scorer_names_each_sarif_tool_with_r_33_s_case_and_states_the_count_rule_once_per_place():
+    spec = text_of(RISK_SCORER_SPEC)
+    tools = {k: v for k, v in sc.TOOL_NAMES.items()}
+    assert "`%s`" % tools["risk-scores.sarif"] in spec and "`%s`" % tools["threats.sarif"] in spec
+    assert tools["threats.sarif"] == "Tachi" and "`tachi`" not in spec, "R-33: the threats tool has a capital T"
+    # D-6(a)'s four sentences, each reworded once to the open-findings rule
+    assert spec.count("one entry for each open finding") == 1          # was :450, section 9h
+    assert spec.count("with one result for each open finding") == 1    # was :456, section 10
+    assert spec.count("Each result is one open finding") == 1           # was :474, section 10c
+    assert spec.count("both files count the same open findings") == 1  # was :548, section 10j
+    for old in ("All scored findings MUST appear", "one result object per scored finding", "finding count"):
+        assert old not in spec, old
+
+
+def test_the_scorer_words_the_affected_assets_provenance_as_d2_rules():
+    d2 = ("`affected_assets` lists the tags the asset-modifier step used for this finding. Emitting it changes no score; "
+          "only the modifier step does, and it reads the same tags from the same source (ADR-050 D2).")
+    assert d2 in text_of(RISK_SCORER_SPEC)
+    assert d2 in text_of(RISK_SCORING_REFERENCES + "/asset-modifiers.md")
+    for path in (RISK_SCORER_SPEC, RISK_SCORE_COMMAND, RISK_SCORING_REFERENCES + "/asset-modifiers.md"):
+        assert "does NOT affect scoring" not in text_of(path) and "copy verbatim" not in text_of(path).lower(), path
+
+
+# --- the template and the references (T031) --------------------------------------------------------
+
+
+def test_the_scores_template_is_schema_1_1_with_2a_flags_and_the_score_integrity_section():
+    text = text_of(RISK_SCORES_TEMPLATE)
+    assert text.count('schema_version: "1.1"') == 1 and "Schema version : 1.1" in text
+    assert "Always `\"1.1\"` for this release" in text and "Always `\"1.0\"`" not in text
+    headings = [line for line in text.splitlines() if line.startswith("## ")]
+    assert headings == [
+        "## 1. Executive Summary", "## 2. Scored Threat Table", "## 2a. Resolved Findings", "## 3. Dimensional Breakdown",
+        "## 4. Governance Fields", "## 5. Scoring Methodology", "## 6. Score Integrity"]
+    subs = [line for line in section_text(text, "## 6. Score Integrity", RISK_SCORES_TEMPLATE, keep_fences=True).splitlines()
+            if line.startswith("### ")]
+    assert subs == ["### Integrity Summary", "### Score Flags", "### Input Issues", "### Scoring Inputs"]
+    flags = table_after(text, "### Score Flags", where=RISK_SCORES_TEMPLATE)
+    assert flags.header == ["ID", "Flag", "Field", "Stored", "Rendered", "Cause"]
+    inputs = table_after(text, "### Scoring Inputs", where=RISK_SCORES_TEMPLATE)
+    assert inputs.header == ["ID", "Field", "Value"]
+    scored = table_after(text, "## 2. Scored Threat Table", where=RISK_SCORES_TEMPLATE)
+    resolved = table_after(text, "## 2a. Resolved Findings", where=RISK_SCORES_TEMPLATE)
+    assert scored.header[-1] == "Flags" and resolved.header[-1] == "Flags"
+    assert resolved.header[:len(scored.header) - 1] == scored.header[:-1] and resolved.header[-4:-1] == ["Status", "Owner", "Review Date"]
+    assert "**Integrity**:" in section_text(text, "## 3. Dimensional Breakdown", RISK_SCORES_TEMPLATE)
+    assert text.rstrip().splitlines()[-1].startswith("<!-- tachi-provenance: renderer=render-risk-scores.py; version=")
+
+
+def numbers_in(line: str) -> List[str]:
+    """The integers in a line of prose, with any ISO date taken out first."""
+    return re.findall(r"\d+", re.sub(r"\d{4}-\d{2}-\d{2}", "", line))
+
+
+# Sample numbers for the template's placeholders: ten open findings, one Critical, two High, three Medium and four Low.
+SAMPLE_COUNTS = {"total_findings": "10", "critical_count": "1", "high_count": "2", "medium_count": "3", "low_count": "4",
+                 "critical_pct": "10", "high_pct": "20", "medium_pct": "30", "low_pct": "40", "resolved_count": "3"}
+
+
+def filled_template() -> str:
+    """The scores template with each placeholder replaced by its sample number, or else by its own name."""
+    return re.sub(r"\{([a-z_]+)\}", lambda m: SAMPLE_COUNTS.get(m.group(1), m.group(1)), text_of(RISK_SCORES_TEMPLATE))
+
+
+def test_the_scores_template_stays_readable_by_the_extractors_readers():
+    import tachi_parsers
+    found = tachi_parsers.parse_risk_scores_findings(re.sub(r"\{([a-z_]+)\}", r"\1", text_of(RISK_SCORES_TEMPLATE)))
+    assert len(found) == 1
+    assert found[0] == {"id": "id", "component": "component", "threat": "threat", "composite_score": "composite_score",
+                        "severity": "severity_band", "cvss": "cvss_base", "exploitability": "exploitability"}
+
+
+def test_the_scores_template_keeps_the_severity_distribution_the_report_extractors_read():
+    # NFR-1: the report and infographic extractors take their severity counts from this table, so its shape is part of 1.1.
+    import tachi_parsers
+    template = filled_template()
+    assert tachi_parsers.parse_risk_scores_severity(template) == {"critical": 1, "high": 2, "medium": 3, "low": 4, "note": 0, "total": 10}
+    rows = tachi_parsers.parse_markdown_table(template, "Severity Distribution")
+    assert [row["Severity"] for row in rows][:4] == ["Critical", "High", "Medium", "Low"]
+    assert list(rows[0]) == ["Severity", "Count", "Percentage"]
+    assert template.count("Severity Distribution") == template.count("**Severity Distribution:**") + template.count("The Severity Distribution table"), \
+        "no earlier line holds the phrase, because the reader starts at its first occurrence"
+    assert template.index("**Severity Distribution:**") < template.index("The Severity Distribution table")
+
+
+def test_the_scores_template_has_one_summary_sentence_and_a_separate_resolved_line():
+    # The goldens (T027) find exactly one line of Section 1 that states the open count and then the four bands, and one
+    # more that counts the RESOLVED findings.
+    body = section_text(filled_template(), "## 1. Executive Summary", RISK_SCORES_TEMPLATE)
+    prose = [re.sub(r"[*`>]", "", line).strip() for line in body.split("\n")
+             if line.strip() and not line.strip().startswith(("|", "---", "<!--", "#"))]
+    counts = ["10", "1", "2", "3", "4"]
+    sentences = [line for line in prose if numbers_in(line)[:5] == counts]
+    assert len(sentences) == 1, prose
+    assert len(re.findall(r"[.!?](?:\s|$)", sentences[0])) == 1, "one sentence"
+    assert [sentences[0].index(band) for band in ("Critical", "High", "Medium", "Low")] == sorted(
+        sentences[0].index(band) for band in ("Critical", "High", "Medium", "Low"))
+    assert [line for line in prose if line != sentences[0] and "resolved" in line.lower() and "3" in numbers_in(line)]
+
+
+def test_the_sarif_template_names_the_real_repository_and_the_d7_d8_identity_shape():
+    document = json.loads(text_of(RISK_SCORES_SARIF_TEMPLATE))
+    run = document["runs"][0]
+    assert run["tool"]["driver"]["informationUri"] == sc.INFORMATION_URI == "https://github.com/davidmatousek/tachi"
+    assert run["tool"]["driver"]["name"] == sc.TOOL_NAMES["risk-scores.sarif"]
+    assert "owner/tachi" not in text_of(RISK_SCORES_SARIF_TEMPLATE) and "automationDetails" not in document["runs"][0]
+    assert "tachi_provenance" not in run, "the renderer adds the stamp; the template is a skeleton"
+    for result in run["results"]:
+        assert set(result["partialFingerprints"]) == {"primaryLocationLineHash", "findingId/v1"}, result["partialFingerprints"]
+        assert "relatedLocations" not in result, "no relatedLocations entry names a finding in this file"
+        assert result["locations"][0]["physicalLocation"]["region"] == {"startLine": 1}
+        assert isinstance(result["properties"]["score-flags"], list) and "affected_assets" in result["properties"]
+    correlated = [r for r in run["results"] if "correlation-group" in r["properties"]]
+    assert [r["properties"]["correlation-role"] for r in correlated] == ["primary", "peer"]
+    for result in correlated:
+        assert set(sc.CORRELATION_KEYS) <= set(result["properties"])
+        assert "Correlated in CG-1; " in result["message"]["text"]
+
+
+def test_cvss_vectors_documents_a_category_for_every_prefix_as_the_code_resolves_them():
+    text = text_of(RISK_SCORING_REFERENCES + "/cvss-vectors.md")
+    rows = table_after(text, "**Category defaults with bounded ranges**", where="cvss-vectors.md").rows
+    documented = {row[0]: {p.strip() for p in row[1].split(",")} for row in rows}
+    expected: Dict[str, Set[str]] = {}
+    for prefix, category in tachi_scoring.PREFIX_CATEGORY.items():
+        expected.setdefault(category, set()).add(prefix)
+    assert not diff("cvss-vectors.md prefix column", documented, expected)
+    assert "`category_for_prefix`" in text and "all 12 prefixes" in text
+    assert "Step 3 -- Compute CVSS 3.1 base score (the renderer)" in text
+    assert "Step 3 -- Compute CVSS 3.1 base score**" not in text
+
+
+def test_severity_bands_reference_equals_the_embedded_bands_and_carries_the_d9_rules():
+    text = text_of(RISK_SCORING_REFERENCES + "/severity-bands.md")
+    governance = {row[0]: (strip_ticks(row[1]), strip_ticks(row[2]))
+                  for row in table_after(text, "### Severity-to-Governance Mapping", where="severity-bands.md").rows}
+    assert not diff("severity-bands.md governance table", governance,
+                    {band: (v["sla"], v["disposition"]) for band, v in tachi_scoring.SEVERITY_BANDS.items()})
+    minimums = {row[0]: re.search(r"Score >= ([0-9.]+)", row[2]) for row in
+                table_after(text, "## Severity Band Mapping", where="severity-bands.md").rows}
+    assert {band: m.group(1) for band, m in minimums.items() if m} == {
+        band: str(v["min"]) for band, v in tachi_scoring.SEVERITY_BANDS.items() if band != "Low"}
+    for fact in ("`divergent:composite_score:primary=<ID>`", "`override:<field>:human`", "`retagged`", "corrected:review_date:baseline-date",
+                 "unchecked:review_date:scoring-date-unknown", "corrected:review_date:clock-restarted", "rounded half up"):
+        assert fact in text, fact
+
+
+def test_output_formatting_sorts_by_the_s2_order_and_escapes_after_it_truncates():
+    text = text_of(RISK_SCORING_REFERENCES + "/output-formatting.md")
+    ranks = enum_after(text, "first by prefix rank, which is ")
+    assert tuple(ranks) == tachi_parts.FINDING_PREFIXES, "the documented prefix rank is S-2's"
+    assert "natural alphanumeric order" not in text.replace('"natural alphanumeric" order', "")
+    assert "truncates the raw text first, and escapes what is left afterwards" in text
+    assert "`Flags`" in text and "Section 2a" in text and "## Score Integrity (Section 6)" in text
+    names = table_after(text, "## Category Display Name Mapping", where="output-formatting.md").rows
+    assert {strip_ticks(row[0]) for row in names} == set(tachi_scoring.CATEGORY_DEFAULT_VECTORS), "a display name for each category the code scores"
+    assert "as `tachi_scoring.category_for_prefix` returns it" in text
+
+
+def test_asset_modifiers_uses_r_25_s_formula_and_ends_the_unchanged_exemption():
+    text = text_of(RISK_SCORING_REFERENCES + "/asset-modifiers.md")
+    assert "cvss_base_after_modifier = max(assessed_cvss_base, min(modifier_ceiling, recompute_cvss(elevated_vector)))" in text
+    assert "cvss_base_after_modifier = min(modifier_ceiling" not in text
+    assert "An `UNCHANGED` finding is no longer exempt" in text and "ADR-050 D9" in text
+    assert "inherit baseline scores verbatim and never re-enter" not in text and "score_source: inherited` \u2014 same reason" not in text
+    # R-25 against the shipped calculator: a finding already above the ceiling keeps its assessed score
+    assessed = tachi_scoring.base_score("CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H")
+    elevated = tachi_scoring.base_score(tachi_scoring.elevate("CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H", ["pii"]))
+    assert assessed > tachi_scoring.MODIFIER_CEILING and max(assessed, min(tachi_scoring.MODIFIER_CEILING, elevated)) == assessed

@@ -1,5 +1,5 @@
 {
-  "_comment": "RISK SCORING OUTPUT (risk-scores.sarif) — NOT the threat model output (threats.sarif). This is the quantitative risk scoring SARIF produced by the /tachi.risk-score command. It extends threats.sarif with per-finding composite scores, four-dimensional risk metrics (CVSS, exploitability, scalability, reachability), and governance fields in the result property bag. Key distinction: security-severity in threats.sarif is a static category-level value; in risk-scores.sarif it is the per-finding composite score as a numeric string. Rule-level security-severity reflects the MAX composite score among that rule's findings. Producers: agents/tachi/risk-scorer.md. Schema: schemas/risk-scoring.yaml.",
+  "_comment": "RISK SCORING OUTPUT (risk-scores.sarif) — NOT the threat model output (threats.sarif). This is the quantitative risk scoring SARIF produced by the /tachi.risk-score command, and the shipped renderer (scripts/render-risk-scores.py, through scripts/sarif_common.py) writes it: an agent never authors it. It extends threats.sarif with per-finding composite scores, four-dimensional risk metrics (CVSS, exploitability, scalability, reachability), and governance fields in the result property bag. Key distinction: security-severity in threats.sarif is a static category-level value; in risk-scores.sarif it is the per-finding composite score as a numeric string. Rule-level security-severity reflects the MAX composite score among that rule's findings. The file holds one result per open finding, correlated peers included, and the identity of each alert (tool, ruleId, primaryLocationLineHash, artifactLocation.uri) is fixed by .claude/skills/tachi-shared/references/sarif-identity-shared.md. Producer: scripts/render-risk-scores.py. Schema: schemas/risk-scoring.yaml.",
   "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
   "version": "2.1.0",
   "runs": [
@@ -9,7 +9,7 @@
           "name": "tachi-risk-scorer",
           "version": "1.0",
           "semanticVersion": "1.0",
-          "informationUri": "https://github.com/owner/tachi",
+          "informationUri": "https://github.com/davidmatousek/tachi",
           "supportedTaxonomies": [
             { "name": "OWASP", "index": 0 },
             { "name": "CWE", "index": 1 }
@@ -279,7 +279,7 @@
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "<input-architecture-file-path>"
+                  "uri": "<repo-relative-architecture-file-path>"
                 },
                 "region": {
                   "startLine": 1
@@ -295,7 +295,7 @@
             }
           ],
           "partialFingerprints": {
-            "primaryLocationLineHash": "<preserved-from-source-threats-sarif>",
+            "primaryLocationLineHash": "<tachi-plh/1-hash-16-hex-digits-then-:1>",
             "findingId/v1": "S-1"
           },
           "properties": {
@@ -307,12 +307,14 @@
             "reachability": "<reachability-score-as-numeric-string>",
             "composite-weights": "0.35/0.30/0.15/0.20",
             "score-source": "<inherited|fresh>",
-            "baseline-state": "<new|unchanged|updated|absent>",
+            "score-flags": [],
             "severity-band": "<Critical|High|Medium|Low>",
             "risk-owner": "Unassigned",
             "remediation-sla": "<severity-driven-sla-eg-24h-7d-30d-90d>",
             "risk-disposition": "<Mitigate|Review>",
-            "review-date": "<scoring-date-plus-sla-duration-YYYY-MM-DD>"
+            "review-date": "<scoring-date-plus-sla-duration-YYYY-MM-DD>",
+            "maestro-layer": "<maestro-layer-name-or-Unclassified>",
+            "affected_assets": []
           }
         },
         {
@@ -326,7 +328,7 @@
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "<input-architecture-file-path>"
+                  "uri": "<repo-relative-architecture-file-path>"
                 },
                 "region": {
                   "startLine": 1
@@ -342,7 +344,7 @@
             }
           ],
           "partialFingerprints": {
-            "primaryLocationLineHash": "<preserved-from-source-threats-sarif>",
+            "primaryLocationLineHash": "<tachi-plh/1-hash-16-hex-digits-then-:1>",
             "findingId/v1": "AG-1"
           },
           "properties": {
@@ -354,19 +356,21 @@
             "reachability": "<reachability-score-as-numeric-string>",
             "composite-weights": "0.35/0.30/0.15/0.20",
             "score-source": "<inherited|fresh>",
-            "baseline-state": "<new|unchanged|updated|absent>",
+            "score-flags": [],
             "severity-band": "<Critical|High|Medium|Low>",
             "risk-owner": "Unassigned",
             "remediation-sla": "<severity-driven-sla-eg-24h-7d-30d-90d>",
             "risk-disposition": "<Mitigate|Review>",
-            "review-date": "<scoring-date-plus-sla-duration-YYYY-MM-DD>"
+            "review-date": "<scoring-date-plus-sla-duration-YYYY-MM-DD>",
+            "maestro-layer": "<maestro-layer-name-or-Unclassified>",
+            "affected_assets": []
           }
         },
         {
-          "_comment": "Correlation group example: primary finding with relatedLocations pointing to correlated peer findings. Peers do NOT appear as separate top-level results; they are referenced via relatedLocations on the primary. All peers inherit the primary's scores and governance fields.",
+          "_comment": "Correlation group example, 1 of 2: the primary. Every member of a group is its own top-level result, so the file holds one result per open finding. Group membership is recorded in the result's own properties (correlation-group, correlation-role, correlation-primary), and the message ends with one sentence that names the group and the peers (up to 10, then a count). Neither is identity: a regroup changes the text and the properties and never a key. No relatedLocations entry names a finding.",
           "ruleId": "tachi/stride/tampering",
           "message": {
-            "text": "<threat-description-for-correlation-group-primary>",
+            "text": "<threat-description-for-correlation-group-primary> Correlated in CG-1; peers I-4.",
             "markdown": "<mitigation-recommendation-for-correlation-group-primary>"
           },
           "level": "error",
@@ -374,7 +378,7 @@
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "<input-architecture-file-path>"
+                  "uri": "<repo-relative-architecture-file-path>"
                 },
                 "region": {
                   "startLine": 1
@@ -389,38 +393,9 @@
               ]
             }
           ],
-          "relatedLocations": [
-            {
-              "id": 0,
-              "message": {
-                "text": "<correlated-peer-finding-id>: <peer-threat-summary>"
-              },
-              "logicalLocations": [
-                {
-                  "name": "<peer-component-name-1>",
-                  "fullyQualifiedName": "<trust-zone>/<peer-component-name-1>",
-                  "kind": "process"
-                }
-              ]
-            },
-            {
-              "id": 1,
-              "message": {
-                "text": "<correlated-peer-finding-id>: <peer-threat-summary>"
-              },
-              "logicalLocations": [
-                {
-                  "name": "<peer-component-name-2>",
-                  "fullyQualifiedName": "<trust-zone>/<peer-component-name-2>",
-                  "kind": "process"
-                }
-              ]
-            }
-          ],
           "partialFingerprints": {
-            "primaryLocationLineHash": "<preserved-from-source-threats-sarif>",
-            "findingId/v1": "T-3",
-            "correlationGroup": "CG-1"
+            "primaryLocationLineHash": "<tachi-plh/1-hash-16-hex-digits-then-:1>",
+            "findingId/v1": "T-3"
           },
           "properties": {
             "security-severity": "<composite-score-as-numeric-string>",
@@ -431,12 +406,70 @@
             "reachability": "<reachability-score-as-numeric-string>",
             "composite-weights": "0.35/0.30/0.15/0.20",
             "score-source": "<inherited|fresh>",
-            "baseline-state": "<new|unchanged|updated|absent>",
+            "score-flags": [],
             "severity-band": "<Critical|High|Medium|Low>",
             "risk-owner": "Unassigned",
             "remediation-sla": "<severity-driven-sla-eg-24h-7d-30d-90d>",
             "risk-disposition": "<Mitigate|Review>",
-            "review-date": "<scoring-date-plus-sla-duration-YYYY-MM-DD>"
+            "review-date": "<scoring-date-plus-sla-duration-YYYY-MM-DD>",
+            "maestro-layer": "<maestro-layer-name-or-Unclassified>",
+            "affected_assets": [],
+            "correlation-group": "CG-1",
+            "correlation-role": "primary",
+            "correlation-primary": "T-3"
+          }
+        },
+        {
+          "_comment": "Correlation group example, 2 of 2: a peer. A NEW or UPDATED peer takes its primary's vector and scores; an UNCHANGED peer keeps its own score and carries a divergent flag in score-flags when it differs from its primary's.",
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "<threat-description-for-correlation-group-peer> Correlated in CG-1; primary T-3.",
+            "markdown": "<mitigation-recommendation-for-correlation-group-peer>"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<repo-relative-architecture-file-path>"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "<peer-component-name>",
+                  "fullyQualifiedName": "<trust-zone>/<peer-component-name>",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "<tachi-plh/1-hash-16-hex-digits-then-:1>",
+            "findingId/v1": "I-4"
+          },
+          "properties": {
+            "security-severity": "<composite-score-as-numeric-string>",
+            "cvss-base-score": "<cvss-base-score-as-numeric-string>",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L",
+            "exploitability": "<exploitability-score-as-numeric-string>",
+            "scalability": "<scalability-score-as-numeric-string>",
+            "reachability": "<reachability-score-as-numeric-string>",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "<inherited|fresh>",
+            "score-flags": [],
+            "severity-band": "<Critical|High|Medium|Low>",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "<severity-driven-sla-eg-24h-7d-30d-90d>",
+            "risk-disposition": "<Mitigate|Review>",
+            "review-date": "<scoring-date-plus-sla-duration-YYYY-MM-DD>",
+            "maestro-layer": "<maestro-layer-name-or-Unclassified>",
+            "affected_assets": [],
+            "correlation-group": "CG-1",
+            "correlation-role": "peer",
+            "correlation-primary": "T-3"
           }
         }
       ]
