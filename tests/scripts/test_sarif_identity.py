@@ -22,6 +22,12 @@ T015, the shared emitter (D7, D8)
 14. The taxa, against ``schemas/taxonomy``
 15. Module hygiene and the legacy helpers
 
+T049 and T052, T142 and the message text: the renderers' files
+16. ``risk-scores.sarif`` and ``compensating-controls.sarif`` through their renderers (FR-E.2's two-run model)
+17. D8's fallback reader (T142)
+18. ``message.markdown``
+19. ``compensating-controls.sarif``: the cases that are the controls file's own (T052)
+
 The fake filesystem is the offline stand-in for a case-insensitive volume (KB 24): it keeps each
 entry's own spelling and finds an entry by its case-folded name, as macOS's default volume does,
 so the case-variant cases run on every platform. Section 6 runs the same case on the real
@@ -1970,17 +1976,35 @@ def test_importing_the_module_leaves_no_bytecode_for_the_local_modules_it_loads_
 
 
 # =============================================================================
-# 16. risk-scores.sarif through the renderer: FR-E.2's two-run model (T049; red until T050)
+# 16. risk-scores.sarif and compensating-controls.sarif through their renderers: FR-E.2's two-run model
+#     (T049 for the scorer's file, red until T050; T052 for the controls file, red until T035 and T053)
 # =============================================================================
 #
-# Section 13 builds runs with the emitter and checks the model on them. The cases below drive the entry,
-# ``render-risk-scores.py``, in-process through ``main(argv)`` (ADR-050 D16, H15), on the project harness of
-# ``test_render_risk_scores.py`` (T027), so what they read is the file an adopter uploads. They need the renderer
-# (T028, T045, T046 and T050) and fail with its absence until it exists. The peer and baseline-aware cases also need
-# T044's routing, T048's parser and T042's reader. The matching key is the tool, the upload category, the rule, the
-# line hash and the URI (ADR-050 D7); nothing else is identity.
+# Section 13 builds runs with the emitter and checks the model on them. The cases below drive the entries,
+# ``render-risk-scores.py`` and ``render-compensating-controls.py``, in-process through ``main(argv)`` (ADR-050 D16,
+# H15), on the project harness of ``test_render_risk_scores.py`` (T027), so what they read is the file an adopter
+# uploads. A case that holds for both files takes ``sarif_file`` and runs once for each; Section 19 holds the cases
+# that are the controls file's own. The scorer's cases need its renderer (T028, T045, T046 and T050), and the controls
+# cases need T035 and T053; each fails with the absence of its renderer until it exists. The peer and baseline-aware
+# cases also need T044's routing, T048's parser and T042's reader. The matching key is the tool, the upload category,
+# the rule, the line hash and the URI (ADR-050 D7); nothing else is identity.
+#
+# The controls stage reads the scorer's ``risk-scores.md`` and, through its ``source_file``, ``threats.md``. So a
+# controls project renders the scorer first, and then drives the stage the way ``/tachi.compensating-controls`` does:
+# ``tachi-stage.py plan``, one valid part per batch, ``reconcile`` and the renderer. What the agent writes is
+# ``controls_item``, which is a function of the finding's ID alone, so a finding that the agent assesses in two runs
+# gets the same judgment in both.
 
+SCORER_FILE, CONTROLS_FILE = "risk-scores.sarif", "compensating-controls.sarif"
 SCORER_CATEGORY = "risk-score"  # the upload category of risk-scores.sarif: tachi recommends it and never writes it
+CONTROLS_CATEGORY = "compensating-controls"  # the upload category of compensating-controls.sarif: the same rule
+TOOL_OF = {SCORER_FILE: SCORER, CONTROLS_FILE: CONTROLS}
+CATEGORY_OF_TOOL = {SCORER: SCORER_CATEGORY, CONTROLS: CONTROLS_CATEGORY}
+# The exit codes of a run over the clean synthetic project. The scorer's are asserted exactly, as T049 does. A controls
+# run may be 5 here, so that a warning the harness doesn't foresee can't hide every identity case behind it:
+# ``test_a_clean_controls_run_exits_0_with_no_warning`` asserts the clean run exactly, in one place.
+RUN_CODES = {SCORER_FILE: (0,), CONTROLS_FILE: (0, 5)}
+BOTH_FILES = pytest.mark.parametrize("sarif_file", [SCORER_FILE, CONTROLS_FILE], ids=["risk-scores", "compensating-controls"])
 FIRST_RUN_GROUPS = [("CG-1", ["S-2", "S-10", "T-1"]), ("CG-2", ["E-3", "E-5"])]
 SECOND_RUN_GROUPS = [("CG-1", ["T-1", "S-2"]), ("CG-3", ["S-10", "E-3", "AG-1"])]  # a new primary, a dissolved group, a new one
 PLANTED_HASHES = ["%016x:1" % n for n in range(1, 41)]  # what an upstream file or an older run could carry: never copied
@@ -1993,24 +2017,269 @@ def rrs():
     return test_render_risk_scores
 
 
+CONTROLS_STAGE = "compensating-controls"
+CONTROLS_MD = "compensating-controls.md"
+CONTROLS_RENDERER = SCRIPTS_DIR / "render-compensating-controls.py"
+
+
+class Entries(tuple):
+    """``(tachi-stage.py, render-risk-scores.py)`` as loaded modules, and ``.controls``: ``render-compensating-controls.py``.
+
+    The controls renderer is loaded when a case first asks for it, so the scorer's cases never depend on it.
+    """
+
+    _controls = None
+
+    @property
+    def controls(self):
+        if self._controls is None:
+            if not CONTROLS_RENDERER.is_file():
+                pytest.fail("scripts/render-compensating-controls.py does not exist yet: T035 and T053 write it to these cases (TDD)",
+                            pytrace=False)
+            self._controls = _load_hyphenated_script("render_controls_for_identity_cases", "render-compensating-controls.py")
+        return self._controls
+
+
 @pytest.fixture(scope="module")
 def entries(rrs):
-    """``(tachi-stage.py, render-risk-scores.py)`` as loaded modules."""
+    """``(tachi-stage.py, render-risk-scores.py)`` as loaded modules, and ``.controls`` for the controls renderer."""
     if not rrs.RENDERER.is_file():
         pytest.fail("scripts/render-risk-scores.py does not exist yet: T028 and T050 write it to these cases (TDD)", pytrace=False)
-    return (_load_hyphenated_script("tachi_stage_for_identity_cases", "tachi-stage.py"),
-            _load_hyphenated_script("render_risk_scores_for_identity_cases", "render-risk-scores.py"))
+    return Entries((_load_hyphenated_script("tachi_stage_for_identity_cases", "tachi-stage.py"),
+                    _load_hyphenated_script("render_risk_scores_for_identity_cases", "render-risk-scores.py")))
 
 
 def scorer_project(rrs, entries, root, **kwargs):
     return rrs.Project(entries[0], entries[1], root, **kwargs)
 
 
+# --- the controls stage: the agent's part, and a project that drives the stage the way the command does ---------------
+
+EVIDENCE_NUMBERS = (1, 2, 3)  # the modules that the synthetic codebase holds for each control category
+DEFAULT_LAYER = "L4 \u2014 Deployment Infrastructure"  # a MAESTRO layer for a component that a project's table doesn't list
+STATUS_DISPLAY = {"found": "Control Found", "partial": "Partial Control", "missing": "No Control Found"}
+SAME = object()  # ``ControlsProject.run(controls_baseline=SAME)``: the controls stage takes the baseline that the scorer takes
+
+
+def evidence_path(category, number):
+    """A file of the synthetic codebase, relative to its root (``ControlsProject.target``)."""
+    return "src/%s/module%d.py" % (category.replace("-", "_"), number)
+
+
+def matrix_row(finding_id, component, layer, status, category):
+    """One Section 2 row in K8's column order, as the agent writes it (ADR-050 D2, R-34): 11 cells.
+
+    The order is the agent spec's, ``test_tachi_parsers.py``'s ``_K8_HEADER``. The cells that D2 gives the renderer are
+    slots, and ``CF`` is not set (this agent re-assesses). ``Threat`` is model text that only NFR-10 reads.
+    """
+    cells = [finding_id, "\u2014", component, layer, "A synthetic threat to the component.", "{{score:inherent}}", "{{band:inherent}}",
+             STATUS_DISPLAY[status], category.replace("-", " ").title(), "{{score:residual}}", "{{band:residual}}"]
+    return "| " + " | ".join(cells) + " |"
+
+
+def recommendation_body(component, category):
+    """A Section 4 body (ADR-050 D2, R-34): the four keys, once each and in order, and Effort in its enum."""
+    return ("**What to Implement**: Add a %s check in front of every handler of %s.\n\n"
+            "**Where to Implement**: src/%s/module1.py\n\n"
+            "**Reference Patterns**: One shared middleware that every route passes through.\n\n"
+            "**Effort Estimate**: Medium \u2014 one new module.") % (category.replace("-", " "), component, category.replace("-", "_"))
+
+
+def controls_item(finding_id, component, layer, variant=0):
+    """One valid ``compensating-controls`` item (``contracts/part-files.md``) for a synthetic finding.
+
+    Every value is a function of the canonical ID, so the agent gives a finding the same judgment in every run, and a
+    batch holds all three control statuses. ``variant`` re-assesses the finding: the status and the category move, and
+    with them the evidence, the level and the message, so a case can show that none of it is identity. Evidence is
+    files of the synthetic codebase, from at most three distinct modules.
+    """
+    canonical = tachi_parts.canonical_finding_id(finding_id)
+    seed = sum(ord(char) for char in canonical)
+    status = ("found", "partial", "missing")[(seed + variant) % 3]
+    category = tachi_parts.CONTROL_CATEGORIES[(seed + variant) % len(tachi_parts.CONTROL_CATEGORIES)]
+    evidence = []
+    if status != "missing":
+        for step in range(1 + seed % 3):
+            evidence.append({
+                "file": evidence_path(category, EVIDENCE_NUMBERS[(seed + step) % len(EVIDENCE_NUMBERS)]),
+                "line": 4 + (seed * (step + 2)) % 27, "language": "python",
+                "snippet": "def check(request):\n    return verify(request.token)",
+                "summary": "The handler verifies the caller before it runs."})
+    return {
+        "finding_id": canonical, "control_status": status, "control_category": category,
+        "confidence": None if status == "missing" else ("High", "Medium", "Low")[seed % 3],
+        "carried_forward": False, "evidence": evidence,
+        "matrix_row": matrix_row(canonical, component, layer, status, category),
+        "recommendation_body": None if status == "found" else recommendation_body(component, category),
+    }
+
+
+class ControlsProject(object):
+    """The controls stage over one synthetic project (ADR-050 D2, D4, D6, D7 and D8; T052).
+
+    Its input is the scorer's ``risk-scores.md``, so ``run`` renders the scorer first, on the scorer's own project
+    (``test_render_risk_scores.Project``), and then drives the stage as the command does, all in-process through
+    ``main(argv)`` (H15): ``tachi-stage.py plan`` with the pointers that ``contracts/cli.md`` lists, one valid part per
+    batch, ``reconcile``, and ``render-compensating-controls.py --out DIR PLAN``. It answers what the scorer's project
+    answers (``root``, ``out``, ``specs``, ``md``, ``sarif``, ``record``, ``run``), so one case can drive either.
+
+    The scanned codebase is ``app/``. It holds every file that ``controls_item`` can cite, made when the project is, so
+    a case that mirrors the project into a fake volume mirrors the evidence too. ``variant`` re-assesses every finding.
+    ``items`` holds the item that the agent last wrote for each finding, before ``mutate`` touched the part.
+    """
+
+    stage_files = (CONTROLS_MD, CONTROLS_FILE)  # what a later run's ``--baseline`` directory holds, beside the scorer's files
+
+    def __init__(self, rrs, entries, scorer, renderer=None):
+        self.rrs, self.stage, self.renderer, self.scorer = rrs, entries[0], renderer, scorer
+        self.root, self.out, self.architecture = scorer.root, scorer.out, scorer.architecture
+        self.target = self.root / "app"
+        for category in tachi_parts.CONTROL_CATEGORIES:
+            for number in EVIDENCE_NUMBERS:
+                path = self.target / evidence_path(category, number)
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("# synthetic module %d of the %s controls\n" % (number, category), encoding="utf-8")
+        self.plan_id = self.digest = self.last = None
+        self.variant = 0
+        self.items = {}
+
+    # ---- what the scorer's project holds, shared
+    specs = property(lambda self: self.scorer.specs, lambda self, value: setattr(self.scorer, "specs", value))
+    resolved = property(lambda self: self.scorer.resolved, lambda self, value: setattr(self.scorer, "resolved", value))
+    threats = property(lambda self: self.scorer.threats)
+
+    # ---- layout
+    def read_json(self, path):
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+
+    @property
+    def plan_dir(self):
+        return Path(tachi_parts.plan_dir(self.out, CONTROLS_STAGE, self.plan_id))
+
+    def batches(self):
+        return {entry["batch_id"]: entry for entry in self.read_json(self.plan_dir / "plan.json")["batches"]}
+
+    def batch_input(self, batch_id):
+        return self.read_json(tachi_parts.input_path(self.out, CONTROLS_STAGE, self.plan_id, batch_id))
+
+    # ---- the stages
+    def score(self, date=None, architecture=True, baseline_dir=None):
+        """Render the scorer's files, which are this stage's input."""
+        res = self.scorer.run(None, date or self.rrs.DATE, None, architecture, baseline_dir)
+        assert res.code in (0, 5), "the scorer's render, which is the input of the controls stage:\n" + res.describe()
+        return res
+
+    def plan(self, date=None, architecture=True, baseline_dir=None):
+        """``tachi-stage.py plan``, as the command calls it. ``architecture`` and ``baseline_dir`` are the scorer harness's."""
+        argv = ["plan", "--stage", CONTROLS_STAGE, "--out", self.out, "--date", date or self.rrs.DATE, "--threats", self.threats,
+                "--risk-scores", self.out / self.rrs.MD, "--target", self.target]
+        explicit = self.architecture if architecture is True else (architecture or None)
+        if explicit is not None:
+            argv += ["--architecture", explicit]
+        if baseline_dir is not None:
+            argv += ["--baseline-dir", baseline_dir]
+        res = self.rrs.invoke(self.stage, argv, self.root)
+        assert res.code == 0, "tachi-stage.py plan:\n" + res.describe()
+        printed = json.loads(res.out)
+        self.plan_id, self.digest = printed["plan_id"], printed["plan_digest"]
+        return printed
+
+    def write_parts(self, mutate=None):
+        """One valid part for each batch that is to be dispatched: ``controls_item`` for each of its findings."""
+        text = self.threats.read_text(encoding="utf-8")
+        rows = {tachi_parts.canonical_finding_id(row["id"]): row for row in tachi_parsers.parse_reference_set(text)["open"]}
+        layers = {row["Component"]: row["MAESTRO Layer"] for row in tachi_parsers.parse_markdown_table(text, "### Components")}
+        for batch_id, entry in self.batches().items():
+            if entry["state"] == "split":
+                continue
+            bi = self.batch_input(batch_id)
+            items = []
+            for finding_id in bi["finding_ids"]:
+                component = rows[finding_id]["component"]
+                item = controls_item(finding_id, component, layers.get(component, DEFAULT_LAYER), self.variant)
+                self.items[finding_id] = copy.deepcopy(item)
+                items.append(item)
+            part = {"schema": "tachi.part/1", "plan_id": bi["plan_id"], "batch_id": bi["batch_id"], "stage": bi["stage"],
+                    "agent_type": bi["agent_type"], "finding_ids": list(bi["finding_ids"]), "items": items, "fragments": []}
+            if mutate is not None:
+                mutate(part)
+            path = Path(bi["part_path"])
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(part), encoding="utf-8")
+
+    def reconcile(self):
+        res = self.rrs.invoke(self.stage, ["reconcile", "--stage", CONTROLS_STAGE, "--out", self.out, "--plan", self.plan_id,
+                                           "--plan-digest", self.digest], self.root)
+        if res.code in (0, 3, 4):
+            self.digest = json.loads(res.out)["plan_digest"]
+        return res
+
+    def prepare(self, date=None, mutate=None, architecture=True, baseline_dir=None):
+        """Plan, write a valid part for every batch and reconcile to complete (the command's loop)."""
+        self.plan(date, architecture, baseline_dir)
+        self.write_parts(mutate)
+        res = self.reconcile()
+        assert res.code == 0, res.describe()
+
+    def render(self, *extra):
+        assert self.renderer is not None, "this controls project was built without the renderer"
+        self.last = self.rrs.invoke(
+            self.renderer, ["--out", self.out, "--plan", self.plan_id, "--plan-digest", self.digest] + list(extra), self.root)
+        return self.last
+
+    def run(self, date=None, mutate=None, architecture=True, baseline_dir=None, controls_baseline=SAME, score=True):
+        """The scorer (unless ``score`` is false), then the controls stage, which is baseline-aware when ``baseline_dir`` is.
+
+        ``controls_baseline`` is the controls stage's own ``--baseline``: ``SAME``, a directory, or ``None`` for none.
+        """
+        assert self.renderer is not None, "this controls project was built without the renderer"
+        if score:
+            self.score(date, architecture, baseline_dir)
+        self.prepare(date, mutate, architecture, baseline_dir if controls_baseline is SAME else controls_baseline)
+        return self.render()
+
+    # ---- what the render wrote
+    @property
+    def md(self):
+        return (self.out / CONTROLS_MD).read_text(encoding="utf-8")
+
+    @property
+    def sarif_text(self):
+        return (self.out / CONTROLS_FILE).read_text(encoding="utf-8")
+
+    @property
+    def sarif(self):
+        return json.loads(self.sarif_text)
+
+    @property
+    def scorer_sarif(self):
+        return self.scorer.sarif
+
+    @property
+    def record(self):
+        return self.read_json(tachi_parts.stage_record_path(self.out, CONTROLS_STAGE, self.plan_id))
+
+
+def make_project(sarif_file, rrs, entries, root, **kwargs):
+    """The project that renders ``sarif_file``: the scorer's own, or the controls stage over a scorer project."""
+    scorer = scorer_project(rrs, entries, root, **kwargs)
+    return scorer if sarif_file == SCORER_FILE else ControlsProject(rrs, entries, scorer, renderer=entries.controls)
+
+
+def make_subset(sarif_file, rrs, entries, root):
+    """``rrs.subset_project``'s 42 open findings, for the scorer or for the controls stage. Returns ``(project, reference)``."""
+    scorer, reference = rrs.subset_project(entries[0], entries[1], root)
+    return (scorer if sarif_file == SCORER_FILE else ControlsProject(rrs, entries, scorer, renderer=entries.controls)), reference
+
+
 def alert_keys(document):
-    """GitHub's matching key of each result in a ``risk-scores.sarif`` document, by the finding's ``findingId/v1``."""
+    """GitHub's matching key of each result in a scorer or controls document, by the finding's ``findingId/v1``.
+
+    The upload category is the file's own (ADR-050 D7): the document names its tool, and the tool names its category.
+    """
     run = document["runs"][0]
     tool = run["tool"]["driver"]["name"]
-    return {finding_id: (tool, SCORER_CATEGORY) + key for finding_id, key in keys_of(run["results"]).items()}
+    return {finding_id: (tool, CATEGORY_OF_TOOL[tool]) + key for finding_id, key in keys_of(run["results"]).items()}
 
 
 def results_by(document):
@@ -2028,18 +2297,34 @@ def ruling_c(group, primary, peers=None):
     return "Correlated in %s; peers %s%s." % (group, ", ".join(peers[:10]), " and %d more" % more if more > 0 else "")
 
 
-def expected_text(threat, assignment):
+def expected_sentence(assignment):
+    """Ruling C's sentence for a finding's assignment, or ``None`` when the finding isn't correlated."""
     if assignment is None:
-        return threat
+        return None
     peers = list(assignment.peers) if assignment.role == "primary" else None
-    return threat + " " + ruling_c(assignment.group, assignment.primary, peers)
+    return ruling_c(assignment.group, assignment.primary, peers)
+
+
+def expected_text(threat, assignment):
+    """The scorer's ``message.text``: the reference set's threat text, then the sentence after one space."""
+    sentence = expected_sentence(assignment)
+    return threat if sentence is None else threat + " " + sentence
+
+
+def message_parts(text):
+    """``(the file's own text, ruling C's sentence or None)``: the sentence is appended after one space (``contracts/sarif-result.md``)."""
+    own, found, tail = text.rpartition(" Correlated in CG-")
+    return (own, "Correlated in CG-" + tail) if found else (text, None)
 
 
 def snapshot_run(rrs, project, name="baseline-1"):
-    """Copy a finished run's input and outputs under their canonical names: what a later run's ``--baseline`` names."""
+    """Copy a finished run's input and outputs under their canonical names: what a later run's ``--baseline`` names.
+
+    A controls project's baseline holds the controls files too.
+    """
     target = project.root / name
     target.mkdir()
-    for source in ("threats.md", rrs.MD, rrs.SARIF):
+    for source in ("threats.md", rrs.MD, rrs.SARIF) + tuple(getattr(project, "stage_files", ())):
         shutil.copyfile(str(project.out / source), str(target / source))
     return target
 
@@ -2061,49 +2346,58 @@ def second_run_specs(rrs, baseline_aware):
     return carried + [found_later]
 
 
-def planted_sarif(ids, offset=0):
+def planted_sarif(ids, offset=0, tool=SCORER):
     """A SARIF file as an older tachi would write it: a ``findingId/v1`` and a hash of its own on every result."""
     results = [{"ruleId": "tachi/stride/spoofing", "message": {"text": "x"}, "level": "error",
                 "partialFingerprints": {"primaryLocationLineHash": PLANTED_HASHES[offset + n], "findingId/v1": finding_id},
                 "properties": {"security-severity": "5.0"}} for n, finding_id in enumerate(ids)]
-    return json.dumps({"version": "2.1.0", "runs": [{"tool": {"driver": {"name": SCORER}}, "results": results}]}, indent=2) + "\n"
+    return json.dumps({"version": "2.1.0", "runs": [{"tool": {"driver": {"name": tool}}, "results": results}]}, indent=2) + "\n"
 
 
-def run_pair(rrs, entries, root, baseline_aware, plant=False, replace_baseline_sarif=False):
+def run_pair(rrs, entries, root, baseline_aware, plant=False, replace_baseline_sarif=False, sarif_file=SCORER_FILE):
     """Render run 1, then run 2 (regrouped, with one more finding), in one project.
 
     Run 2 is baseline-aware when asked: run 1's files become its ``--baseline``, and its carried findings are
     UNCHANGED. ``plant`` puts an upstream ``threats.sarif`` with hashes of its own beside run 1's input, and
-    ``replace_baseline_sarif`` swaps the baseline's SARIF for one that lists other findings under other hashes.
+    ``replace_baseline_sarif`` swaps each SARIF in the baseline for one that lists other findings under other hashes.
+
+    ``sarif_file`` names the file that ``first`` and ``second`` hold. For the controls file each run renders the scorer
+    first, and the controls stage is baseline-aware exactly when the scorer is: run 1's directory holds both stages'
+    files. ``upstream_1`` and ``upstream_2`` are then the scorer's SARIF of each run, which is this stage's input.
     """
-    project = scorer_project(rrs, entries, root, groups=FIRST_RUN_GROUPS)
+    project = make_project(sarif_file, rrs, entries, root, groups=FIRST_RUN_GROUPS)
     ids_1 = [item["id"] for item in rrs.SPECS]
     if plant:
         (project.out / "threats.sarif").write_text(planted_sarif(ids_1), encoding="utf-8")
     first = project.run()
-    assert first.code == 0, first.describe()
+    assert first.code in RUN_CODES[sarif_file], first.describe()
     pair = SimpleNamespace(project=project, ids_1=ids_1, specs_1=list(rrs.SPECS), baseline=None,
-                           first=project.sarif, first_text=project.sarif_text, first_md=project.md)
+                           first=project.sarif, first_text=project.sarif_text, first_md=project.md,
+                           upstream_1=getattr(project, "scorer_sarif", None))
     if baseline_aware:
         pair.baseline = snapshot_run(rrs, project)
         if replace_baseline_sarif:
-            (pair.baseline / rrs.SARIF).write_text(planted_sarif(ids_1 + ["S-99"], offset=20), encoding="utf-8")
+            for name, tool in ((rrs.SARIF, SCORER), (CONTROLS_FILE, CONTROLS)):
+                if (pair.baseline / name).exists():
+                    (pair.baseline / name).write_text(planted_sarif(ids_1 + ["S-99"], offset=20, tool=tool), encoding="utf-8")
     pair.specs_2 = second_run_specs(rrs, baseline_aware)
     pair.ids_2 = [item["id"] for item in pair.specs_2]
     rewrite_inputs(rrs, project, pair.specs_2, SECOND_RUN_GROUPS)
     second = project.run(baseline_dir=pair.baseline)
     assert second.code in (0, 5), second.describe()
     pair.second, pair.second_text, pair.second_md = project.sarif, project.sarif_text, project.md
+    pair.upstream_2 = getattr(project, "scorer_sarif", None)
     return pair
 
 
 BOTH_MODES = pytest.mark.parametrize("baseline_aware", [False, True], ids=["stateless", "baseline-aware"])
 
 
+@BOTH_FILES
 @BOTH_MODES
-def test_the_regroup_pair_keeps_every_carried_key_and_changes_only_the_text(rrs, entries, tmp_path, baseline_aware):
-    """US-6a #1: run 2 regroups carried findings, changes a primary and dissolves a group, and no key moves."""
-    pair = run_pair(rrs, entries, tmp_path, baseline_aware)
+def test_the_regroup_pair_keeps_every_carried_key_and_changes_only_the_text(rrs, entries, tmp_path, sarif_file, baseline_aware):
+    """US-6a #1: run 2 regroups carried findings, changes a primary and dissolves a group, and no key moves, in each file."""
+    pair = run_pair(rrs, entries, tmp_path, baseline_aware, sarif_file=sarif_file)
     keys_1, keys_2 = alert_keys(pair.first), alert_keys(pair.second)
     assert sorted(keys_1) == sorted(pair.ids_1) and sorted(keys_2) == sorted(pair.ids_2), "no finding drops out"
     for finding_id in pair.ids_1:
@@ -2111,57 +2405,74 @@ def test_the_regroup_pair_keeps_every_carried_key_and_changes_only_the_text(rrs,
     assert "T-7" in keys_2 and "T-7" not in keys_1, "the finding only run 2 has gets a key of its own"
     for keys in (keys_1, keys_2):
         assert len(set(keys.values())) == len(keys), "no two present results share a key (the F-012 lesson)"
-    texts = {}
+    texts, owns = {}, {}
     for run, document, specs, groups, ids in ((1, pair.first, pair.specs_1, FIRST_RUN_GROUPS, pair.ids_1),
                                               (2, pair.second, pair.specs_2, SECOND_RUN_GROUPS, pair.ids_2)):
         assignments = sc.correlation_assignments(groups, ids)
-        sc.self_check(document["runs"][0]["results"], tool=SCORER, member_ids=ids, assignments=assignments,
+        sc.self_check(document["runs"][0]["results"], tool=TOOL_OF[sarif_file], member_ids=ids, assignments=assignments,
                       resolved_ids=rrs.RESOLVED_IDS, uri=URI)
         by_id = results_by(document)
         for item in specs:
             text = by_id[item["id"]]["message"]["text"]
-            assert text == expected_text(item["threat"], assignments.get(tachi_parts.canonical_finding_id(item["id"]))), (run, item["id"])
-            texts[(run, item["id"])] = text
+            assignment = assignments.get(tachi_parts.canonical_finding_id(item["id"]))
+            own, sentence = message_parts(text)
+            assert sentence == expected_sentence(assignment), (run, item["id"])
+            assert own, "the file's own text is never empty"
+            if sarif_file == SCORER_FILE:
+                assert text == expected_text(item["threat"], assignment), (run, item["id"])
+            texts[(run, item["id"])], owns[(run, item["id"])] = text, own
     for finding_id in ("T-1", "E-5", "AG-1"):
         assert texts[(1, finding_id)] != texts[(2, finding_id)], "%s: a regroup changes its text (ruling C)" % finding_id
+        assert owns[(1, finding_id)] == owns[(2, finding_id)], "%s: and only the sentence, never the file's own text" % finding_id
 
 
+@BOTH_FILES
 @BOTH_MODES
-def test_an_unchanged_rerun_of_the_renderer_keeps_its_keys_and_its_bytes(rrs, entries, tmp_path, baseline_aware):
+def test_an_unchanged_rerun_of_the_renderer_keeps_its_keys_and_its_bytes(rrs, entries, tmp_path, sarif_file, baseline_aware):
     """US-6a #2: the same inputs under a fresh plan give the same keys, and the same bytes, in both files."""
-    pair = run_pair(rrs, entries, tmp_path, baseline_aware)
+    pair = run_pair(rrs, entries, tmp_path, baseline_aware, sarif_file=sarif_file)
     again = pair.project.run(baseline_dir=pair.baseline)
     assert again.code in (0, 5), again.describe()
     assert pair.project.sarif_text == pair.second_text and pair.project.md == pair.second_md
     assert alert_keys(pair.project.sarif) == alert_keys(pair.second)
 
 
+@BOTH_FILES
 @BOTH_MODES
-def test_the_hash_recomputes_from_the_tool_and_the_id_and_no_upstream_hash_is_copied(rrs, entries, tmp_path, baseline_aware):
-    pair = run_pair(rrs, entries, tmp_path, baseline_aware, plant=True, replace_baseline_sarif=baseline_aware)
-    for document, text in ((pair.first, pair.first_text), (pair.second, pair.second_text)):
+def test_the_hash_recomputes_from_the_tool_and_the_id_and_no_upstream_hash_is_copied(rrs, entries, tmp_path, sarif_file, baseline_aware):
+    """S-6, FR-E.12: the hash is tachi's own, in each file. The controls file's upstream is the scorer's file, whose hashes
+    are real and differ by the tool term: the legacy analyzer copied them (``control-analyzer.md`` Phase 6c), and no result may now."""
+    pair = run_pair(rrs, entries, tmp_path, baseline_aware, plant=True, replace_baseline_sarif=baseline_aware, sarif_file=sarif_file)
+    tool = TOOL_OF[sarif_file]
+    for document, text, upstream in ((pair.first, pair.first_text, pair.upstream_1), (pair.second, pair.second_text, pair.upstream_2)):
         for result in document["runs"][0]["results"]:
             written = result["partialFingerprints"]["findingId/v1"]
-            assert result["partialFingerprints"]["primaryLocationLineHash"] == recipe(SCORER, tachi_parts.canonical_finding_id(written)), written
+            assert result["partialFingerprints"]["primaryLocationLineHash"] == recipe(tool, tachi_parts.canonical_finding_id(written)), written
         assert not [planted for planted in PLANTED_HASHES if planted in text], "an upstream or earlier hash was copied (S-6)"
         assert "automationDetails" not in text and "runAutomationDetails" not in text, "the upload step's category governs (D7)"
-    assert results_by(pair.first)["AGP-01"]["partialFingerprints"]["primaryLocationLineHash"] == recipe(SCORER, "AGP-1"), \
+        if upstream is not None:
+            copied = [r["partialFingerprints"]["primaryLocationLineHash"] for r in upstream["runs"][0]["results"]
+                      if r["partialFingerprints"]["primaryLocationLineHash"] in text]
+            assert not copied, "the scorer file's hashes were copied into the controls file: %s" % copied
+    assert results_by(pair.first)["AGP-01"]["partialFingerprints"]["primaryLocationLineHash"] == recipe(tool, "AGP-1"), \
         "the hash is over the canonical ID, and findingId/v1 keeps Section 7's spelling"
 
 
-def test_no_stage_reads_a_baseline_sarifs_membership_or_hashes(rrs, entries, tmp_path):
+@BOTH_FILES
+def test_no_stage_reads_a_baseline_sarifs_membership_or_hashes(rrs, entries, tmp_path, sarif_file):
     """ADR-050 D8: SV-3's trigger does not fire, because no stage reads a baseline SARIF's membership or hashes."""
-    pair = run_pair(rrs, entries, tmp_path, True, replace_baseline_sarif=True)
+    pair = run_pair(rrs, entries, tmp_path, True, replace_baseline_sarif=True, sarif_file=sarif_file)
     assert sorted(alert_keys(pair.second)) == sorted(pair.ids_2), "the member set is Section 7's"
     assert "S-99" not in pair.second_text
     keys_1, keys_2 = alert_keys(pair.first), alert_keys(pair.second)
     assert all(keys_2[finding_id] == keys_1[finding_id] for finding_id in pair.ids_1)
 
 
-def test_no_two_present_results_share_a_key_in_a_run_of_forty_two_findings(rrs, entries, tmp_path):
-    project, reference = rrs.subset_project(entries[0], entries[1], tmp_path)
+@BOTH_FILES
+def test_no_two_present_results_share_a_key_in_a_run_of_forty_two_findings(rrs, entries, tmp_path, sarif_file):
+    project, reference = make_subset(sarif_file, rrs, entries, tmp_path)
     res = project.run()
-    assert res.code in (0, 5), res.describe()
+    assert res.code in (0, 5), res.describe()  # the subset's Affected Assets block is stale, so the scorer may warn
     document = project.sarif
     keys = alert_keys(document)
     assert len(keys) == len(reference["open"]) == 42
@@ -2212,10 +2523,12 @@ def add_architecture_files(project):
     (project.root / "docs" / "design" / "link.md").symlink_to("system.md")
 
 
+@BOTH_FILES
 @pytest.mark.parametrize("flag,body,snapshot,uri,warning_codes", [case[1:] for case in URI_CASES], ids=[case[0] for case in URI_CASES])
 def test_the_flag_then_the_body_line_then_the_default_and_each_failed_carrier_warns(
-        rrs, entries, tmp_path, outside_file, flag, body, snapshot, uri, warning_codes):
-    project = scorer_project(rrs, entries, tmp_path, body_line=body)
+        rrs, entries, tmp_path, outside_file, sarif_file, flag, body, snapshot, uri, warning_codes):
+    """FR-E.18, US-6a #7 to #9, in each file. The controls renderer reaches the body line through ``source_file``."""
+    project = make_project(sarif_file, rrs, entries, tmp_path, body_line=body)
     add_architecture_files(project)
     if snapshot:
         (project.out / "architecture.md").write_text("# the snapshot the threat model copied\n", encoding="utf-8")
@@ -2227,21 +2540,24 @@ def test_the_flag_then_the_body_line_then_the_default_and_each_failed_carrier_wa
     assert [warning["code"] for warning in record["warnings"]] == warning_codes, "the stage record lists each warning, in order"
     assert record["status"] == ("success-with-warnings" if warning_codes else "success")
     assert all("--architecture-path" in warning["detail"] for warning in record["warnings"]), "each one names the override flag"
-    sc.self_check(results, tool=SCORER, member_ids=[item["id"] for item in rrs.SPECS], assignments={},
+    sc.self_check(results, tool=TOOL_OF[sarif_file], member_ids=[item["id"] for item in rrs.SPECS], assignments={},
                   resolved_ids=rrs.RESOLVED_IDS, uri=uri)
 
 
-def test_a_run_always_gets_a_uri_even_when_nothing_validates(rrs, entries, tmp_path, outside_file):
-    project = scorer_project(rrs, entries, tmp_path)
+@BOTH_FILES
+def test_a_run_always_gets_a_uri_even_when_nothing_validates(rrs, entries, tmp_path, outside_file, sarif_file):
+    project = make_project(sarif_file, rrs, entries, tmp_path)
     project.architecture.unlink()
     res = project.run(architecture=str(outside_file))
     assert res.code == 5, res.describe()
-    assert [w["code"] for w in project.record["warnings"]] == [
-        "architecture-path:explicit:outside-root", "architecture-path:body-line:absent", "architecture-path:default:missing",
-        "tag-source:no-architecture-file"], (
-        "D7's chain in order, then the tag source: with no architecture file the block's tags are applied unverified, and "
-        "that warns, because the stage record has no other trace of it (ruled at W2, ADR-050 D2)")
-    assert "unverified" in project.record["warnings"][-1]["detail"]
+    chain = ["architecture-path:explicit:outside-root", "architecture-path:body-line:absent", "architecture-path:default:missing"]
+    if sarif_file == SCORER_FILE:
+        assert [w["code"] for w in project.record["warnings"]] == chain + ["tag-source:no-architecture-file"], (
+            "D7's chain in order, then the tag source: with no architecture file the block's tags are applied unverified, and "
+            "that warns, because the stage record has no other trace of it (ruled at W2, ADR-050 D2)")
+        assert "unverified" in project.record["warnings"][-1]["detail"]
+    else:  # the controls stage elevates nothing (its inherent score is the scorer's), so the tag source is not its concern
+        assert [w["code"] for w in project.record["warnings"]] == chain, "D7's chain in order, and nothing else"
     uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in project.sarif["runs"][0]["results"]}
     assert uris == {sc.DEFAULT_ARCHITECTURE_PATH}, "the constant is emitted as written, and nothing here stops a run"
 
@@ -2257,21 +2573,27 @@ def mirror(fake, root):
             fake.file(str(path))
 
 
+@BOTH_FILES
 @pytest.mark.parametrize("body", ["docs/other/architecture.md", "DOCS/Other/ARCHITECTURE.md"], ids=["canonical", "case-variant"])
 def test_a_case_variant_body_line_gives_every_result_the_same_uri_on_a_case_insensitive_volume(
-        rrs, entries, tmp_path, monkeypatch, body):
+        rrs, entries, tmp_path, monkeypatch, sarif_file, body):
     """KB 24 and FR-E.2: the resolver, not the renderer, spells the path, so a case variant gives one URI.
 
     The renderer reaches the filesystem through ``sarif_common.OS_FILESYSTEM`` for this, so a fake case-insensitive
-    volume stands in for the one an adopter's laptop has.
+    volume stands in for the one an adopter's laptop has. A controls run renders the scorer first, on the real volume,
+    so that the mirror holds every file the controls stage reads.
     """
-    project = scorer_project(rrs, entries, tmp_path, body_line=body)
+    project = make_project(sarif_file, rrs, entries, tmp_path, body_line=body)
     add_architecture_files(project)
     (project.out / "architecture.md").write_text("# the snapshot\n", encoding="utf-8")
+    options = {"architecture": False}
+    if sarif_file == CONTROLS_FILE:
+        project.score(architecture=False)
+        options["score"] = False
     fake = FakeFilesystem(str(tmp_path), case_insensitive=True)
     mirror(fake, tmp_path)
     monkeypatch.setattr(sc, "OS_FILESYSTEM", fake)
-    res = project.run(architecture=False)
+    res = project.run(**options)
     assert res.code == 0, res.describe()
     uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in project.sarif["runs"][0]["results"]}
     assert uris == {"docs/other/architecture.md"}
@@ -2279,30 +2601,43 @@ def test_a_case_variant_body_line_gives_every_result_the_same_uri_on_a_case_inse
 
 # --- ruling C: a primary with more than ten peers; ruling B: reused IDs -----------------------------------------------
 
+@BOTH_FILES
 @pytest.mark.parametrize("size,more", [(11, 0), (12, 1), (13, 2)], ids=["ten-peers", "eleven-peers", "twelve-peers"])
-def test_a_primary_with_more_than_ten_peers_names_ten_and_then_a_count(rrs, entries, tmp_path, size, more):
+def test_a_primary_with_more_than_ten_peers_names_ten_and_then_a_count(rrs, entries, tmp_path, sarif_file, size, more):
     """PM-T7, ruling C: the first ten in group order, joined by a comma and a space, then `` and N more``."""
     specs = [rrs.spec("S-%d" % n, "edge-gateway", "Threat %d on the gateway." % n, "Medium", "NEW",
                       "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N", (5, 5, 5, 5), (4, 4, 4, 4), "Edge DMZ", "Semi-Trusted", 0, 0)
              for n in range(1, size + 1)]
     ids = [item["id"] for item in specs]
-    project = scorer_project(rrs, entries, tmp_path, specs=specs, resolved=[], groups=[("CG-1", ids)])
+    project = make_project(sarif_file, rrs, entries, tmp_path, specs=specs, resolved=[], groups=[("CG-1", ids)])
     res = project.run()
     assert res.code in (0, 5), res.describe()
     results = results_by(project.sarif)
     assert len(results) == size, "every peer is a result, once"
     tail = "Correlated in CG-1; peers " + ", ".join(ids[1:11]) + (" and %d more" % more if more else "") + "."
-    assert results["S-1"]["message"]["text"] == "Threat 1 on the gateway. " + tail == "Threat 1 on the gateway. " + ruling_c("CG-1", "S-1", ids[1:])
+    own, sentence = message_parts(results["S-1"]["message"]["text"])
+    assert sentence == tail == ruling_c("CG-1", "S-1", ids[1:])
+    if sarif_file == SCORER_FILE:
+        assert results["S-1"]["message"]["text"] == "Threat 1 on the gateway. " + tail
     for peer in ids[1:]:
-        assert results[peer]["message"]["text"] == "Threat %s on the gateway. Correlated in CG-1; primary S-1." % peer[2:], peer
-    sc.self_check(project.sarif["runs"][0]["results"], tool=SCORER, member_ids=ids,
+        peer_own, peer_sentence = message_parts(results[peer]["message"]["text"])
+        assert peer_sentence == "Correlated in CG-1; primary S-1.", peer
+        if sarif_file == SCORER_FILE:
+            assert peer_own == "Threat %s on the gateway." % peer[2:], peer
+    sc.self_check(project.sarif["runs"][0]["results"], tool=TOOL_OF[sarif_file], member_ids=ids,
                   assignments=sc.correlation_assignments([("CG-1", ids)], ids), resolved_ids=[], uri=URI)
 
 
-def test_a_new_finding_that_reuses_a_baseline_id_is_flagged_and_keeps_the_old_key(rrs, entries, tmp_path):
-    """Ruling B (D7), PR 1's half: the flag marks the exposure, and the key shows it: the old alert's key is reused."""
-    project = scorer_project(rrs, entries, tmp_path)
-    assert project.run().code == 0
+REUSED_ID_FLAG = "reused-id:finding_id:baseline"
+
+
+def reissue_ids(rrs, project, codes=(0,)):
+    """Render run 1, keep it as the baseline, and rewrite the inputs of run 2: two IDs are given to NEW findings (ruling B).
+
+    S-2 was open in the baseline, and S-1 was RESOLVED there. The caller renders run 2. Returns ``(run 1's keys, the baseline)``.
+    """
+    first = project.run()
+    assert first.code in codes, first.describe()
     keys_1 = alert_keys(project.sarif)
     baseline = snapshot_run(rrs, project)
     reissued = [
@@ -2312,17 +2647,31 @@ def test_a_new_finding_that_reuses_a_baseline_id_is_flagged_and_keeps_the_old_ke
                  "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N", (5, 5, 5, 5), (4, 4, 4, 4), "Edge DMZ", "Semi-Trusted", 0, 0)]
     specs_2 = [dict(item, status="UNCHANGED") for item in rrs.SPECS if item["id"] != "S-2"] + reissued
     rewrite_inputs(rrs, project, specs_2, (), resolved=[row for row in rrs.RESOLVED if row[0] != "S-1"])
+    return keys_1, baseline
+
+
+@BOTH_FILES
+def test_a_new_finding_that_reuses_a_baseline_id_is_flagged_and_keeps_the_old_key(rrs, entries, tmp_path, sarif_file):
+    """Ruling B (D7), PR 1's half: the flag marks the exposure, and the key shows it: the old alert's key is reused.
+
+    US-6a #10: both files flag the finding. The scorer finds the reuse in its baseline, and the controls renderer
+    carries the flag from its input ``risk-scores.md`` (the flag's property is ``score-flags`` or ``integrity-flags``).
+    """
+    project = make_project(sarif_file, rrs, entries, tmp_path)
+    keys_1, baseline = reissue_ids(rrs, project, RUN_CODES[sarif_file])
     res = project.run(baseline_dir=baseline)
     assert res.code in (0, 5), res.describe()
     results = results_by(project.sarif)
-    flag = "reused-id:finding_id:baseline"
-    assert sorted(i for i, r in results.items() if flag in r["properties"]["score-flags"]) == ["S-1", "S-2"], \
+    flags_property = sc.FLAG_PROPERTIES[sarif_file]
+    assert sorted(i for i, r in results.items() if REUSED_ID_FLAG in r["properties"][flags_property]) == ["S-1", "S-2"], \
         "a NEW finding whose ID is in any baseline row, open or RESOLVED, is flagged"
-    assert all(r["properties"]["score-flags"] == sorted(r["properties"]["score-flags"]) for r in results.values())
+    assert all(r["properties"][flags_property] == sorted(r["properties"][flags_property]) for r in results.values()), \
+        "the flags are a sorted array, present on every result"
     assert alert_keys(project.sarif)["S-2"] == keys_1["S-2"], "the reissued ID inherits the old alert: the exposure the flag marks (ruling B)"
-    assert project.record["counts"]["reused-id"] == 2
-    rows = {row["ID"]: row for row in rrs.records(*rrs.table_of(rrs.section(project.md, "## 2. Scored Threat Table"), "ID"))}
-    assert "reused-id" in rows["S-2"]["Flags"] and "reused-id" in rows["S-1"]["Flags"] and rows["T-1"]["Flags"] == rrs.DASH
+    if sarif_file == SCORER_FILE:
+        assert project.record["counts"]["reused-id"] == 2
+        rows = {row["ID"]: row for row in rrs.records(*rrs.table_of(rrs.section(project.md, "## 2. Scored Threat Table"), "ID"))}
+        assert "reused-id" in rows["S-2"]["Flags"] and "reused-id" in rows["S-1"]["Flags"] and rows["T-1"]["Flags"] == rrs.DASH
 
 
 # =============================================================================
@@ -2628,3 +2977,337 @@ def test_a_markdown_result_round_trips_through_the_document_as_ascii_json():
     result = make_result("T-2", markdown="Rotate the key \u2014 caf\u00e9 style.")
     text = sc.to_json(document([result]))
     assert text.isascii() and json.loads(text)["runs"][0]["results"][0]["message"]["markdown"] == "Rotate the key \u2014 caf\u00e9 style."
+
+
+# =============================================================================
+# 19. compensating-controls.sarif: the cases that are the controls file's own (T052; red until T035 and T053)
+# =============================================================================
+#
+# Section 16 runs FR-E.2's two-run model on both files. What follows is what only the controls file has: ``relatedLocations``
+# that hold code evidence, a flag that the stage carries from its input instead of deriving, and a stage that renders after
+# the scorer. A few cases hold for both files and take ``sarif_file``, as Section 16's do. The cases drive the entry
+# ``render-compensating-controls.py --out DIR PLAN`` (``contracts/cli.md``) on the project harness of Section 16.
+#
+# The ``test_harness_*`` cases check that harness and need no controls renderer: they pass now, so the cases after them
+# can fail only for the renderer's absence. Where a contract leaves a form open, the case says ``# reading:``, and T035 or
+# T053 either meets it or rules on it with the architect.
+
+K8_HEADER = ["Threat ID", "CF", "Component", "MAESTRO Layer", "Threat", "Inherent Score", "Inherent Severity", "Control Status",
+             "Control Category", "Residual Score", "Residual Severity"]  # the agent-spec order (test_tachi_parsers.py's _K8_HEADER)
+FINDING_TOKEN = re.compile(r"(?<![A-Za-z0-9-])(?:S|T|R|I|D|E|AG|AGP|LLM|OI|MI|TE)-[0-9]{1,6}(?![A-Za-z0-9-])")
+LAYER = DEFAULT_LAYER
+
+
+def row_cells(row):
+    return [cell.strip() for cell in row.strip().strip("|").split("|")]
+
+
+def controls_with_scorer(rrs, entries, root, **kwargs):
+    """A controls project with no renderer, for the harness checks: the scorer's project, and the controls stage over it."""
+    return ControlsProject(rrs, entries, scorer_project(rrs, entries, root, **kwargs))
+
+
+def test_harness_the_matrix_row_has_the_eleven_cells_in_the_k8_order():
+    cells = row_cells(matrix_row("S-2", "edge-gateway", LAYER, "partial", "rate-limiting"))
+    assert len(cells) == len(K8_HEADER) == 11
+    assert dict(zip(K8_HEADER, cells)) == {
+        "Threat ID": "S-2", "CF": "\u2014", "Component": "edge-gateway", "MAESTRO Layer": LAYER,
+        "Threat": "A synthetic threat to the component.", "Inherent Score": "{{score:inherent}}",
+        "Inherent Severity": "{{band:inherent}}", "Control Status": "Partial Control", "Control Category": "Rate Limiting",
+        "Residual Score": "{{score:residual}}", "Residual Severity": "{{band:residual}}"}
+    assert "|" not in " ".join(cells), "a literal pipe in a cell would shift the columns (D2)"
+
+
+def test_harness_an_item_is_a_function_of_the_id_and_a_variant_moves_the_judgment_and_nothing_else():
+    first = controls_item("AGP-01", "vector-store", LAYER)
+    assert first == controls_item("AGP-1", "vector-store", LAYER) and first["finding_id"] == "AGP-1", "the canonical ID, however it is spelled"
+    moved = controls_item("AGP-1", "vector-store", LAYER, variant=1)
+    assert moved["finding_id"] == "AGP-1" and (moved["control_status"], moved["control_category"]) != (first["control_status"], first["control_category"])
+    for item in (first, moved):
+        assert (item["control_status"] == "missing") == (item["confidence"] is None) == (item["evidence"] == [])
+        assert (item["control_status"] == "found") == (item["recommendation_body"] is None)
+
+
+def test_harness_every_evidence_file_the_items_can_cite_is_a_regular_file_that_the_resolver_accepts(rrs, entries, tmp_path):
+    project = controls_with_scorer(rrs, entries, tmp_path)
+    for category in tachi_parts.CONTROL_CATEGORIES:
+        for number in EVIDENCE_NUMBERS:
+            path = evidence_path(category, number)
+            assert sc.resolve_file(path, root=str(project.target)) == (path, path), path
+
+
+def test_harness_the_controls_items_pass_the_shipped_validator_and_the_stage_reconciles(rrs, entries, tmp_path):
+    """The planner and the part validator are the shipped ones: ``prepare`` plans, writes a part per batch and reconciles to complete."""
+    project = controls_with_scorer(rrs, entries, tmp_path, groups=FIRST_RUN_GROUPS)
+    project.score()
+    project.prepare()
+    assert sorted(project.items) == sorted(tachi_parts.canonical_finding_id(item["id"]) for item in rrs.SPECS)
+    statuses = {finding_id: item["control_status"] for finding_id, item in project.items.items()}
+    assert set(statuses.values()) == {"found", "partial", "missing"}, "the nine findings hold every control status: %s" % statuses
+    assert max(len(item["evidence"]) for item in project.items.values()) >= 2, "and a finding with more than one evidence entry"
+    for item in project.items.values():
+        cells = row_cells(item["matrix_row"])
+        assert len(cells) == 11 and cells[0] == item["finding_id"] and cells[7] == STATUS_DISPLAY[item["control_status"]]
+        for cited in item["evidence"]:
+            assert (project.target / cited["file"]).is_file()
+    assert project.plan_dir.is_dir() and project.batches() and all(entry["state"] == "done" for entry in project.batches().values())
+
+
+def test_harness_a_plan_over_the_subset_spreads_every_finding_over_several_batches(rrs, entries, tmp_path):
+    scorer, reference = rrs.subset_project(entries[0], entries[1], tmp_path)
+    project = ControlsProject(rrs, entries, scorer)
+    project.score()
+    project.prepare()
+    sizes = [len(entry["finding_ids"]) for entry in project.batches().values()]
+    assert sum(sizes) == len(project.items) == len(reference["open"]) == 42 and len(sizes) > 1, sizes
+
+
+# --- FR-K7.1: each peer is counted once -------------------------------------------------------------------------------
+
+@BOTH_FILES
+def test_each_peer_is_one_result_and_no_related_location_names_a_finding(rrs, entries, tmp_path, sarif_file):
+    """FR-K6.2, FR-K7.1 and D8: N is the number of results, so a peer is a result and is counted once.
+
+    A peer's link to its group is a property and a sentence, never a second listing. No ``relatedLocations`` entry names
+    a finding, and no RESOLVED finding appears anywhere in the file (US-6a #5).
+    """
+    project = make_project(sarif_file, rrs, entries, tmp_path, groups=FIRST_RUN_GROUPS)
+    res = project.run()
+    assert res.code in RUN_CODES[sarif_file], res.describe()
+    results = project.sarif["runs"][0]["results"]
+    ids = [item["id"] for item in rrs.SPECS]
+    assignments = sc.correlation_assignments(FIRST_RUN_GROUPS, ids)
+    peers = sorted(finding_id for finding_id, assignment in assignments.items() if assignment.role == "peer")
+    assert peers == ["E-5", "S-10", "T-1"], "the project has three peers, in two groups"
+    written = [result["partialFingerprints"]["findingId/v1"] for result in results]
+    assert len(results) == len(set(written)) == len(ids) == 9, "N is the number of results, and each finding is one of them"
+    by_id = results_by(project.sarif)
+    for peer in peers:
+        properties = by_id[peer]["properties"]
+        assert (properties["correlation-role"], properties["correlation-primary"]) == ("peer", assignments[peer].primary), peer
+    for result in results:
+        for entry in result.get("relatedLocations", ()):
+            assert not FINDING_TOKEN.search(json.dumps(entry)), "a relatedLocations entry names a finding: %s" % (entry,)
+    named = {rrs.canon(token) for token in FINDING_TOKEN.findall(project.sarif_text)}
+    assert named == {rrs.canon(finding_id) for finding_id in ids}, "the open findings are named, and no RESOLVED one is"
+    sc.self_check(results, tool=TOOL_OF[sarif_file], member_ids=ids, assignments=assignments, resolved_ids=rrs.RESOLVED_IDS, uri=URI)
+
+
+# --- D7, D8: relatedLocations hold evidence only, and pass the resolver's relative-path checks --------------------------
+
+def assert_relative(uri):
+    """ADR-050 D7: an evidence URI is relative to the target: no scheme or drive letter, no leading ``/``, no backslash, no ``..``."""
+    parts = uri.split("/")
+    assert uri and not uri.startswith("/") and "\\" not in uri, uri
+    assert re.match(r"[A-Za-z][A-Za-z0-9+.-]*:", uri) is None, "a scheme or a drive letter: %s" % uri
+    assert not {"", ".", ".."} & set(parts), uri
+
+
+def loosely_typed(part):
+    """Respell every cited file as an agent might: with a ``./`` and a doubled ``/``. The part validator keeps it as written."""
+    for item in part["items"]:
+        for cited in item["evidence"]:
+            head, _, tail = cited["file"].partition("/")
+            cited["file"] = "./%s//%s" % (head, tail)
+
+
+def test_related_locations_hold_evidence_only_and_pass_the_resolvers_relative_path_checks(rrs, entries, tmp_path):
+    """FR-K7.1, D7 and D8: a controls result's ``relatedLocations`` are its evidence, one entry for each, and nothing else.
+
+    A control with no evidence (``missing``) has no key, never an empty array. Each entry names a file under the target
+    directory, spelled and encoded by the resolver whatever way the part typed it (``part-files.md``: a ``file`` is
+    checked, never rewritten, and the resolver canonicalizes it at render time), so the URI is relative.
+    """
+    project = make_project(CONTROLS_FILE, rrs, entries, tmp_path, groups=FIRST_RUN_GROUPS)
+    res = project.run(mutate=loosely_typed)
+    assert res.code in RUN_CODES[CONTROLS_FILE], res.describe()
+    results = results_by(project.sarif)
+    with_evidence = without_evidence = 0
+    for item in rrs.SPECS:
+        want = project.items[tachi_parts.canonical_finding_id(item["id"])]
+        result = results[item["id"]]
+        if not want["evidence"]:
+            without_evidence += 1
+            assert want["control_status"] == "missing" and "relatedLocations" not in result, item["id"]
+            continue
+        with_evidence += 1
+        related = result["relatedLocations"]
+        assert len(related) == len(want["evidence"]), item["id"]
+        assert sorted(entry["id"] for entry in related) == list(range(len(related))), "the entries are numbered from 0"  # reading: their order isn't pinned
+        expected = {}
+        for cited in want["evidence"]:
+            good = sc.resolve_file(cited["file"], root=str(project.target))  # the cited file passes the resolver's checks
+            expected[(good.uri, cited["line"])] = good.path
+        got = {}
+        for entry in related:
+            assert list(entry) == ["id", "message", "physicalLocation"], "evidence has the shape of sc.evidence_location"
+            uri = entry["physicalLocation"]["artifactLocation"]["uri"]
+            assert_relative(uri)
+            assert list(entry["physicalLocation"]["region"]) == ["startLine"]
+            got[(uri, entry["physicalLocation"]["region"]["startLine"])] = entry["message"]["text"]
+        assert set(got) == set(expected), "each cited file and line, in the resolver's spelling: %s" % item["id"]
+        for key, text in got.items():  # reading: the category's wording is the renderer's; the file named is the resolver's spelling of the cited one
+            shape = sc.EVIDENCE_MESSAGE.format(category="\0", file=expected[key])
+            assert re.fullmatch(".+".join(re.escape(piece) for piece in shape.split("\0")), text), (item["id"], text)
+            assert not FINDING_TOKEN.search(text), "an evidence entry names a finding"
+    assert with_evidence >= 4 and without_evidence >= 1, "the project has results with evidence and a result without"
+    ids = [item["id"] for item in rrs.SPECS]
+    sc.self_check(project.sarif["runs"][0]["results"], tool=CONTROLS, member_ids=ids,
+                  assignments=sc.correlation_assignments(FIRST_RUN_GROUPS, ids), resolved_ids=rrs.RESOLVED_IDS, uri=URI)
+
+
+# --- ruling B (D7): reused-id is carried over from the input ---------------------------------------------------------
+
+def test_reused_id_is_carried_over_from_the_input_risk_scores(rrs, entries, tmp_path):
+    """FR-E.19, D7 and US-6a #10: ``render-compensating-controls.py`` carries the flag from its input into ``integrity-flags``.
+
+    The scorer finds the reuse in its baseline. The controls stage is given no baseline here, so the flag can only be its
+    input's. Both files flag the same findings under the same string, and the reissued ID inherits the old alert in each.
+    """
+    project = make_project(CONTROLS_FILE, rrs, entries, tmp_path)
+    keys_1, baseline = reissue_ids(rrs, project, RUN_CODES[CONTROLS_FILE])
+    res = project.run(baseline_dir=baseline, controls_baseline=None)
+    assert res.code in (0, 5), res.describe()
+    controls = results_by(project.sarif)
+    scorer = results_by(project.scorer_sarif)
+    assert sorted(i for i, r in controls.items() if REUSED_ID_FLAG in r["properties"]["integrity-flags"]) == ["S-1", "S-2"]
+    assert sorted(i for i, r in scorer.items() if REUSED_ID_FLAG in r["properties"]["score-flags"]) == ["S-1", "S-2"]
+    assert all(r["properties"]["integrity-flags"] == sorted(r["properties"]["integrity-flags"]) for r in controls.values()), \
+        "a sorted array, present on every result"
+    assert alert_keys(project.sarif)["S-2"] == keys_1["S-2"], "the reissued ID inherits the old alert: the exposure the flag marks (ruling B)"
+
+
+def test_a_controls_baseline_alone_does_not_make_the_stage_flag_a_reused_id(rrs, entries, tmp_path):
+    """The converse of the case above: the stage carries what its input says and derives nothing.
+
+    The scorer has no baseline in run 2, so it flags nothing, and the controls stage, whose baseline lists the reused IDs, does not either.
+    """
+    project = make_project(CONTROLS_FILE, rrs, entries, tmp_path)
+    keys_1, baseline = reissue_ids(rrs, project, RUN_CODES[CONTROLS_FILE])
+    res = project.run(baseline_dir=None, controls_baseline=baseline)  # reading: a baseline names a directory of both stages' files
+    assert res.code in (0, 5), res.describe()
+    assert not [r for r in project.scorer_sarif["runs"][0]["results"] if REUSED_ID_FLAG in r["properties"]["score-flags"]]
+    for result in project.sarif["runs"][0]["results"]:
+        assert REUSED_ID_FLAG not in result["properties"]["integrity-flags"], result["partialFingerprints"]["findingId/v1"]
+
+
+# --- R-33: the three (tool, category) pairs differ across the files ---------------------------------------------------
+
+def test_the_three_tool_and_category_pairs_differ_across_the_rendered_files(rrs, entries, tmp_path):
+    """R-33, US-6a #3 and FR-E.2's cross-file assertion, on the files the renderers write.
+
+    ``threats.sarif`` is still the orchestrator's until PR 2, so its pair is ADR-050 D7's constant, written out here.
+    """
+    project = make_project(CONTROLS_FILE, rrs, entries, tmp_path, groups=FIRST_RUN_GROUPS)
+    res = project.run()
+    assert res.code in RUN_CODES[CONTROLS_FILE], res.describe()
+    documents = {SCORER_FILE: project.scorer_sarif, CONTROLS_FILE: project.sarif}
+    drivers = {name: document["runs"][0]["tool"]["driver"] for name, document in documents.items()}
+    assert drivers[SCORER_FILE]["name"] == "tachi-risk-scorer" and drivers[CONTROLS_FILE]["name"] == "tachi-control-analyzer", "verbatim"
+    pairs = {("Tachi", "threat-model"), (drivers[SCORER_FILE]["name"], SCORER_CATEGORY), (drivers[CONTROLS_FILE]["name"], CONTROLS_CATEGORY)}
+    assert len(pairs) == 3
+    assert {driver["informationUri"] for driver in drivers.values()} == {"https://github.com/davidmatousek/tachi"}
+    for document in documents.values():
+        assert "automationDetails" not in document["runs"][0], "the upload step's category governs (D7)"
+    scorer, controls = results_by(documents[SCORER_FILE]), results_by(documents[CONTROLS_FILE])
+    assert sorted(scorer) == sorted(controls), "both files hold the open findings"
+    for finding_id in controls:
+        canonical = tachi_parts.canonical_finding_id(finding_id)
+        hashes = {file: result[finding_id]["partialFingerprints"]["primaryLocationLineHash"]
+                  for file, result in ((SCORER_FILE, scorer), (CONTROLS_FILE, controls))}
+        assert hashes == {SCORER_FILE: recipe(SCORER, canonical), CONTROLS_FILE: recipe(CONTROLS, canonical)}, finding_id
+        assert len(set(hashes.values()) | {recipe(THREATS, canonical)}) == 3, "one finding, three files, three hashes"
+        assert scorer[finding_id]["ruleId"] == controls[finding_id]["ruleId"] == EXPECTED_RULES[finding_id.partition("-")[0]], \
+            "the rule is a function of the finding, shared by the files (ADR-013 D2)"
+        assert scorer[finding_id]["locations"][0]["physicalLocation"] == controls[finding_id]["locations"][0]["physicalLocation"], \
+            "and so is the location"
+
+
+# --- KB 24: a case variant gives one URI, on a real case-insensitive volume (f374-macos) -----------------------------
+
+def capitals(part):
+    """Respell every cited file in capitals: the same files on a case-insensitive volume, so each must come out spelled as the volume spells it."""
+    for item in part["items"]:
+        for cited in item["evidence"]:
+            cited["file"] = cited["file"].upper()
+
+
+def assert_evidence_spelled(project, results):
+    """Each result's evidence entries are the files its item cites, in their canonical spelling, however the part typed them."""
+    by_id = {tachi_parts.canonical_finding_id(r["partialFingerprints"]["findingId/v1"]): r for r in results}
+    checked = 0
+    for finding_id, item in project.items.items():
+        related = by_id[finding_id].get("relatedLocations", [])
+        got = {(e["physicalLocation"]["artifactLocation"]["uri"], e["physicalLocation"]["region"]["startLine"]) for e in related}
+        assert got == {(cited["file"], cited["line"]) for cited in item["evidence"]}, finding_id
+        checked += len(related)
+    assert checked >= 5, "the project has evidence to spell"
+
+
+@BOTH_FILES
+def test_a_case_variant_gives_every_result_the_same_uri_on_a_real_case_insensitive_volume(rrs, entries, tmp_path, sarif_file):
+    """KB 24, FR-E.2 and D16's macOS job: Section 16's fake volume holds this offline, and here the volume is real.
+
+    ``f374-macos`` runs this module alone, so it runs this case. It is skipped on a case-sensitive volume, as Section 6's
+    real-volume case is. The body line names the architecture file in capitals, and the controls part cites its evidence
+    in capitals too, so one URI is each result's, and one spelling is each evidence entry's.
+    """
+    if not _case_insensitive(tmp_path):
+        pytest.skip("this volume is case-sensitive; the fake filesystem covers the case offline")
+    project = make_project(sarif_file, rrs, entries, tmp_path, body_line="DOCS/Other/ARCHITECTURE.md")
+    add_architecture_files(project)
+    (project.out / "architecture.md").write_text("# the snapshot\n", encoding="utf-8")
+    options = {"architecture": False}
+    if sarif_file == CONTROLS_FILE:
+        options["mutate"] = capitals
+    res = project.run(**options)
+    assert res.code == 0, res.describe()
+    results = project.sarif["runs"][0]["results"]
+    assert {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in results} == {"docs/other/architecture.md"}
+    if sarif_file == CONTROLS_FILE:
+        assert_evidence_spelled(project, results)
+
+
+def test_evidence_cited_in_a_case_variant_is_spelled_by_the_resolver_on_a_case_insensitive_volume(rrs, entries, tmp_path, monkeypatch):
+    """The same case offline and on every platform: a fake case-insensitive volume stands in for the adopter's laptop."""
+    project = make_project(CONTROLS_FILE, rrs, entries, tmp_path)
+    project.score(architecture=False)
+    fake = FakeFilesystem(str(tmp_path), case_insensitive=True)
+    mirror(fake, tmp_path)
+    monkeypatch.setattr(sc, "OS_FILESYSTEM", fake)
+    res = project.run(mutate=capitals, architecture=False, score=False)  # no flag: the default path warns, so exit 5 is fine
+    assert res.code in RUN_CODES[CONTROLS_FILE], res.describe()
+    assert_evidence_spelled(project, project.sarif["runs"][0]["results"])
+
+
+# --- the clean run, and a reassessment ---------------------------------------------------------------------------------
+
+def test_a_clean_controls_run_exits_0_with_no_warning(rrs, entries, tmp_path):
+    """The synthetic project is clean, so a controls run has nothing to warn about: exit 0 and an empty ``warnings`` list.
+
+    Section 16's pair cases accept exit 5 from a controls run, so that one warning the harness didn't foresee can't hide
+    all of them. This is the case where such a warning shows.
+    """
+    project = make_project(CONTROLS_FILE, rrs, entries, tmp_path, groups=FIRST_RUN_GROUPS)
+    res = project.run()
+    assert res.code == 0, res.describe()
+    record = project.record
+    assert (record["status"], record["warnings"], record["error"], record["undeclared_paths"]) == ("success", [], None, [])
+
+
+def test_a_reassessment_changes_the_results_and_never_their_keys(rrs, entries, tmp_path):
+    """FR-E.2 and D7: nothing but the tool, the category, the rule, the line hash and the URI is identity.
+
+    In run 2 the agent re-assesses every finding: another control status and another category, so other evidence, levels,
+    messages and properties. Run 2 renders into the same directory, with no baseline, and no key moves.
+    """
+    project = make_project(CONTROLS_FILE, rrs, entries, tmp_path, groups=FIRST_RUN_GROUPS)
+    assert project.run().code in RUN_CODES[CONTROLS_FILE]
+    first, keys_1 = results_by(project.sarif), alert_keys(project.sarif)
+    project.variant = 1
+    assert project.run().code in RUN_CODES[CONTROLS_FILE]
+    second = results_by(project.sarif)
+    assert alert_keys(project.sarif) == keys_1, "a re-assessment moves no key"
+    own = lambda result: {key: value for key, value in result.items() if key not in ("ruleId", "partialFingerprints", "locations")}  # noqa: E731
+    assert sum(1 for finding_id in first if own(first[finding_id]) != own(second[finding_id])) >= 5, \
+        "the re-assessment is not vacuous: it changes what a result says"
