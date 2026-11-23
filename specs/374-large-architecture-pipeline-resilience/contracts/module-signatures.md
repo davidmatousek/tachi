@@ -240,6 +240,24 @@ def governance_for(status: str, *, rendered_band: str, run_date: date, row: Opti
 - T057 widens `parse_compensating_controls_md` to read K8's corrected format and the pre-fix one. Its parameters don't change, and its rows only gain keys.
 - T032 widens the reference-set wrapper's accepted forms without changing its signature. The wrapper is lane R0c's, written in W1 (T018), and G1 records its name and return shape.
 
+**Settled by T018 (ruled at W1, 2026-11-22, T023):**
+
+```python
+def parse_reference_set(content: str, source: str = "threats.md") -> dict: ...  # {"open", "resolved", "duplicates"}
+def parse_markdown_table(content: str, section_header: str = None, start_line: int = None, skipped: list = None) -> list: ...
+```
+
+- **`parse_reference_set`** returns `open` (Section 7, as `parse_threats_findings` builds each row) and `resolved` (Section 4c), each in S-2 order. Every ID passes the allow-list, and `id` keeps the file's spelling. It raises `ReferenceSetError`, a `ValueError`, so the stage stops before dispatch (S-12(c)).
+- **A repeated canonical ID is read, never refused.** The first row wins, and an open row beats a resolved one. `duplicates` lists the repeated IDs in S-2 order.
+  - **Why read it.** One ID is one finding (D-4). The shipped `maestro-reference` example lists one twice, so this is one of the forms tachi's own samples show, which S-12 reads.
+  - **The warning.** `plan` prints it on stderr and still exits 0, because its exit codes are 0, 1 and 2. Each renderer lists the IDs under Input Issues (scorer §6, controls §7) and as the stage record's warning `duplicate-finding-id`, and exits 5.
+  - **The oracle (NFR-1).** A diff explained by the dedup belongs to the class "duplicate reference-set ID, first row wins", naming the ID: an old output's second row for the ID, or a value or text that follows the first row. The class applies only when the run's warning names the same ID. Otherwise the diff is unattributed.
+- **`skipped`** is additive, with a default that leaves every caller unchanged. It receives the 1-based line of each row dropped as malformed, so the reference set can refuse to lose a row.
+  - T033's decoder runs on each cell after the split on raw `|`, so decoding never changes a row's cell count.
+- **`tachi_parsers` imports `tachi_parts` at module level** from the commit that wires `tachi_parts` into the install manifest (T022), in lock-step (H7).
+  - R0c, the file's W1 writer, supplies the edit. If T022 has already landed, lane P makes it W2's first change to the file.
+  - A function-level import hides the dependency from F-373's S-13 import gate and from `_import_closure`, and it would fail mid-run instead of at load.
+
 ```python
 from typing import Iterable, Optional
 
