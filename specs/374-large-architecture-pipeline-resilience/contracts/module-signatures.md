@@ -180,6 +180,25 @@ def check_carried_vector(row: BaselineRow, *, tags: Sequence[str]) -> VectorChec
 - **Renderer form.** It recomputes `cvss_chain` from the stored vector, `score_bounds` and this run's `tags`. A difference is `corrected:cvss_base:vector`, unless recomputing with `row.tags_used` gives the stored value, in which case it is `retagged:cvss_base:asset-tags` (ruling A).
 - **Legacy form.** It runs D10's steps 1–6 in order, testing this run's tags first (PM plan review, finding 2). The candidates are `base(v)` and its own-category bound clamp.
 - **Flag names (ratified at W1, from T043).** A flag's `<field>` is the value whose status the flag describes, by its `schemas/risk-scoring.yaml` name, and its `<cause>` is kebab-case. So a missing vector is `unverifiable:cvss_base:no-vector`, like `unchecked:cvss_base:assessed-unrecorded`. The governance flags name `remediation_sla` and `risk_disposition`, beside `severity_band`, `composite_score` and `review_date`, for example `override:remediation_sla:human`.
+- **The scorer's flag vocabulary, closed** (ruled at W1 from T040 and T043). The renderer (T045, T046), the goldens (T041) and the fixture's expected outcomes (T040) use exactly these strings. A finding carries at most one flag per kind and field.
+  - **`corrected:<field>:<cause>`.** The cause names the derivation step that produced the field's new value (D9's four words):
+    - `cvss_base:vector`;
+    - `composite_score:arithmetic`, and `exploitability`, `scalability` or `reachability` with `:arithmetic`;
+    - `severity_band:band-mapping`, or `severity_band:rounding` when only rounding moved the band;
+    - `remediation_sla`, `risk_disposition` or `review_date` with `:follows-band`.
+  - **The review date's fallbacks.** When a fallback set the date, `review_date:baseline-date` or `review_date:clock-restarted` replaces `follows-band`, so the field carries one flag.
+  - **A rounding-only composite difference** is normalized and counted, never flagged. Only a band it moves is flagged, as `severity_band:rounding`.
+  - **Ruling A.** `retagged:<field>:asset-tags` goes on every field that the tags alone moved, the values that follow the band included. None of those fields is also flagged `corrected`.
+  - **The rest:**
+    - `unverifiable:cvss_base:no-vector`;
+    - `unchecked:cvss_base:assessed-unrecorded`, `unchecked:cvss_base:bound-n17c`, `unchecked:reachability:compound-trust-label` and `unchecked:review_date:scoring-date-unknown`;
+    - `divergent:composite_score:primary=<ID>`;
+    - `override:remediation_sla:human` and `override:risk_disposition:human`;
+    - `reused-id:finding_id:baseline`, verbatim from D7;
+    - `input:cvss_vector:sources-disagree` and `input:reachability:out-of-range`;
+    - `input:<field>:narrative-fallback` and `input:<field>:truncated`, over the 28 field names (`part-files.md`);
+    - `resolved`, alone, with no field or cause.
+  - **One open string.** The cause for a value that the input's form lacks (S-12(b)) is named by T032 in this form, and added here.
 
 ### R-31: routing, peers, dates and governance (T043, T044)
 
