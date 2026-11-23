@@ -18,7 +18,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 |---|---|
 | `schema` | `"tachi.part/1"` |
 | `plan_id`, `batch_id` | the current plan's; the planned batch's |
-| `stage` | `risk-score` \| `compensating-controls` (PR 1); `trees` \| `report` \| `threats-md` (PR 2; `threats-md`'s payload is item O-β, and `phase2` writes records, not parts, under item O-α, ADR-050 D6) |
+| `stage` | `risk-score` \| `compensating-controls` (PR 1); `trees` \| `report` \| `threats-md` (PR 2; `threats-md`'s payload is item O-β). Phase 2 has no stage here: it writes records, not parts, and has no plan (item O-α, ruled at ADR-050 rev. 3, D6; `threat-model-records.md`, "Phase 2 dispatches") |
 | `agent_type` | the stage's agent: `tachi-risk-scorer`, `tachi-control-analyzer`, `tachi-attack-tree-delta`, `tachi-threat-report` or `tachi-orchestrator` |
 | `finding_ids` | 1–500 unique IDs, equal to the planned set; `[]` only in a `report` section part |
 | `items` | an array of objects, one per ID, each `{finding_id, …the stage's closed payload}` |
@@ -46,7 +46,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 
 | Key | Type |
 |---|---|
-| `schema`, `plan_id`, `stage`, `agent_type` | as in §1, and `stage` may also be `threat-model`, the run-level plan (PR 2; `phase2` joins when item O-α is ruled) |
+| `schema`, `plan_id`, `stage`, `agent_type` | as in §1, and `stage` may also be `threat-model`, the run-level plan (PR 2). No plan has the stage `phase2`, which item O-α leaves out (ADR-050 D6, rev. 3) |
 | `created_utc` | ISO 8601, ending in `Z` |
 | `tachi_version` | `X.Y.Z` |
 | `inputs` | `{logical name: {path, sha256, bytes}}` |
