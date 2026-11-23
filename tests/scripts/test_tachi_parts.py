@@ -2599,3 +2599,196 @@ def test_the_derived_history_is_a_valid_stage_record_body(tmp_path):
     events, retries = history_of(tmp_path, batches, parts)
     record = dict(valid_stage_record(), overflow_events=events, retries=retries)
     assert _api("validate_stage_record")(record) is record
+
+
+# =============================================================================
+# 21. Edge whitespace is removed at intake (ruled at W1, from T033; contracts/part-files.md, "Validation order")
+#
+# Lane P's decoder reads a table cell with its edges stripped, so a carried value that kept edge whitespace would
+# come back different on its second run, and T056 needs carried values byte-identical. In step 9, after any cut,
+# every narrative and evidence-class string is `strip()`ped, a snippet is `textwrap.dedent`ed first, no flag is
+# raised, and a required field that is empty afterwards still rejects the part. Closed values are left as written.
+# =============================================================================
+
+def stored_at(result, *path):
+    value = result.part["items"][0]
+    for key in path:
+        value = value[key]
+    return value
+
+
+PROSE_FIELDS = [
+    ("rationale.cvss", SCORER, ("rationale", "cvss")),
+    ("rationale.reachability", SCORER, ("rationale", "reachability")),
+    ("metric_rationale.AV", SCORER, ("metric_rationale", "AV")),
+    ("subscore_rationale.known_techniques", SCORER, ("subscore_rationale", "known_techniques")),
+    ("evidence.summary", CONTROLS, ("evidence", 0, "summary")),
+    ("matrix_row", CONTROLS, ("matrix_row",)),
+    ("recommendation_body", CONTROLS, ("recommendation_body",)),
+]
+
+
+def assessment_part(text):
+    part = make_part(kind=CONTROLS, ids=("S-1",), items=[controls_item("S-1", "partial")])
+    part["items"][0]["evidence"][0]["assessment"] = {
+        d: {"rating": "High", "rationale": text} for d in ("coverage", "configuration", "currency", "completeness")}
+    return part
+
+
+@pytest.mark.parametrize("raw", [" \t x \n ", "\n\n  x", "x\t\t", " x ", "　x　", "   x", "x   ", "\tx\n", "x\n\n\n"])
+@pytest.mark.parametrize("field,kind,path", PROSE_FIELDS, ids=[f[0] for f in PROSE_FIELDS])
+def test_a_prose_string_loses_its_edge_whitespace_and_raises_no_flag(field, kind, path, raw):
+    result = classify(with_text(kind, path, raw), ids=("S-1",), kind=kind)
+    assert result.state == "done", result.detail
+    assert stored_at(result, *path) == "x"
+    assert result.flags.get("S-1", []) == []
+    assert result.counts == {"narrative_fallbacks": 0, "truncations": 0}
+
+
+def test_an_assessment_rationale_loses_its_edge_whitespace_too():
+    result = classify(assessment_part("  \t Covers the main path.\n "), ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done", result.detail
+    assessment = stored_at(result, "evidence", 0, "assessment")
+    assert {cell["rationale"] for cell in assessment.values()} == {"Covers the main path."}
+    assert result.flags.get("S-1", []) == []
+
+
+def test_slots_at_the_edges_survive_the_strip_and_the_field_is_still_checked_as_narrative():
+    result = classify(with_text(SCORER, ("rationale", "cvss"), "  {{score:cvss_base}} is {{band:severity}}.  "), ids=("S-1",))
+    assert stored_at(result, "rationale", "cvss") == "{{score:cvss_base}} is {{band:severity}}."
+    broken = classify(with_text(SCORER, ("rationale", "cvss"), "  Score 9.8 is high.  "), ids=("S-1",))
+    assert stored_at(broken, "rationale", "cvss") == _api("narrative_fallback")("rationale.cvss")
+
+
+def test_whitespace_inside_the_text_is_left_alone():
+    for text in ("a  b\t c", "line one\n  line two\n\nline four", "x   y"):
+        result = classify(with_text(SCORER, ("rationale", "exploitability"), text), ids=("S-1",))
+        assert stored_at(result, "rationale", "exploitability") == text
+
+
+def test_the_strip_follows_the_cut_and_the_cut_is_still_flagged():
+    text = "a" * 399 + " " + "b" * 50          # the cut at 400 ends on the space
+    result = classify(with_text(SCORER, ("rationale", "cvss"), text), ids=("S-1",))
+    assert stored_at(result, "rationale", "cvss") == "a" * 399
+    assert result.flags["S-1"] == ["input:rationale.cvss:truncated"]
+    assert result.counts["truncations"] == 1
+
+
+def test_a_required_field_that_is_empty_after_the_strip_rejects_the_part_and_an_optional_one_may_be_empty():
+    for blank in ("   ", "\t\n ", " 　"):
+        assert classify(with_text(SCORER, ("rationale", "cvss"), blank), ids=("S-1",)).state == "invalid", repr(blank)
+        for kind, path in ((CONTROLS, ("evidence", 0, "summary")), (CONTROLS, ("matrix_row",)), (CONTROLS, ("recommendation_body",)),
+                           (SCORER, ("metric_rationale", "AV"))):
+            result = classify(with_text(kind, path, blank), ids=("S-1",), kind=kind)
+            assert result.state == "done", (path, result.detail)
+            assert stored_at(result, *path) == ""
+
+
+def test_closed_values_are_checked_and_never_stripped():
+    part = with_text(SCORER, ("reachability", "zone"), " Public Zone ")
+    assert stored_at(classify(part, ids=("S-1",)), "reachability", "zone") == " Public Zone "
+    part = put(make_part(kind=CONTROLS, ids=("S-1",)), ("items", 0, "evidence", 0, "file"), " src/a.py ")
+    result = classify(part, ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done" and stored_at(result, "evidence", 0, "file") == " src/a.py "
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("    def f():\n        return 1\n", "def f():\n    return 1"),
+    ("\tfoo\n\t\tbar", "foo\n\tbar"),
+    ("\n    x\n      y\n", "x\n  y"),
+    ("  a\n\tb", "a\n\tb"),                                       # no common margin: only the edges go
+    ("    a\n        \n    b", "a\n\nb"),                           # textwrap.dedent empties a whitespace-only line
+    ("  one\n  two  \n  three", "one\ntwo  \nthree"),               # trailing spaces inside the text stay
+    ("x = 1", "x = 1"),
+])
+def test_a_snippet_is_dedented_so_its_lines_keep_their_relative_indentation_and_then_stripped(raw, expected):
+    result = classify(with_text(CONTROLS, ("evidence", 0, "snippet"), raw), ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done", result.detail
+    assert stored_at(result, "evidence", 0, "snippet") == expected
+    assert result.flags.get("S-1", []) == []
+
+
+def test_a_snippet_is_cut_first_and_the_lines_that_are_kept_are_the_ones_dedented():
+    lines = ["        kept %s" % name for name in "abcde"] + ["    cut %s" % name for name in "fgh"]
+    result = classify(with_text(CONTROLS, ("evidence", 0, "snippet"), "\n".join(lines)), ids=("S-1",), kind=CONTROLS)
+    assert stored_at(result, "evidence", 0, "snippet") == "\n".join("kept %s" % name for name in "abcde")
+    assert result.flags["S-1"] == ["input:evidence.snippet:truncated"]
+
+
+@pytest.mark.parametrize("char", [chr(code) for code in range(0x110000) if chr(code).isspace()])
+def test_every_character_that_str_strip_removes_is_removed_from_the_edges(char):
+    """The predicate is the table readers' own, so no stored value can lose an edge on the next read.
+
+    A separator or control that D3 forbids is stripped at the edge, before step 10 looks, and one inside still rejects.
+    """
+    result = classify(with_text(SCORER, ("rationale", "cvss"), char + "x" + char), ids=("S-1",))
+    assert result.state == "done", (hex(ord(char)), result.detail)
+    assert stored_at(result, "rationale", "cvss") == "x"
+
+
+@pytest.mark.parametrize("raw", [" \t x \n ", "\n\n  Network reachable, so {{score:cvss_base}}.  \t", "a  b \n c"])
+@pytest.mark.parametrize("field,kind,path", PROSE_FIELDS, ids=[f[0] for f in PROSE_FIELDS])
+def test_normalizing_a_normalized_value_changes_nothing(field, kind, path, raw):
+    first = classify(with_text(kind, path, raw), ids=("S-1",), kind=kind)
+    if first.state != "done":
+        pytest.skip("not a valid value for this field")
+    again = classify(with_text(kind, path, stored_at(first, *path)), ids=("S-1",), kind=kind)
+    assert stored_at(again, *path) == stored_at(first, *path)
+
+
+def read_back(cell_text):
+    """What lane P's reader does with a persisted row: split on raw `|`, strip the cell's edges, decode the references."""
+    row = "| %s |" % cell_text
+    return decode_references(row.split("|")[1].strip())
+
+
+MESSY_PROSE = [" \t Network reachable with no privileges.\n ", "\n\n  A | pipe, a `tick`, <b>, & {{braces}}  \t", "x "]
+MESSY_SNIPPETS = ["    def login(user):\n        check(user)\n\n    return 1\n", "\n\n\tfoo()\n\t\tbar()\t\n", "  a | b `c` <d> & {{e}}  "]
+
+
+@pytest.mark.parametrize("raw", MESSY_PROSE)
+@pytest.mark.parametrize("field,kind,path", PROSE_FIELDS, ids=[f[0] for f in PROSE_FIELDS])
+def test_a_carried_value_is_byte_identical_across_two_write_and_read_round_trips(field, kind, path, raw):
+    """T056: write a value as the renderer does, read it back as the next run does, and validate it again, twice over."""
+    first = classify(with_text(kind, path, raw), ids=("S-1",), kind=kind)
+    assert first.state == "done", first.detail
+    first_value = stored_at(first, *path)
+    first_cell = _api("escape_cell")(first_value, keep_slots=True)
+    value = first_value
+    for _ in range(2):
+        value = read_back(_api("escape_cell")(value, keep_slots=True))
+        assert value == first_value
+        again = classify(with_text(kind, path, value), ids=("S-1",), kind=kind)
+        assert stored_at(again, *path) == first_value
+        assert _api("escape_cell")(stored_at(again, *path), keep_slots=True) == first_cell
+
+
+def test_without_the_strip_an_edge_would_not_survive_the_read():
+    """The failure this rule prevents: a value written with edge spaces comes back without them."""
+    assert read_back(_api("escape_cell")(" x ")) == "x"
+
+
+@pytest.mark.parametrize("raw", MESSY_SNIPPETS)
+def test_an_indented_snippet_is_byte_identical_across_two_write_and_read_round_trips(raw):
+    path = ("evidence", 0, "snippet")
+    first_value = stored_at(classify(with_text(CONTROLS, path, raw), ids=("S-1",), kind=CONTROLS), *path)
+    assert first_value == first_value.strip()
+    value = first_value
+    for _ in range(2):
+        value = read_back(_api("escape_cell")(value))
+        assert value == first_value
+        assert stored_at(classify(with_text(CONTROLS, path, value), ids=("S-1",), kind=CONTROLS), *path) == first_value
+
+
+def test_a_narrative_with_edge_whitespace_and_slots_round_trips_byte_for_byte():
+    raw = "\t\n  {{name:component}} sits in {{name:zone}}, behind {{count:auth_barriers}} barriers.  \n "
+    first_value = stored_at(classify(with_text(SCORER, ("rationale", "reachability"), raw), ids=("S-1",)), "rationale", "reachability")
+    assert first_value == "{{name:component}} sits in {{name:zone}}, behind {{count:auth_barriers}} barriers."
+    value = first_value
+    for _ in range(2):
+        cell = _api("escape_cell")(value, keep_slots=True)
+        assert cell == first_value                              # nothing to escape, and the slots are kept
+        value = read_back(cell)
+        assert value == first_value
+        again = classify(with_text(SCORER, ("rationale", "reachability"), value), ids=("S-1",))
+        assert stored_at(again, "rationale", "reachability") == first_value

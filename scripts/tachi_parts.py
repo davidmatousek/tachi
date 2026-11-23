@@ -33,8 +33,11 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
   ``classify_part(obj, ...)``: steps 1 to 10, returning a ``PartResult`` whose ``state`` is
   ``done``, ``missing``, ``overflow``, ``unparseable`` or ``invalid``. A ``done`` part comes back
   with canonical IDs and its items in the planned order; ``flags`` maps each canonical ID to its
-  sorted ``input:<field>:truncated`` flags and ``counts`` totals the cuts. Step 11 (the narrative
-  grammar, numeral ban and fallback) is T013's and plugs into ``_narrative``.
+  sorted ``input:<field>:truncated`` flags and ``counts`` totals the cuts. Every narrative and
+  evidence-class string also loses its edge whitespace at intake, after any cut (a snippet is
+  dedented first) and with no flag, so a value that a renderer writes and reads back is the same
+  bytes on every run. Step 11 (the narrative grammar, numeral ban and fallback) plugs into
+  ``_narrative``.
 * ``validate_plan``, ``validate_pointer``, ``validate_batch_input`` and ``validate_stage_record``
   return the object they were given, or raise ``PartError("invalid", ...)``.
   ``read_document(path, out, schema)`` loads one of those four documents and validates it.
@@ -98,6 +101,7 @@ import re
 import stat
 import sys
 import tempfile
+import textwrap
 import unicodedata
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
@@ -901,10 +905,14 @@ def _narrative(text: str, field: str, state: _ItemState) -> str:
 
 
 def _prose(value: Any, limit: int, field: str, state: _ItemState, narrative: bool = False,
-           minimum: int = 0, lines: Optional[int] = None) -> str:
+           minimum: int = 0, lines: Optional[int] = None, dedent: bool = False) -> str:
     """A prose field: cut at its limit (and at ``lines`` lines) and flagged, never rejected for length (RR2).
 
-    The cut comes first, then step 10 on what is left, then step 11 for a narrative field.
+    Step 9's order is the cut, then the edge whitespace: a snippet (``dedent``) is dedented with ``textwrap.dedent``
+    so its lines keep their relative indentation, and every prose string is then ``strip()``ped, the predicate the
+    table readers apply to a cell, so a carried value reads back byte for byte (T033, T056). The strip raises no
+    flag, and a required field (``minimum``) that is empty afterwards rejects the part. Then step 10 on what is
+    left, then step 11 for a narrative field.
     """
     if not isinstance(value, str):
         _fail("%s is not text" % field)
@@ -916,6 +924,9 @@ def _prose(value: Any, limit: int, field: str, state: _ItemState, narrative: boo
     if cut:
         state.flags.add("input:%s:truncated" % field)
         state.truncations += 1
+    if dedent:
+        value = textwrap.dedent(value)
+    value = value.strip()
     if len(value) < minimum:
         _fail("%s is empty" % field)
     _check_characters(value, field)
@@ -960,7 +971,7 @@ def _evidence_entry(entry: Dict[str, Any], state: _ItemState) -> None:
     _int(entry["line"], 1, None, "evidence.line")
     if not id_matches("language", entry["language"]):
         _fail("evidence.language does not match the language pattern")
-    entry["snippet"] = _prose(entry["snippet"], 600, "evidence.snippet", state, lines=5)
+    entry["snippet"] = _prose(entry["snippet"], 600, "evidence.snippet", state, lines=5, dedent=True)
     entry["summary"] = _prose(entry["summary"], 160, "evidence.summary", state)
     if "assessment" in entry:
         _check_keys(entry["assessment"], "assessment")
