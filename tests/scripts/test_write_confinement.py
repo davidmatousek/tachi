@@ -34,9 +34,16 @@ What each group proves:
   or directory value stops the run with an error that names the variable, before
   mmdc starts and before anything is written. Needs no Typst.
 - legacy mode (``--output``) still writes next to the artifacts, as before.
-- AR-14: a stock ``python3 scripts/<entry> --help`` of each of the three
-  installed scripts that import ``tachi_parsers`` leaves no bytecode cache, in
-  the project or under a test-owned ``PYTHONPYCACHEPREFIX``.
+- AR-14: a stock ``python3 scripts/<entry> --help`` of each installed entry
+  script that imports ``tachi_parsers`` (the three extractors and
+  ``tachi-stage.py``), with its local-import closure installed beside it, leaves
+  no bytecode cache, in the project or under a test-owned ``PYTHONPYCACHEPREFIX``.
+- F-374 (ADR-050 D16): ``tachi-stage.py`` runs ``plan``, ``reconcile`` and
+  ``fail`` for each batched stage on the gated fixture, in a throwaway project,
+  and every write lands under ``--out``. Its ``architecture-source`` command is
+  the one write outside ``--out``: it edits only the ``--threats`` file, and it
+  refuses a symlinked or non-regular one with exit 2. No run writes bytecode.
+  Needs no Typst.
 - AR-1 case 4 and the T015 static assertion: no fenced block in the five
   recipe documents names ``templates/tachi/`` as a write target or uses ``/tmp``.
 
@@ -65,6 +72,7 @@ Stdlib and pytest only; Python 3.9 syntax.
 """
 
 import hashlib
+import json
 import os
 import re
 import shlex
@@ -78,6 +86,9 @@ from typing import Dict, Iterator, List, Optional, Set, Tuple
 
 import pytest
 
+# The one definition of what a script needs installed beside it: the manifest test's import closure (ADR-050 D16).
+from .test_install_manifest_completeness import _import_closure
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
@@ -88,8 +99,10 @@ TEMPLATE_DIR = REPO_ROOT / "templates" / "tachi" / "security-report"
 FIXTURE_DIR = (
     REPO_ROOT / "tests" / "scripts" / "fixtures" / "fidelity_373" / "posture_mmdc_free"
 )
-# The pair the report-assembler's own preflight requires: the installed set.
-INSTALLED_SCRIPTS = ("extract-report-data.py", "tachi_parsers.py")
+# The installed set the report build needs: the extractor, ``tachi_parsers.py`` and the helper that
+# ``tachi_parsers.py`` imports at module load (ADR-050 D3). The report-assembler's own preflight still names
+# only the first two.
+INSTALLED_SCRIPTS = ("extract-report-data.py", "tachi_parsers.py", "tachi_parts.py")
 
 CUSTOM_FOOTER = "T015 custom footer"
 SUBPROCESS_TIMEOUT = 300
@@ -1036,13 +1049,28 @@ def test_legacy_mode_still_writes_next_to_the_artifacts(tmp_path: Path):
 # AR-14: a stock run of each installed entry script leaves no bytecode cache
 # =============================================================================
 
-# The installed scripts that import the sibling ``tachi_parsers`` at module level.
-# Each turns bytecode writing off itself when run as a script, before that import.
+# The installed entry scripts that import the sibling ``tachi_parsers`` at module level, directly or through
+# ``sarif_common``. Each turns bytecode writing off itself when run as a script, before its first local import.
+# A new entry joins this tuple and gets its own group below (ADR-050 D16).
 ENTRY_SCRIPTS_IMPORTING_PARSERS = (
     "extract-report-data.py",
     "extract-infographic-data.py",
     "populate-affected-assets.py",
+    "tachi-stage.py",
 )
+
+
+def _install_with_closure(entry: str, scripts: Path) -> List[str]:
+    """Copy ``entry`` and its local-import closure into ``scripts``, as an install places them.
+
+    The closure is the manifest test's own (``_import_closure``), so a script that gains an import is installed
+    with it here, and the manifest must list it. Returns the names of the siblings copied.
+    """
+    closure = sorted(Path(ref).name for ref in _import_closure({"scripts/" + entry}))
+    assert closure, "%s imports no sibling script, so the closure is empty: update this case" % entry
+    for name in [entry] + closure:
+        shutil.copy2(str(SCRIPTS_DIR / name), str(scripts / name))
+    return closure
 
 
 @pytest.mark.parametrize("entry", ENTRY_SCRIPTS_IMPORTING_PARSERS)
@@ -1050,18 +1078,17 @@ def test_a_stock_run_of_each_entry_script_leaves_no_bytecode_cache(tmp_path: Pat
     """AR-14: ``python3 scripts/<entry> --help``, with no ``-B`` and no
     ``PYTHONDONTWRITEBYTECODE``, caches none of the project's own modules.
 
-    A stock run would cache the imported ``tachi_parsers`` in ``scripts/__pycache__/``,
-    or, on an interpreter with a default cache prefix (macOS's ``/usr/bin/python3``),
-    outside the project. A test-owned ``PYTHONPYCACHEPREFIX`` sends every cache to a
-    directory this test reads, on any interpreter, so the case fails whenever the
-    script's guard is missing. The interpreter caches the standard library under
-    the prefix too; only the project's own modules are checked.
+    A stock run would cache the imported siblings (``tachi_parsers`` and what it imports) in
+    ``scripts/__pycache__/``, or, on an interpreter with a default cache prefix (macOS's
+    ``/usr/bin/python3``), outside the project. A test-owned ``PYTHONPYCACHEPREFIX`` sends every
+    cache to a directory this test reads, on any interpreter, so the case fails whenever the
+    script's guard is missing. The interpreter caches the standard library under the prefix too;
+    only the project's own modules are checked.
     """
     project = tmp_path / "project"
     scripts = project / "scripts"
     scripts.mkdir(parents=True)
-    for name in (entry, "tachi_parsers.py"):
-        shutil.copy2(str(SCRIPTS_DIR / name), str(scripts / name))
+    _install_with_closure(entry, scripts)
     prefix = tmp_path / "pycache-prefix"
     prefix.mkdir()
 
@@ -1087,6 +1114,176 @@ def test_a_stock_run_of_each_entry_script_leaves_no_bytecode_cache(tmp_path: Pat
         for path in prefix.rglob(module.stem + ".cpython-*.pyc")
     )
     assert not cached, "a stock run cached the project's own modules under the prefix: %s" % cached
+
+
+# =============================================================================
+# F-374 (ADR-050 D16): tachi-stage.py writes only under {out} and leaves no bytecode
+# =============================================================================
+#
+# Each new entry gets a group like this one: it runs the entry's commands on the gated fixture in a throwaway
+# project, and fails on any path written outside ``{out}``. The gated fixture is the subset of S-4's synthetic
+# large-architecture fixture that the gated tests read. Standard library and pytest only.
+
+GATED_FIXTURE = REPO_ROOT / "tests" / "scripts" / "fixtures" / "large_arch" / "gated-subset"
+STAGE_ENTRY = "tachi-stage.py"
+STAGE_DATE = "2026-11-22"
+# Each batched stage, with the extra arguments its plan takes from the fixture's inputs.
+STAGES = {
+    "risk-score": (),
+    "compensating-controls": ("--risk-scores", "run/risk-scores.md"),
+}  # type: Dict[str, Tuple[str, ...]]
+StageState = Tuple[Snapshot, Snapshot]
+
+
+class StageProject:
+    """A throwaway adopter project that runs ``tachi-stage.py`` on the gated fixture.
+
+    Layout under ``root``: ``project/`` is the working directory. It holds ``scripts/`` (the entry and its
+    local-import closure, as an install places them), ``run/`` (the fixture's three inputs: ``threats.md``,
+    ``risk-scores.md`` and ``architecture.md``) and ``out/``, which exists before the first command, as a command
+    creates it. ``systmp/`` is ``$TMPDIR`` of every child, and ``pycache-prefix/`` takes any bytecode an
+    interpreter writes outside the project.
+    """
+
+    def __init__(self, root: Path):
+        self.cwd = root / "project"
+        self.out = self.cwd / "out"
+        self.inputs = self.cwd / "run"
+        self.systmp = root / "systmp"
+        self.prefix = root / "pycache-prefix"
+        scripts = self.cwd / "scripts"
+        for directory in (scripts, self.inputs, self.out, self.systmp, self.prefix):
+            directory.mkdir(parents=True)
+        _install_with_closure(STAGE_ENTRY, scripts)
+        for source, name in (
+            (GATED_FIXTURE / "baseline" / "threats.md", "threats.md"),
+            (GATED_FIXTURE / "baseline" / "risk-scores.md", "risk-scores.md"),
+            (GATED_FIXTURE / "architecture" / "architecture.md", "architecture.md"),
+        ):
+            shutil.copy2(str(source), str(self.inputs / name))
+
+    def state(self) -> StageState:
+        """The whole project, and ``$TMPDIR`` apart from it, as two snapshots."""
+        return _snapshot(self.cwd), _snapshot(self.systmp)
+
+    def run(self, *args: str) -> "subprocess.CompletedProcess":
+        """``python3 scripts/tachi-stage.py ARGS``: the stock invocation, with bytecode caching left on."""
+        env = dict(os.environ)
+        env["TMPDIR"] = str(self.systmp)
+        env["PYTHONPYCACHEPREFIX"] = str(self.prefix)  # a cache written outside the project lands where this reads
+        env.pop("PYTHONDONTWRITEBYTECODE", None)  # a developer's setting must not mask a regression (AR-14)
+        return subprocess.run(
+            [sys.executable, "scripts/" + STAGE_ENTRY] + list(args),
+            cwd=str(self.cwd),
+            env=env,
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=SUBPROCESS_TIMEOUT,
+        )
+
+    def assert_writes_only_under_out(
+        self, before: StageState, after: StageState, label: str, also: Tuple[str, ...] = ()
+    ) -> Tuple[Set[str], Set[str], Set[str]]:
+        """Every path added, changed or removed since ``before`` sits under ``out/`` or is one of ``also``.
+
+        ``$TMPDIR`` must be as it was: the stage's writes are atomic in their own directory, so nothing goes there.
+        Returns ``(added, changed, removed)`` over the project.
+        """
+        added, changed, removed = _diff(before[0], after[0])
+        stray = sorted(p for p in added | changed | removed if not any(_within(p, base) for base in ("out",) + also))
+        assert not stray, "%s: wrote outside out/: %s" % (label, stray)
+        assert before[1] == after[1], "%s: wrote under $TMPDIR: %s" % (label, sorted(set(before[1]) ^ set(after[1])))
+        return added, changed, removed
+
+    def assert_no_bytecode(self) -> None:
+        """No ``__pycache__`` or ``.pyc`` anywhere in the project, and none cached for its modules under the prefix."""
+        found = sorted(
+            p.relative_to(self.cwd).as_posix() for p in self.cwd.rglob("*") if p.name == "__pycache__" or p.suffix == ".pyc"
+        )
+        assert not found, "a run wrote bytecode into the project: %s" % found
+        cached = sorted(
+            path.relative_to(self.prefix).as_posix()
+            for module in (self.cwd / "scripts").glob("*.py")
+            for path in self.prefix.rglob(module.stem + ".cpython-*.pyc")
+        )
+        assert not cached, "a run cached the project's own modules under the prefix: %s" % cached
+
+
+@pytest.mark.parametrize("stage", sorted(STAGES))
+def test_tachi_stage_plan_reconcile_and_fail_write_only_under_out(tmp_path: Path, stage: str):
+    """``plan``, ``reconcile`` and ``fail`` write only under ``--out``, and leave the inputs and the scripts as they were.
+
+    No part is ever written, so every batch is pending: ``reconcile`` splits them and exits 3, and ``fail``
+    quarantines nothing and writes the stage record. The digest each command prints is the one the next takes.
+    """
+    project = StageProject(tmp_path)
+    start = project.state()
+
+    plan = project.run("plan", "--stage", stage, "--out", "out", "--date", STAGE_DATE,
+                       "--threats", "run/threats.md", *STAGES[stage])
+    assert plan.returncode == 0, _describe(plan)
+    planned = json.loads(plan.stdout)
+    added, _, _ = project.assert_writes_only_under_out(start, project.state(), "after plan")
+    assert any(p.endswith("/plan.json") for p in added), "the snapshot must see the plan"
+
+    reconcile = project.run("reconcile", "--stage", stage, "--out", "out",
+                            "--plan", planned["plan_id"], "--plan-digest", planned["plan_digest"])
+    assert reconcile.returncode == 3, _describe(reconcile)
+    project.assert_writes_only_under_out(start, project.state(), "after reconcile")
+
+    failed = project.run("fail", "--stage", stage, "--out", "out", "--plan", planned["plan_id"],
+                         "--plan-digest", json.loads(reconcile.stdout)["plan_digest"], "--reason", "check-failed")
+    assert failed.returncode == 0, _describe(failed)
+    end = project.state()
+    added, _, _ = project.assert_writes_only_under_out(start, end, "after fail")
+    assert any(p.endswith("/stage-record.json") for p in added), "the snapshot must see the stage record"
+
+    # The inputs and the installed scripts are byte-unchanged end to end, and nothing wrote bytecode.
+    assert _under(end[0], "run") == _under(start[0], "run"), "the stage changed one of its inputs"
+    assert _under(end[0], "scripts") == _under(start[0], "scripts"), "the stage changed an installed script"
+    project.assert_no_bytecode()
+
+
+def test_tachi_stage_architecture_source_edits_only_the_threats_file(tmp_path: Path):
+    """``architecture-source`` is the one write outside ``--out``: it edits the ``--threats`` file in place.
+
+    Nothing else changes, ``out/`` stays empty, and a second run finds the line already there.
+    """
+    project = StageProject(tmp_path)
+    before = project.state()
+
+    ran = project.run("architecture-source", "--threats", "run/threats.md", "--architecture", "run/architecture.md")
+    assert ran.returncode == 0, _describe(ran)
+    assert json.loads(ran.stdout)["action"] == "added"
+    after = project.state()
+    added, changed, removed = project.assert_writes_only_under_out(before, after, "after architecture-source",
+                                                                   also=("run/threats.md",))
+    assert changed == {"run/threats.md"} and not added and not removed, (added, changed, removed)
+    assert set(_under(after[0], "out")) == {"out"}, "architecture-source wrote under out/"
+
+    again = project.run("architecture-source", "--threats", "run/threats.md", "--architecture", "run/architecture.md")
+    assert again.returncode == 0, _describe(again)
+    assert json.loads(again.stdout)["action"] == "unchanged"
+    assert project.state() == after, "a second run changed something"
+    project.assert_no_bytecode()
+
+
+@pytest.mark.parametrize("shape", ("symlink", "directory"))
+def test_tachi_stage_architecture_source_refuses_a_link_or_a_non_regular_threats_file(tmp_path: Path, shape: str):
+    """A symlinked or non-regular ``--threats`` exits 2 and writes nothing: an edit in place must not follow a link."""
+    project = StageProject(tmp_path)
+    threats = "run"
+    if shape == "symlink":
+        (project.inputs / "threats-link.md").symlink_to("threats.md")
+        threats = "run/threats-link.md"
+    before = project.state()
+
+    ran = project.run("architecture-source", "--threats", threats, "--architecture", "run/architecture.md")
+    assert ran.returncode == 2, _describe(ran)
+    assert "TACHI THREAT-MODEL FAILED" in ran.stderr, _describe(ran)
+    assert project.state() == before, "a refused run must write nothing"
+    project.assert_no_bytecode()
 
 
 # =============================================================================

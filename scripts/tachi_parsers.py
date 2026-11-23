@@ -14,6 +14,11 @@ import re
 import sys
 from pathlib import Path
 
+# The reference-set reader below checks IDs against tachi_parts' allow-list. A sibling is found beside this file,
+# whether this module is imported flat (`tachi_parsers`) or as `scripts.tachi_parsers` (ADR-050 D3, C1).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import tachi_parts  # noqa: E402
+
 # =============================================================================
 # Shared Constants
 # =============================================================================
@@ -1275,11 +1280,6 @@ def _checked_findings(findings: list, section: str, source: str, seen: set, dupl
     A repeat is dropped and its canonical ID added to ``duplicates``, so the caller can warn: a finding appears
     once in the reference set (D-4), and a shipped example's Section 7 does list one twice.
     """
-    # Imported here, not at the top: the extractors import this module and never call this function, so they
-    # needn't have tachi_parts installed (the install-manifest and confinement tests copy them without it). The
-    # F-374 entries import tachi_parts themselves. The import moves to the top once the manifest closure covers it.
-    import tachi_parts
-
     kept = []
     for finding in findings:
         finding_id = finding["id"]
@@ -1332,8 +1332,6 @@ def parse_reference_set(content: str, source: str = "threats.md") -> dict:
     repeated: set = set()
     open_rows = _checked_findings(listed, section, source, seen, repeated)
     resolved = _checked_findings(parse_resolved_findings(content), "Section 4c (Resolved Findings)", source, seen, repeated)
-    import tachi_parts  # already loaded by _checked_findings
-
     return {"open": open_rows, "resolved": resolved,
             "duplicates": sorted(repeated, key=tachi_parts.finding_sort_key)}
 

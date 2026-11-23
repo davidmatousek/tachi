@@ -6,7 +6,8 @@
       "extra-files": [
         "README.md",
         "scripts/install.sh",
-        "docs/guides/ISOLATED_OPERATION_TACHI.md"
+        "docs/guides/ISOLATED_OPERATION_TACHI.md",
+        "scripts/tachi_parts.py"
       ],
       "changelog-sections": [
         { "type": "feat", "section": "Features" },

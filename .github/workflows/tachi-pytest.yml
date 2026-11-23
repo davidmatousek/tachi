@@ -139,6 +139,11 @@ on:
       - schemas/risk-scoring.yaml                              # Fix 397 (N13) — category_defaults vectors (input)
       - .claude/skills/tachi-risk-scoring/references/cvss-vectors.md   # Fix 397 (N13) — default and bounded-range tables (input)
       - adapters/claude-code/agents/risk-scorer.md             # Fix 397 (N13) — adapter copy of the default table (input)
+      - scripts/tachi_scoring.py                               # F-374 (T022) — the shipped CVSS 3.1 module: test_cvss_category_defaults.py's subject, and sarif_common.py imports it
+      - scripts/tachi_parts.py                                 # F-374 (T022) — imported by sarif_common.py and tachi_parsers.py at load, so by every module above that loads either
+      - scripts/tachi_parsers.py                               # F-374 (T022) — sarif_common.py imports it at load, and F-374 extends it; the SARIF-loading modules above load it
+      - schemas/compensating-controls.yaml                     # F-374 (T022) — source of the controls constants test_cvss_category_defaults.py compares (input)
+      - .claude/skills/tachi-risk-scoring/references/reachability-analysis.md   # F-374 (T022) — source of the reachability constants it compares (input)
       - tests/scripts/test_baseline_owasp_rekey.py             # Fix 397 (N5) — carry-forward 2025→2026 re-key table + validation pattern
       - .claude/skills/tachi-orchestration/references/baseline-correlation.md   # Fix 397 (N5) — re-key rule and table (input)
       - .claude/skills/tachi-orchestration/references/output-schemas.md         # Fix 397 (N5) — structural-validation check (input)
