@@ -1,0 +1,105 @@
+{
+  "controls_cases": [
+    {
+      "control_status": "found",
+      "finding": "S-1",
+      "float_round_would_give": "4.5",
+      "half_even_would_give": "4.6",
+      "inherent": "9.1",
+      "inherent_band": "Critical",
+      "is_tie": true,
+      "reduction_factor": "0.50",
+      "residual": "4.6",
+      "residual_band": "Medium",
+      "residual_exact": "4.55"
+    },
+    {
+      "control_status": "found",
+      "finding": "T-1",
+      "float_round_would_give": "2.5",
+      "half_even_would_give": "2.4",
+      "inherent": "4.9",
+      "inherent_band": "Medium",
+      "is_tie": true,
+      "reduction_factor": "0.50",
+      "residual": "2.5",
+      "residual_band": "Low",
+      "residual_exact": "2.45"
+    },
+    {
+      "control_status": "partial",
+      "finding": "R-1",
+      "float_round_would_give": "3.5",
+      "half_even_would_give": "3.4",
+      "inherent": "4.6",
+      "inherent_band": "Medium",
+      "is_tie": true,
+      "reduction_factor": "0.25",
+      "residual": "3.5",
+      "residual_band": "Low",
+      "residual_exact": "3.45"
+    },
+    {
+      "control_status": "found",
+      "finding": "I-1",
+      "float_round_would_give": "4.2",
+      "half_even_would_give": "4.2",
+      "inherent": "8.3",
+      "inherent_band": "High",
+      "is_tie": true,
+      "reduction_factor": "0.50",
+      "residual": "4.2",
+      "residual_band": "Medium",
+      "residual_exact": "4.15"
+    },
+    {
+      "control_status": "partial",
+      "finding": "D-1",
+      "float_round_would_give": "4.5",
+      "half_even_would_give": "4.5",
+      "inherent": "6.0",
+      "inherent_band": "Medium",
+      "is_tie": false,
+      "reduction_factor": "0.25",
+      "residual": "4.5",
+      "residual_band": "Medium",
+      "residual_exact": "4.5"
+    },
+    {
+      "control_status": "missing",
+      "finding": "E-1",
+      "float_round_would_give": "7.7",
+      "half_even_would_give": "7.7",
+      "inherent": "7.7",
+      "inherent_band": "High",
+      "is_tie": false,
+      "reduction_factor": "0.00",
+      "residual": "7.7",
+      "residual_band": "High",
+      "residual_exact": "7.7"
+    }
+  ],
+  "flag_reading": [
+    "A flag is kind:field:cause. Fields are the finding schema's names: cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability, cvss_vector.",
+    "Step reading of D9's causes: a changed cvss_base is 'vector', a changed composite_score is 'arithmetic', a changed severity_band is 'band-mapping' (or 'rounding' for a tie), and a changed remediation_sla, risk_disposition or review_date is 'follows-band'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves (ruling A).",
+    "basis 'pinned': the flag string appears in ADR-050, the spec or the contracts. 'derived': composed from that grammar by the reading above. 'optional': the renderer may add it or not, and a test must accept both.",
+    "A flag that the renderer adds and that is not listed is a defect of one side: the list is complete for the cases here."
+  ],
+  "notes": [
+    "The controls stage's input: run/risk-scores.md is the scorer's output for this run, and each finding's inherent score is its composite. The controls renderer never re-scores it (ADR-050 D2).",
+    "residual = q1(inherent x (1 - reduction factor)), half up, with the P0 factors found 0.50, partial 0.25 and missing 0.00. 'residual_exact' is the product before rounding. S-1 is the documented 4.55, which must give 4.6; T-1 and R-1 are ties whose half-even rounding would give 2.4 and 3.4, and I-1's 4.15 is a float trap (a binary float holds it just below). D-1 is a partial control with an exact result, and E-1 a missing control that changes nothing.",
+    "The test supplies the controls agent's judgment (control_status per finding); this file fixes the arithmetic that follows from it."
+  ],
+  "run": {
+    "architecture": null,
+    "date": "2026-11-23",
+    "how": "copy the scenario directory to a working directory; the controls stage reads run/risk-scores.md as its input",
+    "risk_scores": "run/risk-scores.md",
+    "threats": "run/threats.md"
+  },
+  "scenario": "controls",
+  "schema": "tachi.fixture-expected/1",
+  "stage": "compensating-controls",
+  "summary": "S-4's ties variant (R-11), the controls half: residual ties.",
+  "variant": "ties"
+}

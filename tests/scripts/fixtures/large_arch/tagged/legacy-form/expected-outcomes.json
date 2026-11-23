@@ -1,0 +1,554 @@
+{
+  "baseline": {
+    "files": [
+      "threats.md",
+      "risk-scores.md"
+    ],
+    "form": "legacy",
+    "frontmatter_date": "2026-11-09",
+    "note": "pre-fix form, no tags recorded"
+  },
+  "counts": {
+    "findings": 8,
+    "findings_with_flags": 5,
+    "flags_by_kind": {
+      "retagged": 13,
+      "unchecked": 2
+    },
+    "normalized": 0
+  },
+  "findings": {
+    "D-1": {
+      "case": "band-holds",
+      "component": "vector-store-a",
+      "d10_step": 4,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "asset-tags",
+          "field": "cvss_base",
+          "flag": "retagged:cvss_base:asset-tags",
+          "kind": "retagged",
+          "rendered": "8.8",
+          "stored": "8.3"
+        },
+        {
+          "basis": "pinned",
+          "cause": "asset-tags",
+          "field": "composite_score",
+          "flag": "retagged:composite_score:asset-tags",
+          "kind": "retagged",
+          "rendered": "5.8",
+          "stored": "5.6"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "D",
+      "rendered": {
+        "composite_score": "5.8",
+        "cvss_base": "8.8",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:H/A:H",
+        "exploitability": "3.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.6",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:H/A:H",
+        "exploitability": "3.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "E-1": {
+      "case": "assessed-unrecorded",
+      "component": "model-gateway",
+      "d10_step": 2,
+      "flags": [
+        {
+          "basis": "derived",
+          "cause": "assessed-unrecorded",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:assessed-unrecorded",
+          "kind": "unchecked",
+          "rendered": null,
+          "stored": "9.9"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "E",
+      "rendered": {
+        "composite_score": "7.9",
+        "cvss_base": "9.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "8.5",
+        "reachability": "2.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "9.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.9",
+        "cvss_base": "9.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "8.5",
+        "reachability": "2.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "9.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "S-1": {
+      "case": "ceiling-pass",
+      "component": "model-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "6.9",
+        "cvss_base": "9.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:N/A:L",
+        "exploitability": "9.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "3.3",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.9",
+        "cvss_base": "9.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:N/A:L",
+        "exploitability": "9.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "3.3",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:N/A:L",
+        "sarif": null
+      }
+    },
+    "S-2": {
+      "case": "n17-assessed-unrecorded",
+      "component": "model-gateway",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "derived",
+          "cause": "assessed-unrecorded",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:assessed-unrecorded",
+          "kind": "unchecked",
+          "rendered": null,
+          "stored": "9.5"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "7.1",
+        "cvss_base": "9.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+        "exploitability": "6.3",
+        "reachability": "2.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "9.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.1",
+        "cvss_base": "9.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+        "exploitability": "6.3",
+        "reachability": "2.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "9.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+        "sarif": null
+      }
+    },
+    "T-1": {
+      "case": "untagged",
+      "component": "planner-agent",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "5.7",
+        "cvss_base": "7.2",
+        "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:H",
+        "exploitability": "5.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.8",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.7",
+        "cvss_base": "7.2",
+        "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:H",
+        "exploitability": "5.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.8",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:P/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "T-2": {
+      "case": "documented-pass",
+      "component": "model-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "5.1",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "3.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.1",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "3.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "T-3": {
+      "case": "up-band-review-later",
+      "component": "vector-store-a",
+      "d10_step": 4,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "asset-tags",
+          "field": "cvss_base",
+          "flag": "retagged:cvss_base:asset-tags",
+          "kind": "retagged",
+          "rendered": "7.9",
+          "stored": "6.5"
+        },
+        {
+          "basis": "pinned",
+          "cause": "asset-tags",
+          "field": "composite_score",
+          "flag": "retagged:composite_score:asset-tags",
+          "kind": "retagged",
+          "rendered": "7.1",
+          "stored": "6.6"
+        },
+        {
+          "basis": "pinned",
+          "cause": "asset-tags",
+          "field": "severity_band",
+          "flag": "retagged:severity_band:asset-tags",
+          "kind": "retagged",
+          "rendered": "High",
+          "stored": "Medium"
+        },
+        {
+          "basis": "derived",
+          "cause": "asset-tags",
+          "field": "remediation_sla",
+          "flag": "retagged:remediation_sla:asset-tags",
+          "kind": "retagged",
+          "rendered": "7d",
+          "stored": "30d"
+        },
+        {
+          "basis": "derived",
+          "cause": "asset-tags",
+          "field": "risk_disposition",
+          "flag": "retagged:risk_disposition:asset-tags",
+          "kind": "retagged",
+          "rendered": "Mitigate",
+          "stored": "Review"
+        },
+        {
+          "basis": "pinned",
+          "cause": "asset-tags",
+          "field": "review_date",
+          "flag": "retagged:review_date:asset-tags",
+          "kind": "retagged",
+          "rendered": "2026-11-30",
+          "stored": "2026-12-09"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "7.1",
+        "cvss_base": "7.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:C/C:N/I:H/A:L",
+        "exploitability": "8.3",
+        "reachability": "2.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-30",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.8",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "6.6",
+        "cvss_base": "6.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:C/C:N/I:H/A:L",
+        "exploitability": "8.3",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "8.8",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:C/C:N/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "T-4": {
+      "case": "up-band-review-earlier",
+      "component": "vector-store-a",
+      "d10_step": 4,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "asset-tags",
+          "field": "cvss_base",
+          "flag": "retagged:cvss_base:asset-tags",
+          "kind": "retagged",
+          "rendered": "8.1",
+          "stored": "7.3"
+        },
+        {
+          "basis": "pinned",
+          "cause": "asset-tags",
+          "field": "composite_score",
+          "flag": "retagged:composite_score:asset-tags",
+          "kind": "retagged",
+          "rendered": "7.1",
+          "stored": "6.8"
+        },
+        {
+          "basis": "pinned",
+          "cause": "asset-tags",
+          "field": "severity_band",
+          "flag": "retagged:severity_band:asset-tags",
+          "kind": "retagged",
+          "rendered": "High",
+          "stored": "Medium"
+        },
+        {
+          "basis": "derived",
+          "cause": "asset-tags",
+          "field": "remediation_sla",
+          "flag": "retagged:remediation_sla:asset-tags",
+          "kind": "retagged",
+          "rendered": "7d",
+          "stored": "30d"
+        },
+        {
+          "basis": "derived",
+          "cause": "asset-tags",
+          "field": "risk_disposition",
+          "flag": "retagged:risk_disposition:asset-tags",
+          "kind": "retagged",
+          "rendered": "Mitigate",
+          "stored": "Review"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "7.1",
+        "cvss_base": "8.1",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:H/UI:N/S:C/C:L/I:H/A:L",
+        "exploitability": "8.8",
+        "reachability": "2.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-10-28",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.3",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "6.8",
+        "cvss_base": "7.3",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:H/UI:N/S:C/C:L/I:H/A:L",
+        "exploitability": "8.8",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-10-28",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.3",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:L/AC:L/PR:H/UI:N/S:C/C:L/I:H/A:L",
+        "sarif": null
+      }
+    }
+  },
+  "flag_reading": [
+    "A flag is kind:field:cause. Fields are the finding schema's names: cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability, cvss_vector.",
+    "Step reading of D9's causes: a changed cvss_base is 'vector', a changed composite_score is 'arithmetic', a changed severity_band is 'band-mapping' (or 'rounding' for a tie), and a changed remediation_sla, risk_disposition or review_date is 'follows-band'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves (ruling A).",
+    "basis 'pinned': the flag string appears in ADR-050, the spec or the contracts. 'derived': composed from that grammar by the reading above. 'optional': the renderer may add it or not, and a test must accept both.",
+    "A flag that the renderer adds and that is not listed is a defect of one side: the list is complete for the cases here."
+  ],
+  "notes": [
+    "The baseline is a pre-fix risk-scores.md: it records no tags, so every tag this run applies is new to it. This is the first renderer run after an upgrade, and D9 ends the UNCHANGED exemption, so tags apply to carried findings (ruling A's legacy case).",
+    "'up-band-review-later' and 'up-band-review-earlier': the stored score lacks the elevation (D10 step 4), so it becomes the elevated score, retagged. The band rises only because of the tag, so the review date is this run's date plus the new SLA unless the stored review date is earlier. A legacy row has no recorded tags, and the band the stored values give is the band it holds.",
+    "'band-holds': the tag moves the score and the composite but not the band: two retagged flags and nothing else.",
+    "'assessed-unrecorded' (D10 step 2): the vector already has the tag's bits and only a score above 9.2 is stored, so the assessed score is unrecorded. The stored score is kept and reported as unchecked (R-25).",
+    "'documented-pass' and 'ceiling-pass': the stored score is the documented outcome (the elevated score, or the 9.2 ceiling when the elevated score is above it), so nothing is flagged.",
+    "'n17-assessed-unrecorded' (D10 step 5): a forcing tag, and a stored score above 9.2 and below the elevated score. Unchecked, kept."
+  ],
+  "populator_fixed_point": true,
+  "routing": {
+    "carried": [
+      "S-1",
+      "S-2",
+      "T-1",
+      "T-2",
+      "T-3",
+      "T-4",
+      "D-1",
+      "E-1"
+    ],
+    "carried_peers": {},
+    "copy_primary": {},
+    "to_agent": []
+  },
+  "run": {
+    "architecture": "architecture/architecture.md",
+    "baseline_dir": "baseline",
+    "baseline_source": "baseline/threats.md",
+    "date": "2026-11-23",
+    "how": "copy the scenario directory to a working directory and run from there: the front matter's baseline.source and every path here are relative to it",
+    "threats": "run/threats.md"
+  },
+  "scenario": "legacy-form",
+  "schema": "tachi.fixture-expected/1",
+  "stage": "risk-score",
+  "summary": "R-25's legacy outcomes and ruling A's legacy case: a pre-fix baseline that records no tags, scored under this run's tags.",
+  "tag_source": {
+    "architecture_present": true,
+    "block_equals_recomputation": true,
+    "block_present": true,
+    "cause": "the block equals the recomputation",
+    "source": "block",
+    "tags": {
+      "model-gateway": [
+        "secrets"
+      ],
+      "vector-store-a": [
+        "pii"
+      ]
+    },
+    "warning": false
+  },
+  "tags_this_run": {
+    "model-gateway": [
+      "secrets"
+    ],
+    "vector-store-a": [
+      "pii"
+    ]
+  },
+  "unflagged": [
+    "S-1",
+    "T-1",
+    "T-2"
+  ],
+  "variant": "tagged"
+}

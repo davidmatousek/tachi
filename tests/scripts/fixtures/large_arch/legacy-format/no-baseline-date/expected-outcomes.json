@@ -1,0 +1,313 @@
+{
+  "baseline": {
+    "files": [
+      "threats.md",
+      "risk-scores.md",
+      "risk-scores.sarif"
+    ],
+    "form": "legacy-compact",
+    "frontmatter_date": null,
+    "note": "compact pre-fix form: numbered headings, colon subsections, short headers; no sub-score tables; the SARIF holds a vector for the rows that the markdown lacks"
+  },
+  "counts": {
+    "findings": 4,
+    "findings_with_flags": 3,
+    "flags_by_kind": {
+      "corrected": 5,
+      "unchecked": 1
+    },
+    "normalized": 0
+  },
+  "findings": {
+    "I-1": {
+      "case": "md-and-sarif",
+      "component": "vector-store-a",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "I",
+      "rendered": {
+        "composite_score": "5.2",
+        "cvss_base": "6.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+        "exploitability": "6.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.2",
+        "cvss_base": "6.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+        "exploitability": "6.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+        "sarif": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N"
+      }
+    },
+    "R-1": {
+      "case": "wrong-composite",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "derived",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "6.6",
+          "stored": "6.2"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "R",
+      "rendered": {
+        "composite_score": "6.6",
+        "cvss_base": "7.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N",
+        "exploitability": "6.5",
+        "reachability": "6.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.2",
+        "cvss_base": "7.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N",
+        "exploitability": "6.5",
+        "reachability": "6.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N",
+        "sarif": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N"
+      }
+    },
+    "S-1": {
+      "case": "rung-no-date-sla",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "derived",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "High",
+          "stored": "Medium"
+        },
+        {
+          "basis": "optional",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "7d",
+          "stored": null
+        },
+        {
+          "basis": "derived",
+          "cause": "follows-band",
+          "field": "risk_disposition",
+          "flag": "corrected:risk_disposition:follows-band",
+          "kind": "corrected",
+          "rendered": "Mitigate",
+          "stored": "Review"
+        },
+        {
+          "basis": "pinned",
+          "cause": "scoring-date-unknown",
+          "field": "review_date",
+          "flag": "unchecked:review_date:scoring-date-unknown",
+          "kind": "unchecked",
+          "rendered": "2026-12-09",
+          "stored": "2026-12-09"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "7.3",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+        "exploitability": "7.5",
+        "reachability": "6.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.3",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+        "exploitability": "7.5",
+        "reachability": "6.5",
+        "remediation_sla": null,
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+        "sarif": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N"
+      }
+    },
+    "T-1": {
+      "case": "rung-no-date-both",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "derived",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "Low"
+        },
+        {
+          "basis": "optional",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": null
+        },
+        {
+          "basis": "pinned",
+          "cause": "clock-restarted",
+          "field": "review_date",
+          "flag": "corrected:review_date:clock-restarted",
+          "kind": "corrected",
+          "rendered": "2026-12-23",
+          "stored": null
+        },
+        {
+          "basis": "optional",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-23",
+          "stored": null
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "5.4",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L",
+        "exploitability": "6.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-23",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.4",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L",
+        "exploitability": "6.5",
+        "reachability": "2.0",
+        "remediation_sla": null,
+        "review_date": null,
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.0",
+        "severity_band": "Low"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L",
+        "sarif": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L"
+      }
+    }
+  },
+  "flag_reading": [
+    "A flag is kind:field:cause. Fields are the finding schema's names: cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability, cvss_vector.",
+    "Step reading of D9's causes: a changed cvss_base is 'vector', a changed composite_score is 'arithmetic', a changed severity_band is 'band-mapping' (or 'rounding' for a tie), and a changed remediation_sla, risk_disposition or review_date is 'follows-band'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves (ruling A).",
+    "basis 'pinned': the flag string appears in ADR-050, the spec or the contracts. 'derived': composed from that grammar by the reading above. 'optional': the renderer may add it or not, and a test must accept both.",
+    "A flag that the renderer adds and that is not listed is a defect of one side: the list is complete for the cases here."
+  ],
+  "notes": [
+    "The baseline's front matter has no date, so D9's first fallback is unavailable. S-1 has its SLA missing and its review date present: the stored review date is kept, flagged unchecked:review_date:scoring-date-unknown.",
+    "T-1 has both missing: the review date is this run's date plus the new SLA, flagged corrected:review_date:clock-restarted. No step is silent (D9).",
+    "A missing SLA is a gap, not an override: the SLA follows the corrected band, and its own flag is optional.",
+    "R-1 and I-1 are controls: a wrong composite in the band, and a row with nothing wrong."
+  ],
+  "populator_fixed_point": true,
+  "routing": {
+    "carried": [
+      "S-1",
+      "T-1",
+      "R-1",
+      "I-1"
+    ],
+    "carried_peers": {},
+    "copy_primary": {},
+    "to_agent": []
+  },
+  "run": {
+    "architecture": "architecture/architecture.md",
+    "baseline_dir": "baseline",
+    "baseline_source": "baseline/threats.md",
+    "date": "2026-11-23",
+    "how": "copy the scenario directory to a working directory and run from there: the front matter's baseline.source and every path here are relative to it",
+    "threats": "run/threats.md"
+  },
+  "scenario": "no-baseline-date",
+  "schema": "tachi.fixture-expected/1",
+  "stage": "risk-score",
+  "summary": "The review-date fallback rungs that need a baseline with no front-matter date (ADR-050 D9): the stored review date kept, and the clock restarted.",
+  "tag_source": {
+    "block_equals_recomputation": true,
+    "source": "block",
+    "tags": {},
+    "warning": false
+  },
+  "unflagged": [
+    "I-1"
+  ],
+  "variant": "legacy-format"
+}
