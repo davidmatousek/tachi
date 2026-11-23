@@ -2416,3 +2416,186 @@ def test_an_id_outside_the_reference_set_takes_the_fallback_and_one_inside_is_ca
     lookup = lambda kind, arg: arg if arg in reference else None          # noqa: E731 -- the caller's reference-set test
     assert _api("resolve_narrative")("See {{finding:AGP-01}}.", SCORER_STAGE, lookup) == "See AGP-1."
     assert _api("resolve_narrative")("See {{finding:T-9}}.", SCORER_STAGE, lookup) is None
+
+
+# =============================================================================
+# 20. Logic that `tachi-stage.py` and both renderers share, moved here (W1 addendum, from R0c's T018)
+#
+# `closed_string` is the one string check (it was private, `_closed`), `is_declared_path` is D4's declared-paths
+# grammar, and `retry_history` derives a plan's overflow events and retries from the files on disk (NFR-5).
+# Behaviour is byte-identical to the versions in `tachi-stage.py` at 67ea515.
+# =============================================================================
+
+def test_closed_string_is_the_published_name_and_the_old_private_name_still_works():
+    assert _api("_closed") is _api("closed_string")
+    check = _api("closed_string")
+    assert check("a prose-free closed value", "--detail", 0, 500) == "a prose-free closed value"
+    assert check("", "--detail", 0, 500) == ""
+    assert check("x" * 500, "--detail", 0, 500) == "x" * 500
+    assert check("tab\tand\nnewline", "--detail", 0, 500) == "tab\tand\nnewline"
+    assert check("a", "what") == "a"                        # the defaults: at least one character, no upper limit but 16,384
+    assert tachi_parts.closed_string.__doc__
+
+
+@pytest.mark.parametrize("value,low,high", [
+    (None, 0, 500), (7, 0, 500), (b"x", 0, 500), (["x"], 0, 500), ("x" * 501, 0, 500), ("", 1, 500), ("a", 2, 500),
+    ("x" * 16385, 0, None), ("a\x00b", 0, 500), ("a\x1fb", 0, 500), ("a\rb", 0, 500), ("a\x7fb", 0, 500), ("a\x85b", 0, 500),
+    ("a b", 0, 500), ("a b", 0, 500), ("a‎b", 0, 500), ("a‏b", 0, 500), ("a؜b", 0, 500),
+    ("a‮b", 0, 500), ("a⁦b", 0, 500), ("a⁩b", 0, 500),
+])
+def test_closed_string_rejects_what_the_contract_forbids_and_never_echoes_the_value(value, low, high):
+    with pytest.raises(_api("PartError")) as excinfo:
+        _api("closed_string")(value, "--detail", low, high)
+    assert excinfo.value.kind == "invalid"
+    assert "--detail" in excinfo.value.detail
+    assert "‮" not in excinfo.value.detail and "x" * 20 not in excinfo.value.detail
+
+
+DECLARED_PATHS = [
+    "risk-scores.md", "risk-scores.sarif",
+    ".tachi-build/risk-score/current.json",
+    ".tachi-build/risk-score/%s/plan.json" % PLAN, ".tachi-build/risk-score/%s/stage-record.json" % PLAN,
+    ".tachi-build/risk-score/%s/inputs/B001.json" % PLAN, ".tachi-build/risk-score/%s/inputs/B003-1-2.json" % PLAN,
+    ".tachi-build/risk-score/%s/parts/B001.a1.json" % PLAN, ".tachi-build/risk-score/%s/parts/B003-2.a2.json" % PLAN,
+    ".tachi-build/risk-score/%s/parts/B001.a3.json" % PLAN,
+    ".tachi-build/risk-score/%s/preimage/risk-scores.md" % PLAN, ".tachi-build/risk-score/%s/staged/risk-scores.sarif" % PLAN,
+    ".tachi-build/risk-score/%s/failed/risk-scores.md" % PLAN,
+]
+
+UNDECLARED_PATHS = [
+    "gen.py", "threats.md", "compensating-controls.md", "risk-scores.md.bak", "docs/risk-scores.md", "risk-scores.md/x", "",
+    ".tachi-build", ".tachi-build/risk-score", ".tachi-build/compensating-controls/current.json",
+    ".tachi-build/risk-score/current.json/x", ".tachi-build/risk-score/%s" % PLAN, ".tachi-build/risk-score/%s/" % PLAN,
+    ".tachi-build/risk-score/%s/plan.json" % OTHER_PLAN, ".tachi-build/risk-score/%s/gen.py" % PLAN,
+    ".tachi-build/risk-score/%s/plan.json.bak" % PLAN, ".tachi-build/risk-score/%s/plan.json/x" % PLAN,
+    ".tachi-build/risk-score/%s/inputs/B1.json" % PLAN, ".tachi-build/risk-score/%s/inputs/B001.txt" % PLAN,
+    ".tachi-build/risk-score/%s/inputs/B001.json.bak" % PLAN, ".tachi-build/risk-score/%s/inputs/B001.json/x" % PLAN,
+    ".tachi-build/risk-score/%s/inputs/b001.json" % PLAN, ".tachi-build/risk-score/%s/inputs/B001-3.json" % PLAN,
+    ".tachi-build/risk-score/%s/parts/B001.a4.json" % PLAN, ".tachi-build/risk-score/%s/parts/B001.a0.json" % PLAN,
+    ".tachi-build/risk-score/%s/parts/B001.json" % PLAN, ".tachi-build/risk-score/%s/parts/B001.a1.json.tmp" % PLAN,
+    ".tachi-build/risk-score/%s/parts/B01.a1.json" % PLAN, ".tachi-build/risk-score/%s/parts/.tmp-abc123" % PLAN,
+    ".tachi-build/risk-score/%s/preimage/other.md" % PLAN, ".tachi-build/risk-score/%s/preimage/risk-scores.md/x" % PLAN,
+    ".tachi-build/risk-score/%s/staged/compensating-controls.md" % PLAN, ".tachi-build/risk-score/%s/failed/../x" % PLAN,
+    ".tachi-build/risk-score/%s/checks/x.json" % PLAN, ".tachi-build/risk-score/%s/trees/x.md" % PLAN,
+    ".tachi-build/risk-score/%s/parts/sub/B001.a1.json" % PLAN, ".tachi-build/risk-score/%s/inputs" % PLAN,
+]
+
+
+@pytest.mark.parametrize("relpath", DECLARED_PATHS)
+def test_the_stages_own_files_and_d3s_exact_layout_are_declared(relpath):
+    assert _api("is_declared_path")(relpath, "risk-score", PLAN) is True
+
+
+@pytest.mark.parametrize("relpath", UNDECLARED_PATHS)
+def test_anything_else_is_undeclared(relpath):
+    assert _api("is_declared_path")(relpath, "risk-score", PLAN) is False
+
+
+def test_the_controls_stage_declares_its_own_outputs_and_not_the_scorers():
+    declared = _api("is_declared_path")
+    base = ".tachi-build/compensating-controls/%s" % PLAN
+    for relpath in ("compensating-controls.md", "compensating-controls.sarif", base + "/plan.json", base + "/inputs/B002.json",
+                    base + "/parts/B002.a2.json", base + "/staged/compensating-controls.sarif",
+                    ".tachi-build/compensating-controls/current.json"):
+        assert declared(relpath, "compensating-controls", PLAN) is True, relpath
+    for relpath in ("risk-scores.md", ".tachi-build/risk-score/current.json", base + "/staged/risk-scores.md"):
+        assert declared(relpath, "compensating-controls", PLAN) is False, relpath
+
+
+def test_every_path_the_layout_builders_make_is_declared_by_the_grammar(tmp_path):
+    out = str(tmp_path / "out")
+    built = [_api("pointer_path")(out, "risk-score"), _api("plan_path")(out, "risk-score", PLAN),
+             _api("stage_record_path")(out, "risk-score", PLAN)]
+    for batch in ("B001", "B012", "B003-1", "B003-2-1"):
+        built.append(_api("input_path")(out, "risk-score", PLAN, batch))
+        built += [_api("part_path")(out, "risk-score", PLAN, batch, attempt) for attempt in (1, 2, 3)]
+    for name in _api("CANONICAL_OUTPUTS")["risk-score"]:
+        built += [_api(builder)(out, "risk-score", PLAN, name) for builder in ("preimage_path", "staged_path", "failed_path")]
+    for path in built:
+        assert _api("is_declared_path")(os.path.relpath(path, out).replace(os.sep, "/"), "risk-score", PLAN) is True, path
+
+
+def history_entry(batch_id, attempt, state, parent=None, ids=("S-1", "T-2")):
+    return {"batch_id": batch_id, "parent": parent, "attempt": attempt, "finding_ids": list(ids), "input_sha256": HEX, "state": state}
+
+
+def history_of(tmp_path, batches, parts, stage="risk-score"):
+    """Lay out ``parts`` ({(batch_id, attempt): state}) under a throwaway out directory and derive the history."""
+    out = tmp_path / "out"
+    plan = valid_plan()
+    plan.update(stage=stage, agent_type=_api("STAGE_AGENTS")[stage], batches=batches)
+    kind = SCORER if stage == "risk-score" else CONTROLS
+    for (batch_id, attempt), state in parts.items():
+        path = _api("part_path")(out, stage, PLAN, batch_id, attempt)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        entry = next(b for b in batches if b["batch_id"] == batch_id)
+        content = {"missing": None, "unparseable": "{", "invalid": {"schema": "tachi.part/1"},
+                   "overflow": dict(overflow_object(batch_id=batch_id), stage=stage, agent_type=kind["agent_type"]),
+                   "done": make_part(ids=entry["finding_ids"], kind=kind, batch=batch_id)}[state]
+        if content is not None:
+            _api("atomic_write")(path, content if isinstance(content, str) else json.dumps(content))
+    return _api("retry_history")(stage, out, plan)
+
+
+def test_a_batch_retried_as_it_was_leaves_one_event_and_one_retry_per_failed_attempt(tmp_path):
+    events, retries = history_of(tmp_path, [history_entry("B001", 2, "pending")], {("B001", 1): "invalid"})
+    assert events == [{"batch_id": "B001", "attempt": 1, "kind": "invalid"}]
+    assert retries == [{"batch_id": "B001", "attempt": 1, "cause": "invalid", "children": []}]
+
+
+def test_a_halved_batch_names_its_children_on_the_attempt_that_was_halved(tmp_path):
+    batches = [history_entry("B001", 1, "split"), history_entry("B001-1", 2, "pending", "B001", ["S-1"]),
+               history_entry("B001-2", 2, "pending", "B001", ["T-2"])]
+    events, retries = history_of(tmp_path, batches, {("B001", 1): "missing"})
+    assert events == [{"batch_id": "B001", "attempt": 1, "kind": "missing"}]
+    assert retries == [{"batch_id": "B001", "attempt": 1, "cause": "missing", "children": ["B001-1", "B001-2"]}]
+
+
+def test_a_batch_that_ran_out_of_retries_leaves_an_event_for_its_last_attempt_and_no_retry(tmp_path):
+    parts = {("B001", 1): "invalid", ("B001", 2): "overflow", ("B001", 3): "unparseable"}
+    events, retries = history_of(tmp_path, [history_entry("B001", 3, "failed")], parts)
+    assert [(e["attempt"], e["kind"]) for e in events] == [(1, "invalid"), (2, "overflow-reported"), (3, "unparseable")]
+    assert [(r["attempt"], r["cause"], r["children"]) for r in retries] == [(1, "invalid", []), (2, "overflow", [])]
+
+
+def test_an_overflow_object_is_reported_as_overflow_reported_and_its_retry_cause_is_overflow(tmp_path):
+    events, retries = history_of(tmp_path, [history_entry("B001", 2, "pending")], {("B001", 1): "overflow"})
+    assert events[0]["kind"] == "overflow-reported"
+    assert retries[0]["cause"] == "overflow"
+
+
+def test_a_part_that_turned_valid_after_its_attempt_was_given_up_was_still_not_counted(tmp_path):
+    events, retries = history_of(tmp_path, [history_entry("B001", 2, "pending")], {("B001", 1): "done"})
+    assert events == [{"batch_id": "B001", "attempt": 1, "kind": "missing"}]
+    assert retries[0]["cause"] == "missing"
+
+
+def test_a_child_counts_its_failed_attempts_from_the_attempt_after_its_parents(tmp_path):
+    batches = [history_entry("B001", 1, "split"), history_entry("B001-1", 3, "pending", "B001", ["S-1"]),
+               history_entry("B001-2", 2, "pending", "B001", ["T-2"])]
+    events, retries = history_of(tmp_path, batches, {("B001", 1): "missing", ("B001-1", 2): "unparseable"})
+    assert events == [{"batch_id": "B001", "attempt": 1, "kind": "missing"},
+                      {"batch_id": "B001-1", "attempt": 2, "kind": "unparseable"}]
+    assert retries == [{"batch_id": "B001", "attempt": 1, "cause": "missing", "children": ["B001-1", "B001-2"]},
+                       {"batch_id": "B001-1", "attempt": 2, "cause": "unparseable", "children": []}]
+
+
+def test_a_plan_with_no_failed_attempt_has_no_history(tmp_path):
+    assert history_of(tmp_path, [history_entry("B001", 1, "done"), history_entry("B002", 1, "pending")], {}) == ([], [])
+    assert history_of(tmp_path, [], {}) == ([], [])
+
+
+def test_the_controls_stage_reads_its_own_parts(tmp_path):
+    batches = [history_entry("B001", 2, "pending")]
+    events, retries = history_of(tmp_path, batches, {("B001", 1): "invalid"}, stage="compensating-controls")
+    assert events == [{"batch_id": "B001", "attempt": 1, "kind": "invalid"}]
+    assert retries[0]["cause"] == "invalid"
+
+
+def test_the_derived_history_is_a_valid_stage_record_body(tmp_path):
+    batches = [history_entry("B001", 1, "split"), history_entry("B001-1", 3, "failed", "B001", ["S-1"]),
+               history_entry("B001-2", 2, "pending", "B001", ["T-2"])]
+    parts = {("B001", 1): "overflow", ("B001-1", 2): "invalid", ("B001-1", 3): "missing"}
+    events, retries = history_of(tmp_path, batches, parts)
+    record = dict(valid_stage_record(), overflow_events=events, retries=retries)
+    assert _api("validate_stage_record")(record) is record

@@ -78,6 +78,13 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
 * ``expected_file_problem(path, base, names=None)``: KB 24's guard for a path that a file names.
   ``evidence_path_problem(file, target)``: F16's check of an evidence ``file`` against the target directory.
 * ``MAX_UNDECLARED_PATHS`` (1,000): the most ``undeclared_paths`` a stage record keeps.
+
+**Shared by the stage entry and the renderers (W1 addendum):**
+
+* ``closed_string(value, what, low=1, high=None)``: the one closed-value string check (D3 step 10), once private as
+  ``_closed``, which stays as an alias.
+* ``is_declared_path(relpath, stage, plan_id)``: D4's declared-paths grammar.
+* ``retry_history(stage, out, plan)``: a plan's ``(overflow_events, retries)``, read back from its parts on disk.
 """
 from __future__ import annotations
 
@@ -857,12 +864,21 @@ def _check_characters(text: str, what: str) -> None:
         _fail("%s is over %d characters or holds a character the contract forbids" % (what, MAX_STRING_CHARS))
 
 
-def _closed(value: Any, what: str, low: int = 1, high: Optional[int] = None) -> str:
-    """A closed-value string: a range here, then the pattern or enum its field has. Over its range, it rejects."""
+def closed_string(value: Any, what: str, low: int = 1, high: Optional[int] = None) -> str:
+    """The one check for a closed-value string (ADR-050 D3 steps 6 and 10). Returns ``value``, or raises.
+
+    ``value`` must be text of ``low`` to ``high`` characters (no upper limit but the 16,384 of step 10 when ``high``
+    is ``None``), with no control character other than tab and newline and none of the bidi or separator characters
+    that D3 forbids. A closed value is checked and never cut, so a string over its range is rejected, not shortened.
+    Raises ``PartError("invalid")`` whose detail names ``what`` and never echoes ``value``.
+    """
     if not isinstance(value, str) or len(value) < low or (high is not None and len(value) > high):
         _fail("%s is not text in range" % what)
     _check_characters(value, what)
     return value
+
+
+_closed = closed_string  # the name this function had before it was published; `tachi-stage.py` still calls it
 
 
 def _enum(value: Any, allowed: Tuple[str, ...], what: str) -> str:
@@ -920,7 +936,7 @@ def _scorer_item(item: Dict[str, Any], state: _ItemState) -> None:
     if (reach["zone"] is None) != (reach["trust_level"] is None):
         _fail("reachability.zone and trust_level must be null together")
     if reach["zone"] is not None:
-        _closed(reach["zone"], "reachability.zone", 1, 120)
+        closed_string(reach["zone"], "reachability.zone", 1, 120)
         _enum(reach["trust_level"], TRUST_LEVELS, "reachability.trust_level")
     _int(reach["auth_barriers"], 0, 10, "reachability.auth_barriers")
     _int(reach["network_boundaries"], 0, 10, "reachability.network_boundaries")
@@ -939,7 +955,7 @@ def _scorer_item(item: Dict[str, Any], state: _ItemState) -> None:
 
 def _evidence_entry(entry: Dict[str, Any], state: _ItemState) -> None:
     _check_keys(entry, "evidence-entry")
-    if path_problem(_closed(entry["file"], "evidence.file", 1, 300)) is not None:
+    if path_problem(closed_string(entry["file"], "evidence.file", 1, 300)) is not None:
         _fail("evidence.file breaks D7's relative path rule")
     _int(entry["line"], 1, None, "evidence.line")
     if not id_matches("language", entry["language"]):
@@ -1147,7 +1163,7 @@ def _params(value: Any) -> None:
         if key == "scoring_date":
             _calendar_date(item, "params.scoring_date")
         elif isinstance(item, str):
-            _closed(item, "params." + key, 0, 1024)
+            closed_string(item, "params." + key, 0, 1024)
         elif item is not None and type(item) not in (bool, int):
             _fail("params.%s is not a scalar" % key)
 
@@ -1297,7 +1313,7 @@ def validate_stage_record(obj: Any) -> Dict[str, Any]:
     for warning in obj["warnings"]:
         _check_keys(warning, "warning")
         _stamp(warning["code"], _CODE, "warnings.code")
-        _closed(warning["detail"], "warnings.detail", 0, 500)
+        closed_string(warning["detail"], "warnings.detail", 0, 500)
     for relpath in obj["undeclared_paths"]:
         _path_text(relpath, "an undeclared path")
     for output in obj["outputs"]:
@@ -1308,11 +1324,11 @@ def validate_stage_record(obj: Any) -> Dict[str, Any]:
     if error is not None:
         _check_keys(error, "error")
         _stamp(error["code"], _CODE, "error.code")
-        _closed(error["message"], "error.message", 0, 2000)
+        closed_string(error["message"], "error.message", 0, 2000)
         if error["batch_id"] is not None:
             _id("batch", error["batch_id"], "error.batch_id")
         _id_list(error["finding_ids"], "error.finding_ids", minimum=0)
-        _closed(error["remedy"], "error.remedy", 0, 2000)
+        closed_string(error["remedy"], "error.remedy", 0, 2000)
     return obj
 
 
@@ -1524,3 +1540,77 @@ def staged_path(out: object, stage: str, plan_id: str, name: str) -> str:
 def failed_path(out: object, stage: str, plan_id: str, name: str) -> str:
     """A changed canonical file that ``fail`` moved aside, ``<plan dir>/failed/<name>``."""
     return _canonical_file(out, stage, plan_id, "failed", name)
+
+
+# =============================================================================
+# Shared by the stage entry and the renderers (W1 addendum: moved from `tachi-stage.py`, byte for byte)
+# =============================================================================
+
+def is_declared_path(relpath: str, stage: str, plan_id: str) -> bool:
+    """D4's declared-paths grammar for a stage: its canonical files and D3's exact layout, nothing else.
+
+    ``relpath`` is a path under ``--out`` written with ``/``. ``True`` for the stage's canonical outputs, for
+    ``.tachi-build/<stage>/current.json``, and, under ``.tachi-build/<stage>/<plan_id>/``, for ``plan.json``,
+    ``stage-record.json``, ``inputs/<batch_id>.json``, ``parts/<batch_id>.a<1 to 3>.json`` and a canonical output
+    in ``preimage/``, ``staged/`` or ``failed/``. Anything else, such as a script an agent wrote, is undeclared.
+    Every path that the layout builders make is declared. ``KeyError`` for a stage with no canonical outputs.
+    """
+    parts = relpath.split("/")
+    if len(parts) == 1:
+        return parts[0] in CANONICAL_OUTPUTS[stage]
+    if parts[:2] != [BUILD_DIR, stage]:
+        return False
+    rest = parts[2:]
+    if rest == ["current.json"]:
+        return True
+    if len(rest) < 2 or rest[0] != plan_id:
+        return False
+    rest = rest[1:]
+    if rest in (["plan.json"], ["stage-record.json"]):
+        return True
+    if len(rest) != 2:
+        return False
+    subdirectory, name = rest
+    if subdirectory == "inputs":
+        return name.endswith(".json") and id_matches("batch", name[:-5])
+    if subdirectory == "parts":
+        batch_id, _, tail = name.partition(".a")
+        return tail in ("1.json", "2.json", "3.json") and id_matches("batch", batch_id)
+    return subdirectory in ("preimage", "staged", "failed") and name in CANONICAL_OUTPUTS[stage]
+
+
+def retry_history(stage: str, out: object, plan: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """The overflow events and retries a plan implies, each failed attempt's cause read back from its part (NFR-5).
+
+    Returns ``(overflow_events, retries)``, the two stage-record lists, in plan order. An attempt that was retried as
+    it was, a batch that was halved, and a batch that ran out of retries each leave one event, and every attempt
+    but a failed batch's last also leaves one retry. A halved batch's retry names its children, sorted. ``kind`` is
+    the part's state, with an overflow object reported as ``overflow-reported``; a part that has turned valid since
+    its attempt was given up was still not counted, so it reads as ``missing``. ``plan`` is a validated plan.
+    """
+    by_id = {entry["batch_id"]: entry for entry in plan["batches"]}
+    children: Dict[str, List[str]] = {}
+    for entry in plan["batches"]:
+        if entry["parent"] is not None:
+            children.setdefault(entry["parent"], []).append(entry["batch_id"])
+
+    def cause(entry: Dict[str, Any], attempt: int) -> str:
+        result = read_part(part_path(out, stage, plan["plan_id"], entry["batch_id"], attempt), out, plan["plan_id"],
+                           entry["batch_id"], stage, plan["agent_type"], entry["finding_ids"])
+        return "missing" if result.state == "done" else result.state
+
+    events: List[Dict[str, Any]] = []
+    retries: List[Dict[str, Any]] = []
+    for entry in plan["batches"]:
+        first = 1 if entry["parent"] is None else by_id[entry["parent"]]["attempt"] + 1
+        failed_attempts = list(range(first, entry["attempt"]))
+        if entry["state"] in ("split", "failed"):
+            failed_attempts.append(entry["attempt"])
+        for attempt in failed_attempts:
+            reason = cause(entry, attempt)
+            events.append({"batch_id": entry["batch_id"], "attempt": attempt,
+                           "kind": "overflow-reported" if reason == "overflow" else reason})
+            if attempt < entry["attempt"] or entry["state"] == "split":
+                retries.append({"batch_id": entry["batch_id"], "attempt": attempt, "cause": reason,
+                                "children": sorted(children.get(entry["batch_id"], [])) if attempt == entry["attempt"] else []})
+    return events, retries
