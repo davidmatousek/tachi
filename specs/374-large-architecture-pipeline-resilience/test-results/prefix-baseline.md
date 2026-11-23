@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-22. **Base:** W1's base plus T019 (`c84ff16`, the fixture) and T023 (`de96163`, D6's "Amended at W0" table). **Inputs:** the fixture's `baseline/threats.md` and `architecture/architecture.md`, ADR-050 D6, [s1-proxy.md](s1-proxy.md) and [w0-gate.md](w0-gate.md). **Run:** one live `/tachi.risk-score` on v4.48.4 (Claude Code 2.1.330, macOS), before any renderer code (D-7).
 
-T021(b), SC-8's baselines, runs after the architect rules on D6 and goes in `sc8-baseline.md`. Section 8 holds the calibration Write that the architect ruled for after this record's first version. It decides D6's sizes and supersedes section 5.4's implied verdicts.
+T021(b), SC-8's baselines, ran after the architect ruled on D6 and is in `sc8-baseline.md`. Section 8 holds the calibration Write that the architect ruled for after this record's first version. It decides D6's sizes (13, 11 and 12) and supersedes section 5.4's implied verdicts.
 
 ## Result: no overflow and no dropped finding, but the scorer did not finish in contract
 
@@ -189,15 +189,14 @@ T021(a) gave D6's two rules no valid input (section 5), so the architect ruled t
 
 ### 8.3 The outcome
 
-r is the minimum of the two, 2.598, which is below 3.2.
+Each stage takes its own r, as D6's text has it. Both are below 3.2.
 
-| Constant | W0 (ruled) | After the calibration | By the rule |
-|---|---|---|---|
-| `risk-score` | 16 | **13** | ⌊8,000 × 2.598 ÷ 1,520⌋ |
-| `compensating-controls` | 13 | **10** | ⌊8,000 × 2.598 ÷ 1,930⌋ |
-| `trees` | 12 | 12 | stays until T130 |
+| Constant | W0 (ruled) | r | After the calibration | By the rule |
+|---|---|---|---|---|
+| `risk-score` | 16 | 2.598 | **13** | ⌊8,000 × 2.598 ÷ 1,520⌋ |
+| `compensating-controls` | 13 | 2.781 | **11** | ⌊8,000 × 2.781 ÷ 1,930⌋ |
+| `trees` | 12 | | 12 | stays until T130 |
 
-- At the ruled 16 and 13 items, the two parts cost 9,511 and 9,175 tokens, which is 19% and 15% over S-1's 8,000 per Write. The measured tokens per item are 594 and 706, against W0's u of 475 and 603. At 13 and 10 items the parts would cost about 7,600 and 7,400 tokens at this r.
-- **P-7's gate.** `ascii-web-api` (11 open findings) is one batch in both stages only if both sizes are at least 11, which needs r of 2.654 or more for controls. r = 2.598 is 2.1% short, and controls fall to 10. On the one-r rule the example returns to the PM, and **T021(b) was not run.**
-- **The per-stage reading.** D6's text names the thresholds per stage (r of 2.654 or more for controls, 2.09 or more for the scorer). If each stage takes its own r, `risk-score` is 13 (r 2.598) and `compensating-controls` is ⌊8,000 × 2.781 ÷ 1,930⌋ = 11 (r 2.781). Both are at least 11, and P-7's example would stand. The dispatch asked for one r, so the lane stopped here.
+- At the ruled 16 and 13 items, the two parts cost 9,511 and 9,175 tokens, which is 19% and 15% over S-1's 8,000 per Write. The measured tokens per item are 594 and 706, against W0's u of 475 and 603. At 13 and 11 items the parts would cost about 7,600 tokens each at these r values.
+- **P-7's gate.** `ascii-web-api` (11 open findings) is one batch in both stages only if both sizes are at least 11. The scorer's 13 clears that, and controls need r of 2.654 or more for 11: r = 2.781 clears it by 4.8%. So the example stands as P-7's example, and T021(b) ran on it (`sc8-baseline.md`).
 - r depends on the content mix. The scorer part, half of it structure, measured lower than the controls part. W5's stage records log each live part's size, so TW-L2 re-checks the sizes against real parts.
