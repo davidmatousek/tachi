@@ -57,6 +57,9 @@ The groups of tests, by the task that turns them green:
   They fail until T045 and T046 land. ``test_harness_*`` and ``test_rules_*`` in those sections need no renderer: the
   first check the outcomes files and this module's readers, the second drive ``tachi_scoring_rules`` on the
   scenarios' baselines. ``basis`` ``pinned`` and ``derived`` flags are required, ``optional`` ones may be absent.
+* ``test_carry_*``, ``test_readback_*``, ``test_refusal_*`` and ``test_backstop_*`` (section 28, W3's P0-1 and P0-4): a prose
+  line that would forge structure, the from-disk read-back through ``read_baseline_scores``, a forbidden character in an
+  input (exit 2, at intake) and in a staged file (exit 4, the whole-file backstop).
 
 Standard library and pytest only, and Python 3.9 syntax.
 """
@@ -78,6 +81,7 @@ import re
 import shutil
 import sys
 import time
+import types
 from decimal import Decimal
 from pathlib import Path
 
@@ -430,7 +434,7 @@ _REFERENCE = re.compile("|".join(re.escape(reference) for reference in tp.ESCAPE
 
 
 def decode(text):
-    """ADR-050 D3's closed decoder: exactly the eight references, in one left-to-right pass."""
+    """ADR-050 D3's closed decoder: exactly the references in ``tp.ESCAPE_REFERENCES``, in one left-to-right pass."""
     return _REFERENCE.sub(lambda match: tp.ESCAPE_REFERENCES[match.group(0)], text)
 
 
@@ -3035,27 +3039,33 @@ def test_baseline_one_that_cannot_be_used_means_every_finding_is_scored_fresh_an
 TAGGED_ARCHITECTURE = '```mermaid\nflowchart LR\n    edge_gateway["edge-gateway<br/>[asset:secrets]"]\n```\n'
 
 
-def edit_section_2_cell(md, finding_id, column, value):
-    """``md`` with one cell of one Section 2 row replaced: the stored value that the next run reads back."""
+def edit_table_cell(md, title, finding_id, column, value):
+    """``md`` with one cell of one row replaced: the first table under the ``##`` heading ``title``, and the row whose first cell is ``finding_id``."""
     lines = md.split("\n")
-    start = next(n for n, line in enumerate(lines) if line.startswith("## 2. Scored Threat Table"))
+    start = next(n for n, line in enumerate(lines) if line.startswith(title))
     header = None
     for n in range(start + 1, len(lines)):
         if lines[n].startswith("## "):
             break
-        if header is None and lines[n].startswith("| ID |"):
+        if header is None and lines[n].startswith("|"):
             header = [cell.strip() for cell in lines[n].strip().strip("|").split("|")]
         elif header is not None and lines[n].startswith("| %s |" % finding_id):
             cells = lines[n].split("|")
             cells[header.index(column) + 1] = " %s " % value
             lines[n] = "|".join(cells)
             return "\n".join(lines)
-    raise AssertionError("no Section 2 row for %s" % finding_id)
+    raise AssertionError("no row for %s under %s" % (finding_id, title))
 
 
-def second_run(stage_module, renderer_module, root, first, edit_baseline=None, architecture_text=None):
-    """The nine findings again, every one UNCHANGED, with the first run's own ``threats.md``, ``risk-scores.md`` and SARIF as the baseline."""
-    project = Project(stage_module, renderer_module, root, specs=[dict(item, status="UNCHANGED") for item in SPECS], baseline_source="baseline/threats.md")
+def edit_section_2_cell(md, finding_id, column, value):
+    """``md`` with one cell of one Section 2 row replaced: the stored value that the next run reads back."""
+    return edit_table_cell(md, "## 2. Scored Threat Table", finding_id, column, value)
+
+
+def second_run(stage_module, renderer_module, root, first, edit_baseline=None, architecture_text=None, specs=None):
+    """The nine findings again (or ``specs``), every one UNCHANGED, with the first run's own ``threats.md``, ``risk-scores.md`` and SARIF as the baseline."""
+    project = Project(stage_module, renderer_module, root, specs=[dict(item, status="UNCHANGED") for item in (SPECS if specs is None else specs)],
+                      baseline_source="baseline/threats.md")
     baseline = Path(root) / "baseline"
     baseline.mkdir()
     for name in ("threats.md", MD, SARIF):
@@ -3244,3 +3254,431 @@ def test_vocabulary_every_flag_the_renderer_emits_is_in_the_closed_vocabulary(sc
     in_table, _rows = score_flag_rows(r.md)
     wrong.update({"Section 6, %s" % key: outside(flags) for key, flags in in_table.items() if outside(flags)})
     assert not wrong, brief(wrong)
+
+
+# =============================================================================
+# 28. P0-1 and P0-4: a structure leak that the next run would misread, and a forbidden character from an input (W3, lane FX0)
+# =============================================================================
+#
+# P0-1. A prose line that starts with ``~~~`` opens a code fence for the next run's tolerant reader, which then loses Sections
+# 4 and 6 and with them every human owner, SLA, review date and persisted input, with no warning. ``tachi_parts`` writes such a
+# line as ``&#126;~~`` (R0a). The two-run cases pin the outcome that matters, a carry that keeps everything. The read-back cases
+# pin the from-disk check that fails closed when any other leak would do the same: ``_check_staged`` reads the staged markdown
+# back through ``read_baseline_scores``, the reader the next run uses (KB 22).
+#
+# P0-4. NFR-10 says that control bytes are refused before any write. Step 10 does that for a part. A value that the renderer takes
+# from ``threats.md``, the baseline ``risk-scores.md`` or ``threats.sarif`` is refused where it is taken (exit 2, naming the input,
+# the finding and the field), and each staged file is checked whole as a backstop (exit 4). The character set is
+# ``tachi_parts.forbidden_character``'s. Every control and bidi character here is built with ``chr()``, so none sits in this source.
+
+FORBIDDEN = {  # one of each class of D3 step 10's set: C0, DEL, C1, the separators and the bidi controls
+    "escape": chr(0x1B), "carriage return": chr(0x0D), "delete": chr(0x7F), "next line": chr(0x85),
+    "line separator": chr(0x2028), "paragraph separator": chr(0x2029), "left-to-right mark": chr(0x200E),
+    "right-to-left override": chr(0x202E), "isolate": chr(0x2066), "arabic letter mark": chr(0x061C),
+}
+RLO = FORBIDDEN["right-to-left override"]
+HUMAN_OWNERS = {"S-2": "Platform team", "T-1": "Data team"}   # a person puts these into Section 4 between the two runs
+
+
+def fence_the_prose(indent):
+    """S-2's prose rationale with one line that starts with ``~~~`` after ``indent``: a code fence that nothing closes.
+
+    One line is the leak. A second ``~~~`` line would close the fence again, and the reader would lose nothing.
+    """
+    def mutate(part):
+        for item in part["items"]:
+            if canon(item["finding_id"]) == "S-2":
+                item["rationale"]["cvss"] = "The base score is {{score:cvss_base}} for {{name:component}}.\n%s~~~\nA line that opens a code fence." % indent
+    return mutate
+
+
+def persisted_inputs(project):
+    """``{(canonical ID, field): value}`` of Section 6's Scoring Inputs, decoded."""
+    return {(canon(row[0]), row[1]): row[2] for row in table_of(subsection_of(project.md, "## 6. Score Integrity", "### Scoring Inputs"), "ID")[1]}
+
+
+def carry_twice(stage_module, renderer_module, root, specs=None, mutate=None):
+    """Run 1 over ``specs``, then run 2 with run 1's own files as its baseline and two owners that a person put into Section 4.
+
+    Every finding is UNCHANGED in run 2, so each is carried: its owner, SLA, disposition, review date and persisted inputs come
+    from Sections 4 and 6 of run 1's file, which is exactly what a structure leak in Section 3 hides from the reader.
+    Returns ``(first, second)``.
+    """
+    root = Path(root)
+    first = Project(stage_module, renderer_module, root / "first", specs=specs)
+    res = first.run(mutate=mutate)
+    assert res.code in (0, 5), res.describe()
+
+    def put_owners(md):
+        for finding_id, owner in HUMAN_OWNERS.items():
+            md = edit_table_cell(md, "## 4. Governance Fields", finding_id, "Owner", owner)
+        return md
+
+    second = second_run(stage_module, renderer_module, root / "second", first, edit_baseline=put_owners, specs=specs)
+    res = second.run()
+    assert res.code in (0, 5), res.describe()
+    return first, second
+
+
+def assert_the_carry_kept_everything(first, second):
+    assert second.plan_json()["unit_count"] == 0, "run 1's file is a usable baseline, so nothing goes to the agent"
+    assert second.record["counts"].get("narrative_fallbacks", 0) == 0
+    for heading in ("## 4. Governance Fields", "## 6. Score Integrity"):
+        assert has_section(second.md, heading), heading
+    before, after = MdView(first.md), MdView(second.md)
+    for finding_id in ORDER:
+        want = dict(before.values(finding_id))
+        if finding_id in HUMAN_OWNERS:
+            want["risk_owner"] = HUMAN_OWNERS[finding_id]
+        assert after.values(finding_id) == want, "%s keeps its governance, and the owner that a person set" % finding_id
+    results = results_by_id(second.sarif)
+    assert {finding_id: results[finding_id]["properties"]["risk-owner"] for finding_id in HUMAN_OWNERS} == HUMAN_OWNERS
+    read = rules.read_baseline_scores(second.out / MD)   # what a third run would read from run 2's file
+    assert sorted(read.rows) == sorted(canon(finding_id) for finding_id in ORDER)
+    assert {key: row.form for key, row in read.rows.items()} == {canon(finding_id): "renderer" for finding_id in ORDER}
+    assert {finding_id: read.rows[canon(finding_id)].owner for finding_id in HUMAN_OWNERS} == HUMAN_OWNERS
+
+
+@pytest.mark.parametrize("indent", ["", "  ", "\t"], ids=["bare", "two-spaces", "tab"])
+def test_carry_a_tilde_fence_line_in_a_rationale_keeps_sections_4_and_6_and_every_owner(stage, renderer, tmp_path, indent):
+    first, second = carry_twice(stage, renderer, tmp_path, mutate=fence_the_prose(indent))
+    assert "\n%s&#126;~~\n" % indent in subsection_for(first.md, "S-2"), "Section 3 writes the line as a reference, after the same indent"
+    for project in (first, second):
+        assert not re.search(r"(?m)^[ \t]*~~~", project.md), "no line of the file opens a code fence"
+    assert_the_carry_kept_everything(first, second)
+    key = ("S-2", "rationale.cvss")
+    assert re.search(r"\n[ \t]*~~~\n", persisted_inputs(first)[key]), "Section 6 keeps the line in the persisted text"
+    assert persisted_inputs(second)[key] == persisted_inputs(first)[key], "and run 2 carries it unchanged"
+
+
+def test_carry_a_tilde_fence_line_in_a_threat_text_keeps_sections_4_and_6_and_every_owner(stage, renderer, tmp_path):
+    """A ``**Threat**:`` text that arrives from threats.md as ``&#10;~~~``: the parser decodes the reference, so the text has a line of its own."""
+    specs = [dict(item, threat=item["threat"] + "&#10;~~~&#10;The text goes on.") if item["id"] == "S-2" else item for item in SPECS]
+    first, second = carry_twice(stage, renderer, tmp_path, specs=specs)
+    assert re.search(r"\*\*Threat\*\*: [^\n]*\n&#126;~~\nThe text goes on\.", subsection_for(first.md, "S-2"))
+    for project in (first, second):
+        assert not re.search(r"(?m)^[ \t]*~~~", project.md), "no line of the file opens a code fence"
+    assert_the_carry_kept_everything(first, second)
+
+
+# --------------------------------------------------------------------------- the from-disk read-back (P0-1)
+
+def assert_failed_closed(project, res, *expected):
+    """A check on the staged files that fails: exit 4 with D4's message, the named facts in it, the canonical files untouched, and Step F able to run."""
+    assert res.code == 4, "a completeness or parity check that fails is exit 4 (cli.md): %s" % res.describe()
+    assert_failure_message(res, project.plan_id)
+    for text in expected:
+        assert text in res.err, "%r is not in the message:\n%s" % (text, res.describe())
+    project.assert_earlier_outputs_untouched()
+    assert (project.plan_dir / "staged" / MD).is_file(), "the staged file stays for diagnosis (KB 21)"
+    failed = project.fail("check-failed")
+    assert failed.code == 0, failed.describe()
+    assert json.loads(failed.out)["moved"] == [] and json.loads(failed.out)["restored"] == [], "there was nothing to put back"
+    project.assert_earlier_outputs_untouched()
+    assert project.record["status"] == "failed" and project.record["error"]["code"] == "check-failed"
+
+
+# Each leak is in the staged markdown only, and every one of them passes the table readers that the other checks use, which are
+# not fence-aware. Only the reader that the next run uses sees it. The expected text is the read-back's own wording.
+READ_BACK_LEAKS = [
+    ("a-tilde-fence", first_line_edit("**Threat**:", lambda line: line + "\n~~~\nA fence that nothing closes."),
+     "9 open finding(s) would read back in the legacy form although their sub-scores were written"),
+    ("a-backtick-fence", first_line_edit("**Threat**:", lambda line: line + "\n```\nA fence that nothing closes."),
+     "9 open finding(s) would read back in the legacy form although their sub-scores were written"),
+    ("a-persisted-sub-score-that-no-longer-reads", first_line_edit("| S-2 | exploitability.known_techniques |", lambda line: line.replace("| 5 |", "| five |")),
+     "1 open finding(s) would read back in the legacy form although their sub-scores were written (S-2)"),
+]
+
+
+@pytest.mark.parametrize("name,edit,expected", READ_BACK_LEAKS, ids=[case[0] for case in READ_BACK_LEAKS])
+def test_readback_a_leak_that_the_next_runs_reader_would_misread_fails_closed_before_any_move(project, name, edit, expected):
+    project.earlier()
+    project.prepare()
+    with tampering_with_staged(MD, edit):
+        res = project.render()
+    assert_failed_closed(project, res, expected)
+    assert "staged files: " + expected in res.err, "the read-back is the first check to fail: nothing else saw the leak"
+
+
+def test_readback_a_fence_hides_every_owner_and_review_date_and_the_message_says_so(project):
+    project.earlier()
+    project.prepare()
+    with tampering_with_staged(MD, first_line_edit("**Threat**:", lambda line: line + "\n~~~\nA fence that nothing closes.")):
+        res = project.render()
+    assert_failed_closed(project, res, "the next run would read another owner, SLA, disposition or review date than was written for 9 open finding(s)",
+                         "a line in the file may forge structure, such as a code fence or a heading")
+
+
+def test_readback_a_row_that_the_next_run_would_not_read_is_named(project):
+    project.earlier()
+    project.prepare()
+    with tampering_with_staged(MD, first_line_edit("| E-5 |", lambda line: None)):   # Section 2 loses E-5's row
+        res = project.render()
+    assert_failed_closed(project, res, "the next run would read 8 of the 9 open rows from the staged risk-scores.md (missing: E-5; unexpected: none)")
+
+
+def test_readback_a_staged_file_that_would_not_read_as_a_baseline_is_a_problem(renderer, tmp_path):
+    path = tmp_path / MD
+    path.write_text("# Risk Scores Report\n\nNothing was scored.\n", encoding="utf-8")
+    problems = renderer._read_back_problems(types.SimpleNamespace(ordered=[]), str(path))
+    assert problems == ["the staged %s would not read back as a baseline (no-rows)" % MD]
+
+
+def test_readback_a_clean_render_reads_back_every_row_in_the_form_it_was_written(base):
+    read = rules.read_baseline_scores(base.out / MD)
+    assert sorted(read.rows) == sorted(canon(finding_id) for finding_id in ORDER)
+    assert all(row.form == "renderer" for row in read.rows.values())
+
+
+# --------------------------------------------------------------------------- a forbidden character in an input (P0-4)
+
+def assert_refused(project, res, char, source, finding_id, field):
+    """A forbidden character from an input: exit 2 before anything is computed, the input, the finding, the field and the remedy named,
+    the code point given and the character never echoed, and no file written. D4's Step F (the fail step) then runs as it does for any exit 2."""
+    assert res.code == 2, res.describe()
+    assert_failure_message(res, project.plan_id)
+    reason = next(line for line in res.err.split("\n") if line.startswith("TACHI RISK-SCORE FAILED:"))
+    assert source in reason and "U+%04X" % ord(char) in reason, reason
+    if finding_id is None:
+        assert "a component, zone or layer name" in reason, reason
+    else:
+        assert "the %s of %s" % (field, finding_id) in reason, reason
+    assert re.search(r"Remedy: .*\b(regenerate|edit)\b", res.err), res.describe()
+    assert char not in res.err, "the message gives the code point and never the character"
+    project.assert_earlier_outputs_untouched()
+    assert not (project.plan_dir / "staged").exists(), "refused before anything was staged"
+    failed = project.fail("render-failed", detail="a forbidden character in an input")
+    assert failed.code == 0, failed.describe()
+    project.assert_earlier_outputs_untouched()
+    assert project.record["status"] == "failed" and project.record["error"]["code"] == "render-failed"
+
+
+THREATS_MD_FIELDS = (  # (finding, the field the message names, the table's heading, its column, the cell, with {} where the character goes)
+    ("S-2", "component", "## 7. Recommended Actions", "Component", "edge{}-gateway"),
+    ("S-2", "threat", "## 7. Recommended Actions", "Threat", "Shared tokens let callers{} impersonate each other."),
+    ("S-2", "mitigation", "## 7. Recommended Actions", "Mitigation", "Mitigation{} text for S-2."),
+    ("S-2", "risk_level", "## 7. Recommended Actions", "Risk Level", "Hi{}gh"),
+    ("S-2", "layer", "## 7. Recommended Actions", "MAESTRO Layer", "L4 {} Deployment Infrastructure"),
+    ("S-1", "threat", "## 4c. Resolved Findings", "Threat", "An unauthenticated{} callback route."),
+)
+
+
+@pytest.mark.parametrize("finding_id,field,title,column,cell", THREATS_MD_FIELDS, ids=["%s-%s" % case[:2] for case in THREATS_MD_FIELDS])
+def test_refusal_a_forbidden_character_in_a_threats_md_field_is_refused_naming_the_finding_and_the_field(stage, renderer, tmp_path, finding_id, field, title, column, cell):
+    text = edit_table_cell(make_threats_md(), title, finding_id, column, cell.format(RLO))
+    project = Project(stage, renderer, tmp_path, threats_text=text)
+    project.earlier()
+    project.prepare()
+    assert_refused(project, project.render(), RLO, "threats.md", finding_id, field)
+
+
+@pytest.mark.parametrize("name", sorted(FORBIDDEN))
+def test_refusal_every_character_of_the_set_is_refused_in_a_threats_md_field(stage, renderer, tmp_path, name):
+    char = FORBIDDEN[name]
+    text = edit_table_cell(make_threats_md(), "## 7. Recommended Actions", "S-2", "Threat", "Shared tokens let callers{} impersonate each other.".format(char))
+    project = Project(stage, renderer, tmp_path, threats_text=text)
+    project.earlier()
+    project.prepare()
+    assert_refused(project, project.render(), char, "threats.md", "S-2", "threat")
+
+
+SCOPE_CELLS = (  # a Section 1 or 2 name or label, which belongs to no finding
+    ("a-zone-name", "| Edge DMZ | Semi-trusted |", "| Edge{} DMZ | Semi-trusted |"),
+    ("a-trust-label", "| Edge DMZ | Semi-trusted |", "| Edge DMZ | Semi-{}trusted |"),
+    ("a-component-type", "| edge-gateway | Process |", "| edge-gateway | Proc{}ess |"),
+)
+
+
+@pytest.mark.parametrize("name,old,new", SCOPE_CELLS, ids=[case[0] for case in SCOPE_CELLS])
+def test_refusal_a_forbidden_character_in_a_section_1_or_2_name_is_refused_without_a_finding(stage, renderer, tmp_path, name, old, new):
+    text = make_threats_md()
+    assert old in text
+    project = Project(stage, renderer, tmp_path, threats_text=text.replace(old, new.format(RLO), 1))
+    project.earlier()
+    project.prepare()
+    assert_refused(project, project.render(), RLO, "threats.md", None, None)
+
+
+BASELINE_CELLS = (  # (finding, the field the message names, the baseline's table, its column, the cell, with {} where the character goes)
+    ("S-2", "owner", "## 4. Governance Fields", "Owner", "Platform {}team"),
+    ("S-2", "sla", "## 4. Governance Fields", "SLA", "7{}d"),
+    ("S-2", "disposition", "## 4. Governance Fields", "Disposition", "Miti{}gate"),
+    ("S-1", "owner", "## 2a. Resolved Findings", "Owner", "Platform {}team"),   # a RESOLVED row's values reach Section 2a
+)
+
+
+@pytest.mark.parametrize("finding_id,field,title,column,cell", BASELINE_CELLS, ids=["%s-%s" % case[:2] for case in BASELINE_CELLS])
+def test_refusal_a_forbidden_character_in_a_baseline_cell_is_refused_naming_the_finding_and_the_field(stage, renderer, base, tmp_path, finding_id, field, title, column, cell):
+    project = second_run(stage, renderer, tmp_path, base, edit_baseline=lambda md: edit_table_cell(md, title, finding_id, column, cell.format(FORBIDDEN["left-to-right mark"])))
+    project.earlier()
+    project.prepare()
+    assert_refused(project, project.render(), FORBIDDEN["left-to-right mark"], "the baseline risk-scores.md", finding_id, field)
+
+
+def test_refusal_a_forbidden_character_in_a_persisted_narrative_of_the_baseline_is_refused(stage, renderer, base, tmp_path):
+    """A carried narrative is re-checked only by step 11, which never looked at control characters: the baseline's own text reaches the output."""
+    edit = first_line_edit("| S-2 | rationale.cvss |", lambda line: line.replace(" for ", " for " + RLO, 1))
+    project = second_run(stage, renderer, tmp_path, base, edit_baseline=edit)
+    project.earlier()
+    project.prepare()
+    assert_refused(project, project.render(), RLO, "the baseline risk-scores.md", "S-2", "narrative.rationale.cvss")
+
+
+def test_refusal_a_forbidden_character_in_the_baseline_sarifs_vector_is_refused(stage, renderer, base, tmp_path):
+    """The baseline SARIF is the second source of a vector (R-26), and Section 6 shows its text when the two sources disagree."""
+    project = second_run(stage, renderer, tmp_path, base)
+    path = tmp_path / "baseline" / SARIF
+    document = json.loads(path.read_text(encoding="utf-8"))
+    for result in document["runs"][0]["results"]:
+        if result["partialFingerprints"]["findingId/v1"] == "S-2":
+            result["properties"]["cvss-vector"] += RLO
+    path.write_text(json.dumps(document), encoding="utf-8")
+    project.earlier()
+    project.prepare()
+    assert_refused(project, project.render(), RLO, "the baseline risk-scores.sarif", "S-2", "cvss-vector")
+
+
+@pytest.mark.parametrize("where", ["threats.md", "baseline"])
+def test_refusal_a_file_saved_with_crlf_line_endings_is_not_refused(stage, renderer, base, tmp_path, where):
+    """``\\r`` is in step 10's set, but it ends every line of a CRLF file and the readers strip it from each cell's edge,
+    so a file that was saved on another system is read as it always was."""
+    def crlf(path):
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+
+    if where == "threats.md":
+        project = Project(stage, renderer, tmp_path)
+        crlf(project.threats)
+    else:
+        project = second_run(stage, renderer, tmp_path, base, edit_baseline=lambda md: edit_table_cell(md, "## 4. Governance Fields", "S-2", "Owner", "Platform team"))
+        for name in ("threats.md", MD):
+            crlf(tmp_path / "baseline" / name)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    results = results_by_id(project.sarif)
+    assert results["S-2"]["message"]["text"] == by_id("S-2")["threat"]
+    if where == "baseline":
+        assert results["S-2"]["properties"]["risk-owner"] == "Platform team", "the carry reads the CRLF baseline as it reads any other"
+
+
+def test_refusal_a_baseline_row_of_a_finding_that_this_run_no_longer_lists_is_not_taken(stage, renderer, base, tmp_path):
+    """The renderer takes values only from the rows of the findings it lists, so a stale row's text is never checked and never read."""
+    project = second_run(stage, renderer, tmp_path, base, edit_baseline=lambda md: edit_table_cell(md, "## 4. Governance Fields", "R-1", "Owner", "Ops {}team".format(RLO)),
+                         specs=[dict(item, status="UNCHANGED") for item in SPECS if item["id"] != "R-1"])
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert RLO not in project.md and RLO not in json.dumps(project.sarif, ensure_ascii=False), "the stale row's text reached neither file"
+
+
+def sarif_fallback_project(stage_module, renderer_module, root, text=None):
+    """The nine-finding project whose threats.md is gone, so the plan reads the ``threats.sarif`` beside it (D8's fallback)."""
+    project = Project(stage_module, renderer_module, root)
+    project.threats.unlink()
+    (project.out / "threats.sarif").write_text(make_threats_sarif() if text is None else text, encoding="utf-8")
+    return project
+
+
+def make_threats_sarif():
+    """A synthetic ``threats.sarif`` in the form that D8's fallback reads: one result for each finding, with its text, component and layer."""
+    results = []
+    for item in SPECS:
+        dfd_type, layer = COMPONENTS[item["component"]]
+        results.append({"message": {"text": item["threat"], "markdown": mitigation_of(item)}, "level": "warning",
+                        "locations": [{"logicalLocations": [{"name": item["component"], "kind": KIND_OF[dfd_type]}]}],
+                        "partialFingerprints": {"findingId/v1": item["id"]},
+                        "properties": {"security-severity": "6.0", "maestro-layer": layer}})
+    return json.dumps({"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "Tachi"}}, "results": results}]}, indent=2) + "\n"
+
+
+SARIF_FIELDS = (  # (the field the message names, how to put the character into S-2's result)
+    ("component", lambda result, char: result["locations"][0]["logicalLocations"][0].update(name="edge" + char + "-gateway")),
+    ("threat", lambda result, char: result["message"].update(text="Shared tokens" + char + " let callers impersonate each other.")),
+    ("mitigation", lambda result, char: result["message"].update(markdown="Mitigation" + char + " text for S-2.")),
+    ("layer", lambda result, char: result["properties"].update({"maestro-layer": "L4 " + char + " Deployment Infrastructure"})),
+)
+
+
+def test_refusal_a_clean_threats_sarif_renders_in_the_fallback(stage, renderer, tmp_path):
+    project = sarif_fallback_project(stage, renderer, tmp_path)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert results_by_id(project.sarif)["S-2"]["message"]["text"] == by_id("S-2")["threat"], "the finding's text comes from its result"
+
+
+@pytest.mark.parametrize("field,poison", SARIF_FIELDS, ids=[case[0] for case in SARIF_FIELDS])
+def test_refusal_a_forbidden_character_in_threats_sarif_text_is_refused_in_the_fallback(stage, renderer, tmp_path, field, poison):
+    char = FORBIDDEN["escape"]
+    document = json.loads(make_threats_sarif())
+    poison(next(result for result in document["runs"][0]["results"] if result["partialFingerprints"]["findingId/v1"] == "S-2"), char)
+    project = sarif_fallback_project(stage, renderer, tmp_path, text=json.dumps(document))
+    project.earlier()
+    project.prepare()
+    assert_refused(project, project.render(), char, "threats.sarif", "S-2", field)
+
+
+def test_refusal_whitespace_that_the_reader_strips_from_a_cells_edge_never_reaches_the_check(stage, renderer, tmp_path):
+    """A line separator, a vertical tab and a carriage return at a cell's edge are whitespace. The reader strips them, as it always did,
+    so the value that the renderer takes is clean and the run is unchanged."""
+    text = make_threats_md()
+    text = edit_table_cell(text, "## 7. Recommended Actions", "S-2", "Threat", FORBIDDEN["line separator"] + by_id("S-2")["threat"] + chr(0x0B))
+    text = edit_table_cell(text, "## 7. Recommended Actions", "T-1", "Mitigation", mitigation_of(by_id("T-1")) + FORBIDDEN["carriage return"])
+    project = Project(stage, renderer, tmp_path, threats_text=text)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    results = results_by_id(project.sarif)
+    assert results["S-2"]["message"]["text"] == by_id("S-2")["threat"]
+    assert results["T-1"]["message"]["markdown"] == mitigation_of(by_id("T-1"))
+
+
+def test_refusal_characters_beside_the_set_are_taken_as_they_are(stage, renderer, tmp_path):
+    """Only step 10's set is refused: a tab, a no-break space, a soft hyphen, a zero-width space, a narrow no-break space, a word joiner,
+    a byte order mark and an emoji pass, in the middle of a threat."""
+    beside = "".join(chr(code) for code in (0x09, 0xA0, 0xAD, 0x200B, 0x202F, 0x2060, 0xFEFF, 0x1F600))
+    threat = "Shared tokens" + beside + " let callers impersonate each other."
+    text = edit_table_cell(make_threats_md(), "## 7. Recommended Actions", "S-2", "Threat", threat)
+    project = Project(stage, renderer, tmp_path, threats_text=text)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert results_by_id(project.sarif)["S-2"]["message"]["text"] == threat
+
+
+class Plain(object):
+    def __init__(self, **fields):
+        self.__dict__.update(fields)
+
+
+def test_refusal_the_search_reads_text_keys_items_and_fields_and_nothing_else(renderer):
+    found, escape = renderer._first_forbidden, FORBIDDEN["escape"]
+    assert found("") is None and found("clean text, with a tab\tand a newline\n") is None
+    assert found("a" + escape) == ("", escape)
+    assert found({"a": [{"b": ("x", "y" + escape)}]}) == ("a.0.b.1", escape), "mappings, lists and tuples, with a dotted path"
+    assert found({"k" + RLO: 1}) == ("k" + RLO, RLO), "a key is text too"
+    assert found(Plain(owner="Ann", notes={"rationale.cvss": "ok" + escape})) == ("notes.rationale.cvss", escape), "a plain object's fields"
+    assert found([1, 2.5, None, True, Decimal("1.0"), datetime.date(2026, 11, 22), b"bytes", object()]) is None, "a number, a date or None holds no text"
+
+
+# --------------------------------------------------------------------------- the whole-file backstop (P0-4)
+
+@pytest.mark.parametrize("name", sorted(FORBIDDEN))
+def test_backstop_a_forbidden_character_in_the_staged_markdown_fails_closed(project, name):
+    char = FORBIDDEN[name]
+    project.earlier()
+    project.prepare()
+    with tampering_with_staged(MD, first_line_edit("**Threat**:", lambda line: line + char + " and on")):
+        res = project.render()
+    assert_failed_closed(project, res, "the staged risk-scores.md holds the character U+%04X, which the part contract forbids, at line " % ord(char))
+    assert char not in res.err, "the message gives the code point and never the character"
+
+
+@pytest.mark.parametrize("name", sorted(FORBIDDEN))
+def test_backstop_a_forbidden_character_in_a_decoded_sarif_string_fails_closed(project, name):
+    char = FORBIDDEN[name]
+
+    def poison(document):
+        document["runs"][0]["results"][0]["message"]["text"] += char
+
+    project.earlier()
+    project.prepare()
+    with tampering_with_staged(SARIF, json_edit(poison)):
+        res = project.render()
+    assert_failed_closed(project, res, "the staged risk-scores.sarif holds the character U+%04X, which the part contract forbids, in " % ord(char))
+    assert char not in res.err, "the message gives the code point and never the character"

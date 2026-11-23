@@ -8,11 +8,14 @@ a model's. It runs once, in the main session, after ``tachi-stage.py reconcile``
     python3 scripts/render-risk-scores.py --out DIR --plan ID --plan-digest HEX
 
 The order is D4's. It runs the CVSS self-test, checks the plan (its digest, the pointer, every input and batch
-input), re-validates every part it reads, computes the rows, and writes both files to ``<plan_id>/staged/``. It
-reads the staged files back from disk and checks row parity against the reference set, SARIF N/N, and that the two
-files agree on decoded values. Only when every check passes does it move each staged file onto its canonical name
-with ``os.replace``. It then runs the declared-paths check and writes the stage record. A check that fails leaves
-the canonical files untouched.
+input), re-validates every part it reads, refuses a value that it takes from ``threats.md``, ``threats.sarif`` or the
+baseline (``risk-scores.md`` and its SARIF) if the value holds a character that D3's step 10 forbids, computes the
+rows, and writes both files to ``<plan_id>/staged/``. It reads the staged files back from disk and checks row parity
+against the reference set, SARIF N/N, that the two files agree on decoded values, that the reader the next run uses
+(``read_baseline_scores``) reads every open row back as it was written, and that neither file holds a character that
+step 10 forbids. Only when every check passes does it move each staged file onto its canonical name with
+``os.replace``. It then runs the declared-paths check and writes the stage record. A check that fails leaves the
+canonical files untouched.
 
 Which findings the agent scored is the planner's partition, ``tachi_scoring_rules.route_scorer_units``, and this
 script calls the same function: an UNCHANGED finding with a usable baseline row is carried (its inputs, owner and
@@ -21,9 +24,10 @@ the rest come from the parts. The reference set is ``threats.md``; when the plan
 (D8's fallback) the member set and each finding's text come from that file.
 
 Exit codes are ``contracts/cli.md``'s: 0 done, 1 an input is missing or unreadable, 2 a validation, usage or guard
-failure (a digest or pointer mismatch, a part that fails re-validation), 4 a completeness or parity check failed or
-a file could not be written, 5 done with warnings. A failure prints D4's four-line message on stderr and writes
-nothing but what is already staged; ``tachi-stage.py fail`` writes the failed record and puts earlier outputs back.
+failure (a digest or pointer mismatch, a part that fails re-validation, a forbidden character in an input), 4 a
+completeness or parity check failed or a file could not be written, 5 done with warnings. A failure prints D4's
+four-line message on stderr and writes nothing but what is already staged; ``tachi-stage.py fail`` writes the failed
+record and puts earlier outputs back.
 The summary lines on stdout are the command's Step 6, so the model restates no number.
 
 Nothing here reads the clock except the stage record's ``finished_utc``, and the scoring date is the plan's. The
@@ -392,6 +396,82 @@ class Run(object):
 
 
 # =============================================================================
+# Forbidden characters in what an input holds (NFR-10, P0-4)
+# =============================================================================
+
+def _first_forbidden(value: Any, path: str = "") -> Optional[Tuple[str, str]]:
+    """``(path, character)`` of the first string under ``value`` that holds a character D3's step 10 forbids, or ``None``.
+
+    Text, mapping keys, list and tuple items and the fields of a plain object (a ``BaselineRow``) are searched in order.
+    A number, a date or ``None`` holds no text. ``path`` is dotted, and is for a message only. The character set is
+    ``tachi_parts.forbidden_character``'s, so the parts, the inputs and the written files share one definition.
+    """
+    if isinstance(value, str):
+        found = tp.forbidden_character(value)
+        return (path, found) if found is not None else None
+    if isinstance(value, Mapping):
+        children = value.items()
+    elif isinstance(value, (list, tuple)):
+        children = enumerate(value)
+    elif hasattr(value, "__dict__"):
+        children = vars(value).items()
+    else:
+        return None
+    for key, child in children:
+        label = "%s.%s" % (path, key) if path else str(key)
+        found = _first_forbidden(key, label) or _first_forbidden(child, label)   # a key is text too
+        if found is not None:
+            return found
+    return None
+
+
+def _refuse_forbidden(source: str, finding_id: Optional[str], value: Any, remedy: str, kept: str) -> None:
+    """Exit 2 when ``value``, which the renderer takes from an input that isn't a part, holds a character that D3's step 10 forbids.
+
+    Step 10 checks a part. Text from ``threats.md``, the baseline ``risk-scores.md`` or ``threats.sarif`` reaches the
+    escapers unchecked, and a carriage return, an escape or a bidi control would then forge a heading, drive a terminal
+    or reorder what a reader sees (NFR-10, P0-4). So each value is checked where it is taken, before anything is computed.
+    ``finding_id`` names the finding the value belongs to, and ``None`` a Section 1 or 2 name or label. The message gives
+    the character's code point and never the text, so it can't carry the character to a terminal.
+    """
+    found = _first_forbidden(value)
+    if found is not None:
+        where = "the %s of %s" % (ascii(found[0])[1:-1], finding_id) if finding_id else "a component, zone or layer name"
+        raise RenderError(2, "%s holds the character U+%04X, which the part contract forbids, in %s" % (source, ord(found[1]), where),
+                          remedy, kept=kept)
+
+
+def _refuse_forbidden_inputs(run: Run, reference: Mapping[str, Any], source: str, kept: str) -> None:
+    """The refusal for what ``threats.md`` gives the renderer, or ``threats.sarif`` in D8's fallback.
+
+    That is every finding's fields (open and RESOLVED), each finding's MAESTRO layer, and the names and labels of
+    Sections 1 and 2. It runs once those are read and before any of them is used. The reader strips a cell's edges
+    first, so a character that ``str.strip`` removes there never reaches this check, as it never reaches an output.
+    """
+    remedy = "regenerate %s with /tachi.threat-model, or edit the value to remove the character, then re-run the command" % source
+    for finding in list(reference["open"]) + list(reference["resolved"]):
+        _refuse_forbidden(source, finding["id"], finding, remedy, kept)
+    for canonical, layer in run.finding_layer.items():
+        _refuse_forbidden(source, canonical, {"layer": layer}, remedy, kept)
+    _refuse_forbidden(source, None, (run.component_info, run.zones, run.component_zone), remedy, kept)
+
+
+def _refuse_forbidden_baseline(run: Run, reference: Mapping[str, Any], kept: str) -> None:
+    """The same refusal for the baseline's rows of the findings that this run lists, open or RESOLVED: the rows it takes values from.
+
+    A row of a finding that this run no longer lists is never read into an output, so it isn't checked. The baseline SARIF's
+    vectors are checked too: they are the second source of a vector (R-26), and Section 6 shows one when the two disagree.
+    """
+    listed = {tp.canonical_finding_id(finding["id"]) for finding in list(reference["open"]) + list(reference["resolved"])}
+    remedy = "edit that value in the baseline to remove the character, then re-run the command"
+    for rows in (run.baseline.rows, run.baseline.resolved_rows):
+        for canonical in sorted(listed & set(rows), key=tp.finding_sort_key):
+            _refuse_forbidden("the baseline " + MD, canonical, rows[canonical], remedy, kept)
+    for canonical in sorted(listed & set(run.baseline_vectors), key=tp.finding_sort_key):
+        _refuse_forbidden("the baseline " + SARIF, canonical, {"cvss-vector": run.baseline_vectors[canonical]}, remedy, kept)
+
+
+# =============================================================================
 # The inputs: the reference set, §1 and §2 of threats.md, the architecture file, the baseline, the asset tags
 # =============================================================================
 
@@ -596,11 +676,14 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
         for problem in grouped["errors"]:
             run.issues.append("Section 4a of threats.md, line %d: the row %s %s, so it is skipped" % (problem["line"], repr(problem["row"][:60]), problem["reason"]))
         run.groups = grouped["groups"]
+    _refuse_forbidden_inputs(run, reference, os.path.basename(run.threats_path), kept)   # NFR-10: a value from an input is checked where it is taken
     run.assignments = sc.correlation_assignments([(group["group_id"], group["members"]) for group in run.groups], open_ids)
 
     # The baseline first: S-12(b) needs it to route and to supply a carried finding's component before the tag join.
     run.lacking = {finding_id: list(names) for finding_id, names in reference.get("lacking", {}).items()}
     _prepare_baseline(run, plan, refs, text if run.threats_text is not None else None, inputs)
+    if run.baseline is not None:
+        _refuse_forbidden_baseline(run, reference, kept)
     run.routing = _route(run, reference)
     _supply(run, reference)
 
@@ -1443,13 +1526,58 @@ def _canonical_of(cell: Any) -> Optional[str]:
     return tp.canonical_finding_id(cell) if tp.id_matches("finding", cell) else None
 
 
-def _check_staged(run: Run, md_text: str, sarif_text: str, digest: str) -> List[str]:
+def _read_back_problems(run: Run, md_path: str) -> List[str]:
+    """What the next run would read from the staged markdown, by the reader that run uses (P0-1; KB 22).
+
+    ``read_baseline_scores`` honors code fences and headings, which ``parse_markdown_table`` doesn't. So a line in one
+    finding's prose that forges structure (a code fence, a heading) hides Sections 4 and 6 from it, and every owner, SLA,
+    review date and persisted input would be lost on the next run, with no warning. Every open row must come back, in
+    renderer form wherever its sub-scores were written, with its owner, SLA, disposition and review date as rendered.
+    """
+    scores = rules.read_baseline_scores(Path(md_path))
+    if not scores.readable:
+        return ["the staged %s would not read back as a baseline (%s)" % (MD, scores.reason)]
+
+    def listed(ids: List[str]) -> str:
+        return ", ".join(ids[:5]) + (", and more" if len(ids) > 5 else "")
+
+    problems: List[str] = []
+    expected = [row.canon for row in run.ordered]
+    if set(scores.rows) != set(expected):
+        problems.append("the next run would read %d of the %d open rows from the staged %s (missing: %s; unexpected: %s)" % (
+            len(set(scores.rows) & set(expected)), len(expected), MD,
+            ", ".join(sorted(set(expected) - set(scores.rows), key=tp.finding_sort_key)[:10]) or "none",
+            ", ".join(sorted(set(scores.rows) - set(expected), key=tp.finding_sort_key)[:10]) or "none"))
+    legacy = [row.canon for row in run.ordered if row.subs is not None and row.canon in scores.rows and scores.rows[row.canon].form != "renderer"]
+    if legacy:
+        problems.append("%d open finding(s) would read back in the legacy form although their sub-scores were written (%s): "
+                        "a line in the file may forge structure, such as a code fence or a heading" % (len(legacy), listed(legacy)))
+    changed = []
+    for row in run.ordered:
+        stored = scores.rows.get(row.canon)
+        if stored is not None and (stored.owner, stored.sla, stored.disposition, stored.review_date.isoformat() if stored.review_date else None) != (
+                row.owner, row.sla, row.disposition, row.review_date):
+            changed.append(row.canon)
+    if changed:
+        problems.append("the next run would read another owner, SLA, disposition or review date than was written for %d open finding(s) (%s)"
+                        % (len(changed), listed(changed)))
+    return problems
+
+
+def _check_staged(run: Run, md_text: str, sarif_text: str, digest: str, md_path: str) -> List[str]:
     """Everything that can be wrong with the two files as they now sit on disk. Empty when they are right.
 
     Row parity against the reference set, Section 2's arithmetic, SARIF N/N and the shared self-check, and the two
     files' agreement on decoded values. The markdown is read back through ``tachi_parsers`` and the SARIF through ``json``.
+    The markdown at ``md_path`` is also read back through ``read_baseline_scores``, the reader the next run uses, so a
+    carry that this file would break fails here (P0-1). Neither file may hold a character that D3's step 10 forbids, the
+    raw markdown or any decoded SARIF string, whatever path it took to reach them (NFR-10, P0-4).
     """
     problems: List[str] = []
+    forbidden = tp.forbidden_character(md_text)
+    if forbidden is not None:
+        problems.append("the staged %s holds the character U+%04X, which the part contract forbids, at line %d"
+                        % (MD, ord(forbidden), md_text.count("\n", 0, md_text.find(forbidden)) + 1))
     expected = [row.canon for row in run.ordered]
     scored = tachi_parsers.parse_markdown_table(md_text, "## 2. Scored Threat Table", keep_bold=True)
     got = [_canonical_of(row.get("ID", "")) for row in scored]
@@ -1476,6 +1604,7 @@ def _check_staged(run: Run, md_text: str, sarif_text: str, digest: str) -> List[
     stamp = tp.read_stamp(md_text)
     if stamp is None or (stamp["renderer"], stamp["version"], stamp["input_digest"]) != (RENDERER, tp.VERSION, digest):
         problems.append("the markdown's provenance stamp is missing or wrong")
+    problems += _read_back_problems(run, md_path)
 
     by_id = {}
     for row in scored:
@@ -1499,6 +1628,9 @@ def _check_staged(run: Run, md_text: str, sarif_text: str, digest: str) -> List[
         sarif_stamp = document["runs"][0]["properties"]["tachi_provenance"]
     except (ValueError, KeyError, IndexError, TypeError):
         return problems + ["the staged SARIF is not a SARIF document with results and a provenance stamp"]
+    offender = _first_forbidden(document)
+    if offender is not None:
+        problems.append("the staged %s holds the character U+%04X, which the part contract forbids, in %s" % (SARIF, ord(offender[1]), ascii(offender[0])))
     if sarif_stamp != {"renderer": RENDERER, "version": tp.VERSION, "input_digest": digest}:
         problems.append("the SARIF's provenance stamp is missing or wrong")
     try:
@@ -1546,7 +1678,7 @@ def _stage_and_move(run: Run, out: str, plan_id: str, md_text: str, sarif_text: 
             texts.append(raw.decode("utf-8"))
         except UnicodeDecodeError:
             raise RenderError(4, "the staged %s is not strict UTF-8" % name, RETRY_REMEDY, kept=kept) from None
-    problems = _check_staged(run, texts[0], texts[1], digest)
+    problems = _check_staged(run, texts[0], texts[1], digest, tp.staged_path(out, STAGE, plan_id, MD))
     if problems:
         raise RenderError(4, "a completeness or parity check failed on the staged files: %s%s" % (
             "; ".join(problems[:5]), "; and %d more" % (len(problems) - 5) if len(problems) > 5 else ""), RETRY_REMEDY, kept=kept)
