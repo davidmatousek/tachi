@@ -1029,6 +1029,44 @@ def test_a_literal_reference_in_text_survives_a_write_and_a_read(tmp_path):
         assert _read(tmp_path, _renderer_doc(_escaped(rows))).rows["T-12"].narrative["rationale.cvss"] == original, original
 
 
+def _carried_text(row):
+    """The text a renderer carries from a read row, by field name: its narrative fields and its zone."""
+    carried = dict(row.narrative)
+    carried["reachability.zone"] = row.zone
+    return carried
+
+
+@pytest.mark.parametrize("original", [
+    "**bold**",
+    "a **bold** word, then **more** bold",
+    "**the whole value is bold**",
+    "****", "***", "**unbalanced", "trailing**",
+    "**bold** by {{score:cvss_base}} and **a | pipe, an & and `code`**\nthen a **second line**",
+])
+def test_bold_in_a_carried_value_survives_two_write_and_read_round_trips_byte_for_byte(tmp_path, original):
+    """RR1: a carried value is byte-identical on every later run, so ``**`` in a Scoring Inputs value is content.
+
+    ``escape_cell`` leaves ``*`` alone, so the file holds a raw ``**`` and only a reader can lose it. This reader
+    splits its rows itself and never strips a persisted value; ``parse_markdown_table`` would, unless it were
+    called with ``keep_bold``. The second write takes what the first read returned, as the next run's render does.
+    """
+    assert "**" in tachi_parts.escape_cell(original, keep_slots=True), "the write side leaves the bold markers raw"
+    fields = ("rationale.cvss", "metric_rationale.AV", "subscore_rationale.skill_level", "reachability.zone")
+    first_doc = _renderer_doc(_escaped(_inputs(**{field: original for field in fields})))
+    first = _read(tmp_path, first_doc)
+    assert first.issues == () and first.rows["T-12"].form == "renderer"
+
+    second_doc = _renderer_doc(_escaped(_inputs(**_carried_text(first.rows["T-12"]))))
+    second = _read(tmp_path, second_doc)
+    assert second.issues == () and second.rows["T-12"].form == "renderer"
+
+    assert second_doc.encode("utf-8") == first_doc.encode("utf-8"), "the second render's file is the first one's, byte for byte"
+    for scores in (first, second):
+        carried = _carried_text(scores.rows["T-12"])
+        for field in fields:
+            assert carried[field].encode("utf-8") == original.encode("utf-8"), field
+
+
 def test_no_tags_row_means_none_were_recorded_and_an_empty_row_means_none_were_used(tmp_path):
     assert _read(tmp_path, _renderer_doc(_escaped(_inputs(tags=None)))).rows["T-12"].tags_used is None
     assert _read(tmp_path, _renderer_doc(_escaped(_inputs(tags="")))).rows["T-12"].tags_used == ()
