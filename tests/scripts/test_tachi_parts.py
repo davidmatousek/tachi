@@ -33,6 +33,7 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 import pytest
@@ -762,6 +763,75 @@ def test_a_closed_value_over_sixteen_thousand_characters_is_invalid():
     assert classify(part).state == "invalid"
 
 
+# --- P0-4: step 10's character set is published as `forbidden_character`, so a renderer that takes a value from an input
+# that isn't a part (`threats.md`, a baseline file, `threats.sarif`) asks the same question a part's strings are asked.
+
+# The separators and the bidi controls are written with chr(), so that no invisible character sits in this file's source.
+LINE_SEPARATOR, PARAGRAPH_SEPARATOR = chr(0x2028), chr(0x2029)
+RIGHT_TO_LEFT_MARK, RIGHT_TO_LEFT_OVERRIDE = chr(0x200F), chr(0x202E)
+FORBIDDEN_CLASSES = {
+    "C0": ["\x00", "\x01", "\x07", "\x08", "\x0b", "\x0c", "\r", "\x1b", "\x1c", "\x1f"],
+    "DEL and C1": ["\x7f", "\x80", "\x85", "\x9b", "\x9f"],
+    "separators": [LINE_SEPARATOR, PARAGRAPH_SEPARATOR],
+    "bidi controls": [chr(code) for code in (0x200E, 0x200F, 0x061C, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
+                                             0x2066, 0x2067, 0x2068, 0x2069)],
+}
+
+
+@pytest.mark.parametrize("char", [char for chars in FORBIDDEN_CLASSES.values() for char in chars],
+                         ids=["U+%04X" % ord(char) for chars in FORBIDDEN_CLASSES.values() for char in chars])
+def test_forbidden_character_returns_the_character_wherever_it_stands(char):
+    forbidden = _api("forbidden_character")
+    assert forbidden(char) == char
+    assert forbidden("Public tooling" + char + " exists.") == char
+    assert forbidden(char + "x") == char and forbidden("x" + char) == char
+
+
+def test_forbidden_character_returns_the_first_one_of_several():
+    forbidden = _api("forbidden_character")
+    assert forbidden("a\x1bb\x00c") == "\x1b"
+    assert forbidden("a" + RIGHT_TO_LEFT_OVERRIDE + "b\x7fc") == RIGHT_TO_LEFT_OVERRIDE
+    assert forbidden(LINE_SEPARATOR + PARAGRAPH_SEPARATOR) == LINE_SEPARATOR
+    assert forbidden("ok\tok\nok" + RIGHT_TO_LEFT_MARK + "ok\r") == RIGHT_TO_LEFT_MARK
+
+
+@pytest.mark.parametrize("text", [
+    "", "plain text", "\t", "\n", "tab\there", "line one\nline two", "tab\tand\nnewline together\n\n\t",
+    "caf" + chr(0xE9) + " " + chr(0x2014) + " quoted " + chr(0x65E5) + chr(0x672C) + chr(0x8A9E), "emoji \U0001f600",
+    "~~~ # | ` & < > {{score:cvss_base}}",
+    # the neighbours of each forbidden range, which are allowed: below DEL, the no-break space above C1, the characters just
+    # before U+2028 and U+2066 and after U+202E and U+2069, the two around U+061C, and the zero-width joiner before U+200E
+    "\x7e", chr(0xA0), chr(0x2027), chr(0x202F), chr(0x2065), chr(0x206A), chr(0x061B) + chr(0x061D), chr(0x200D),
+])
+def test_forbidden_character_is_none_for_clean_text_a_tab_and_a_newline(text):
+    assert _api("forbidden_character")(text) is None
+
+
+def test_forbidden_character_is_exactly_the_contracts_set_over_the_whole_basic_multilingual_plane():
+    """Worked out from Unicode, not from the regex: Cc other than tab and newline, the separators and the bidi controls."""
+    expected = {code for code in range(0x10000) if unicodedata.category(chr(code)) == "Cc" and code not in (0x09, 0x0A)}
+    expected |= {0x2028, 0x2029} | {0x200E, 0x200F, 0x061C} | set(range(0x202A, 0x202F)) | set(range(0x2066, 0x206A))
+    found = {code for code in range(0x10000) if _api("forbidden_character")(chr(code)) is not None}
+    assert found == expected
+    assert len(expected) == 63 + 2 + 12, "63 controls, 2 separators and 12 bidi controls"
+    assert _api("forbidden_character")("\U000e0001\U0001f600") is None
+
+
+def test_step_10_asks_the_published_predicate_so_the_character_set_has_one_definition(monkeypatch):
+    """Replace the predicate and step 10 follows it: no second copy of the set decides what a part may hold."""
+    monkeypatch.setattr(tachi_parts, "forbidden_character", lambda text: "X" if "banned" in text else None)
+    assert _api("closed_string")("a clean zone", "zone") == "a clean zone"
+    assert _api("closed_string")("bell\x07", "zone") == "bell\x07", "the real set no longer applies"
+    with pytest.raises(_api("PartError")) as excinfo:
+        _api("closed_string")("a banned zone", "zone")
+    assert excinfo.value.kind == "invalid"
+    assert classify(put(make_part(), ("items", 0, "rationale", "exploitability"), "A banned phrase.")).state == "invalid"
+
+
+def test_the_module_docstring_names_the_published_predicate():
+    assert "forbidden_character" in tachi_parts.__doc__
+
+
 # =============================================================================
 # 9. Scorer and controls payloads (steps 6 and 9, RR2's cut-and-flag)
 # =============================================================================
@@ -1286,11 +1356,12 @@ def test_the_evidence_file_rule_is_the_identifier_slices_rule_not_a_second_copy(
 # SARIF strings go through ``json.dumps`` only, so no helper here escapes them.
 # =============================================================================
 
-REFERENCES = {"&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#"}
+REFERENCES = {"&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#",
+              "&#126;": "~"}
 
 
 def decode_references(text):
-    """A test-local closed decoder: one pass, exactly the eight references."""
+    """A test-local closed decoder: one pass, exactly the nine references."""
     return re.sub("|".join(re.escape(ref) for ref in REFERENCES), lambda m: REFERENCES[m.group(0)], text)
 
 
@@ -1317,7 +1388,7 @@ def test_a_cell_never_holds_a_raw_pipe_backtick_angle_bracket_or_newline():
 
 def test_a_literal_reference_in_agent_text_survives_one_decode():
     """The round trip includes a literal ``&lt;``, so a double decode would fail it."""
-    for raw in ("&lt;", "&amp;lt;", "&#124;", "&amp;#35;", "&#10;"):
+    for raw in ("&lt;", "&amp;lt;", "&#124;", "&amp;#35;", "&#10;", "&#126;", "&amp;#126;"):
         assert decode_references(_api("escape_cell")(raw)) == raw
         assert decode_references(_api("escape_prose")(raw)) == raw
 
@@ -1344,6 +1415,73 @@ def test_prose_cannot_forge_a_provenance_stamp_or_a_heading():
     assert _api("read_stamp")(out) is None
     assert not re.search(r"(?m)^\s*#", out)
     assert decode_references(out) == forged
+
+
+# --- P0-1: a prose line that starts with `~` would open a code fence for the next run's reader (ruled as a D3 amendment) ---
+# A narrative that holds a `~~~` line passes steps 9 to 11, because step 10 allows `\n`. The sink is where it is stopped:
+# the first `~` of a line, after any spaces or tabs, is written `&#126;`, as `#` is written `&#35;`. A `~` anywhere else
+# stays, and so does every `~` in a table cell (a cell never starts a line, and its newlines are `&#10;`).
+
+@pytest.mark.parametrize("raw,escaped", [
+    ("~~~", "&#126;~~"), (" ~~~", " &#126;~~"), ("\t~~~", "\t&#126;~~"), ("  \t ~~~python", "  \t &#126;~~python"),
+    ("~", "&#126;"), ("~~~~", "&#126;~~~"), ("~ one", "&#126; one"), ("~5 users", "&#126;5 users"),
+    ("first\n~~~\nthird", "first\n&#126;~~\nthird"), ("a\n\n  ~~~", "a\n\n  &#126;~~"),
+    ("~~~\n~~~\n~~~", "&#126;~~\n&#126;~~\n&#126;~~"),
+    ("~~~\n# h\n~~~", "&#126;~~\n&#35; h\n&#126;~~"), ("# a\n~ b\n| c", "&#35; a\n&#126; b\n&#124; c"),
+])
+def test_prose_never_starts_a_line_with_a_tilde(raw, escaped):
+    out = _api("escape_prose")(raw)
+    assert out == escaped
+    assert not re.search(r"(?m)^[ \t]*~", out)
+    assert decode_references(out) == raw
+
+
+@pytest.mark.parametrize("raw", [
+    "a ~ b", "x~~~", "about ~5 users", "line one ~~~\nline two", "end~\nnext", "wave ~ tilde", "",
+    "- ~~~",            # text before the tilde, a list marker included: it is not a line start, and the ruling guards only that
+])
+def test_a_tilde_that_does_not_start_a_line_is_left_as_it_is(raw):
+    assert _api("escape_prose")(raw) == raw
+
+
+def test_a_tilde_in_a_table_cell_is_left_as_it_is():
+    for raw in ("~~~", " ~~~", "~", "a ~ b", "first\n~~~\nthird"):
+        assert _api("escape_cell")(raw) == raw.replace("\n", "&#10;")
+
+
+def test_a_kept_slot_does_not_change_where_the_tilde_guard_applies():
+    escape = _api("escape_prose")
+    assert escape("~~~ {{score:cvss_base}}", keep_slots=True) == "&#126;~~ {{score:cvss_base}}"
+    assert escape("{{score:cvss_base}}\n~~~", keep_slots=True) == "{{score:cvss_base}}\n&#126;~~"
+    assert escape("{{score:cvss_base}} ~~~", keep_slots=True) == "{{score:cvss_base}} ~~~"
+
+
+@pytest.mark.parametrize("name", ["escape_cell", "escape_prose"])
+@pytest.mark.parametrize("text", [
+    "~~~", " ~~~", "\t~~~\nx", "a\n~~~\nb ~~~", "~ lone", "&#126;", "&amp;#126;", "{{{score:cvss_base}}\n~~~", "~~~\n~~~",
+])
+def test_escaping_a_tilde_decodes_and_re_renders_to_the_same_bytes_on_the_next_run(name, text):
+    once = _api(name)(text, keep_slots=True)
+    assert decode_references(once) == text
+    assert _api(name)(decode_references(once), keep_slots=True) == once
+
+
+def test_the_prose_sink_guards_a_line_that_a_resolved_value_would_turn_into_a_code_fence():
+    lookup = lookup_from({("name", "component"): "~~~ Gate"})
+    prose = _api("resolve_narrative")("{{name:component}} is exposed.\n~~~\nEnd.", SCORER_STAGE, lookup, sink="prose")
+    assert prose == "&#126;~~ Gate is exposed.\n&#126;~~\nEnd."
+    cell = _api("resolve_narrative")("{{name:component}} is exposed.\n~~~\nEnd.", SCORER_STAGE, lookup)
+    assert cell == "~~~ Gate is exposed.&#10;~~~&#10;End."
+
+
+def test_a_narrative_with_a_tilde_fence_line_is_a_valid_part_and_the_sink_writes_no_fence_line():
+    result = classify(with_text(SCORER, ("rationale", "cvss"), "Reachable.\n~~~\nMore."), ids=("S-1",))
+    assert result.state == "done", result.detail
+    text = result.part["items"][0]["rationale"]["cvss"]
+    assert text == "Reachable.\n~~~\nMore.", "step 10 allows a newline, so the part keeps the text and the sink does the guarding"
+    written = _api("escape_prose")(text, keep_slots=True)
+    assert written == "Reachable.\n&#126;~~\nMore."
+    assert not re.search(r"(?m)^[ \t]*~", written)
 
 
 def max_backtick_run(text):

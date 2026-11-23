@@ -118,7 +118,7 @@ def decode_references(text: str) -> str:
     """Decode the references ``tachi_parts`` escapes, and nothing else (ADR-050 D3, "Output").
 
     The closed set is ``tachi_parts.ESCAPE_REFERENCES``: ``&amp;``, ``&lt;``, ``&gt;``, ``&#124;``, ``&#96;``,
-    ``&#123;``, ``&#10;`` and ``&#35;``. It is one left-to-right pass, and replaced text is never scanned again, so
+    ``&#123;``, ``&#10;``, ``&#35;`` and ``&#126;``. It is one left-to-right pass, and replaced text is never scanned again, so
     ``&amp;lt;`` is ``&lt;`` and a second decode would be a bug. Anything else is left as written: another entity,
     a hex or zero-padded numeric reference, a bare ``&`` and GFM's ``\\|`` (which would change how today's examples
     parse, NFR-1).

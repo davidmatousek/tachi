@@ -983,7 +983,8 @@ def test_the_wrapped_parser_keeps_its_empty_list_and_warning_for_the_extractors(
 
 # The closed set as D3 lists it, written out here so that a change to tachi_parts.ESCAPE_REFERENCES fails this file.
 _CLOSED_REFERENCES = {
-    "&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#"}
+    "&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#",
+    "&#126;": "~"}
 _ESCAPERS = {
     "cell": lambda text: tachi_parts.escape_cell(text),
     "cell-keeping-slots": lambda text: tachi_parts.escape_cell(text, keep_slots=True),
@@ -995,6 +996,9 @@ _ROUND_TRIP_TEXTS = [
     "# heading first\n  # indented\n\t# tabbed\n| row", "{{score:cvss_base}}", "{{{score:cvss_base}}", "{{score:", "}}{{",
     "a literal &lt; here", "tail &amp;lt; tail", "&#124; &#10; &#35; &#96; &#123; spelled out", "&amp;", "\n", "&", "<<>>",
     "```", "||", "{{", "{", "#", "x {{name:component}} y {{score:cvss_base}}",
+    # P0-1: a prose line that starts with `~` is written `&#126;`; a `~` anywhere else, and a literal reference, are not
+    "~~~", " ~~~", "\t~~~\nx", "first\n~~~\n  ~~~ tail", "~", "a ~ b", "x~~~", "~~~\n# h\n| row\n~~~",
+    "&#126; and &amp;#126; spelled out",
 ]
 
 
@@ -1015,9 +1019,19 @@ def test_the_decoder_reads_the_closed_set_that_tachi_parts_escapes():
     assert decode_references("") == ""
 
 
+def test_the_decoder_reads_the_tilde_reference_through_the_same_closed_table():
+    """P0-1: ``&#126;`` is the ninth reference. The decoder takes it from ``tachi_parts``, so it has no table of its own."""
+    assert len(tachi_parts.ESCAPE_REFERENCES) == 9 and tachi_parts.ESCAPE_REFERENCES["&#126;"] == "~"
+    assert decode_references("&#126;") == "~"
+    assert decode_references("&#126;~~") == "~~~"
+    assert decode_references("&#126;&#126;&#126;") == "~~~"
+    assert decode_references("approx &#126;5 users, &#126; and &amp; &#124;") == "approx ~5 users, ~ and & |"
+    assert decode_references("first\n  &#126;~~ fence\nlast") == "first\n  ~~~ fence\nlast"
+
+
 def test_the_references_the_escapers_write_are_exactly_the_ones_the_decoder_reads():
     """No more and no fewer: between them, escape_cell and escape_prose write each reference of the set, and no other."""
-    probe = "&<>|`{{\n# x"
+    probe = "&<>|`{{\n# x\n~ y"
     written = set()
     for escape in (tachi_parts.escape_cell, tachi_parts.escape_prose):
         written.update(re.findall(r"&[#A-Za-z0-9]+;", escape(probe)))
@@ -1027,6 +1041,7 @@ def test_the_references_the_escapers_write_are_exactly_the_ones_the_decoder_read
 @pytest.mark.parametrize("text,expected", [
     ("&amp;lt;", "&lt;"), ("&amp;amp;", "&amp;"), ("&amp;#124;", "&#124;"), ("&amp;#10;", "&#10;"),
     ("&amp;gt;&amp;lt;", "&gt;&lt;"), ("&#38;lt;", "&#38;lt;"), ("&&lt;", "&<"), ("&amp;&lt;", "&<"),
+    ("&amp;#126;", "&#126;"), ("&amp;&#126;", "&~"), ("&#126;&amp;#126;", "~&#126;"),
 ])
 def test_the_decoder_is_one_pass_and_never_scans_replaced_text(text, expected):
     assert decode_references(text) == expected
@@ -1036,6 +1051,7 @@ def test_the_decoder_is_one_pass_and_never_scans_replaced_text(text, expected):
     "&AMP;", "&Lt;", "&GT;", "&quot;", "&apos;", "&nbsp;", "&copy;", "&#x7c;", "&#X7C;", "&#0124;", "&#124", "&#12;", "&#1;",
     "&#38;", "&#60;", "&#62;", "&#x26;", "&#036;", "&#35", "&#x23;", "&#9;", "&amp", "&lt", "& amp;", "&;", "&#;", "&",
     ";", "#", "\\|", "a \\| b",
+    "&#126", "&#x7e;", "&#X7E;", "&#0126;", "&#1260;", "&#127;", "&tilde;", "&Tilde;", "~", "~~~", "a ~ b",
 ])
 def test_the_decoder_leaves_every_other_text_as_written(text):
     assert decode_references(text) == text
@@ -1078,7 +1094,7 @@ def test_resolved_slot_values_decode_to_the_values():
 _TABLE_VALUES = [
     "plain words", "a | b || c", "if a < b && b > c", "two\nlines\nof text", "`code` and {{7*7}} and {{{x}}",
     "already &lt;escaped&gt; &amp; &#124; &#10; text", "tail &amp;lt; tail", "# looks like a heading", "&", "{{score:cvss_base}}",
-    "&#35;",
+    "&#35;", "~~~ in a cell", "&#126;",
 ]
 
 

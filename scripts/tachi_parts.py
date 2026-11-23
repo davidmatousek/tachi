@@ -88,6 +88,11 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
   ``_closed``, which stays as an alias.
 * ``is_declared_path(relpath, stage, plan_id)``: D4's declared-paths grammar.
 * ``retry_history(stage, out, plan)``: a plan's ``(overflow_events, retries)``, read back from its parts on disk.
+
+**Added at W3 (P0-4):**
+
+* ``forbidden_character(text)``: the first character of ``text`` that D3's step 10 forbids, or ``None``. Step 10 uses it,
+  and a renderer calls it where it takes a value from an input that isn't a part, so the set has one definition.
 """
 from __future__ import annotations
 
@@ -637,13 +642,17 @@ FALLBACK_SENTENCES: Dict[str, str] = {
         "No completeness assessment rationale is shown because the text the agent wrote broke the narrative rules.",
 }
 
+# D3's closed set of nine references (P0-1 added ``&#126;``). ``tachi_parsers.decode_references`` is built from it, and
+# ``part-file-contract-shared.md`` lists it, which T010's drift test compares.
 ESCAPE_REFERENCES: Dict[str, str] = {
-    "&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#"}
+    "&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#",
+    "&#126;": "~"}
 _REFERENCE_OF = {char: reference for reference, char in ESCAPE_REFERENCES.items()}
 _CELL_TRANSLATION = {ord(char): _REFERENCE_OF[char] for char in "&<>|`\n"}
 _PROSE_TRANSLATION = {ord(char): _REFERENCE_OF[char] for char in "&<>|`"}
 _BRACE_OF_A_PAIR = re.compile(r"\{(?=\{)|(?<=\{)\{")
-_HEADING_START = re.compile(r"(?m)^([ \t]*)#")
+# The first ``#`` (a heading) or ``~`` (a code fence, as ``~~~``) of a prose line, after any spaces or tabs.
+_LINE_START_GUARD = re.compile(r"(?m)^([ \t]*)([#~])")
 
 
 def _tokens(text: str, stage: str) -> List[Tuple[str, ...]]:
@@ -747,7 +756,13 @@ def _escape(text: str, keep_slots: bool, cell: bool) -> str:
 
 
 def _guard_headings(text: str) -> str:
-    return _HEADING_START.sub(lambda match: match.group(1) + _REFERENCE_OF["#"], text)
+    """Write the first ``#`` or ``~`` of each line as its reference, so prose forges neither a heading nor a code fence.
+
+    A line that starts with ``~~~``, after any spaces or tabs, opens a code fence for the next run's tolerant reader
+    and for GitHub, and every heading after it, §4 and §6 included, is then read as part of the fence (P0-1). A ``~``
+    anywhere else stays as it is.
+    """
+    return _LINE_START_GUARD.sub(lambda match: match.group(1) + _REFERENCE_OF[match.group(2)], text)
 
 
 def escape_cell(text: str, keep_slots: bool = False) -> str:
@@ -762,10 +777,11 @@ def escape_cell(text: str, keep_slots: bool = False) -> str:
 
 
 def escape_prose(text: str, keep_slots: bool = False) -> str:
-    """Escape untrusted text for prose: the cell rules, but line breaks stay and no line starts with ``#`` or ``|``.
+    """Escape untrusted text for prose: the cell rules, but line breaks stay and no line starts with ``#``, ``~`` or ``|``.
 
-    A line that would start with ``#`` (after any spaces or tabs) starts with ``&#35;`` instead, and a ``|`` is
-    always ``&#124;``, so agent text can neither forge a heading nor a table row.
+    A line that would start with ``#`` or ``~`` (after any spaces or tabs) starts with ``&#35;`` or ``&#126;``
+    instead, and a ``|`` is always ``&#124;``, so agent text can forge neither a heading, a code fence nor a table
+    row. A ``~`` anywhere else, and any ``~`` in a cell, is left as it is.
     """
     return _guard_headings(_escape(text, keep_slots, False))
 
@@ -847,6 +863,19 @@ _CVSS_VECTOR = re.compile(r"CVSS:3\.1/AV:[NALP]/AC:[LH]/PR:[NLH]/UI:[NR]/S:[UC]/
 _FORBIDDEN_CHARACTERS = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f  ‎‏؜‪-‮⁦-⁩]")
 
 
+def forbidden_character(text: str) -> Optional[str]:
+    """The first character of ``text`` that D3's step 10 forbids, or ``None`` (P0-4). ``text`` must be a ``str``.
+
+    The set is the contract's: a control character other than tab and newline (C0, DEL and C1), the separators
+    U+2028 and U+2029, and the bidi controls U+200E, U+200F, U+061C, U+202A to U+202E and U+2066 to U+2069. Step 10
+    uses this on every string of a part. A renderer calls it where it takes a value from an input that isn't a part
+    (``threats.md``, a baseline file, ``threats.sarif``), so the character set has one definition. The length limit
+    is step 10's too, but it isn't part of this predicate.
+    """
+    found = _FORBIDDEN_CHARACTERS.search(text)
+    return found.group(0) if found is not None else None
+
+
 def _check_keys(obj: Any, name: str) -> None:
     """Step 6: ``obj`` is an object whose keys are the closed set ``name``: every required key, and no other."""
     required, optional = KEY_SETS[name]
@@ -865,7 +894,7 @@ def _int(value: Any, low: int, high: Optional[int], what: str) -> int:
 
 def _check_characters(text: str, what: str) -> None:
     """Step 10: at most 16,384 characters, and none of the forbidden control, bidi or separator characters."""
-    if len(text) > MAX_STRING_CHARS or _FORBIDDEN_CHARACTERS.search(text):
+    if len(text) > MAX_STRING_CHARS or forbidden_character(text) is not None:
         _fail("%s is over %d characters or holds a character the contract forbids" % (what, MAX_STRING_CHARS))
 
 

@@ -419,7 +419,7 @@ The renderer validates a part in this order. A failure in steps 1 to 10 rejects 
 
 The renderer escapes only untrusted strings: agent text, and text read from untrusted inputs. Template constants are written as they are. Truncation comes first, so no reference is cut. Per sink:
 
-- **Markdown table cells and prose:** `&` as `&amp;`, `<` as `&lt;`, `>` as `&gt;`, `|` as `&#124;`, a backtick as `&#96;`, each `{` of a `{{` that isn't a slot as `&#123;`, and a newline in a cell as `&#10;`. A prose line that would start with `#` or `|` starts with `&#35;` or `&#124;` instead.
+- **Markdown table cells and prose:** `&` as `&amp;`, `<` as `&lt;`, `>` as `&gt;`, `|` as `&#124;`, a backtick as `&#96;`, each `{` of a `{{` that isn't a slot as `&#123;`, and a newline in a cell as `&#10;`. A prose line that would start with `#`, `~` or `|` starts with `&#35;`, `&#126;` or `&#124;` instead.
 - **Code snippets:** unescaped, inside a fence longer than their longest backtick run.
 - **SARIF strings:** through `json.dumps` only.
 
