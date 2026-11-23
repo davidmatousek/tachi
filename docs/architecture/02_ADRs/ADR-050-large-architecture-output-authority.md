@@ -538,6 +538,23 @@ Each decision names its track. PR 1 rests only on decisions tagged S (the cut li
     - **The response cap.** T021(a)'s requests carried `max_tokens` 128,000. PRD D-2's 64k is the cap that Runs A and B hit, and it is accurate as history. S-1 still designs against 32,000, and the fixture's outputs exceed 128k (1.49× and 1.76×). So the PRD and the spec don't change.
       - T020's sizing check (lane F) notes that its 64k constant is Runs A and B's cap.
       - T079's release notes say that the cap depends on the environment.
+  - **Amended at W1 (2026-11-22, T023, from the calibration, `test-results/prefix-baseline.md` §8).** The constants in `tachi-stage.py` are:
+
+    | Stage | r (bytes ÷ visible tokens of the Write) | Size | W0 |
+    |---|---|---|---|
+    | `risk-score` | 2.598 | **13** | 16 |
+    | `compensating-controls` | 2.781 | **11** | 13 |
+    | `trees` | not measured | **12** | 12 |
+
+    - **Each stage takes its own r,** as the rule above reads ("for each stage"). Each stage writes its own part type, and r follows the content mix: half of the scorer part is structure, and three quarters of the controls part is text.
+      - The check on the measured parts: 13 × 594 and 11 × 706 real tokens are 7,722 and 7,766, both within S-1's 8,000.
+      - The record's r slightly overstates the cost: the file path is in the call, and the content travels JSON-escaped.
+    - **P-7 stands.** Both sizes are at least 11, so `ascii-web-api`, with 11 open findings, is one batch in each stage. Controls has no margin left, so W5's stage records (each live part's size) re-check it under TW-L2.
+    - **Cost, for T062.** On the base set (390–450 units), a stage-run plans 30–35 scorer batches and 36–41 controls batches, in 2–3 and 3 waves. W5's matrix (T073, T074) plans 132–152 dispatches, against 46–54 at the planning sizes.
+    - **SC-8's controls target** is the same in T021(b) and T075.
+      - It is a copy of the fixture's committed stub codebase, at T019's commit, placed at one fixed path in each adopter, outside tachi's installed paths and outside `{out}`, and committed in the adopter's restore point.
+      - It is passed as `--target <that path>`, never the default `.`, whose installed tachi files differ between v4.48.4 and the branch build.
+      - `sc8-baseline.md` records the copy's tree digest, and T075 checks it.
   - **One planner, three layers.** `tachi-stage.py plan` runs only where Bash runs:
     - the command, for the scorer and controls, and for the threat model's run-level plan (D4);
     - the orchestrator, for Phase 2, the trees, the `threats.md` part boundaries and the report batches (D14).
@@ -577,6 +594,14 @@ Each decision names its track. PR 1 rests only on decisions tagged S (the cut li
       The orchestrator dispatches and reconciles the tree batches itself, before the report agent. This is D-3's first option; the report agent has no Bash, so it can't reconcile.
     - No path reaches 3 unless D14 keeps a report sub-dispatch.
     - Every dispatch runs in the foreground.
+    - **Note (2026-11-22, T023, from the W1 calibration).** In Claude Code 2.1.330 the Agent tool has no foreground option, so every dispatch runs in the background. A main session waits by ending its turn and resuming on each completion notice.
+      - **What holds instead.** The intent stands: no result is used before its agent completes, and no agent outlives the layer that dispatched it (KB 22). Wherever this ADR says "foreground", here and in D4's Step 3, the rule is:
+        - a wave's agents run at most 16 at once;
+        - the layer runs `reconcile` only after every agent of the wave has reported completion;
+        - while any agent it dispatched is still running, it runs no renderer, reports no result, doesn't end the stage and doesn't return to its own caller.
+      - **The command text (T030, T038)** says this in these words: "Run `reconcile` only after every agent in the wave has reported completion. While an agent you dispatched is still running, don't run the renderer, report a result or end the stage. If you end your turn to wait, resume this loop on each completion notice." `test_contract_text_374.py` pins those sentences, not the word "foreground".
+      - **The spec's "foreground"** in S-8 and FR-E.14 names a mechanism this platform lacks, so it goes to the PM as an erratum. It blocks nothing, because the intent is unchanged.
+      - **For PR 2.** Whether a dispatching subagent (the orchestrator, at depth 2) can wait for its children's completion before it returns is a question for the S-9 spike (T104), before O-α is ruled (T086). If it can't, dispatching Phase 2 from the command layer, today an S-16 follow-up, becomes PR 2's design question.
   - **The S-9 spike** runs in W2′, under the published profile, before FR-N4.7's detector is built (Track O).
     - It plants four failure classes: a stop mid-reasoning, a stop mid-output, a stall and an empty return.
     - Its layout table goes in `specs/374-large-architecture-pipeline-resilience/test-results/`, and D11's end-marker predicate is built against it.
@@ -1388,3 +1413,4 @@ At the cut line, the amended ADRs gain dated notes pointing here:
 | 2026-11-22 | **Amendment (W1, T023).** Not a numbered revision. D6 gains its "Amended at W0" table: `risk-score` 16, `compensating-controls` 13 and `trees` 12. They come from the contract-shaped reading of T003's proxy, which adds D3's slots and the JSON layout to row E, and T021(a)'s confirm-or-re-amend rules are decided in advance. SC-8's example is `ascii-web-api` (P-7, as G0 routed). D2 records AR-T3's reading: a carried UNCHANGED controls result, its evidence-class values included, is read from §7's persisted inputs, never from the rendered §2, §3 or §4. D5 points to the frozen signatures in `contracts/module-signatures.md`. The eight amended ADRs gain their dated back-pointer notes (P-1) |
 | 2026-11-22 | **Amendment (W1, T023, after the review of T005–T009).** Not a numbered revision. D3 records the reading of an evidence entry's `file` and `line`: closed values on input, evidence on output. D4 records path 1's bounds: a named shipped script that isn't installed stops the run with the install remedy, and a spawned agent that fails stays the coverage gate's warning in PR 1. The readings that the sources left open are ruled in the governing contracts: `part-files.md` (field paths and flags, validation order, values, and the plan's halving and retry readings), `cli.md` (the `reconcile`, `fail`, `architecture-source` and `--version` outputs) and `sarif-result.md` (the correlation sentence's exact form) |
 | 2026-11-22 | **Amendment (W1, T023, from T021(a)).** Not a numbered revision. T021(a) confirms none of D6's sizes and re-amends none. Its per-unit text is a script's template, its 13 measures a rejected reading, and no JSON part was written. Every token reading in the session was below 3.2, though. D6's second W1 rule is made continuous: below 3.2, u = p90 ÷ r, with no extra 1.25. One calibration Write per part stage (lane L, before T021(b)) now decides, by a table in D6, and fixes whether P-7's example stands, which needs r ≥ 2.654. D6 also notes the 128k response cap of W1's environment |
+| 2026-11-22 | **Amended at W1 (T023, from the calibration).** Not a numbered revision. Each stage takes its own measured r. With `risk-score` at 2.598 and `compensating-controls` at 2.781, the sizes are 13, 11 and `trees` 12 (from 16, 13 and 12). Both part sizes are at least 11, so P-7's example, `ascii-web-api`, stands. SC-8's controls target is a fixed copy of the fixture's stub codebase, passed as `--target` in T021(b) and T075. D6's Limits gain a dated note: Claude Code 2.1.330 has no foreground dispatch, so the completion rule replaces "foreground" here and in D4's Step 3, and the spec's wording goes to the PM as an erratum. For PR 2, the S-9 spike asks whether a dispatching subagent can wait for its children |
