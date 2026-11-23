@@ -2005,3 +2005,146 @@ def test_step_10_judges_the_text_that_is_left_after_step_9s_cut():
     assert result.part["items"][0]["rationale"]["cvss"] == "a" * 400
     inside = "a" * 399 + "‮" + "b" * 50
     assert classify(with_text(SCORER, ("rationale", "cvss"), inside), ids=("S-1",)).state == "invalid"
+
+
+# =============================================================================
+# 16. D3's layout (P-6): the path builders every script shares
+#
+# Only the planner and the reconciler compute paths, and each recomputes them from --out, the stage, and
+# plan and batch IDs that pass the allow-lists. Builders return absolute paths as text and raise
+# ValueError for an argument that is not allow-listed, so no hostile ID ever becomes part of a path.
+# =============================================================================
+
+LAYOUT_NAMES = ["stage_dir", "pointer_path", "plan_dir", "plan_subdir", "plan_path", "input_path", "part_path",
+                "stage_record_path", "preimage_path", "staged_path", "failed_path"]
+
+
+def test_the_layout_builders_follow_d3s_table(tmp_path):
+    out = str(tmp_path / "out")
+    stage_base = os.path.join(out, ".tachi-build", "risk-score")
+    plan = os.path.join(stage_base, PLAN)
+    assert _api("BUILD_DIR") == ".tachi-build"
+    assert _api("stage_dir")(out, "risk-score") == stage_base
+    assert _api("pointer_path")(out, "risk-score") == os.path.join(stage_base, "current.json")
+    assert _api("plan_dir")(out, "risk-score", PLAN) == plan
+    assert _api("plan_path")(out, "risk-score", PLAN) == os.path.join(plan, "plan.json")
+    assert _api("stage_record_path")(out, "risk-score", PLAN) == os.path.join(plan, "stage-record.json")
+    assert _api("input_path")(out, "risk-score", PLAN, "B003-1") == os.path.join(plan, "inputs", "B003-1.json")
+    assert _api("part_path")(out, "risk-score", PLAN, "B003-1", 2) == os.path.join(plan, "parts", "B003-1.a2.json")
+    assert _api("preimage_path")(out, "risk-score", PLAN, "risk-scores.md") == os.path.join(plan, "preimage", "risk-scores.md")
+    assert _api("staged_path")(out, "risk-score", PLAN, "risk-scores.sarif") == os.path.join(plan, "staged", "risk-scores.sarif")
+    assert _api("failed_path")(out, "risk-score", PLAN, "risk-scores.md") == os.path.join(plan, "failed", "risk-scores.md")
+
+
+def test_the_subdirectories_are_a_closed_list_and_the_file_builders_sit_in_them(tmp_path):
+    out = str(tmp_path / "out")
+    assert tuple(_api("PLAN_SUBDIRS")) == ("inputs", "parts", "preimage", "staged", "failed")
+    plan = os.path.join(out, ".tachi-build", "compensating-controls", PLAN)
+    for name in _api("PLAN_SUBDIRS"):
+        assert _api("plan_subdir")(out, "compensating-controls", PLAN, name) == os.path.join(plan, name)
+    for bad in ("checks", "trees", "..", "", "parts/..", "Parts", None, 1):
+        with pytest.raises(ValueError):
+            _api("plan_subdir")(out, "compensating-controls", PLAN, bad)
+
+
+def test_the_controls_stage_uses_its_own_directory_and_canonical_names(tmp_path):
+    out = str(tmp_path / "out")
+    plan = os.path.join(out, ".tachi-build", "compensating-controls", PLAN)
+    assert _api("plan_path")(out, "compensating-controls", PLAN) == os.path.join(plan, "plan.json")
+    assert _api("staged_path")(out, "compensating-controls", PLAN, "compensating-controls.md") == \
+        os.path.join(plan, "staged", "compensating-controls.md")
+    assert _api("failed_path")(out, "compensating-controls", PLAN, "compensating-controls.sarif") == \
+        os.path.join(plan, "failed", "compensating-controls.sarif")
+
+
+def test_builders_return_absolute_text_whatever_form_out_arrives_in(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    expected = os.path.join(str(tmp_path), "out", ".tachi-build", "risk-score", PLAN, "parts", "B001.a1.json")
+    for out in ("out", "./out", str(tmp_path / "out"), tmp_path / "out", Path("out")):
+        built = _api("part_path")(out, "risk-score", PLAN, "B001", 1)
+        assert isinstance(built, str) and os.path.isabs(built)
+        assert os.path.realpath(built) == os.path.realpath(expected)
+
+
+@pytest.mark.parametrize("label,call", [
+    ("plan id with a trailing newline", lambda f: f("out", "risk-score", PLAN + "\n")),
+    ("plan id in upper case", lambda f: f("out", "risk-score", "20261122T101500Z-0123456789AB")),
+    ("plan id that climbs", lambda f: f("out", "risk-score", "../" + PLAN)),
+    ("plan id empty", lambda f: f("out", "risk-score", "")),
+    ("plan id not text", lambda f: f("out", "risk-score", None)),
+    ("stage unknown", lambda f: f("out", "bogus", PLAN)),
+    ("stage that climbs", lambda f: f("out", "../risk-score", PLAN)),
+    ("stage not shipped yet", lambda f: f("out", "trees", PLAN)),
+    ("stage not text", lambda f: f("out", None, PLAN)),
+])
+@pytest.mark.parametrize("name", ["plan_dir", "plan_path", "stage_record_path"])
+def test_a_builder_refuses_a_plan_or_stage_that_is_not_allow_listed(label, call, name):
+    with pytest.raises(ValueError):
+        call(_api(name))
+
+
+@pytest.mark.parametrize("batch", ["B1", "B001\n", "../B001", "B001/../B002", "b001", "", None, 1, "B001-3", "B００１"])
+def test_a_builder_refuses_a_batch_id_that_is_not_allow_listed(batch):
+    with pytest.raises(ValueError):
+        _api("input_path")("out", "risk-score", PLAN, batch)
+    with pytest.raises(ValueError):
+        _api("part_path")("out", "risk-score", PLAN, batch, 1)
+
+
+@pytest.mark.parametrize("attempt", [0, 4, -1, True, False, "1", 1.0, None, 2.5])
+def test_a_builder_refuses_an_attempt_outside_one_to_three(attempt):
+    with pytest.raises(ValueError):
+        _api("part_path")("out", "risk-score", PLAN, "B001", attempt)
+
+
+@pytest.mark.parametrize("name", ["../risk-scores.md", "risk-scores.md\n", "threats.md", "other.md", "risk-scores.md/..",
+                                  "compensating-controls.md", "", None, "/etc/passwd", "RISK-SCORES.MD"])
+@pytest.mark.parametrize("builder", ["preimage_path", "staged_path", "failed_path"])
+def test_a_file_builder_takes_only_the_stages_canonical_output_names(builder, name):
+    with pytest.raises(ValueError):
+        _api(builder)("out", "risk-score", PLAN, name)
+
+
+def test_an_empty_or_unusable_out_is_refused_rather_than_read_as_the_working_directory():
+    for out in ("", None, 5, "bad\x00out"):
+        with pytest.raises((ValueError, TypeError)):
+            _api("plan_path")(out, "risk-score", PLAN)
+
+
+def test_the_builders_agree_with_the_validators_about_the_layout():
+    """A batch input written with ``part_path`` passes ``validate_batch_input``, for every batch shape and attempt."""
+    for batch in ("B001", "B012", "B003-1", "B003-2-1"):
+        for attempt in (1, 2, 3):
+            data = valid_batch_input(batch=batch, attempt=attempt)
+            data["part_path"] = _api("part_path")("/work/out", "risk-score", PLAN, batch, attempt)
+            assert _api("validate_batch_input")(data) is data
+    assert _api("part_path")("/work/out", "risk-score", PLAN, "B001", 1) == valid_batch_input()["part_path"]
+
+
+def test_every_file_the_builders_name_round_trips_through_the_loader_and_the_readers(tmp_path):
+    out = tmp_path / "out"
+    out.mkdir()
+    for sub in _api("PLAN_SUBDIRS"):
+        os.makedirs(_api("plan_subdir")(out, "risk-score", PLAN, sub))
+    write = _api("atomic_write")
+    documents = [
+        (_api("pointer_path")(out, "risk-score"), "tachi.plan-pointer/1", {"schema": "tachi.plan-pointer/1", "plan_id": PLAN}),
+        (_api("plan_path")(out, "risk-score", PLAN), "tachi.plan/1", valid_plan()),
+        (_api("input_path")(out, "risk-score", PLAN, "B001"), "tachi.batch-input/1",
+         dict(valid_batch_input(), part_path=_api("part_path")(out, "risk-score", PLAN, "B001", 1))),
+        (_api("stage_record_path")(out, "risk-score", PLAN), "tachi.stage-record/1", valid_stage_record()),
+    ]
+    for path, schema, document in documents:
+        write(path, json.dumps(document))
+        assert _api("read_document")(path, out, schema) == document, schema
+    part = make_part()
+    write(_api("part_path")(out, "risk-score", PLAN, "B001", 1), json.dumps(part))
+    result = _api("read_part")(_api("part_path")(out, "risk-score", PLAN, "B001", 1), out, **expect())
+    assert result.state == "done", result.detail
+
+
+def test_the_module_docstring_names_every_builder_and_every_io_helper():
+    doc = tachi_parts.__doc__
+    for name in LAYOUT_NAMES + ["atomic_write", "sha256_hex", "file_digest", "input_digest", "stamp_comment", "read_stamp",
+                                "VERSION", "BUILD_DIR", "PLAN_SUBDIRS"]:
+        assert name in doc, name

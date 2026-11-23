@@ -38,17 +38,45 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
 * ``validate_plan``, ``validate_pointer``, ``validate_batch_input`` and ``validate_stage_record``
   return the object they were given, or raise ``PartError("invalid", ...)``.
   ``read_document(path, out, schema)`` loads one of those four documents and validates it.
+
+**I/O helpers and D3's layout (T013, slice 1):**
+
+* ``atomic_write(path, data)``: a temp file in the target's directory, then ``os.replace``. The file gets the
+  mode an ordinary write would (``0666 & ~umask``), and ``str`` is written as UTF-8 with no newline translation.
+* ``sha256_hex(data)``; ``file_digest(path)``, lowercase hex with no prefix, the form of ``plan_digest`` and of
+  the plan's ``sha256`` fields; ``input_digest(obj)``, ``sha256:`` and the hex digest of ``obj``'s canonical JSON
+  (sorted keys, no spaces, ASCII), the form of the stamp's and the stage record's ``input_digest``.
+* ``stamp_comment(renderer, digest)`` and ``read_stamp(text)``: ADR-050 D4's provenance comment and its reader.
+  The last comment in the text wins, and a malformed last one is no stamp. ``VERSION`` is the version it carries.
+* The layout builders, ADR-050 D3 (P-6). Each returns an absolute path as ``str`` and raises ``ValueError`` for a
+  stage, ID, attempt or file name that is not allow-listed, so a hostile value never becomes part of a path.
+  ``out`` is ``--out``; ``BUILD_DIR`` is ``.tachi-build``; ``PLAN_SUBDIRS`` is ``inputs``, ``parts``,
+  ``preimage``, ``staged`` and ``failed``; a file ``name`` is one of ``CANONICAL_OUTPUTS[stage]``::
+
+      stage_dir(out, stage)                            <out>/.tachi-build/<stage>
+      pointer_path(out, stage)                         <stage dir>/current.json
+      plan_dir(out, stage, plan_id)                    <stage dir>/<plan_id>
+      plan_subdir(out, stage, plan_id, name)           <plan dir>/<name>, name in PLAN_SUBDIRS
+      plan_path(out, stage, plan_id)                   <plan dir>/plan.json
+      input_path(out, stage, plan_id, batch_id)        <plan dir>/inputs/<batch_id>.json
+      part_path(out, stage, plan_id, batch_id, attempt)   <plan dir>/parts/<batch_id>.a<attempt>.json
+      stage_record_path(out, stage, plan_id)           <plan dir>/stage-record.json
+      preimage_path(out, stage, plan_id, name)         <plan dir>/preimage/<name>
+      staged_path(out, stage, plan_id, name)           <plan dir>/staged/<name>
+      failed_path(out, stage, plan_id, name)           <plan dir>/failed/<name>
 """
 from __future__ import annotations
 
 import copy
 import dataclasses
 import datetime
+import hashlib
 import json
 import os
 import re
 import stat
 import sys
+import tempfile
 import unicodedata
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
@@ -979,3 +1007,194 @@ def read_document(path: object, out: object, schema: str) -> Dict[str, Any]:
     if obj.get("schema") != schema:
         _fail("schema is not %s" % schema)
     return _DOCUMENTS[schema](obj)
+
+
+# =============================================================================
+# I/O helpers (T013, slice 1): digests, the atomic write and the provenance stamp
+# =============================================================================
+
+def sha256_hex(data: bytes) -> str:
+    """The SHA-256 of ``data`` as 64 lowercase hex digits."""
+    return hashlib.sha256(data).hexdigest()
+
+
+def file_digest(path: object) -> str:
+    """The SHA-256 of a file's bytes as lowercase hex with no prefix (``plan_digest``, the plan's ``sha256``)."""
+    digest = hashlib.sha256()
+    with open(os.fspath(path), "rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def input_digest(obj: Any) -> str:
+    """``sha256:`` and the hex digest of ``obj``'s canonical JSON: sorted keys, no spaces, ASCII only (NFR-2).
+
+    ``obj`` holds only JSON scalars, lists and objects, so the digest never depends on dictionary order or on
+    the plan ID, which the caller leaves out. A ``Decimal`` or any other type raises ``TypeError``.
+    """
+    text = json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return "sha256:" + sha256_hex(text.encode("utf-8"))
+
+
+def atomic_write(path: object, data: Any) -> None:
+    """Write ``data`` to ``path`` all at once: a temp file in the same directory, then ``os.replace``.
+
+    ``str`` is written as UTF-8 with no newline translation, ``bytes`` as they are. The file gets the mode an
+    ordinary write would (``0666 & ~umask``), not the temp file's ``0600``. A symlink at ``path`` is replaced,
+    never followed. If anything fails, the temp file is removed and the error propagates, so a failed write
+    leaves the old file and no stray file behind.
+    """
+    if isinstance(data, str):
+        payload = data.encode("utf-8")
+    elif isinstance(data, (bytes, bytearray, memoryview)):
+        payload = bytes(data)
+    else:
+        raise TypeError("atomic_write takes text or bytes")
+    target = os.fspath(path)
+    descriptor, temporary = tempfile.mkstemp(prefix=".tmp-", dir=os.path.dirname(os.path.abspath(target)))
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        mask = os.umask(0)
+        os.umask(mask)
+        os.chmod(temporary, 0o666 & ~mask)
+        os.replace(temporary, target)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
+
+
+VERSION = "4.48.4"  # x-release-please-version
+
+_STAMP_PREFIX = "<!-- tachi-provenance:"
+_RENDERER = re.compile(r"[A-Za-z0-9_.-]{1,64}", re.ASCII)
+_STAMP = re.compile(r"<!-- tachi-provenance: renderer=([A-Za-z0-9_.-]{1,64}); "
+                    r"version=([0-9]{1,6}\.[0-9]{1,6}\.[0-9]{1,6}); input-digest=(sha256:[0-9a-f]{64}) -->", re.ASCII)
+
+
+def stamp_comment(renderer: str, digest: str) -> str:
+    """ADR-050 D4's provenance comment, one line, for the end of a stamped markdown file.
+
+    ``renderer`` is the entry's name (up to 64 of ``A-Za-z0-9_.-``) and ``digest`` is an ``input_digest``.
+    Anything else raises ``ValueError``, so the comment can never carry text that ends it early.
+    """
+    if not isinstance(renderer, str) or _RENDERER.fullmatch(renderer) is None \
+            or not isinstance(digest, str) or _DIGEST.fullmatch(digest) is None:
+        raise ValueError("a stamp takes an entry name and a sha256: digest in their contract forms")
+    return "<!-- tachi-provenance: renderer=%s; version=%s; input-digest=%s -->" % (renderer, VERSION, digest)
+
+
+def read_stamp(text: str) -> Optional[Dict[str, str]]:
+    """The last provenance comment in ``text`` as ``{renderer, version, input_digest}``, or ``None``.
+
+    The last comment wins (the populator's block can follow the stamp). A last comment that is malformed or
+    cut short is no stamp: an earlier, valid one is never used in its place.
+    """
+    if not isinstance(text, str):
+        return None
+    start = text.rfind(_STAMP_PREFIX)
+    if start < 0:
+        return None
+    match = _STAMP.fullmatch(text[start:].split("\n", 1)[0].rstrip(" \t\r"))
+    if match is None:
+        return None
+    return {"renderer": match.group(1), "version": match.group(2), "input_digest": match.group(3)}
+
+
+# =============================================================================
+# D3's layout (P-6): the path builders every script shares (T013, slice 1)
+# =============================================================================
+
+BUILD_DIR = ".tachi-build"
+PLAN_SUBDIRS = ("inputs", "parts", "preimage", "staged", "failed")
+
+
+def _out_dir(out: object) -> str:
+    text = os.fspath(out)  # TypeError for None and numbers
+    if not isinstance(text, str) or text == "" or "\x00" in text:
+        raise ValueError("out is not a usable directory name")
+    return os.path.abspath(text)
+
+
+def _known_stage(stage: object) -> str:
+    if not isinstance(stage, str) or stage not in STAGE_AGENTS:
+        raise ValueError("stage is not a stage this version knows")
+    return stage
+
+
+def _allow_listed(kind: str, value: object, what: str) -> str:
+    if not id_matches(kind, value):
+        raise ValueError("%s is not an allow-listed %s ID" % (what, kind))
+    return value  # type: ignore[return-value]
+
+
+def stage_dir(out: object, stage: str) -> str:
+    """``<out>/.tachi-build/<stage>``."""
+    return os.path.join(_out_dir(out), BUILD_DIR, _known_stage(stage))
+
+
+def pointer_path(out: object, stage: str) -> str:
+    """The current-plan pointer, ``<stage dir>/current.json``."""
+    return os.path.join(stage_dir(out, stage), "current.json")
+
+
+def plan_dir(out: object, stage: str, plan_id: str) -> str:
+    """``<stage dir>/<plan_id>``."""
+    return os.path.join(stage_dir(out, stage), _allow_listed("plan", plan_id, "plan_id"))
+
+
+def plan_subdir(out: object, stage: str, plan_id: str, name: str) -> str:
+    """One of the plan directory's subdirectories: ``name`` is in ``PLAN_SUBDIRS``."""
+    if not isinstance(name, str) or name not in PLAN_SUBDIRS:
+        raise ValueError("name is not one of the plan directory's subdirectories")
+    return os.path.join(plan_dir(out, stage, plan_id), name)
+
+
+def plan_path(out: object, stage: str, plan_id: str) -> str:
+    """The batch plan, ``<plan dir>/plan.json``."""
+    return os.path.join(plan_dir(out, stage, plan_id), "plan.json")
+
+
+def input_path(out: object, stage: str, plan_id: str, batch_id: str) -> str:
+    """A batch input, ``<plan dir>/inputs/<batch_id>.json``."""
+    return os.path.join(plan_subdir(out, stage, plan_id, "inputs"), _allow_listed("batch", batch_id, "batch_id") + ".json")
+
+
+def part_path(out: object, stage: str, plan_id: str, batch_id: str, attempt: int) -> str:
+    """The part for one attempt, ``<plan dir>/parts/<batch_id>.a<attempt>.json``, ``attempt`` 1 to 3."""
+    if type(attempt) is not int or not 1 <= attempt <= 3:
+        raise ValueError("attempt is not 1, 2 or 3")
+    name = "%s.a%d.json" % (_allow_listed("batch", batch_id, "batch_id"), attempt)
+    return os.path.join(plan_subdir(out, stage, plan_id, "parts"), name)
+
+
+def stage_record_path(out: object, stage: str, plan_id: str) -> str:
+    """The stage record, ``<plan dir>/stage-record.json``."""
+    return os.path.join(plan_dir(out, stage, plan_id), "stage-record.json")
+
+
+def _canonical_file(out: object, stage: str, plan_id: str, subdir: str, name: str) -> str:
+    if not isinstance(name, str) or name not in CANONICAL_OUTPUTS[_known_stage(stage)]:
+        raise ValueError("name is not one of the stage's canonical outputs")
+    return os.path.join(plan_subdir(out, stage, plan_id, subdir), name)
+
+
+def preimage_path(out: object, stage: str, plan_id: str, name: str) -> str:
+    """An earlier output that ``plan`` copied, ``<plan dir>/preimage/<name>``."""
+    return _canonical_file(out, stage, plan_id, "preimage", name)
+
+
+def staged_path(out: object, stage: str, plan_id: str, name: str) -> str:
+    """A rendered output, checked before it replaces the canonical file, ``<plan dir>/staged/<name>``."""
+    return _canonical_file(out, stage, plan_id, "staged", name)
+
+
+def failed_path(out: object, stage: str, plan_id: str, name: str) -> str:
+    """A changed canonical file that ``fail`` moved aside, ``<plan dir>/failed/<name>``."""
+    return _canonical_file(out, stage, plan_id, "failed", name)
