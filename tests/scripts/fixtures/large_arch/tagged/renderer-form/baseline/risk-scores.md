@@ -18,9 +18,11 @@ baseline:
 
 ## 1. Executive Summary
 
-**12** threats scored | **0** Critical | **1** High | **11** Medium | **0** Low
+12 open findings were scored on 2026-11-09: 0 Critical, 1 High, 11 Medium and 0 Low.
 
 **Highest-Risk Component**: audit-ledger — 2 finding(s), max composite 7.1
+
+**Resolved findings** (Section 2a, outside the distribution below): 0
 
 | Metric | Value |
 |--------|-------|
@@ -32,10 +34,10 @@ baseline:
 
 | Severity | Count | Percentage |
 |----------|-------|------------|
-| Critical | 0 | 0.0% |
-| High | 1 | 8.3% |
-| Medium | 11 | 91.7% |
-| Low | 0 | 0.0% |
+| Critical | 0 | 0% |
+| High | 1 | 8% |
+| Medium | 11 | 92% |
+| Low | 0 | 0% |
 | **Total** | **12** | **100%** |
 
 > Trust zone data was available for every component, so no reachability value was defaulted.
@@ -44,7 +46,7 @@ baseline:
 
 ## 2. Scored Threat Table
 
-Findings sorted by Composite score descending (highest risk first). Boundary values map to the higher severity band.
+Findings sorted by Composite score descending (highest risk first), and by finding ID within equal scores. Boundary values map to the higher severity band (e.g., 7.0 = High, 9.0 = Critical).
 
 | ID | Source | Component | Threat | CVSS | Exploit. | Scale. | Reach. | Composite | Severity | SLA | Disposition | Flags |
 |----|--------|-----------|--------|------|----------|--------|--------|-----------|----------|-----|-------------|-------|
@@ -61,17 +63,17 @@ Findings sorted by Composite score descending (highest risk first). Boundary val
 | D-3 | fresh | audit-ledger | Expensive queries over approval and tool call records can be... | 6.7 | 6.3 | 3.0 | 2.5 | 5.2 | Medium | 30d | Review | — |
 | T-2 | fresh | planner-agent | An attacker who can write to the channel between... | 8.1 | 3.0 | 3.3 | 2.5 | 4.7 | Medium | 30d | Review | — |
 
-> **Correlated findings**: for correlation groups (Section 4a of the source threat model), the primary finding is scored independently. Correlated peer findings inherit the primary's scores to keep the group consistent.
+> **Correlated findings**: For correlation groups (Section 4a of the source threat model), the primary finding is scored independently. A NEW or UPDATED peer takes the primary's vector and scores. An UNCHANGED peer keeps its own score, and is flagged `divergent` when that score differs from its primary's.
 
 ---
 
 ## 3. Dimensional Breakdown
 
-Per-finding detail showing the scoring rationale for each dimension, in the order of Section 2.
+Per-finding detail showing the full scoring rationale for each dimension. One subsection per open finding, ordered by composite score descending (matching Section 2 sort order).
 
 ### T-7 — audit-ledger
 
-**Threat**: An attacker who can write to the channel between tool-server-1 and audit-ledger modifies approval and tool call records in transit because messages carry no integrity protection of their own.
+**Threat**: An attacker who can write to the channel between tool-server-1 and audit-ledger modifies approval and tool call records in transit because messages carry no integrity protection of their own. The weakness sits at layer Security and Compliance of the stack, so every workflow that depends on approval and tool call records inherits the exposure. The change can persist across restarts and restores, which makes the original state difficult to prove and to recover. Rated LOW likelihood because the path needs several preconditions to line up, such as insider access or a rare timing window, and LOW impact because the effect is contained and easy to reverse once it is noticed.
 
 **Category**: tampering | **Original Risk Level**: Note | **Composite**: 7.1 (High)
 
@@ -81,14 +83,16 @@ Per-finding detail showing the scoring rationale for each dimension, in the orde
 
 | Metric | Value | Rationale |
 |--------|-------|-----------|
-| Attack Vector (AV) | Network | Reachable over the network |
-| Attack Complexity (AC) | Low | No special conditions |
-| Privileges Required (PR) | Low | A basic account is needed |
-| User Interaction (UI) | None | No user action needed |
-| Scope (S) | Changed | Impact crosses a boundary |
-| Confidentiality (C) | High | Broad disclosure |
-| Integrity (I) | Low | Limited modification |
-| Availability (A) | None | No loss of service |
+| Attack Vector (AV) | Network | — |
+| Attack Complexity (AC) | Low | — |
+| Privileges Required (PR) | Low | — |
+| User Interaction (UI) | None | — |
+| Scope (S) | Changed | — |
+| Confidentiality (C) | High | — |
+| Integrity (I) | Low | — |
+| Availability (A) | None | — |
+
+The vector follows the category default with a network attack path and the stated privileges.
 
 #### Exploitability
 
@@ -96,10 +100,12 @@ Per-finding detail showing the scoring rationale for each dimension, in the orde
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Known Techniques | 8 | Documented and widely used |
-| Attack Complexity | 8 | A single step suffices |
-| Tooling Availability | 7 | Common tools apply |
-| Skill Level | 7 | Little skill needed |
+| Known Techniques | 8 | — |
+| Attack Complexity | 8 | — |
+| Tooling Availability | 7 | — |
+| Skill Level | 7 | — |
+
+The sub-scores reflect documented techniques and common tooling for this kind of weakness.
 
 #### Scalability
 
@@ -107,22 +113,24 @@ Per-finding detail showing the scoring rationale for each dimension, in the orde
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Scriptability | 8 | Fully automatable |
-| Target Scope | 7 | Every instance |
-| Resource Requirements | 7 | Minimal resources |
-| Detection Difficulty | 7 | Blends with normal use |
+| Scriptability | 8 | — |
+| Target Scope | 7 | — |
+| Resource Requirements | 7 | — |
+| Detection Difficulty | 7 | — |
+
+The weakness can be scripted and repeated across instances with modest resources.
 
 #### Reachability
 
 **Score**: 2.5 | **Trust Zone**: Operations Zone (Trusted)
 
-audit-ledger sits in the Operations Zone. The zone baseline is 2.5 and the refinement for this finding gives 2.5.
+The component sits in a trusted zone with no extra barriers recorded.
 
 ---
 
 ### T-5 — vector-store-a
 
-**Threat**: Backups and exports of embedded documents and metadata on vector-store-a are writable by operators without a second approver, so a malicious change survives restores.
+**Threat**: Backups and exports of embedded documents and metadata on vector-store-a are writable by operators without a second approver, so a malicious change survives restores. The weakness sits at layer Data Operations of the stack, so every workflow that depends on embedded documents and metadata inherits the exposure. The change can persist across restarts and restores, which makes the original state difficult to prove and to recover. Rated MEDIUM likelihood because the path needs a foothold on a neighbouring service or a prepared request, and MEDIUM impact because the effect is bounded to one workflow or one tenant and can be corrected with effort.
 
 **Category**: tampering | **Original Risk Level**: Medium | **Composite**: 6.9 (Medium)
 
@@ -132,14 +140,16 @@ audit-ledger sits in the Operations Zone. The zone baseline is 2.5 and the refin
 
 | Metric | Value | Rationale |
 |--------|-------|-----------|
-| Attack Vector (AV) | Network | Reachable over the network |
-| Attack Complexity (AC) | Low | No special conditions |
-| Privileges Required (PR) | None | No privileges needed |
-| User Interaction (UI) | None | No user action needed |
-| Scope (S) | Unchanged | Impact stays in the component |
-| Confidentiality (C) | Low | Limited disclosure |
-| Integrity (I) | High | Broad modification |
-| Availability (A) | Low | Degraded service |
+| Attack Vector (AV) | Network | — |
+| Attack Complexity (AC) | Low | — |
+| Privileges Required (PR) | None | — |
+| User Interaction (UI) | None | — |
+| Scope (S) | Unchanged | — |
+| Confidentiality (C) | Low | — |
+| Integrity (I) | High | — |
+| Availability (A) | Low | — |
+
+The vector follows the category default with a network attack path and the stated privileges.
 
 #### Exploitability
 
@@ -147,10 +157,12 @@ audit-ledger sits in the Operations Zone. The zone baseline is 2.5 and the refin
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Known Techniques | 9 | Documented and widely used |
-| Attack Complexity | 9 | A single step suffices |
-| Tooling Availability | 8 | Common tools apply |
-| Skill Level | 8 | Little skill needed |
+| Known Techniques | 9 | — |
+| Attack Complexity | 9 | — |
+| Tooling Availability | 8 | — |
+| Skill Level | 8 | — |
+
+The sub-scores reflect documented techniques and common tooling for this kind of weakness.
 
 #### Scalability
 
@@ -158,22 +170,24 @@ audit-ledger sits in the Operations Zone. The zone baseline is 2.5 and the refin
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Scriptability | 6 | Partly automatable |
-| Target Scope | 5 | A class of targets |
-| Resource Requirements | 5 | Moderate resources |
-| Detection Difficulty | 5 | Detectable with monitoring |
+| Scriptability | 6 | — |
+| Target Scope | 5 | — |
+| Resource Requirements | 5 | — |
+| Detection Difficulty | 5 | — |
+
+The weakness can be scripted and repeated across instances with modest resources.
 
 #### Reachability
 
 **Score**: 2.5 | **Trust Zone**: Data Zone (Trusted)
 
-vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinement for this finding gives 2.5.
+The component sits in a trusted zone with no extra barriers recorded.
 
 ---
 
 ### S-1 — model-gateway
 
-**Threat**: An attacker replays a captured model API key against model-gateway, which does not bind the credential to the session or channel it was issued for, so the replay is accepted as the original caller.
+**Threat**: An attacker replays a captured model API key against model-gateway, which does not bind the credential to the session or channel it was issued for, so the replay is accepted as the original caller. The exposure follows from how model-gateway receives prompts and completions from planner-agent and hands them to the next stage without an independent check. A successful impersonation exposes every function the genuine caller may use and is hard to tell apart from normal traffic. Rated LOW likelihood because the path needs several preconditions to line up, such as insider access or a rare timing window, and MEDIUM impact because the effect is bounded to one workflow or one tenant and can be corrected with effort.
 
 **Category**: spoofing | **Original Risk Level**: Low | **Composite**: 6.8 (Medium)
 
@@ -183,14 +197,16 @@ vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinemen
 
 | Metric | Value | Rationale |
 |--------|-------|-----------|
-| Attack Vector (AV) | Adjacent | Needs an adjacent network |
-| Attack Complexity (AC) | Low | No special conditions |
-| Privileges Required (PR) | None | No privileges needed |
-| User Interaction (UI) | None | No user action needed |
-| Scope (S) | Changed | Impact crosses a boundary |
-| Confidentiality (C) | None | No disclosure |
-| Integrity (I) | None | No modification |
-| Availability (A) | Low | Degraded service |
+| Attack Vector (AV) | Adjacent | — |
+| Attack Complexity (AC) | Low | — |
+| Privileges Required (PR) | None | — |
+| User Interaction (UI) | None | — |
+| Scope (S) | Changed | — |
+| Confidentiality (C) | None | — |
+| Integrity (I) | None | — |
+| Availability (A) | Low | — |
+
+The vector follows the category default with a network attack path and the stated privileges.
 
 #### Exploitability
 
@@ -198,10 +214,12 @@ vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinemen
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Known Techniques | 9 | Documented and widely used |
-| Attack Complexity | 9 | A single step suffices |
-| Tooling Availability | 8 | Common tools apply |
-| Skill Level | 8 | Little skill needed |
+| Known Techniques | 9 | — |
+| Attack Complexity | 9 | — |
+| Tooling Availability | 8 | — |
+| Skill Level | 8 | — |
+
+The sub-scores reflect documented techniques and common tooling for this kind of weakness.
 
 #### Scalability
 
@@ -209,22 +227,24 @@ vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinemen
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Scriptability | 4 | Partly automatable |
-| Target Scope | 3 | One specific target |
-| Resource Requirements | 3 | Needs heavy infrastructure |
-| Detection Difficulty | 3 | Readily detected |
+| Scriptability | 4 | — |
+| Target Scope | 3 | — |
+| Resource Requirements | 3 | — |
+| Detection Difficulty | 3 | — |
+
+The weakness can be scripted and repeated across instances with modest resources.
 
 #### Reachability
 
 **Score**: 2.5 | **Trust Zone**: Agent Runtime Zone (Trusted)
 
-model-gateway sits in the Agent Runtime Zone. The zone baseline is 2.5 and the refinement for this finding gives 2.5.
+The component sits in a trusted zone with no extra barriers recorded.
 
 ---
 
 ### T-4 — vector-store-a
 
-**Threat**: Serialised objects arriving from worker-2 are deserialised by vector-store-a with permissive type handling, allowing crafted payloads to instantiate unintended behaviour.
+**Threat**: Serialised objects arriving from worker-2 are deserialised by vector-store-a with permissive type handling, allowing crafted payloads to instantiate unintended behaviour. The weakness sits at layer Data Operations of the stack, so every workflow that depends on embedded documents and metadata inherits the exposure. Altered data is then treated as authoritative by every consumer, so the damage spreads before anyone compares it with the source. Rated MEDIUM likelihood because the path needs a foothold on a neighbouring service or a prepared request, and HIGH impact because the affected data or action is central to shipment handling and hard to reverse.
 
 **Category**: tampering | **Original Risk Level**: High | **Composite**: 6.8 (Medium)
 
@@ -234,14 +254,16 @@ model-gateway sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Metric | Value | Rationale |
 |--------|-------|-----------|
-| Attack Vector (AV) | Adjacent | Needs an adjacent network |
-| Attack Complexity (AC) | Low | No special conditions |
-| Privileges Required (PR) | High | Administrative rights are needed |
-| User Interaction (UI) | None | No user action needed |
-| Scope (S) | Changed | Impact crosses a boundary |
-| Confidentiality (C) | Low | Limited disclosure |
-| Integrity (I) | High | Broad modification |
-| Availability (A) | Low | Degraded service |
+| Attack Vector (AV) | Adjacent | — |
+| Attack Complexity (AC) | Low | — |
+| Privileges Required (PR) | High | — |
+| User Interaction (UI) | None | — |
+| Scope (S) | Changed | — |
+| Confidentiality (C) | Low | — |
+| Integrity (I) | High | — |
+| Availability (A) | Low | — |
+
+The vector follows the category default with a network attack path and the stated privileges.
 
 #### Exploitability
 
@@ -249,10 +271,12 @@ model-gateway sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Known Techniques | 8 | Documented and widely used |
-| Attack Complexity | 8 | A single step suffices |
-| Tooling Availability | 8 | Common tools apply |
-| Skill Level | 7 | Little skill needed |
+| Known Techniques | 8 | — |
+| Attack Complexity | 8 | — |
+| Tooling Availability | 8 | — |
+| Skill Level | 7 | — |
+
+The sub-scores reflect documented techniques and common tooling for this kind of weakness.
 
 #### Scalability
 
@@ -260,22 +284,24 @@ model-gateway sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Scriptability | 9 | Fully automatable |
-| Target Scope | 9 | Every instance |
-| Resource Requirements | 9 | Minimal resources |
-| Detection Difficulty | 8 | Blends with normal use |
+| Scriptability | 9 | — |
+| Target Scope | 9 | — |
+| Resource Requirements | 9 | — |
+| Detection Difficulty | 8 | — |
+
+The weakness can be scripted and repeated across instances with modest resources.
 
 #### Reachability
 
 **Score**: 2.5 | **Trust Zone**: Data Zone (Trusted)
 
-vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinement for this finding gives 2.5.
+The component sits in a trusted zone with no extra barriers recorded.
 
 ---
 
 ### T-6 — vector-store-a
 
-**Threat**: Unsanitised embedded documents and metadata reach vector-store-a and are processed as trusted structure, so crafted input changes how later steps interpret the record.
+**Threat**: Unsanitised embedded documents and metadata reach vector-store-a and are processed as trusted structure, so crafted input changes how later steps interpret the record. vector-store-a runs in the Data Zone and exchanges embedded documents and metadata with worker-2 over PostgreSQL over TLS, so anything able to reach worker-2 can also reach this weakness. The change can persist across restarts and restores, which makes the original state difficult to prove and to recover. Rated HIGH likelihood because the path needs no special position and uses interfaces that are exposed by design, and MEDIUM impact because the effect is bounded to one workflow or one tenant and can be corrected with effort.
 
 **Category**: tampering | **Original Risk Level**: High | **Composite**: 6.8 (Medium)
 
@@ -285,14 +311,16 @@ vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinemen
 
 | Metric | Value | Rationale |
 |--------|-------|-----------|
-| Attack Vector (AV) | Network | Reachable over the network |
-| Attack Complexity (AC) | High | Needs specific conditions |
-| Privileges Required (PR) | High | Administrative rights are needed |
-| User Interaction (UI) | None | No user action needed |
-| Scope (S) | Changed | Impact crosses a boundary |
-| Confidentiality (C) | Low | Limited disclosure |
-| Integrity (I) | High | Broad modification |
-| Availability (A) | Low | Degraded service |
+| Attack Vector (AV) | Network | — |
+| Attack Complexity (AC) | High | — |
+| Privileges Required (PR) | High | — |
+| User Interaction (UI) | None | — |
+| Scope (S) | Changed | — |
+| Confidentiality (C) | Low | — |
+| Integrity (I) | High | — |
+| Availability (A) | Low | — |
+
+The vector follows the category default with a network attack path and the stated privileges.
 
 #### Exploitability
 
@@ -300,10 +328,12 @@ vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinemen
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Known Techniques | 9 | Documented and widely used |
-| Attack Complexity | 9 | A single step suffices |
-| Tooling Availability | 8 | Common tools apply |
-| Skill Level | 8 | Little skill needed |
+| Known Techniques | 9 | — |
+| Attack Complexity | 9 | — |
+| Tooling Availability | 8 | — |
+| Skill Level | 8 | — |
+
+The sub-scores reflect documented techniques and common tooling for this kind of weakness.
 
 #### Scalability
 
@@ -311,22 +341,24 @@ vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinemen
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Scriptability | 9 | Fully automatable |
-| Target Scope | 8 | Every instance |
-| Resource Requirements | 8 | Minimal resources |
-| Detection Difficulty | 8 | Blends with normal use |
+| Scriptability | 9 | — |
+| Target Scope | 8 | — |
+| Resource Requirements | 8 | — |
+| Detection Difficulty | 8 | — |
+
+The weakness can be scripted and repeated across instances with modest resources.
 
 #### Reachability
 
 **Score**: 2.5 | **Trust Zone**: Data Zone (Trusted)
 
-vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinement for this finding gives 2.5.
+The component sits in a trusted zone with no extra barriers recorded.
 
 ---
 
 ### D-2 — vector-store-a
 
-**Threat**: Retry storms from worker-2 multiply the load on vector-store-a when it slows down, turning a brief delay into a sustained outage.
+**Threat**: Retry storms from worker-2 multiply the load on vector-store-a when it slows down, turning a brief delay into a sustained outage. Because vector-store-a serves the Data Zone, a single failure here reaches each consumer of embedded documents and metadata at once. The outage propagates to dependent agents, which stall or retry and prolong the disruption. Rated HIGH likelihood because the path needs no special position and uses interfaces that are exposed by design, and HIGH impact because the affected data or action is central to shipment handling and hard to reverse.
 
 **Category**: denial-of-service | **Original Risk Level**: Critical | **Composite**: 6.3 (Medium)
 
@@ -336,14 +368,16 @@ vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinemen
 
 | Metric | Value | Rationale |
 |--------|-------|-----------|
-| Attack Vector (AV) | Adjacent | Needs an adjacent network |
-| Attack Complexity (AC) | Low | No special conditions |
-| Privileges Required (PR) | None | No privileges needed |
-| User Interaction (UI) | None | No user action needed |
-| Scope (S) | Changed | Impact crosses a boundary |
-| Confidentiality (C) | Low | Limited disclosure |
-| Integrity (I) | High | Broad modification |
-| Availability (A) | Low | Degraded service |
+| Attack Vector (AV) | Adjacent | — |
+| Attack Complexity (AC) | Low | — |
+| Privileges Required (PR) | None | — |
+| User Interaction (UI) | None | — |
+| Scope (S) | Changed | — |
+| Confidentiality (C) | Low | — |
+| Integrity (I) | High | — |
+| Availability (A) | Low | — |
+
+The vector follows the category default with a network attack path and the stated privileges.
 
 #### Exploitability
 
@@ -351,10 +385,12 @@ vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinemen
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Known Techniques | 7 | Documented and widely used |
-| Attack Complexity | 6 | Needs some preparation |
-| Tooling Availability | 6 | Tools need adaptation |
-| Skill Level | 6 | Intermediate skill |
+| Known Techniques | 7 | — |
+| Attack Complexity | 6 | — |
+| Tooling Availability | 6 | — |
+| Skill Level | 6 | — |
+
+The sub-scores reflect documented techniques and common tooling for this kind of weakness.
 
 #### Scalability
 
@@ -362,22 +398,24 @@ vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinemen
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Scriptability | 6 | Partly automatable |
-| Target Scope | 6 | A class of targets |
-| Resource Requirements | 5 | Moderate resources |
-| Detection Difficulty | 5 | Detectable with monitoring |
+| Scriptability | 6 | — |
+| Target Scope | 6 | — |
+| Resource Requirements | 5 | — |
+| Detection Difficulty | 5 | — |
+
+The weakness can be scripted and repeated across instances with modest resources.
 
 #### Reachability
 
 **Score**: 2.5 | **Trust Zone**: Data Zone (Trusted)
 
-vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinement for this finding gives 2.5.
+The component sits in a trusted zone with no extra barriers recorded.
 
 ---
 
 ### T-1 — planner-agent
 
-**Threat**: Unsanitised task plans and tool selections reach planner-agent and are processed as trusted structure, so crafted input changes how later steps interpret the record.
+**Threat**: Unsanitised task plans and tool selections reach planner-agent and are processed as trusted structure, so crafted input changes how later steps interpret the record. The weakness sits at layer Agent Framework of the stack, so every workflow that depends on task plans and tool selections inherits the exposure. Altered data is then treated as authoritative by every consumer, so the damage spreads before anyone compares it with the source. Rated HIGH likelihood because the path needs no special position and uses interfaces that are exposed by design, and HIGH impact because the affected data or action is central to shipment handling and hard to reverse.
 
 **Category**: tampering | **Original Risk Level**: Critical | **Composite**: 6.0 (Medium)
 
@@ -387,14 +425,16 @@ vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinemen
 
 | Metric | Value | Rationale |
 |--------|-------|-----------|
-| Attack Vector (AV) | Network | Reachable over the network |
-| Attack Complexity (AC) | Low | No special conditions |
-| Privileges Required (PR) | Low | A basic account is needed |
-| User Interaction (UI) | None | No user action needed |
-| Scope (S) | Changed | Impact crosses a boundary |
-| Confidentiality (C) | None | No disclosure |
-| Integrity (I) | Low | Limited modification |
-| Availability (A) | Low | Degraded service |
+| Attack Vector (AV) | Network | — |
+| Attack Complexity (AC) | Low | — |
+| Privileges Required (PR) | Low | — |
+| User Interaction (UI) | None | — |
+| Scope (S) | Changed | — |
+| Confidentiality (C) | None | — |
+| Integrity (I) | Low | — |
+| Availability (A) | Low | — |
+
+The vector follows the category default with a network attack path and the stated privileges.
 
 #### Exploitability
 
@@ -402,10 +442,12 @@ vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinemen
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Known Techniques | 8 | Documented and widely used |
-| Attack Complexity | 8 | A single step suffices |
-| Tooling Availability | 8 | Common tools apply |
-| Skill Level | 8 | Little skill needed |
+| Known Techniques | 8 | — |
+| Attack Complexity | 8 | — |
+| Tooling Availability | 8 | — |
+| Skill Level | 8 | — |
+
+The sub-scores reflect documented techniques and common tooling for this kind of weakness.
 
 #### Scalability
 
@@ -413,22 +455,24 @@ vector-store-a sits in the Data Zone. The zone baseline is 2.5 and the refinemen
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Scriptability | 6 | Partly automatable |
-| Target Scope | 6 | A class of targets |
-| Resource Requirements | 6 | Moderate resources |
-| Detection Difficulty | 6 | Detectable with monitoring |
+| Scriptability | 6 | — |
+| Target Scope | 6 | — |
+| Resource Requirements | 6 | — |
+| Detection Difficulty | 6 | — |
+
+The weakness can be scripted and repeated across instances with modest resources.
 
 #### Reachability
 
 **Score**: 2.5 | **Trust Zone**: Agent Runtime Zone (Trusted)
 
-planner-agent sits in the Agent Runtime Zone. The zone baseline is 2.5 and the refinement for this finding gives 2.5.
+The component sits in a trusted zone with no extra barriers recorded.
 
 ---
 
 ### T-3 — model-gateway
 
-**Threat**: Configuration of model-gateway can be rewritten by any service that holds the shared deployment credential, silently changing how prompts and completions are handled.
+**Threat**: Configuration of model-gateway can be rewritten by any service that holds the shared deployment credential, silently changing how prompts and completions are handled. model-gateway runs in the Agent Runtime Zone and exchanges prompts and completions with planner-agent over HTTPS (TLS 1.3), so anything able to reach planner-agent can also reach this weakness. Altered data is then treated as authoritative by every consumer, so the damage spreads before anyone compares it with the source. Rated LOW likelihood because the path needs several preconditions to line up, such as insider access or a rare timing window, and MEDIUM impact because the effect is bounded to one workflow or one tenant and can be corrected with effort.
 
 **Category**: tampering | **Original Risk Level**: Low | **Composite**: 5.9 (Medium)
 
@@ -438,14 +482,16 @@ planner-agent sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Metric | Value | Rationale |
 |--------|-------|-----------|
-| Attack Vector (AV) | Adjacent | Needs an adjacent network |
-| Attack Complexity (AC) | Low | No special conditions |
-| Privileges Required (PR) | None | No privileges needed |
-| User Interaction (UI) | Required | A user must act |
-| Scope (S) | Unchanged | Impact stays in the component |
-| Confidentiality (C) | High | Broad disclosure |
-| Integrity (I) | High | Broad modification |
-| Availability (A) | Low | Degraded service |
+| Attack Vector (AV) | Adjacent | — |
+| Attack Complexity (AC) | Low | — |
+| Privileges Required (PR) | None | — |
+| User Interaction (UI) | Required | — |
+| Scope (S) | Unchanged | — |
+| Confidentiality (C) | High | — |
+| Integrity (I) | High | — |
+| Availability (A) | Low | — |
+
+The vector follows the category default with a network attack path and the stated privileges.
 
 #### Exploitability
 
@@ -453,10 +499,12 @@ planner-agent sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Known Techniques | 7 | Documented and widely used |
-| Attack Complexity | 7 | A single step suffices |
-| Tooling Availability | 7 | Common tools apply |
-| Skill Level | 7 | Little skill needed |
+| Known Techniques | 7 | — |
+| Attack Complexity | 7 | — |
+| Tooling Availability | 7 | — |
+| Skill Level | 7 | — |
+
+The sub-scores reflect documented techniques and common tooling for this kind of weakness.
 
 #### Scalability
 
@@ -464,22 +512,24 @@ planner-agent sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Scriptability | 5 | Partly automatable |
-| Target Scope | 4 | A class of targets |
-| Resource Requirements | 4 | Moderate resources |
-| Detection Difficulty | 4 | Detectable with monitoring |
+| Scriptability | 5 | — |
+| Target Scope | 4 | — |
+| Resource Requirements | 4 | — |
+| Detection Difficulty | 4 | — |
+
+The weakness can be scripted and repeated across instances with modest resources.
 
 #### Reachability
 
 **Score**: 2.5 | **Trust Zone**: Agent Runtime Zone (Trusted)
 
-model-gateway sits in the Agent Runtime Zone. The zone baseline is 2.5 and the refinement for this finding gives 2.5.
+The component sits in a trusted zone with no extra barriers recorded.
 
 ---
 
 ### D-1 — tool-server-1
 
-**Threat**: A burst of requests exhausts the connection pool of tool-server-1, which queues work without a bound and blocks legitimate use of tool call arguments and results.
+**Threat**: A burst of requests exhausts the connection pool of tool-server-1, which queues work without a bound and blocks legitimate use of tool call arguments and results. Because tool-server-1 serves the Agent Runtime Zone, a single failure here reaches each consumer of tool call arguments and results at once. Operators lose the ability to book or amend shipments while the condition lasts, and recovery depends on manual intervention. Rated MEDIUM likelihood because the path needs a foothold on a neighbouring service or a prepared request, and HIGH impact because the affected data or action is central to shipment handling and hard to reverse.
 
 **Category**: denial-of-service | **Original Risk Level**: High | **Composite**: 5.7 (Medium)
 
@@ -489,14 +539,16 @@ model-gateway sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Metric | Value | Rationale |
 |--------|-------|-----------|
-| Attack Vector (AV) | Local | Needs local access |
-| Attack Complexity (AC) | Low | No special conditions |
-| Privileges Required (PR) | None | No privileges needed |
-| User Interaction (UI) | Required | A user must act |
-| Scope (S) | Changed | Impact crosses a boundary |
-| Confidentiality (C) | High | Broad disclosure |
-| Integrity (I) | High | Broad modification |
-| Availability (A) | Low | Degraded service |
+| Attack Vector (AV) | Local | — |
+| Attack Complexity (AC) | Low | — |
+| Privileges Required (PR) | None | — |
+| User Interaction (UI) | Required | — |
+| Scope (S) | Changed | — |
+| Confidentiality (C) | High | — |
+| Integrity (I) | High | — |
+| Availability (A) | Low | — |
+
+The vector follows the category default with a network attack path and the stated privileges.
 
 #### Exploitability
 
@@ -504,10 +556,12 @@ model-gateway sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Known Techniques | 5 | Described in research |
-| Attack Complexity | 4 | Needs some preparation |
-| Tooling Availability | 4 | Tools need adaptation |
-| Skill Level | 4 | Intermediate skill |
+| Known Techniques | 5 | — |
+| Attack Complexity | 4 | — |
+| Tooling Availability | 4 | — |
+| Skill Level | 4 | — |
+
+The sub-scores reflect documented techniques and common tooling for this kind of weakness.
 
 #### Scalability
 
@@ -515,22 +569,24 @@ model-gateway sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Scriptability | 7 | Fully automatable |
-| Target Scope | 6 | A class of targets |
-| Resource Requirements | 6 | Moderate resources |
-| Detection Difficulty | 6 | Detectable with monitoring |
+| Scriptability | 7 | — |
+| Target Scope | 6 | — |
+| Resource Requirements | 6 | — |
+| Detection Difficulty | 6 | — |
+
+The weakness can be scripted and repeated across instances with modest resources.
 
 #### Reachability
 
 **Score**: 2.5 | **Trust Zone**: Agent Runtime Zone (Trusted)
 
-tool-server-1 sits in the Agent Runtime Zone. The zone baseline is 2.5 and the refinement for this finding gives 2.5.
+The component sits in a trusted zone with no extra barriers recorded.
 
 ---
 
 ### E-1 — model-gateway
 
-**Threat**: Role claims carried in the model API key presented to model-gateway are honoured without confirmation against the authoritative directory.
+**Threat**: Role claims carried in the model API key presented to model-gateway are honoured without confirmation against the authoritative directory. The weakness sits at layer Foundation Model of the stack, so every workflow that depends on prompts and completions inherits the exposure. Once the boundary is crossed the attacker can reach administrative functions and persist there. Rated MEDIUM likelihood because the path needs a foothold on a neighbouring service or a prepared request, and HIGH impact because the affected data or action is central to shipment handling and hard to reverse.
 
 **Category**: privilege-escalation | **Original Risk Level**: High | **Composite**: 5.3 (Medium)
 
@@ -540,14 +596,16 @@ tool-server-1 sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Metric | Value | Rationale |
 |--------|-------|-----------|
-| Attack Vector (AV) | Network | Reachable over the network |
-| Attack Complexity (AC) | Low | No special conditions |
-| Privileges Required (PR) | Low | A basic account is needed |
-| User Interaction (UI) | None | No user action needed |
-| Scope (S) | Changed | Impact crosses a boundary |
-| Confidentiality (C) | High | Broad disclosure |
-| Integrity (I) | High | Broad modification |
-| Availability (A) | High | Loss of service |
+| Attack Vector (AV) | Network | — |
+| Attack Complexity (AC) | Low | — |
+| Privileges Required (PR) | Low | — |
+| User Interaction (UI) | None | — |
+| Scope (S) | Changed | — |
+| Confidentiality (C) | High | — |
+| Integrity (I) | High | — |
+| Availability (A) | High | — |
+
+The vector follows the category default with a network attack path and the stated privileges.
 
 #### Exploitability
 
@@ -555,10 +613,12 @@ tool-server-1 sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Known Techniques | 3 | Not described outside research |
-| Attack Complexity | 3 | Needs chained steps |
-| Tooling Availability | 3 | Needs custom tooling |
-| Skill Level | 3 | Needs deep expertise |
+| Known Techniques | 3 | — |
+| Attack Complexity | 3 | — |
+| Tooling Availability | 3 | — |
+| Skill Level | 3 | — |
+
+The sub-scores reflect documented techniques and common tooling for this kind of weakness.
 
 #### Scalability
 
@@ -566,22 +626,24 @@ tool-server-1 sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Scriptability | 3 | Manual for each target |
-| Target Scope | 3 | One specific target |
-| Resource Requirements | 3 | Needs heavy infrastructure |
-| Detection Difficulty | 3 | Readily detected |
+| Scriptability | 3 | — |
+| Target Scope | 3 | — |
+| Resource Requirements | 3 | — |
+| Detection Difficulty | 3 | — |
+
+The weakness can be scripted and repeated across instances with modest resources.
 
 #### Reachability
 
 **Score**: 2.5 | **Trust Zone**: Agent Runtime Zone (Trusted)
 
-model-gateway sits in the Agent Runtime Zone. The zone baseline is 2.5 and the refinement for this finding gives 2.5.
+The component sits in a trusted zone with no extra barriers recorded.
 
 ---
 
 ### D-3 — audit-ledger
 
-**Threat**: Expensive queries over approval and tool call records can be triggered by any authorised caller of audit-ledger, so one user can degrade the service for all.
+**Threat**: Expensive queries over approval and tool call records can be triggered by any authorised caller of audit-ledger, so one user can degrade the service for all. Because audit-ledger serves the Operations Zone, a single failure here reaches each consumer of approval and tool call records at once. The outage propagates to dependent agents, which stall or retry and prolong the disruption. Rated MEDIUM likelihood because the path needs a foothold on a neighbouring service or a prepared request, and MEDIUM impact because the effect is bounded to one workflow or one tenant and can be corrected with effort.
 
 **Category**: denial-of-service | **Original Risk Level**: Medium | **Composite**: 5.2 (Medium)
 
@@ -591,14 +653,16 @@ model-gateway sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Metric | Value | Rationale |
 |--------|-------|-----------|
-| Attack Vector (AV) | Physical | Needs physical access |
-| Attack Complexity (AC) | High | Needs specific conditions |
-| Privileges Required (PR) | Low | A basic account is needed |
-| User Interaction (UI) | None | No user action needed |
-| Scope (S) | Changed | Impact crosses a boundary |
-| Confidentiality (C) | High | Broad disclosure |
-| Integrity (I) | None | No modification |
-| Availability (A) | None | No loss of service |
+| Attack Vector (AV) | Physical | — |
+| Attack Complexity (AC) | High | — |
+| Privileges Required (PR) | Low | — |
+| User Interaction (UI) | None | — |
+| Scope (S) | Changed | — |
+| Confidentiality (C) | High | — |
+| Integrity (I) | None | — |
+| Availability (A) | None | — |
+
+The vector follows the category default with a network attack path and the stated privileges.
 
 #### Exploitability
 
@@ -606,10 +670,12 @@ model-gateway sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Known Techniques | 7 | Documented and widely used |
-| Attack Complexity | 6 | Needs some preparation |
-| Tooling Availability | 6 | Tools need adaptation |
-| Skill Level | 6 | Intermediate skill |
+| Known Techniques | 7 | — |
+| Attack Complexity | 6 | — |
+| Tooling Availability | 6 | — |
+| Skill Level | 6 | — |
+
+The sub-scores reflect documented techniques and common tooling for this kind of weakness.
 
 #### Scalability
 
@@ -617,22 +683,24 @@ model-gateway sits in the Agent Runtime Zone. The zone baseline is 2.5 and the r
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Scriptability | 3 | Manual for each target |
-| Target Scope | 3 | One specific target |
-| Resource Requirements | 3 | Needs heavy infrastructure |
-| Detection Difficulty | 3 | Readily detected |
+| Scriptability | 3 | — |
+| Target Scope | 3 | — |
+| Resource Requirements | 3 | — |
+| Detection Difficulty | 3 | — |
+
+The weakness can be scripted and repeated across instances with modest resources.
 
 #### Reachability
 
 **Score**: 2.5 | **Trust Zone**: Operations Zone (Trusted)
 
-audit-ledger sits in the Operations Zone. The zone baseline is 2.5 and the refinement for this finding gives 2.5.
+The component sits in a trusted zone with no extra barriers recorded.
 
 ---
 
 ### T-2 — planner-agent
 
-**Threat**: An attacker who can write to the channel between model-gateway and planner-agent modifies task plans and tool selections in transit because messages carry no integrity protection of their own.
+**Threat**: An attacker who can write to the channel between model-gateway and planner-agent modifies task plans and tool selections in transit because messages carry no integrity protection of their own. planner-agent runs in the Agent Runtime Zone and exchanges task plans and tool selections with model-gateway over HTTPS (TLS 1.3), so anything able to reach model-gateway can also reach this weakness. Altered data is then treated as authoritative by every consumer, so the damage spreads before anyone compares it with the source. Rated HIGH likelihood because the path needs no special position and uses interfaces that are exposed by design, and MEDIUM impact because the effect is bounded to one workflow or one tenant and can be corrected with effort.
 
 **Category**: tampering | **Original Risk Level**: High | **Composite**: 4.7 (Medium)
 
@@ -642,14 +710,16 @@ audit-ledger sits in the Operations Zone. The zone baseline is 2.5 and the refin
 
 | Metric | Value | Rationale |
 |--------|-------|-----------|
-| Attack Vector (AV) | Local | Needs local access |
-| Attack Complexity (AC) | Low | No special conditions |
-| Privileges Required (PR) | Low | A basic account is needed |
-| User Interaction (UI) | None | No user action needed |
-| Scope (S) | Changed | Impact crosses a boundary |
-| Confidentiality (C) | Low | Limited disclosure |
-| Integrity (I) | High | Broad modification |
-| Availability (A) | High | Loss of service |
+| Attack Vector (AV) | Local | — |
+| Attack Complexity (AC) | Low | — |
+| Privileges Required (PR) | Low | — |
+| User Interaction (UI) | None | — |
+| Scope (S) | Changed | — |
+| Confidentiality (C) | Low | — |
+| Integrity (I) | High | — |
+| Availability (A) | High | — |
+
+The vector follows the category default with a network attack path and the stated privileges.
 
 #### Exploitability
 
@@ -657,10 +727,12 @@ audit-ledger sits in the Operations Zone. The zone baseline is 2.5 and the refin
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Known Techniques | 3 | Not described outside research |
-| Attack Complexity | 3 | Needs chained steps |
-| Tooling Availability | 3 | Needs custom tooling |
-| Skill Level | 3 | Needs deep expertise |
+| Known Techniques | 3 | — |
+| Attack Complexity | 3 | — |
+| Tooling Availability | 3 | — |
+| Skill Level | 3 | — |
+
+The sub-scores reflect documented techniques and common tooling for this kind of weakness.
 
 #### Scalability
 
@@ -668,22 +740,24 @@ audit-ledger sits in the Operations Zone. The zone baseline is 2.5 and the refin
 
 | Sub-Dimension | Score | Rationale |
 |---------------|-------|-----------|
-| Scriptability | 4 | Partly automatable |
-| Target Scope | 3 | One specific target |
-| Resource Requirements | 3 | Needs heavy infrastructure |
-| Detection Difficulty | 3 | Readily detected |
+| Scriptability | 4 | — |
+| Target Scope | 3 | — |
+| Resource Requirements | 3 | — |
+| Detection Difficulty | 3 | — |
+
+The weakness can be scripted and repeated across instances with modest resources.
 
 #### Reachability
 
 **Score**: 2.5 | **Trust Zone**: Agent Runtime Zone (Trusted)
 
-planner-agent sits in the Agent Runtime Zone. The zone baseline is 2.5 and the refinement for this finding gives 2.5.
+The component sits in a trusted zone with no extra barriers recorded.
 
 ---
 
 ## 4. Governance Fields
 
-Remediation tracking metadata for each scored finding. Defaults are severity-driven and intended for manual override during risk review.
+Remediation tracking metadata for each scored finding. Default values are severity-driven and intended for manual override by security managers during risk review.
 
 | ID | Severity | Owner | SLA | Disposition | Review Date |
 |----|----------|-------|-----|-------------|-------------|
@@ -704,26 +778,43 @@ Remediation tracking metadata for each scored finding. Defaults are severity-dri
 
 ## 5. Scoring Methodology
 
-This section documents the quantitative scoring model behind the scores in this report.
+This section documents the quantitative scoring model used to produce the risk scores in this report. All scores are derived from the threat findings identified during threat modeling and are intended to replace qualitative risk ratings with data-backed, reproducible numeric assessments.
 
 ### 5.1 Scoring Dimensions
 
+Each threat finding is assessed across four independent dimensions, each producing a score on a 0.0 to 10.0 scale.
+
 | Dimension | Weight | What It Measures |
 |-----------|--------|------------------|
-| **CVSS Base** | 35% | Intrinsic severity from the CVSS 3.1 base metrics, with the full vector shown for each finding. |
-| **Exploitability** | 30% | Practical feasibility from known techniques, complexity, tooling and skill. |
-| **Scalability** | 15% | Potential for automated, large-scale use from scriptability, scope, resources and detection difficulty. |
-| **Reachability** | 20% | Exposure of the component within the trust boundary architecture, derived from its trust zone. |
+| **CVSS Base** | 35% | Intrinsic severity of the vulnerability using CVSS 3.1 base metrics: attack vector, attack complexity, privileges required, user interaction, scope, and confidentiality/integrity/availability impact. Each finding includes the full CVSS vector string for auditability. |
+| **Exploitability** | 30% | Practical likelihood of exploitation based on known attack techniques, tooling availability, required skill level, and attack complexity. Higher scores indicate threats with well-documented exploit paths and readily available tooling. |
+| **Scalability** | 15% | Potential for automated, large-scale exploitation based on scriptability, breadth of target scope, resource requirements for the attacker, and difficulty of detection. Higher scores indicate threats that can be weaponized across many targets with minimal effort. |
+| **Reachability** | 20% | Exposure of the targeted component within the system's trust boundary architecture. Derived from trust zone data in the threat model and supplemented by architecture documentation when available. Higher scores indicate components directly exposed to untrusted networks. |
 
-### 5.2 Composite Score Formula
+### 5.2 Default Weights and Rationale
+
+The default weight allocation reflects the following priorities:
+
+- **CVSS Base (35%)** receives the highest weight because intrinsic vulnerability severity is the strongest predictor of potential damage. CVSS 3.1 is an industry-standard metric with well-understood interpretation.
+- **Exploitability (30%)** is weighted second because a severe vulnerability that is difficult to exploit in practice poses less immediate risk than one with known, tooled attack paths.
+- **Reachability (20%)** accounts for architectural context. A critical vulnerability behind multiple trust boundaries and authentication layers presents less operational risk than the same vulnerability on an internet-facing endpoint.
+- **Scalability (15%)** receives the lowest weight because while automation potential increases aggregate risk, it is less deterministic than the other dimensions and often correlates with exploitability.
+
+These weights are fixed for this scoring run and are recorded in the report frontmatter for reproducibility.
+
+### 5.3 Composite Score Formula
+
+The composite risk score for each finding is calculated as a weighted sum of the four dimension scores:
 
 ```
 Composite = (0.35 x CVSS Base) + (0.30 x Exploitability) + (0.15 x Scalability) + (0.20 x Reachability)
 ```
 
-The composite is rounded to one decimal place and falls in the range 0.0 to 10.0.
+The sum runs over the stored one-decimal values and is rounded half up to one decimal (a composite of 4.55 is 4.6). The composite score is bounded to the 0.0-10.0 range. Because each dimension is independently scored on a 0.0-10.0 scale and the weights sum to 1.0, the composite inherently falls within this range.
 
-### 5.3 Severity Band Mapping
+### 5.4 Severity Band Mapping
+
+Composite scores are mapped to severity bands that drive default governance actions:
 
 | Severity | Composite Score Range | Default SLA | Default Disposition |
 |----------|-----------------------|-------------|---------------------|
@@ -732,33 +823,42 @@ The composite is rounded to one decimal place and falls in the range 0.0 to 10.0
 | **Medium** | 4.0 -- 6.9 | 30 days | Review |
 | **Low** | 0.0 -- 3.9 | 90 days | Review |
 
-Boundary values map to the higher band.
+Boundary values map to the higher band (e.g., a composite score of exactly 7.0 maps to High, not Medium). These bands are aligned with the severity classifications defined in `schemas/output.yaml` to maintain backward compatibility with existing tachi threat model output.
 
-### 5.4 Data Sources
+### 5.5 Data Sources
 
-- **Threat findings**: parsed from `threats.md`. All original metadata is preserved.
-- **Trust zone data**: taken from the trust zone table of `threats.md` for reachability scoring.
-- **Category default vectors**: CVSS 3.1 baselines per threat category, refined for each finding.
+Scoring draws on the following inputs:
 
-### 5.5 Reproducibility
+- **Threat findings**: Parsed from `threats.md` (markdown table format) or `threats.sarif` (SARIF 2.1.0 JSON). All original threat metadata (ID, component, category, description, likelihood, impact) is preserved through the scoring pipeline.
+- **Trust zone data**: Extracted from `threats.md` Section 2 (trust zone table) as the primary source for reachability scoring. Components in Untrusted/External zones score 8.0-10.0 reachability; Semi-Trusted/Application zones score 4.0-7.0; Trusted/Internal zones score 1.0-4.0.
+- **Architecture documentation**: When `architecture.md` is available, it provides supplementary context such as authentication barriers and network exposure details that refine the baseline reachability score derived from trust zones.
+- **Category default vectors**: CVSS 3.1 baseline vectors are defined per STRIDE threat category in `schemas/risk-scoring.yaml`. This includes tachi-specific defaults for AI threat categories (agentic and LLM) that lack standard CVSS mappings. Per-threat analysis may refine these baselines based on the specific threat description.
+- **The baseline**: When a baseline `risk-scores.md` is available, a carried finding's inputs (its vector, sub-scores, reachability inputs and human governance fields) come from it, and Section 6 records which baseline was used.
 
-The composite formula, weights and band mapping are deterministic. Each dimension score carries a tolerance of +/- 0.5 between runs.
+When trust zone data is unavailable (no Section 2 in `threats.md` and no `architecture.md`), a default reachability score of 5.0 is applied with a warning in the output.
 
+### 5.6 Reproducibility
+
+The scorer's assessments (the CVSS vector, the eight sub-scores and the reachability inputs) are produced by an LLM at temperature 0. For the same threat model input, each of them is expected to be reproducible within a **+/- 0.5 tolerance** across runs. This tolerance reflects the inherent variability in LLM-based analysis and is considered acceptable for risk prioritization purposes.
+
+Everything the renderer computes from those assessments is deterministic: the averages, the CVSS base score, the composite, the severity band, the SLA and the review date. The renderer uses exact decimal arithmetic and takes the date as an input, so the same parts and the same date give the same file, byte for byte. The composite formula, weights, and severity band mappings carry no tolerance.
 
 ---
 
 ## 6. Score Integrity
 
-What the renderer changed or could not check, and the inputs it scored from. The next run reads its carried inputs from the last table.
+What the renderer checked, corrected or could not check, and the inputs it scored from. A first run with no baseline has nothing to correct, so its Score Flags table is empty.
 
 ### Integrity Summary
 
-| Kind | Count |
-|------|-------|
-| corrected | 0 |
-| retagged | 0 |
-| unchecked | 0 |
-| normalized | 0 |
+| Kind | Cause | Count |
+|------|-------|-------|
+
+**Normalized (rounding only)**: 0
+
+**Baseline source**: none
+
+**Tag source**: block
 
 ### Score Flags
 
@@ -767,8 +867,7 @@ What the renderer changed or could not check, and the inputs it scored from. The
 
 ### Input Issues
 
-| ID | Field | Cause | Detail |
-|----|-------|-------|--------|
+None.
 
 ### Scoring Inputs
 
@@ -1003,3 +1102,5 @@ What the renderer changed or could not check, and the inputs it scored from. The
 | E-1 | rationale.reachability | The component sits in a trusted zone with no extra barriers recorded. |
 | E-1 | tags | secrets |
 | E-1 | scored_on | 2026-11-09 |
+
+<!-- tachi-provenance: renderer=render-risk-scores.py; version=4.48.4; input-digest=sha256:04153ce1af3f854dc240db027e7b9ba99ed11b316652bd0bd63feb6b790d7557 -->

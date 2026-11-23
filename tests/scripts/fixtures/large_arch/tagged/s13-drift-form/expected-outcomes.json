@@ -278,7 +278,7 @@
           "stored": "Medium"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "asset-tags",
           "field": "remediation_sla",
           "flag": "retagged:remediation_sla:asset-tags",
@@ -287,7 +287,7 @@
           "stored": "30d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "asset-tags",
           "field": "risk_disposition",
           "flag": "retagged:risk_disposition:asset-tags",
@@ -342,9 +342,10 @@
     }
   },
   "flag_reading": [
-    "A flag is kind:field:cause. Fields are the finding schema's names: cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability, cvss_vector.",
-    "Step reading of D9's causes: a changed cvss_base is 'vector', a changed composite_score is 'arithmetic', a changed severity_band is 'band-mapping' (or 'rounding' for a tie), and a changed remediation_sla, risk_disposition or review_date is 'follows-band'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves (ruling A).",
-    "basis 'pinned': the flag string appears in ADR-050, the spec or the contracts. 'derived': composed from that grammar by the reading above. 'optional': the renderer may add it or not, and a test must accept both.",
+    "A flag is kind:field:cause, and the field is the value whose status the flag describes, by its schemas/risk-scoring.yaml name: cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability.",
+    "The cause of a 'corrected' flag names the step that produced the field's new value: a changed cvss_base is 'vector', a changed composite_score is 'arithmetic', a changed severity_band is 'band-mapping' (or 'rounding' when only rounding moved the band), and a changed remediation_sla, risk_disposition or review_date is 'follows-band'. Where a fallback set the review date, 'baseline-date' or 'clock-restarted' replaces 'follows-band'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves (ruling A). A finding carries at most one flag per kind and field.",
+    "A rounding-only composite difference is normalized and counted and never flagged: only a band that it moves is flagged, as severity_band:rounding.",
+    "basis 'pinned': the string is in the closed vocabulary of contracts/module-signatures.md, and a test requires it. 'optional': the renderer may add the flag or not, and a test accepts both. Only the flags on a value that the input's form lacks are optional, because the cause for those is open (S-12(b), named by T032).",
     "A flag that the renderer adds and that is not listed is a defect of one side: the list is complete for the cases here."
   ],
   "notes": [

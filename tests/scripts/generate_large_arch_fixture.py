@@ -2552,9 +2552,9 @@ def render_controls_md(world: dict) -> str:
 #   scenario, variant, stage, run{...}, baseline{...}, tag_source{...}, routing{...}, agent_inputs{id: payload},
 #   findings{id: {case, treatment, stored{...}, rendered{...}, flags[...], normalized}}, unflagged[ids],
 #   counts{...}, notes[...], flag_reading[...]
-# A flag object is {flag, kind, field, cause, stored, rendered, basis}. basis is "pinned" (the string appears in
-# ADR-050, the spec or the contracts), "derived" (composed from D9's kind:field:cause grammar by the step reading
-# in FLAG_READING) or "optional" (the renderer may or may not add it).
+# A flag object is {flag, kind, field, cause, stored, rendered, basis}. basis is "pinned" (the string is in the scorer's
+# closed flag vocabulary, contracts/module-signatures.md, which the architect ruled at W1) or "optional" (the renderer
+# may add it or not, and a test accepts both). A finding carries at most one flag per kind and field.
 RUN_DATE = "2026-11-23"   # the --date input of every scenario
 SCORED_ON = "2026-11-09"  # the day the baselines scored: their own front-matter date
 
@@ -2574,14 +2574,27 @@ REACH_KEYWORDS = (  # zone-name substrings and their adjustments, in tenths; eve
 )
 PART_TRUST = {"Untrusted": "Untrusted", "Semi-trusted": "Semi-Trusted", "Trusted": "Trusted"}  # the part contract's spelling
 
+# D9's four causes name the step that produced a field's new value. The architect ruled them at W1 and closed the scorer's flag
+# vocabulary in contracts/module-signatures.md. They live here, once: a rename is these four lines and a regeneration.
+CAUSE_VECTOR = "vector"              # cvss_base
+CAUSE_ARITHMETIC = "arithmetic"      # composite_score
+CAUSE_BAND_MAPPING = "band-mapping"  # severity_band
+CAUSE_FOLLOWS_BAND = "follows-band"  # remediation_sla, risk_disposition, review_date
+
 FLAG_READING = (
-    "A flag is kind:field:cause. Fields are the finding schema's names: cvss_base, composite_score, severity_band, remediation_sla, "
-    "risk_disposition, review_date, reachability, cvss_vector.",
-    "Step reading of D9's causes: a changed cvss_base is 'vector', a changed composite_score is 'arithmetic', a changed severity_band "
-    "is 'band-mapping' (or 'rounding' for a tie), and a changed remediation_sla, risk_disposition or review_date is 'follows-band'. "
-    "A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves (ruling A).",
-    "basis 'pinned': the flag string appears in ADR-050, the spec or the contracts. 'derived': composed from that grammar by the reading "
-    "above. 'optional': the renderer may add it or not, and a test must accept both.",
+    "A flag is kind:field:cause, and the field is the value whose status the flag describes, by its schemas/risk-scoring.yaml name: "
+    "cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability.",
+    "The cause of a 'corrected' flag names the step that produced the field's new value: a changed cvss_base is '%s', a changed "
+    "composite_score is '%s', a changed severity_band is '%s' (or 'rounding' when only rounding moved the band), and a changed "
+    "remediation_sla, risk_disposition or review_date is '%s'. Where a fallback set the review date, 'baseline-date' or 'clock-restarted' "
+    "replaces '%s'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves "
+    "(ruling A). A finding carries at most one flag per kind and field." % (
+        CAUSE_VECTOR, CAUSE_ARITHMETIC, CAUSE_BAND_MAPPING, CAUSE_FOLLOWS_BAND, CAUSE_FOLLOWS_BAND),
+    "A rounding-only composite difference is normalized and counted and never flagged: only a band that it moves is flagged, "
+    "as severity_band:rounding.",
+    "basis 'pinned': the string is in the closed vocabulary of contracts/module-signatures.md, and a test requires it. 'optional': the "
+    "renderer may add the flag or not, and a test accepts both. Only the flags on a value that the input's form lacks are optional, because "
+    "the cause for those is open (S-12(b), named by T032).",
     "A flag that the renderer adds and that is not listed is a defect of one side: the list is complete for the cases here.",
 )
 
@@ -2648,7 +2661,7 @@ def chain_tenths(vector: str, tags: Sequence, bounds) -> int:
 def legacy_check(stored: int, vector, category: str, tags: Sequence) -> tuple:
     """D10's legacy list, in order, the first matching step deciding. Returns (rendered tenths, (kind, field, cause) or None, step)."""
     if vector is None:
-        return stored, ("unverifiable", "cvss_vector", "no-vector"), 1
+        return stored, ("unverifiable", "cvss_base", "no-vector"), 1
     base = cvss_of(vector)
     candidates = (base, clamp(base, category_bounds(category)))
     forcing = bool(tags)
@@ -2671,7 +2684,7 @@ def legacy_check(stored: int, vector, category: str, tags: Sequence) -> tuple:
         return stored, ("unchecked", "cvss_base", "bound-n17c"), 5
     if forcing and CEILING < stored < elevated_base:
         return stored, ("unchecked", "cvss_base", "assessed-unrecorded"), 5
-    return outcome(base), ("corrected", "cvss_base", "vector"), 6
+    return outcome(base), ("corrected", "cvss_base", CAUSE_VECTOR), 6
 
 
 def reach_value(zone_name: str, level: str, auth: int, net: int) -> int:
@@ -2694,22 +2707,9 @@ def mean_tenths(values: Sequence) -> int:
     return half_up(25 * sum(values), 10)
 
 
-# A flag object. basis: pinned, derived or optional (see the header).
-_PINNED_FLAGS = frozenset((
-    "corrected:cvss_base:vector", "retagged:cvss_base:asset-tags", "retagged:severity_band:asset-tags",
-    "corrected:severity_band:rounding", "unchecked:reachability:compound-trust-label", "input:reachability:out-of-range",
-    "input:cvss_vector:sources-disagree", "corrected:review_date:baseline-date",
-    "unchecked:review_date:scoring-date-unknown", "corrected:review_date:clock-restarted",
-))
-_PINNED_RETAG_FIELDS = ("cvss_base", "composite_score", "severity_band", "review_date")  # ADR-050 D9 names these under retagged
-
-
-def make_flag(kind: str, field, cause, stored=None, rendered=None, basis=None) -> dict:
+def make_flag(kind: str, field, cause, stored=None, rendered=None, basis="pinned") -> dict:
+    """A flag object. basis: pinned (in the closed vocabulary) or optional (see the header)."""
     text = ":".join(part for part in (kind, field, cause) if part is not None)
-    if basis is None:
-        pinned = (text in _PINNED_FLAGS or text.startswith("divergent:composite_score:primary=")
-                  or (kind == "retagged" and cause == "asset-tags" and field in _PINNED_RETAG_FIELDS))
-        basis = "pinned" if pinned else "derived"
     return {"flag": text, "kind": kind, "field": field, "cause": cause, "stored": stored, "rendered": rendered, "basis": basis}
 
 
@@ -2739,14 +2739,14 @@ def carried_expectation(row: dict, ctx: dict) -> dict:
         step = "renderer"
         if cvss != row["cvss"]:
             cvss_retagged = cvss_baseline == row["cvss"]
-            flags.append(make_flag("retagged" if cvss_retagged else "corrected", "cvss_base", "asset-tags" if cvss_retagged else "vector",
+            flags.append(make_flag("retagged" if cvss_retagged else "corrected", "cvss_base", "asset-tags" if cvss_retagged else CAUSE_VECTOR,
                                    fmt1(row["cvss"]), fmt1(cvss)))
     else:
         cvss, found, step = legacy_check(row["cvss"], row["vector"], category, tags)
         cvss_baseline = row["cvss"]
         if found is not None:
             cvss_retagged = found[0] == "retagged"
-            flags.append(make_flag(found[0], found[1], found[2], fmt1(row["cvss"]), fmt1(cvss) if found[0] in ("corrected", "retagged") else None))
+            flags.append(make_flag(found[0], found[1], found[2], fmt1(row["cvss"]), fmt1(cvss)))  # an unchecked or unverifiable score is kept
         if row.get("md_vector") is not None and row.get("sarif_vector") not in (None, row.get("md_vector")):
             flags.append(make_flag("input", "cvss_vector", "sources-disagree", row["sarif_vector"], row["md_vector"]))
 
@@ -2767,21 +2767,19 @@ def carried_expectation(row: dict, ctx: dict) -> dict:
     normalized = False
     if composite != row["composite"] and not rounding_only:
         tags_explain = cvss_retagged and row["composite"] == baseline_composite
-        flags.append(make_flag("retagged" if tags_explain else "corrected", "composite_score", "asset-tags" if tags_explain else "arithmetic",
+        flags.append(make_flag("retagged" if tags_explain else "corrected", "composite_score", "asset-tags" if tags_explain else CAUSE_ARITHMETIC,
                                fmt1(row["composite"]), fmt1(composite)))
     band_change = "none"
     if new_band != row["band"]:
         if rounding_only:
             band_change = "rounding"
-            flags.append(make_flag("corrected", "severity_band", "rounding", row["band"], new_band))
-            # the composite moves too; D9 names only the band's flag, so the composite's own is one that the renderer may add
-            flags.append(make_flag("corrected", "composite_score", "rounding", fmt1(row["composite"]), fmt1(composite), basis="optional"))
+            flags.append(make_flag("corrected", "severity_band", "rounding", row["band"], new_band))  # the composite's own change is normalized
         elif cvss_retagged and band_of(baseline_composite) == row["band"]:
             band_change = "retagged-up" if BAND_ORDER.index(new_band) > BAND_ORDER.index(row["band"]) else "retagged-down"
             flags.append(make_flag("retagged", "severity_band", "asset-tags", row["band"], new_band))
         else:
             band_change = "corrected"
-            flags.append(make_flag("corrected", "severity_band", "band-mapping", row["band"], new_band))
+            flags.append(make_flag("corrected", "severity_band", CAUSE_BAND_MAPPING, row["band"], new_band))
     elif rounding_only:
         normalized = True
 
@@ -2797,7 +2795,7 @@ def carried_expectation(row: dict, ctx: dict) -> dict:
     sla = row["sla"] if sla_override else new_defaults[0]
     disposition = row["disposition"] if disposition_override else new_defaults[2]
     review = row["review"]
-    follows = "asset-tags" if band_change.startswith("retagged") else "follows-band"
+    follows = "asset-tags" if band_change.startswith("retagged") else CAUSE_FOLLOWS_BAND
     kind = "retagged" if band_change.startswith("retagged") else "corrected"
     rung = None
     if band_change != "none" and not sla_override:
@@ -2821,13 +2819,12 @@ def carried_expectation(row: dict, ctx: dict) -> dict:
             else:
                 review, rung = add_days(ctx["run_date"], days), ("corrected", "review_date", "clock-restarted")
     if sla != row["sla"] and not sla_override:
-        flags.append(make_flag(kind, "remediation_sla", follows, row["sla"], sla, basis="optional" if row["sla"] is None else None))
+        # a missing SLA is a value that the input's form lacks: the cause for that is open (S-12(b)), so its flag is optional
+        flags.append(make_flag(kind, "remediation_sla", follows, row["sla"], sla, basis="optional" if row["sla"] is None else "pinned"))
     if disposition != row["disposition"] and not disposition_override:
         flags.append(make_flag(kind, "risk_disposition", follows, row["disposition"], disposition))
-    if rung is not None:
+    if rung is not None:  # a fallback's flag replaces follows-band: the review date carries one flag per kind
         flags.append(make_flag(rung[0], rung[1], rung[2], row["review"], review))
-        if rung[2] != "scoring-date-unknown":  # the follows-band flag may accompany a fallback rung's flag
-            flags.append(make_flag("corrected", "review_date", "follows-band", row["review"], review, basis="optional"))
     elif review != row["review"]:
         flags.append(make_flag(kind, "review_date", follows, row["review"], review))
 
@@ -3251,7 +3248,7 @@ def seeded_error_files() -> dict:
         findings[fid] = {"case": "resolved-wrong-composite", "treatment": "resolved", "prefix": row["prefix"], "component": row["comp"],
                          "form": "legacy", "stored": values, "rendered": dict(values), "normalized": False, "d10_step": None,
                          "vector_sources": {"markdown": row["md_vector"], "sarif": None},
-                         "flags": [make_flag("resolved", None, None, basis="derived")]}
+                         "flags": [make_flag("resolved", None, None)]}
 
     run_world = clone_world(master, zones=[dict(z, label=COMPOUND_LABEL) if z["name"] == "Partner Exchange" else z for z in master["zones"]])
     base = baseline_world(master, all_rows, master["resolved"])
@@ -3274,7 +3271,7 @@ def seeded_error_files() -> dict:
         "The baseline has no risk-scores.sarif, so a missing vector has no second source and stays missing.",
         "Case 'bad-vector' stores a CVSS cell that its vector does not give, with the composite the right cell gives: one flag, no cascade. "
         "Cases 'cascade-composite' and 'cascade-band' store the composite that the wrong cell gives, so the correction moves the composite, "
-        "and for 'cascade-band' the band: their composite and band flags follow the step reading in flag_reading.",
+        "and for 'cascade-band' the band: the composite and band flags are the ones that flag_reading's causes name.",
         "Case 'rounding-only' stores the lower neighbour of an exact x.x5 composite, in the middle of a band: the difference is normalized and "
         "counted, never flagged (R-11).",
         "Case 'resolved-wrong-composite': these two baseline rows belong to findings that Section 4c of the run lists as RESOLVED. R-30 "
@@ -3473,7 +3470,8 @@ def legacy_no_date_files() -> dict:
         "the stored review date is kept, flagged unchecked:review_date:scoring-date-unknown.",
         "T-1 has both missing: the review date is this run's date plus the new SLA, flagged corrected:review_date:clock-restarted. "
         "No step is silent (D9).",
-        "A missing SLA is a gap, not an override: the SLA follows the corrected band, and its own flag is optional.",
+        "A missing SLA is a gap, not an override: the SLA follows the corrected band. The cause for a value that the input's form lacks "
+        "is open (S-12(b), named by T032), so the SLA's own flag is optional.",
         "R-1 and I-1 are controls: a wrong composite in the band, and a row with nothing wrong.",
     ]
     return legacy_scenario("legacy-format", "no-baseline-date", master, rows, plan,
@@ -3539,32 +3537,174 @@ def case_ids(world: dict, plan: Sequence) -> dict:
     return out
 
 
-def renderer_form_md(world: dict, rows: dict) -> str:
-    """risk-scores.md in schema 1.1 as a renderer writes it (ADR-050 D9, module-signatures.md): the v4.48.4 sections with a trailing Flags
-    column in Section 2, and Section 6, Score Integrity, ending in Scoring Inputs, the one table that the next run reads its inputs from."""
-    text = render_risk_scores_md(world)
-    text = text.replace('schema_version: "1.0"', 'schema_version: "1.1"', 1).replace("| Schema version | 1.0 |", "| Schema version | 1.1 |", 1)
-    lines, out, in_two = text.split("\n"), [], False
-    for line in lines:
-        if line.startswith("## 2. "):
-            in_two = True
-        elif line.startswith("## 3. "):
-            in_two = False
-        if in_two and line.startswith("|"):
-            if line.startswith("| ID "):
-                line += " Flags |"
-            elif line.startswith("|--"):
-                line += "-------|"
-            else:
-                line += " %s |" % EM
-        out.append(line)
-    ids = sorted(rows, key=prefix_rank)
-    narrative = {"rationale.cvss": "The vector follows the category default with a network attack path and the stated privileges.",
-                 "rationale.exploitability": "The sub-scores reflect documented techniques and common tooling for this kind of weakness.",
-                 "rationale.scalability": "The weakness can be scripted and repeated across instances with modest resources.",
-                 "rationale.reachability": "The component sits in a trusted zone with no extra barriers recorded."}
+# T031's template, risk-scores.md schema 1.1, is the authority for the renderer-form file below. Section 5 is static text there, so the
+# generator carries it verbatim, and a test compares it with the template.
+SCORING_METHOD_11 = """## 5. Scoring Methodology
+
+This section documents the quantitative scoring model used to produce the risk scores in this report. All scores are derived from the threat findings identified during threat modeling and are intended to replace qualitative risk ratings with data-backed, reproducible numeric assessments.
+
+### 5.1 Scoring Dimensions
+
+Each threat finding is assessed across four independent dimensions, each producing a score on a 0.0 to 10.0 scale.
+
+| Dimension | Weight | What It Measures |
+|-----------|--------|------------------|
+| **CVSS Base** | 35% | Intrinsic severity of the vulnerability using CVSS 3.1 base metrics: attack vector, attack complexity, privileges required, user interaction, scope, and confidentiality/integrity/availability impact. Each finding includes the full CVSS vector string for auditability. |
+| **Exploitability** | 30% | Practical likelihood of exploitation based on known attack techniques, tooling availability, required skill level, and attack complexity. Higher scores indicate threats with well-documented exploit paths and readily available tooling. |
+| **Scalability** | 15% | Potential for automated, large-scale exploitation based on scriptability, breadth of target scope, resource requirements for the attacker, and difficulty of detection. Higher scores indicate threats that can be weaponized across many targets with minimal effort. |
+| **Reachability** | 20% | Exposure of the targeted component within the system's trust boundary architecture. Derived from trust zone data in the threat model and supplemented by architecture documentation when available. Higher scores indicate components directly exposed to untrusted networks. |
+
+### 5.2 Default Weights and Rationale
+
+The default weight allocation reflects the following priorities:
+
+- **CVSS Base (35%)** receives the highest weight because intrinsic vulnerability severity is the strongest predictor of potential damage. CVSS 3.1 is an industry-standard metric with well-understood interpretation.
+- **Exploitability (30%)** is weighted second because a severe vulnerability that is difficult to exploit in practice poses less immediate risk than one with known, tooled attack paths.
+- **Reachability (20%)** accounts for architectural context. A critical vulnerability behind multiple trust boundaries and authentication layers presents less operational risk than the same vulnerability on an internet-facing endpoint.
+- **Scalability (15%)** receives the lowest weight because while automation potential increases aggregate risk, it is less deterministic than the other dimensions and often correlates with exploitability.
+
+These weights are fixed for this scoring run and are recorded in the report frontmatter for reproducibility.
+
+### 5.3 Composite Score Formula
+
+The composite risk score for each finding is calculated as a weighted sum of the four dimension scores:
+
+```
+Composite = (0.35 x CVSS Base) + (0.30 x Exploitability) + (0.15 x Scalability) + (0.20 x Reachability)
+```
+
+The sum runs over the stored one-decimal values and is rounded half up to one decimal (a composite of 4.55 is 4.6). The composite score is bounded to the 0.0-10.0 range. Because each dimension is independently scored on a 0.0-10.0 scale and the weights sum to 1.0, the composite inherently falls within this range.
+
+### 5.4 Severity Band Mapping
+
+Composite scores are mapped to severity bands that drive default governance actions:
+
+| Severity | Composite Score Range | Default SLA | Default Disposition |
+|----------|-----------------------|-------------|---------------------|
+| **Critical** | 9.0 -- 10.0 | 24 hours | Mitigate |
+| **High** | 7.0 -- 8.9 | 7 days | Mitigate |
+| **Medium** | 4.0 -- 6.9 | 30 days | Review |
+| **Low** | 0.0 -- 3.9 | 90 days | Review |
+
+Boundary values map to the higher band (e.g., a composite score of exactly 7.0 maps to High, not Medium). These bands are aligned with the severity classifications defined in `schemas/output.yaml` to maintain backward compatibility with existing tachi threat model output.
+
+### 5.5 Data Sources
+
+Scoring draws on the following inputs:
+
+- **Threat findings**: Parsed from `threats.md` (markdown table format) or `threats.sarif` (SARIF 2.1.0 JSON). All original threat metadata (ID, component, category, description, likelihood, impact) is preserved through the scoring pipeline.
+- **Trust zone data**: Extracted from `threats.md` Section 2 (trust zone table) as the primary source for reachability scoring. Components in Untrusted/External zones score 8.0-10.0 reachability; Semi-Trusted/Application zones score 4.0-7.0; Trusted/Internal zones score 1.0-4.0.
+- **Architecture documentation**: When `architecture.md` is available, it provides supplementary context such as authentication barriers and network exposure details that refine the baseline reachability score derived from trust zones.
+- **Category default vectors**: CVSS 3.1 baseline vectors are defined per STRIDE threat category in `schemas/risk-scoring.yaml`. This includes tachi-specific defaults for AI threat categories (agentic and LLM) that lack standard CVSS mappings. Per-threat analysis may refine these baselines based on the specific threat description.
+- **The baseline**: When a baseline `risk-scores.md` is available, a carried finding's inputs (its vector, sub-scores, reachability inputs and human governance fields) come from it, and Section 6 records which baseline was used.
+
+When trust zone data is unavailable (no Section 2 in `threats.md` and no `architecture.md`), a default reachability score of 5.0 is applied with a warning in the output.
+
+### 5.6 Reproducibility
+
+The scorer's assessments (the CVSS vector, the eight sub-scores and the reachability inputs) are produced by an LLM at temperature 0. For the same threat model input, each of them is expected to be reproducible within a **+/- 0.5 tolerance** across runs. This tolerance reflects the inherent variability in LLM-based analysis and is considered acceptable for risk prioritization purposes.
+
+Everything the renderer computes from those assessments is deterministic: the averages, the CVSS base score, the composite, the severity band, the SLA and the review date. The renderer uses exact decimal arithmetic and takes the date as an input, so the same parts and the same date give the same file, byte for byte. The composite formula, weights, and severity band mappings carry no tolerance."""
+
+# The four narrative fields of a scored finding, in the scorer's order. Plain prose with no numeral and no slot, so the text in
+# Section 3 and the text in Section 6's Scoring Inputs are the same.
+RENDERER_NARRATIVE = (
+    ("rationale.cvss", "The vector follows the category default with a network attack path and the stated privileges."),
+    ("rationale.exploitability", "The sub-scores reflect documented techniques and common tooling for this kind of weakness."),
+    ("rationale.scalability", "The weakness can be scripted and repeated across instances with modest resources."),
+    ("rationale.reachability", "The component sits in a trusted zone with no extra barriers recorded."),
+)
+FLAG_KIND_ORDER = ("corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input")  # Section 2's Flags cell
+STAMP_VERSION = "4.48.4"  # a synthetic stamp: the version that wrote the baseline, in the form that tachi_parts reads
+
+
+def whole_percentages(counts: dict) -> dict:
+    """The template's severity percentages: whole numbers that sum to 100 by largest remainder, ties to the band name that sorts first
+    (ADR-050 D5), and all zero when there is nothing to count."""
+    total = sum(counts.values())
+    if total == 0:
+        return {band: 0 for band in counts}
+    share = {band: 100 * n // total for band, n in counts.items()}
+    for band in sorted(counts, key=lambda b: (-(100 * counts[b] % total), b))[:100 - sum(share.values())]:
+        share[band] += 1
+    return share
+
+
+def renderer_form_md(world: dict, rows: dict, tag_source: str = "block") -> str:
+    """risk-scores.md in schema 1.1 as the renderer writes it, laid out by templates/tachi/output-schemas/risk-scores.md: the templated
+    Executive Summary, a Flags column in Section 2, no Section 2a when nothing is resolved, the scorer's rationale prose in Section 3
+    beside per-metric cells that read the dash, Section 5 as the template has it, and Section 6, Score Integrity, ending in Scoring
+    Inputs, the one table that the next run reads its carried inputs from. The template's own explanatory subsections (column and field
+    definitions, override guidance) are documentation, and no shipped output carries them."""
+    cfg, findings, by_name = world["cfg"], world["findings"], world["by_name"]
+    when = cfg["dates"]["scores"]
+    order = sorted(findings, key=lambda f: (-rows[f["id"]]["composite"], prefix_rank(f["id"])))
+    bands = ("Critical", "High", "Medium", "Low")
+    counts = {band: sum(1 for f in findings if rows[f["id"]]["band"] == band) for band in bands}
+    share = whole_percentages(counts)
+    best = {}
+    for f in findings:
+        entry = best.setdefault(f["comp"], [0, 0])
+        entry[0] += 1
+        entry[1] = max(entry[1], rows[f["id"]]["composite"])
+    top = sorted(best.items(), key=lambda kv: (-kv[1][1], -kv[1][0], kv[0]))[0]
+
+    def dash(value) -> str:
+        return EM if value is None else value
+
+    def flags_cell(row: dict) -> str:
+        kinds = [kind for kind in FLAG_KIND_ORDER if kind in row.get("flag_kinds", ())]
+        return ", ".join(kinds) if kinds else EM
+
+    out = ["---", 'schema_version: "1.1"', 'date: "%s"' % when, 'source_file: "baseline/threats.md"', 'classification: "confidential"',
+           "scoring_weights:", "  cvss_base: 0.35", "  exploitability: 0.30", "  scalability: 0.15", "  reachability: 0.20", "baseline:",
+           "  source: null", "  inherited_count: null", "  fresh_count: null", "---", "", "# Risk Scores Report", "",
+           "## 1. Executive Summary", "",
+           "%d open findings were scored on %s: %d Critical, %d High, %d Medium and %d Low." % ((len(findings), when) + tuple(counts[b] for b in bands)),
+           "", "**Highest-Risk Component**: %s %s %d finding(s), max composite %s" % (top[0], EM, top[1][0], fmt1(top[1][1])), "",
+           "**Resolved findings** (Section 2a, outside the distribution below): %d" % len(world["resolved"]), "",
+           table(("Metric", "Value"), (("Scoring date", when), ("Source file", "`baseline/threats.md`"), ("Schema version", "1.1"))),
+           "", "**Severity Distribution:**", "",
+           table(("Severity", "Count", "Percentage"),
+                 [(b, counts[b], "%d%%" % share[b]) for b in bands] + [("**Total**", "**%d**" % len(findings), "**100%**")]),
+           "", "> Trust zone data was available for every component, so no reachability value was defaulted.", "", "---", "",
+           "## 2. Scored Threat Table", "",
+           "Findings sorted by Composite score descending (highest risk first), and by finding ID within equal scores. Boundary values map to "
+           "the higher severity band (e.g., 7.0 = High, 9.0 = Critical).", "",
+           table(("ID", "Source", "Component", "Threat", "CVSS", "Exploit.", "Scale.", "Reach.", "Composite", "Severity", "SLA", "Disposition", "Flags"),
+                 [(f["id"], rows[f["id"]].get("source", "fresh"), f["comp"], clip(f["short"], 64), fmt1(rows[f["id"]]["cvss"]),
+                   fmt1(rows[f["id"]]["expl"]), fmt1(rows[f["id"]]["scale"]), fmt1(rows[f["id"]]["reach"]), fmt1(rows[f["id"]]["composite"]),
+                   rows[f["id"]]["band"], dash(rows[f["id"]]["sla"]), rows[f["id"]]["disposition"], flags_cell(rows[f["id"]])) for f in order]),
+           "", "> **Correlated findings**: For correlation groups (Section 4a of the source threat model), the primary finding is scored "
+           "independently. A NEW or UPDATED peer takes the primary's vector and scores. An UNCHANGED peer keeps its own score, and is flagged "
+           "`divergent` when that score differs from its primary's.", "", "---", ""]
+    if world["resolved"]:
+        raise ValueError("a renderer-form fixture with RESOLVED findings needs Section 2a, which no scenario has yet")
+    out += ["## 3. Dimensional Breakdown", "",
+            "Per-finding detail showing the full scoring rationale for each dimension. One subsection per open finding, ordered by composite "
+            "score descending (matching Section 2 sort order).", ""]
+    prose = dict(RENDERER_NARRATIVE)
+    for f in order:
+        r, comp = rows[f["id"]], by_name[f["comp"]]
+        metrics = vector_parts(r["vector"])
+        out += ["### %s %s %s" % (f["id"], EM, f["comp"]), "", "**Threat**: %s" % f["threat"], "",
+                "**Category**: %s | **Original Risk Level**: %s | **Composite**: %s (%s)" % (
+                    PREFIX_CATEGORY[f["prefix"]], f["risk"], fmt1(r["composite"]), r["band"]), ""]
+        if r.get("integrity"):
+            out += ["**Integrity**: %s" % ", ".join(r["integrity"]), ""]
+        out += ["#### CVSS 3.1 Base", "", "**Score**: %s | **Vector**: `%s`" % (fmt1(r["cvss"]), r["vector"]), "",
+                table(("Metric", "Value", "Rationale"), [(label, names[metrics[key]], EM) for key, label, names, _ in CVSS_METRICS]), "",
+                prose["rationale.cvss"], "",
+                "#### Exploitability", "", "**Score**: %s (average of sub-dimensions)" % fmt1(r["expl"]), "",
+                table(("Sub-Dimension", "Score", "Rationale"), [(name, v, EM) for (name, _), v in zip(EXPLOIT_PARTS, r["expl_sub"])]), "",
+                prose["rationale.exploitability"], "",
+                "#### Scalability", "", "**Score**: %s (average of sub-dimensions)" % fmt1(r["scale"]), "",
+                table(("Sub-Dimension", "Score", "Rationale"), [(name, v, EM) for (name, _), v in zip(SCALE_PARTS, r["scale_sub"])]), "",
+                prose["rationale.scalability"], "",
+                "#### Reachability", "", "**Score**: %s | **Trust Zone**: %s (%s)" % (fmt1(r["reach"]), comp["zone"], PART_TRUST[ZONE_LEVEL[comp["zone"]]]),
+                "", prose["rationale.reachability"], "", "---", ""]
     inputs = []
-    for fid in ids:
+    for fid in sorted(rows, key=prefix_rank):
         r = rows[fid]
         values = [("cvss_vector", r["vector"])]
         values += list(zip(("exploitability.known_techniques", "exploitability.attack_complexity", "exploitability.tooling_availability",
@@ -3573,17 +3713,27 @@ def renderer_form_md(world: dict, rows: dict) -> str:
                             "scalability.detection_difficulty"), r["scale_sub"]))
         values += [("reachability.zone", r["zone"]), ("reachability.trust_level", PART_TRUST[ZONE_LEVEL[r["zone"]]]),
                    ("reachability.auth_barriers", 0), ("reachability.network_boundaries", 0)]
-        values += [(key, text_) for key, text_ in narrative.items()]
+        values += list(RENDERER_NARRATIVE)
         if r.get("bounds") is not None:
             values.append(("score_bounds", "%s,%s" % (fmt1(r["bounds"][0]), fmt1(r["bounds"][1]))))
         values += [("tags", ",".join(sorted(r["tags_used"]))), ("scored_on", r["scored_on"])]
         inputs += [(fid, key, value) for key, value in values]
-    out += ["", "---", "", "## 6. Score Integrity", "",
-            "What the renderer changed or could not check, and the inputs it scored from. The next run reads its carried inputs from the last table.",
-            "", "### Integrity Summary", "", table(("Kind", "Count"), (("corrected", 0), ("retagged", 0), ("unchecked", 0), ("normalized", 0))),
-            "", "### Score Flags", "", table(("ID", "Flag", "Field", "Stored", "Rendered", "Cause"), []),
-            "", "### Input Issues", "", table(("ID", "Field", "Cause", "Detail"), []),
-            "", "### Scoring Inputs", "", table(("ID", "Field", "Value"), inputs)]
+    digest = hashlib.sha256(b"tachi fixture: tagged/renderer-form baseline, input of the scorer renderer").hexdigest()
+    out += ["## 4. Governance Fields", "",
+            "Remediation tracking metadata for each scored finding. Default values are severity-driven and intended for manual override by "
+            "security managers during risk review.", "",
+            table(("ID", "Severity", "Owner", "SLA", "Disposition", "Review Date"),
+                  [(f["id"], rows[f["id"]]["band"], rows[f["id"]].get("owner", "Unassigned"), dash(rows[f["id"]]["sla"]),
+                    rows[f["id"]]["disposition"], dash(rows[f["id"]]["review"])) for f in order]), "", "---", "",
+            SCORING_METHOD_11.rstrip("\n"), "", "---", "", "## 6. Score Integrity", "",
+            "What the renderer checked, corrected or could not check, and the inputs it scored from. A first run with no baseline has "
+            "nothing to correct, so its Score Flags table is empty.", "",
+            "### Integrity Summary", "", table(("Kind", "Cause", "Count"), []), "", "**Normalized (rounding only)**: 0", "",
+            "**Baseline source**: none", "", "**Tag source**: %s" % tag_source, "",
+            "### Score Flags", "", table(("ID", "Flag", "Field", "Stored", "Rendered", "Cause"), []), "",
+            "### Input Issues", "", "None.", "",
+            "### Scoring Inputs", "", table(("ID", "Field", "Value"), inputs), "",
+            "<!-- tachi-provenance: renderer=render-risk-scores.py; version=%s; input-digest=sha256:%s -->" % (STAMP_VERSION, digest)]
     return "\n".join(out)
 
 
@@ -4077,7 +4227,7 @@ def id_reuse_pr1_files() -> dict:
 
     ctx = {"tags": (), "run_date": RUN_DATE, "baseline_date": SCORED_ON, "compound_zones": ()}
     findings = {fid: finding_record(rows[fid], "clean", ctx) for fid in carried}
-    for fid, case, flags in (("T-4", "reused-id", [make_flag("reused-id", "finding_id", "baseline-id-reused", "T-4", None)]),
+    for fid, case, flags in (("T-4", "reused-id", [make_flag("reused-id", "finding_id", "baseline", "T-4", None)]),
                              ("T-5", "new-finding", [])):
         rendered = fresh_expectation(agent_inputs[fid], "T", (), RUN_DATE)
         record = {"case": case, "treatment": "agent", "prefix": "T", "component": next(f["comp"] for f in master["findings"] if f["id"] == fid),
@@ -4089,7 +4239,7 @@ def id_reuse_pr1_files() -> dict:
     findings["I-1"] = {"case": "resolved", "treatment": "resolved", "prefix": "I", "component": resolved_row["comp"], "form": "legacy",
                        "stored": values, "rendered": dict(values), "normalized": False, "d10_step": None,
                        "vector_sources": {"markdown": resolved_row["md_vector"], "sarif": None},
-                       "flags": [make_flag("resolved", None, None, basis="derived")]}
+                       "flags": [make_flag("resolved", None, None)]}
 
     run_world = replace_world_findings(master, carried + ("T-4", "T-5"), {"T-4": STATUS_NEW, "T-5": STATUS_NEW})
     base_findings = [f for f in master["findings"] if f["id"] in carried] + [old, resolved_as_finding(master, resolved_item)]
@@ -4215,7 +4365,8 @@ def ties_scorer_files() -> dict:
         "stored the lower neighbour.",
         "'tie-band-moves-*': the exact composite is 6.95, 8.95 or 3.95, so half-up gives 7.0, 9.0 or 4.0 and the stored 6.9, 8.9 or 3.9 is in "
         "the band below. The difference moves the band, so it is flagged corrected:severity_band:rounding and R-5 applies: the original "
-        "scoring date is kept, and the SLA, disposition and review date follow the new band. The composite flag is optional.",
+        "scoring date is kept, and the SLA, disposition and review date follow the new band. The composite's own change is normalized, "
+        "and only the band is flagged (D9).",
         "'tie-rounding-only': a mid-band tie whose lower neighbour is in the same band. The composite is normalized to the half-up value and "
         "counted in the run summary, never flagged per finding.",
         "'tie-stored-as-half-up' is the control: the baseline already stored the half-up value.",

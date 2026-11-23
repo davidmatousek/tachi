@@ -232,16 +232,7 @@
           "stored": "Low"
         },
         {
-          "basis": "optional",
-          "cause": "rounding",
-          "field": "composite_score",
-          "flag": "corrected:composite_score:rounding",
-          "kind": "corrected",
-          "rendered": "4.0",
-          "stored": "3.9"
-        },
-        {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -250,7 +241,7 @@
           "stored": "90d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -349,16 +340,7 @@
           "stored": "Medium"
         },
         {
-          "basis": "optional",
-          "cause": "rounding",
-          "field": "composite_score",
-          "flag": "corrected:composite_score:rounding",
-          "kind": "corrected",
-          "rendered": "7.0",
-          "stored": "6.9"
-        },
-        {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -367,7 +349,7 @@
           "stored": "30d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "risk_disposition",
           "flag": "corrected:risk_disposition:follows-band",
@@ -376,7 +358,7 @@
           "stored": "Review"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -435,16 +417,7 @@
           "stored": "High"
         },
         {
-          "basis": "optional",
-          "cause": "rounding",
-          "field": "composite_score",
-          "flag": "corrected:composite_score:rounding",
-          "kind": "corrected",
-          "rendered": "9.0",
-          "stored": "8.9"
-        },
-        {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -453,7 +426,7 @@
           "stored": "7d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -499,14 +472,15 @@
     }
   },
   "flag_reading": [
-    "A flag is kind:field:cause. Fields are the finding schema's names: cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability, cvss_vector.",
-    "Step reading of D9's causes: a changed cvss_base is 'vector', a changed composite_score is 'arithmetic', a changed severity_band is 'band-mapping' (or 'rounding' for a tie), and a changed remediation_sla, risk_disposition or review_date is 'follows-band'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves (ruling A).",
-    "basis 'pinned': the flag string appears in ADR-050, the spec or the contracts. 'derived': composed from that grammar by the reading above. 'optional': the renderer may add it or not, and a test must accept both.",
+    "A flag is kind:field:cause, and the field is the value whose status the flag describes, by its schemas/risk-scoring.yaml name: cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability.",
+    "The cause of a 'corrected' flag names the step that produced the field's new value: a changed cvss_base is 'vector', a changed composite_score is 'arithmetic', a changed severity_band is 'band-mapping' (or 'rounding' when only rounding moved the band), and a changed remediation_sla, risk_disposition or review_date is 'follows-band'. Where a fallback set the review date, 'baseline-date' or 'clock-restarted' replaces 'follows-band'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves (ruling A). A finding carries at most one flag per kind and field.",
+    "A rounding-only composite difference is normalized and counted and never flagged: only a band that it moves is flagged, as severity_band:rounding.",
+    "basis 'pinned': the string is in the closed vocabulary of contracts/module-signatures.md, and a test requires it. 'optional': the renderer may add the flag or not, and a test accepts both. Only the flags on a value that the input's form lacks are optional, because the cause for those is open (S-12(b), named by T032).",
     "A flag that the renderer adds and that is not listed is a defect of one side: the list is complete for the cases here."
   ],
   "notes": [
     "R-11. The weighted sum of a tie ends in exactly .x5 (6.95, 8.95, 3.95, mid-band values). The renderer rounds half up; this baseline stored the lower neighbour.",
-    "'tie-band-moves-*': the exact composite is 6.95, 8.95 or 3.95, so half-up gives 7.0, 9.0 or 4.0 and the stored 6.9, 8.9 or 3.9 is in the band below. The difference moves the band, so it is flagged corrected:severity_band:rounding and R-5 applies: the original scoring date is kept, and the SLA, disposition and review date follow the new band. The composite flag is optional.",
+    "'tie-band-moves-*': the exact composite is 6.95, 8.95 or 3.95, so half-up gives 7.0, 9.0 or 4.0 and the stored 6.9, 8.9 or 3.9 is in the band below. The difference moves the band, so it is flagged corrected:severity_band:rounding and R-5 applies: the original scoring date is kept, and the SLA, disposition and review date follow the new band. The composite's own change is normalized, and only the band is flagged (D9).",
     "'tie-rounding-only': a mid-band tie whose lower neighbour is in the same band. The composite is normalized to the half-up value and counted in the run summary, never flagged per finding.",
     "'tie-stored-as-half-up' is the control: the baseline already stored the half-up value.",
     "'boundary-exact-*': composites of exactly 7.0, 9.0 and 4.0 with no rounding. A boundary maps to the higher band, and nothing is flagged."

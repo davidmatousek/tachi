@@ -28,12 +28,12 @@
       "d10_step": 1,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "no-vector",
-          "field": "cvss_vector",
-          "flag": "unverifiable:cvss_vector:no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
           "kind": "unverifiable",
-          "rendered": null,
+          "rendered": "9.6",
           "stored": "9.6"
         }
       ],
@@ -78,7 +78,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -128,7 +128,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -137,7 +137,7 @@
           "stored": "High"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -146,7 +146,7 @@
           "stored": "7d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "risk_disposition",
           "flag": "corrected:risk_disposition:follows-band",
@@ -155,7 +155,7 @@
           "stored": "Mitigate"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -264,7 +264,7 @@
           "stored": "3.7"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -273,7 +273,7 @@
           "stored": "3.6"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -282,7 +282,7 @@
           "stored": "Low"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -291,7 +291,7 @@
           "stored": "90d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -421,12 +421,12 @@
       "d10_step": 5,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "bound-n17c",
           "field": "cvss_base",
           "flag": "unchecked:cvss_base:bound-n17c",
           "kind": "unchecked",
-          "rendered": null,
+          "rendered": "7.5",
           "stored": "7.5"
         }
       ],
@@ -521,7 +521,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -530,7 +530,7 @@
           "stored": "High"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -539,7 +539,7 @@
           "stored": "7d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "risk_disposition",
           "flag": "corrected:risk_disposition:follows-band",
@@ -548,7 +548,7 @@
           "stored": "Mitigate"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -598,7 +598,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -648,12 +648,12 @@
       "d10_step": 5,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "bound-n17c",
           "field": "cvss_base",
           "flag": "unchecked:cvss_base:bound-n17c",
           "kind": "unchecked",
-          "rendered": null,
+          "rendered": "8.3",
           "stored": "8.3"
         }
       ],
@@ -748,12 +748,12 @@
       "d10_step": 1,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "no-vector",
-          "field": "cvss_vector",
-          "flag": "unverifiable:cvss_vector:no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
           "kind": "unverifiable",
-          "rendered": null,
+          "rendered": "9.9",
           "stored": "9.9"
         }
       ],
@@ -1018,7 +1018,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -1027,7 +1027,7 @@
           "stored": "Low"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -1036,7 +1036,7 @@
           "stored": "90d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -1086,12 +1086,12 @@
       "d10_step": 5,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "bound-n17c",
           "field": "cvss_base",
           "flag": "unchecked:cvss_base:bound-n17c",
           "kind": "unchecked",
-          "rendered": null,
+          "rendered": "7.2",
           "stored": "7.2"
         }
       ],
@@ -1136,12 +1136,12 @@
       "d10_step": 1,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "no-vector",
-          "field": "cvss_vector",
-          "flag": "unverifiable:cvss_vector:no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
           "kind": "unverifiable",
-          "rendered": null,
+          "rendered": "6.5",
           "stored": "6.5"
         }
       ],
@@ -1236,7 +1236,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -1286,7 +1286,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "human",
           "field": "risk_disposition",
           "flag": "override:risk_disposition:human",
@@ -1386,12 +1386,12 @@
       "d10_step": 5,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "bound-n17c",
           "field": "cvss_base",
           "flag": "unchecked:cvss_base:bound-n17c",
           "kind": "unchecked",
-          "rendered": null,
+          "rendered": "7.2",
           "stored": "7.2"
         }
       ],
@@ -1526,12 +1526,12 @@
       "d10_step": 1,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "no-vector",
-          "field": "cvss_vector",
-          "flag": "unverifiable:cvss_vector:no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
           "kind": "unverifiable",
-          "rendered": null,
+          "rendered": "8.5",
           "stored": "8.5"
         }
       ],
@@ -1585,7 +1585,7 @@
           "stored": "5.8"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -1635,7 +1635,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -1644,7 +1644,7 @@
           "stored": "High"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -1653,7 +1653,7 @@
           "stored": "7d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "risk_disposition",
           "flag": "corrected:risk_disposition:follows-band",
@@ -1662,7 +1662,7 @@
           "stored": "Mitigate"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -1712,7 +1712,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -1842,7 +1842,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -1892,7 +1892,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -1901,7 +1901,7 @@
           "stored": "Low"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -1910,7 +1910,7 @@
           "stored": "90d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -2100,12 +2100,12 @@
       "d10_step": 1,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "no-vector",
-          "field": "cvss_vector",
-          "flag": "unverifiable:cvss_vector:no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
           "kind": "unverifiable",
-          "rendered": null,
+          "rendered": "3.8",
           "stored": "3.8"
         }
       ],
@@ -2190,12 +2190,12 @@
       "d10_step": 5,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "bound-n17c",
           "field": "cvss_base",
           "flag": "unchecked:cvss_base:bound-n17c",
           "kind": "unchecked",
-          "rendered": null,
+          "rendered": "8.9",
           "stored": "8.9"
         }
       ],
@@ -2330,12 +2330,12 @@
       "d10_step": 5,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "bound-n17c",
           "field": "cvss_base",
           "flag": "unchecked:cvss_base:bound-n17c",
           "kind": "unchecked",
-          "rendered": null,
+          "rendered": "7.5",
           "stored": "7.5"
         }
       ],
@@ -2470,7 +2470,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -2479,7 +2479,7 @@
           "stored": "High"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -2488,7 +2488,7 @@
           "stored": "7d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "risk_disposition",
           "flag": "corrected:risk_disposition:follows-band",
@@ -2497,7 +2497,7 @@
           "stored": "Mitigate"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -2547,12 +2547,12 @@
       "d10_step": 1,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "no-vector",
-          "field": "cvss_vector",
-          "flag": "unverifiable:cvss_vector:no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
           "kind": "unverifiable",
-          "rendered": null,
+          "rendered": "8.7",
           "stored": "8.7"
         }
       ],
@@ -2637,7 +2637,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -2727,7 +2727,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -2877,12 +2877,12 @@
       "d10_step": 5,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "bound-n17c",
           "field": "cvss_base",
           "flag": "unchecked:cvss_base:bound-n17c",
           "kind": "unchecked",
-          "rendered": null,
+          "rendered": "5.3",
           "stored": "5.3"
         }
       ],
@@ -2927,7 +2927,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -2936,7 +2936,7 @@
           "stored": "Low"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -2945,7 +2945,7 @@
           "stored": "90d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -2995,12 +2995,12 @@
       "d10_step": 1,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "no-vector",
-          "field": "cvss_vector",
-          "flag": "unverifiable:cvss_vector:no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
           "kind": "unverifiable",
-          "rendered": null,
+          "rendered": "8.2",
           "stored": "8.2"
         }
       ],
@@ -3125,7 +3125,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -3175,12 +3175,12 @@
       "d10_step": 1,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "no-vector",
-          "field": "cvss_vector",
-          "flag": "unverifiable:cvss_vector:no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
           "kind": "unverifiable",
-          "rendered": null,
+          "rendered": "8.2",
           "stored": "8.2"
         }
       ],
@@ -3225,7 +3225,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -3234,7 +3234,7 @@
           "stored": "High"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -3243,7 +3243,7 @@
           "stored": "7d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "risk_disposition",
           "flag": "corrected:risk_disposition:follows-band",
@@ -3252,7 +3252,7 @@
           "stored": "Mitigate"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -3392,12 +3392,12 @@
       "d10_step": 5,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "bound-n17c",
           "field": "cvss_base",
           "flag": "unchecked:cvss_base:bound-n17c",
           "kind": "unchecked",
-          "rendered": null,
+          "rendered": "5.3",
           "stored": "5.3"
         }
       ],
@@ -3712,7 +3712,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "human",
           "field": "remediation_sla",
           "flag": "override:remediation_sla:human",
@@ -3762,7 +3762,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -3771,7 +3771,7 @@
           "stored": "Medium"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -3780,7 +3780,7 @@
           "stored": "30d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -3830,7 +3830,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -3880,12 +3880,12 @@
       "d10_step": 5,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "bound-n17c",
           "field": "cvss_base",
           "flag": "unchecked:cvss_base:bound-n17c",
           "kind": "unchecked",
-          "rendered": null,
+          "rendered": "6.1",
           "stored": "6.1"
         }
       ],
@@ -3970,12 +3970,12 @@
       "d10_step": 1,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "no-vector",
-          "field": "cvss_vector",
-          "flag": "unverifiable:cvss_vector:no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
           "kind": "unverifiable",
-          "rendered": null,
+          "rendered": "6.5",
           "stored": "6.5"
         }
       ],
@@ -4120,12 +4120,12 @@
       "d10_step": 1,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "no-vector",
-          "field": "cvss_vector",
-          "flag": "unverifiable:cvss_vector:no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
           "kind": "unverifiable",
-          "rendered": null,
+          "rendered": "8.2",
           "stored": "8.2"
         }
       ],
@@ -4260,12 +4260,12 @@
       "d10_step": 5,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "bound-n17c",
           "field": "cvss_base",
           "flag": "unchecked:cvss_base:bound-n17c",
           "kind": "unchecked",
-          "rendered": null,
+          "rendered": "8.9",
           "stored": "8.9"
         }
       ],
@@ -4310,7 +4310,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -4490,7 +4490,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -4499,7 +4499,7 @@
           "stored": "Low"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -4508,7 +4508,7 @@
           "stored": "90d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -4558,7 +4558,7 @@
       "d10_step": null,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": null,
           "field": null,
           "flag": "resolved",
@@ -4608,7 +4608,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -4617,7 +4617,7 @@
           "stored": "Low"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -4626,7 +4626,7 @@
           "stored": "90d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -4716,7 +4716,7 @@
       "d10_step": null,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": null,
           "field": null,
           "flag": "resolved",
@@ -4856,7 +4856,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -4956,12 +4956,12 @@
       "d10_step": 1,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "no-vector",
-          "field": "cvss_vector",
-          "flag": "unverifiable:cvss_vector:no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
           "kind": "unverifiable",
-          "rendered": null,
+          "rendered": "6.3",
           "stored": "6.3"
         }
       ],
@@ -5006,12 +5006,12 @@
       "d10_step": 5,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "bound-n17c",
           "field": "cvss_base",
           "flag": "unchecked:cvss_base:bound-n17c",
           "kind": "unchecked",
-          "rendered": null,
+          "rendered": "8.9",
           "stored": "8.9"
         }
       ],
@@ -5186,7 +5186,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "band-mapping",
           "field": "severity_band",
           "flag": "corrected:severity_band:band-mapping",
@@ -5195,7 +5195,7 @@
           "stored": "High"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "remediation_sla",
           "flag": "corrected:remediation_sla:follows-band",
@@ -5204,7 +5204,7 @@
           "stored": "7d"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "risk_disposition",
           "flag": "corrected:risk_disposition:follows-band",
@@ -5213,7 +5213,7 @@
           "stored": "Mitigate"
         },
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "follows-band",
           "field": "review_date",
           "flag": "corrected:review_date:follows-band",
@@ -5263,12 +5263,12 @@
       "d10_step": 5,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "bound-n17c",
           "field": "cvss_base",
           "flag": "unchecked:cvss_base:bound-n17c",
           "kind": "unchecked",
-          "rendered": null,
+          "rendered": "8.3",
           "stored": "8.3"
         }
       ],
@@ -5313,7 +5313,7 @@
       "d10_step": 3,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "arithmetic",
           "field": "composite_score",
           "flag": "corrected:composite_score:arithmetic",
@@ -5403,12 +5403,12 @@
       "d10_step": 1,
       "flags": [
         {
-          "basis": "derived",
+          "basis": "pinned",
           "cause": "no-vector",
-          "field": "cvss_vector",
-          "flag": "unverifiable:cvss_vector:no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
           "kind": "unverifiable",
-          "rendered": null,
+          "rendered": "7.9",
           "stored": "7.9"
         }
       ],
@@ -5539,16 +5539,17 @@
     }
   },
   "flag_reading": [
-    "A flag is kind:field:cause. Fields are the finding schema's names: cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability, cvss_vector.",
-    "Step reading of D9's causes: a changed cvss_base is 'vector', a changed composite_score is 'arithmetic', a changed severity_band is 'band-mapping' (or 'rounding' for a tie), and a changed remediation_sla, risk_disposition or review_date is 'follows-band'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves (ruling A).",
-    "basis 'pinned': the flag string appears in ADR-050, the spec or the contracts. 'derived': composed from that grammar by the reading above. 'optional': the renderer may add it or not, and a test must accept both.",
+    "A flag is kind:field:cause, and the field is the value whose status the flag describes, by its schemas/risk-scoring.yaml name: cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability.",
+    "The cause of a 'corrected' flag names the step that produced the field's new value: a changed cvss_base is 'vector', a changed composite_score is 'arithmetic', a changed severity_band is 'band-mapping' (or 'rounding' when only rounding moved the band), and a changed remediation_sla, risk_disposition or review_date is 'follows-band'. Where a fallback set the review date, 'baseline-date' or 'clock-restarted' replaces 'follows-band'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves (ruling A). A finding carries at most one flag per kind and field.",
+    "A rounding-only composite difference is normalized and counted and never flagged: only a band that it moves is flagged, as severity_band:rounding.",
+    "basis 'pinned': the string is in the closed vocabulary of contracts/module-signatures.md, and a test requires it. 'optional': the renderer may add the flag or not, and a test accepts both. Only the flags on a value that the input's form lacks are optional, because the cause for those is open (S-12(b), named by T032).",
     "A flag that the renderer adds and that is not listed is a defect of one side: the list is complete for the cases here."
   ],
   "notes": [
     "Every finding of run/threats.md is UNCHANGED and has a row in the baseline: the renderer carries all of them. Nothing is routed to the agent.",
     "baseline/threats.md is the baseline run's file cut to Sections 2, 4c and 7 and the Affected Assets block. R-6's resolver needs it to exist; the scorer reads only baseline/risk-scores.md.",
     "The baseline has no risk-scores.sarif, so a missing vector has no second source and stays missing.",
-    "Case 'bad-vector' stores a CVSS cell that its vector does not give, with the composite the right cell gives: one flag, no cascade. Cases 'cascade-composite' and 'cascade-band' store the composite that the wrong cell gives, so the correction moves the composite, and for 'cascade-band' the band: their composite and band flags follow the step reading in flag_reading.",
+    "Case 'bad-vector' stores a CVSS cell that its vector does not give, with the composite the right cell gives: one flag, no cascade. Cases 'cascade-composite' and 'cascade-band' store the composite that the wrong cell gives, so the correction moves the composite, and for 'cascade-band' the band: the composite and band flags are the ones that flag_reading's causes name.",
     "Case 'rounding-only' stores the lower neighbour of an exact x.x5 composite, in the middle of a band: the difference is normalized and counted, never flagged (R-11).",
     "Case 'resolved-wrong-composite': these two baseline rows belong to findings that Section 4c of the run lists as RESOLVED. R-30 keeps their last-known values verbatim, so the wrong composite is neither recomputed nor flagged; the row is marked resolved.",
     "Case 'compound-label': Section 2 labels the zone 'Semi-trusted / Trusted', so the reachability range check is N17-dependent and is reported as unchecked, never as a violation (R-10).",
