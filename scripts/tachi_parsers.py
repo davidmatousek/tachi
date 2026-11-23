@@ -10,9 +10,11 @@ consistent, cross-output-identical parsing of the same source artifacts.
 
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
+import json
 import re
 import sys
 from pathlib import Path
+from typing import Iterable, Optional
 
 # The reference-set reader below checks IDs against tachi_parts' allow-list. A sibling is found beside this file,
 # whether this module is imported flat (`tachi_parsers`) or as `scripts.tachi_parsers` (ADR-050 D3, C1).
@@ -374,7 +376,8 @@ def classify_maestro_coverage_state(finding_count: int, highest_severity: str) -
 # Generic Table Parsers
 # =============================================================================
 
-def parse_markdown_table(content: str, section_header: str = None, start_line: int = None, skipped: list = None) -> list:
+def parse_markdown_table(content: str, section_header: str = None, start_line: int = None, skipped: list = None,
+                         row_lines: list = None) -> list:
     """Parse a markdown table found after a section header.
 
     Args:
@@ -391,6 +394,9 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
             row dropped as malformed (fewer cells than the header) is appended
             to it, so a caller that can't afford to lose a row (the F-374
             reference set) can tell. The default leaves every caller unchanged.
+        row_lines: An optional list. When given, the 1-based line number of each *returned* row is appended to
+            it, in step with the returned rows, so a caller that reports a problem with one row (the Section 4a
+            reader) can name its line. The default leaves every caller unchanged.
 
     Returns:
         List of dicts, one per row, with keys from the header row.
@@ -491,6 +497,8 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
         for j, col in enumerate(columns):
             row[col] = cells[j] if j < len(cells) else ""
         rows.append(row)
+        if row_lines is not None:
+            row_lines.append(i + 1)
 
     return rows
 
@@ -1364,6 +1372,294 @@ def parse_reference_set(content: str, source: str = "threats.md") -> dict:
     resolved = _checked_findings(parse_resolved_findings(content), "Section 4c (Resolved Findings)", source, seen, repeated)
     return {"open": open_rows, "resolved": resolved,
             "duplicates": sorted(repeated, key=tachi_parts.finding_sort_key)}
+
+
+# =============================================================================
+# Correlation groups (F-374 D8, T048) and the SARIF fallback reader (T142)
+# =============================================================================
+
+# Section 4a at heading level 2 or 3, with or without "Section": `## 4a.`, `### 4a.` and `## Section 4a:` are the
+# forms that tachi's shipped samples show.
+_CORRELATION_SECTION = r"^#{2,3}\s+(?:Section\s+)?4a[.:]"
+
+
+def _assign_correlation_groups(raw_groups, members) -> list:
+    """D8's four rules, written once for both readers of correlation groups.
+
+    ``raw_groups`` is ``(group ID, listed member IDs)`` in file order, every member ID canonical. ``members`` is the
+    file's member set, or ``None`` for no filtering. Groups keep their order, and members their listed order. The
+    first group that lists an ID claims it, even if that group then falls away (so a later group never takes the ID
+    over). The primary is the first member left after filtering to ``members``. A group left with fewer than two
+    members is omitted. ``sarif_common.correlation_assignments`` re-applies the same rules to what this returns, and
+    one test runs the same edge cases through both.
+    """
+    claimed: set = set()
+    groups = []
+    for group_id, listed in raw_groups:
+        own = []
+        for member in listed:
+            if member not in claimed:
+                claimed.add(member)
+                own.append(member)
+        remaining = [member for member in own if members is None or member in members]
+        if len(remaining) >= 2:
+            groups.append({"group_id": group_id, "primary": remaining[0], "members": remaining})
+    return groups
+
+
+def parse_correlation_groups(content: str, member_ids: Optional[Iterable[str]] = None) -> dict:
+    """The correlation groups of a ``threats.md`` Section 4a, by D8's rules (ADR-050 D8).
+
+    Returns ``{"groups": [{"group_id", "primary", "members"}], "errors": [{"line", "row", "reason"}]}``.
+
+    * **Order.** Groups come in Section 4a's order. ``members`` are canonical IDs in listed order, the primary first.
+    * **The claim.** The first group that lists an ID claims it, even if that group then falls away. So a later group
+      never takes the ID over, and an ID claimed by a group that falls away stays uncorrelated.
+    * **The primary** is the first member left after filtering to ``member_ids`` (no filtering when ``None``).
+    * **A group left with fewer than two members** is omitted.
+
+    This is the one authority for those four rules. The scorer's routing and peer inheritance and both renderers'
+    SARIF correlation use its result, and ``sarif_common.correlation_assignments``, which re-applies the rules to the
+    groups it is given, agrees with it.
+
+    A row is skipped and listed in ``errors`` (``line`` is 1-based, ``row`` is the row as written, cut at 200
+    characters) when its group ID isn't ``CG-N`` (``CG-[0-9]{1,6}``), when any member isn't a finding ID, when it lists
+    no findings, when it has fewer cells than the table's header, or when it repeats an earlier row's group ID, so
+    that each group ID names one group and one primary. A skipped row claims nothing. An empty or dash-only
+    placeholder row is dropped without a report. A missing Section 4a, one with no table, and an empty one all give
+    ``{"groups": [], "errors": []}``.
+
+    The section is read from its first table: the first column is the group and the second holds the
+    comma-separated findings, as in every shipped sample. Its cells are decoded as :func:`parse_markdown_table`
+    decodes them. A ``member_ids`` entry that isn't a finding ID raises ``ValueError``, because the caller took it
+    from the reference set.
+    """
+    result: dict = {"groups": [], "errors": []}
+    start = match_heading(_CORRELATION_SECTION, content) if isinstance(content, str) and content else None
+    if start is None:
+        return result
+    members = None if member_ids is None else {tachi_parts.canonical_finding_id(member) for member in member_ids}
+    skipped: list = []
+    at: list = []
+    rows = parse_markdown_table(content, start_line=start, skipped=skipped, row_lines=at)
+    problems = [(line, "has fewer cells than the table's header") for line in skipped]
+    raw_groups = []
+    first_line: dict = {}
+    for row, line in zip(rows, at):
+        cells = list(row.values())
+        if len(cells) < 2:
+            problems.append((line, "has no Group and Findings cells"))
+            continue
+        group_cell, findings_cell = cells[0], cells[1]
+        if is_placeholder_id(group_cell) and is_placeholder_id(findings_cell):
+            continue
+        if not tachi_parts.id_matches("group", group_cell):
+            problems.append((line, "names %r, which is not a correlation group ID" % group_cell[:40]))
+            continue
+        if is_placeholder_id(findings_cell):
+            problems.append((line, "lists no findings"))
+            continue
+        listed = [token.strip() for token in findings_cell.split(",")]
+        bad = next((token for token in listed if not tachi_parts.id_matches("finding", token)), None)
+        if bad is not None:
+            problems.append((line, "names %r, which is not a finding ID" % bad[:40]))
+            continue
+        if group_cell in first_line:
+            problems.append((line, "repeats group ID %s, first listed at line %d" % (group_cell, first_line[group_cell])))
+            continue
+        first_line[group_cell] = line
+        raw_groups.append((group_cell, [tachi_parts.canonical_finding_id(token) for token in listed]))
+    result["groups"] = _assign_correlation_groups(raw_groups, members)
+    if problems:
+        text_lines = content.split("\n")
+        result["errors"] = [{"line": line, "row": text_lines[line - 1].strip()[:200], "reason": reason}
+                            for line, reason in sorted(problems)]
+    return result
+
+
+# A legacy peer reference: an allow-listed finding ID at the start of a relatedLocations entry's message text,
+# followed by ": " (sarif-specification.md, "Correlated Finding Mapping").
+_SARIF_PEER_REFERENCE = re.compile("(?P<id>%s): " % tachi_parts.ID_PATTERNS["finding"], re.ASCII)
+# The property names that the shipped risk-scores.sarif files use for a result's composite score and its band. The
+# generator writes `composite` and `severity_band`, the agent contract (risk-scorer.md section 10g) has
+# `security-severity` and `severity-band`, and one older sample writes `severity`.
+_SARIF_COMPOSITE_PROPERTIES = ("composite", "security-severity")
+_SARIF_BAND_PROPERTIES = ("severity-band", "severity_band", "severity")
+_SARIF_BANDS = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low"}
+
+
+def _refuse_json_constant(name: str):
+    raise ValueError("%s is not allowed" % name)
+
+
+def _bounded_json_int(text: str) -> int:
+    if len(text.lstrip("-")) > tachi_parts.MAX_INT_DIGITS:
+        raise ValueError("integer literal of more than %d digits" % tachi_parts.MAX_INT_DIGITS)
+    return int(text)
+
+
+def _load_sarif(sarif_text) -> object:
+    """``json.loads`` with D3's hooks: no ``NaN`` or ``Infinity``, floats as ``Decimal``, integers bounded, and a
+    size backstop. Every way it can fail is a ``ValueError`` that never echoes the text."""
+    if not isinstance(sarif_text, str):
+        raise ValueError("the SARIF is not text")
+    if len(sarif_text) > tachi_parts.MAX_AGENT_INPUT_BYTES:
+        raise ValueError("the SARIF is over the %d byte cap" % tachi_parts.MAX_AGENT_INPUT_BYTES)
+    try:
+        return json.loads(sarif_text, parse_float=Decimal, parse_int=_bounded_json_int, parse_constant=_refuse_json_constant)
+    except (ValueError, ArithmeticError, RecursionError):
+        raise ValueError("the SARIF is not valid JSON") from None
+
+
+def _sarif_composite(properties: dict) -> Optional[Decimal]:
+    """A result's composite score from the first property that holds a finite number from 0 to 10, else ``None``."""
+    for name in _SARIF_COMPOSITE_PROPERTIES:
+        value = properties.get(name)
+        if isinstance(value, str):
+            value = parse_score(value)
+        elif isinstance(value, (int, Decimal)) and not isinstance(value, bool):
+            value = Decimal(value)
+        else:
+            continue
+        if value is not None and value.is_finite() and Decimal(0) <= value <= Decimal(10):
+            return value
+    return None
+
+
+def _sarif_band(properties: dict) -> Optional[str]:
+    """A result's band, as ``Critical``, ``High``, ``Medium`` or ``Low``, from the first property that names one."""
+    for name in _SARIF_BAND_PROPERTIES:
+        value = properties.get(name)
+        if isinstance(value, str) and value.strip().lower() in _SARIF_BANDS:
+            return _SARIF_BANDS[value.strip().lower()]
+    return None
+
+
+def _sarif_is_absent(result: dict, properties: dict) -> bool:
+    """True for a RESOLVED result: ``absent`` as the result's own ``baselineState``, or as a ``baselineState`` or
+    ``baseline-state`` property (R-30)."""
+    return any(isinstance(source.get(key), str) and source[key].strip().lower() == "absent"
+               for source, key in ((result, "baselineState"), (properties, "baselineState"), (properties, "baseline-state")))
+
+
+def _sarif_entry(result: dict, properties: dict, fingerprints: dict, finding_id: str) -> dict:
+    """What one kept result says about correlation: its group ID, its role, its primary and its legacy peer references."""
+    group = properties.get("correlation-group")
+    if not tachi_parts.id_matches("group", group):
+        group = fingerprints.get("correlationGroup")  # the legacy spelling, in partialFingerprints
+    role = properties.get("correlation-role")
+    primary = properties.get("correlation-primary")
+    references = []
+    related = result.get("relatedLocations")
+    for location in related if isinstance(related, list) else []:
+        message = location.get("message") if isinstance(location, dict) else None
+        text = message.get("text") if isinstance(message, dict) else None
+        match = _SARIF_PEER_REFERENCE.match(text) if isinstance(text, str) else None
+        if match is not None:
+            references.append(tachi_parts.canonical_finding_id(match.group("id")))
+    return {
+        "id": finding_id,
+        "group": group if tachi_parts.id_matches("group", group) else None,
+        "role": role if role in ("primary", "peer") else None,
+        "primary": tachi_parts.canonical_finding_id(primary) if tachi_parts.id_matches("finding", primary) else None,
+        "references": [reference for reference in references if reference != finding_id],
+        "composite": _sarif_composite(properties),
+        "band": _sarif_band(properties),
+    }
+
+
+def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False) -> dict:
+    """D8's fallback reader: the member set, the groups and (for ``risk-scores.sarif``) the scores of a SARIF file.
+
+    Returns ``{"members": [...], "groups": [...], "scores": {...}}``.
+
+    * ``members`` are canonical finding IDs: each ``runs[0].results[]`` entry's ``partialFingerprints["findingId/v1"]``
+      (a result without an allow-listed one is ignored, and no hash is ever read), in result order, each ID once.
+      A legacy peer reference follows its result: an allow-listed ID at the start of a ``relatedLocations`` entry's
+      ``message.text``, followed by ``: ``.
+    * Results whose ``baselineState`` (as the result's own key or a property) or ``baseline-state`` property is
+      ``absent`` are RESOLVED, and appear nowhere: not as members, not as references, not in a group, not in scores.
+    * ``groups`` take the shape :func:`parse_correlation_groups` returns, from D8's one set of rules. A group comes
+      from the ``correlation-group``, ``correlation-role`` and ``correlation-primary`` properties, from a result that
+      has only ``correlation-primary`` (the form older samples show: a peer names its primary), or from a legacy
+      primary and its peer references. ``group_id`` is the ``correlation-group`` property, or the legacy
+      ``correlationGroup`` fingerprint, and is ``None`` where the file names none. One group ID names one group.
+      Named groups come in group-number order (``CG-1`` before ``CG-2``, which is Section 4a's order, so an ID that
+      two groups list goes to the same group as in the Section 4a reader), then the unnamed ones in the order their
+      first result appears.
+    * ``scores`` is ``{}`` unless ``with_scores``. Then each member that has a result maps to
+      ``{"composite": Decimal or None, "band": str or None}``, from the first such result. The composite is read from
+      ``composite`` or ``security-severity``, the band from ``severity-band``, ``severity_band`` or ``severity``. A
+      value that isn't a number from 0 to 10, or a band name, is ``None``.
+
+    It raises ``ValueError`` on text that is not JSON (no ``NaN`` or ``Infinity``, an integer of over 20 digits, or
+    nesting too deep) and on an empty extraction, so the stage stops before dispatch (KB 22). Nothing else raises:
+    a result of any other shape is skipped.
+    """
+    document = _load_sarif(sarif_text)
+    runs = document.get("runs") if isinstance(document, dict) else None
+    run = runs[0] if isinstance(runs, list) and runs else None
+    results = run.get("results") if isinstance(run, dict) else None
+    entries = []
+    kept: set = set()
+    dropped: set = set()
+    for result in results if isinstance(results, list) else []:
+        if not isinstance(result, dict):
+            continue
+        properties = result.get("properties") if isinstance(result.get("properties"), dict) else {}
+        fingerprints = result.get("partialFingerprints") if isinstance(result.get("partialFingerprints"), dict) else {}
+        identifier = fingerprints.get("findingId/v1")
+        if not tachi_parts.id_matches("finding", identifier):
+            continue
+        finding_id = tachi_parts.canonical_finding_id(identifier)
+        if _sarif_is_absent(result, properties):
+            dropped.add(finding_id)
+            continue
+        kept.add(finding_id)
+        entries.append(_sarif_entry(result, properties, fingerprints, finding_id))
+    resolved = dropped - kept
+    members: list = []
+    scores: dict = {}
+    seen: set = set()
+    for entry in entries:
+        for member in [entry["id"]] + [reference for reference in entry["references"] if reference not in resolved]:
+            if member not in seen:
+                seen.add(member)
+                members.append(member)
+        if with_scores and entry["id"] not in scores:
+            scores[entry["id"]] = {"composite": entry["composite"], "band": entry["band"]}
+    if not members:
+        raise ValueError("the SARIF holds no open finding: no result in runs[0] has a findingId/v1 that isn't absent")
+    # One group per primary (or, where no primary is named, per group ID), in the order its first result appears.
+    records: dict = {}
+    for entry in entries:
+        references = [reference for reference in entry["references"] if reference not in resolved]
+        if references or entry["role"] == "primary" or entry["primary"] == entry["id"]:
+            primary, peers = entry["id"], references
+        elif entry["primary"] is not None:
+            primary, peers = entry["primary"], [entry["id"]]
+        elif entry["group"] is not None:
+            primary, peers = None, [entry["id"]]
+        else:
+            continue
+        key = ("primary", primary) if primary is not None else ("group", entry["group"])
+        record = records.setdefault(key, {"group_id": None, "primary": primary, "members": []})
+        if record["group_id"] is None:
+            record["group_id"] = entry["group"]
+        record["members"].extend(([primary] if primary is not None else []) + peers)
+    named: dict = {}
+    unnamed: list = []
+    for record in records.values():
+        ordered = [record["primary"]] if record["primary"] is not None else []
+        ordered.extend(member for member in dict.fromkeys(record["members"]) if member != record["primary"])
+        if record["group_id"] is None:
+            unnamed.append((None, ordered))
+        else:
+            named.setdefault(record["group_id"], []).extend(ordered)  # one group ID names one group
+    # Named groups in group-number order, which is Section 4a's order, so the claim goes where the Section 4a reader
+    # gives it. Then the groups the file doesn't name, in the order their first result appears.
+    raw_groups = [(group_id, list(dict.fromkeys(named[group_id]))) for group_id in sorted(named, key=lambda g: int(g[3:]))]
+    return {"members": members, "groups": _assign_correlation_groups(raw_groups + unnamed, set(members)), "scores": scores}
 
 
 # Tier 2 referential-integrity validator: resolves each record's id against

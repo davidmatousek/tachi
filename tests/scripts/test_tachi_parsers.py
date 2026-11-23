@@ -34,6 +34,7 @@ Stdlib-only per PAT-014 — no PyYAML, no Path operations beyond importlib.
 from __future__ import annotations
 
 import ast
+import json
 import random
 import re
 import sys
@@ -46,6 +47,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
+import sarif_common  # noqa: E402  -- correlation_assignments re-applies D8's rules, and one test runs both
 import tachi_parts  # noqa: E402  -- the escapers whose references the decoder reverses
 
 from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
@@ -73,6 +75,8 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     parse_reference_set,
     decode_references,
     parse_attack_chains,
+    parse_correlation_groups,
+    parse_sarif_member_set,
     strip_bold,
     _find_table_with_column,
 )
@@ -1331,3 +1335,573 @@ def test_the_guard_flags_a_row_split_that_is_not_decoded():
     assert _raw_pipe_splits('cells = [c.strip() for c in line.split("|")[1:-1]]') == ([1], [1])
     assert _raw_pipe_splits('cells = line.split("|")') == ([1], [1])
     assert _raw_pipe_splits('cells = [decode_references(c) for c in other]\nparts = line.split(",")') == ([], [])
+
+
+# =============================================================================
+# Feature 374 (W2, T048): the Section 4a reader, parse_correlation_groups (ADR-050 D8)
+#
+# One authority for D8's four rules: order, the claim, the primary and the two-member minimum. The scorer's routing
+# and both renderers' SARIF correlation use its result, and sarif_common.correlation_assignments re-applies the same
+# rules to the groups it is given, so one test runs the same edge cases through both.
+# =============================================================================
+
+_GROUP_HEADER = "| Group | Findings | Component | Threat Summary | Risk Level |\n|---|---|---|---|---|"
+
+
+def _group_row(group, findings):
+    return "| %s | %s | Gateway | Tampering: a summary | High |" % (group, findings)
+
+
+def _section_4a(rows, heading="## 4a. Correlated Findings", prose="Correlation rules applied: CR-1.", header=_GROUP_HEADER):
+    """A small threats.md around Section 4a. The tables before and after it must never be read as groups."""
+    return "\n".join([
+        "# Report", "", "## 3. Findings", "", "| Group | Findings |", "|---|---|", "| CG-90 | S-90, T-90 |", "",
+        heading, "", prose, "", header] + list(rows) + [
+        "", "## 5. Risk Summary", "", "| Group | Findings |", "|---|---|", "| CG-91 | S-91, T-91 |", ""])
+
+
+def _group(group_id, members):
+    return {"group_id": group_id, "primary": members[0], "members": members}
+
+
+def test_groups_keep_section_4as_order_and_members_their_listed_order_with_the_primary_first():
+    content = _section_4a([_group_row("CG-2", "T-2, LLM-4"), _group_row("CG-1", "E-2, R-3, AG-1"), _group_row("CG-3", "I-1, S-5")])
+    assert parse_correlation_groups(content) == {
+        "groups": [_group("CG-2", ["T-2", "LLM-4"]), _group("CG-1", ["E-2", "R-3", "AG-1"]), _group("CG-3", ["I-1", "S-5"])],
+        "errors": []}, "file order, not number order; listed order, not S-2 order"
+
+
+def test_members_are_canonical_and_the_group_id_is_kept_as_written():
+    content = _section_4a([_group_row("CG-01", "AGP-01, T-2"), _group_row("CG-2", "**LLM-3**, I-04")])
+    assert parse_correlation_groups(content)["groups"] == [_group("CG-01", ["AGP-1", "T-2"]), _group("CG-2", ["LLM-3", "I-4"])]
+
+
+def test_members_are_filtered_to_the_member_set_and_the_first_one_left_is_the_primary():
+    content = _section_4a([_group_row("CG-1", "S-1, T-2, I-3"), _group_row("CG-2", "E-4, D-5"), _group_row("CG-3", "R-6, AG-7, LLM-8")])
+    groups = parse_correlation_groups(content, ["T-2", "I-3", "E-4", "R-6", "LLM-8", "S-99"])["groups"]
+    assert groups == [_group("CG-1", ["T-2", "I-3"]), _group("CG-3", ["R-6", "LLM-8"])], \
+        "S-1 is not a member, so T-2 is the primary; CG-2 keeps only E-4 and is omitted"
+    assert parse_correlation_groups(content, [])["groups"] == [], "an empty member set leaves no group, unlike None"
+    assert len(parse_correlation_groups(content, None)["groups"]) == 3 and len(parse_correlation_groups(content)["groups"]) == 3
+    assert parse_correlation_groups(content, ["AGP-01"])["groups"] == [], "a member set takes any spelling of an ID"
+    assert parse_correlation_groups(_section_4a([_group_row("CG-1", "AGP-1, S-1")]), ["AGP-01", "S-01"])["groups"] == [
+        _group("CG-1", ["AGP-1", "S-1"])]
+    with pytest.raises(ValueError):
+        parse_correlation_groups(content, ["S-1", "not an ID"])
+
+
+def test_a_group_of_fewer_than_two_emits_nothing_and_it_is_not_an_error():
+    result = parse_correlation_groups(_section_4a([_group_row("CG-1", "S-1"), _group_row("CG-2", "T-2, T-2")]))
+    assert result == {"groups": [], "errors": []}
+
+
+def test_a_member_listed_in_two_groups_stays_in_the_first():
+    """The shipped maestro-reference shape: AG-7 is in CG-1 and CG-2, so CG-2 is left with E-7 alone and falls away."""
+    content = _section_4a([_group_row("CG-1", "T-7, AG-7"), _group_row("CG-2", "E-7, AG-7"), _group_row("CG-3", "I-7, LLM-1, AG-7")])
+    assert parse_correlation_groups(content)["groups"] == [_group("CG-1", ["T-7", "AG-7"]), _group("CG-3", ["I-7", "LLM-1"])]
+
+
+def test_a_first_group_that_falls_away_still_claims_its_ids():
+    """D8's literal reading, ruled at W1: a later group never takes the ID over, and the ID stays uncorrelated."""
+    alone = _section_4a([_group_row("CG-1", "S-1"), _group_row("CG-2", "S-1, T-2")])
+    assert parse_correlation_groups(alone)["groups"] == [], "CG-1 has one member and omits itself, but S-1 is claimed"
+    filtered = _section_4a([_group_row("CG-1", "S-1, T-2"), _group_row("CG-2", "S-1, I-3, E-4")])
+    assert parse_correlation_groups(filtered, ["S-1", "I-3", "E-4"])["groups"] == [_group("CG-2", ["I-3", "E-4"])], \
+        "T-2 is not a member, so CG-1 falls away; it still claims S-1"
+    chain = _section_4a([_group_row("CG-1", "S-1, T-2"), _group_row("CG-2", "T-2, I-3"), _group_row("CG-3", "I-3, E-4, D-5")])
+    assert parse_correlation_groups(chain)["groups"] == [_group("CG-1", ["S-1", "T-2"]), _group("CG-3", ["E-4", "D-5"])], \
+        "CG-2 falls away, and still claims I-3"
+
+
+def test_an_id_listed_twice_in_one_group_counts_once_even_under_two_spellings():
+    content = _section_4a([_group_row("CG-1", "AGP-01, AGP-1, S-1, S-1")])
+    assert parse_correlation_groups(content)["groups"] == [_group("CG-1", ["AGP-1", "S-1"])]
+
+
+@pytest.mark.parametrize("row,reason", [
+    (_group_row("CG-X", "S-1, T-2"), "names 'CG-X', which is not a correlation group ID"),
+    (_group_row("CG-1234567", "S-1, T-2"), "names 'CG-1234567', which is not a correlation group ID"),
+    (_group_row("cg-1", "S-1, T-2"), "names 'cg-1', which is not a correlation group ID"),
+    (_group_row("_{CG-N}_", "_{comma-separated finding IDs}_"), "names '_{CG-N}_', which is not a correlation group ID"),
+    (_group_row("", "S-1, T-2"), "names '', which is not a correlation group ID"),
+    (_group_row("CG-1", "S-1, X-2"), "names 'X-2', which is not a finding ID"),
+    (_group_row("CG-1", "S-1, T-2,"), "names '', which is not a finding ID"),
+    (_group_row("CG-1", "S-1 T-2"), "names 'S-1 T-2', which is not a finding ID"),
+    (_group_row("CG-1", "S-1, T-" + chr(0x661)), "names 'T-" + chr(0x661) + "', which is not a finding ID"),
+    (_group_row("CG-1", "S-1, T-1234567"), "names 'T-1234567', which is not a finding ID"),
+    (_group_row("CG-1", ""), "lists no findings"),
+    (_group_row("CG-1", "—"), "lists no findings"),
+    ("| CG-1 |", "has fewer cells than the table's header"),
+], ids=["bad-group", "seven-digit-group", "lower-case-group", "template-placeholder", "empty-group", "bad-member", "trailing-comma",
+        "no-separator", "unicode-digit", "seven-digit-member", "empty-findings", "dash-findings", "short-row"])
+def test_a_malformed_row_is_skipped_and_listed_with_its_line_and_the_other_rows_still_parse(row, reason, capsys):
+    content = _section_4a([_group_row("CG-5", "S-5, T-5"), row, _group_row("CG-6", "I-6, E-6")])
+    lines = content.split("\n")
+    at = lines.index(row) + 1
+    result = parse_correlation_groups(content)
+    assert result["groups"] == [_group("CG-5", ["S-5", "T-5"]), _group("CG-6", ["I-6", "E-6"])]
+    assert result["errors"] == [{"line": at, "row": row, "reason": reason}]
+    assert lines[at - 1] == row, "the line is 1-based"
+    capsys.readouterr()
+
+
+def test_a_skipped_row_claims_nothing_and_a_repeated_group_id_is_reported():
+    content = _section_4a([_group_row("CG-1", "S-1, X-9"), _group_row("CG-2", "S-1, T-2"), _group_row("CG-2", "I-3, E-4"),
+                           _group_row("CG-3", "I-3, E-4")])
+    lines = content.split("\n")
+    result = parse_correlation_groups(content)
+    assert result["groups"] == [_group("CG-2", ["S-1", "T-2"]), _group("CG-3", ["I-3", "E-4"])], \
+        "the bad row lost nothing to a claim, and the repeat of CG-2 is out, so I-3 and E-4 are CG-3's"
+    assert [(e["line"], e["reason"]) for e in result["errors"]] == [
+        (lines.index(_group_row("CG-1", "S-1, X-9")) + 1, "names 'X-9', which is not a finding ID"),
+        (lines.index(_group_row("CG-2", "I-3, E-4")) + 1,
+         "repeats group ID CG-2, first listed at line %d" % (lines.index(_group_row("CG-2", "S-1, T-2")) + 1))]
+
+
+def test_a_placeholder_row_is_dropped_without_a_report_and_a_long_row_is_cut():
+    content = _section_4a(["| — | — | — | — | — |", "|  |  | | | |", _group_row("CG-1", "S-1, T-2"),
+                           _group_row("CG-2", "S-3, " + "T-" * 300)])
+    result = parse_correlation_groups(content)
+    assert result["groups"] == [_group("CG-1", ["S-1", "T-2"])]
+    (error,) = result["errors"]
+    assert len(error["row"]) == 200 and len(error["reason"]) < 80, "nothing long is echoed, in the row or in the reason"
+
+
+@pytest.mark.parametrize("content", [
+    "", "# Report\n\n## 7. Recommended Actions\n\n| ID | X |\n|---|---|\n| S-1 | y |\n",
+    _section_4a([]), _section_4a([], prose="> No cross-agent correlations detected."),
+    "## 4a. Correlated Findings\n\nNo table here at all.\n\n## 5. Next\n\n| Group | Findings |\n|---|---|\n| CG-1 | S-1, T-2 |\n",
+    "## Section 4a: Correlated Findings\n\n**Cross-agent correlations detected**: NONE in this baseline.\n\n---\n\n## Section 5: Risk\n",
+    "## 4a. Correlated Findings\n",
+], ids=["empty", "no-section", "header-only-table", "zero-correlation-form", "prose-only-then-a-later-table", "section-form-prose-only", "heading-only"])
+def test_a_missing_or_empty_section_4a_means_no_groups_and_no_errors(content):
+    assert parse_correlation_groups(content) == {"groups": [], "errors": []}
+    assert parse_correlation_groups(content, ["S-1", "T-2"]) == {"groups": [], "errors": []}
+
+
+def test_section_4a_is_not_a_group_table_when_the_text_is_not_a_string():
+    assert parse_correlation_groups(None) == {"groups": [], "errors": []}
+
+
+@pytest.mark.parametrize("heading", ["## 4a. Correlated Findings", "### 4a. Correlated Findings", "## Section 4a: Correlated Findings",
+                                     "## 4a. Correlation Groups", "### Section 4a. Correlated Findings"])
+def test_the_three_heading_forms_that_the_shipped_samples_show_are_read(heading):
+    content = _section_4a([_group_row("CG-1", "T-10, LLM-1, LLM-2")], heading=heading)
+    assert parse_correlation_groups(content)["groups"] == [_group("CG-1", ["T-10", "LLM-1", "LLM-2"])]
+
+
+@pytest.mark.parametrize("heading", ["#### 4a. Correlated Findings", "## 4b. Findings by Agentic Pattern", "## 4ab. Other", "## 4. Coverage",
+                                     "## Correlated Findings"])
+def test_a_heading_that_is_not_section_4a_is_not_read(heading):
+    assert parse_correlation_groups(_section_4a([_group_row("CG-1", "S-1, T-2")], heading=heading)) == {"groups": [], "errors": []}
+
+
+def test_only_the_first_table_of_the_section_is_read_and_a_level_three_section_stops_at_the_next_level_three_heading():
+    two = _section_4a([_group_row("CG-1", "S-1, T-2"), "", "| Group | Findings |", "|---|---|", "| CG-2 | I-3, E-4 |"])
+    assert [g["group_id"] for g in parse_correlation_groups(two)["groups"]] == ["CG-1"]
+    stops = _section_4a([], heading="### 4a. Correlated Findings").replace("## 5. Risk Summary", "### 4b. Patterns")
+    assert parse_correlation_groups(stops) == {"groups": [], "errors": []}, "the later table is another section's"
+
+
+def test_a_section_4a_table_with_one_column_has_no_group_and_no_findings_cells_and_every_row_is_listed():
+    content = _section_4a(["| CG-1 |", "| CG-2 |"], header="| Group |\n|---|")
+    result = parse_correlation_groups(content)
+    assert result["groups"] == [] and [e["reason"] for e in result["errors"]] == ["has no Group and Findings cells"] * 2
+    assert [e["row"] for e in result["errors"]] == ["| CG-1 |", "| CG-2 |"]
+
+
+def test_the_section_4a_cells_are_decoded_like_every_other_table():
+    content = _section_4a(["| **CG-1** | S-1, T-2 | Gate &amp; Way | A &lt; B | High |"])
+    assert parse_correlation_groups(content)["groups"] == [_group("CG-1", ["S-1", "T-2"])]
+
+
+def test_parse_markdown_table_reports_the_line_of_each_row_it_returns(capsys):
+    content = "## X\n\n| A | B |\n|---|---|\n| 1 | 2 |\n| short |\n| 3 | 4 |\n"
+    at, skipped = [], []
+    rows = parse_markdown_table(content, "## X", skipped=skipped, row_lines=at)
+    assert [row["A"] for row in rows] == ["1", "3"] and at == [5, 7] and skipped == [6]
+    assert parse_markdown_table(content, "## X") == rows, "the default is as it always was"
+    capsys.readouterr()
+
+
+# ---- the same edge cases through both implementations --------------------------------------------------------
+
+_AGREEMENT_CASES = {
+    "plain": ([("CG-1", ["S-1", "T-2"]), ("CG-2", ["I-3", "E-4", "AG-5"])], None),
+    "a-member-in-two-groups": ([("CG-1", ["T-7", "AG-7"]), ("CG-2", ["E-7", "AG-7"]), ("CG-3", ["I-7", "LLM-1", "AG-7"])], None),
+    "first-group-falls-away-on-the-member-set": ([("CG-1", ["S-1", "T-2"]), ("CG-2", ["S-1", "I-3", "E-4"])], ["S-1", "I-3", "E-4"]),
+    "first-group-falls-away-alone": ([("CG-1", ["S-1"]), ("CG-2", ["S-1", "T-2"])], None),
+    "an-id-outside-the-member-set-claims": ([("CG-1", ["D-9", "S-1"]), ("CG-2", ["S-1", "T-2", "I-3"])], ["S-1", "T-2", "I-3"]),
+    "a-chain-of-falling-groups": ([("CG-1", ["S-1", "T-2"]), ("CG-2", ["T-2", "I-3"]), ("CG-3", ["I-3", "E-4", "D-5"])], None),
+    "repeats-in-one-group": ([("CG-1", ["S-1", "S-1", "T-2"])], None),
+    "two-spellings": ([("CG-1", ["AGP-01", "T-2"]), ("CG-2", ["AGP-1", "I-3"])], ["AGP-1", "T-2", "I-3"]),
+    "the-primary-is-not-a-member": ([("CG-1", ["S-1", "T-2", "I-3"])], ["T-2", "I-3"]),
+    "file-order-not-number-order": ([("CG-2", ["S-1", "T-2"]), ("CG-1", ["T-2", "I-3"])], None),
+    "every-member-filtered": ([("CG-1", ["S-1", "T-2"])], []),
+    "no-groups": ([], None),
+}
+
+
+def _as_assignments(groups):
+    """What each group gives each member, the way correlation_assignments keys it."""
+    out = {}
+    for group in groups:
+        peers = tuple(group["members"][1:])
+        out[group["primary"]] = sarif_common.Correlation(group["group_id"], "primary", group["primary"], peers)
+        for peer in peers:
+            out[peer] = sarif_common.Correlation(group["group_id"], "peer", group["primary"], ())
+    return out
+
+
+@pytest.mark.parametrize("name", sorted(_AGREEMENT_CASES))
+def test_the_section_4a_reader_and_the_sarif_emitters_assignments_agree(name):
+    """The architect's W1 ruling: parse_correlation_groups is the one authority, and correlation_assignments, which
+    only assigns roles, re-applies the same rules and must give the same answer on the same input."""
+    raw_groups, member_ids = _AGREEMENT_CASES[name]
+    content = _section_4a([_group_row(group_id, ", ".join(listed)) for group_id, listed in raw_groups])
+    everyone = member_ids if member_ids is not None else sorted({tachi_parts.canonical_finding_id(i) for _, ids in raw_groups for i in ids})
+    parsed = parse_correlation_groups(content, member_ids)
+    assert parsed["errors"] == []
+    from_the_file = _as_assignments(parsed["groups"])
+    assert sarif_common.correlation_assignments(raw_groups, everyone) == from_the_file, "the same raw groups, in the emitter"
+    assert sarif_common.correlation_assignments([(g["group_id"], g["members"]) for g in parsed["groups"]], everyone) == from_the_file, \
+        "what the parser returns goes through the emitter unchanged"
+
+
+def test_the_edge_cases_come_out_as_d8_reads_them():
+    """Pins what the two implementations agree on, so a change to both together is still a decision."""
+    by_name = {name: parse_correlation_groups(
+        _section_4a([_group_row(group_id, ", ".join(listed)) for group_id, listed in raw]), member_ids)["groups"]
+        for name, (raw, member_ids) in _AGREEMENT_CASES.items()}
+    assert by_name["a-member-in-two-groups"] == [_group("CG-1", ["T-7", "AG-7"]), _group("CG-3", ["I-7", "LLM-1"])]
+    assert by_name["first-group-falls-away-on-the-member-set"] == [_group("CG-2", ["I-3", "E-4"])]
+    assert by_name["first-group-falls-away-alone"] == []
+    assert by_name["an-id-outside-the-member-set-claims"] == [_group("CG-2", ["T-2", "I-3"])]
+    assert by_name["a-chain-of-falling-groups"] == [_group("CG-1", ["S-1", "T-2"]), _group("CG-3", ["E-4", "D-5"])]
+    assert by_name["two-spellings"] == [_group("CG-1", ["AGP-1", "T-2"])]
+    assert by_name["the-primary-is-not-a-member"] == [_group("CG-1", ["T-2", "I-3"])]
+    assert by_name["file-order-not-number-order"] == [_group("CG-2", ["S-1", "T-2"])]
+    assert by_name["every-member-filtered"] == [] and by_name["no-groups"] == []
+
+
+# ---- the shipped samples ---------------------------------------------------------------------------------------
+
+def _example_threats(relative):
+    return (REPO_ROOT / "examples" / relative / "threats.md").read_text(encoding="utf-8")
+
+
+def test_every_shipped_section_4a_reads_without_an_error():
+    paths = sorted((REPO_ROOT / "examples").rglob("threats.md"))
+    assert len(paths) >= 10
+    for path in paths:
+        assert parse_correlation_groups(path.read_text(encoding="utf-8"))["errors"] == [], path.relative_to(REPO_ROOT).as_posix()
+
+
+def test_the_shipped_samples_that_show_the_drift_forms_and_a_shared_member():
+    maestro = parse_correlation_groups(_example_threats("maestro-reference"))["groups"]
+    assert [g["group_id"] for g in maestro] == ["CG-1", "CG-3", "CG-4", "CG-5", "CG-6"], \
+        "AG-7 is listed in CG-1 and CG-2, so CG-2 is left with E-7 and falls away"
+    assert maestro[0] == _group("CG-1", ["T-7", "AG-7"])
+    predictive = parse_correlation_groups(_example_threats("predictive-ml-app/sample-report"))["groups"]
+    assert predictive[0] == _group("CG-1", ["T-10", "LLM-1", "LLM-2"]) and len(predictive) == 4, "a level-3 heading"
+    assert parse_correlation_groups(_example_threats("consumer-agent-app/sample-report")) == {"groups": [], "errors": []}, \
+        "`## Section 4a:` with prose and no table"
+    agentic = parse_correlation_groups(_example_threats("agentic-app"))["groups"]
+    assert agentic[2] == _group("CG-3", ["E-2", "R-3", "AG-1"]), "listed order, not S-2 order"
+    for relative in ("web-app", "microservices", "ascii-web-api", "mermaid-agentic-app", "free-text-microservice"):
+        assert parse_correlation_groups(_example_threats(relative)) == {"groups": [], "errors": []}, relative
+
+
+# =============================================================================
+# Feature 374 (W2, T142): the SARIF fallback reader, parse_sarif_member_set (ADR-050 D8, AR-T2)
+#
+# The member set, the groups and (for risk-scores.sarif) the scores of a SARIF file, for a stage whose markdown input
+# is absent. It reads the new form (correlation properties), the form older samples show (a peer names its primary)
+# and the legacy form (peer references in relatedLocations). A hash is never read, and an empty extraction raises.
+# =============================================================================
+
+def _result(finding_id, properties=None, related=None, fingerprints=None, **extra):
+    result = {"ruleId": "tachi/stride/tampering", "message": {"text": "A finding."}, "level": "error",
+              "partialFingerprints": {"primaryLocationLineHash": "0123456789abcdef:1", "findingId/v1": finding_id}}
+    if fingerprints is not None:
+        result["partialFingerprints"].update(fingerprints)
+    if properties is not None:
+        result["properties"] = properties
+    if related is not None:
+        result["relatedLocations"] = [{"id": index, "message": {"text": text}} for index, text in enumerate(related)]
+    result.update(extra)
+    return result
+
+
+def _sarif(*results, **run):
+    return json.dumps({"version": "2.1.0", "runs": [dict({"results": list(results)}, **run)]})
+
+
+def _correlated(group, role, primary):
+    return {"correlation-group": group, "correlation-role": role, "correlation-primary": primary}
+
+
+def test_the_new_form_gives_members_in_result_order_and_its_groups_from_the_correlation_properties():
+    text = _sarif(
+        _result("S-1", _correlated("CG-1", "primary", "S-1")), _result("T-2"), _result("I-3", _correlated("CG-1", "peer", "S-1")),
+        _result("AGP-01", _correlated("CG-2", "peer", "LLM-4")), _result("LLM-4", _correlated("CG-2", "primary", "LLM-4")))
+    assert parse_sarif_member_set(text) == {
+        "members": ["S-1", "T-2", "I-3", "AGP-1", "LLM-4"],
+        "groups": [_group("CG-1", ["S-1", "I-3"]), _group("CG-2", ["LLM-4", "AGP-1"])],
+        "scores": {}}
+
+
+def test_the_legacy_form_groups_each_peer_reference_under_its_result():
+    text = _sarif(
+        _result("S-1", fingerprints={"correlationGroup": "CG-1"},
+                related=["T-3: API Gateway session data may be tampered with", "I-2: may leak tokens", "Control evidence: auth in a.py"]),
+        _result("E-5"))
+    assert parse_sarif_member_set(text) == {
+        "members": ["S-1", "T-3", "I-2", "E-5"], "groups": [_group("CG-1", ["S-1", "T-3", "I-2"])], "scores": {}}
+    unnamed = parse_sarif_member_set(_sarif(_result("S-1", related=["T-3: a threat"])))
+    assert unnamed["groups"] == [_group(None, ["S-1", "T-3"])], "`None` where the file names no group"
+
+
+@pytest.mark.parametrize("text,is_a_reference", [
+    ("T-3: a summary", True), ("AGP-12: a summary", True), ("AGP-012: a summary", True), ("LLM-1: x", True),
+    ("T-3:no space", False), ("T-3 : space before", False), ("see T-3: later", False), (" T-3: leading space", False),
+    ("t-3: lower case", False), ("X-3: unknown prefix", False), ("T-1234567: seven digits", False), ("T-: no number", False),
+    ("T-" + chr(0x663) + ": unicode digit", False), ("Control evidence: authentication detected in a.py", False), ("", False),
+])
+def test_a_legacy_peer_reference_is_an_allow_listed_id_at_the_start_followed_by_a_colon_and_a_space(text, is_a_reference):
+    members = parse_sarif_member_set(_sarif(_result("S-1", related=[text])))["members"]
+    assert (len(members) == 2) is is_a_reference, members
+
+
+def test_the_form_that_older_samples_show_has_a_peer_name_its_primary_with_no_group_id():
+    text = _sarif(_result("E-2"), _result("AG-1", {"correlation-primary": "E-2"}), _result("R-3", {"correlation-primary": "E-2"}),
+                  _result("D-1"))
+    assert parse_sarif_member_set(text)["groups"] == [_group(None, ["E-2", "AG-1", "R-3"])]
+
+
+def test_a_result_that_names_only_its_group_is_grouped_under_the_first_member_as_primary():
+    text = _sarif(_result("T-2", {"correlation-group": "CG-4"}), _result("S-1", {"correlation-group": "CG-4"}), _result("E-3"))
+    assert parse_sarif_member_set(text)["groups"] == [_group("CG-4", ["T-2", "S-1"])]
+
+
+def test_a_bad_group_role_or_primary_is_ignored_not_an_error():
+    text = _sarif(_result("S-1", _correlated("group-1", "boss", "S-1")), _result("T-2", _correlated("CG-1", "peer", "nope")),
+                  _result("I-3", _correlated("CG-1", "peer", "T-2")))
+    assert parse_sarif_member_set(text)["groups"] == [_group("CG-1", ["T-2", "I-3"])]
+
+
+@pytest.mark.parametrize("marker", [
+    {"properties": {"baselineState": "absent"}}, {"properties": {"baseline-state": "absent"}}, {"baselineState": "absent"},
+    {"properties": {"baselineState": " Absent "}},
+], ids=["property", "hyphenated-property", "result-key", "case-and-space"])
+def test_an_absent_result_is_resolved_and_appears_nowhere(marker):
+    gone = _result("S-1", dict(_correlated("CG-1", "primary", "S-1"), **marker.get("properties", {})))
+    gone.update({key: value for key, value in marker.items() if key != "properties"})
+    text = _sarif(gone, _result("T-2", _correlated("CG-1", "peer", "S-1")), _result("I-3", _correlated("CG-1", "peer", "S-1")),
+                  _result("E-4", related=["S-1: a resolved finding", "D-5: still open"]),
+                  _result("R-6", {"baselineState": "new"}), _result("AG-7", {"baselineState": "unchanged", "baseline-state": "updated"}))
+    result = parse_sarif_member_set(text, with_scores=True)
+    assert result["members"] == ["T-2", "I-3", "E-4", "D-5", "R-6", "AG-7"], "S-1 is neither a result nor a reference"
+    assert result["groups"] == [_group("CG-1", ["T-2", "I-3"]), _group(None, ["E-4", "D-5"])], \
+        "S-1 was the primary: T-2 is the first member left. E-4 keeps D-5 and loses the reference to S-1"
+    assert "S-1" not in result["scores"] and set(result["scores"]) == {"T-2", "I-3", "E-4", "R-6", "AG-7"}
+    assert "S-1" not in json.dumps(result)
+
+
+def test_an_id_with_one_absent_result_and_one_that_is_not_stays():
+    text = _sarif(_result("S-1", {"baselineState": "absent"}), _result("S-1", {"baselineState": "new"}), _result("T-2"))
+    assert parse_sarif_member_set(text)["members"] == ["S-1", "T-2"]
+
+
+@pytest.mark.parametrize("properties,composite,band", [
+    ({"composite": 8.2, "security-severity": "8.2", "severity_band": "High"}, Decimal("8.2"), "High"),
+    ({"security-severity": "7.8", "severity-band": "high"}, Decimal("7.8"), "High"),
+    ({"composite": 8.4, "security-severity": "8.4", "severity": "Critical"}, Decimal("8.4"), "Critical"),
+    ({"composite": "n/a", "security-severity": "6.1", "severity": "MEDIUM"}, Decimal("6.1"), "Medium"),
+    ({"composite": 11, "security-severity": "3.4", "severity-band": "weird", "severity_band": "Low"}, Decimal("3.4"), "Low"),
+    ({"composite": 9}, Decimal(9), None),
+    ({"composite": 0}, Decimal(0), None),
+    ({"composite": 10.0}, Decimal(10), None),
+    ({"composite": True, "severity-band": True}, None, None),
+    ({"security-severity": "NaN"}, None, None),
+    ({"security-severity": "Infinity"}, None, None),
+    ({"security-severity": "-0.1"}, None, None),
+    ({"composite": 10.1}, None, None),
+    ({"security-severity": "1e999"}, None, None),
+    ({"composite": [8.2], "severity-band": "Note"}, None, None),
+    ({"cvss-base-score": "9.8"}, None, None),
+    ({}, None, None),
+])
+def test_scores_read_the_property_names_the_shipped_files_use(properties, composite, band):
+    result = parse_sarif_member_set(_sarif(_result("S-1", properties)), with_scores=True)
+    score = result["scores"]["S-1"]
+    assert score == {"composite": composite, "band": band}
+    assert composite is None or isinstance(score["composite"], Decimal)
+
+
+def test_scores_are_only_for_the_results_that_exist_and_the_first_result_of_an_id_wins():
+    text = _sarif(_result("S-1", {"security-severity": "8.2"}, related=["T-3: a peer with no result"]),
+                  _result("S-1", {"security-severity": "1.0"}), _result("AGP-01", {"security-severity": "5.5"}))
+    assert parse_sarif_member_set(text, with_scores=True)["scores"] == {
+        "S-1": {"composite": Decimal("8.2"), "band": None}, "AGP-1": {"composite": Decimal("5.5"), "band": None}}
+    assert parse_sarif_member_set(text)["scores"] == {}, "no scores unless asked"
+    assert parse_sarif_member_set(text, with_scores=False)["scores"] == {}
+
+
+def test_a_hash_is_never_read_and_a_result_has_an_id_only_from_its_finding_id_fingerprint():
+    kept = _result("S-1", fingerprints={"primaryLocationLineHash": "not even a hash"})
+    only_a_hash = {"ruleId": "x", "message": {"text": "m"}, "partialFingerprints": {"primaryLocationLineHash": "0123456789abcdef:1"}}
+    in_a_property = {"ruleId": "x", "message": {"text": "m"}, "properties": {"id": "T-2", "findingId": "I-3"}}
+    bad_ids = [_result(bad) for bad in (1, None, "", "S-1a", "S-" + chr(0x661), "S-1234567", "X-1", " S-1", "S-1\n", ["S-1"])]
+    result = parse_sarif_member_set(_sarif(kept, only_a_hash, in_a_property, *bad_ids))
+    assert result["members"] == ["S-1"]
+    assert "0123456789abcdef" not in json.dumps(result)
+
+
+def test_an_id_is_one_member_under_any_spelling_and_only_the_first_run_counts():
+    text = json.dumps({"runs": [{"results": [_result("AGP-01"), _result("AGP-1"), _result("T-2"), _result("T-2")]},
+                                {"results": [_result("S-1")]}]})
+    assert parse_sarif_member_set(text)["members"] == ["AGP-1", "T-2"]
+
+
+def test_a_result_of_any_other_shape_is_skipped_and_never_raises():
+    with_odd_locations = _result("T-2")
+    with_odd_locations["relatedLocations"] = [None, 5, {"message": "T-3: x"}, {"message": {"text": 4}}, {"message": {"text": "I-4: ok"}}]
+    odd = [None, 3, "S-1", [], {"partialFingerprints": "S-1"}, {"partialFingerprints": {"findingId/v1": "S-1"}, "properties": ["x"],
+                                                                  "relatedLocations": {"a": 1}}, with_odd_locations]
+    result = parse_sarif_member_set(json.dumps({"runs": [{"results": odd}]}), with_scores=True)
+    assert result["members"] == ["S-1", "T-2", "I-4"]
+    assert result["scores"]["S-1"] == {"composite": None, "band": None}
+
+
+def test_named_groups_come_in_number_order_then_the_unnamed_in_first_appearance_order_and_a_group_id_names_one_group():
+    text = _sarif(
+        _result("T-2", _correlated("CG-2", "primary", "T-2")), _result("I-3", _correlated("CG-2", "peer", "T-2")),
+        _result("D-8", {"correlation-primary": "R-9"}), _result("R-9"),
+        _result("S-1", _correlated("CG-10", "primary", "S-1")), _result("E-4", _correlated("CG-10", "peer", "S-1")),
+        _result("AG-5", _correlated("CG-1", "primary", "AG-5")), _result("LLM-6", _correlated("CG-1", "peer", "AG-5")),
+        _result("OI-7", _correlated("CG-10", "primary", "OI-7")))
+    assert parse_sarif_member_set(text)["groups"] == [
+        _group("CG-1", ["AG-5", "LLM-6"]), _group("CG-2", ["T-2", "I-3"]), _group("CG-10", ["S-1", "E-4", "OI-7"]),
+        _group(None, ["R-9", "D-8"])], "CG-10 has two primaries in the file, and is one group with the first"
+
+
+def test_the_claim_rule_holds_in_the_fallback_with_the_groups_in_section_order():
+    """Two legacy primaries both list AG-7. The lower group number claims it, as the Section 4a reader gives it."""
+    text = _sarif(_result("E-7", fingerprints={"correlationGroup": "CG-2"}, related=["AG-7: x", "I-7: y"]),
+                  _result("T-7", fingerprints={"correlationGroup": "CG-1"}, related=["AG-7: z"]))
+    assert parse_sarif_member_set(text)["groups"] == [_group("CG-1", ["T-7", "AG-7"]), _group("CG-2", ["E-7", "I-7"])]
+    only_one = _sarif(_result("E-7", fingerprints={"correlationGroup": "CG-2"}, related=["AG-7: x"]),
+                      _result("T-7", fingerprints={"correlationGroup": "CG-1"}, related=["AG-7: z"]))
+    assert parse_sarif_member_set(only_one)["groups"] == [_group("CG-1", ["T-7", "AG-7"])], "CG-2 is left with E-7 and falls away"
+
+
+@pytest.mark.parametrize("text", [
+    "", "   ", "not json", "{", '{"runs": [', "[1, 2", "{'runs': []}", '{"a": NaN}', '{"a": Infinity}', '{"a": -Infinity}',
+    '{"a": ' + "9" * 25 + "}", "[" * 200000, '{"a":' * 5000 + "1" + "}" * 5000, '{"a": 1e999999999999999999999999}',
+])
+def test_text_that_is_not_json_raises_value_error_and_never_echoes_it(text):
+    with pytest.raises(ValueError) as raised:
+        parse_sarif_member_set(text)
+    assert len(str(raised.value)) < 120
+
+
+def test_the_error_for_bad_text_does_not_echo_it():
+    with pytest.raises(ValueError) as raised:
+        parse_sarif_member_set("SECRET-TOKEN {")
+    assert "SECRET" not in str(raised.value)
+
+
+def test_text_over_the_size_cap_raises_value_error(monkeypatch):
+    text = _sarif(_result("S-1"))
+    assert parse_sarif_member_set(text)["members"] == ["S-1"]
+    monkeypatch.setattr(tachi_parts, "MAX_AGENT_INPUT_BYTES", len(text) - 1)
+    with pytest.raises(ValueError) as raised:
+        parse_sarif_member_set(text)
+    assert "cap" in str(raised.value)
+
+
+@pytest.mark.parametrize("value", [None, 5, b"{}", ["runs"], {"runs": []}])
+def test_a_value_that_is_not_text_raises_value_error(value):
+    with pytest.raises(ValueError):
+        parse_sarif_member_set(value)
+
+
+@pytest.mark.parametrize("document", [
+    {}, [], "text", 5, None, {"runs": []}, {"runs": {}}, {"runs": [None]}, {"runs": [{}]}, {"runs": [{"results": []}]},
+    {"runs": [{"results": {}}]}, {"runs": [{"results": [None, 3, "x"]}]},
+    {"runs": [{"results": [{"partialFingerprints": {"primaryLocationLineHash": "0123456789abcdef:1"}}]}]},
+    {"runs": [{"results": [_result("S-1", {"baselineState": "absent"}), _result("T-2", {"baseline-state": "absent"})]}]},
+    {"runs": [{"results": []}, {"results": [_result("S-1")]}]},
+], ids=["empty-object", "list", "string", "number", "null", "no-runs", "runs-object", "null-run", "run-without-results", "empty-results",
+        "results-object", "results-of-junk", "hash-only", "all-absent", "results-only-in-run-two"])
+def test_an_empty_extraction_raises_so_the_stage_stops_before_dispatch(document):
+    with pytest.raises(ValueError) as raised:
+        parse_sarif_member_set(json.dumps(document, default=str))
+    assert "no open finding" in str(raised.value) and "findingId/v1" in str(raised.value) and len(str(raised.value)) < 120
+
+
+def test_the_reader_is_deterministic_and_returns_fresh_objects():
+    text = _sarif(_result("S-1", {"security-severity": "8.2"}), _result("T-2", _correlated("CG-1", "peer", "S-1")))
+    first, second = parse_sarif_member_set(text, with_scores=True), parse_sarif_member_set(text, with_scores=True)
+    assert first == second and first is not second and first["members"] is not second["members"]
+
+
+# ---- the shipped samples ---------------------------------------------------------------------------------------
+
+def _shipped_sarif(relative):
+    return (REPO_ROOT / "examples" / relative).read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("relative", [
+    "agentic-app/sample-report/risk-scores.sarif", "agentic-app/sample-report/compensating-controls.sarif",
+    "agentic-app/sample-report/threats.sarif", "consumer-agent-app/sample-report/risk-scores.sarif",
+    "maestro-reference/risk-scores.sarif", "maestro-reference/compensating-controls.sarif", "maestro-reference/threats.sarif",
+    "mobile-banking-app/sample-report/risk-scores.sarif", "mobile-banking-app/sample-report/compensating-controls.sarif",
+    "agentic-app/test-output/2026-03-25T12-53-57/threats.sarif",
+])
+def test_a_shipped_sarif_that_carries_finding_ids_reads_as_the_distinct_ids_plus_its_legacy_references(relative):
+    text = _shipped_sarif(relative)
+    results = json.loads(text)["runs"][0]["results"]
+    distinct = {tachi_parts.canonical_finding_id(r["partialFingerprints"]["findingId/v1"]) for r in results}
+    references = set()
+    for result in results:
+        for location in result.get("relatedLocations", []):
+            match = re.match(r"([A-Z]+-[0-9]+): ", location["message"]["text"])
+            if match:
+                references.add(tachi_parts.canonical_finding_id(match.group(1)))
+    members = parse_sarif_member_set(text, with_scores=relative.endswith("risk-scores.sarif"))["members"]
+    assert len(members) == len(set(members)) == len(distinct | references)
+    assert set(members) == distinct | references
+
+
+@pytest.mark.parametrize("relative", [
+    "mobile-banking-app/sample-report/threats.sarif", "predictive-ml-app/sample-report/threats.sarif",
+    "predictive-ml-app/sample-report/risk-scores.sarif", "predictive-ml-app/sample-report/compensating-controls.sarif"])
+def test_a_shipped_sarif_with_no_findingid_fingerprint_is_an_empty_extraction(relative):
+    """These older samples identify a result by `properties.id` alone. D8 reads `findingId/v1`, so a stage that falls
+    back to one of them stops before dispatch, with the error."""
+    with pytest.raises(ValueError):
+        parse_sarif_member_set(_shipped_sarif(relative))
+
+
+def test_the_scores_of_a_shipped_risk_scores_sarif_read_for_every_result():
+    for relative, count in (("agentic-app/sample-report/risk-scores.sarif", 86), ("consumer-agent-app/sample-report/risk-scores.sarif", 19),
+                            ("maestro-reference/risk-scores.sarif", 35), ("mobile-banking-app/sample-report/risk-scores.sarif", 31)):
+        scores = parse_sarif_member_set(_shipped_sarif(relative), with_scores=True)["scores"]
+        assert len(scores) == count and all(s["composite"] is not None and s["band"] is not None for s in scores.values()), relative
+    agentic = parse_sarif_member_set(_shipped_sarif("agentic-app/sample-report/risk-scores.sarif"), with_scores=True)["scores"]
+    assert agentic["S-1"] == {"composite": Decimal("8.2"), "band": "High"}
+    maestro = parse_sarif_member_set(_shipped_sarif("maestro-reference/risk-scores.sarif"), with_scores=True)["scores"]
+    assert maestro["S-1"] == {"composite": Decimal("8.4"), "band": "High"}
+
+
+@pytest.mark.parametrize("sample", ["agentic-app/sample-report", "maestro-reference"])
+def test_the_fallback_reads_the_groups_that_section_4a_gives_on_a_shipped_sample(sample):
+    """One authority: the SARIF reader and the Section 4a reader apply the same rules, so on a sample whose
+    risk-scores.sarif was written from its threats.md they find the same groups (the SARIF may not name them)."""
+    sarif = parse_sarif_member_set(_shipped_sarif(sample + "/risk-scores.sarif"))
+    from_markdown = parse_correlation_groups(_example_threats(sample), sarif["members"])["groups"]
+    assert from_markdown and len(from_markdown) == len(sarif["groups"])
+    assert sorted((g["primary"], sorted(g["members"])) for g in sarif["groups"]) == \
+        sorted((g["primary"], sorted(g["members"])) for g in from_markdown)
