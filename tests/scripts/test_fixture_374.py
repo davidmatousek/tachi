@@ -45,8 +45,11 @@ HERE = Path(__file__).resolve().parent
 FIXTURE = HERE / "fixtures" / "large_arch"
 GENERATOR = HERE / "generate_large_arch_fixture.py"
 
-OUTPUT_CAP_TOKENS = 64_000  # the output cap Runs A and B stopped at (spec S-1, S-4)
-SIZING_FLOOR_TOKENS = 2 * OUTPUT_CAP_TOKENS
+# The 64k is the response cap that Runs A and B ran under (spec S-1, S-4): a historical figure, kept so that the
+# fixture stays large enough to reproduce those runs. The cap itself depends on the environment (T021(a)'s clean
+# environment carried max_tokens 128,000), and S-1's design budget is 32,000 tokens per batch.
+OUTPUT_CAP_TOKENS = 64_000
+SIZING_FLOOR_TOKENS = 2 * OUTPUT_CAP_TOKENS  # S-4's floor: twice the historical figure, whatever the cap is today
 TARGETED_OUTPUTS = tuple(
     "baseline/" + name
     for name in ("threats.md", "threats.sarif", "risk-scores.md", "risk-scores.sarif",
@@ -188,6 +191,7 @@ def test_unknown_variants_and_bad_output_paths_are_refused(tmp_path):
 def test_each_targeted_output_is_at_least_twice_the_output_cap(committed, name):
     assert name in committed, "%s is missing from the committed copy" % name
     tokens = len(committed[name]) / 4  # S-4's stated estimator: UTF-8 bytes / 4
+    # The cap in the message is the historical 64k of Runs A and B (see OUTPUT_CAP_TOKENS), not a claim about today's.
     assert tokens >= SIZING_FLOOR_TOKENS, "%s is %d bytes, about %d tokens, under twice the %d-token cap" % (
         name, len(committed[name]), tokens, OUTPUT_CAP_TOKENS)
 
