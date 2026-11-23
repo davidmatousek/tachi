@@ -244,7 +244,7 @@ def test_the_length_limit_is_in_bytes_and_inclusive():
     assert tachi_parts.path_problem("\u00e9" * 2049) == "too-long"
 
 
-@pytest.mark.parametrize("value", ["/a/b/c.md", "//a", "/home/u/proj/docs/architecture.md", "a/b.md"])
+@pytest.mark.parametrize("value", ["/a/b/c.md", "//a", "/work/proj/docs/architecture.md", "a/b.md"])
 def test_an_absolute_candidate_passes_only_when_the_caller_allows_it(value):
     assert tachi_parts.path_problem(value, allow_absolute=True) is None
     if value.startswith("/"):
@@ -297,12 +297,24 @@ def test_tachi_parts_imports_neither_sarif_common_nor_tachi_parsers():
     assert not {"sarif_common", "tachi_parsers"} & imported, imported
 
 
+def _is_standard_library(name):
+    """True for a built-in or a module that lives in the interpreter's own library directory."""
+    import importlib.util
+    import sysconfig
+    if name in getattr(sys, "stdlib_module_names", ()):
+        return True
+    spec = importlib.util.find_spec(name)
+    if spec is None:
+        return False
+    origin = spec.origin or ""
+    stdlib = sysconfig.get_paths()["stdlib"]
+    return origin in ("built-in", "frozen") or (origin.startswith(stdlib) and "site-packages" not in origin)
+
+
 def test_tachi_parts_is_standard_library_only():
     tree = ast.parse(TACHI_PARTS_PATH.read_text(encoding="utf-8"))
-    stdlib = set(getattr(sys, "stdlib_module_names", ())) or {
-        "__future__", "re", "sys", "os", "json", "hashlib", "unicodedata", "typing", "decimal", "tempfile",
-        "stat", "dataclasses", "collections", "pathlib", "errno", "io", "math", "string"}
-    assert _imported_modules(tree) <= stdlib | {"__future__"}, _imported_modules(tree)
+    outside = sorted(name for name in _imported_modules(tree) if not _is_standard_library(name))
+    assert outside == [], outside
 
 
 def test_tachi_parts_parses_at_the_python_39_floor_and_defers_annotations():
@@ -931,8 +943,8 @@ def truncation_cases():
         (SCORER, ("rationale", "reachability"), 400, "rationale.reachability"),
         (SCORER, ("metric_rationale", "AV"), 160, "metric_rationale.AV"),
         (SCORER, ("subscore_rationale", "known_techniques"), 160, "subscore_rationale.known_techniques"),
-        (CONTROLS, ("evidence", 0, "summary"), 160, "evidence.0.summary"),
-        (CONTROLS, ("evidence", 0, "snippet"), 600, "evidence.0.snippet"),
+        (CONTROLS, ("evidence", 0, "summary"), 160, "evidence.summary"),
+        (CONTROLS, ("evidence", 0, "snippet"), 600, "evidence.snippet"),
         (CONTROLS, ("matrix_row",), 1200, "matrix_row"),
         (CONTROLS, ("recommendation_body",), 2000, "recommendation_body"),
     ]
@@ -980,7 +992,7 @@ def test_a_snippet_over_five_lines_is_cut_to_five_lines_and_flagged():
     result = classify(with_text(CONTROLS, ("evidence", 0, "snippet"), snippet), ids=("S-1",), kind=CONTROLS)
     assert result.state == "done"
     assert result.part["items"][0]["evidence"][0]["snippet"] == "\n".join("line %d" % n for n in range(1, 6))
-    assert "input:evidence.0.snippet:truncated" in result.flags["S-1"]
+    assert "input:evidence.snippet:truncated" in result.flags["S-1"]
 
 
 def test_a_cut_never_leaves_a_broken_slot_in_a_narrative_field():
@@ -1083,7 +1095,7 @@ NARRATIVE_FIELDS = ["rationale.cvss", "rationale.exploitability", "rationale.sca
                     "metric_rationale.AV", "metric_rationale.AC", "metric_rationale.PR", "metric_rationale.UI",
                     "metric_rationale.S", "metric_rationale.C", "metric_rationale.I", "metric_rationale.A",
                     *["subscore_rationale.%s" % name for name in SUB_SCORES],
-                    *["evidence.0.assessment.%s.rationale" % d for d in ("coverage", "configuration", "currency", "completeness")]]
+                    *["evidence.assessment.%s" % d for d in ("coverage", "configuration", "currency", "completeness")]]
 
 
 @pytest.mark.parametrize("field", NARRATIVE_FIELDS)
@@ -1096,7 +1108,8 @@ def test_each_narrative_field_has_a_fixed_digit_free_fallback_sentence(field):
 
 
 def test_a_fallback_for_a_name_that_is_not_a_narrative_field_is_refused():
-    for field in ("finding_id", "cvss_vector", "evidence.0.summary", "matrix_row", "recommendation_body", "bogus"):
+    for field in ("finding_id", "cvss_vector", "evidence.summary", "evidence.0.summary", "matrix_row", "recommendation_body",
+                  "evidence.0.assessment.coverage.rationale", "evidence.assessment", "bogus"):
         with pytest.raises((KeyError, ValueError)):
             _api("narrative_fallback")(field)
 
@@ -1154,7 +1167,7 @@ def test_a_controls_assessment_rationale_is_narrative_and_takes_the_fallback():
     part = put(make_part(kind=CONTROLS, ids=("S-1",)), ("items", 0, "evidence", 0, "assessment"), assessment)
     result = classify(part, ids=("S-1",), kind=CONTROLS)
     assert result.state == "done"
-    assert result.flags["S-1"] == ["input:evidence.0.assessment.currency.rationale:narrative-fallback"]
+    assert result.flags["S-1"] == ["input:evidence.assessment.currency:narrative-fallback"]
 
 
 def test_a_structural_failure_still_rejects_even_when_a_narrative_field_would_fall_back():
@@ -1539,3 +1552,456 @@ def test_version_is_a_plain_release_triple_on_a_line_release_please_can_bump():
     source = TACHI_PARTS_PATH.read_text(encoding="utf-8")
     assert re.search(r'(?m)^VERSION = "[0-9]+\.[0-9]+\.[0-9]+"  # x-release-please-version$', source)
     assert len(re.findall(r"x-release-please-version", source)) == 1
+
+
+# =============================================================================
+# 14. Key sets, flag fields and the batch-plan documents (aligned with T006's
+#     shared reference: part-file-contract-shared.md)
+# =============================================================================
+
+PART_KEYS = ["schema", "plan_id", "batch_id", "stage", "agent_type", "finding_ids", "items", "fragments"]
+OVERFLOW_KEYS = ["schema", "plan_id", "batch_id", "stage", "agent_type", "reason"]
+BATCH_INPUT_KEYS = ["schema", "plan_id", "batch_id", "stage", "agent_type", "finding_ids", "attempt", "part_path",
+                    "tree_paths", "units", "refs", "params"]
+PLAN_KEYS = ["schema", "plan_id", "stage", "agent_type", "created_utc", "tachi_version", "inputs", "params", "batch_size",
+             "unit_count", "preimage", "out_snapshot", "retry_budget", "batches"]
+POINTER_KEYS = ["schema", "plan_id"]
+STAGE_RECORD_KEYS = ["schema", "stage", "plan_id", "status", "tachi_version", "started_utc", "finished_utc", "input_digest",
+                     "counts", "batches", "overflow_events", "retries", "warnings", "undeclared_paths", "outputs", "error"]
+PLAN_BATCH_KEYS = ["batch_id", "parent", "attempt", "finding_ids", "input_sha256", "state"]
+ASSESSMENT_DIMENSIONS = ["coverage", "configuration", "currency", "completeness"]
+METRICS = ["AV", "AC", "PR", "UI", "S", "C", "I", "A"]
+COUNT_KEYS = {"units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations",
+              "corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input"}
+EXPECTED_KEY_SETS = {
+    "part": (PART_KEYS, []), "overflow": (OVERFLOW_KEYS, []), "batch-input": (BATCH_INPUT_KEYS, []),
+    "plan": (PLAN_KEYS, []), "plan-pointer": (POINTER_KEYS, []), "stage-record": (STAGE_RECORD_KEYS, []),
+    "scorer-item": (["finding_id", "cvss_vector", "exploitability", "scalability", "reachability", "rationale"],
+                    ["metric_rationale", "subscore_rationale"]),
+    "controls-item": (["finding_id", "control_status", "control_category", "confidence", "carried_forward", "evidence",
+                       "matrix_row", "recommendation_body"], []),
+    "exploitability": (SUB_SCORES[:4], []), "scalability": (SUB_SCORES[4:], []),
+    "reachability": (["zone", "trust_level", "auth_barriers", "network_boundaries"], []),
+    "rationale": (["cvss", "exploitability", "scalability", "reachability"], []),
+    "evidence-entry": (["file", "line", "language", "snippet", "summary"], ["assessment"]),
+    "assessment": (ASSESSMENT_DIMENSIONS, []), "assessment-dimension": (["rating", "rationale"], []),
+    "plan-input": (["path", "sha256", "bytes"], []), "plan-batch": (PLAN_BATCH_KEYS, []),
+    "retry-budget": (["limit", "used"], []),
+    "stage-batches": (["planned", "dispatched", "done", "retried", "split", "exhausted"], []),
+    "overflow-event": (["batch_id", "attempt", "kind"], []), "retry-entry": (["batch_id", "attempt", "cause", "children"], []),
+    "warning": (["code", "detail"], []), "output": (["path", "sha256"], []),
+    "error": (["code", "message", "batch_id", "finding_ids", "remedy"], []),
+}
+
+
+@pytest.mark.parametrize("name", sorted(EXPECTED_KEY_SETS))
+def test_each_closed_key_set_is_the_contracts_table_in_the_contracts_order(name):
+    required, optional = _api("KEY_SETS")[name]
+    assert (list(required), list(optional)) == (EXPECTED_KEY_SETS[name][0], EXPECTED_KEY_SETS[name][1])
+
+
+def test_the_key_set_table_names_nothing_else():
+    assert set(_api("KEY_SETS")) == set(EXPECTED_KEY_SETS)
+
+
+def test_the_enumerations_and_the_stage_table_match_the_contract():
+    assert list(_api("SUBSCORE_NAMES")) == SUB_SCORES
+    assert list(_api("METRIC_NAMES")) == METRICS
+    assert list(_api("CONTROL_CATEGORIES")) == CONTROL_CATEGORIES
+    assert set(_api("COUNT_KEYS")) == COUNT_KEYS
+    assert dict(_api("STAGE_AGENTS")) == {"risk-score": "tachi-risk-scorer", "compensating-controls": "tachi-control-analyzer"}
+    assert _api("MAX_PART_BYTES") == 512 * 1024
+    assert _api("MAX_AGENT_INPUT_BYTES") == 16 * 1024 * 1024
+
+
+def test_the_flag_fields_are_t006s_24_dotted_names_with_no_list_index():
+    fields = list(_api("NARRATIVE_FIELDS"))
+    assert fields == NARRATIVE_FIELDS
+    assert len(fields) == len(set(fields)) == 24
+    assert not any("[" in f or any(part.isdigit() for part in f.split(".")) for f in fields)
+
+
+def test_a_flag_names_its_field_without_an_index_so_entries_share_one_flag_and_each_cut_is_counted():
+    entries = [dict(controls_item()["evidence"][0], summary="s" * 200) for _ in range(2)]
+    part = put(make_part(kind=CONTROLS, ids=("S-1",)), ("items", 0, "evidence"), entries)
+    result = classify(part, ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done"
+    assert result.flags["S-1"] == ["input:evidence.summary:truncated"]
+    assert result.counts["truncations"] == 2
+
+
+def test_items_come_back_in_the_planned_order_whatever_order_the_agent_wrote_them():
+    part = make_part(ids=("T-2", "S-1"))
+    result = classify(part, ids=("S-1", "T-2"))
+    assert result.state == "done"
+    assert result.part["finding_ids"] == ["S-1", "T-2"]
+    assert [item["finding_id"] for item in result.part["items"]] == ["S-1", "T-2"]
+
+
+def test_classifying_a_part_never_changes_the_object_it_was_given():
+    part = make_part(ids=("S-01", "T-2"))
+    before = json.dumps(part, sort_keys=True)
+    result = classify(part, ids=("S-1", "T-2"))
+    assert result.state == "done"
+    assert json.dumps(part, sort_keys=True) == before
+
+
+def test_a_planned_set_that_is_itself_hostile_is_invalid_not_a_crash():
+    assert classify(make_part(), ids=("S-١", "T-2")).state == "invalid"
+    assert classify(make_part(), ids=("S-1", "S-01")).state == "invalid"
+
+
+HEX = "ab" * 32
+
+
+def raises_invalid(validator, obj):
+    with pytest.raises(_api("PartError")) as excinfo:
+        validator(obj)
+    assert excinfo.value.kind == "invalid"
+
+
+def valid_plan():
+    return {"schema": "tachi.plan/1", "plan_id": PLAN, "stage": "risk-score", "agent_type": "tachi-risk-scorer",
+            "created_utc": "2026-11-22T10:15:00Z", "tachi_version": "4.48.4",
+            "inputs": {"threats": {"path": "/work/run/threats.md", "sha256": HEX, "bytes": 1234}},
+            "params": {"scoring_date": "2026-11-22"}, "batch_size": 40, "unit_count": 3,
+            "preimage": {"risk-scores.md": None, "risk-scores.sarif": HEX},
+            "out_snapshot": {"threats.md": [1234, 1700000000000000000]}, "retry_budget": {"limit": 2, "used": 0},
+            "batches": [{"batch_id": "B001", "parent": None, "attempt": 1, "finding_ids": ["S-1", "T-2", "R-3"],
+                         "input_sha256": HEX, "state": "pending"}]}
+
+
+PLAN_VIOLATIONS = {
+    "unknown key": setter(("extra",), 1),
+    **{"missing %s" % key: drop((key,)) for key in PLAN_KEYS},
+    "schema version": setter(("schema",), "tachi.plan/2"),
+    "plan id with a trailing newline": setter(("plan_id",), PLAN + "\n"),
+    "stage unknown": setter(("stage",), "bogus"),
+    "agent of the other stage": setter(("agent_type",), "tachi-control-analyzer"),
+    "created not UTC": setter(("created_utc",), "2026-11-22T10:15:00+00:00"),
+    "created with a space": setter(("created_utc",), "2026-11-22 10:15:00Z"),
+    "created impossible month": setter(("created_utc",), "2026-13-01T00:00:00Z"),
+    "created with a trailing newline": setter(("created_utc",), "2026-11-22T10:15:00Z\n"),
+    "version short": setter(("tachi_version",), "4.48"),
+    "version prefixed": setter(("tachi_version",), "v4.48.4"),
+    "input entry unknown key": setter(("inputs", "threats", "mtime"), 1),
+    "input entry missing digest": drop(("inputs", "threats", "sha256")),
+    "input digest upper case": setter(("inputs", "threats", "sha256"), "AB" * 32),
+    "input digest short": setter(("inputs", "threats", "sha256"), "ab" * 31),
+    "input digest prefixed": setter(("inputs", "threats", "sha256"), "sha256:" + HEX),
+    "input bytes negative": setter(("inputs", "threats", "bytes"), -1),
+    "input bytes boolean": setter(("inputs", "threats", "bytes"), True),
+    "input bytes float": setter(("inputs", "threats", "bytes"), 1.5),
+    "input path with a backtick": setter(("inputs", "threats", "path"), "/work/`x`"),
+    "input path with a dot-dot": setter(("inputs", "threats", "path"), "/work/../x"),
+    "input path with a newline": setter(("inputs", "threats", "path"), "/work/a\nb"),
+    "input name with a space": setter(("inputs",), {"a b": {"path": "/x", "sha256": HEX, "bytes": 1}}),
+    "params nested object": setter(("params", "scoring_date"), {"a": 1}),
+    "params list": setter(("params", "extra"), [1]),
+    "params key with a capital": setter(("params", "Bad"), 1),
+    "scoring date impossible": setter(("params", "scoring_date"), "2026-02-30"),
+    "scoring date with a newline": setter(("params", "scoring_date"), "2026-11-22\n"),
+    "batch size zero": setter(("batch_size",), 0), "batch size 501": setter(("batch_size",), 501),
+    "batch size boolean": setter(("batch_size",), True), "batch size float": setter(("batch_size",), 1.5),
+    "batch size text": setter(("batch_size",), "40"),
+    "unit count negative": setter(("unit_count",), -1), "unit count float": setter(("unit_count",), 1.5),
+    "preimage digest bad": setter(("preimage", "risk-scores.md"), "xyz"),
+    "preimage name with a dot-dot": setter(("preimage",), {"../x": None}),
+    "snapshot entry short": setter(("out_snapshot", "threats.md"), [1]),
+    "snapshot entry long": setter(("out_snapshot", "threats.md"), [1, 2, 3]),
+    "snapshot entry text": setter(("out_snapshot", "threats.md"), ["a", 1]),
+    "snapshot entry negative": setter(("out_snapshot", "threats.md"), [-1, 1]),
+    "snapshot key with a dot-dot": setter(("out_snapshot",), {"../x": [1, 1]}),
+    "snapshot key absolute": setter(("out_snapshot",), {"/x": [1, 1]}),
+    "snapshot over 20000 entries": setter(("out_snapshot",), {"f%d" % n: [1, 1] for n in range(20001)}),
+    "budget unknown key": setter(("retry_budget", "spent"), 1),
+    "budget missing used": drop(("retry_budget", "used")),
+    "budget negative": setter(("retry_budget", "limit"), -1),
+    "budget float": setter(("retry_budget", "used"), 0.5),
+    "batches not a list": setter(("batches",), {}),
+    "batch unknown key": setter(("batches", 0, "extra"), 1),
+    **{"batch missing %s" % key: drop(("batches", 0, key)) for key in PLAN_BATCH_KEYS},
+    "batch id short": setter(("batches", 0, "batch_id"), "B01"),
+    "batch id with a newline": setter(("batches", 0, "batch_id"), "B001\n"),
+    "batch parent on a root": setter(("batches", 0, "parent"), "B000"),
+    "batch attempt zero": setter(("batches", 0, "attempt"), 0), "batch attempt four": setter(("batches", 0, "attempt"), 4),
+    "batch attempt boolean": setter(("batches", 0, "attempt"), True),
+    "batch state unknown": setter(("batches", 0, "state"), "running"),
+    "batch ids empty": setter(("batches", 0, "finding_ids"), []),
+    "batch ids duplicate": setter(("batches", 0, "finding_ids"), ["S-1", "S-1"]),
+    "batch ids two spellings": setter(("batches", 0, "finding_ids"), ["S-1", "S-01"]),
+    "batch id hostile": setter(("batches", 0, "finding_ids"), ["S-١"]),
+    "batch ids over 500": setter(("batches", 0, "finding_ids"), ["S-%d" % n for n in range(1, 502)]),
+    "batch digest bad": setter(("batches", 0, "input_sha256"), "ab"),
+}
+
+
+def test_a_plan_that_follows_the_contract_validates_and_comes_back_as_it_was():
+    plan = valid_plan()
+    assert _api("validate_plan")(plan) is plan
+    plan.update(out_snapshot=None, batch_size=None, unit_count=0, batches=[])   # a plan with no units
+    assert _api("validate_plan")(plan) is plan
+
+
+@pytest.mark.parametrize("label", sorted(PLAN_VIOLATIONS))
+def test_a_plan_that_breaks_the_closed_schema_is_invalid(label):
+    plan = valid_plan()
+    PLAN_VIOLATIONS[label](plan)
+    raises_invalid(_api("validate_plan"), plan)
+
+
+def test_a_split_batch_and_its_children_are_one_valid_lineage():
+    plan = valid_plan()
+    root = dict(plan["batches"][0], state="split")
+    plan["batches"] = [root, dict(root, batch_id="B001-1", parent="B001", state="pending", finding_ids=["S-1"]),
+                       dict(root, batch_id="B001-2", parent="B001", state="pending", finding_ids=["T-2", "R-3"]),
+                       dict(root, batch_id="B001-1-1", parent="B001-1", state="done", finding_ids=["S-1"], attempt=3)]
+    assert _api("validate_plan")(plan) is plan
+
+
+@pytest.mark.parametrize("label,batches", [
+    ("duplicate batch ids", lambda b: [b, dict(b)]),
+    ("a child whose parent is absent", lambda b: [dict(b, batch_id="B001-1", parent="B001")]),
+    ("a child naming the wrong parent", lambda b: [b, dict(b, batch_id="B002"), dict(b, batch_id="B001-1", parent="B002")]),
+    ("a child with no parent", lambda b: [b, dict(b, batch_id="B001-1", parent=None)]),
+])
+def test_the_batches_of_a_plan_must_agree_about_their_lineage(label, batches):
+    plan = valid_plan()
+    plan["batches"] = batches(plan["batches"][0])
+    raises_invalid(_api("validate_plan"), plan)
+
+
+def test_the_plan_pointer_has_two_keys():
+    pointer = {"schema": "tachi.plan-pointer/1", "plan_id": PLAN}
+    assert _api("validate_pointer")(pointer) is pointer
+    for bad in ({"schema": "tachi.plan-pointer/1"}, {"plan_id": PLAN}, dict(pointer, extra=1),
+                dict(pointer, schema="tachi.plan-pointer/2"), dict(pointer, plan_id=PLAN + "\n"),
+                dict(pointer, plan_id="20261122T101500Z-0123456789AB"), dict(pointer, plan_id=None), {}):
+        raises_invalid(_api("validate_pointer"), bad)
+
+
+def valid_batch_input(kind=SCORER, batch="B001", attempt=1, ids=("S-1", "T-2")):
+    return {"schema": "tachi.batch-input/1", "plan_id": PLAN, "batch_id": batch, "stage": kind["stage"],
+            "agent_type": kind["agent_type"], "finding_ids": list(ids), "attempt": attempt,
+            "part_path": "/work/out/.tachi-build/%s/%s/parts/%s.a%d.json" % (kind["stage"], PLAN, batch, attempt),
+            "tree_paths": {}, "units": [{"finding_id": i, "component": "API Gateway"} for i in ids],
+            "refs": {"threats": "/work/run/threats.md"}, "params": {"scoring_date": "2026-11-22"}}
+
+
+BATCH_INPUT_VIOLATIONS = {
+    "unknown key": setter(("extra",), 1),
+    **{"missing %s" % key: drop((key,)) for key in BATCH_INPUT_KEYS},
+    "schema version": setter(("schema",), "tachi.batch-input/2"),
+    "plan id bad": setter(("plan_id",), "x"), "batch id bad": setter(("batch_id",), "B1"),
+    "stage unknown": setter(("stage",), "bogus"),
+    "agent of the other stage": setter(("agent_type",), "tachi-control-analyzer"),
+    "ids empty": setter(("finding_ids",), []), "ids duplicate": setter(("finding_ids",), ["S-1", "S-1"]),
+    "ids two spellings": setter(("finding_ids",), ["S-1", "S-01"]), "id hostile": setter(("finding_ids",), ["S-1\n"]),
+    "attempt zero": setter(("attempt",), 0), "attempt four": setter(("attempt",), 4), "attempt boolean": setter(("attempt",), True),
+    "part path relative": setter(("part_path",), "out/parts/B001.a1.json"),
+    "part path of another plan": setter(("part_path",), "/work/out/.tachi-build/risk-score/%s/parts/B001.a1.json" % OTHER_PLAN),
+    "part path of another batch": setter(("part_path",), "/work/out/.tachi-build/risk-score/%s/parts/B002.a1.json" % PLAN),
+    "part path of another attempt": setter(("part_path",), "/work/out/.tachi-build/risk-score/%s/parts/B001.a2.json" % PLAN),
+    "part path outside the parts directory": setter(("part_path",), "/work/out/.tachi-build/risk-score/%s/inputs/B001.a1.json" % PLAN),
+    "part path with a dot-dot": setter(("part_path",), "/work/../out/.tachi-build/risk-score/%s/parts/B001.a1.json" % PLAN),
+    "part path with a newline": setter(("part_path",), "/work/out/\n/%s/parts/B001.a1.json" % PLAN),
+    "part path not text": setter(("part_path",), None),
+    "tree paths filled outside the trees stage": setter(("tree_paths",), {"S-1": "/work/out/trees/S-1.md"}),
+    "units not a list": setter(("units",), {}), "unit not an object": setter(("units",), ["S-1"]),
+    "units over 500": setter(("units",), [{}] * 501),
+    "ref relative": setter(("refs", "threats"), "run/threats.md"), "ref with a dot-dot": setter(("refs", "threats"), "/work/../x"),
+    "ref name with a capital": setter(("refs",), {"Threats": "/work/run/threats.md"}),
+    "ref not text": setter(("refs", "threats"), 7), "refs not an object": setter(("refs",), []),
+    "params nested object": setter(("params", "scoring_date"), {}), "scoring date impossible": setter(("params", "scoring_date"), "2026-00-10"),
+}
+
+
+def test_a_batch_input_that_follows_the_contract_validates_for_both_stages_and_every_attempt():
+    for kind in (SCORER, CONTROLS):
+        for attempt in (1, 2, 3):
+            data = valid_batch_input(kind, attempt=attempt)
+            assert _api("validate_batch_input")(data) is data
+    data = valid_batch_input(batch="B003-1-2")
+    assert _api("validate_batch_input")(data) is data
+
+
+@pytest.mark.parametrize("label", sorted(BATCH_INPUT_VIOLATIONS))
+def test_a_batch_input_that_breaks_the_closed_schema_is_invalid(label):
+    data = valid_batch_input()
+    BATCH_INPUT_VIOLATIONS[label](data)
+    raises_invalid(_api("validate_batch_input"), data)
+
+
+def valid_stage_record():
+    return {"schema": "tachi.stage-record/1", "stage": "risk-score", "plan_id": PLAN, "status": "success",
+            "tachi_version": "4.48.4", "started_utc": "2026-11-22T10:15:00Z", "finished_utc": "2026-11-22T10:16:30Z",
+            "input_digest": "sha256:" + HEX,
+            "counts": {"units": 3, "open": 3, "resolved": 0, "rendered": 3, "parse_errors": 0, "narrative_fallbacks": 1,
+                       "truncations": 0, "retagged": 0, "reused-id": 0},
+            "batches": {"planned": 1, "dispatched": 1, "done": 1, "retried": 0, "split": 0, "exhausted": 0},
+            "overflow_events": [{"batch_id": "B001", "attempt": 1, "kind": "missing"}],
+            "retries": [{"batch_id": "B001", "attempt": 1, "cause": "missing", "children": ["B001-1", "B001-2"]}],
+            "warnings": [{"code": "undeclared-paths", "detail": "one path"}], "undeclared_paths": ["gen.py"],
+            "outputs": [{"path": "risk-scores.md", "sha256": HEX}], "error": None}
+
+
+STAGE_RECORD_VIOLATIONS = {
+    "unknown key": setter(("extra",), 1),
+    **{"missing %s" % key: drop((key,)) for key in STAGE_RECORD_KEYS},
+    "schema version": setter(("schema",), "tachi.stage-record/2"), "stage unknown": setter(("stage",), "bogus"),
+    "plan id bad": setter(("plan_id",), "x"), "status unknown": setter(("status",), "ok"),
+    "version bad": setter(("tachi_version",), "4.48"), "start not UTC": setter(("started_utc",), "2026-11-22T10:15:00+00:00"),
+    "finish impossible": setter(("finished_utc",), "2026-11-31T10:15:00Z"),
+    "digest unprefixed": setter(("input_digest",), HEX), "digest upper case": setter(("input_digest",), "sha256:" + HEX.upper()),
+    "digest with a newline": setter(("input_digest",), "sha256:" + HEX + "\n"),
+    "count key unknown": setter(("counts", "widgets"), 1), "count negative": setter(("counts", "units"), -1),
+    "count float": setter(("counts", "units"), 1.5), "count boolean": setter(("counts", "units"), True),
+    "count text": setter(("counts", "units"), "3"), "counts not an object": setter(("counts",), [3]),
+    "batches unknown key": setter(("batches", "failed"), 0), "batches missing key": drop(("batches", "split")),
+    "batches negative": setter(("batches", "planned"), -1),
+    "overflow event unknown kind": setter(("overflow_events", 0, "kind"), "stalled"),
+    "overflow event attempt zero": setter(("overflow_events", 0, "attempt"), 0),
+    "overflow event batch id bad": setter(("overflow_events", 0, "batch_id"), "B1"),
+    "overflow event unknown key": setter(("overflow_events", 0, "note"), "x"),
+    "retry children not a list": setter(("retries", 0, "children"), "B001-1"),
+    "retry child id bad": setter(("retries", 0, "children"), ["B1"]),
+    "retry over two children": setter(("retries", 0, "children"), ["B001-1", "B001-2", "B001-1"]),
+    "retry cause with a space": setter(("retries", 0, "cause"), "not found"),
+    "warning detail over 500": setter(("warnings", 0, "detail"), "d" * 501),
+    "warning detail with a control character": setter(("warnings", 0, "detail"), "a\x00b"),
+    "warning unknown key": setter(("warnings", 0, "level"), "high"),
+    "undeclared path with a dot-dot": setter(("undeclared_paths",), ["../x"]),
+    "undeclared path absolute": setter(("undeclared_paths",), ["/etc/x"]),
+    "output digest bad": setter(("outputs", 0, "sha256"), "zz"),
+    "output path with a dot-dot": setter(("outputs", 0, "path"), "../x"),
+    "error not null or an object": setter(("error",), "failed"),
+    "error unknown key": setter(("error",), {"code": "x", "message": "m", "batch_id": None, "finding_ids": [], "remedy": "r", "extra": 1}),
+    "error missing key": setter(("error",), {"code": "x", "message": "m", "batch_id": None, "finding_ids": []}),
+    "error batch id bad": setter(("error",), {"code": "x", "message": "m", "batch_id": "B1", "finding_ids": [], "remedy": "r"}),
+    "error id hostile": setter(("error",), {"code": "x", "message": "m", "batch_id": None, "finding_ids": ["S-١"], "remedy": "r"}),
+    "error message with a bidi control": setter(("error",), {"code": "x", "message": "a‮b", "batch_id": None, "finding_ids": [], "remedy": "r"}),
+}
+
+
+def test_a_stage_record_that_follows_the_contract_validates_for_every_status():
+    for stage in ("risk-score", "compensating-controls"):
+        record = dict(valid_stage_record(), stage=stage)
+        assert _api("validate_stage_record")(record) is record
+    failed = dict(valid_stage_record(), status="failed", error={
+        "code": "unrecoverable-batch", "message": "Batch B001 ran out of retries.", "batch_id": "B001",
+        "finding_ids": ["S-1", "T-2"], "remedy": "Re-run the command.", })
+    assert _api("validate_stage_record")(failed) is failed
+    warned = dict(valid_stage_record(), status="success-with-warnings")
+    assert _api("validate_stage_record")(warned) is warned
+
+
+@pytest.mark.parametrize("kind", sorted(COUNT_KEYS))
+def test_every_count_key_the_contract_names_is_accepted(kind):
+    record = valid_stage_record()
+    record["counts"] = {kind: 2}
+    assert _api("validate_stage_record")(record) is record
+
+
+@pytest.mark.parametrize("label", sorted(STAGE_RECORD_VIOLATIONS))
+def test_a_stage_record_that_breaks_the_closed_schema_is_invalid(label):
+    record = valid_stage_record()
+    STAGE_RECORD_VIOLATIONS[label](record)
+    raises_invalid(_api("validate_stage_record"), record)
+
+
+# --- reading a document from disk: the same loader as a part, then the schema's own key set ---
+
+DOCUMENTS = [
+    ("tachi.plan/1", "validate_plan", valid_plan),
+    ("tachi.plan-pointer/1", "validate_pointer", lambda: {"schema": "tachi.plan-pointer/1", "plan_id": PLAN}),
+    ("tachi.batch-input/1", "validate_batch_input", valid_batch_input),
+    ("tachi.stage-record/1", "validate_stage_record", valid_stage_record),
+]
+
+
+def document_path(tmp_path, name="doc.json"):
+    out = tmp_path / "out"
+    build = out / ".tachi-build" / "risk-score"
+    build.mkdir(parents=True, exist_ok=True)
+    return out, build / name
+
+
+@pytest.mark.parametrize("schema,validator,build", DOCUMENTS, ids=[d[0] for d in DOCUMENTS])
+def test_a_document_is_read_through_the_loader_and_its_own_validator(tmp_path, schema, validator, build):
+    out, path = document_path(tmp_path)
+    path.write_text(json.dumps(build()), encoding="utf-8")
+    assert _api("read_document")(path, out, schema) == build()
+    other = next(d[0] for d in DOCUMENTS if d[0] != schema)
+    with pytest.raises(_api("PartError")) as excinfo:
+        _api("read_document")(path, out, other)
+    assert excinfo.value.kind == "invalid"
+
+
+@pytest.mark.parametrize("schema,validator,build", DOCUMENTS, ids=[d[0] for d in DOCUMENTS])
+def test_a_document_that_fails_the_loader_reports_the_loaders_kind(tmp_path, schema, validator, build):
+    read, error = _api("read_document"), _api("PartError")
+    out, path = document_path(tmp_path)
+    with pytest.raises(error) as missing:
+        read(path, out, schema)
+    assert missing.value.kind == "missing"
+    text = json.dumps(build())
+    path.write_text(text[:-1] + ', "schema": "x"}', encoding="utf-8")   # a duplicate key
+    with pytest.raises(error) as duplicate:
+        read(path, out, schema)
+    assert duplicate.value.kind == "unparseable"
+    real = tmp_path / "real.json"
+    real.write_text(json.dumps(build()), encoding="utf-8")
+    path.unlink()
+    path.symlink_to(real)
+    with pytest.raises(error) as linked:
+        read(path, out, schema)
+    assert linked.value.kind == "invalid"
+
+
+def test_the_pointer_has_a_small_size_cap_and_the_plan_a_large_one(tmp_path):
+    read, error = _api("read_document"), _api("PartError")
+    out, path = document_path(tmp_path)
+    pointer = json.dumps({"schema": "tachi.plan-pointer/1", "plan_id": PLAN}) + " " * 5000
+    path.write_text(pointer, encoding="utf-8")
+    with pytest.raises(error) as excinfo:
+        read(path, out, "tachi.plan-pointer/1")
+    assert excinfo.value.kind == "unparseable"
+    plan = valid_plan()
+    plan["out_snapshot"] = {"dir/file-%05d.txt" % n: [1, 1] for n in range(20000)}
+    path.write_text(json.dumps(plan), encoding="utf-8")
+    assert read(path, out, "tachi.plan/1")["unit_count"] == 3
+
+
+def test_a_document_schema_that_is_not_one_of_the_four_is_refused(tmp_path):
+    out, path = document_path(tmp_path)
+    path.write_text("{}", encoding="utf-8")
+    for schema in ("tachi.part/1", "tachi.overflow/1", "tachi.unknown/1", None):
+        with pytest.raises((ValueError, KeyError)):
+            _api("read_document")(path, out, schema)
+
+
+# =============================================================================
+# 15. Two cases the mutation check showed were not pinned
+# =============================================================================
+
+def test_a_spare_duplicate_in_finding_ids_is_invalid_even_when_the_items_are_one_per_planned_id():
+    part = make_part(ids=("S-1", "T-2"))
+    part["finding_ids"] = ["S-1", "S-01", "T-2"]
+    assert classify(part, ids=("S-1", "T-2")).state == "invalid"
+    part["finding_ids"] = ["S-1", "T-2", "T-2"]
+    assert classify(part, ids=("S-1", "T-2")).state == "invalid"
+
+
+def test_step_10_judges_the_text_that_is_left_after_step_9s_cut():
+    """Decision for the architect (ADR-050 D3 lists the cut as step 9 and the characters as step 10).
+
+    A hostile character beyond the cut is cut away with the rest of the over-limit prose, and one inside
+    the kept text rejects the part. Run in the other order, the first would reject a part that RR2 says
+    to cut.
+    """
+    beyond = "a" * 400 + "‮" + "b" * 50
+    result = classify(with_text(SCORER, ("rationale", "cvss"), beyond), ids=("S-1",))
+    assert result.state == "done"
+    assert result.part["items"][0]["rationale"]["cvss"] == "a" * 400
+    inside = "a" * 399 + "‮" + "b" * 50
+    assert classify(with_text(SCORER, ("rationale", "cvss"), inside), ids=("S-1",)).state == "invalid"
