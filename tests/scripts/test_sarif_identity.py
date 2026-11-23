@@ -36,20 +36,25 @@ import itertools
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
+from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 import yaml
 
+from ..conftest import _load_hyphenated_script
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import sarif_common as sc  # noqa: E402  -- after the sys.path mutation
+import tachi_parsers  # noqa: E402
 import tachi_parts  # noqa: E402
 import tachi_scoring  # noqa: E402
 
@@ -1870,3 +1875,660 @@ def test_importing_the_module_leaves_no_bytecode_for_the_local_modules_it_loads_
     # The module is compiled before its own guard runs, so its own file may be cached;
     # the helpers it loads afterwards must not be (ADR-049 D8).
     assert not written & {"tachi_parts", "tachi_scoring", "tachi_parsers"}, written
+
+
+# =============================================================================
+# 16. risk-scores.sarif through the renderer: FR-E.2's two-run model (T049; red until T050)
+# =============================================================================
+#
+# Section 13 builds runs with the emitter and checks the model on them. The cases below drive the entry,
+# ``render-risk-scores.py``, in-process through ``main(argv)`` (ADR-050 D16, H15), on the project harness of
+# ``test_render_risk_scores.py`` (T027), so what they read is the file an adopter uploads. They need the renderer
+# (T028, T045, T046 and T050) and fail with its absence until it exists. The peer and baseline-aware cases also need
+# T044's routing, T048's parser and T042's reader. The matching key is the tool, the upload category, the rule, the
+# line hash and the URI (ADR-050 D7); nothing else is identity.
+
+SCORER_CATEGORY = "risk-score"  # the upload category of risk-scores.sarif: tachi recommends it and never writes it
+FIRST_RUN_GROUPS = [("CG-1", ["S-2", "S-10", "T-1"]), ("CG-2", ["E-3", "E-5"])]
+SECOND_RUN_GROUPS = [("CG-1", ["T-1", "S-2"]), ("CG-3", ["S-10", "E-3", "AG-1"])]  # a new primary, a dissolved group, a new one
+PLANTED_HASHES = ["%016x:1" % n for n in range(1, 41)]  # what an upstream file or an older run could carry: never copied
+
+
+@pytest.fixture(scope="module")
+def rrs():
+    """The renderer goldens' project harness, imported when a case first needs it, so Sections 1 to 15 never depend on it."""
+    from . import test_render_risk_scores
+    return test_render_risk_scores
+
+
+@pytest.fixture(scope="module")
+def entries(rrs):
+    """``(tachi-stage.py, render-risk-scores.py)`` as loaded modules."""
+    if not rrs.RENDERER.is_file():
+        pytest.fail("scripts/render-risk-scores.py does not exist yet: T028 and T050 write it to these cases (TDD)", pytrace=False)
+    return (_load_hyphenated_script("tachi_stage_for_identity_cases", "tachi-stage.py"),
+            _load_hyphenated_script("render_risk_scores_for_identity_cases", "render-risk-scores.py"))
+
+
+def scorer_project(rrs, entries, root, **kwargs):
+    return rrs.Project(entries[0], entries[1], root, **kwargs)
+
+
+def alert_keys(document):
+    """GitHub's matching key of each result in a ``risk-scores.sarif`` document, by the finding's ``findingId/v1``."""
+    run = document["runs"][0]
+    tool = run["tool"]["driver"]["name"]
+    return {finding_id: (tool, SCORER_CATEGORY) + key for finding_id, key in keys_of(run["results"]).items()}
+
+
+def results_by(document):
+    return {r["partialFingerprints"]["findingId/v1"]: r for r in document["runs"][0]["results"]}
+
+
+def ruling_c(group, primary, peers=None):
+    """Ruling C's sentence, written out from ``contracts/sarif-result.md`` and not taken from the emitter.
+
+    ``peers`` is ``None`` on a peer. On a primary the first ten are named in group order, then `` and N more``.
+    """
+    if peers is None:
+        return "Correlated in %s; primary %s." % (group, primary)
+    more = len(peers) - 10
+    return "Correlated in %s; peers %s%s." % (group, ", ".join(peers[:10]), " and %d more" % more if more > 0 else "")
+
+
+def expected_text(threat, assignment):
+    if assignment is None:
+        return threat
+    peers = list(assignment.peers) if assignment.role == "primary" else None
+    return threat + " " + ruling_c(assignment.group, assignment.primary, peers)
+
+
+def snapshot_run(rrs, project, name="baseline-1"):
+    """Copy a finished run's input and outputs under their canonical names: what a later run's ``--baseline`` names."""
+    target = project.root / name
+    target.mkdir()
+    for source in ("threats.md", rrs.MD, rrs.SARIF):
+        shutil.copyfile(str(project.out / source), str(target / source))
+    return target
+
+
+def rewrite_inputs(rrs, project, specs, groups=(), resolved=None):
+    """Replace the run's ``threats.md``, as the next run's threat model would."""
+    project.specs = list(specs)
+    if resolved is not None:
+        project.resolved = list(resolved)
+    project.threats.write_text(rrs.make_threats_md(project.specs, project.resolved, groups=groups), encoding="utf-8")
+
+
+def second_run_specs(rrs, baseline_aware):
+    """Run 2's findings: run 1's, carried (UNCHANGED against a baseline), and one that only run 2 finds."""
+    carried = [dict(item, status="UNCHANGED") if baseline_aware else dict(item) for item in rrs.SPECS]
+    found_later = rrs.spec("T-7", "auth-broker", "A threat that only the second run finds.", "Medium", "NEW",
+                           "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L", (6, 6, 6, 6), (5, 5, 5, 5),
+                           "Edge DMZ", "Semi-Trusted", 0, 0)
+    return carried + [found_later]
+
+
+def planted_sarif(ids, offset=0):
+    """A SARIF file as an older tachi would write it: a ``findingId/v1`` and a hash of its own on every result."""
+    results = [{"ruleId": "tachi/stride/spoofing", "message": {"text": "x"}, "level": "error",
+                "partialFingerprints": {"primaryLocationLineHash": PLANTED_HASHES[offset + n], "findingId/v1": finding_id},
+                "properties": {"security-severity": "5.0"}} for n, finding_id in enumerate(ids)]
+    return json.dumps({"version": "2.1.0", "runs": [{"tool": {"driver": {"name": SCORER}}, "results": results}]}, indent=2) + "\n"
+
+
+def run_pair(rrs, entries, root, baseline_aware, plant=False, replace_baseline_sarif=False):
+    """Render run 1, then run 2 (regrouped, with one more finding), in one project.
+
+    Run 2 is baseline-aware when asked: run 1's files become its ``--baseline``, and its carried findings are
+    UNCHANGED. ``plant`` puts an upstream ``threats.sarif`` with hashes of its own beside run 1's input, and
+    ``replace_baseline_sarif`` swaps the baseline's SARIF for one that lists other findings under other hashes.
+    """
+    project = scorer_project(rrs, entries, root, groups=FIRST_RUN_GROUPS)
+    ids_1 = [item["id"] for item in rrs.SPECS]
+    if plant:
+        (project.out / "threats.sarif").write_text(planted_sarif(ids_1), encoding="utf-8")
+    first = project.run()
+    assert first.code == 0, first.describe()
+    pair = SimpleNamespace(project=project, ids_1=ids_1, specs_1=list(rrs.SPECS), baseline=None,
+                           first=project.sarif, first_text=project.sarif_text, first_md=project.md)
+    if baseline_aware:
+        pair.baseline = snapshot_run(rrs, project)
+        if replace_baseline_sarif:
+            (pair.baseline / rrs.SARIF).write_text(planted_sarif(ids_1 + ["S-99"], offset=20), encoding="utf-8")
+    pair.specs_2 = second_run_specs(rrs, baseline_aware)
+    pair.ids_2 = [item["id"] for item in pair.specs_2]
+    rewrite_inputs(rrs, project, pair.specs_2, SECOND_RUN_GROUPS)
+    second = project.run(baseline_dir=pair.baseline)
+    assert second.code in (0, 5), second.describe()
+    pair.second, pair.second_text, pair.second_md = project.sarif, project.sarif_text, project.md
+    return pair
+
+
+BOTH_MODES = pytest.mark.parametrize("baseline_aware", [False, True], ids=["stateless", "baseline-aware"])
+
+
+@BOTH_MODES
+def test_the_regroup_pair_keeps_every_carried_key_and_changes_only_the_text(rrs, entries, tmp_path, baseline_aware):
+    """US-6a #1: run 2 regroups carried findings, changes a primary and dissolves a group, and no key moves."""
+    pair = run_pair(rrs, entries, tmp_path, baseline_aware)
+    keys_1, keys_2 = alert_keys(pair.first), alert_keys(pair.second)
+    assert sorted(keys_1) == sorted(pair.ids_1) and sorted(keys_2) == sorted(pair.ids_2), "no finding drops out"
+    for finding_id in pair.ids_1:
+        assert keys_2[finding_id] == keys_1[finding_id], "%s: a regroup never moves a key" % finding_id
+    assert "T-7" in keys_2 and "T-7" not in keys_1, "the finding only run 2 has gets a key of its own"
+    for keys in (keys_1, keys_2):
+        assert len(set(keys.values())) == len(keys), "no two present results share a key (the F-012 lesson)"
+    texts = {}
+    for run, document, specs, groups, ids in ((1, pair.first, pair.specs_1, FIRST_RUN_GROUPS, pair.ids_1),
+                                              (2, pair.second, pair.specs_2, SECOND_RUN_GROUPS, pair.ids_2)):
+        assignments = sc.correlation_assignments(groups, ids)
+        sc.self_check(document["runs"][0]["results"], tool=SCORER, member_ids=ids, assignments=assignments,
+                      resolved_ids=rrs.RESOLVED_IDS, uri=URI)
+        by_id = results_by(document)
+        for item in specs:
+            text = by_id[item["id"]]["message"]["text"]
+            assert text == expected_text(item["threat"], assignments.get(tachi_parts.canonical_finding_id(item["id"]))), (run, item["id"])
+            texts[(run, item["id"])] = text
+    for finding_id in ("T-1", "E-5", "AG-1"):
+        assert texts[(1, finding_id)] != texts[(2, finding_id)], "%s: a regroup changes its text (ruling C)" % finding_id
+
+
+@BOTH_MODES
+def test_an_unchanged_rerun_of_the_renderer_keeps_its_keys_and_its_bytes(rrs, entries, tmp_path, baseline_aware):
+    """US-6a #2: the same inputs under a fresh plan give the same keys, and the same bytes, in both files."""
+    pair = run_pair(rrs, entries, tmp_path, baseline_aware)
+    again = pair.project.run(baseline_dir=pair.baseline)
+    assert again.code in (0, 5), again.describe()
+    assert pair.project.sarif_text == pair.second_text and pair.project.md == pair.second_md
+    assert alert_keys(pair.project.sarif) == alert_keys(pair.second)
+
+
+@BOTH_MODES
+def test_the_hash_recomputes_from_the_tool_and_the_id_and_no_upstream_hash_is_copied(rrs, entries, tmp_path, baseline_aware):
+    pair = run_pair(rrs, entries, tmp_path, baseline_aware, plant=True, replace_baseline_sarif=baseline_aware)
+    for document, text in ((pair.first, pair.first_text), (pair.second, pair.second_text)):
+        for result in document["runs"][0]["results"]:
+            written = result["partialFingerprints"]["findingId/v1"]
+            assert result["partialFingerprints"]["primaryLocationLineHash"] == recipe(SCORER, tachi_parts.canonical_finding_id(written)), written
+        assert not [planted for planted in PLANTED_HASHES if planted in text], "an upstream or earlier hash was copied (S-6)"
+        assert "automationDetails" not in text and "runAutomationDetails" not in text, "the upload step's category governs (D7)"
+    assert results_by(pair.first)["AGP-01"]["partialFingerprints"]["primaryLocationLineHash"] == recipe(SCORER, "AGP-1"), \
+        "the hash is over the canonical ID, and findingId/v1 keeps Section 7's spelling"
+
+
+def test_no_stage_reads_a_baseline_sarifs_membership_or_hashes(rrs, entries, tmp_path):
+    """ADR-050 D8: SV-3's trigger does not fire, because no stage reads a baseline SARIF's membership or hashes."""
+    pair = run_pair(rrs, entries, tmp_path, True, replace_baseline_sarif=True)
+    assert sorted(alert_keys(pair.second)) == sorted(pair.ids_2), "the member set is Section 7's"
+    assert "S-99" not in pair.second_text
+    keys_1, keys_2 = alert_keys(pair.first), alert_keys(pair.second)
+    assert all(keys_2[finding_id] == keys_1[finding_id] for finding_id in pair.ids_1)
+
+
+def test_no_two_present_results_share_a_key_in_a_run_of_forty_two_findings(rrs, entries, tmp_path):
+    project, reference = rrs.subset_project(entries[0], entries[1], tmp_path)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    document = project.sarif
+    keys = alert_keys(document)
+    assert len(keys) == len(reference["open"]) == 42
+    assert len(set(keys.values())) == 42 and len({key[3] for key in keys.values()}) == 42, "42 findings, 42 keys and 42 hashes"
+    shared = {}
+    for result in document["runs"][0]["results"]:
+        component = result["locations"][0]["logicalLocations"][0]["name"]
+        shared.setdefault((result["ruleId"], component), []).append(result["partialFingerprints"]["findingId/v1"])
+    sharing = [ids for ids in shared.values() if len(ids) > 1]
+    assert sharing, "the subset has findings that share a rule and a component"
+    for ids in sharing:
+        assert len({keys[finding_id] for finding_id in ids}) == len(ids), "distinct findings on one component and rule get separate alerts"
+
+
+# --- the architecture path: the flag, then the body line, then the default (FR-E.18; US-6a #7 to #9) ---------------
+
+URI_CASES = [  # id, the flag, the body line, whether the run directory has the snapshot, the URI, the warnings' codes
+    ("the-flag-wins", "docs/design/system.md", "docs/other/architecture.md", True, "docs/design/system.md", []),
+    ("the-body-line-outside-docs-security", None, "docs/other/architecture.md", True, "docs/other/architecture.md", []),
+    ("the-default-and-a-warning-that-names-the-flag", None, None, False, "docs/security/architecture.md",
+     ["architecture-path:body-line:absent"]),
+    ("a-flag-outside-the-repository-falls-to-the-body-line", "OUTSIDE", "docs/other/architecture.md", True,
+     "docs/other/architecture.md", ["architecture-path:explicit:outside-root"]),
+    ("a-symlinked-flag-falls-to-the-body-line", "docs/design/link.md", "docs/other/architecture.md", True,
+     "docs/other/architecture.md", ["architecture-path:explicit:symlink"]),
+    ("a-body-line-with-no-snapshot-falls-to-the-default", None, "docs/other/architecture.md", False,
+     "docs/security/architecture.md", ["architecture-path:body-line:no-snapshot"]),
+    ("a-body-line-naming-a-tachi-output-falls-to-the-default", None, "docs/security/threats.md", True,
+     "docs/security/architecture.md", ["architecture-path:body-line:canonical-name"]),
+    ("a-failed-flag-and-an-absent-line-fall-to-the-default", "OUTSIDE", None, False, "docs/security/architecture.md",
+     ["architecture-path:explicit:outside-root", "architecture-path:body-line:absent"]),
+]
+
+
+@pytest.fixture
+def outside_file(tmp_path_factory):
+    path = tmp_path_factory.mktemp("outside") / "arch.md"
+    path.write_text("# an architecture file outside the repository\n", encoding="utf-8")
+    return path
+
+
+def add_architecture_files(project):
+    """The files the carrier cases name, beside the project's default ``docs/security/architecture.md``."""
+    for relative in ("docs/design/system.md", "docs/other/architecture.md", "docs/security/threats.md"):
+        path = project.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("# %s\n" % relative, encoding="utf-8")
+    (project.root / "docs" / "design" / "link.md").symlink_to("system.md")
+
+
+@pytest.mark.parametrize("flag,body,snapshot,uri,warning_codes", [case[1:] for case in URI_CASES], ids=[case[0] for case in URI_CASES])
+def test_the_flag_then_the_body_line_then_the_default_and_each_failed_carrier_warns(
+        rrs, entries, tmp_path, outside_file, flag, body, snapshot, uri, warning_codes):
+    project = scorer_project(rrs, entries, tmp_path, body_line=body)
+    add_architecture_files(project)
+    if snapshot:
+        (project.out / "architecture.md").write_text("# the snapshot the threat model copied\n", encoding="utf-8")
+    res = project.run(architecture=str(outside_file) if flag == "OUTSIDE" else flag)
+    assert res.code == (5 if warning_codes else 0), res.describe()
+    results = project.sarif["runs"][0]["results"]
+    assert {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in results} == {uri}
+    record = project.record
+    assert [warning["code"] for warning in record["warnings"]] == warning_codes, "the stage record lists each warning, in order"
+    assert record["status"] == ("success-with-warnings" if warning_codes else "success")
+    assert all("--architecture-path" in warning["detail"] for warning in record["warnings"]), "each one names the override flag"
+    sc.self_check(results, tool=SCORER, member_ids=[item["id"] for item in rrs.SPECS], assignments={},
+                  resolved_ids=rrs.RESOLVED_IDS, uri=uri)
+
+
+def test_a_run_always_gets_a_uri_even_when_nothing_validates(rrs, entries, tmp_path, outside_file):
+    project = scorer_project(rrs, entries, tmp_path)
+    project.architecture.unlink()
+    res = project.run(architecture=str(outside_file))
+    assert res.code == 5, res.describe()
+    assert [w["code"] for w in project.record["warnings"]] == [
+        "architecture-path:explicit:outside-root", "architecture-path:body-line:absent", "architecture-path:default:missing"]
+    uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in project.sarif["runs"][0]["results"]}
+    assert uris == {sc.DEFAULT_ARCHITECTURE_PATH}, "the constant is emitted as written, and nothing here stops a run"
+
+
+def mirror(fake, root):
+    """Copy the layout of a real project (its directories and regular files) into the fake filesystem."""
+    for path in sorted(Path(root).rglob("*")):
+        if path.relative_to(root).parts[0] == ".tachi-build":
+            continue
+        if path.is_dir():
+            fake.mkdir(str(path))
+        elif path.is_file():
+            fake.file(str(path))
+
+
+@pytest.mark.parametrize("body", ["docs/other/architecture.md", "DOCS/Other/ARCHITECTURE.md"], ids=["canonical", "case-variant"])
+def test_a_case_variant_body_line_gives_every_result_the_same_uri_on_a_case_insensitive_volume(
+        rrs, entries, tmp_path, monkeypatch, body):
+    """KB 24 and FR-E.2: the resolver, not the renderer, spells the path, so a case variant gives one URI.
+
+    The renderer reaches the filesystem through ``sarif_common.OS_FILESYSTEM`` for this, so a fake case-insensitive
+    volume stands in for the one an adopter's laptop has.
+    """
+    project = scorer_project(rrs, entries, tmp_path, body_line=body)
+    add_architecture_files(project)
+    (project.out / "architecture.md").write_text("# the snapshot\n", encoding="utf-8")
+    fake = FakeFilesystem(str(tmp_path), case_insensitive=True)
+    mirror(fake, tmp_path)
+    monkeypatch.setattr(sc, "OS_FILESYSTEM", fake)
+    res = project.run(architecture=False)
+    assert res.code == 0, res.describe()
+    uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in project.sarif["runs"][0]["results"]}
+    assert uris == {"docs/other/architecture.md"}
+
+
+# --- ruling C: a primary with more than ten peers; ruling B: reused IDs -----------------------------------------------
+
+@pytest.mark.parametrize("size,more", [(11, 0), (12, 1), (13, 2)], ids=["ten-peers", "eleven-peers", "twelve-peers"])
+def test_a_primary_with_more_than_ten_peers_names_ten_and_then_a_count(rrs, entries, tmp_path, size, more):
+    """PM-T7, ruling C: the first ten in group order, joined by a comma and a space, then `` and N more``."""
+    specs = [rrs.spec("S-%d" % n, "edge-gateway", "Threat %d on the gateway." % n, "Medium", "NEW",
+                      "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N", (5, 5, 5, 5), (4, 4, 4, 4), "Edge DMZ", "Semi-Trusted", 0, 0)
+             for n in range(1, size + 1)]
+    ids = [item["id"] for item in specs]
+    project = scorer_project(rrs, entries, tmp_path, specs=specs, resolved=[], groups=[("CG-1", ids)])
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    results = results_by(project.sarif)
+    assert len(results) == size, "every peer is a result, once"
+    tail = "Correlated in CG-1; peers " + ", ".join(ids[1:11]) + (" and %d more" % more if more else "") + "."
+    assert results["S-1"]["message"]["text"] == "Threat 1 on the gateway. " + tail == "Threat 1 on the gateway. " + ruling_c("CG-1", "S-1", ids[1:])
+    for peer in ids[1:]:
+        assert results[peer]["message"]["text"] == "Threat %s on the gateway. Correlated in CG-1; primary S-1." % peer[2:], peer
+    sc.self_check(project.sarif["runs"][0]["results"], tool=SCORER, member_ids=ids,
+                  assignments=sc.correlation_assignments([("CG-1", ids)], ids), resolved_ids=[], uri=URI)
+
+
+def test_a_new_finding_that_reuses_a_baseline_id_is_flagged_and_keeps_the_old_key(rrs, entries, tmp_path):
+    """Ruling B (D7), PR 1's half: the flag marks the exposure, and the key shows it: the old alert's key is reused."""
+    project = scorer_project(rrs, entries, tmp_path)
+    assert project.run().code == 0
+    keys_1 = alert_keys(project.sarif)
+    baseline = snapshot_run(rrs, project)
+    reissued = [
+        rrs.spec("S-2", "auth-broker", "A different threat that was given S-2 after the first one went away.", "Medium", "NEW",
+                 "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N", (5, 5, 5, 5), (4, 4, 4, 4), "Edge DMZ", "Semi-Trusted", 0, 0),
+        rrs.spec("S-1", "edge-gateway", "A new threat that was given S-1, which the baseline lists as RESOLVED.", "Medium", "NEW",
+                 "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N", (5, 5, 5, 5), (4, 4, 4, 4), "Edge DMZ", "Semi-Trusted", 0, 0)]
+    specs_2 = [dict(item, status="UNCHANGED") for item in rrs.SPECS if item["id"] != "S-2"] + reissued
+    rewrite_inputs(rrs, project, specs_2, (), resolved=[row for row in rrs.RESOLVED if row[0] != "S-1"])
+    res = project.run(baseline_dir=baseline)
+    assert res.code in (0, 5), res.describe()
+    results = results_by(project.sarif)
+    flag = "reused-id:finding_id:baseline"
+    assert sorted(i for i, r in results.items() if flag in r["properties"]["score-flags"]) == ["S-1", "S-2"], \
+        "a NEW finding whose ID is in any baseline row, open or RESOLVED, is flagged"
+    assert all(r["properties"]["score-flags"] == sorted(r["properties"]["score-flags"]) for r in results.values())
+    assert alert_keys(project.sarif)["S-2"] == keys_1["S-2"], "the reissued ID inherits the old alert: the exposure the flag marks (ruling B)"
+    assert project.record["counts"]["reused-id"] == 2
+    rows = {row["ID"]: row for row in rrs.records(*rrs.table_of(rrs.section(project.md, "## 2. Scored Threat Table"), "ID"))}
+    assert "reused-id" in rows["S-2"]["Flags"] and "reused-id" in rows["S-1"]["Flags"] and rows["T-1"]["Flags"] == rrs.DASH
+
+
+# =============================================================================
+# 17. D8's fallback reader (T142): the new form, the legacy forms and an empty extraction
+# =============================================================================
+#
+# ``tachi_parsers.parse_sarif_member_set(sarif_text, *, with_scores=False)`` returns ``{"members", "groups", "scores"}``
+# (``contracts/module-signatures.md``). The member set of a stage whose markdown input is absent comes from here, so an
+# empty extraction raises ``ValueError`` and the stage stops before dispatch (KB 22; AR-T2). Lane P's rulings:
+# ``group_id`` is the ``correlation-group`` property, then the legacy ``partialFingerprints["correlationGroup"]``, then
+# ``None``; named groups come in group-number order; and, by the architect's option (b), a result with no
+# ``findingId/v1`` takes its ID from ``properties.id`` when that passes the finding allow-list.
+
+
+def read_members(text, **kwargs):
+    if not hasattr(tachi_parsers, "parse_sarif_member_set"):
+        pytest.fail("tachi_parsers.parse_sarif_member_set does not exist yet: T142 (lane P) writes it to these cases", pytrace=False)
+    return tachi_parsers.parse_sarif_member_set(text, **kwargs)
+
+
+def hand_result(finding_id=None, *, properties=None, fingerprints=None, related=None, extra=None):
+    """A result written by hand, in the older shapes the reader must still take."""
+    result = {"ruleId": "tachi/stride/spoofing", "message": {"text": "A threat."}, "level": "error",
+              "partialFingerprints": dict(fingerprints or {}), "properties": dict(properties or {})}
+    if finding_id is not None:
+        result["partialFingerprints"]["findingId/v1"] = finding_id
+    if related:
+        result["relatedLocations"] = [{"id": n, "message": {"text": text}} for n, text in enumerate(related)]
+    result.update(extra or {})
+    return result
+
+
+def hand_sarif(results):
+    return json.dumps({"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "Tachi"}}, "results": results}]})
+
+
+def test_the_new_form_gives_members_in_result_order_and_groups_from_the_correlation_properties():
+    results, _assignments = build_run()  # S-1, T-2, I-3, D-4 and AG-5; CG-1 holds S-1 and T-2 (R-9 is resolved), CG-2 I-3 and D-4
+    got = read_members(sc.to_json(document(results)))
+    assert got["members"] == MEMBERS
+    assert got["groups"] == [{"group_id": "CG-1", "primary": "S-1", "members": ["S-1", "T-2"]},
+                             {"group_id": "CG-2", "primary": "I-3", "members": ["I-3", "D-4"]}]
+    assert got["scores"] == {}
+
+
+def test_a_finding_id_is_canonical_in_the_member_set_and_a_repeat_is_one_member():
+    got = read_members(hand_sarif([hand_result("AGP-01"), hand_result("S-1"), hand_result("AGP-1")]))
+    assert got["members"] == ["AGP-1", "S-1"]
+
+
+@pytest.mark.parametrize("marker", [
+    {"extra": {"baselineState": "absent"}}, {"properties": {"baseline-state": "absent"}}, {"properties": {"baselineState": "absent"}},
+], ids=["result-baselineState", "property-baseline-state", "property-baselineState"])
+def test_a_resolved_result_appears_nowhere_not_even_as_a_legacy_peer_reference(marker):
+    gone = hand_result("R-9", **marker)
+    kept = hand_result("S-1", related=["R-9: a peer that is resolved", "T-2: a peer that is open"])
+    got = read_members(hand_sarif([kept, gone, hand_result("I-3")]), with_scores=True)
+    assert got["members"] == ["S-1", "T-2", "I-3"], "R-9 is neither a result nor a reference"
+    assert "R-9" not in got["scores"] and all("R-9" not in group["members"] for group in got["groups"])
+
+
+def test_the_legacy_form_reads_peers_from_related_locations_and_the_group_from_the_fingerprint():
+    legacy = hand_sarif([
+        hand_result("S-1", fingerprints={"correlationGroup": "CG-10"}, related=["T-2: a peer", "AGP-01: another peer"]),
+        hand_result("I-3", fingerprints={"correlationGroup": "CG-2"}, related=["D-4: a peer"]),
+        hand_result("E-1"),
+    ])
+    got = read_members(legacy)
+    assert got["members"] == ["S-1", "T-2", "AGP-1", "I-3", "D-4", "E-1"], "a legacy peer follows its result"
+    assert got["groups"] == [{"group_id": "CG-2", "primary": "I-3", "members": ["I-3", "D-4"]},
+                             {"group_id": "CG-10", "primary": "S-1", "members": ["S-1", "T-2", "AGP-1"]}], \
+        "the group ID is the legacy fingerprint, and named groups come in group-number order, not text order"
+
+
+def test_the_correlation_group_property_wins_over_the_legacy_fingerprint_and_an_unnamed_group_has_none():
+    got = read_members(hand_sarif([
+        hand_result("S-1", properties={"correlation-group": "CG-3"}, fingerprints={"correlationGroup": "CG-9"}, related=["T-2: a peer"]),
+        hand_result("I-3", related=["D-4: a peer"]),
+    ]))
+    assert got["groups"] == [{"group_id": "CG-3", "primary": "S-1", "members": ["S-1", "T-2"]},
+                             {"group_id": None, "primary": "I-3", "members": ["I-3", "D-4"]}]
+
+
+def test_a_result_with_no_findingid_takes_its_member_id_from_properties_id():
+    """The architect's option (b): the form four shipped samples use. Red until lane P's follow-up lands."""
+    got = read_members(hand_sarif([
+        hand_result(None, properties={"id": "S-1"}), hand_result(None, properties={"id": "AGP-01"}),
+        hand_result(None, properties={"id": "S-1\n"}), hand_result(None, properties={"id": "x"}), hand_result(None, properties={"id": 5}),
+        hand_result(None, properties={"id": "\u0663-1"}), hand_result(None),
+    ]))
+    assert got["members"] == ["S-1", "AGP-1"], "an ID that fails the finding allow-list is skipped, never read"
+
+
+def test_findingid_v1_wins_when_a_result_carries_both():
+    got = read_members(hand_sarif([hand_result("S-1", properties={"id": "T-9"}), hand_result(None, properties={"id": "I-3"})]))
+    assert got["members"] == ["S-1", "I-3"]
+
+
+def test_scores_are_read_across_the_property_names_the_shipped_files_use():
+    shipped = hand_result("S-1", properties={"security-severity": "8.0", "severity-band": "High"})
+    generator = hand_result("T-2", properties={"composite": 7.5, "severity_band": "High"})
+    older = hand_result("I-3", properties={"security-severity": "4.25", "severity": "medium"})
+    unscored = hand_result("D-4", properties={"composite": "not a number", "severity-band": "Severe"})
+    got = read_members(hand_sarif([shipped, generator, older, unscored]), with_scores=True)
+    assert got["scores"] == {"S-1": {"composite": Decimal("8.0"), "band": "High"}, "T-2": {"composite": Decimal("7.5"), "band": "High"},
+                             "I-3": {"composite": Decimal("4.25"), "band": "Medium"}, "D-4": {"composite": None, "band": None}}
+    assert read_members(hand_sarif([shipped]))["scores"] == {}, "scores only when asked for"
+
+
+EMPTY_EXTRACTIONS = [
+    {"runs": [{"results": []}]},
+    {"runs": []},
+    {},
+    [],
+    {"runs": "not a list"},
+    {"runs": [{"results": [hand_result("R-9", properties={"baseline-state": "absent"})]}]},
+    {"runs": [{"results": [{"partialFingerprints": {"primaryLocationLineHash": "0123456789abcdef:1"}}]}]},
+    {"runs": [{"results": [hand_result(None, properties={"id": "not an id"}), 42, "x", None]}]},
+]
+
+
+@pytest.mark.parametrize("document_", EMPTY_EXTRACTIONS, ids=[str(n) for n in range(len(EMPTY_EXTRACTIONS))])
+def test_an_empty_extraction_raises_so_the_stage_stops_before_dispatch_and_the_error_names_the_remedy(document_):
+    with pytest.raises(ValueError) as excinfo:
+        read_members(json.dumps(document_))
+    assert "regenerate" in str(excinfo.value).lower(), "the remedy is to regenerate the markdown input (the architect's ruling)"
+
+
+@pytest.mark.parametrize("text", ["", "not json", "{", '{"runs": NaN}', '{"runs": Infinity}', '{"a": 123456789012345678901}'])
+def test_text_that_is_not_strict_json_raises_value_error(text):
+    with pytest.raises(ValueError):
+        read_members(text)
+
+
+def test_a_result_of_any_other_shape_is_skipped_and_never_raised_on():
+    odd = [42, "x", None, [], {"partialFingerprints": "x"}, {"partialFingerprints": {"findingId/v1": ["S-1"]}},
+           {"partialFingerprints": {"findingId/v1": "S-1"}, "properties": "x", "relatedLocations": "x"}]
+    assert read_members(hand_sarif(odd + [hand_result("T-2")]))["members"] == ["S-1", "T-2"]
+
+
+def test_no_hash_is_ever_read_so_files_that_differ_only_in_their_hashes_give_one_extraction():
+    def build(prefix):
+        return hand_sarif([hand_result(i, fingerprints={"primaryLocationLineHash": "%s%d:1" % (prefix, n)}) for n, i in enumerate(MEMBERS)])
+
+    assert read_members(build("0000000000000")) == read_members(build("ffffffffffff"))
+
+
+def shipped_sarif_files():
+    return sorted(REPO_ROOT.glob("examples/**/*.sarif"))
+
+
+def expected_result_ids(document_):
+    """Each shipped result's own ID: ``findingId/v1``, else ``properties.id``; resolved results left out; once each."""
+    found = []
+    for result in document_["runs"][0]["results"]:
+        properties = result.get("properties") or {}
+        identifier = (result.get("partialFingerprints") or {}).get("findingId/v1") or properties.get("id")
+        absent = "absent" in (result.get("baselineState"), properties.get("baseline-state"), properties.get("baselineState"))
+        if tachi_parts.id_matches("finding", identifier) and not absent:
+            canonical = tachi_parts.canonical_finding_id(identifier)
+            if canonical not in found:
+                found.append(canonical)
+    return found
+
+
+@pytest.mark.parametrize("path", shipped_sarif_files(), ids=lambda path: "/".join(path.parts[-3:]))
+def test_every_shipped_sarif_is_read_into_its_own_member_set(path):
+    """The four samples that carry only ``properties.id`` are red until lane P's follow-up lands (option (b))."""
+    text = path.read_text(encoding="utf-8")
+    document_ = json.loads(text)
+    expected = expected_result_ids(document_)
+    assert expected, "the sample has findings"
+    scored = path.name == "risk-scores.sarif"
+    got = read_members(text, with_scores=scored)
+    assert len(got["members"]) == len(set(got["members"])), "each ID once"
+    assert set(expected) <= set(got["members"]), "every result of the sample is a member"
+    if not any(result.get("relatedLocations") for result in document_["runs"][0]["results"]):
+        assert got["members"] == expected, "with no legacy peer reference, the sample's own results in result order"
+    if scored:
+        for finding_id in expected:
+            assert got["scores"][finding_id]["composite"] is not None and got["scores"][finding_id]["band"] is not None, finding_id
+
+
+def test_the_shipped_samples_are_found_so_the_cases_above_never_shrink_to_none():
+    assert len(shipped_sarif_files()) >= 16
+
+
+@pytest.mark.parametrize("name", ["threats.md", "threats.sarif"], ids=["markdown-absent", "sarif-as-the-input"])
+def test_an_empty_extraction_stops_the_planner_before_dispatch_and_writes_nothing(tmp_path, name):
+    """Today's command passes ``threats.sarif`` as the input when ``threats.md`` is absent; either spelling must stop."""
+    stage = _load_hyphenated_script("tachi_stage_for_fallback_cases", "tachi-stage.py")
+    (tmp_path / "threats.sarif").write_text(hand_sarif([hand_result("R-9", properties={"baseline-state": "absent"})]), encoding="utf-8")
+    with pytest.raises(stage.StageError) as excinfo:
+        stage.plan_stage(stage="risk-score", out=tmp_path, date="2026-11-22", threats=tmp_path / name)
+    assert excinfo.value.code in (1, 2)
+    assert not (tmp_path / ".tachi-build").exists(), "nothing was planned, so nothing is dispatched"
+
+
+# =============================================================================
+# 18. message.markdown: the scorer's mitigation text (the architect's ruling from T027; R0b's build_result and self_check)
+# =============================================================================
+#
+# A file whose contract maps ``message.markdown`` keeps it, after ``text`` (NFR-1 keeps adopter fields, and the message
+# isn't identity). ``build_result`` takes it as an optional ``markdown``. ``self_check`` takes ``{text}`` or
+# ``{text, markdown}``, in that key order only. H8's roots are built in pieces, so this file holds no path itself.
+
+H8_ROOTS = ("Us" + "ers", "ho" + "me", "pri" + "vate", "t" + "mp", "var/fol" + "ders")
+MITIGATION = "Restrict write access to the store and sign each record."
+LOCAL_PATHS_IN_MARKDOWN = (
+    ["/%s/dev/app/src/auth.py" % root for root in H8_ROOTS]
+    + ["Edit /%s/dev/app/src/auth.py to fix it." % H8_ROOTS[1], "See file:///%s/dev/app/notes.md" % H8_ROOTS[0],
+       "C:\\" + "Users\\dev\\app\\notes.md", "D:\\work\\notes.md"])
+MARKDOWN_THAT_IS_NOT_A_LOCAL_PATH = [
+    "src/%s/k.js" % H8_ROOTS[2],  # a relative path with a segment that is named like a root
+    "Move the check into src/%s/k.js." % H8_ROOTS[2],
+    "See https://owasp.org/Top10/ and https://example.org/%s/page for the background." % H8_ROOTS[1],  # URL paths
+    "https://example.org/%s/%s/page" % (H8_ROOTS[3], "x"),
+    "Restrict read/write access, rotate keys and/or tokens, and use TLS 1.3/mTLS.",
+    "Grant access per workload identity (docs/security/architecture.md).",
+    "",  # two shipped mitigations are empty
+]
+
+
+def test_a_result_with_markdown_has_a_text_and_markdown_message_in_that_key_order():
+    result = make_result("T-2", markdown=MITIGATION)
+    assert result["message"] == {"text": "Tampering with the store.", "markdown": MITIGATION}
+    assert list(result["message"]) == ["text", "markdown"]
+    assert list(result) == ["ruleId", "message", "level", "locations", "partialFingerprints", "properties"], "nothing else moves"
+    check([result], {}, members=["T-2"], resolved=[])
+
+
+def test_without_markdown_the_message_stays_text_only_and_the_result_is_byte_identical():
+    plain = make_result("T-2")
+    expected = {
+        "ruleId": "tachi/stride/tampering",
+        "message": {"text": "Tampering with the store."},
+        "level": "warning",
+        "locations": [{"physicalLocation": {"artifactLocation": {"uri": URI}, "region": {"startLine": 1}},
+                       "logicalLocations": [{"name": "Store", "fullyQualifiedName": "Data Zone/Store", "kind": "data-store"}]}],
+        "partialFingerprints": {"primaryLocationLineHash": recipe(SCORER, "T-2"), "findingId/v1": "T-2"},
+        "properties": {"score-source": "fresh"},
+    }
+    assert json.dumps(plain, indent=2) == json.dumps(expected, indent=2), "the shape the emitter wrote before the parameter existed"
+    assert list(plain["message"]) == ["text"]
+    assert json.dumps(make_result("T-2", markdown=None)) == json.dumps(plain)
+    check([plain], {}, members=["T-2"], resolved=[])
+
+
+def test_ruling_cs_sentence_goes_on_text_alone_and_markdown_is_kept_as_given():
+    result = make_result("T-2", markdown=MITIGATION, correlation=corr("peer", primary="S-1", group="CG-3"))
+    assert result["message"] == {"text": "Tampering with the store. Correlated in CG-3; primary S-1.", "markdown": MITIGATION}
+    assert list(result["message"]) == ["text", "markdown"]
+    primary = make_result("S-1", markdown=MITIGATION, correlation=corr("primary", primary="S-1", peers=("T-2", "I-4"), group="CG-3"))
+    assert primary["message"]["text"].endswith(" " + ruling_c("CG-3", "S-1", ["T-2", "I-4"])) and primary["message"]["markdown"] == MITIGATION
+
+
+def test_an_empty_markdown_is_kept_and_passes_the_self_check():
+    result = make_result("T-2", markdown="")
+    assert result["message"] == {"text": "Tampering with the store.", "markdown": ""}
+    check([result], {}, members=["T-2"], resolved=[])
+
+
+@pytest.mark.parametrize("bad", [5, 1.5, True, ["a"], {"a": 1}, b"bytes"], ids=repr)
+def test_the_builder_refuses_a_markdown_that_is_not_a_string(bad):
+    with pytest.raises(ValueError):
+        make_result("T-2", markdown=bad)
+
+
+@pytest.mark.parametrize("bad", [5, None, True, ["a"], {"a": 1}], ids=repr)
+def test_the_self_check_refuses_a_markdown_that_is_not_a_string(bad):
+    result = make_result("T-2", markdown=MITIGATION)
+    result["message"]["markdown"] = bad
+    assert any("markdown" in problem for problem in problems_of([result], {}, members=["T-2"], resolved=[]))
+
+
+@pytest.mark.parametrize("text", LOCAL_PATHS_IN_MARKDOWN, ids=[str(n) for n in range(len(LOCAL_PATHS_IN_MARKDOWN))])
+def test_the_self_check_refuses_a_local_path_in_markdown(text):
+    result = make_result("T-2", markdown=text)
+    assert any("markdown" in problem and "path" in problem for problem in problems_of([result], {}, members=["T-2"], resolved=[]))
+
+
+@pytest.mark.parametrize("text", MARKDOWN_THAT_IS_NOT_A_LOCAL_PATH, ids=[str(n) for n in range(len(MARKDOWN_THAT_IS_NOT_A_LOCAL_PATH))])
+def test_the_self_check_accepts_markdown_that_only_looks_like_a_path(text):
+    check([make_result("T-2", markdown=text)], {}, members=["T-2"], resolved=[])
+
+
+def test_the_self_check_refuses_a_resolved_id_in_markdown_and_not_one_inside_another_token():
+    result = make_result("T-2", markdown="This is related to S-9, which was fixed.")
+    assert any("S-9" in problem and "markdown" in problem for problem in problems_of([result], {}, members=["T-2"], resolved=["S-9"]))
+    check([make_result("T-2", markdown="See S-90 and AS-9 for the background.")], {}, members=["T-2"], resolved=["S-9"])
+
+
+@pytest.mark.parametrize("message", [
+    {"markdown": "x", "text": "A threat."}, {"text": "A threat.", "markdown": "x", "html": "x"}, {"markdown": "x"}, {"text": "A threat.", "Markdown": "x"},
+], ids=["markdown-first", "an-extra-key", "markdown-alone", "another-spelling"])
+def test_the_self_check_takes_text_or_text_and_markdown_in_that_order_only(message):
+    result = make_result("T-2", markdown=MITIGATION)
+    result["message"] = message
+    assert any("message" in problem for problem in problems_of([result], {}, members=["T-2"], resolved=[]))
+
+
+def test_a_markdown_result_round_trips_through_the_document_as_ascii_json():
+    result = make_result("T-2", markdown="Rotate the key \u2014 caf\u00e9 style.")
+    text = sc.to_json(document([result]))
+    assert text.isascii() and json.loads(text)["runs"][0]["results"][0]["message"]["markdown"] == "Rotate the key \u2014 caf\u00e9 style."

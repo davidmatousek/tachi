@@ -28,9 +28,9 @@ test says ``# reading:`` and the architect rules it at integration):
    then move onto the canonical names with ``os.replace``. The stage record is ``<plan>/stage-record.json``.
    stdout carries summary lines (not JSON), and every failure prints D4's ``TACHI RISK-SCORE FAILED:`` message.
 4. **The files.** ``risk-scores.md`` is schema 1.1 with Sections 1 to 6 and 2a, ending in the stamp comment, and
-   ``risk-scores.sarif`` is the shared emitter's file. The renderer's name in both stamps is ``render-risk-scores``
-   or ``render-risk-scores.py`` (D4 says ``<entry>``; W1's two modules spelled it both ways), and the three
-   digests (the two stamps and the stage record) are one value.
+   ``risk-scores.sarif`` is the shared emitter's file. The renderer's name in both stamps is the literal
+   ``render-risk-scores.py`` (the architect's ruling), and the three digests (the two stamps and the stage
+   record) are one value.
 
 The renderer's rows are checked in two ways: ``GOLDEN`` holds literal numbers that
 ``test_harness_the_literal_goldens_equal_the_shipped_arithmetic`` re-derives from the shipped arithmetic (``tachi_scoring``), and every other test reads the literals, so a
@@ -92,7 +92,9 @@ STAGE = "risk-score"
 MD, SARIF = "risk-scores.md", "risk-scores.sarif"
 TOOL = "tachi-risk-scorer"
 DATE = "2026-11-22"
-RENDERER_NAMES = ("render-risk-scores", "render-risk-scores.py")
+# The stamp's renderer is the installed file name, with .py, as one literal in the markdown comment and in SARIF's
+# tachi_provenance (architect, cli.md "The stamp's renderer"); it matches INSTALL_MANIFEST.md and REQUIRED_SCRIPT_NAMES.
+RENDERER_NAME = "render-risk-scores.py"
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}\Z")
 DASH = "—"
 
@@ -200,6 +202,7 @@ GOVERNANCE = {  # band -> (SLA, disposition, the review date for DATE)
     "Low": ("90d", "Review", "2027-02-20"),
 }
 BAND_COUNTS = {"Critical": 1, "High": 1, "Medium": 6, "Low": 1}
+PERCENTAGES = {"Critical": 11, "High": 11, "Medium": 67, "Low": 11}  # largest remainder over 9 (ADR-050 D5): 66.67 gets the point
 
 METRIC_VALUES = {
     "AV": {"N": "Network", "A": "Adjacent", "L": "Local", "P": "Physical"},
@@ -265,6 +268,11 @@ def by_id(finding_id, specs=None):
         if canon(item["id"]) == canon(finding_id):
             return item
     raise KeyError(finding_id)
+
+
+def mitigation_of(item):
+    """The Mitigation cell that ``make_threats_md`` writes for a finding: the reference set's mitigation text."""
+    return "Mitigation text for %s." % item["id"]
 
 
 def sha256_of(path):
@@ -609,12 +617,17 @@ class Project(object):
         assert (self.out / SARIF).read_bytes() == EARLIER_SARIF
 
     # ---- plan, parts, reconcile
-    def plan(self, batch_size=None, date=DATE, architecture=True):
-        """The planner through its function interface, as ``test_tachi_stage.py`` calls it (ADR-050 D6)."""
+    def plan(self, batch_size=None, date=DATE, architecture=True, baseline_dir=None):
+        """The planner through its function interface, as ``test_tachi_stage.py`` calls it (ADR-050 D6).
+
+        ``architecture`` is ``True`` for the project's own file, a path for another candidate (the command's
+        ``--architecture-path``), or falsy for none. ``baseline_dir`` is the command's ``--baseline``.
+        """
         err = io.StringIO()
+        explicit = self.architecture if architecture is True else (architecture or None)
         with working_directory(self.root), contextlib.redirect_stderr(err):
-            result = self.stage.plan_stage(stage=STAGE, out=self.out, date=date, threats=self.threats,
-                                           architecture=self.architecture if architecture else None, batch_size=batch_size)
+            result = self.stage.plan_stage(stage=STAGE, out=self.out, date=date, threats=self.threats, architecture=explicit,
+                                           baseline_dir=baseline_dir, batch_size=batch_size)
         self.plan_stderr = err.getvalue()
         self.plan_id, self.digest = result["plan_id"], result["plan_digest"]
         return result
@@ -654,9 +667,9 @@ class Project(object):
             self.digest = json.loads(res.out)["plan_digest"]
         return res
 
-    def prepare(self, batch_size=None, date=DATE, mutate=None, architecture=True):
+    def prepare(self, batch_size=None, date=DATE, mutate=None, architecture=True, baseline_dir=None):
         """Plan, write a valid part for every batch and reconcile to complete (the command's Steps 2 to 4)."""
-        self.plan(batch_size, date, architecture)
+        self.plan(batch_size, date, architecture, baseline_dir)
         self.write_parts(mutate=mutate)
         res = self.reconcile()
         assert res.code == 0, res.describe()
@@ -665,8 +678,8 @@ class Project(object):
         self.last = invoke(self.renderer, ["--out", self.out, "--plan", self.plan_id, "--plan-digest", self.digest, *extra], self.root)
         return self.last
 
-    def run(self, batch_size=None, date=DATE, mutate=None, architecture=True):
-        self.prepare(batch_size, date, mutate, architecture)
+    def run(self, batch_size=None, date=DATE, mutate=None, architecture=True, baseline_dir=None):
+        self.prepare(batch_size, date, mutate, architecture, baseline_dir)
         return self.render()
 
     def fail(self, reason="check-failed", detail=None):
@@ -693,6 +706,25 @@ class Project(object):
 
     def outputs(self):
         return {name: ((self.out / name).read_bytes() if (self.out / name).exists() else None) for name in (MD, SARIF)}
+
+
+def subset_project(stage_module, renderer_module, root):
+    """A project over the fixture's gated subset: 42 open findings, 3 RESOLVED, and generic scorer items for every one.
+
+    Returns ``(project, reference)``. The subset's correlation groups are cut out (reading): T044's planner leaves a
+    peer out of the plan, and the peer cases are ``test_peers_*``, so this input needs no routing. Its
+    ``## Affected Assets`` block lists only some findings, so a run over it may warn that the block is stale (exit 5).
+    """
+    text = (GATED_SUBSET / "baseline" / "threats.md").read_text(encoding="utf-8")
+    text = re.sub(r"(?ms)^## 4a\. Correlated Findings.*?(?=^## )", "", text)
+    assert "## 4a." not in text
+    reference = tachi_parsers.parse_reference_set(text)
+    scope = scope_of(text)
+    component = {canon(row["id"]): row["component"] for row in reference["open"]}
+    project = Project(stage_module, renderer_module, root, threats_text=text,
+                      items=lambda finding_id: scorer_item(generic_item(finding_id, component[canon(finding_id)], scope)))
+    project.architecture.write_text((GATED_SUBSET / "architecture" / "architecture.md").read_text(encoding="utf-8"), encoding="utf-8")
+    return project, reference
 
 
 @pytest.fixture(scope="module")
@@ -801,6 +833,7 @@ def test_harness_the_literal_goldens_equal_the_shipped_arithmetic():
         assert ts.review_date(DATE, sla) == review
     counts = {band: sum(1 for value in GOLDEN.values() if value[5] == band) for band in GOVERNANCE}
     assert counts == BAND_COUNTS
+    assert ts.largest_remainder(BAND_COUNTS) == PERCENTAGES and sum(PERCENTAGES.values()) == 100
 
 
 def test_harness_the_orders_are_composite_descending_then_s2():
@@ -951,11 +984,11 @@ def test_md_the_frontmatter_is_schema_1_1(base):
     assert (front["schema_version"], front["date"], front["classification"]) == ("1.1", DATE, "confidential")
     text = frontmatter_text(base.md)
     for name, weight in (("cvss_base", "0.35"), ("exploitability", "0.30"), ("scalability", "0.15"), ("reachability", "0.20")):
-        assert re.search(r"(?m)^\s+%s:\s*\"?%s\"?\s*$" % (name, re.escape(weight)), text), name
+        assert re.search(r"(?m)^\s+" + re.escape(name) + r"\s*:\s*\"?" + re.escape(weight) + r"\"?\s*$", text), name
     baseline = tachi_parsers.parse_baseline_frontmatter(base.md)
     assert baseline["has_baseline"] is False and baseline["source"] is None
-    for key in ("inherited_count", "fresh_count"):  # reading: the template says "null when no baseline"
-        assert re.search(r"(?m)^\s+%s:\s*(null|~)?\s*$" % key, text), key
+    for key in ("inherited_count", "fresh_count"):  # the template says "null when no baseline"
+        assert re.search(r"(?m)^\s+" + re.escape(key) + r"\s*:\s*(null|~)?\s*$", text), key
     source = re.search(r"(?m)^source_file:\s*\"?([^\"\n]+)\"?\s*$", text)
     assert source, "source_file names the input threats.md: the controls command reaches it from here (D7, D9)"
     assert os.path.samefile(str(base.root / source.group(1)), str(base.threats))
@@ -1009,6 +1042,19 @@ def test_md_section_2a_holds_exactly_the_resolved_rows(base):
         for column in ("CVSS", "Exploit.", "Scale.", "Reach.", "Composite"):
             assert not re.fullmatch(r"\d+\.\d", row[column]), "%s: a RESOLVED row is never recomputed (R-30)" % column
         assert not re.search(r"\d{4}-\d{2}-\d{2}", row["Review Date"]), "and it is outside the SLA clock"
+
+
+def test_md_section_2a_is_omitted_when_there_is_no_section_4c_finding(stage, renderer, tmp_path):
+    """Ruled by the architect, option (a): no ``## 2a`` heading and no empty table, as lane C's 1.1 template has it (D15)."""
+    project = Project(stage, renderer, tmp_path, resolved=[])
+    res = project.run()
+    assert res.code == 0, res.describe()
+    assert not has_section(project.md, "## 2a."), "no heading is written for an empty Section 4c"
+    assert "Resolved Findings" not in project.md
+    assert tachi_parsers.parse_markdown_table(project.md, "## 2a. Resolved Findings") == [], "no reader depends on the heading"
+    rows = records(*table_of(section(project.md, "## 2. Scored Threat Table"), "ID"))
+    assert [row["ID"] for row in rows] == ORDER and project.record["counts"]["resolved"] == 0
+    assert has_section(project.md, "## 3. Dimensional Breakdown"), "Section 3 follows Section 2"
 
 
 def test_md_resolved_findings_appear_only_in_section_2a(base):
@@ -1148,8 +1194,8 @@ def test_md_the_executive_summary_is_one_templated_sentence_with_the_computed_co
              if line.strip() and not line.strip().startswith(("|", "---", "<!--", "#"))]
     counts = ["%d" % n for n in (len(ORDER), BAND_COUNTS["Critical"], BAND_COUNTS["High"], BAND_COUNTS["Medium"], BAND_COUNTS["Low"])]
     sentences = [line for line in prose if numbers_in(line)[:5] == counts]
-    # reading: ADR-050 D2 says "one sentence, templated from computed counts"; the wording is the template's, so the
-    # golden pins what it must state and in what order: the open count, then Critical, High, Medium and Low.
+    # The sentence's wording is the template's (T031). The architect confirmed what the golden pins: it states the open
+    # count, then Critical, High, Medium and Low, in that order (ADR-050 D2).
     assert len(sentences) == 1, "one line states the open count, then the four bands: %s" % prose
     sentence = sentences[0]
     positions = [sentence.index(band) for band in ("Critical", "High", "Medium", "Low")]
@@ -1157,18 +1203,23 @@ def test_md_the_executive_summary_is_one_templated_sentence_with_the_computed_co
     assert len(re.findall(r"[.!?](?:\s|$)", sentence)) == 1, "one sentence"
     resolved_lines = [line for line in prose if line != sentence and "resolved" in line.lower() and str(len(RESOLVED_IDS)) in numbers_in(line)]
     assert resolved_lines, "RESOLVED findings are counted on a separate line (D9): %s" % prose
-    for header, rows in tables(body):  # if a distribution table stays, it never counts them
-        if "Severity" in header and "Count" in header:
-            counted = {re.sub(r"\*", "", row[header.index("Severity")]): re.sub(r"\*", "", row[header.index("Count")]) for row in rows}
-            assert {band: int(counted[band]) for band in GOVERNANCE} == BAND_COUNTS
-            assert counted.get("Total", str(len(ORDER))) == str(len(ORDER))
+
+
+def test_md_the_first_table_of_the_executive_summary_is_the_severity_band_table(base):
+    """Severity, Count and Percentage, percentages by largest remainder, and a Total row equal to the open count. The
+    report and infographic extractors read it through ``parse_risk_scores_severity`` unchanged (NFR-1; ADR-050 D2)."""
+    header, rows = tables(section(base.md, "## 1. Executive Summary"))[0]
+    assert header == ["Severity", "Count", "Percentage"]
+    plain = [[re.sub(r"\*", "", cell) for cell in row] for row in rows]
+    assert plain == [[band, str(BAND_COUNTS[band]), "%d%%" % PERCENTAGES[band]] for band in ("Critical", "High", "Medium", "Low")] + [
+        ["Total", str(len(ORDER)), "100%"]], "RESOLVED findings are never in the distribution (R-30)"
 
 
 def test_md_the_file_ends_with_the_stamp(base):
     md = base.md
     stamp = tp.read_stamp(md)
     assert stamp is not None and md.rstrip("\n").split("\n")[-1] == tp.stamp_comment(stamp["renderer"], stamp["input_digest"])
-    assert stamp["renderer"] in RENDERER_NAMES and stamp["version"] == tp.VERSION and DIGEST.match(stamp["input_digest"])
+    assert stamp["renderer"] == RENDERER_NAME and stamp["version"] == tp.VERSION and DIGEST.match(stamp["input_digest"])
 
 
 def test_md_every_table_row_has_the_columns_of_its_header(base):
@@ -1244,7 +1295,10 @@ def test_sarif_each_result_carries_its_goldens(base):
         sla, disposition, review = GOVERNANCE[band]
         assert result["ruleId"] == sc.rule_id_for(finding_id)
         assert result["level"] == sc.level_for_band(band)
-        assert result["message"] == {"text": item["threat"]}  # reading: the file's own text is the reference set's threat text
+        # The file's own text is the reference set's threat text, and `markdown` is its mitigation text, which NFR-1 keeps
+        # (the architect's ruling; risk-scorer.md:195-196). `text` comes first in the key order.
+        assert result["message"] == {"text": item["threat"], "markdown": mitigation_of(item)}
+        assert list(result["message"]) == ["text", "markdown"]
         assert result["partialFingerprints"] == sc.partial_fingerprints(TOOL, finding_id)
         assert "relatedLocations" not in result, "the scorer's file has no related locations (D8)"
         location = result["locations"][0]
@@ -1279,7 +1333,7 @@ def test_sarif_each_rule_carries_the_highest_composite_of_its_findings(base):
 def test_sarif_carries_the_provenance_stamp(base):
     stamp = base.sarif["runs"][0]["properties"]["tachi_provenance"]
     assert list(stamp) == ["renderer", "version", "input_digest"]
-    assert stamp["renderer"] in RENDERER_NAMES and stamp["version"] == tp.VERSION and DIGEST.match(stamp["input_digest"])
+    assert stamp["renderer"] == RENDERER_NAME and stamp["version"] == tp.VERSION and DIGEST.match(stamp["input_digest"])
 
 
 # =============================================================================
@@ -1571,17 +1625,7 @@ def test_batching_a_run_below_the_threshold_invokes_the_agent_once(project, stag
 
 
 def test_batching_the_gated_subset_plans_two_or_more_batches_and_renders_every_row(stage, renderer, tmp_path):
-    text = (GATED_SUBSET / "baseline" / "threats.md").read_text(encoding="utf-8")
-    # reading: the subset's correlation groups are cut out. T044's planner leaves a peer out of the plan, and the
-    # peer cases are test_peers_*, so this case needs no routing.
-    text = re.sub(r"(?ms)^## 4a\. Correlated Findings.*?(?=^## )", "", text)
-    assert "## 4a." not in text
-    reference = tachi_parsers.parse_reference_set(text)
-    scope = scope_of(text)
-    component = {canon(row["id"]): row["component"] for row in reference["open"]}
-    project = Project(stage, renderer, tmp_path, threats_text=text,
-                      items=lambda finding_id: scorer_item(generic_item(finding_id, component[canon(finding_id)], scope)))
-    project.architecture.write_text((GATED_SUBSET / "architecture" / "architecture.md").read_text(encoding="utf-8"), encoding="utf-8")
+    project, reference = subset_project(stage, renderer, tmp_path)
     res = project.run()
     assert res.code in (0, 5), res.describe()  # the subset's Affected Assets block lists only some findings: a stale block warns
 
@@ -1732,10 +1776,16 @@ def test_determinism_the_input_digest_follows_the_inputs_and_not_the_plan(projec
     assert tp.read_stamp(project.md)["input_digest"] != first, "an accepted part's items are in the digest"
 
 
+# H8's roots, built in pieces so that this file holds no path itself (the same list as test_fixture_374.py's hygiene check).
+H8_ROOTS = ("Us" + "ers", "ho" + "me", "pri" + "vate", "t" + "mp", "var/fol" + "ders")
+LOCAL_PATH = re.compile("/(%s)/|(?<![A-Za-z0-9])[A-Za-z]:\\\\[A-Za-z]" % "|".join(H8_ROOTS))
+
+
 def test_determinism_no_local_path_reaches_either_file(base):
     for text in (base.md, base.sarif_text):
-        for path in {str(base.root), str(base.out), os.path.realpath(str(base.root)), str(Path.home()), "/private/var", "/tmp/"}:
-            assert path not in text, "a local path in the output makes it differ between machines and leaks the layout (NFR-2, NFR-6): %s" % path
+        assert not LOCAL_PATH.search(text), "a local path in the output leaks the layout and differs between machines (NFR-2, NFR-6)"
+        for path in {str(base.root), str(base.out), os.path.realpath(str(base.root))}:
+            assert path not in text, "the project's own path is in the output: %s" % path
 
 
 # =============================================================================
@@ -1818,6 +1868,7 @@ def test_narrative_a_bad_field_takes_its_fixed_sentence_and_a_long_one_is_cut_an
 def test_narrative_hostile_text_is_raw_in_the_sarif_and_escaped_in_the_markdown(base):
     result = results_by_id(base.sarif)["LLM-4"]
     assert result["message"]["text"] == HOSTILE_THREAT, "SARIF strings go through json.dumps only (ADR-050 D3)"
+    assert result["message"]["markdown"] == mitigation_of(by_id("LLM-4"))
     assert results_by_id(base.sarif)["S-10"]["message"]["text"] == by_id("S-10")["threat"]
     assert "\\u00c9tienne" in base.sarif_text and "\\u2014" in base.sarif_text, "non-ASCII is written as an escape"
 
@@ -1887,6 +1938,15 @@ def test_peers_the_planner_leaves_a_peer_out_and_the_renderer_copies_the_primary
         body = subsection_for(project.md, peer)
         assert [line for line in body.split("\n") if line.startswith("**Correlation Group**:") and "S-2" in line], peer
     assert project.record["counts"]["units"] == len(ORDER) - 2 and project.record["counts"]["open"] == len(ORDER)
+    # D9: Scoring Inputs lists every open finding, so a later run can carry any of them. A peer's rows hold the values it copied.
+    inputs = [(canon(row[0]), row[1], row[2]) for row in table_of(subsection_of(project.md, "## 6. Score Integrity", "### Scoring Inputs"), "ID")[1]]
+    numeric = [field for field in ("cvss_vector",) + tuple("exploitability." + n for n in tp.SUBSCORE_NAMES[:4])
+               + tuple("scalability." + n for n in tp.SUBSCORE_NAMES[4:]) + ("reachability.zone", "reachability.trust_level",
+               "reachability.auth_barriers", "reachability.network_boundaries")]
+    for finding_id in ORDER:
+        assert [row for row in inputs if row[0] == canon(finding_id) and row[1] == "scored_on"], "%s has Scoring Inputs" % finding_id
+    for peer in ("S-10", "T-1"):
+        assert [(f, v) for i, f, v in inputs if i == canon(peer) and f in numeric] == [(f, v) for i, f, v in inputs if i == "S-2" and f in numeric], peer
 
     results = results_by_id(project.sarif)
     assert len(results) == len(ORDER), "every peer is a result, once (D8)"
@@ -1899,6 +1959,6 @@ def test_peers_the_planner_leaves_a_peer_out_and_the_renderer_copies_the_primary
         properties = results[spelled]["properties"]
         assert (properties["correlation-group"], properties["correlation-role"], properties["correlation-primary"]) == (
             correlation.group, correlation.role, correlation.primary)
-        assert results[spelled]["message"]["text"] == sc.correlated_message(by_id(spelled)["threat"], correlation), \
-            "ruling C's sentence ends the message"
+        assert results[spelled]["message"] == {"text": sc.correlated_message(by_id(spelled)["threat"], correlation),
+                                               "markdown": mitigation_of(by_id(spelled))}, "ruling C's sentence ends the text, not the markdown"
         assert "relatedLocations" not in results[spelled], "a peer is a result and never a related location"
