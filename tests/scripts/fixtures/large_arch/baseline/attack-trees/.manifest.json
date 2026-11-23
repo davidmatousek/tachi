@@ -1,0 +1,1272 @@
+{
+  "schema_version": "1.0",
+  "rule_applied": "Rule 2",
+  "attack_tree_count": 180,
+  "trees": [
+    {
+      "finding_id": "S-3",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.89,
+      "file_path": "attack-trees/s-3-attack-tree.md"
+    },
+    {
+      "finding_id": "S-6",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.67,
+      "file_path": "attack-trees/s-6-attack-tree.md"
+    },
+    {
+      "finding_id": "S-8",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.53,
+      "file_path": "attack-trees/s-8-attack-tree.md"
+    },
+    {
+      "finding_id": "S-9",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8700000000000001,
+      "file_path": "attack-trees/s-9-attack-tree.md"
+    },
+    {
+      "finding_id": "S-12",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.88,
+      "file_path": "attack-trees/s-12-attack-tree.md"
+    },
+    {
+      "finding_id": "S-13",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8300000000000001,
+      "file_path": "attack-trees/s-13-attack-tree.md"
+    },
+    {
+      "finding_id": "S-15",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.98,
+      "file_path": "attack-trees/s-15-attack-tree.md"
+    },
+    {
+      "finding_id": "S-17",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9,
+      "file_path": "attack-trees/s-17-attack-tree.md"
+    },
+    {
+      "finding_id": "S-21",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.61,
+      "file_path": "attack-trees/s-21-attack-tree.md"
+    },
+    {
+      "finding_id": "S-22",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.93,
+      "file_path": "attack-trees/s-22-attack-tree.md"
+    },
+    {
+      "finding_id": "S-24",
+      "delta_status": "UPDATED",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/s-24-attack-tree.md"
+    },
+    {
+      "finding_id": "S-25",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9,
+      "file_path": "attack-trees/s-25-attack-tree.md"
+    },
+    {
+      "finding_id": "S-26",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8,
+      "file_path": "attack-trees/s-26-attack-tree.md"
+    },
+    {
+      "finding_id": "S-27",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8500000000000001,
+      "file_path": "attack-trees/s-27-attack-tree.md"
+    },
+    {
+      "finding_id": "S-30",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.92,
+      "file_path": "attack-trees/s-30-attack-tree.md"
+    },
+    {
+      "finding_id": "S-32",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.93,
+      "file_path": "attack-trees/s-32-attack-tree.md"
+    },
+    {
+      "finding_id": "S-36",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.93,
+      "file_path": "attack-trees/s-36-attack-tree.md"
+    },
+    {
+      "finding_id": "S-37",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.91,
+      "file_path": "attack-trees/s-37-attack-tree.md"
+    },
+    {
+      "finding_id": "S-38",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8,
+      "file_path": "attack-trees/s-38-attack-tree.md"
+    },
+    {
+      "finding_id": "S-39",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.6000000000000001,
+      "file_path": "attack-trees/s-39-attack-tree.md"
+    },
+    {
+      "finding_id": "S-40",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/s-40-attack-tree.md"
+    },
+    {
+      "finding_id": "S-41",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/s-41-attack-tree.md"
+    },
+    {
+      "finding_id": "T-2",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9600000000000001,
+      "file_path": "attack-trees/t-2-attack-tree.md"
+    },
+    {
+      "finding_id": "T-4",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.89,
+      "file_path": "attack-trees/t-4-attack-tree.md"
+    },
+    {
+      "finding_id": "T-7",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.81,
+      "file_path": "attack-trees/t-7-attack-tree.md"
+    },
+    {
+      "finding_id": "T-9",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9500000000000001,
+      "file_path": "attack-trees/t-9-attack-tree.md"
+    },
+    {
+      "finding_id": "T-10",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.81,
+      "file_path": "attack-trees/t-10-attack-tree.md"
+    },
+    {
+      "finding_id": "T-13",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.54,
+      "file_path": "attack-trees/t-13-attack-tree.md"
+    },
+    {
+      "finding_id": "T-14",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.67,
+      "file_path": "attack-trees/t-14-attack-tree.md"
+    },
+    {
+      "finding_id": "T-22",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8,
+      "file_path": "attack-trees/t-22-attack-tree.md"
+    },
+    {
+      "finding_id": "T-25",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8400000000000001,
+      "file_path": "attack-trees/t-25-attack-tree.md"
+    },
+    {
+      "finding_id": "T-27",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.48000000000000004,
+      "file_path": "attack-trees/t-27-attack-tree.md"
+    },
+    {
+      "finding_id": "T-29",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8400000000000001,
+      "file_path": "attack-trees/t-29-attack-tree.md"
+    },
+    {
+      "finding_id": "T-31",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9600000000000001,
+      "file_path": "attack-trees/t-31-attack-tree.md"
+    },
+    {
+      "finding_id": "T-32",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.88,
+      "file_path": "attack-trees/t-32-attack-tree.md"
+    },
+    {
+      "finding_id": "T-36",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.91,
+      "file_path": "attack-trees/t-36-attack-tree.md"
+    },
+    {
+      "finding_id": "T-37",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.66,
+      "file_path": "attack-trees/t-37-attack-tree.md"
+    },
+    {
+      "finding_id": "T-38",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.91,
+      "file_path": "attack-trees/t-38-attack-tree.md"
+    },
+    {
+      "finding_id": "T-40",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.88,
+      "file_path": "attack-trees/t-40-attack-tree.md"
+    },
+    {
+      "finding_id": "T-41",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.88,
+      "file_path": "attack-trees/t-41-attack-tree.md"
+    },
+    {
+      "finding_id": "R-15",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9600000000000001,
+      "file_path": "attack-trees/r-15-attack-tree.md"
+    },
+    {
+      "finding_id": "R-16",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8300000000000001,
+      "file_path": "attack-trees/r-16-attack-tree.md"
+    },
+    {
+      "finding_id": "R-19",
+      "delta_status": "UPDATED",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/r-19-attack-tree.md"
+    },
+    {
+      "finding_id": "R-24",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9700000000000001,
+      "file_path": "attack-trees/r-24-attack-tree.md"
+    },
+    {
+      "finding_id": "R-26",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8600000000000001,
+      "file_path": "attack-trees/r-26-attack-tree.md"
+    },
+    {
+      "finding_id": "R-31",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/r-31-attack-tree.md"
+    },
+    {
+      "finding_id": "I-5",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.98,
+      "file_path": "attack-trees/i-5-attack-tree.md"
+    },
+    {
+      "finding_id": "I-6",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.91,
+      "file_path": "attack-trees/i-6-attack-tree.md"
+    },
+    {
+      "finding_id": "I-14",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.92,
+      "file_path": "attack-trees/i-14-attack-tree.md"
+    },
+    {
+      "finding_id": "I-22",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8600000000000001,
+      "file_path": "attack-trees/i-22-attack-tree.md"
+    },
+    {
+      "finding_id": "I-31",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9600000000000001,
+      "file_path": "attack-trees/i-31-attack-tree.md"
+    },
+    {
+      "finding_id": "I-33",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9,
+      "file_path": "attack-trees/i-33-attack-tree.md"
+    },
+    {
+      "finding_id": "I-34",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.92,
+      "file_path": "attack-trees/i-34-attack-tree.md"
+    },
+    {
+      "finding_id": "I-36",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.93,
+      "file_path": "attack-trees/i-36-attack-tree.md"
+    },
+    {
+      "finding_id": "I-42",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8400000000000001,
+      "file_path": "attack-trees/i-42-attack-tree.md"
+    },
+    {
+      "finding_id": "I-43",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/i-43-attack-tree.md"
+    },
+    {
+      "finding_id": "I-47",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/i-47-attack-tree.md"
+    },
+    {
+      "finding_id": "D-1",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9,
+      "file_path": "attack-trees/d-1-attack-tree.md"
+    },
+    {
+      "finding_id": "D-5",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9,
+      "file_path": "attack-trees/d-5-attack-tree.md"
+    },
+    {
+      "finding_id": "D-8",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8600000000000001,
+      "file_path": "attack-trees/d-8-attack-tree.md"
+    },
+    {
+      "finding_id": "D-9",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8500000000000001,
+      "file_path": "attack-trees/d-9-attack-tree.md"
+    },
+    {
+      "finding_id": "D-19",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.5900000000000001,
+      "file_path": "attack-trees/d-19-attack-tree.md"
+    },
+    {
+      "finding_id": "D-22",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8700000000000001,
+      "file_path": "attack-trees/d-22-attack-tree.md"
+    },
+    {
+      "finding_id": "D-27",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9500000000000001,
+      "file_path": "attack-trees/d-27-attack-tree.md"
+    },
+    {
+      "finding_id": "D-28",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.93,
+      "file_path": "attack-trees/d-28-attack-tree.md"
+    },
+    {
+      "finding_id": "D-30",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.65,
+      "file_path": "attack-trees/d-30-attack-tree.md"
+    },
+    {
+      "finding_id": "D-33",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.42000000000000004,
+      "file_path": "attack-trees/d-33-attack-tree.md"
+    },
+    {
+      "finding_id": "D-34",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.88,
+      "file_path": "attack-trees/d-34-attack-tree.md"
+    },
+    {
+      "finding_id": "D-36",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/d-36-attack-tree.md"
+    },
+    {
+      "finding_id": "D-38",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/d-38-attack-tree.md"
+    },
+    {
+      "finding_id": "E-3",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9,
+      "file_path": "attack-trees/e-3-attack-tree.md"
+    },
+    {
+      "finding_id": "E-4",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.88,
+      "file_path": "attack-trees/e-4-attack-tree.md"
+    },
+    {
+      "finding_id": "E-5",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8400000000000001,
+      "file_path": "attack-trees/e-5-attack-tree.md"
+    },
+    {
+      "finding_id": "E-7",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.81,
+      "file_path": "attack-trees/e-7-attack-tree.md"
+    },
+    {
+      "finding_id": "E-9",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9600000000000001,
+      "file_path": "attack-trees/e-9-attack-tree.md"
+    },
+    {
+      "finding_id": "E-11",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9600000000000001,
+      "file_path": "attack-trees/e-11-attack-tree.md"
+    },
+    {
+      "finding_id": "E-12",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9,
+      "file_path": "attack-trees/e-12-attack-tree.md"
+    },
+    {
+      "finding_id": "E-15",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8500000000000001,
+      "file_path": "attack-trees/e-15-attack-tree.md"
+    },
+    {
+      "finding_id": "E-19",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.92,
+      "file_path": "attack-trees/e-19-attack-tree.md"
+    },
+    {
+      "finding_id": "E-22",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8500000000000001,
+      "file_path": "attack-trees/e-22-attack-tree.md"
+    },
+    {
+      "finding_id": "E-23",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8400000000000001,
+      "file_path": "attack-trees/e-23-attack-tree.md"
+    },
+    {
+      "finding_id": "E-24",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8,
+      "file_path": "attack-trees/e-24-attack-tree.md"
+    },
+    {
+      "finding_id": "E-25",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.98,
+      "file_path": "attack-trees/e-25-attack-tree.md"
+    },
+    {
+      "finding_id": "E-26",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8300000000000001,
+      "file_path": "attack-trees/e-26-attack-tree.md"
+    },
+    {
+      "finding_id": "E-27",
+      "delta_status": "UPDATED",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/e-27-attack-tree.md"
+    },
+    {
+      "finding_id": "E-29",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8500000000000001,
+      "file_path": "attack-trees/e-29-attack-tree.md"
+    },
+    {
+      "finding_id": "E-31",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.92,
+      "file_path": "attack-trees/e-31-attack-tree.md"
+    },
+    {
+      "finding_id": "E-33",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/e-33-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-1",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.93,
+      "file_path": "attack-trees/ag-1-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-2",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.89,
+      "file_path": "attack-trees/ag-2-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-3",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8300000000000001,
+      "file_path": "attack-trees/ag-3-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-4",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.91,
+      "file_path": "attack-trees/ag-4-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-5",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9600000000000001,
+      "file_path": "attack-trees/ag-5-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-6",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.91,
+      "file_path": "attack-trees/ag-6-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-9",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.88,
+      "file_path": "attack-trees/ag-9-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-10",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8600000000000001,
+      "file_path": "attack-trees/ag-10-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-12",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8600000000000001,
+      "file_path": "attack-trees/ag-12-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-13",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8500000000000001,
+      "file_path": "attack-trees/ag-13-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-16",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8200000000000001,
+      "file_path": "attack-trees/ag-16-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-18",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8700000000000001,
+      "file_path": "attack-trees/ag-18-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-19",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.81,
+      "file_path": "attack-trees/ag-19-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-21",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.89,
+      "file_path": "attack-trees/ag-21-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-23",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9,
+      "file_path": "attack-trees/ag-23-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-24",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9600000000000001,
+      "file_path": "attack-trees/ag-24-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-26",
+      "delta_status": "UPDATED",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/ag-26-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-27",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.98,
+      "file_path": "attack-trees/ag-27-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-31",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9700000000000001,
+      "file_path": "attack-trees/ag-31-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-32",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8700000000000001,
+      "file_path": "attack-trees/ag-32-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-35",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.81,
+      "file_path": "attack-trees/ag-35-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-36",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.98,
+      "file_path": "attack-trees/ag-36-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-38",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9600000000000001,
+      "file_path": "attack-trees/ag-38-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-40",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.92,
+      "file_path": "attack-trees/ag-40-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-41",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/ag-41-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-42",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/ag-42-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-43",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/ag-43-attack-tree.md"
+    },
+    {
+      "finding_id": "AG-44",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/ag-44-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-4",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9500000000000001,
+      "file_path": "attack-trees/llm-4-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-11",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8500000000000001,
+      "file_path": "attack-trees/llm-11-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-14",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.88,
+      "file_path": "attack-trees/llm-14-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-16",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.81,
+      "file_path": "attack-trees/llm-16-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-19",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.56,
+      "file_path": "attack-trees/llm-19-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-20",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.91,
+      "file_path": "attack-trees/llm-20-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-23",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8,
+      "file_path": "attack-trees/llm-23-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-24",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.91,
+      "file_path": "attack-trees/llm-24-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-25",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.66,
+      "file_path": "attack-trees/llm-25-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-26",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.93,
+      "file_path": "attack-trees/llm-26-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-27",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9600000000000001,
+      "file_path": "attack-trees/llm-27-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-28",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8600000000000001,
+      "file_path": "attack-trees/llm-28-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-29",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.67,
+      "file_path": "attack-trees/llm-29-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-30",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.92,
+      "file_path": "attack-trees/llm-30-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-32",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8300000000000001,
+      "file_path": "attack-trees/llm-32-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-33",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.81,
+      "file_path": "attack-trees/llm-33-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-36",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.88,
+      "file_path": "attack-trees/llm-36-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-37",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9400000000000001,
+      "file_path": "attack-trees/llm-37-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-38",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.93,
+      "file_path": "attack-trees/llm-38-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-39",
+      "delta_status": "UPDATED",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/llm-39-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-40",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8200000000000001,
+      "file_path": "attack-trees/llm-40-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-41",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8500000000000001,
+      "file_path": "attack-trees/llm-41-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-44",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.92,
+      "file_path": "attack-trees/llm-44-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-46",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9600000000000001,
+      "file_path": "attack-trees/llm-46-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-47",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9,
+      "file_path": "attack-trees/llm-47-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-48",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8500000000000001,
+      "file_path": "attack-trees/llm-48-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-53",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.88,
+      "file_path": "attack-trees/llm-53-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-54",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/llm-54-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-56",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/llm-56-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-57",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/llm-57-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-58",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/llm-58-attack-tree.md"
+    },
+    {
+      "finding_id": "LLM-59",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/llm-59-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-2",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8300000000000001,
+      "file_path": "attack-trees/oi-2-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-3",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.91,
+      "file_path": "attack-trees/oi-3-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-6",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.92,
+      "file_path": "attack-trees/oi-6-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-9",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9400000000000001,
+      "file_path": "attack-trees/oi-9-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-10",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.98,
+      "file_path": "attack-trees/oi-10-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-11",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8600000000000001,
+      "file_path": "attack-trees/oi-11-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-15",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8300000000000001,
+      "file_path": "attack-trees/oi-15-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-18",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9500000000000001,
+      "file_path": "attack-trees/oi-18-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-19",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.64,
+      "file_path": "attack-trees/oi-19-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-22",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8300000000000001,
+      "file_path": "attack-trees/oi-22-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-23",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9400000000000001,
+      "file_path": "attack-trees/oi-23-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-24",
+      "delta_status": "UPDATED",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/oi-24-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-25",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.93,
+      "file_path": "attack-trees/oi-25-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-26",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/oi-26-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-27",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/oi-27-attack-tree.md"
+    },
+    {
+      "finding_id": "OI-28",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/oi-28-attack-tree.md"
+    },
+    {
+      "finding_id": "MI-3",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9400000000000001,
+      "file_path": "attack-trees/mi-3-attack-tree.md"
+    },
+    {
+      "finding_id": "MI-4",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.92,
+      "file_path": "attack-trees/mi-4-attack-tree.md"
+    },
+    {
+      "finding_id": "MI-5",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.55,
+      "file_path": "attack-trees/mi-5-attack-tree.md"
+    },
+    {
+      "finding_id": "MI-6",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8,
+      "file_path": "attack-trees/mi-6-attack-tree.md"
+    },
+    {
+      "finding_id": "MI-7",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.93,
+      "file_path": "attack-trees/mi-7-attack-tree.md"
+    },
+    {
+      "finding_id": "MI-9",
+      "delta_status": "UPDATED",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/mi-9-attack-tree.md"
+    },
+    {
+      "finding_id": "MI-10",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.98,
+      "file_path": "attack-trees/mi-10-attack-tree.md"
+    },
+    {
+      "finding_id": "MI-11",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9700000000000001,
+      "file_path": "attack-trees/mi-11-attack-tree.md"
+    },
+    {
+      "finding_id": "MI-13",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.61,
+      "file_path": "attack-trees/mi-13-attack-tree.md"
+    },
+    {
+      "finding_id": "MI-17",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8600000000000001,
+      "file_path": "attack-trees/mi-17-attack-tree.md"
+    },
+    {
+      "finding_id": "MI-18",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9400000000000001,
+      "file_path": "attack-trees/mi-18-attack-tree.md"
+    },
+    {
+      "finding_id": "TE-1",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.9,
+      "file_path": "attack-trees/te-1-attack-tree.md"
+    },
+    {
+      "finding_id": "TE-2",
+      "delta_status": "UNCHANGED",
+      "action": "regenerated",
+      "similarity_score": 0.56,
+      "file_path": "attack-trees/te-2-attack-tree.md"
+    },
+    {
+      "finding_id": "TE-11",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.91,
+      "file_path": "attack-trees/te-11-attack-tree.md"
+    },
+    {
+      "finding_id": "TE-13",
+      "delta_status": "UNCHANGED",
+      "action": "carried_forward",
+      "similarity_score": 0.8200000000000001,
+      "file_path": "attack-trees/te-13-attack-tree.md"
+    },
+    {
+      "finding_id": "TE-16",
+      "delta_status": "NEW",
+      "action": "generated_fresh",
+      "similarity_score": null,
+      "file_path": "attack-trees/te-16-attack-tree.md"
+    }
+  ],
+  "summary": {
+    "fresh": 28,
+    "carried_forward": 134,
+    "regenerated": 18
+  }
+}
