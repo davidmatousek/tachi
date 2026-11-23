@@ -48,12 +48,14 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 SUBPROCESS_TIMEOUT = 120
 
 # --------------------------------------------------------------------------- the script lists
-# W1's scripts. A missing file is a failure: T012, T013, T014, T015, T016, T018 and T140 write them.
+# W1's and W2's scripts. A missing file is a failure: T012, T013, T014, T015, T016, T018, T140, T028 and T042 write them.
 REQUIRED_NOW = (
     "tachi_parts.py",
     "tachi_scoring.py",
     "sarif_common.py",  # exists today; W1 rewrites it as the shared emitter and installs it
     "tachi-stage.py",
+    "tachi_scoring_rules.py",  # W2 (lane R1b): T042 to T044
+    "render-risk-scores.py",  # W2 (lane R1): T028, T045, T046 and T050
 )
 
 # Scripts a later wave adds, with the wave that lands each. While one is missing its checks skip with
@@ -61,8 +63,6 @@ REQUIRED_NOW = (
 # one-line edit. T150 (PR 2) adds scripts/generate-threats-sarif.py to REQUIRED_NOW, because that
 # file exists today and is not "new" until PR 2 rewrites it on the shared emitter.
 PLANNED = {
-    "tachi_scoring_rules.py": "W2 (lane R1b)",
-    "render-risk-scores.py": "W2 (lane R1)",
     "render-compensating-controls.py": "W3 (lane R2)",
     "join-threats-md.py": "PR 2, W2' (lane OS)",
     "attack-chains.py": "PR 2, W2' (lane OC)",
@@ -459,7 +459,8 @@ def _scorer_item(finding_id):
     }
 
 
-def _write_valid_part(batch_input_path):
+def _write_valid_part(batch_input_path, make_item=None):
+    make_item = _scorer_item if make_item is None else make_item
     batch_input = json.loads(Path(batch_input_path).read_text(encoding="utf-8"))
     part = {
         "schema": "tachi.part/1",
@@ -468,7 +469,7 @@ def _write_valid_part(batch_input_path):
         "stage": batch_input["stage"],
         "agent_type": batch_input["agent_type"],
         "finding_ids": list(batch_input["finding_ids"]),
-        "items": [_scorer_item(fid) for fid in batch_input["finding_ids"]],
+        "items": [make_item(fid) for fid in batch_input["finding_ids"]],
         "fragments": [],
     }
     target = Path(batch_input["part_path"])
@@ -492,14 +493,14 @@ def _threats_md():
     )
 
 
-def _seed(workdir):
+def _seed(workdir, threats=None):
     """A fresh working tree: byte-identical inputs and fixed mtimes, so out_snapshot repeats too."""
     if workdir.exists():
         shutil.rmtree(str(workdir))
     (workdir / "run").mkdir(parents=True)
     (workdir / "docs" / "security").mkdir(parents=True)
     files = {
-        workdir / "run" / "threats.md": _threats_md().encode("utf-8"),
+        workdir / "run" / "threats.md": (_threats_md() if threats is None else threats).encode("utf-8"),
         workdir / "run" / "risk-scores.md": b"# earlier run\n",
         workdir / "run" / "risk-scores.sarif": b'{"earlier": true}\n',
         workdir / "docs" / "security" / "architecture.md": b"# Architecture\n",
@@ -559,12 +560,61 @@ def _drive_tachi_stage(interp, workdir):
     return steps, _tree(workdir)
 
 
-# Exit codes of the steps above: --version, plan, reconcile (halves), reconcile (complete), fail, architecture-source.
-EXPECTED_CODES = {"tachi-stage.py": [0, 0, 3, 0, 0, 0]}
+# ---- render-risk-scores.py (T050): the reference set gets a trust zone and an Affected Assets block, so a clean run
+# ---- exits 0 and the two runs compare on a whole render, the SARIF and the stage record included.
+
+_FLOOR_ZONE = "Edge DMZ"
+
+
+def _floor_threats_md():
+    zones = (
+        "## 2. Trust Boundaries\n\n### Trust Zones\n\n| Zone | Trust Level | Components |\n|------|-------------|------------|\n"
+        "| %s | Semi-Trusted | %s |\n\n" % (_FLOOR_ZONE, ", ".join("Gateway %d" % n for n in range(1, len(_FINDINGS) + 1))))
+    assets = ("\n## Affected Assets\n\n| Finding ID | Affected Assets |\n|------------|-----------------|\n"
+              + "\n".join("| %s | [] |" % fid for fid in _FINDINGS) + "\n")
+    return _threats_md().replace("## 7. Recommended Actions", zones + "## 7. Recommended Actions") + assets
+
+
+def _floor_item(finding_id):
+    """A scorer item that names the zone, and whose prose uses a slot, so the renderer's resolver runs in the child."""
+    item = _scorer_item(finding_id)
+    item["reachability"] = {"zone": _FLOOR_ZONE, "trust_level": "Semi-Trusted", "auth_barriers": 1, "network_boundaries": 1}
+    item["rationale"]["cvss"] = "The base score is {{score:cvss_base}} for {{name:component}}."
+    return item
+
+
+def _drive_render_risk_scores(interp, workdir):
+    """--version -> plan -> reconcile (complete) -> render. The render replaces the seeded earlier outputs."""
+    _seed(workdir, _floor_threats_md())
+    stage, render = SCRIPTS_DIR / "tachi-stage.py", SCRIPTS_DIR / "render-risk-scores.py"
+    out = workdir / "run"
+    steps = []
+
+    def step(script, args):
+        proc = interp.run(script, args, workdir)
+        steps.append({"args": _normalize(" ".join(str(a) for a in args)), "code": proc.returncode,
+                      "stdout": _normalize(proc.stdout), "stderr": _normalize(proc.stderr)})
+        return proc
+
+    step(render, ["--version"])
+    planned = json.loads(step(stage, ["plan", "--stage", "risk-score", "--out", out, "--date", "2026-11-22",
+                                      "--threats", out / "threats.md", "--architecture", "docs/security/architecture.md"]).stdout)
+    plan_id = planned["plan_id"]
+    for wave in planned["waves"]:
+        for batch in wave:
+            _write_valid_part(batch["input_path"], _floor_item)
+    reconciled = step(stage, ["reconcile", "--stage", "risk-score", "--out", out, "--plan", plan_id, "--plan-digest", planned["plan_digest"]])
+    step(render, ["--out", out, "--plan", plan_id, "--plan-digest", json.loads(reconciled.stdout)["plan_digest"]])
+    return steps, _tree(workdir)
+
+
+# Exit codes of the steps above. tachi-stage.py: --version, plan, reconcile (halves), reconcile (complete), fail,
+# architecture-source. render-risk-scores.py: --version, plan, reconcile (complete), render.
+EXPECTED_CODES = {"tachi-stage.py": [0, 0, 3, 0, 0, 0], "render-risk-scores.py": [0, 0, 0, 0]}
 
 # One driver per entry script, each `(Interpreter, workdir) -> (steps, tree)`. A later wave adds its entry's
-# driver here: render-risk-scores.py (W2), render-compensating-controls.py (W3), and PR 2's entries.
-CORE_PATH_DRIVERS = {"tachi-stage.py": _drive_tachi_stage}
+# driver here: render-compensating-controls.py (W3), and PR 2's entries.
+CORE_PATH_DRIVERS = {"tachi-stage.py": _drive_tachi_stage, "render-risk-scores.py": _drive_render_risk_scores}
 
 
 def _entry_scripts():
