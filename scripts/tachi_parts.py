@@ -718,10 +718,20 @@ def _split_slots(text: str) -> List[Tuple[bool, str]]:
     return pieces
 
 
+def _brace_before_a_slot(escaped: str) -> str:
+    """A ``{`` just before a slot forms, with the slot's first brace, a ``{{`` that isn't a slot: D3 escapes it too."""
+    if escaped.endswith("{"):
+        return escaped[:-1] + _REFERENCE_OF["{"]
+    return escaped
+
+
 def _escape(text: str, keep_slots: bool, cell: bool) -> str:
     if not keep_slots:
         return _escape_text(text, cell)
-    return "".join(piece if is_slot else _escape_text(piece, cell) for is_slot, piece in _split_slots(text))
+    pieces = _split_slots(text)
+    return "".join(
+        piece if is_slot else (_brace_before_a_slot if index + 1 < len(pieces) else str)(_escape_text(piece, cell))
+        for index, (is_slot, piece) in enumerate(pieces))
 
 
 def _guard_headings(text: str) -> str:
@@ -733,7 +743,8 @@ def escape_cell(text: str, keep_slots: bool = False) -> str:
 
     ``&``, ``<``, ``>``, ``|`` and a backtick become references, each ``{`` of a ``{{`` becomes ``&#123;`` and a
     newline becomes ``&#10;``. With ``keep_slots`` a complete slot stays as it is, for the narrative text that a
-    renderer persists with its slots (carried text, RR1). The one decoder in ``tachi_parsers`` reverses exactly these.
+    renderer persists with its slots (carried text, RR1), and a ``{`` just before a slot is escaped too, so
+    ``{{{score:x}}`` is written ``&#123;{{score:x}}``. The one decoder in ``tachi_parsers`` reverses exactly these.
     """
     return _escape(text, keep_slots, True)
 
@@ -771,9 +782,10 @@ def resolve_narrative(text: str, stage: str, lookup: Any, sink: str = "cell") ->
         return None
     cell = sink == "cell"
     pieces = []
-    for token in tokens:
+    for index, token in enumerate(tokens):
         if token[0] == "text":
-            pieces.append(_escape_text(token[1], cell))
+            escaped = _escape_text(token[1], cell)
+            pieces.append(_brace_before_a_slot(escaped) if index + 1 < len(tokens) else escaped)
             continue
         kind, name = token[1], token[2]
         value = lookup(kind, canonical_finding_id(name) if kind == "finding" else name)
@@ -782,7 +794,8 @@ def resolve_narrative(text: str, stage: str, lookup: Any, sink: str = "cell") ->
         if not isinstance(value, str):
             raise TypeError("a slot lookup returns text or None")
         pieces.append(_escape_text(value, cell))
-    result = "".join(pieces)
+    # No slot is left in resolved text, so no `{{` may be: a value's edge brace can't join its neighbour into one.
+    result = _BRACE_OF_A_PAIR.sub(_REFERENCE_OF["{"], "".join(pieces))
     return result if cell else _guard_headings(result)
 
 

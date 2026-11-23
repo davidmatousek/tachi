@@ -2340,3 +2340,79 @@ def test_a_cut_inside_a_slot_token_is_flagged_both_truncated_and_narrative_fallb
     assert result.state == "done"
     assert sorted(result.flags["S-1"]) == ["input:rationale.cvss:narrative-fallback", "input:rationale.cvss:truncated"]
     assert result.counts == {"narrative_fallbacks": 1, "truncations": 1}
+
+
+# =============================================================================
+# 19. The architect's ruling on gaps 19 to 22: a `{` just before a slot is escaped
+#
+# Together with the slot's first brace it forms a `{{` that isn't a slot, which D3 says must be escaped. A
+# resolved value that starts or ends with `{` must not join its neighbour into a `{{` either.
+# =============================================================================
+
+@pytest.mark.parametrize("text,escaped", [
+    ("{{{score:cvss_base}}", "&#123;{{score:cvss_base}}"),
+    ("a{{{ref:CWE-89}} b", "a&#123;{{ref:CWE-89}} b"),
+    ("{{score:inherent}}{{{score:residual}}", "{{score:inherent}}&#123;{{score:residual}}"),
+    ("{{{{score:cvss_base}}", "&#123;&#123;{{score:cvss_base}}"),        # four braces: two are the slot's, two are a pair
+    ("x{ {{score:cvss_base}}", "x{ {{score:cvss_base}}"),                 # a space between: no `{{` forms
+    ("{{score:cvss_base}}{y", "{{score:cvss_base}}{y"),                   # after a slot a lone `{` joins nothing
+])
+@pytest.mark.parametrize("name", ["escape_cell", "escape_prose"])
+def test_a_brace_just_before_a_kept_slot_is_escaped(name, text, escaped):
+    assert _api(name)(text, keep_slots=True) == escaped
+
+
+@pytest.mark.parametrize("text", [
+    "{{{score:cvss_base}}", "a{{{ref:CWE-89}} b", "{{score:inherent}}{{{score:residual}}", "{{{{score:cvss_base}}",
+    "{{7*7}} and {{{band:severity}}", "plain {text} only", "{{{{{{", "x{{{score:cvss_base}}{{{score:cvss_base}}y",
+])
+@pytest.mark.parametrize("name", ["escape_cell", "escape_prose"])
+def test_escaping_kept_slots_decodes_and_re_renders_to_the_same_bytes_on_the_next_run(name, text):
+    once = _api(name)(text, keep_slots=True)
+    assert decode_references(once) == text
+    assert _api(name)(decode_references(once), keep_slots=True) == once
+
+
+def test_a_brace_just_before_a_slot_is_escaped_when_the_slots_are_resolved_too():
+    resolve = _api("resolve_narrative")
+    assert resolve("{{{name:component}}", SCORER_STAGE, lookup_from({("name", "component"): "Foo"})) == "&#123;Foo"
+    assert resolve("a{{{name:component}} b", SCORER_STAGE, lookup_from({("name", "component"): "{foo"})) == "a&#123;{foo b"
+
+
+@pytest.mark.parametrize("text,value,expected", [
+    ("{{{name:component}}", "{x", "&#123;{x"),
+    ("{{name:component}}{y", "x{", "x&#123;&#123;y"),
+    ("{{name:component}}{{name:component}}", "{", "&#123;&#123;"),
+    ("{{name:component}}{{name:component}}", "a{", "a{a{"),               # `{` then `a`: no pair forms
+    ("{{name:component}} {z}", "x{", "x{ {z}"),
+])
+@pytest.mark.parametrize("sink", ["cell", "prose"])
+def test_a_resolved_value_never_joins_its_neighbours_into_a_brace_pair(sink, text, value, expected):
+    out = _api("resolve_narrative")(text, SCORER_STAGE, lookup_from({("name", "component"): value}), sink=sink)
+    assert out == expected
+    assert "{{" not in out
+
+
+def test_resolved_output_never_holds_a_brace_pair_whatever_the_text_and_values():
+    resolve = _api("resolve_narrative")
+    texts = ["{{{name:component}}", "{ {{name:component}}{", "{{name:component}}{{{name:zone}}{", "{{{{name:component}}"]
+    values = ["", "{", "{{", "}{", "x{", "{y", "{{score:cvss_base}}"]
+    for text in texts:
+        for first in values:
+            for second in values:
+                lookup = lookup_from({("name", "component"): first, ("name", "zone"): second})
+                assert "{{" not in (resolve(text, SCORER_STAGE, lookup) or ""), (text, first, second)
+
+
+@pytest.mark.parametrize("bad", [7.5, 7, True, ["x"], b"x", {"a": 1}])
+def test_a_lookup_result_that_is_neither_text_nor_none_raises_while_none_takes_the_fallback(bad):
+    with pytest.raises(TypeError):
+        _api("resolve_narrative")("Base {{score:cvss_base}}.", SCORER_STAGE, lambda kind, arg: bad)
+    assert _api("resolve_narrative")("Base {{score:cvss_base}}.", SCORER_STAGE, lambda kind, arg: None) is None
+
+
+def test_an_id_outside_the_reference_set_takes_the_fallback_and_one_inside_is_canonical():
+    reference = {"S-1", "AGP-1"}
+    lookup = lambda kind, arg: arg if arg in reference else None          # noqa: E731 -- the caller's reference-set test
+    assert _api("resolve_narrative")("See {{finding:AGP-01}}.", SCORER_STAGE, lookup) == "See AGP-1."
+    assert _api("resolve_narrative")("See {{finding:T-9}}.", SCORER_STAGE, lookup) is None
