@@ -1,0 +1,1541 @@
+"""Tests for ``scripts/tachi_parts.py``, written first (F-374 T011; ADR-050 D3 and D16).
+
+``tachi_parts`` is the one place that decides what an agent-written file may contain
+(NFR-10). This module is D16's hostile-input matrix for it. It is a helper, so the tests
+import it; there is no entry to drive. Every fixture is synthetic.
+
+The module is written in slices. The cases in sections 1 to 3 (identifiers, canonical IDs
+and S-2's order, D7's path rule, module hygiene) belong to T012's identifier slice. The rest
+reach the later slices through ``_api()``, which fails a case with a clear message while the
+name is not written yet, so those cases are red until T012's second slice and T013 land.
+
+Sections
+--------
+1. Identifier allow-lists (ASCII full match; Unicode digits, trailing newline)
+2. Canonical finding IDs and S-2's order
+3. D7's syntactic path rule (evidence ``file`` values)
+4. Module hygiene (C1, Python 3.9 floor, bytecode guard)
+5. Strict loader: the file and the JSON text (steps 1 to 4)
+6. Envelope: schema first, closed keys, overflow (steps 5 to 8)
+7. IDs: batch membership, duplicates, spellings (step 8)
+8. Strings: control, bidi and separator characters (step 10)
+9. Scorer and controls payloads (steps 6 and 9, RR2's cut-and-flag)
+10. Narrative fields: slots, numeral ban, per-field fallback (step 11)
+11. Evidence fields and ``file`` values
+12. Per-sink escaping
+13. Guards, atomic write, digest, stamp and VERSION
+"""
+from __future__ import annotations
+
+import ast
+import json
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS_DIR))
+
+import tachi_parts  # noqa: E402  -- after the sys.path mutation
+
+
+def _api(name: str):
+    """The ``tachi_parts`` name, or a clear failure while a later slice has not written it."""
+    if not hasattr(tachi_parts, name):
+        pytest.fail("tachi_parts.%s is not written yet (T012 second slice or T013)" % name, pytrace=False)
+    return getattr(tachi_parts, name)
+
+
+# =============================================================================
+# 1. Identifier allow-lists
+# =============================================================================
+
+# The contracts' own spelling of each pattern (contracts/part-files.md and
+# contracts/threat-model-records.md). A change here is a contract change.
+CONTRACT_PATTERNS = {
+    "finding": "(S|T|R|I|D|E|AG|AGP|LLM|OI|MI|TE)-[0-9]{1,6}",
+    "plan": "[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}",
+    "batch": "B[0-9]{3}(-[12]){0,2}",
+    "dispatch": "dsp-[0-9]{3,4}",
+    "group": "CG-[0-9]{1,6}",
+    "chain": "CHAIN-[0-9]{3,6}",
+    "language": "[a-z0-9+#-]{1,20}",
+}
+
+VALID_IDS = {
+    "finding": ["S-1", "T-10", "R-7", "I-3", "D-2", "E-9", "AG-1", "AGP-12", "LLM-1", "OI-3",
+                "MI-9", "TE-2", "E-999999", "AGP-01", "S-0", "S-000001"],
+    "plan": ["20261122T101500Z-0123456789ab", "20000101T000000Z-ffffffffffff"],
+    "batch": ["B001", "B999", "B003-1", "B003-2", "B003-1-2", "B003-2-1"],
+    "dispatch": ["dsp-001", "dsp-0001", "dsp-1234"],
+    "group": ["CG-1", "CG-12", "CG-123456"],
+    "chain": ["CHAIN-001", "CHAIN-0001", "CHAIN-123456"],
+    "language": ["python", "c++", "c#", "objective-c", "x86-64", "a", "a" * 20],
+}
+
+INVALID_IDS = {
+    "finding": ["", "S-", "S-1234567", "s-1", "X-1", "S1", "-1", "SS-1", "AGPX-1", "LLM01-1", "S--1",
+                "S-+1", "S-1 ", " S-1", "S-1\n", "S-1\r", "S-\u0661", "S-\uff11", "S-\u0966",
+                "S\u2010 1", "S\u2011\u0031", "AGP-\u0661\u0662", "\u0053-1\u200b"],
+    "plan": ["", "20261122T101500Z-0123456789AB", "20261122T101500Z-0123456789a", "20261122T101500Z-0123456789abc",
+             "20261122T101500Z-0123456789ab\n", "20261122 101500Z-0123456789ab", "2026112T101500Z-0123456789ab",
+             "\u0662\u0660261122T101500Z-0123456789ab", "20261122T101500-0123456789ab"],
+    "batch": ["", "B01", "B0001", "B001-3", "B001-1-1-1", "b001", "B001\n", "B\uff10\uff10\uff11", "B001-", "B001--1"],
+    "dispatch": ["", "dsp-01", "dsp-12345", "DSP-001", "dsp-001\n", "dsp-\u0661\u0662\u0663"],
+    "group": ["", "CG-", "CG-1234567", "cg-1", "CG-1\n", "CG-\u0661"],
+    "chain": ["", "CHAIN-01", "CHAIN-1234567", "chain-001", "CHAIN-001\n", "CHAIN-\u0661\u0662\u0663"],
+    "language": ["", "a" * 21, "Python", "py thon", "py\n", "c\u00e9", "\u65e5\u672c", "c/c", "py_thon", "x.y"],
+}
+
+NON_STRINGS = [None, 1, 1.5, b"S-1", ["S-1"], {"S-1": 1}, True]
+
+
+@pytest.mark.parametrize("kind", sorted(CONTRACT_PATTERNS))
+def test_pattern_source_is_the_contracts_text_and_has_no_unsafe_construct(kind):
+    source = tachi_parts.ID_PATTERNS[kind]
+    assert source == CONTRACT_PATTERNS[kind]
+    # KB 24: \d admits non-ASCII digits, \w and \s admit more than ASCII, and $ admits a trailing newline.
+    for unsafe in ("\\d", "\\w", "\\s", "$", "^"):
+        assert unsafe not in source, "%s pattern holds %r" % (kind, unsafe)
+
+
+def test_the_allow_list_table_names_exactly_the_contracts_kinds():
+    assert set(tachi_parts.ID_PATTERNS) == set(CONTRACT_PATTERNS)
+
+
+@pytest.mark.parametrize("kind,value", [(k, v) for k, vs in VALID_IDS.items() for v in vs])
+def test_valid_identifiers_match(kind, value):
+    assert tachi_parts.id_matches(kind, value) is True
+
+
+@pytest.mark.parametrize("kind,value", [(k, v) for k, vs in INVALID_IDS.items() for v in vs])
+def test_invalid_identifiers_are_refused(kind, value):
+    assert tachi_parts.id_matches(kind, value) is False
+
+
+@pytest.mark.parametrize("kind", sorted(CONTRACT_PATTERNS))
+@pytest.mark.parametrize("value", NON_STRINGS)
+def test_a_non_string_never_matches(kind, value):
+    assert tachi_parts.id_matches(kind, value) is False
+
+
+def test_an_unknown_kind_raises_so_a_typo_fails_loudly():
+    with pytest.raises(KeyError):
+        tachi_parts.id_matches("findings", "S-1")
+
+
+@pytest.mark.parametrize("kind,sample", [(k, VALID_IDS[k][0]) for k in sorted(VALID_IDS)])
+def test_a_trailing_newline_is_refused_for_every_kind(kind, sample):
+    """KB 24: ``$`` would let ``"S-1\\n"`` through; ``fullmatch`` with no ``$`` must not."""
+    assert tachi_parts.id_matches(kind, sample) is True
+    assert tachi_parts.id_matches(kind, sample + "\n") is False
+
+
+# =============================================================================
+# 2. Canonical finding IDs and S-2's order
+# =============================================================================
+
+def test_the_prefix_rank_is_s2s_order():
+    assert tachi_parts.FINDING_PREFIXES == ("S", "T", "R", "I", "D", "E", "AG", "AGP", "LLM", "OI", "MI", "TE")
+
+
+def test_the_finding_pattern_is_built_from_the_same_prefixes():
+    assert tachi_parts.ID_PATTERNS["finding"] == "(" + "|".join(tachi_parts.FINDING_PREFIXES) + ")-[0-9]{1,6}"
+
+
+@pytest.mark.parametrize("spelled,canonical", [
+    ("S-1", "S-1"), ("AGP-01", "AGP-1"), ("AGP-1", "AGP-1"), ("S-000001", "S-1"), ("T-10", "T-10"),
+    ("T-010", "T-10"), ("S-0", "S-0"), ("S-000", "S-0"), ("E-999999", "E-999999"), ("TE-007", "TE-7"),
+])
+def test_canonical_finding_id_drops_leading_zeros(spelled, canonical):
+    assert tachi_parts.canonical_finding_id(spelled) == canonical
+
+
+@pytest.mark.parametrize("bad", ["", "S-", "s-1", "S-1\n", "S-\u0661", "S-1234567", None, 7, b"S-1"])
+def test_canonical_finding_id_refuses_a_non_id(bad):
+    with pytest.raises(ValueError):
+        tachi_parts.canonical_finding_id(bad)
+
+
+def test_two_spellings_of_one_id_have_one_canonical_form_and_one_sort_key():
+    assert tachi_parts.canonical_finding_id("AGP-01") == tachi_parts.canonical_finding_id("AGP-001")
+    assert tachi_parts.finding_sort_key("AGP-01") == tachi_parts.finding_sort_key("AGP-1")
+
+
+def test_s2_orders_by_prefix_rank_then_by_the_suffix_as_an_integer():
+    shuffled = ["TE-1", "MI-1", "OI-1", "LLM-1", "AGP-1", "AG-1", "E-1", "D-1", "I-1", "R-1", "T-1", "S-1"]
+    assert sorted(shuffled, key=tachi_parts.finding_sort_key) == [
+        "S-1", "T-1", "R-1", "I-1", "D-1", "E-1", "AG-1", "AGP-1", "LLM-1", "OI-1", "MI-1", "TE-1"]
+
+
+def test_s2_compares_suffixes_as_integers_not_as_text():
+    ids = ["T-100", "T-9", "T-10", "T-1", "T-099"]
+    assert sorted(ids, key=tachi_parts.finding_sort_key) == ["T-1", "T-9", "T-10", "T-099", "T-100"]
+
+
+def test_s2_puts_a_high_number_of_an_earlier_prefix_before_a_low_number_of_a_later_one():
+    assert tachi_parts.finding_sort_key("S-999999") < tachi_parts.finding_sort_key("T-1")
+    assert tachi_parts.finding_sort_key("AG-999999") < tachi_parts.finding_sort_key("AGP-1")
+    assert tachi_parts.finding_sort_key("AGP-999999") < tachi_parts.finding_sort_key("LLM-1")
+
+
+def test_s2_ties_only_between_spellings_of_one_id():
+    keys = {tachi_parts.finding_sort_key(i) for i in ("S-1", "S-01", "S-001", "S-2")}
+    assert len(keys) == 2
+
+
+@pytest.mark.parametrize("bad", ["", "X-1", "S-1\n", "S-\u0661", None])
+def test_finding_sort_key_refuses_a_non_id(bad):
+    with pytest.raises(ValueError):
+        tachi_parts.finding_sort_key(bad)
+
+
+# =============================================================================
+# 3. D7's syntactic path rule
+# =============================================================================
+
+PATHS_THAT_PASS = [
+    "src/app/main.py", "a.py", "docs/security/architecture.md", "./src//a.py", "src/a:b.py", "a b/c.py",
+    "src/\u00fcn\u00ef.py", "...", "..a/b", "a/.../b", "src/", "a/./b/./c", "%2e%2e/x", "~/x", "C" + "x" * 280 + ".py",
+]
+
+PATHS_REFUSED = [
+    ("", "empty"), (".", "empty"), ("./", "empty"), ("././.", "empty"),
+    ("/etc/passwd", "leading-slash"), ("//host/share/x", "leading-slash"), ("/", "leading-slash"),
+    ("C:/Windows/x", "drive-letter"), ("c:rel", "drive-letter"), ("Z:", "drive-letter"),
+    ("https://example.test/x", "scheme"), ("file:///etc/passwd", "scheme"), ("javascript:alert", "scheme"),
+    ("a:b/c", "drive-letter"), ("1:x", "scheme"), (":x", "scheme"), ("ab:c", "scheme"),
+    ("a\\b.py", "backslash"), ("C:\\Windows\\x", "backslash"), ("\\\\host\\share", "backslash"),
+    ("a`b", "backtick"), ("`cmd`", "backtick"),
+    ("a\x00b", "control-char"), ("a\nb", "control-char"), ("a\tb", "control-char"), ("a\rb", "control-char"),
+    ("a\x7fb", "control-char"), ("a\x85b", "control-char"), ("a\x9fb", "control-char"), ("a\x1bb", "control-char"),
+    ("../x", "parent-reference"), ("a/../b", "parent-reference"), ("a/..", "parent-reference"),
+    ("a/b/../../..", "parent-reference"), ("./../x", "parent-reference"),
+    ("a/" + "b" * 4095, "too-long"), ("\u00e9" * 2100, "too-long"),
+    ("a\udc80b", "encoding"),
+]
+
+
+@pytest.mark.parametrize("value", PATHS_THAT_PASS)
+def test_a_relative_path_that_follows_the_rule_passes(value):
+    assert tachi_parts.path_problem(value) is None
+
+
+@pytest.mark.parametrize("value,problem", PATHS_REFUSED)
+def test_a_path_that_breaks_the_rule_is_refused_with_the_failed_checks_name(value, problem):
+    assert tachi_parts.path_problem(value) == problem
+
+
+@pytest.mark.parametrize("value", [None, 1, b"a/b", ["a"], {"a": 1}])
+def test_a_non_string_path_is_refused_as_a_type_problem(value):
+    assert tachi_parts.path_problem(value) == "type"
+
+
+def test_the_length_limit_is_in_bytes_and_inclusive():
+    assert tachi_parts.PATH_MAX_BYTES == 4096
+    assert tachi_parts.path_problem("a" * 4096) is None
+    assert tachi_parts.path_problem("a" * 4097) == "too-long"
+    assert tachi_parts.path_problem("\u00e9" * 2048) is None  # 4096 bytes
+    assert tachi_parts.path_problem("\u00e9" * 2049) == "too-long"
+
+
+@pytest.mark.parametrize("value", ["/a/b/c.md", "//a", "/home/u/proj/docs/architecture.md", "a/b.md"])
+def test_an_absolute_candidate_passes_only_when_the_caller_allows_it(value):
+    assert tachi_parts.path_problem(value, allow_absolute=True) is None
+    if value.startswith("/"):
+        assert tachi_parts.path_problem(value) == "leading-slash"
+
+
+@pytest.mark.parametrize("value,problem", [
+    ("/", "empty"), ("/a/../b", "parent-reference"), ("/a\\b", "backslash"), ("/a`b", "backtick"),
+    ("/a\nb", "control-char"), ("C:/x", "drive-letter"), ("https://x/y", "scheme"), ("", "empty"),
+])
+def test_allowing_an_absolute_path_relaxes_only_the_leading_slash(value, problem):
+    assert tachi_parts.path_problem(value, allow_absolute=True) == problem
+
+
+def test_path_parts_drops_dot_and_empty_components():
+    assert tachi_parts.path_parts("./src//a.py") == ("src", "a.py")
+    assert tachi_parts.path_parts("a/./b/") == ("a", "b")
+    assert tachi_parts.path_parts("/a/b", allow_absolute=True) == ("a", "b")
+    assert tachi_parts.path_parts("src/a:b.py") == ("src", "a:b.py")
+
+
+@pytest.mark.parametrize("value,problem", [("../x", "parent-reference"), ("/a", "leading-slash"), ("C:/x", "drive-letter"), ("", "empty")])
+def test_path_parts_raises_with_the_problems_name(value, problem):
+    with pytest.raises(ValueError) as excinfo:
+        tachi_parts.path_parts(value)
+    assert str(excinfo.value) == problem
+
+
+# =============================================================================
+# 4. Module hygiene
+# =============================================================================
+
+TACHI_PARTS_PATH = SCRIPTS_DIR / "tachi_parts.py"
+
+
+def _imported_modules(tree):
+    names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            names.add(node.module.split(".")[0])
+    return names
+
+
+def test_tachi_parts_imports_neither_sarif_common_nor_tachi_parsers():
+    """C1: both import ``tachi_parts``, so it must import neither (no cycle)."""
+    tree = ast.parse(TACHI_PARTS_PATH.read_text(encoding="utf-8"))
+    imported = _imported_modules(tree)
+    assert not {"sarif_common", "tachi_parsers"} & imported, imported
+
+
+def test_tachi_parts_is_standard_library_only():
+    tree = ast.parse(TACHI_PARTS_PATH.read_text(encoding="utf-8"))
+    stdlib = set(getattr(sys, "stdlib_module_names", ())) or {
+        "__future__", "re", "sys", "os", "json", "hashlib", "unicodedata", "typing", "decimal", "tempfile",
+        "stat", "dataclasses", "collections", "pathlib", "errno", "io", "math", "string"}
+    assert _imported_modules(tree) <= stdlib | {"__future__"}, _imported_modules(tree)
+
+
+def test_tachi_parts_parses_at_the_python_39_floor_and_defers_annotations():
+    source = TACHI_PARTS_PATH.read_text(encoding="utf-8")
+    ast.parse(source, feature_version=(3, 9))
+    assert "from __future__ import annotations" in source
+
+
+def test_importing_tachi_parts_turns_bytecode_writing_off(tmp_path):
+    """T012: the module sets ``sys.dont_write_bytecode`` before any local import.
+
+    A process alone shows it, so this runs a clean interpreter (``-I`` ignores the
+    environment) whose cache goes to a test-owned prefix.
+    """
+    code = "import sys; sys.path.insert(0, %r); import tachi_parts; print(sys.dont_write_bytecode)" % str(SCRIPTS_DIR)
+    proc = subprocess.run(
+        [sys.executable, "-I", "-X", "pycache_prefix=%s" % (tmp_path / "pyc"), "-c", code],
+        capture_output=True, encoding="utf-8", timeout=60)
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.strip() == "True"
+
+
+# =============================================================================
+# Fixtures for the later slices: a valid part, and where it lives
+#
+# The API these sections expect (T012's second slice and T013 write it to match):
+#   PartError(kind, detail)            kind: "missing" | "unparseable" | "invalid"
+#   load_json(path, out, max_bytes=524288) -> object                   steps 1 to 4
+#   read_part(path, out, plan_id, batch_id, stage, agent_type, finding_ids) -> PartResult
+#   classify_part(obj, plan_id, batch_id, stage, agent_type, finding_ids) -> PartResult
+#   PartResult.state: "done" | "missing" | "overflow" | "unparseable" | "invalid"
+#   PartResult.detail (str), .part (the validated part, IDs canonical), .flags
+#   ({canonical ID: [flag, ...]}), .counts ({"narrative_fallbacks": n, "truncations": n})
+# =============================================================================
+
+PLAN = "20261122T101500Z-0123456789ab"
+OTHER_PLAN = "20261122T101500Z-ba9876543210"
+SCORER = {"stage": "risk-score", "agent_type": "tachi-risk-scorer"}
+CONTROLS = {"stage": "compensating-controls", "agent_type": "tachi-control-analyzer"}
+VECTOR = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+STATES = ("done", "missing", "overflow", "unparseable", "invalid")
+
+
+def scorer_item(fid="S-1"):
+    return {
+        "finding_id": fid,
+        "cvss_vector": VECTOR,
+        "exploitability": {"known_techniques": 7, "attack_complexity": 6, "tooling_availability": 5, "skill_level": 4},
+        "scalability": {"scriptability": 3, "target_scope": 4, "resource_requirements": 5, "detection_difficulty": 6},
+        "reachability": {"zone": "Public Zone", "trust_level": "Untrusted", "auth_barriers": 1, "network_boundaries": 2},
+        "rationale": {
+            "cvss": "Network reachable with no privileges, so the base score is {{score:cvss_base}}.",
+            "exploitability": "Public techniques exist and tooling is common.",
+            "scalability": "A script can repeat the attack against every instance.",
+            "reachability": "The component sits in {{name:zone}} behind {{count:auth_barriers}} barriers.",
+        },
+    }
+
+
+def controls_item(fid="S-1", status="found"):
+    entry = {"file": "src/auth/login.py", "line": 42, "language": "python",
+             "snippet": "def login(user):\n    check(user)", "summary": "Login path calls the check at line 42."}
+    item = {
+        "finding_id": fid, "control_status": status, "control_category": "authentication",
+        "confidence": "High", "carried_forward": False, "evidence": [entry],
+        "matrix_row": "| " + fid + " | Spoofing | found |",
+        "recommendation_body": None,
+    }
+    if status == "partial":
+        item["recommendation_body"] = "What: add the missing check. Where: the login path. Effort: Low."
+    if status == "missing":
+        item.update(confidence=None, evidence=[], recommendation_body="What: add a control. Effort: Medium.")
+    return item
+
+
+def make_part(ids=("S-1", "T-2"), kind=SCORER, batch="B001", items=None, **override):
+    build = scorer_item if kind is SCORER else controls_item
+    part = {
+        "schema": "tachi.part/1", "plan_id": PLAN, "batch_id": batch, "stage": kind["stage"],
+        "agent_type": kind["agent_type"], "finding_ids": list(ids),
+        "items": items if items is not None else [build(i) for i in ids], "fragments": [],
+    }
+    part.update(override)
+    return part
+
+
+def expect(ids=("S-1", "T-2"), kind=SCORER, batch="B001", plan_id=PLAN):
+    return dict(plan_id=plan_id, batch_id=batch, stage=kind["stage"], agent_type=kind["agent_type"], finding_ids=list(ids))
+
+
+def classify(obj, ids=("S-1", "T-2"), kind=SCORER, **kw):
+    return _api("classify_part")(obj, **dict(expect(ids, kind), **kw))
+
+
+def lay_out(tmp_path, kind=SCORER, batch="B001", attempt=1):
+    out = tmp_path / "out"
+    parts = out / ".tachi-build" / kind["stage"] / PLAN / "parts"
+    parts.mkdir(parents=True, exist_ok=True)
+    return out, parts / ("%s.a%d.json" % (batch, attempt))
+
+
+def write_part(tmp_path, content, kind=SCORER):
+    out, path = lay_out(tmp_path, kind)
+    if isinstance(content, (dict, list)):
+        content = json.dumps(content)
+    path.write_bytes(content if isinstance(content, bytes) else content.encode("utf-8"))
+    return out, path
+
+
+def read(tmp_path, content, ids=("S-1", "T-2"), kind=SCORER):
+    out, path = write_part(tmp_path, content, kind)
+    return _api("read_part")(path, out=out, **expect(ids, kind))
+
+
+def inject(text, field, raw):
+    """Replace the JSON text of one top-level scalar key's value with ``raw`` (hostile literals)."""
+    return re.sub(r'("%s": )[^,}]+' % field, lambda m: m.group(1) + raw, text, count=1)
+
+
+# =============================================================================
+# 5. Strict loader: the file and the JSON text (steps 1 to 4)
+# =============================================================================
+
+def test_a_valid_part_is_done_and_its_ids_are_canonical(tmp_path):
+    result = read(tmp_path, make_part(ids=("S-01", "T-2")), ids=("S-1", "T-2"))
+    assert result.state == "done", result.detail
+    assert result.part["finding_ids"] == ["S-1", "T-2"]
+    assert [item["finding_id"] for item in result.part["items"]] == ["S-1", "T-2"]
+
+
+def test_a_missing_part_is_missing(tmp_path):
+    out, path = lay_out(tmp_path)
+    assert _api("read_part")(path, out=out, **expect()).state == "missing"
+
+
+def test_a_symlinked_part_is_invalid(tmp_path):
+    out, path = lay_out(tmp_path)
+    real = tmp_path / "elsewhere.json"
+    real.write_text(json.dumps(make_part()), encoding="utf-8")
+    path.symlink_to(real)
+    assert _api("read_part")(path, out=out, **expect()).state == "invalid"
+
+
+def test_a_symlinked_directory_below_out_is_invalid(tmp_path):
+    out = tmp_path / "out"
+    (out / ".tachi-build" / "risk-score").mkdir(parents=True)
+    elsewhere = tmp_path / "elsewhere" / "parts"
+    elsewhere.mkdir(parents=True)
+    (elsewhere / "B001.a1.json").write_text(json.dumps(make_part()), encoding="utf-8")
+    (out / ".tachi-build" / "risk-score" / PLAN).symlink_to(elsewhere.parent)
+    path = out / ".tachi-build" / "risk-score" / PLAN / "parts" / "B001.a1.json"
+    assert _api("read_part")(path, out=out, **expect()).state == "invalid"
+
+
+def test_a_part_outside_out_is_invalid(tmp_path):
+    out, _ = lay_out(tmp_path)
+    stray = tmp_path / "stray.json"
+    stray.write_text(json.dumps(make_part()), encoding="utf-8")
+    assert _api("read_part")(stray, out=out, **expect()).state == "invalid"
+
+
+def test_a_directory_at_the_part_path_is_invalid(tmp_path):
+    out, path = lay_out(tmp_path)
+    path.mkdir()
+    assert _api("read_part")(path, out=out, **expect()).state == "invalid"
+
+
+def test_an_oversized_part_is_unparseable(tmp_path):
+    pad = " " * (512 * 1024)
+    assert read(tmp_path, json.dumps(make_part()) + pad).state == "unparseable"
+
+
+@pytest.mark.parametrize("raw", [
+    b"", b"   ", b"{", b'{"schema": ', b"[]", b'"x"', b"1", b"null", b"true",
+    b"\xef\xbb\xbf" + json.dumps(make_part()).encode("utf-8"),
+    b'{"a": "\xff"}', b'{"a": "\xed\xa0\x80"}', b'{"a": "\\ud800"}', b'{"a": "\\udfff"}',
+], ids=["empty", "blank", "truncated", "cut-mid-key", "array-top", "string-top", "number-top", "null-top",
+        "true-top", "bom", "invalid-utf8", "encoded-surrogate", "escaped-high-surrogate", "escaped-low-surrogate"])
+def test_text_that_is_not_one_strict_utf8_json_object_is_unparseable(tmp_path, raw):
+    assert read(tmp_path, raw).state == "unparseable"
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_nan_and_infinity_are_unparseable(tmp_path, constant):
+    text = inject(json.dumps(make_part()), "schema", constant)
+    assert read(tmp_path, text).state == "unparseable"
+    text = json.dumps(make_part()).replace('"known_techniques": 7', '"known_techniques": ' + constant)
+    assert read(tmp_path, text).state == "unparseable"
+
+
+@pytest.mark.parametrize("literal", ["1e400", "1E400", "-1e400", "1e999", "1e-400", "7.0", "0.5", "1e1"])
+def test_a_float_or_an_overflowing_exponent_never_becomes_a_number_the_checks_accept(tmp_path, literal):
+    """``parse_float=Decimal``: ``1e400`` arrives as a Decimal that the range check rejects, never ``inf``."""
+    text = json.dumps(make_part()).replace('"known_techniques": 7', '"known_techniques": ' + literal)
+    assert read(tmp_path, text).state == "invalid"
+
+
+def test_an_integer_literal_of_more_than_twenty_digits_is_unparseable(tmp_path):
+    base = json.dumps(make_part())
+    twenty, twenty_one, thirty = "1" * 20, "1" * 21, "1" * 30
+    assert read(tmp_path, base.replace('"known_techniques": 7', '"known_techniques": ' + twenty)).state == "invalid"
+    assert read(tmp_path, base.replace('"known_techniques": 7', '"known_techniques": ' + twenty_one)).state == "unparseable"
+    assert read(tmp_path, base.replace('"known_techniques": 7', '"known_techniques": ' + thirty)).state == "unparseable"
+    assert read(tmp_path, base.replace('"known_techniques": 7', '"known_techniques": -' + twenty_one)).state == "unparseable"
+
+
+def test_duplicate_keys_are_unparseable_at_any_depth(tmp_path):
+    top = json.dumps(make_part())[:-1] + ', "plan_id": "' + PLAN + '"}'
+    assert read(tmp_path, top).state == "unparseable"
+    nested = json.dumps(make_part()).replace('"known_techniques": 7,', '"known_techniques": 7, "known_techniques": 8,')
+    assert read(tmp_path, nested).state == "unparseable"
+
+
+def test_nesting_deeper_than_eight_levels_is_unparseable_and_a_recursion_bomb_never_crashes(tmp_path):
+    load = _api("load_json")
+    out, path = lay_out(tmp_path)
+    for depth, ok in ((8, True), (9, False)):
+        doc = "[" * (depth - 1) + "]" * (depth - 1)
+        path.write_text('{"a": ' + doc + "}", encoding="utf-8")
+        if ok:
+            assert isinstance(load(path, out=out), dict)
+        else:
+            with pytest.raises(_api("PartError")) as excinfo:
+                load(path, out=out)
+            assert excinfo.value.kind == "unparseable"
+    path.write_text('{"a": ' + "[" * 100000 + "]" * 100000 + "}", encoding="utf-8")
+    with pytest.raises(_api("PartError")) as excinfo:
+        load(path, out=out)
+    assert excinfo.value.kind == "unparseable"
+
+
+def test_load_json_reports_the_kind_for_each_early_failure(tmp_path):
+    load, error = _api("load_json"), _api("PartError")
+    out, path = lay_out(tmp_path)
+    with pytest.raises(error) as missing:
+        load(path, out=out)
+    assert missing.value.kind == "missing"
+    path.write_bytes(b'{"a": 1' + b" " * 600)
+    with pytest.raises(error) as small:
+        load(path, out=out, max_bytes=100)
+    assert small.value.kind == "unparseable"
+    path.write_text('{"a": 1}', encoding="utf-8")
+    assert load(path, out=out) == {"a": 1}
+
+
+def test_a_stale_part_from_an_earlier_plan_never_counts(tmp_path):
+    result = read(tmp_path, make_part(plan_id=OTHER_PLAN))
+    assert result.state == "invalid"
+    assert result.part is None
+
+
+def put(obj, path, value):
+    """Set ``obj[path[0]][path[1]]...`` to ``value`` and return ``obj``."""
+    cur = obj
+    for key in path[:-1]:
+        cur = cur[key]
+    cur[path[-1]] = value
+    return obj
+
+
+# =============================================================================
+# 6. Envelope: schema first, closed keys, overflow (steps 5 to 8)
+# =============================================================================
+
+ENVELOPE_KEYS = ("schema", "plan_id", "batch_id", "stage", "agent_type", "finding_ids", "items", "fragments")
+
+
+def test_a_part_that_follows_the_contract_is_done_for_both_pr1_stages():
+    assert classify(make_part()).state == "done"
+    assert classify(make_part(kind=CONTROLS), kind=CONTROLS).state == "done"
+
+
+@pytest.mark.parametrize("schema", ["tachi.part/2", "tachi.part/0", "tachi.plan/1", "TACHI.PART/1", "tachi.part/1 ",
+                                    "tachi.part/1\n", "", None, 1, ["tachi.part/1"]])
+def test_any_schema_other_than_tachi_part_1_is_invalid(schema):
+    assert classify(make_part(schema=schema)).state == "invalid"
+
+
+@pytest.mark.parametrize("key", ENVELOPE_KEYS)
+def test_each_of_the_eight_envelope_keys_is_required(key):
+    part = make_part()
+    del part[key]
+    assert classify(part).state == "invalid"
+
+
+@pytest.mark.parametrize("extra", ["extra", "Items", "notes", "cvss_base", "", "schema "])
+def test_an_unknown_envelope_key_is_invalid(extra):
+    assert classify(make_part(**{extra: 1})).state == "invalid"
+
+
+@pytest.mark.parametrize("field,value", [
+    ("batch_id", "B002"), ("batch_id", "B001\n"), ("batch_id", "B01"), ("stage", "compensating-controls"),
+    ("stage", "trees"), ("stage", "bogus"), ("agent_type", "tachi-control-analyzer"), ("agent_type", "general-purpose"),
+    ("plan_id", PLAN + "\n"), ("plan_id", "20261122T101500Z-0123456789AB"), ("plan_id", None), ("batch_id", 1),
+])
+def test_the_plan_batch_stage_and_agent_must_equal_the_planned_batchs(field, value):
+    assert classify(make_part(**{field: value})).state == "invalid"
+
+
+@pytest.mark.parametrize("field,value", [
+    ("finding_ids", []), ("finding_ids", "S-1"), ("finding_ids", [1, 2]), ("finding_ids", None),
+    ("items", {}), ("items", "x"), ("items", None), ("items", ["S-1", "T-2"]), ("items", [[], []]),
+    ("fragments", [{"slot_key": "intro", "text": "x"}]), ("fragments", None), ("fragments", {}),
+])
+def test_envelope_values_have_the_contracts_types_and_pr1_stages_carry_no_fragments(field, value):
+    part = make_part()
+    part[field] = value
+    assert classify(part).state == "invalid"
+
+
+def test_a_part_names_between_one_and_five_hundred_ids():
+    ids = ["S-%d" % n for n in range(1, 502)]
+    assert classify(make_part(ids=ids), ids=ids).state == "invalid"
+    ids = ids[:500]
+    assert classify(make_part(ids=ids), ids=ids).state == "done"
+
+
+def overflow_object(reason="output-budget", **override):
+    obj = {"schema": "tachi.overflow/1", "plan_id": PLAN, "batch_id": "B001", "stage": "risk-score",
+           "agent_type": "tachi-risk-scorer", "reason": reason}
+    obj.update(override)
+    return obj
+
+
+@pytest.mark.parametrize("reason", ["output-budget", "input-too-large", "other"])
+def test_a_six_key_overflow_object_is_classified_overflow_never_invalid(reason):
+    result = classify(overflow_object(reason))
+    assert result.state == "overflow"
+    assert result.detail == reason
+    assert result.part is None
+
+
+def test_an_overflow_object_is_classified_overflow_when_read_from_disk(tmp_path):
+    assert read(tmp_path, overflow_object()).state == "overflow"
+
+
+@pytest.mark.parametrize("bad", [
+    {"reason": "bogus"}, {"reason": None}, {"reason": 1}, {"reason": ""}, {"schema": "tachi.overflow/2"},
+    {"extra": 1}, {"plan_id": OTHER_PLAN}, {"batch_id": "B002"}, {"batch_id": "B001\n"},
+    {"stage": "compensating-controls"}, {"agent_type": "tachi-control-analyzer"},
+])
+def test_an_overflow_object_that_is_not_well_formed_for_its_batch_is_invalid(bad):
+    assert classify(overflow_object(**bad)).state == "invalid"
+
+
+def test_an_overflow_object_with_a_missing_key_is_invalid():
+    obj = overflow_object()
+    del obj["reason"]
+    assert classify(obj).state == "invalid"
+
+
+def test_the_overflow_schema_does_not_license_the_parts_eight_keys():
+    obj = make_part(schema="tachi.overflow/1")
+    obj["reason"] = "other"
+    assert classify(obj).state == "invalid"
+
+
+# =============================================================================
+# 7. IDs: batch membership, duplicates, spellings (step 8)
+# =============================================================================
+
+def test_ids_outside_the_batch_are_invalid():
+    assert classify(make_part(ids=("S-1", "T-3")), ids=("S-1", "T-2")).state == "invalid"
+    assert classify(make_part(ids=("S-1",)), ids=("S-1", "T-2")).state == "invalid"
+    assert classify(make_part(ids=("S-1", "T-2", "R-3")), ids=("S-1", "T-2")).state == "invalid"
+
+
+def test_an_item_for_an_id_outside_the_list_or_a_second_item_for_one_id_is_invalid():
+    part = make_part()
+    part["items"][1] = scorer_item("R-9")
+    assert classify(part).state == "invalid"
+    part = make_part()
+    part["items"][1] = scorer_item("S-1")
+    assert classify(part).state == "invalid"
+    part = make_part()
+    part["items"].append(scorer_item("S-1"))
+    assert classify(part).state == "invalid"
+    part = make_part()
+    part["items"].pop()
+    assert classify(part).state == "invalid"
+
+
+def test_a_duplicate_id_is_invalid():
+    assert classify(make_part(ids=("S-1", "S-1")), ids=("S-1", "S-1")).state == "invalid"
+    assert classify(make_part(ids=("S-1", "S-1")), ids=("S-1", "T-2")).state == "invalid"
+
+
+@pytest.mark.parametrize("pair", [("S-1", "S-01"), ("AGP-1", "AGP-001"), ("T-10", "T-010")])
+def test_two_spellings_of_one_canonical_id_are_a_duplicate(pair):
+    ids = (pair[0], pair[1])
+    assert classify(make_part(ids=ids), ids=(pair[0], "R-9")).state == "invalid"
+    part = make_part(ids=(pair[0], "R-9"))
+    part["items"][1] = scorer_item(pair[1])
+    assert classify(part, ids=(pair[0], "R-9")).state == "invalid"
+
+
+@pytest.mark.parametrize("bad", ["S-١", "S-１", "S-1\n", "S-1 ", "s-1", "S-", "S-1234567", "X-1", "S-1​"])
+def test_a_hostile_id_is_invalid_wherever_it_appears(bad):
+    assert classify(make_part(ids=(bad, "T-2")), ids=("S-1", "T-2")).state == "invalid"
+    part = make_part()
+    part["items"][0]["finding_id"] = bad
+    result = classify(part)
+    assert result.state == "invalid"
+    assert result.part is None
+
+
+def test_a_planned_spelling_and_a_canonical_equal_spelling_in_the_part_agree():
+    result = classify(make_part(ids=("AGP-01", "T-2")), ids=("AGP-1", "T-2"))
+    assert result.state == "done", result.detail
+    assert result.part["finding_ids"] == ["AGP-1", "T-2"]
+
+
+# =============================================================================
+# 8. Strings: control, bidi and separator characters (step 10)
+# =============================================================================
+
+HOSTILE_CHARS = [
+    "\x00", "\x01", "\x07", "\x08", "\x0b", "\x0c", "\r", "\x1b", "\x1f", "\x7f",
+    "\x80", "\x85", "\x9b", "\x9f",
+    " ", " ",
+    "‎", "‏", "؜", "‪", "‫", "‬", "‭", "‮",
+    "⁦", "⁧", "⁨", "⁩",
+]
+
+
+@pytest.mark.parametrize("char", HOSTILE_CHARS, ids=["U+%04X" % ord(c) for c in HOSTILE_CHARS])
+def test_a_hostile_character_in_any_string_class_is_invalid(char):
+    narrative = put(make_part(), ("items", 0, "rationale", "exploitability"), "Public tooling" + char + " exists.")
+    assert classify(narrative).state == "invalid"
+    closed = put(make_part(), ("items", 0, "reachability", "zone"), "Public" + char + "Zone")
+    assert classify(closed).state == "invalid"
+    evidence = put(make_part(kind=CONTROLS), ("items", 0, "evidence", 0, "summary"), "Check" + char + "here.")
+    assert classify(evidence, kind=CONTROLS).state == "invalid"
+
+
+def test_newline_and_tab_are_the_only_control_characters_prose_may_hold():
+    part = put(make_part(), ("items", 0, "rationale", "exploitability"), "Public tooling\texists.\nSecond line.")
+    assert classify(part).state == "done"
+    part = put(make_part(kind=CONTROLS), ("items", 0, "evidence", 0, "summary"), "Check\there.\nMore.")
+    assert classify(part, kind=CONTROLS).state == "done"
+
+
+def test_a_closed_value_over_sixteen_thousand_characters_is_invalid():
+    part = put(make_part(), ("items", 0, "reachability", "zone"), "z" * 16385)
+    assert classify(part).state == "invalid"
+
+
+# =============================================================================
+# 9. Scorer and controls payloads (steps 6 and 9, RR2's cut-and-flag)
+# =============================================================================
+
+def drop(path):
+    def mutate(item):
+        cur = item
+        for key in path[:-1]:
+            cur = cur[key]
+        del cur[path[-1]]
+    return mutate
+
+
+def setter(path, value):
+    def mutate(item):
+        put(item, path, value)
+    return mutate
+
+
+SCORER_VIOLATIONS = {
+    "renderer-computed cvss_base": setter(("cvss_base",), 7.5),
+    "renderer-computed composite": setter(("composite",), 5),
+    "renderer-computed severity": setter(("severity",), "High"),
+    "renderer-computed flags": setter(("flags",), []),
+    "unknown key": setter(("extra",), 1),
+    **{"missing %s" % key: drop((key,)) for key in
+       ("finding_id", "cvss_vector", "exploitability", "scalability", "reachability", "rationale")},
+    "vector 3.0": setter(("cvss_vector",), VECTOR.replace("3.1", "3.0")),
+    "vector trailing newline": setter(("cvss_vector",), VECTOR + "\n"),
+    "vector lowercase": setter(("cvss_vector",), VECTOR.lower()),
+    "vector missing A": setter(("cvss_vector",), VECTOR.rsplit("/", 1)[0]),
+    "vector bad metric": setter(("cvss_vector",), VECTOR.replace("AV:N", "AV:X")),
+    "vector null": setter(("cvss_vector",), None),
+    "vector empty": setter(("cvss_vector",), ""),
+    "exploitability not an object": setter(("exploitability",), [7, 6, 5, 4]),
+    "exploitability missing key": drop(("exploitability", "skill_level")),
+    "exploitability extra key": setter(("exploitability", "stealth"), 3),
+    "scalability missing key": drop(("scalability", "target_scope")),
+    "scalability extra key": setter(("scalability", "reach"), 3),
+    "sub-score below 0": setter(("exploitability", "known_techniques"), -1),
+    "sub-score above 10": setter(("scalability", "scriptability"), 11),
+    "sub-score boolean": setter(("exploitability", "attack_complexity"), True),
+    "sub-score float": setter(("exploitability", "tooling_availability"), 7.5),
+    "sub-score text": setter(("scalability", "detection_difficulty"), "7"),
+    "sub-score null": setter(("scalability", "resource_requirements"), None),
+    "reachability extra key": setter(("reachability", "score"), 5),
+    "reachability missing key": drop(("reachability", "network_boundaries")),
+    "zone empty": setter(("reachability", "zone"), ""),
+    "zone over 120": setter(("reachability", "zone"), "z" * 121),
+    "zone null with a trust level": setter(("reachability", "zone"), None),
+    "trust level null with a zone": setter(("reachability", "trust_level"), None),
+    "trust level unknown": setter(("reachability", "trust_level"), "trusted"),
+    "auth barriers below 0": setter(("reachability", "auth_barriers"), -1),
+    "auth barriers above 10": setter(("reachability", "auth_barriers"), 11),
+    "network boundaries float": setter(("reachability", "network_boundaries"), 1.5),
+    "rationale missing key": drop(("rationale", "scalability")),
+    "rationale extra key": setter(("rationale", "composite"), "x"),
+    "rationale empty": setter(("rationale", "cvss"), ""),
+    "rationale not text": setter(("rationale", "cvss"), 7),
+    "metric_rationale unknown metric": setter(("metric_rationale",), {"Z": "x"}),
+    "metric_rationale not an object": setter(("metric_rationale",), ["AV"]),
+    "metric_rationale value not text": setter(("metric_rationale",), {"AV": 7}),
+    "subscore_rationale unknown name": setter(("subscore_rationale",), {"stealth": "x"}),
+}
+
+
+@pytest.mark.parametrize("label", sorted(SCORER_VIOLATIONS))
+def test_a_scorer_item_that_breaks_the_closed_payload_rejects_the_part(label):
+    part = make_part()
+    SCORER_VIOLATIONS[label](part["items"][0])
+    result = classify(part)
+    assert result.state == "invalid", label
+
+
+def test_a_scorer_item_with_the_optional_keys_and_a_null_zone_is_done():
+    part = make_part()
+    part["items"][0]["metric_rationale"] = {"AV": "Reachable over the network.", "PR": "No privileges needed."}
+    part["items"][0]["subscore_rationale"] = {"known_techniques": "Well documented.", "skill_level": "Low skill."}
+    part["items"][1]["reachability"].update(zone=None, trust_level=None)
+    assert classify(part).state == "done"
+
+
+@pytest.mark.parametrize("trust", ["Untrusted", "Semi-Trusted", "Trusted"])
+def test_each_trust_level_the_contract_names_is_accepted(trust):
+    part = put(make_part(), ("items", 0, "reachability", "trust_level"), trust)
+    assert classify(part).state == "done"
+
+
+CONTROL_CATEGORIES = ["authentication", "input-validation", "rate-limiting", "encryption", "logging-audit",
+                      "csrf-protection", "csp-security-headers", "access-control"]
+
+
+@pytest.mark.parametrize("category", CONTROL_CATEGORIES)
+def test_each_of_the_eight_control_categories_is_accepted(category):
+    part = put(make_part(kind=CONTROLS), ("items", 0, "control_category"), category)
+    assert classify(part, kind=CONTROLS).state == "done"
+
+
+CONTROLS_VIOLATIONS = {
+    "unknown key": setter(("residual_score",), 3),
+    "renderer-computed inherent": setter(("inherent_score",), 3),
+    **{"missing %s" % key: drop((key,)) for key in
+       ("finding_id", "control_status", "control_category", "confidence", "carried_forward", "evidence",
+        "matrix_row", "recommendation_body")},
+    "status unknown": setter(("control_status",), "absent"),
+    "category outside the eight": setter(("control_category",), "network-segmentation"),
+    "category in the wrong case": setter(("control_category",), "Authentication"),
+    "confidence unknown": setter(("confidence",), "Certain"),
+    "confidence null for found": setter(("confidence",), None),
+    "carried_forward as a number": setter(("carried_forward",), 1),
+    "carried_forward as text": setter(("carried_forward",), "false"),
+    "carried_forward null": setter(("carried_forward",), None),
+    "evidence empty for found": setter(("evidence",), []),
+    "evidence over five entries": setter(("evidence",), [dict(controls_item()["evidence"][0]) for _ in range(6)]),
+    "evidence not a list": setter(("evidence",), {}),
+    "evidence entry unknown key": setter(("evidence", 0, "score"), 5),
+    **{"evidence entry missing %s" % key: drop(("evidence", 0, key)) for key in
+       ("file", "line", "language", "snippet", "summary")},
+    "line zero": setter(("evidence", 0, "line"), 0),
+    "line negative": setter(("evidence", 0, "line"), -3),
+    "line float": setter(("evidence", 0, "line"), 4.5),
+    "line boolean": setter(("evidence", 0, "line"), True),
+    "line text": setter(("evidence", 0, "line"), "42"),
+    "language upper case": setter(("evidence", 0, "language"), "Python"),
+    "language with a space": setter(("evidence", 0, "language"), "py thon"),
+    "language empty": setter(("evidence", 0, "language"), ""),
+    "language over 20": setter(("evidence", 0, "language"), "a" * 21),
+    "file over 300": setter(("evidence", 0, "file"), "a" * 301),
+    "file empty": setter(("evidence", 0, "file"), ""),
+    "recommendation on a found result": setter(("recommendation_body",), "What: nothing."),
+    "assessment unknown dimension": setter(("evidence", 0, "assessment"), {"strength": {"rating": "High", "rationale": "x"}}),
+    "assessment rating unknown": setter(("evidence", 0, "assessment"), {
+        d: {"rating": "Critical", "rationale": "x"} for d in ("coverage", "configuration", "currency", "completeness")}),
+}
+
+
+@pytest.mark.parametrize("label", sorted(CONTROLS_VIOLATIONS))
+def test_a_controls_item_that_breaks_the_closed_payload_rejects_the_part(label):
+    part = make_part(kind=CONTROLS)
+    CONTROLS_VIOLATIONS[label](part["items"][0])
+    assert classify(part, kind=CONTROLS).state == "invalid", label
+
+
+@pytest.mark.parametrize("status,change,label", [
+    ("partial", {"recommendation_body": None}, "partial without a recommendation"),
+    ("missing", {"recommendation_body": None}, "missing without a recommendation"),
+    ("missing", {"confidence": "High"}, "missing with a confidence"),
+    ("missing", {"evidence": [controls_item()["evidence"][0]]}, "missing with evidence"),
+    ("partial", {"evidence": []}, "partial without evidence"),
+])
+def test_status_decides_which_controls_keys_must_be_empty_or_present(status, change, label):
+    part = make_part(kind=CONTROLS, items=[dict(controls_item("S-1", status), **change), controls_item("T-2")])
+    assert classify(part, kind=CONTROLS).state == "invalid", label
+
+
+def test_a_partial_and_a_missing_controls_result_that_follow_the_contract_are_done():
+    part = make_part(kind=CONTROLS, items=[controls_item("S-1", "partial"), controls_item("T-2", "missing")])
+    assert classify(part, kind=CONTROLS).state == "done"
+
+
+def test_an_evidence_assessment_with_the_four_dimensions_is_accepted():
+    assessment = {d: {"rating": "Medium", "rationale": "Covers the main path."}
+                  for d in ("coverage", "configuration", "currency", "completeness")}
+    part = put(make_part(kind=CONTROLS), ("items", 0, "evidence", 0, "assessment"), assessment)
+    assert classify(part, kind=CONTROLS).state == "done"
+
+
+def test_five_evidence_entries_and_a_three_hundred_character_file_are_the_limits():
+    entries = [dict(controls_item()["evidence"][0], file="d/" + "f" * 298) for _ in range(5)]
+    part = put(make_part(kind=CONTROLS), ("items", 0, "evidence"), entries)
+    assert classify(part, kind=CONTROLS).state == "done"
+
+
+# --- RR2: over-limit prose is cut at its limit and flagged; it never rejects the part ---
+
+def truncation_cases():
+    return [
+        (SCORER, ("rationale", "cvss"), 400, "rationale.cvss"),
+        (SCORER, ("rationale", "reachability"), 400, "rationale.reachability"),
+        (SCORER, ("metric_rationale", "AV"), 160, "metric_rationale.AV"),
+        (SCORER, ("subscore_rationale", "known_techniques"), 160, "subscore_rationale.known_techniques"),
+        (CONTROLS, ("evidence", 0, "summary"), 160, "evidence.0.summary"),
+        (CONTROLS, ("evidence", 0, "snippet"), 600, "evidence.0.snippet"),
+        (CONTROLS, ("matrix_row",), 1200, "matrix_row"),
+        (CONTROLS, ("recommendation_body",), 2000, "recommendation_body"),
+    ]
+
+
+def with_text(kind, path, text):
+    item = scorer_item("S-1") if kind is SCORER else controls_item("S-1", "partial")
+    part = make_part(kind=kind, items=[item], ids=("S-1",))
+    if path[0] in ("metric_rationale", "subscore_rationale"):
+        item[path[0]] = {path[1]: text}
+    else:
+        put(item, path, text)
+    return part
+
+
+@pytest.mark.parametrize("kind,path,limit,field", truncation_cases(), ids=[c[3] for c in truncation_cases()])
+def test_prose_over_its_limit_is_cut_flagged_and_counted_never_rejected(kind, path, limit, field):
+    result = classify(with_text(kind, path, "a" * (limit + 50)), ids=("S-1",), kind=kind)
+    assert result.state == "done", result.detail
+    assert "input:%s:truncated" % field in result.flags["S-1"]
+    assert result.counts["truncations"] == 1
+    item = result.part["items"][0]
+    cur = item
+    for key in path:
+        cur = cur[key]
+    assert cur == "a" * limit
+
+
+@pytest.mark.parametrize("kind,path,limit,field", truncation_cases(), ids=[c[3] for c in truncation_cases()])
+def test_prose_at_exactly_its_limit_is_kept_unflagged(kind, path, limit, field):
+    result = classify(with_text(kind, path, "a" * limit), ids=("S-1",), kind=kind)
+    assert result.state == "done", result.detail
+    assert result.flags.get("S-1", []) == []
+    assert result.counts["truncations"] == 0
+
+
+def test_the_limit_counts_characters_not_bytes():
+    result = classify(with_text(SCORER, ("rationale", "cvss"), "é" * 400), ids=("S-1",))
+    assert result.state == "done"
+    assert result.flags.get("S-1", []) == []
+
+
+def test_a_snippet_over_five_lines_is_cut_to_five_lines_and_flagged():
+    snippet = "\n".join("line %d" % n for n in range(1, 9))
+    result = classify(with_text(CONTROLS, ("evidence", 0, "snippet"), snippet), ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done"
+    assert result.part["items"][0]["evidence"][0]["snippet"] == "\n".join("line %d" % n for n in range(1, 6))
+    assert "input:evidence.0.snippet:truncated" in result.flags["S-1"]
+
+
+def test_a_cut_never_leaves_a_broken_slot_in_a_narrative_field():
+    """The cut lands right after ``{{score:``, so step 11 must run on the cut text and fall back."""
+    text = "x" * 392 + "{{score:cvss_base}}"
+    result = classify(with_text(SCORER, ("rationale", "cvss"), text), ids=("S-1",))
+    assert result.state == "done"
+    stored = result.part["items"][0]["rationale"]["cvss"]
+    assert _api("narrative_problem")(stored, "risk-score") is None
+    assert stored == _api("narrative_fallback")("rationale.cvss")
+    assert sorted(result.flags["S-1"]) == ["input:rationale.cvss:narrative-fallback", "input:rationale.cvss:truncated"]
+
+
+def test_prose_over_a_limit_but_a_structural_slip_elsewhere_still_rejects():
+    part = with_text(SCORER, ("rationale", "cvss"), "a" * 900)
+    part["items"][0]["extra"] = 1
+    assert classify(part, ids=("S-1",)).state == "invalid"
+
+
+# =============================================================================
+# 10. Narrative fields: slots, numeral ban, per-field fallback (step 11)
+# =============================================================================
+
+SUB_SCORES = ["known_techniques", "attack_complexity", "tooling_availability", "skill_level",
+              "scriptability", "target_scope", "resource_requirements", "detection_difficulty"]
+SCORER_STAGE, CONTROLS_STAGE = "risk-score", "compensating-controls"
+
+
+def test_the_slot_table_gives_each_pr1_stage_its_closed_kinds_and_arguments():
+    table = _api("SLOT_TABLE")
+    assert set(table[SCORER_STAGE]) == {"score", "count", "band", "date", "finding", "ref", "name"}
+    assert set(table[CONTROLS_STAGE]) == {"score", "count", "band", "pct", "finding", "ref", "name"}
+    assert set(table[SCORER_STAGE]["score"]) == {"cvss_base", "exploitability", "scalability", "reachability",
+                                                 "composite", *SUB_SCORES}
+    assert set(table[SCORER_STAGE]["count"]) == {"auth_barriers", "network_boundaries"}
+    assert set(table[SCORER_STAGE]["band"]) == {"severity"}
+    assert set(table[SCORER_STAGE]["date"]) == {"scored", "review"}
+    assert set(table[SCORER_STAGE]["name"]) == {"component", "zone"}
+    assert set(table[CONTROLS_STAGE]["score"]) == {"inherent", "residual"}
+    assert set(table[CONTROLS_STAGE]["count"]) == {"evidence"}
+    assert set(table[CONTROLS_STAGE]["band"]) == {"inherent", "residual"}
+    assert set(table[CONTROLS_STAGE]["pct"]) == {"reduction"}
+    assert set(table[CONTROLS_STAGE]["name"]) == {"component"}
+
+
+NARRATIVE_THAT_PASSES = {
+    SCORER_STAGE: [
+        "Plain prose with no numbers at all.",
+        "Two-factor sign-in and third-party tools are in play.",
+        "Score {{score:cvss_base}} in band {{band:severity}}.",
+        "{{name:component}} sits in {{name:zone}}.",
+        "See {{ref:CWE-89}}, {{ref:LLM01:2026}}, {{ref:AML.T0051}}, {{ref:L3}} and {{ref:T1190}}.",
+        "Related to {{finding:S-1}} and {{finding:AGP-12}}.",
+        "{{count:auth_barriers}} barriers and {{count:network_boundaries}} boundaries.",
+        "Scored on {{date:scored}}, review by {{date:review}}.",
+        "Literal {{ braces }} and a lone { brace } stay plain text.",
+        "An unknown kind such as {{foo:bar}} is plain text, not a slot.",
+        "Twelve findings in words pass the ban, because only the contract text forbids them.",
+    ] + ["Sub-score {{score:%s}} drives it." % name for name in SUB_SCORES],
+    CONTROLS_STAGE: [
+        "{{score:inherent}} falls to {{score:residual}}.",
+        "Band {{band:inherent}} becomes {{band:residual}}, a {{pct:reduction}} reduction.",
+        "{{count:evidence}} entries support it for {{name:component}}.",
+        "See {{ref:CWE-306}} and {{finding:T-2}}.",
+    ],
+}
+
+NARRATIVE_THAT_FAILS = {
+    SCORER_STAGE: [
+        "CVSS 7.5 is high", "Uses OAuth2", "The S3 bucket", "TLS 1.3 only", "Listens on port 8080", "{{7*7}}", "a1",
+        "x\u00b2", "half \u00bd", "Roman \u2167", "Arabic-Indic \u0663", "Fullwidth \uff11", "Circled \u2460", "\u32bf",
+        "{{score:cvss_base", "{{score:cvss_base}", "{{score:cvss base}}", "{{score:}}", "{{score:" + "a" * 65 + "}}",
+        "{{score:{{score:cvss_base}}}}", "{{ref:CWE/89}}", "{{ref:}}", "{{finding:}}", "{{score:bogus}}",
+        "{{band:inherent}}", "{{score:inherent}}", "{{pct:reduction}}", "{{count:evidence}}", "{{name:component:S-1}}",
+        "{{date:today}}", "{{name:owner}}",
+    ],
+    CONTROLS_STAGE: [
+        "{{score:cvss_base}}", "{{name:zone}}", "{{date:scored}}", "{{count:auth_barriers}}", "{{band:severity}}",
+        "Found at line 42", "{{score:inherent", "{{pct:bogus}}",
+    ],
+}
+
+
+@pytest.mark.parametrize("stage,text", [(s, t) for s, ts in NARRATIVE_THAT_PASSES.items() for t in ts])
+def test_narrative_text_that_follows_the_slot_grammar_and_the_numeral_ban_passes(stage, text):
+    assert _api("narrative_problem")(text, stage) is None
+
+
+@pytest.mark.parametrize("stage,text", [(s, t) for s, ts in NARRATIVE_THAT_FAILS.items() for t in ts])
+def test_digits_outside_a_slot_and_a_bad_slot_are_problems(stage, text):
+    assert _api("narrative_problem")(text, stage) is not None
+
+
+def test_a_digit_inside_a_slot_argument_is_not_a_digit_outside_a_slot():
+    assert _api("narrative_problem")("See {{ref:CWE-89}} only.", SCORER_STAGE) is None
+    assert _api("narrative_problem")("See CWE-89 only.", SCORER_STAGE) is not None
+
+
+NARRATIVE_FIELDS = ["rationale.cvss", "rationale.exploitability", "rationale.scalability", "rationale.reachability",
+                    "metric_rationale.AV", "metric_rationale.AC", "metric_rationale.PR", "metric_rationale.UI",
+                    "metric_rationale.S", "metric_rationale.C", "metric_rationale.I", "metric_rationale.A",
+                    *["subscore_rationale.%s" % name for name in SUB_SCORES],
+                    *["evidence.0.assessment.%s.rationale" % d for d in ("coverage", "configuration", "currency", "completeness")]]
+
+
+@pytest.mark.parametrize("field", NARRATIVE_FIELDS)
+def test_each_narrative_field_has_a_fixed_digit_free_fallback_sentence(field):
+    sentence = _api("narrative_fallback")(field)
+    assert isinstance(sentence, str) and sentence.strip()
+    assert not any(ch.isnumeric() for ch in sentence)
+    assert "{{" not in sentence
+    assert sentence == _api("narrative_fallback")(field)
+
+
+def test_a_fallback_for_a_name_that_is_not_a_narrative_field_is_refused():
+    for field in ("finding_id", "cvss_vector", "evidence.0.summary", "matrix_row", "recommendation_body", "bogus"):
+        with pytest.raises((KeyError, ValueError)):
+            _api("narrative_fallback")(field)
+
+
+def part_with_narrative(text, field=("rationale", "exploitability"), ids=("S-1",)):
+    return put(make_part(ids=ids), ("items", 0) + field, text)
+
+
+@pytest.mark.parametrize("text", [
+    "Public tooling exists for CVE-2024-1234.",       # digits outside a slot
+    "The {{score:bogus}} value is high.",             # a slot whose argument does not resolve
+    "Broken {{score:cvss_base and no end.",           # an unterminated slot
+    "Reached through the OAuth2 gateway.",            # a digit-bearing component name written out
+    "Uses TLS 1.3 on port 8080.",                     # a version and a port
+])
+def test_a_narrative_field_that_fails_step_11_takes_the_fixed_sentence_and_never_rejects_the_part(text):
+    result = classify(part_with_narrative(text), ids=("S-1",))
+    assert result.state == "done", result.detail
+    stored = result.part["items"][0]["rationale"]["exploitability"]
+    assert stored == _api("narrative_fallback")("rationale.exploitability")
+    assert stored != text
+    assert result.flags["S-1"] == ["input:rationale.exploitability:narrative-fallback"]
+    assert result.counts["narrative_fallbacks"] == 1
+
+
+def test_fields_that_pass_step_11_are_stored_with_their_slots_intact():
+    part = part_with_narrative("Base {{score:cvss_base}}, band {{band:severity}}.")
+    result = classify(part, ids=("S-1",))
+    assert result.state == "done"
+    assert result.part["items"][0]["rationale"]["exploitability"] == "Base {{score:cvss_base}}, band {{band:severity}}."
+    assert result.flags.get("S-1", []) == []
+    assert result.counts["narrative_fallbacks"] == 0
+
+
+def test_each_failing_field_is_replaced_and_counted_on_its_own():
+    part = make_part(ids=("S-1",))
+    item = part["items"][0]
+    item["rationale"]["cvss"] = "Score 9.8 is high."
+    item["rationale"]["scalability"] = "Reaches {{score:nope}} hosts."
+    item["metric_rationale"] = {"AV": "Over TLS 1.2.", "AC": "Simple to repeat."}
+    item["subscore_rationale"] = {"skill_level": "Needs 2 years of practice."}
+    result = classify(part, ids=("S-1",))
+    assert result.state == "done"
+    assert sorted(result.flags["S-1"]) == sorted([
+        "input:rationale.cvss:narrative-fallback", "input:rationale.scalability:narrative-fallback",
+        "input:metric_rationale.AV:narrative-fallback", "input:subscore_rationale.skill_level:narrative-fallback"])
+    assert result.counts["narrative_fallbacks"] == 4
+    assert result.part["items"][0]["metric_rationale"]["AC"] == "Simple to repeat."
+
+
+def test_a_controls_assessment_rationale_is_narrative_and_takes_the_fallback():
+    assessment = {d: {"rating": "High", "rationale": "Covers the main path."}
+                  for d in ("coverage", "configuration", "currency", "completeness")}
+    assessment["currency"]["rationale"] = "Patched in release 4."
+    part = put(make_part(kind=CONTROLS, ids=("S-1",)), ("items", 0, "evidence", 0, "assessment"), assessment)
+    result = classify(part, ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done"
+    assert result.flags["S-1"] == ["input:evidence.0.assessment.currency.rationale:narrative-fallback"]
+
+
+def test_a_structural_failure_still_rejects_even_when_a_narrative_field_would_fall_back():
+    part = part_with_narrative("Score 9.8 is high.")
+    part["items"][0]["extra"] = 1
+    assert classify(part, ids=("S-1",)).state == "invalid"
+    part = part_with_narrative("Score 9.8 is high.")
+    part["items"][0]["exploitability"]["known_techniques"] = 11
+    assert classify(part, ids=("S-1",)).state == "invalid"
+
+
+def test_the_slot_kinds_of_the_other_stage_fall_back_in_this_stage():
+    part = put(make_part(kind=CONTROLS, ids=("S-1",)), ("items", 0, "evidence", 0, "assessment"), {
+        d: {"rating": "High", "rationale": "Ok {{name:zone}}."} for d in ("coverage", "configuration", "currency", "completeness")})
+    result = classify(part, ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done"
+    assert result.counts["narrative_fallbacks"] == 4
+
+
+# --- the resolver: slots filled from computed values, never from the agent's text ---
+
+def lookup_from(values):
+    return lambda kind, arg: values.get((kind, arg))
+
+
+def test_the_resolver_fills_each_slot_from_the_lookup_and_escapes_the_rest():
+    values = {("score", "cvss_base"): "7.5", ("band", "severity"): "High"}
+    text = "Base {{score:cvss_base}} puts it in {{band:severity}} <now> | later."
+    out = _api("resolve_narrative")(text, SCORER_STAGE, lookup_from(values))
+    assert out == "Base 7.5 puts it in High &lt;now&gt; &#124; later."
+
+
+def test_a_slot_that_does_not_resolve_makes_the_whole_field_unresolved():
+    assert _api("resolve_narrative")("Base {{score:cvss_base}}.", SCORER_STAGE, lookup_from({})) is None
+
+
+def test_text_that_breaks_the_grammar_is_unresolved_and_never_raises():
+    values = {("score", "cvss_base"): "7.5"}
+    for text in ("Base {{score:cvss_base", "Port 8080", "{{pct:reduction}}"):
+        assert _api("resolve_narrative")(text, SCORER_STAGE, lookup_from(values)) is None
+
+
+def test_a_resolved_value_is_untrusted_text_and_is_escaped_and_never_resolved_again():
+    values = {("name", "component"): "A|B <x> `y` {{score:cvss_base}}", ("score", "cvss_base"): "7.5"}
+    out = _api("resolve_narrative")("Host {{name:component}}.", SCORER_STAGE, lookup_from(values))
+    assert out == "Host A&#124;B &lt;x&gt; &#96;y&#96; &#123;&#123;score:cvss_base}}."
+    assert "{{" not in out
+
+
+def test_a_brace_pair_that_is_not_a_slot_is_escaped_on_output():
+    out = _api("resolve_narrative")("Keep {{ braces }} plain.", SCORER_STAGE, lookup_from({}))
+    assert out == "Keep &#123;&#123; braces }} plain."
+
+
+# =============================================================================
+# 11. Evidence fields and ``file`` values
+# =============================================================================
+
+def test_digits_and_any_text_are_allowed_in_evidence_fields_and_never_flagged():
+    part = make_part(kind=CONTROLS, ids=("S-1",), items=[controls_item("S-1", "partial")])
+    entry = part["items"][0]["evidence"][0]
+    entry.update(summary="Line 42 of auth.py calls check() 3 times.", snippet="x = 1\nreturn 0x2A")
+    part["items"][0]["matrix_row"] = "| S-1 | 9.8 | Critical |"
+    result = classify(part, ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done"
+    assert result.flags.get("S-1", []) == []
+    assert result.counts["narrative_fallbacks"] == 0
+    assert result.part["items"][0]["evidence"][0]["summary"] == "Line 42 of auth.py calls check() 3 times."
+
+
+@pytest.mark.parametrize("field", ["summary", "snippet"])
+def test_a_literal_double_brace_in_an_evidence_field_is_kept_as_text_for_the_renderer_to_escape(field):
+    part = put(make_part(kind=CONTROLS, ids=("S-1",), items=[controls_item("S-1", "partial")]),
+               ("items", 0, "evidence", 0, field), "{{7*7}} and {{score:inherent}}")
+    result = classify(part, ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done"
+    assert result.part["items"][0]["evidence"][0][field] == "{{7*7}} and {{score:inherent}}"
+    assert result.counts["narrative_fallbacks"] == 0
+
+
+EVIDENCE_FILES_REFUSED = [
+    "https://example.test/x", "file:///etc/passwd", "javascript:alert", "/etc/passwd", "//host/x", "a\\b.py",
+    "C:/Windows/x", "c:rel", "C:\\Windows\\x", "../x", "a/../b", "a/b/..", "a`b`", "a\x00b", "a\nb", "", ".",
+]
+EVIDENCE_FILES_ACCEPTED = ["src/a.py", "./src//a.py", "src/a:b.py", "docs/security/architecture.md", "src/\u00fcn\u00ef.py"]
+
+
+@pytest.mark.parametrize("path", EVIDENCE_FILES_REFUSED)
+def test_an_evidence_file_with_a_scheme_a_leading_slash_a_backslash_or_a_drive_letter_is_refused(path):
+    part = put(make_part(kind=CONTROLS, ids=("S-1",)), ("items", 0, "evidence", 0, "file"), path)
+    assert classify(part, ids=("S-1",), kind=CONTROLS).state == "invalid"
+
+
+@pytest.mark.parametrize("path", EVIDENCE_FILES_ACCEPTED)
+def test_a_relative_evidence_file_is_accepted_and_kept_as_written(path):
+    part = put(make_part(kind=CONTROLS, ids=("S-1",)), ("items", 0, "evidence", 0, "file"), path)
+    result = classify(part, ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done", result.detail
+    assert result.part["items"][0]["evidence"][0]["file"] == path
+
+
+def test_the_evidence_file_rule_is_the_identifier_slices_rule_not_a_second_copy():
+    source = TACHI_PARTS_PATH.read_text(encoding="utf-8")
+    assert source.count("def path_problem") == 1
+    for path in EVIDENCE_FILES_REFUSED + EVIDENCE_FILES_ACCEPTED:
+        refused = tachi_parts.path_problem(path) is not None
+        part = put(make_part(kind=CONTROLS, ids=("S-1",)), ("items", 0, "evidence", 0, "file"), path)
+        assert (classify(part, ids=("S-1",), kind=CONTROLS).state == "invalid") == refused, path
+
+
+# =============================================================================
+# 12. Per-sink escaping (ADR-050 D3, "Output")
+#
+# Markdown cells and prose use a closed set of numeric and named references that
+# ``tachi_parsers`` decodes (F3). Code snippets are unescaped inside a longer fence.
+# SARIF strings go through ``json.dumps`` only, so no helper here escapes them.
+# =============================================================================
+
+REFERENCES = {"&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#"}
+
+
+def decode_references(text):
+    """A test-local closed decoder: one pass, exactly the eight references."""
+    return re.sub("|".join(re.escape(ref) for ref in REFERENCES), lambda m: REFERENCES[m.group(0)], text)
+
+
+def test_the_escape_reference_set_is_closed():
+    assert dict(_api("ESCAPE_REFERENCES")) == REFERENCES
+
+
+@pytest.mark.parametrize("raw,escaped", [
+    ("a & b", "a &amp; b"), ("<b>", "&lt;b&gt;"), ("a | b", "a &#124; b"), ("`code`", "&#96;code&#96;"),
+    ("line one\nline two", "line one&#10;line two"), ("tab\there", "tab\there"), ("{{7*7}}", "&#123;&#123;7*7}}"),
+    ("a { b } c", "a { b } c"), ("{{ x }}", "&#123;&#123; x }}"), ("{{{x}}}", "&#123;&#123;&#123;x}}}"), ("", ""),
+    ("plain text 42", "plain text 42"),
+])
+def test_a_table_cell_escapes_the_closed_set(raw, escaped):
+    assert _api("escape_cell")(raw) == escaped
+
+
+def test_a_cell_never_holds_a_raw_pipe_backtick_angle_bracket_or_newline():
+    hostile = "| x |\n# h\n```\n<script>&lt;</script>`|`"
+    out = _api("escape_cell")(hostile)
+    assert not any(ch in out for ch in "|`<>\n")
+    assert decode_references(out) == hostile
+
+
+def test_a_literal_reference_in_agent_text_survives_one_decode():
+    """The round trip includes a literal ``&lt;``, so a double decode would fail it."""
+    for raw in ("&lt;", "&amp;lt;", "&#124;", "&amp;#35;", "&#10;"):
+        assert decode_references(_api("escape_cell")(raw)) == raw
+        assert decode_references(_api("escape_prose")(raw)) == raw
+
+
+def test_kept_slots_stay_literal_while_everything_else_is_escaped():
+    text = "{{score:cvss_base}} {{ref:CWE-89}} {{7*7}} <b>"
+    assert _api("escape_cell")(text, keep_slots=True) == "{{score:cvss_base}} {{ref:CWE-89}} &#123;&#123;7*7}} &lt;b&gt;"
+    assert _api("escape_cell")(text) == "&#123;&#123;score:cvss_base}} &#123;&#123;ref:CWE-89}} &#123;&#123;7*7}} &lt;b&gt;"
+
+
+@pytest.mark.parametrize("raw,escaped", [
+    ("# Heading", "&#35; Heading"), ("## Two", "&#35;# Two"), ("   # indented", "   &#35; indented"),
+    ("\t# tabbed", "\t&#35; tabbed"), ("issue #5 stays", "issue #5 stays"), ("| a | b |", "&#124; a &#124; b &#124;"),
+    ("first\n# second\nthird", "first\n&#35; second\nthird"), ("```\n# h\n```", "&#96;&#96;&#96;\n&#35; h\n&#96;&#96;&#96;"),
+    ("a\n\n# b", "a\n\n&#35; b"),
+])
+def test_prose_keeps_its_line_breaks_and_never_starts_a_line_with_a_hash_or_a_pipe(raw, escaped):
+    assert _api("escape_prose")(raw) == escaped
+
+
+def test_prose_cannot_forge_a_provenance_stamp_or_a_heading():
+    forged = "<!-- tachi-provenance: renderer=x; version=1.0.0; input-digest=sha256:" + "0" * 64 + " -->\n# Forged"
+    out = _api("escape_prose")(forged)
+    assert _api("read_stamp")(out) is None
+    assert not re.search(r"(?m)^\s*#", out)
+    assert decode_references(out) == forged
+
+
+def max_backtick_run(text):
+    runs = re.findall(r"`+", text)
+    return max((len(run) for run in runs), default=0)
+
+
+@pytest.mark.parametrize("snippet,length", [
+    ("no backticks", 3), ("one ` tick", 3), ("two `` ticks", 3), ("three ``` ticks", 4), ("four ```` ticks", 5),
+    ("a ``` b ````` c `` d", 6), ("", 3), ("~~~ tildes ~~~", 3),
+])
+def test_a_snippet_fence_is_longer_than_its_longest_backtick_run(snippet, length):
+    fence = _api("fence_for")(snippet)
+    assert fence == "`" * length
+    assert len(fence) > max_backtick_run(snippet)
+
+
+def test_a_fenced_snippet_cannot_close_its_own_fence_early():
+    snippet = "```\n## Forged\n| a | b |\n````\n`````"
+    fence = _api("fence_for")(snippet)
+    block = "%spython\n%s\n%s\n" % (fence, snippet, fence)
+    closers = [line for line in block.splitlines() if line.strip() and set(line.strip()) == {"`"} and len(line.strip()) >= len(fence)]
+    assert closers == [fence]
+
+
+# =============================================================================
+# 13. Guards, atomic write, digest, stamp and VERSION
+# =============================================================================
+
+def test_under_decides_containment_by_identity_not_by_spelling(tmp_path):
+    under = _api("under")
+    base = tmp_path / "out"
+    (base / "a" / "b").mkdir(parents=True)
+    alias = tmp_path / "alias"
+    alias.symlink_to(base)
+    assert under(base, base) is True
+    assert under(base, base / "a" / "b") is True
+    assert under(base, base / "a" / "new" / "deep" / "file.json") is True   # the tail does not exist yet
+    assert under(alias, base / "a") is True                                  # a spelling of the same directory
+    assert under(base, alias / "a") is True
+    assert under(base, tmp_path) is False
+    assert under(base, tmp_path / "other" / "f") is False
+    assert under(base, tmp_path / "out-evil" / "f") is False                 # a string prefix is not containment
+    assert under(base, base / ".." / "other") is False                       # a dot-dot component is never inside
+
+
+def test_the_path_guard_names_the_first_problem_with_a_planned_part_path(tmp_path):
+    problem = _api("path_guard_problem")
+    out = tmp_path / "out"
+    parts = out / ".tachi-build" / "risk-score" / PLAN / "parts"
+    parts.mkdir(parents=True)
+    good = parts / "B001.a1.json"
+    assert problem(good, out) == "missing"
+    good.write_text("{}", encoding="utf-8")
+    assert problem(good, out) is None
+    link = parts / "B001.a2.json"
+    link.symlink_to(good)
+    assert problem(link, out) == "symlink"
+    (parts / "B002.a1.json").mkdir()
+    assert problem(parts / "B002.a1.json", out) == "not-regular"
+    assert problem(tmp_path / "stray.json", out) == "outside"
+    real_parent = tmp_path / "real-parts"
+    real_parent.mkdir()
+    (real_parent / "B003.a1.json").write_text("{}", encoding="utf-8")
+    (out / "linked").symlink_to(real_parent)
+    assert problem(out / "linked" / "B003.a1.json", out) == "symlink"
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="needs POSIX named pipes")
+def test_a_named_pipe_is_not_a_regular_file(tmp_path):
+    out = tmp_path / "out"
+    out.mkdir()
+    os.mkfifo(str(out / "pipe.json"))
+    assert _api("path_guard_problem")(out / "pipe.json", out) == "not-regular"
+
+
+def test_the_path_guard_accepts_an_out_directory_that_is_itself_a_symlink(tmp_path):
+    real = tmp_path / "real"
+    real.mkdir()
+    (real / "f.json").write_text("{}", encoding="utf-8")
+    alias = tmp_path / "alias"
+    alias.symlink_to(real)
+    assert _api("path_guard_problem")(alias / "f.json", alias) is None
+
+
+def test_atomic_write_replaces_the_file_whole_and_leaves_nothing_behind(tmp_path):
+    write = _api("atomic_write")
+    target = tmp_path / "risk-scores.md"
+    target.write_text("old", encoding="utf-8")
+    write(target, "new\nline\né")
+    assert target.read_bytes() == "new\nline\né".encode("utf-8")
+    write(target, b"\x00\x01bytes")
+    assert target.read_bytes() == b"\x00\x01bytes"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["risk-scores.md"]
+
+
+def test_atomic_write_stages_in_the_target_directory_and_cleans_up_when_the_replace_fails(tmp_path, monkeypatch):
+    write = _api("atomic_write")
+    target = tmp_path / "out.md"
+    seen = []
+    real_replace = os.replace
+
+    def failing_replace(src, dst):
+        seen.append((os.path.dirname(os.path.abspath(src)), os.path.dirname(os.path.abspath(dst))))
+        raise OSError("disk full")
+
+    monkeypatch.setattr(os, "replace", failing_replace)
+    with pytest.raises(OSError):
+        write(target, "data")
+    monkeypatch.setattr(os, "replace", real_replace)
+    assert seen and seen[0][0] == seen[0][1] == str(tmp_path)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_atomic_write_fails_when_the_directory_is_missing_and_creates_nothing(tmp_path):
+    with pytest.raises(OSError):
+        _api("atomic_write")(tmp_path / "missing" / "f.md", "x")
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_atomic_write_replaces_a_symlink_at_the_destination_without_following_it(tmp_path):
+    victim = tmp_path / "victim.txt"
+    victim.write_text("keep", encoding="utf-8")
+    target = tmp_path / "out.md"
+    target.symlink_to(victim)
+    _api("atomic_write")(target, "new")
+    assert victim.read_text(encoding="utf-8") == "keep"
+    assert not target.is_symlink() and target.read_text(encoding="utf-8") == "new"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_a_written_file_gets_the_modes_an_ordinary_write_would(tmp_path):
+    previous = os.umask(0o022)
+    try:
+        _api("atomic_write")(tmp_path / "f.md", "x")
+    finally:
+        os.umask(previous)
+    assert (tmp_path / "f.md").stat().st_mode & 0o777 == 0o644
+
+
+def test_digests_are_lowercase_sha256_hex(tmp_path):
+    abc = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    assert _api("sha256_hex")(b"abc") == abc
+    path = tmp_path / "f"
+    path.write_bytes(b"abc")
+    assert _api("file_digest")(path) == abc
+    path.write_bytes(b"abc" * 100000)
+    assert _api("file_digest")(path) == _api("sha256_hex")(b"abc" * 100000)
+
+
+def test_the_input_digest_is_the_sha256_of_canonical_json_and_ignores_key_order():
+    digest = _api("input_digest")
+    assert digest({"b": [1, 2], "a": 1}) == digest({"a": 1, "b": [1, 2]})
+    assert digest({"a": 1, "b": [1, 2]}) == "sha256:" + _api("sha256_hex")(b'{"a":1,"b":[1,2]}')
+    assert digest({"a": "é"}) == "sha256:" + _api("sha256_hex")(b'{"a":"\\u00e9"}')
+    assert digest({"a": 1}) != digest({"a": 2})
+    assert digest([1, 2]) != digest([2, 1])
+    assert re.fullmatch(r"sha256:[0-9a-f]{64}", digest({}))
+
+
+DIGEST = "sha256:" + "ab" * 32
+
+
+def test_the_stamp_has_d4s_exact_form_and_the_shipped_version():
+    stamp = _api("stamp_comment")("render-risk-scores", DIGEST)
+    assert stamp == "<!-- tachi-provenance: renderer=render-risk-scores; version=%s; input-digest=%s -->" % (
+        _api("VERSION"), DIGEST)
+
+
+@pytest.mark.parametrize("renderer,digest", [
+    ("x --> <b>", DIGEST), ("", DIGEST), ("a" * 65, DIGEST), ("a b", DIGEST), ("r\n", DIGEST),
+    ("render", "sha256:" + "AB" * 32), ("render", "sha256:" + "ab" * 31), ("render", "md5:" + "ab" * 16),
+    ("render", DIGEST + "\n"), ("render", "-->"),
+])
+def test_a_stamp_cannot_carry_text_that_would_end_the_comment_or_break_the_form(renderer, digest):
+    with pytest.raises(ValueError):
+        _api("stamp_comment")(renderer, digest)
+
+
+def test_the_last_provenance_comment_wins():
+    stamp = _api("stamp_comment")
+    first, second = stamp("render-risk-scores", DIGEST), stamp("populate-affected-assets", "sha256:" + "cd" * 32)
+    read = _api("read_stamp")
+    assert read("body\n" + first + "\n") == {"renderer": "render-risk-scores", "version": _api("VERSION"), "input_digest": DIGEST}
+    assert read(first + "\nmore text\n" + second + "\n## Affected Assets\n")["renderer"] == "populate-affected-assets"
+    assert read("no stamp here") is None
+    assert read("") is None
+
+
+def test_a_malformed_last_comment_is_no_stamp_and_never_falls_back_to_an_earlier_one():
+    good = _api("stamp_comment")("render-risk-scores", DIGEST)
+    assert _api("read_stamp")(good + "\n<!-- tachi-provenance: renderer=x; version=1.0; input-digest=nope -->\n") is None
+    assert _api("read_stamp")(good + "\n<!-- tachi-provenance: renderer=x; version=%s; input-digest=%s" % (_api("VERSION"), DIGEST)) is None
+
+
+def test_a_forged_stamp_in_a_fenced_snippet_before_the_real_stamp_does_not_win():
+    forged = "<!-- tachi-provenance: renderer=evil; version=9.9.9; input-digest=sha256:" + "00" * 32 + " -->"
+    real = _api("stamp_comment")("render-compensating-controls", DIGEST)
+    text = "```text\n" + forged + "\n```\n\n" + real + "\n"
+    assert _api("read_stamp")(text)["renderer"] == "render-compensating-controls"
+
+
+def test_version_is_a_plain_release_triple_on_a_line_release_please_can_bump():
+    version = _api("VERSION")
+    assert re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version)
+    source = TACHI_PARTS_PATH.read_text(encoding="utf-8")
+    assert re.search(r'(?m)^VERSION = "[0-9]+\.[0-9]+\.[0-9]+"  # x-release-please-version$', source)
+    assert len(re.findall(r"x-release-please-version", source)) == 1
