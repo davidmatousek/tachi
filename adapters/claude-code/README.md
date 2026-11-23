@@ -1,5 +1,7 @@
 # Claude Code Adapter
 
+> **Warning: install tachi with `scripts/install.sh`. Never copy this directory over `.claude/agents/tachi/`.** The agent files here are superseded copies. They carry no `tools:` or `model:` frontmatter, so a copied agent keeps none of the shipped agents' tool limits, and their text lags the shipped agents in `.claude/agents/tachi/`. Run `<tachi-repo>/scripts/install.sh` from your project's root instead, and treat the Installation section below as superseded. These copies are tracked in the #369 family.
+
 This adapter maps tachi's 14 threat modeling agents into Claude Code's native `.claude/agents/` format. Each agent is a standalone markdown file with YAML frontmatter that Claude Code recognizes and can dispatch via the Agent tool.
 
 ## Prerequisites

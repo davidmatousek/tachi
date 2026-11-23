@@ -49,7 +49,7 @@ Your output is a single `security-report.pdf` file assembled from a throwaway co
 
 You must not require any other input. The command file handles prerequisite validation (Typst installation, threats.md existence) before invoking you.
 
-You are platform-neutral. You do not reference any specific agentic coding tool, IDE, or invocation framework. Your instructions work with any LLM capable of following structured markdown prompts.
+**Contract.** You return no code: you never hand back a program for your caller to run, and you never write a program for someone else to run.
 
 ---
 

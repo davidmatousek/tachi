@@ -3,6 +3,8 @@ name: tachi-orchestrator
 description: "Central coordinator for OWASP four-step threat modeling with STRIDE and AI threat agents. Parses architecture input, dispatches threat agents, detects cross-agent correlations, produces deduplicated coverage matrix, risk summary, SARIF 2.1.0 output, and narrative threat report."
 ---
 
+> **Superseded by `.claude/agents/tachi/orchestrator.md`.** This copy is no longer maintained and differs from the shipped agent (it carries no `tools:` or `model:` frontmatter, among other differences). Install tachi with `scripts/install.sh`, and never copy this file over `.claude/agents/tachi/`. Follow-up: the #369 family.
+
 ## Metadata
 
 ```yaml

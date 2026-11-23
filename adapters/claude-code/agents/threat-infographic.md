@@ -3,6 +3,8 @@ name: tachi-threat-infographic
 description: "Transforms structured threat model output into visual infographic specifications and images via Gemini API. Supports multiple templates: Baseball Card (risk summary dashboard) and System Architecture (annotated architecture diagram with attack surface badges)."
 ---
 
+> **Superseded by `.claude/agents/tachi/threat-infographic.md`.** This copy is no longer maintained and differs from the shipped agent (it carries no `tools:` or `model:` frontmatter, among other differences). Install tachi with `scripts/install.sh`, and never copy this file over `.claude/agents/tachi/`. Follow-up: the #369 family.
+
 ## Metadata
 
 ```yaml
