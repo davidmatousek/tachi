@@ -17,7 +17,9 @@ Inputs (read-only; repository-relative; every one matches an existing ``paths:``
   other ``.claude/skills/**`` Markdown file (section 7 scans them for a load of the staged reference).
 - ``schemas/coverage-checklists.yaml`` (its comment table; read as text, never parsed as YAML),
   ``INSTALL_MANIFEST.md``, ``adapters/claude-code/README.md`` and ``adapters/claude-code/agents/*.md``.
-- ``scripts/tachi_parts.py``, ``scripts/tachi_scoring.py`` and ``scripts/sarif_common.py``, imported.
+- ``scripts/tachi_parts.py``, ``scripts/tachi_scoring.py`` and ``scripts/sarif_common.py``, imported, and
+  ``scripts/extract-report-data.py``, ``scripts/extract-infographic-data.py`` and ``scripts/tachi_parsers.py``,
+  read as text for their imports (section 11).
 
 What each section proves:
 
@@ -42,6 +44,8 @@ What each section proves:
    values, the slot table, the 24 fixed sentences, the 28 flag fields, the identifiers and the limits.
 10. The same reference against the validator's behavior: each field is cut where the table says, and
    each narrative slip takes the table's sentence.
+11. The two extraction preflights (report assembler, infographic agent) check the extractor and every
+   helper that it imports at load, which is its module-level import closure over ``scripts/``.
 
 Every comparison parses the reference and compares it with the code, so it fails when either side
 drifts. Each comparison has a negative control that edits one side and expects a mismatch. A parser
@@ -52,6 +56,7 @@ Stdlib and pytest only; Python 3.9 syntax; ASCII source.
 """
 from __future__ import annotations
 
+import ast
 import functools
 import hashlib
 import json
@@ -1655,3 +1660,105 @@ def test_a_cut_that_lands_inside_a_slot_takes_the_fixed_sentence_too():
     item["subscore_rationale"]["skill_level"] = "x" * 155 + "{{score:skill_level}}"
     flags = classify("risk-score", item).flags["S-1"]
     assert field + ":truncated" in flags and field + ":narrative-fallback" not in flags
+
+
+# =============================================================================
+# 11. The extraction preflights name the extractors' import closure (the W1 wiring fix)
+# =============================================================================
+
+# The Bash agent that runs each extractor, and the extractor's file stem. Each spec's preflight is a
+# ``test -f`` fence plus an ``EXTRACTION SCRIPT MISSING`` error that lists the same files.
+PREFLIGHTS = {"report-assembler": "extract-report-data", "threat-infographic": "extract-infographic-data"}
+
+
+def module_level_imports(source: str) -> Set[str]:
+    """The top-level names a module imports when it loads or runs as a script.
+
+    Imports inside ``if`` and ``try`` blocks count. An import inside a function or a class body is lazy:
+    it loads only when that code runs, so it is not part of what the module needs at load.
+    """
+    found: Set[str] = set()
+
+    def walk(nodes: Sequence[ast.AST]) -> None:
+        for node in nodes:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                continue
+            if isinstance(node, ast.Import):
+                found.update(alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                found.add(node.module.split(".")[0])
+            for field in ("body", "orelse", "finalbody", "handlers"):
+                walk(getattr(node, field, []))
+
+    walk(ast.parse(source).body)
+    return found
+
+
+def local_import_closure(entry_source: str, local_source: Callable[[str], Optional[str]]) -> List[str]:
+    """The local modules that an entry loads at import, in the order found. ``local_source(name)`` is a local module's text, or ``None``."""
+    seen: List[str] = []
+    todo = sorted(name for name in module_level_imports(entry_source) if local_source(name) is not None)
+    while todo:
+        name = todo.pop(0)
+        if name in seen:
+            continue
+        seen.append(name)
+        todo += sorted(n for n in module_level_imports(local_source(name) or "") if local_source(n) is not None)
+    return seen
+
+
+def repo_script_source(name: str) -> Optional[str]:
+    path = SCRIPTS_DIR / (name + ".py")
+    return path.read_text(encoding="utf-8") if path.is_file() else None
+
+
+def preflight_files(text: str) -> Tuple[List[Set[str]], List[Set[str]]]:
+    """The files each ``test -f`` fence checks, and the files each ``EXTRACTION SCRIPT MISSING`` fence lists, one set per fence."""
+    checked: List[Set[str]] = []
+    listed: List[Set[str]] = []
+    for fence in fences(text):
+        if fence.label.lower() in SHELL_LABELS and fence.body.lstrip().startswith("test -f scripts/"):
+            checked.append(set(re.findall(r"test -f (scripts/[A-Za-z0-9_.-]+\.py)", fence.body)))
+        elif fence.body.startswith("EXTRACTION SCRIPT MISSING"):
+            listed.append(set(re.findall(r"^ +- (scripts/[A-Za-z0-9_.-]+\.py)$", fence.body, re.MULTILINE)))
+    return checked, listed
+
+
+def expected_preflight(entry: str) -> Set[str]:
+    """The extractor itself, and every local module it loads at import."""
+    source = (SCRIPTS_DIR / (entry + ".py")).read_text(encoding="utf-8")
+    return {"scripts/%s.py" % entry} | {"scripts/%s.py" % name for name in local_import_closure(source, repo_script_source)}
+
+
+def test_the_closure_follows_module_level_imports_and_skips_lazy_ones():
+    sources = {
+        "a": "import os\nimport c\n",
+        "b": "def f():\n    import d\n",
+        "c": "try:\n    import e\nexcept ImportError:\n    pass\n",
+        "d": "", "e": "",
+    }
+    assert local_import_closure("import a\nfrom b import f\n", sources.get) == ["a", "b", "c", "e"]
+    assert local_import_closure("import os, sys\n", sources.get) == []
+
+
+@pytest.mark.parametrize("stem", sorted(PREFLIGHTS))
+def test_an_extraction_preflight_names_the_extractor_and_its_whole_import_closure(stem):
+    expected = expected_preflight(PREFLIGHTS[stem])
+    assert "scripts/tachi_parsers.py" in expected and "scripts/tachi_parts.py" in expected, expected
+    checked, listed = preflight_files(spec_text(stem))
+    assert len(checked) == 1 and len(listed) == 1, "%s.md must carry one test -f fence and one error text" % stem
+    assert checked[0] == expected, "%s.md checks %s, and the extractor needs %s" % (stem, sorted(checked[0]), sorted(expected))
+    assert listed[0] == expected, "%s.md's error lists %s, and the extractor needs %s" % (stem, sorted(listed[0]), sorted(expected))
+    assert expected <= shipped_scripts(), "the manifest doesn't ship %s" % sorted(expected - shipped_scripts())
+    assert "If any of these files is missing" in spec_text(stem) and "If either file is missing" not in spec_text(stem)
+
+
+@pytest.mark.parametrize("stem", sorted(PREFLIGHTS))
+def test_a_preflight_that_drops_a_helper_is_noticed(stem):
+    expected = expected_preflight(PREFLIGHTS[stem])
+    text = spec_text(stem)
+    without_check = text.replace(" && test -f scripts/tachi_parts.py", "", 1)
+    without_listing = text.replace("  - scripts/tachi_parts.py\n", "", 1)
+    assert without_check != text and without_listing != text
+    assert preflight_files(without_check)[0][0] != expected
+    assert preflight_files(without_listing)[1][0] != expected

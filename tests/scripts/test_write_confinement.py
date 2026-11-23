@@ -100,8 +100,8 @@ FIXTURE_DIR = (
     REPO_ROOT / "tests" / "scripts" / "fixtures" / "fidelity_373" / "posture_mmdc_free"
 )
 # The installed set the report build needs: the extractor, ``tachi_parsers.py`` and the helper that
-# ``tachi_parsers.py`` imports at module load (ADR-050 D3). The report-assembler's own preflight still names
-# only the first two.
+# ``tachi_parsers.py`` imports at module load (ADR-050 D3). The report-assembler's preflight (step 2b) names
+# all three, and ``test_contract_text_374.py`` keeps it equal to the extractor's import closure.
 INSTALLED_SCRIPTS = ("extract-report-data.py", "tachi_parsers.py", "tachi_parts.py")
 
 CUSTOM_FOOTER = "T015 custom footer"

@@ -139,13 +139,13 @@ Data extraction is performed by a deterministic Python script that replaces the 
 
 ### Script Invocation
 
-**Preflight (MANDATORY)**: Verify the extraction script and its parser helpers exist before invoking:
+**Preflight (MANDATORY)**: Verify the extraction script and the helper modules it imports exist before invoking:
 
 ```bash
-test -f scripts/extract-infographic-data.py && test -f scripts/tachi_parsers.py
+test -f scripts/extract-infographic-data.py && test -f scripts/tachi_parsers.py && test -f scripts/tachi_parts.py
 ```
 
-If either file is missing, abort with:
+If any of these files is missing, abort with:
 
 ```
 EXTRACTION SCRIPT MISSING
@@ -153,6 +153,7 @@ EXTRACTION SCRIPT MISSING
 Required files not found:
   - scripts/extract-infographic-data.py
   - scripts/tachi_parsers.py
+  - scripts/tachi_parts.py
 
 Re-run the tachi installer to distribute these files:
 
