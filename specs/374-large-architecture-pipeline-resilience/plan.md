@@ -60,7 +60,7 @@ The bundle moves what an agent can't reliably produce at scale (whole files, ari
 **Primary Dependencies**: none new.
 - **The core path** (renderer, planner, reconciler, joiner, assembly, chain script, checks) imports and needs only the standard library: `json`, `decimal`, `hashlib`, `re`, `pathlib`, `os`, `sys`, `datetime`, `argparse` and `tempfile`.
 - **PyYAML** stays optional, for the PDF attestation page only. A test runs the core path with `yaml` made unimportable (S-11).
-- **Tests** use the existing `pytest>=8` and `pytest-timeout>=2` (plus `pyyaml>=6`, for collection only).
+- **Tests** use the existing `pytest>=8` and `pytest-timeout>=2` (plus `pyyaml>=6`, for collection only). `f374-offline` also installs `pytest-cov>=4.1`, already in `requirements-dev.txt`, for ADR-050 D16's coverage gate.
 
 **Storage**: files. Agents write their intermediates under `{out}/.tachi-build/` (ADR-049 D7), and the final outputs keep their names and locations.
 
@@ -88,7 +88,7 @@ The bundle moves what an agent can't reliably produce at scale (whole files, ari
 - Re-rendered example PNGs are never committed (#365).
 - Public text stays generic (NFR-6).
 
-**Scale/Scope**: 54 FRs in 5 groups and 16 ADR-050 decisions, across two PRs. About 30 agent, command, skill, template and doc files are edited; about 9 new scripts plus their helpers, and their test modules, are added.
+**Scale/Scope**: 56 FRs in 5 groups and 16 ADR-050 decisions, across two PRs. About 30 agent, command, skill, template and doc files are edited; about 9 new scripts plus their helpers, and their test modules, are added.
 
 ## Constitution Check
 
@@ -105,12 +105,15 @@ The bundle moves what an agent can't reliably produce at scale (whole files, ari
 - **IV. Concurrency / V. Privacy.** N/A as written, since tachi is a local harness. The equivalents are S-8 (dispatch limits), NFR-6 (public hygiene) and NFR-10 (the trust boundary). PASS.
 - **VI. Testing Excellence.**
   - Every deterministic claim has an offline test on synthetic fixtures, gated in CI. The renderer's contract and golden tests are written before its code (W2).
+  - **Unit coverage is at least 80%** (`constitution.md:80`). `f374-offline` enforces total line coverage of at least 80% over each PR's new and rewritten shipped modules, through ADR-050 D16's coverage gate (`/aod.analyze` D1). `tachi_parsers.py` is extended, not new, so it is held to a ratchet: its coverage under `test_tachi_parsers.py` may not fall below the floor that T001 records (ADR-050 D16, `/aod.analyze` E3).
   - Model behavior is measured by live runs, with dispositions decided in advance (TW-L2).
 
   PASS.
-- **VII. Definition of Done.** Three-step validation per PR, with red CI blocking merge. PASS.
-- **VIII. Product-Spec Alignment.** Every FR traces to the spec and the PRD, the PM's spec-review rulings are binding, and nothing here adds product scope. PASS.
-- **X. Governance (non-negotiable).** ADR-050 is accepted at this stage, before any build wave (TW-ADR). It records an amendment for every ADR it overrides: ADR-013, 017, 018, 020, 026, 046, 048 and 049 (P-1). ADR-047 is unchanged, because SV-2b is carved (D1). PASS.
+- **VII. Definition of Done.** Three-step validation per PR, with red CI blocking merge. Its quality gates include the 80% unit-coverage threshold (`constitution.md:107`), which ADR-050 D16's coverage gate enforces in `f374-offline`. PASS.
+- **VIII. Observability & Root Cause Analysis.** FR-K4.3's 5 Whys at W0 (T002), TW-CI's root-cause analysis after a repeated red push (T071), and S-16's KB entry (T080). PASS.
+- **IX. Git Workflow & Feature Branching (non-negotiable).** Feature branches and a PR per release, with no force-push (T085, T127); `fix(374)` titles; and each branch checked current before its merge (H11). PASS.
+- **X. Product-Spec Alignment & Architecture Review (non-negotiable).** Every FR traces to the spec and the PRD, the PM's spec-review rulings are binding, and nothing here adds product scope. ADR-050 is accepted at this stage, before any build wave (TW-ADR). It records an amendment for every ADR it overrides: ADR-013, 017, 018, 020, 026, 046, 048 and 049 (P-1). ADR-047 is unchanged, because SV-2b is carved (D1). PASS.
+- **XI. SDLC Triad Collaboration.** The PRD, spec, plan and tasks all carry their Triad sign-offs. PASS.
 
 **Post-design re-check:** PASS. The Phase 1 artifacts add no dependency, no agent tool and no write outside `{out}`.
 
@@ -118,7 +121,7 @@ The bundle moves what an agent can't reliably produce at scale (whole files, ari
 
 | Layer | Technology | Notes |
 |---|---|---|
-| Shipped scripts | Python 3.9+, standard library only | `sys.dont_write_bytecode` set before local imports (ADR-049 D8); installed through `INSTALL_MANIFEST.md`; listed under S-13 |
+| Shipped scripts | Python 3.9+, standard library only | `sys.dont_write_bytecode` set before local imports (ADR-049 D8); installed through `INSTALL_MANIFEST.md`; listed under F-373's S-13 import gate |
 | Agent and command contracts | Markdown, with YAML frontmatter | Agents keep their `tools:`; commands keep `{description}` |
 | Intermediates | JSON (closed, versioned key sets) | Under `{out}/.tachi-build/` (ADR-050 D3) |
 | Outputs | Markdown and SARIF 2.1.0 | Renderer-owned for the scorer and controls (PR 1), and the `threats.sarif` generator (PR 2) |
@@ -131,7 +134,7 @@ The bundle moves what an agent can't reliably produce at scale (whole files, ari
 | `scripts/tachi_parts.py` | helper, new | S | Part loader and validator, the identifier patterns, guards, atomic write, digest, stamp and version (D3, D4) |
 | `scripts/tachi_scoring.py` | helper, new | S | The CVSS 3.1 calculator promoted from Patch A's test, the embedded constants, `q1`, `band`, largest remainder and the prefix resolver (D5, D10) |
 | `scripts/sarif_common.py` | helper, now installed | S | The shared emitter: rule map, per-finding hash, URI resolver, membership and self-check (D7, D8) |
-| `scripts/tachi-stage.py` | entry, new | S | `plan`, `reconcile`, `fail`, `close` and `architecture-source`, plus `id-mark` in PR 2 (D4, D6, D7) |
+| `scripts/tachi-stage.py` | entry, new | S, R, O | `plan`, `reconcile` and `fail` (S); `architecture-source` (R); `close` and `id-mark`, in PR 2 (O) (D4, D6, D7) |
 | `scripts/tachi_parsers.py` | helper, extended | S, R, O | The reference-set wrapper with drift forms (S-12), `parse_correlation_groups` (D8), both K8 formats, the shared reference decoder (D3), and `parse_chain_outcome` in PR 2 (D13) |
 | `scripts/tachi_scoring_rules.py` | helper, new | R | R-6's resolver, R-25, R-26's tolerant reader and R-31 (D5, D9) |
 | `scripts/render-risk-scores.py` | entry, new | R | Owns `risk-scores.{md,sarif}`; recompute-and-flag (D2, D9, D10). Replaces `generate-risk-scores-sarif.py` (#357) |
@@ -193,15 +196,18 @@ docs/architecture/02_ADRs/ADR-050-large-architecture-output-authority.md
 ### Source Code (repository root: the surfaces this bundle changes)
 
 ```
-scripts/                                    # new and changed scripts: see Components (all installed, under S-13)
+scripts/                                    # new and changed scripts: see Components (all installed, under F-373's S-13 import gate)
+scripts/extract-infographic-data.py         # the shared reference decoder in its table readers (D3, lane P)
 .claude/agents/tachi/                       # orchestrator, risk-scorer, control-analyzer, threat-report, attack-tree-delta (+ platform-neutral clauses in report-assembler, threat-infographic)
 .claude/commands/                           # tachi.threat-model.md, tachi.risk-score.md, tachi.compensating-controls.md
 .claude/skills/tachi-shared/references/     # new: N/N and identity, part-file contract, overflow and batch plan, dispatch-record and brief templates, roster; finding-format-shared.md (end marker)
+.claude/skills/tachi-shared/SKILL.md        # its Loading Table lists the new shared references (T007)
 .claude/skills/tachi-orchestration/references/  # sarif-specification.md, output-schemas.md, dispatch-rules.md, baseline-correlation.md
 .claude/skills/tachi-risk-scoring/references/   # cvss-vectors.md, asset-modifiers.md, severity-bands.md (become renderer documentation)
 .claude/skills/tachi-control-analysis/references/
 .claude/skills/tachi-threat-reporting/references/
 templates/tachi/output-schemas/             # threats.md, risk-scores.md (1.1), compensating-controls.md (1.1), threat-report.md
+templates/tachi/security-report/main.typ    # reads `chain-outcome` with `default: none` (D13, PR 2)
 schemas/attack-chain.yaml                   # 1.1 (PR 2)
 adapters/claude-code/                       # superseded-by headers, the README warning, sarif-generation.md (R-17, FR-K8.3)
 tests/scripts/                              # new test modules (D16) and the fixture generator
@@ -262,7 +268,7 @@ The lanes follow the feasibility check's §3.1. Each hot file has one lane per w
 > **Superseded at `/aod.tasks` (2026-11-22).** tasks.md v1.1 now owns four things:
 > - **The windows.** Each comes from its wave's longest dependency chain plus its push-and-gate tail.
 > - **PR 1's projection.** Its central is T0 + 10.05, and TW-0 is re-based to T0 + 11.0 under the PM's condition-4 ruling, Option A.
-> - **PR 2's projection.** Its central is T0 + 13.75, against a bound of T0 + 14.75.
+> - **PR 2's projection.** Its central is T0 + 14.0, against a bound of T0 + 15.0 (tasks.md v1.4).
 > - **PR 2's post-squash integration.** T127 names the method and the full-tree parity check, a departure from the rebase described below.
 >
 > The windows and centrals below are the plan stage's.
@@ -400,9 +406,9 @@ This plan cites the re-review's findings as RR1–RR6 (N1–N6 in its results fi
    - the renderer core's unit tests green: the CVSS module on FIRST's 16 examples, the part validator's hostile-input cases, the emitter's shape tests, and the planner and reconciler's stale-part case;
    - the fixture generator's sizing and determinism tests green;
    - both CI legs green on committed HEAD.
-3. **The `tachi-install-fidelity.yml` jobs (the default gate):** the renderer suites, the parser suites (drift forms, both K8 formats, round-trip), the checks' suites, S-13 (widened to the new helpers), the yaml-blocked core-path run, the 3.9 grammar check, `test_write_confinement.py` (extended), and `f374-macos`'s identity run on a case-insensitive volume (ADR-050 D16).
+3. **The `tachi-install-fidelity.yml` jobs (the default gate):** the renderer suites, the parser suites (drift forms, both K8 formats, round-trip), the checks' suites, F-373's S-13 import gate (widened to the new helpers), the yaml-blocked core-path run, the 3.9 grammar check, `test_write_confinement.py` (extended), `f374-macos`'s identity run on a case-insensitive volume, and `f374-offline`'s coverage gate: at least 80% total line coverage over the PR's gated set (ADR-050 D16).
 4. **`tachi-pytest.yml`:** only modules that need the two-OS bash matrix (command-shell changes). The existing modules stay green.
-5. **`tachi-permissions-verify.yml`:** C1–C7, green after every agent, command, §8 or runbook edit. C7's write parity covers every new `.tachi-build/` path (NFR-3).
+5. **`tachi-permissions-verify.yml`:** C1–C8, green after every agent, command, §8 or runbook edit. C7's write parity covers every new `.tachi-build/` path (NFR-3).
 6. **Co-fired gates stay green:** `tachi-maestro-coverage.yml` (orchestrator edits), `tachi-mmdc-preflight`, and the catalog-drift gate.
 7. **The oracle gate (NFR-1):** run in a scratch clone over every shipped example with scorer or controls output, on decoded values (ADR-050 D3). Every value diff is attributed to one of four classes: a flagged value (corrected, or retagged under ruling A); D-5; S-2's tie reorder; or text the renderer takes from the reference set where today's agent paraphrased it: a field ADR-050 D2 has the renderer take from the reference set, whose rendered value equals that finding's reference-set value on decoded values, after the documented truncation. A diff in such a field that fails this test is unattributed (PM confirmation, ruling 4). The three drift-form examples assert S-12(a) to (d). No PDF baseline or tracked PNG changes, and `git status` is checked clean of `examples/**` before each commit.
 8. **Live evidence** (`[MANUAL-ONLY]`):

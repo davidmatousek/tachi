@@ -27,11 +27,19 @@
 - [x] No implementation details leak into specification (same note as the first item).
 
 ## Notes
-- **Validation:** five passes (2026-11-22).
+- **Validation:** six passes (2026-11-22).
   - Pass 1 fixed the seven missing scenarios.
   - Pass 2 found no failing items.
   - Pass 3 followed the PM's review (APPROVED_WITH_CONCERNS, 13 findings). It folded the amended S-3(d), (f) and (g) and findings 1 to 12, adding FR-E.18, US-1a #8, US-6a #7–#9 and one edge case, and marking 13 live scenarios `[MANUAL-ONLY]` inline. It found no failing items. Finding 13 went to the plan (P-11).
   - Pass 4 followed the PM's plan review. It folded rulings A, B, C and P-7, plus findings 4, 6 and 8's spec half. That added FR-E.19 and FR-E.20 (56 FRs) and US-5 #13–#14, US-6a #10–#11 and US-6b #5 (61 scenarios). It found no failing items.
   - Pass 5 followed ADR-050 rev. 1, the Architect's re-review and the PM's confirmation of rev. 1's dispositions (CONFIRMED_WITH_AMENDMENTS). It aligned NFR-1's oracle (four classes, with the reference-set class bounded), NFR-10's ID allow-list (ASCII digits, whole-string match, KB 24), P-1 and Key Artifacts (ADR-026 amended, ADR-047 unchanged), the Flags glossary (`retagged`'s scope; the `input` kind, including truncation), PR 1's release-note item 3 and both PRs' fallback notes. It recorded the confirmation, including the 25% return to the PM, under the plan-review rulings. The counts are unchanged (56 FRs, 61 scenarios), and it found no failing items.
+  - Pass 6 followed the `/aod.analyze` gate at `/aod.tasks`. It applied five spec errata:
+    - F1: FR-E.1 and its Key Artifacts row follow ADR-050 D7, so `sarif-specification.md`'s identity and membership sections are Track O;
+    - F2: the stdlib-only import assertion is called F-373's S-13 import gate, and bare S-13 is kept for the asset-tag ruling;
+    - F3: SV-2b is recorded as carved at the plan stage;
+    - F6: FR-K5.2 and US-1b #4 compare Mermaid source between fences, per ADR-050 D14;
+    - C1: three modified files were added to Key Artifacts.
+
+    It also recorded condition 4's re-base, T0 = 2026-11-22 and FR-C.1's S+R+O tag. The counts are unchanged, and it found no failing items.
 - **Public hygiene (NFR-6):** a scan of `spec.md` and `research.md` found no real-world target names, no local paths and no N3 specifics.
 - Items marked incomplete would require spec updates before `/aod.clarify` or `/aod.project-plan`; none are.

@@ -48,7 +48,7 @@ Orchestrator fences pass literal arguments only (C6). `PLAN` below stands for `-
 | `python3 scripts/assemble-report.py trees\|report --run-dir DIR`: `trees` runs once the `trees` stage reconciles to 0, and copies and merges the trees; `report` assembles the report and runs FR-K5.3, FR-K5.5 and FR-K5.7 (D14) | O | 0, 2, 4 |
 | `python3 scripts/generate-threats-sarif.py --threats FILE --out DIR --architecture PATH`: the shipped generator on the shared emitter; the path is the command's own, resolved in code (D1, D7, D8) | O | 0, 1, 2, 4 |
 
-**Helpers** (imported, never run directly; each is installed and listed under S-13):
+**Helpers** (imported, never run directly; each is installed and listed under F-373's S-13 import gate):
 - `tachi_parts.py`: loader, validator, identifier patterns, guards, atomic write, digest, stamp and version (D3, D4);
 - `tachi_scoring.py`: CVSS 3.1, constants, `q1`, `band`, largest remainder and the prefix resolver (D5, D10);
 - `tachi_scoring_rules.py`: R-6, R-25, R-26 and R-31 (D5, D9);

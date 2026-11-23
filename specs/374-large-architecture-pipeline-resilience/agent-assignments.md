@@ -1,13 +1,13 @@
 # Agent Assignments: Large-Architecture Pipeline Resilience (F-374)
 
-**Source**: `tasks.md` v1.2, with the triple sign-off (PM, Architect and Team-Lead all APPROVED_WITH_CONCERNS, 2026-11-22). Produced by `/aod.tasks` Step 6. Where this file and tasks.md differ, tasks.md governs.
+**Source**: `tasks.md` v1.4 (after the `/aod.analyze` gate, which re-ran clean), on its v1.4 triple sign-off (2026-11-22: PM and Architect APPROVED_WITH_CONCERNS, Team-Lead APPROVED). Produced by `/aod.tasks` Step 6. Where this file and tasks.md differ, tasks.md governs.
 
 **Agents**: only exact names from `.claude/agents/_README.md`.
 - The `tachi-*` agents are subjects under test, never assignees.
 - The team-lead assigns and signs off, and is never an assignee.
 - The `orchestrator` runs every wave and holds the gates.
 
-**Scope**: 149 tasks in two PRs. PR 1 is 91 tasks (Tracks S and R, draft #423). PR 2 is 58 tasks (Track O, base `main`). Task IDs aren't monotonic after v1.0, so phase and wave carry the order.
+**Scope**: 150 tasks in two PRs. PR 1 is 91 tasks (Tracks S and R, draft #423). PR 2 is 59 tasks (Track O, base `main`). Task IDs aren't monotonic after v1.0, so phase and wave carry the order.
 
 ## 1. Agent Assignment Matrix
 
@@ -46,7 +46,7 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | T019 | — | F | `tester` | 0.50 | Generate the fixture's base set (S-4) |
 | T020 | — | F | `tester` | 0.20 | Write `test_fixture_374.py` |
 | T021 | — | L | `tester` | 0.35 | After T019, run the v4.48.4 baselines live in T141's scratch adopters, before any… |
-| T022 | — | X | `devops` | 0.35 | Wire W1, module by module in lock-step (H7): **Manifest:** add `tachi_parts.py`,… |
+| T022 | — | X | `devops` | 0.40 | Wire W1, module by module in lock-step (H7): **Manifest:** add `tachi_parts.py`,… |
 | T023 | — | ADR | `architect` | 0.30 | At W1's start, record T004's sizes as D6's "Amended at W0" table, with a Revision… |
 | T024 | — | ADR | `architect` | 0.10 | Write the system-design append that `/aod.project-plan` Step 6 deferred to W1:… |
 | T025 | — | X | `devops` | 0.10 | In T024's commit: run `tests/fixtures/regenerate-baseline.sh` in the integration tree… |
@@ -73,7 +73,7 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | T044 | US5 | R1b | `senior-backend-engineer` | 0.20 | After T042, add scorer planning to `tachi-stage.py` (D2) |
 | T045 | US5 | R1 | `senior-backend-engineer` | 0.35 | Write recompute and flag in `render-risk-scores.py`, part 1 (D9 steps 1–4, D10):… |
 | T046 | US5 | R1 | `senior-backend-engineer` | 0.35 | After T048 (AR-T12): Write recompute and flag, part 2: **Governance.** Overrides are… |
-| T047 | US5 | X | `devops` | 0.15 | Wire W2 in lock-step (H7): add `render-risk-scores.py` and `tachi_scoring_rules.py` to… |
+| T047 | US5 | X | `devops` | 0.20 | Wire W2 in lock-step (H7): add `render-risk-scores.py` and `tachi_scoring_rules.py` to… |
 | T048 | US6a | P | `senior-backend-engineer` | 0.15 | Write `parse_correlation_groups` (D8) and its tests |
 | T049 | US6a | R1t | `senior-backend-engineer` | 0.25 | Write the tests first: FR-E.2's two-run model for `risk-scores.sarif` |
 | T050 | US6a | R1 | `senior-backend-engineer` | 0.45 | Emit `risk-scores.sarif` through the shared emitter (D7, D8, FR-K6.2) |
@@ -95,7 +95,7 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | T036 | US1a | R3a | `senior-backend-engineer` | 0.30 | Add controls planning to `tachi-stage.py` |
 | T037 | US1a | D | `senior-backend-engineer` | 0.40 | Make `control-analyzer.md` judgment-only (D2; FR-K7.4, FR-K8.1) |
 | T038 | US1a | D | `senior-backend-engineer` | 0.50 | Write `/tachi.compensating-controls`' batch-and-resume loop (D4, FR-K7.4): its first… |
-| T039 | US1a | X | `devops` | 0.35 | Update §8 and the runbook in one commit (C7; D3, D4) |
+| T039 | US1a | X | `devops` | 0.40 | Update §8 and the runbook in one commit (C7; D3, D4) |
 | T052 | US6a | R3a | `senior-backend-engineer` | 0.25 | Before T053, write the tests for `compensating-controls.sarif` |
 | T053 | US6a | R2 | `senior-backend-engineer` | 0.25 | Emit `compensating-controls.sarif` through the shared emitter |
 | T054 | US6a | R3a | `senior-backend-engineer` | 0.35 | Retire `generate-risk-scores-sarif.py` (#357), and migrate the three modules that pin… |
@@ -122,7 +122,7 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 
 | Task | Story | Lane | Agent | Est. (d) | Task, in brief |
 |---|---|---|---|---|---|
-| T072 | — | L | `devops` | 0.15 | Set up W5's scratch adopters: install the committed branch build with… |
+| T072 | — | X | `devops` | 0.15 | Set up W5's scratch adopters: install the committed branch build with… |
 | T073 | US1a | L1 | `tester` | 0.35 | Run `/tachi.risk-score` live on the fixture's precomputed `threats.md`, at the adopter… |
 | T074 | US1a | L2 | `tester` | 0.35 | Run `/tachi.compensating-controls` live on the fixture with the stub codebase, at both… |
 | T075 | US1a | L1 | `tester` | 0.15 | Run SC-8's post-fix runs on T004's example, under P-7's conditions: the scorer, then… |
@@ -155,7 +155,7 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | T093 | US4 | O2 | `senior-backend-engineer` | 0.45 | Once T086 commits, write the orchestrator's Phases 1–3 (D11) |
 | T148 | — | F | `tester` | 0.25 | Build PR 2's fixture cases that wait on no ruling: S-4's chain-cap variant (more than… |
 
-**W2′** (19 tasks)
+**W2′** (20 tasks)
 
 | Task | Story | Lane | Agent | Est. (d) | Task, in brief |
 |---|---|---|---|---|---|
@@ -166,18 +166,19 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | T094 | US4 | O2 | `senior-backend-engineer` | 0.20 | Finalize `dispatch-rules.md` and `dispatch-record-brief-shared.md` as the templates PR… |
 | T099 | US6b | R3b | `senior-backend-engineer` | 0.30 | Write the `threats.sarif` tests first, with the identity cases and FR-E.13's pin |
 | T100 | US6b | R3b | `senior-backend-engineer` | 0.40 | Rewrite `generate-threats-sarif.py` as the installed generator, on the shared emitter… |
-| T103 | US1b | F | `tester` | 0.35 | Extend the fixture with S-4's PR 2 cases: synthetic threat-model run directories for… |
-| T104 | US1b | L | `tester` | 0.30 | Once each W2′ lane's first task is in flight (TL-T12), Run S-9's spike live, under the… |
+| T103 | US1b | F | `tester` | 0.45 | First, regenerate `fixtures/large_arch/` from the merged generator, since T148 and… |
+| T104 | US1b | L | `tester` | 0.30 | Once each W2′ lane's first task is in flight (TL-T12), run S-9's spike live, under the… |
 | T105 | US1b | OS | `senior-backend-engineer` | 0.30 k | Contingency O-α, only if T086 fires it: a records mode in `tachi-stage.py reconcile`,… |
 | T106 | US1b | OS | `senior-backend-engineer` | 0.25 | Write `join-threats-md.py` |
 | T107 | US1b | OS | `senior-backend-engineer` | 0.30 k | Contingency O-β, only if T087 fires it: the joiner's manifest and payload checks, with… |
 | T108 | US1b | T | `senior-backend-engineer` | 0.40 | Write `assemble-report.py trees`, tests first (D14) |
 | T109 | US1b | T | `senior-backend-engineer` | 0.50 | Write `assemble-report.py report`, tests first (D14) |
 | T110 | US1b | T | `senior-backend-engineer` | 0.25 k | Contingency O-γ, only if T088 fires it: the richer report payload's validator cases… |
-| T114 | US1b | X | `devops` | 0.20 | Wire W2′ in lock-step (H7) |
+| T114 | US1b | X | `devops` | 0.25 | Wire W2′ in lock-step (H7) |
 | T115 | US2 | OCt | `tester` | 0.35 | Write the tests first for `attack-chains.py` (D13): two `plan` runs are… |
 | T116 | US2 | OC | `senior-backend-engineer` | 0.50 | First, while OCt writes T115 and OC would otherwise idle, land… |
 | T117 | US2 | OC | `senior-backend-engineer` | 0.40 | Write `attack-chains.py render` and `check` (D13, FR-K4.1, FR-K4.1b, R-24) |
+| T150 | US6b | R3b | `senior-backend-engineer` | 0.10 | Extend S-11's `test_runtime_floor_374.py` for PR 2 (E1) |
 
 **W3′** (14 tasks)
 
@@ -186,7 +187,7 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | T095 | US4 | OC | `senior-backend-engineer` | 0.35 | Before T096, write the tests for `check-threat-model.py` (D12): carried, renumbered,… |
 | T096 | US4 | OC | `senior-backend-engineer` | 0.45 | Write `check-threat-model.py` (D12, FR-N4.5, FR-N4.6, FR-E.10, FR-E.19): the three… |
 | T097 | US4 | O3 | `senior-backend-engineer` | 0.40 | Add `/tachi.threat-model`'s PR 2 steps, under P-2's anchors, following D4's table:… |
-| T098 | US4 | X | `devops` | 0.35 | Update §8 and the runbook in one commit (C7): §8.3: the orchestrator's writes under… |
+| T098 | US4 | X | `devops` | 0.40 | Update §8 and the runbook in one commit (C7): §8.3: the orchestrator's writes under… |
 | T101 | US6b | O3 | `senior-backend-engineer` | 0.30 | Point `sarif-specification.md`'s identity and membership sections (`:197-280`,… |
 | T102 | US6b | X | `devops` | 0.10 | Make PR 2's FR-E.11 edit |
 | T111 | US1b | O2 | `senior-backend-engineer` | 0.35 | Handle Phase 2's overflow (FR-N4.7, D6, S-8) |
@@ -203,7 +204,7 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | Task | Story | Lane | Agent | Est. (d) | Task, in brief |
 |---|---|---|---|---|---|
 | T123 | — | PM | `product-manager` | 0.10 c | Conditional, only if T089 or T122 fires: rule on PR 2's projection above its bound |
-| T124 | — | E2E | `tester` | 0.45 | Run the threat-model stage's offline end-to-end test on the fixture, in a scratch clone |
+| T124 | — | E2E | `tester` | 0.50 | Run the threat-model stage's offline end-to-end test on the fixture, in a scratch clone |
 | T125 | — | REV | `code-reviewer` | 0.30 | Review PR 2's delta against PR 1's final head, since GitHub's diff includes PR 1 until… |
 | T126 | — | SEC | `security-analyst` | 0.20 | Run the Step 7 scan, naming PR 2's scripts |
 | T127 | — | X | `devops` | 0.25 | After PR 1's squash-merge, integrate by one clean method (AR-T8): merge PR 1's final… |
@@ -213,7 +214,7 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 
 | Task | Story | Lane | Agent | Est. (d) | Task, in brief |
 |---|---|---|---|---|---|
-| T129 | — | L | `devops` | 0.15 | Set up W5′'s scratch adopters: the branch build installed with `scripts/install.sh`;… |
+| T129 | — | X | `devops` | 0.15 | Set up W5′'s scratch adopters: the branch build installed with `scripts/install.sh`;… |
 | T130 | US1b | L | `tester` | 0.45 | Run `/tachi.threat-model` baseline-aware on the fixture, at the adopter default effort… |
 | T131 | US1b | L | `tester` | 0.50 | Unless TW-L1 fired, run `/tachi.threat-model` at `effort=max`, covering the report… |
 | T132 | US4 | L | `tester` | 0.30 | Check the typed-agent stop: a small threat-model run with one roster agent uninstalled… |
@@ -238,11 +239,11 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | Wave | Session | Lanes: agent instance (base effort in d) | Pacing chain + tail | Window (d) |
 |---|---|---|---|---|
 | W0 | S1 | X: `devops` (0.12); K4: `debugger` (0.25); F: `tester` (0.25); G: `orchestrator` (0.10); PM: `product-manager` (0.00, +0.10 c/k) | T002 or T003, 0.25 | 0.35 |
-| W1 | S1 | S: `senior-backend-engineer` (0.65); O1: `senior-backend-engineer` (0.75); R0a: `senior-backend-engineer` (1.10); R0b: `senior-backend-engineer` (1.00); R0c: `senior-backend-engineer` (1.00); F: `tester` (0.70); L: `tester` (0.35); X: `devops` (0.55); ADR: `architect` (0.40); G: `orchestrator` (0.10) | T011 → T012's slice → T016 → T015 → T010, and T017 → T018 → T140: 1.25 + 0.2 | 1.6 |
-| W2 | S1 | R1t: `senior-backend-engineer` (0.85); R1: `senior-backend-engineer` (1.60); C: `senior-backend-engineer` (1.35); P: `senior-backend-engineer` (1.50); F: `tester` (0.45); R1b: `senior-backend-engineer` (1.10); X: `devops` (0.15); ADR: `architect` (0.15); G: `orchestrator` (0.10); PM: `product-manager` (0.00, +0.10 c/k) | T027 → T028 → T050 → T045 → T046: 1.9 + 0.35 | 2.4 |
-| W3 | S2 | R2t: `senior-backend-engineer` (0.45); R2: `senior-backend-engineer` (1.05); R3a: `senior-backend-engineer` (0.90); D: `senior-backend-engineer` (1.05); X: `devops` (0.45); SEC: `security-analyst` (0.20) | T034 → T035 → T053 → T059: 1.3 + 0.1 | 1.65 |
+| W1 | S1 | S: `senior-backend-engineer` (0.65); O1: `senior-backend-engineer` (0.75); R0a: `senior-backend-engineer` (1.10); R0b: `senior-backend-engineer` (1.00); R0c: `senior-backend-engineer` (1.00); F: `tester` (0.70); L: `tester` (0.35); X: `devops` (0.60); ADR: `architect` (0.40); G: `orchestrator` (0.10) | T011 → T012's slice → T016 → T015 → T010, and T017 → T018 → T140: 1.25 + 0.2 | 1.6 |
+| W2 | S1 | R1t: `senior-backend-engineer` (0.85); R1: `senior-backend-engineer` (1.60); C: `senior-backend-engineer` (1.35); P: `senior-backend-engineer` (1.50); F: `tester` (0.45); R1b: `senior-backend-engineer` (1.10); X: `devops` (0.20); ADR: `architect` (0.15); G: `orchestrator` (0.10); PM: `product-manager` (0.00, +0.10 c/k) | T027 → T028 → T050 → T045 → T046: 1.9 + 0.35 | 2.4 |
+| W3 | S2 | R2t: `senior-backend-engineer` (0.45); R2: `senior-backend-engineer` (1.05); R3a: `senior-backend-engineer` (0.90); D: `senior-backend-engineer` (1.05); X: `devops` (0.50); SEC: `security-analyst` (0.20) | T034 → T035 → T053 → T059: 1.3 + 0.1 | 1.65 |
 | W4 | S2 | E2E: `tester` (0.30); OR: `tester` (0.40); REV: `code-reviewer` (0.30); SEC: `security-analyst` (0.15); X: `devops` (0.10); ADR: `architect` (0.15); CI: `debugger` (0.00, +0.15 c/k); FX: `senior-backend-engineer` (0.00, +0.25 c/k) | T066 → T146 → T069 → T070: 0.65 + 0.25 | 0.9 |
-| W5 | L | L: `devops` (0.15); L1: `tester` (0.50); L2: `tester` (0.55); G: `orchestrator` (0.10); PM: `product-manager` (0.00, +0.10 c/k); FX: `senior-backend-engineer` (0.00, +0.25 c/k) | the live matrix's wall clock | 1.25 |
+| W5 | L | X: `devops` (0.15); L1: `tester` (0.50); L2: `tester` (0.55); G: `orchestrator` (0.10); PM: `product-manager` (0.00, +0.10 c/k); FX: `senior-backend-engineer` (0.00, +0.25 c/k) | the live matrix's wall clock | 1.25 |
 | W6 | S3 | CO: `product-manager` (0.30); CO: `architect` (0.25); CO: `devops` (0.35); CO: `orchestrator` (0.15) | T080 → T081 → T082: 0.6 + 0.15 | 0.75 (+0.15 coordination) |
 
 ### PR 2
@@ -250,10 +251,10 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | Wave | Session | Lanes: agent instance (base effort in d) | Pacing chain + tail | Window (d) |
 |---|---|---|---|---|
 | W1′ | S2 | X: `devops` (0.15); ADR: `architect` (0.50); G: `orchestrator` (0.10); O2: `senior-backend-engineer` (0.45); F: `tester` (0.25) | the rulings T086–T088 → T089; T093 during PR 1's W3 | inside PR 1's W2–W3 |
-| W2′ | S1′ | X: `devops` (0.30); ADR: `architect` (0.10); R3b: `senior-backend-engineer` (1.00); OS: `senior-backend-engineer` (0.75, +0.60 c/k); O2: `senior-backend-engineer` (0.20); F: `tester` (0.35); L: `tester` (0.30); T: `senior-backend-engineer` (0.90, +0.25 c/k); OCt: `tester` (0.35); OC: `senior-backend-engineer` (0.90) | T085 → T115 → T116 → T117: 1.3 + 0.05 throttle + 0.1 | 1.7 |
-| W3′ | S1′ | OC: `senior-backend-engineer` (0.80); O3: `senior-backend-engineer` (0.90); X: `devops` (0.45); O2: `senior-backend-engineer` (1.00); T: `senior-backend-engineer` (0.45); P′: `senior-backend-engineer` (0.60); G: `orchestrator` (0.10) | T111 → T112 → T118: 1.0 + 0.2 | 1.25 |
-| W4′ | S2′ | PM: `product-manager` (0.00, +0.10 c/k); E2E: `tester` (0.45); REV: `code-reviewer` (0.30); SEC: `security-analyst` (0.20); X: `devops` (0.25); ADR: `architect` (0.15) | T124 → T127 → T124's re-run: 0.7 + 0.15 | 0.9 |
-| W5′ | L′ | L: `devops` (0.15); L: `tester` (1.55); G: `orchestrator` (0.10); PM: `product-manager` (0.00, +0.10 c/k) | the live matrix's wall clock, with T145 | 2.0 |
+| W2′ | S1′ | X: `devops` (0.35); ADR: `architect` (0.10); R3b: `senior-backend-engineer` (1.10); OS: `senior-backend-engineer` (0.75, +0.60 c/k); O2: `senior-backend-engineer` (0.20); F: `tester` (0.45); L: `tester` (0.30); T: `senior-backend-engineer` (0.90, +0.25 c/k); OCt: `tester` (0.35); OC: `senior-backend-engineer` (0.90) | T085 → T115 → T116 → T117: 1.3 + 0.05 throttle + 0.1 | 1.7 |
+| W3′ | S1′ | OC: `senior-backend-engineer` (0.80); O3: `senior-backend-engineer` (0.90); X: `devops` (0.50); O2: `senior-backend-engineer` (1.00); T: `senior-backend-engineer` (0.45); P′: `senior-backend-engineer` (0.60); G: `orchestrator` (0.10) | T111 → T112 → T118: 1.0 + W3′ throttle 0.1 + 0.2 | 1.35 |
+| W4′ | S2′ | PM: `product-manager` (0.00, +0.10 c/k); E2E: `tester` (0.50); REV: `code-reviewer` (0.30); SEC: `security-analyst` (0.20); X: `devops` (0.25); ADR: `architect` (0.15) | T124's first run (0.4) → T127 → T124's re-run (0.1): 0.75 + 0.15 | 0.95 |
+| W5′ | L′ | X: `devops` (0.15); L: `tester` (1.55); G: `orchestrator` (0.10); PM: `product-manager` (0.00, +0.10 c/k) | the live matrix's wall clock, with T145 | 2.0 |
 | W6′ | S3′ | CO: `product-manager` (0.30); CO: `architect` (0.20); CO: `devops` (0.40); CO: `orchestrator` (0.15) | T136 → T137 → T138: 0.6 + 0.15 | 0.75 (+0.15 coordination) |
 
 ### Sessions (`/aod.build`, at most three waves per session)
@@ -269,6 +270,8 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | L′ | PR 2's W5′ | the W5′ gate, T133 (M5b) |
 | S3′ | PR 2's W6′ | PR 2 delivered, T138 and T139 (M6b) |
 
+**Lane CO** (W6, W6′) runs one agent per close-out task: `product-manager` for the notes and bookkeeping, `architect` for the KB entry, design rows and follow-ups, `devops` for the regeneration and delivery, and `orchestrator` for the completion report and the tail (F4). Lane X holds W5's and W5′'s adopter setup (T072, T129). Lane F regenerates the fixture at the start of T103 (C2).
+
 ## 3. Quality Gates Between Waves
 
 | Gate | Task | At | Checks | Trip-wires evaluated |
@@ -276,14 +279,19 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | G0 | T004 (orchestrator) | W0's end | the pre-state, the 5 Whys outcome, the S-1 sizes and the SC-8 example are recorded; #400's conflict list | TW-K4 (→ T144 on (b)), TW-N3 |
 | G1, the cut line | T026 (orchestrator) | W1's end (M2) | plan.md's Verification item 2; both CI legs green on the committed HEAD; the cut-line SHA for T084 | TW-N3 at W2's entry; TW-CI (T022's push) |
 | G2 | T061 (architect), then T062 (orchestrator, invoking the team-lead) | W2's end (M3) | P0 checkpoint; PR 1 re-projected from actual lane times, and PR 2 against its bound under each option | TW-ESC as the PM restated it (→ T063), TW-N3, TW-CI (T047) |
-| G3 | T069 (devops), then T070 (architect) | W4's end (M4) | one push, both legs green against T001's totals; P1 checkpoint | TW-CI (→ T071) |
+| G3 | T069 (devops), then T070 (architect) | W4's end (M4) | one push, both legs green against T001's totals; ADR-050 D16's coverage gate, with its figures recorded (a shortfall goes to T146); P1 checkpoint | TW-CI (→ T071) |
 | G4 | T077 (orchestrator) | W5's end (M5a) | the live matrix's dispositions | TW-L2, the PM's 25% fallback return and the SC-8 overage (→ T078) |
 | G5 | T083 (orchestrator) | after PR 1 merges (M6a) | the completion report for the team-lead's sign-off; the `[POST-MERGE]` tail issue | — |
 | G1′ | T089 (orchestrator) | W1′'s end | O-α, O-β, O-γ and RR3 ruled as ADR-050 rev. 3; contingencies marked fired or not | TW-ADR; PR 2's bound, the all-three case included (→ PM with T123); TW-N3 |
 | G2′ | T122 (orchestrator, invoking the team-lead) | W3′'s end | PR 2 re-projected from actual lane times | PR 2's bound (→ T123), TW-N3, TW-CI (T098) |
-| G3′ | T127 (devops), then T128 (architect) | W4′'s end | the post-squash merge and full-tree parity check; one push green; P1′ | TW-CI (→ T071) |
+| G3′ | T127 (devops), then T128 (architect) | W4′'s end | the post-squash merge and full-tree parity check; one push green; ADR-050 D16's coverage gate, with its figures recorded (the owning lanes close any shortfall); P1′ | TW-CI (→ T071) |
 | G4′ | T133 (orchestrator) | W5′'s end (M5b) | the live matrix's dispositions | TW-L1 (from T130 → T134), TW-L2, TW-L3, TW-CTX, the PM's 25% fallback return (→ T134) |
 | G5′ | T139 (orchestrator) | after PR 2 merges (M6b) | the completion report for the team-lead's sign-off; the `[POST-MERGE]` tail issue | — |
+
+**ADR-050 D16's coverage gate** (v1.3, D1):
+- **Wiring.** T022 wires it (W1, checked at G1). It is extended by T047 (W2, G2), T039 (W3), T114 (W2′) and T098 (W3′, G2′), each in the same commit as its wave's gated modules. The wiring also uses "F-373's S-13 import gate" for the stdlib-only import check (F2).
+- **Records.** The figures are recorded at G3 (T069) and G3′ (T127).
+- **The DoD.** tasks.md's DoD item 2 now requires unit coverage of at least 80% on the gated modules, per ADR-050 D16 (constitution VI, VII).
 
 ## 4. Time Estimates (copied from tasks.md)
 
@@ -295,13 +303,14 @@ Each window is max(longest stated chain × 1.25, chain + push-and-gate tail), ro
 
 | PR | Start | W2′ | W3′ | W4′ | W5′ | W6′ | Coordination | Central | Floor / ceiling |
 |---|---|---|---|---|---|---|---|---|---|
-| 2 | T0 + 7.0 (PR 1's W3 end) | 1.7 | 1.25 | 0.9 | 2.0 | 0.75 | 0.15 | **T0 + 13.75** | 10.8 / 21.85 |
+| 2 | T0 + 7.0 (PR 1's W3 end) | 1.8 | 1.35 | 0.95 | 2.0 | 0.75 | 0.15 | **T0 + 14.0** | 10.95 / 22.15 |
 
 - **PR 1** against TW-0, re-based to **T0 + 11.0** (condition 4, Option A): a margin of 0.95.
-- **PR 2** against its bound, **T0 + 14.75**:
-  - all three contingencies: T0 + 14.45;
-  - W3′'s throttled start (H14): about T0 + 13.85.
-- **Ratio.** PR 1 implies 0.45, on 22.4 base eng-days. Confidence LOW–MEDIUM.
+- **PR 2** against its bound, **T0 + 15.0**:
+  - all three contingencies: T0 + 14.6 (margin 0.4);
+  - T150's runtime floor (+0.1) lengthens W2′'s chain (re-run F10);
+  - W3′'s throttle (+0.1) and T124's re-run (+0.05) are now in the central (F8).
+- **Ratio.** PR 1 implies 0.45, on 22.57 base eng-days. Confidence LOW–MEDIUM.
 - **W1′** runs inside PR 1's W2–W3 (T0 + 2.95 to 7.0), off PR 2's critical path.
 
 ## 5. Binding Dispatch Overrides
@@ -337,9 +346,9 @@ Each window is max(longest stated chain × 1.25, chain + push-and-gate tail), ro
 
 | Agent | Tasks | Effort (d), conditional and contingency included |
 |---|---|---|
-| `senior-backend-engineer` | 75 | 23.65 |
-| `tester` | 20 | 6.75 |
-| `devops` | 20 | 3.57 |
+| `senior-backend-engineer` | 76 | 23.75 |
+| `tester` | 20 | 6.90 |
+| `devops` | 20 | 3.82 |
 | `architect` | 11 | 1.90 |
 | `product-manager` | 7 | 1.10 |
 | `orchestrator` | 9 | 1.00 |

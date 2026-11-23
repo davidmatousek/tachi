@@ -130,7 +130,7 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
 4. **Given** Phase 5, **When** the report is produced, **Then**:
    - a shipped step assembles `threat-report.md` from bounded parts;
    - Section 5 holds exactly one tree per Critical and High finding in `threats.md`, RESOLVED excluded;
-   - every inline tree is byte-identical to its standalone file, and every carried-forward tree is byte-identical to its baseline file.
+   - every inline tree's Mermaid source is byte-identical to its standalone file's, between the file's fences, re-fenced longer than any backtick run inside it (ADR-050 D14), and every carried-forward tree is byte-identical to its baseline file.
 
    `[MANUAL-ONLY] needs a live Phase 5; the assembly step and its checks run offline on synthetic parts`
 5. **Given** the tree batches, **When** they finish, **Then** each batch's manifest is merged into one schema-1.0 `attack-trees/.manifest.json`, which the report agent reads.
@@ -408,14 +408,14 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
 - **FR-O.1 (orchestrator outputs) [O]** —
   - **SV-2a, never carved:** `threats.sarif` MUST come from a shipped generator over the compiled `threats.md`, sharing the renderer's D-5 emitter.
   - **Bounded emission:** `threats.md` MUST be emitted in bounded parts that a shipped step joins, each part within S-1's budget.
-  - **SV-2b, may be carved:** rendering `threats.md`'s tables in code may be carved at TW-0 or TW-R. Bounded emission stays either way. If SV-2b's rendering ships, ADR-047's applicability authority moves to that code, as a single authority.
+  - **SV-2b, carved at the plan stage (ADR-050 D1):** `threats.md`'s tables aren't rendered in code. They stay model-authored, and Section 6 is checked. Bounded emission stays, and ADR-047's applicability authority doesn't move.
 
   → US-1b #1, #3
 
 #### Group B — Threat report (`threat-report.md`, `attack-tree-delta.md`, `.claude/skills/tachi-threat-reporting/references/`, `templates/tachi/output-schemas/threat-report.md`)
 
 - **FR-K5.1 (whole report bounded) [O]** — No single response MAY carry the whole report. A shipped step MUST assemble `threat-report.md` from bounded part files: one per section, and one per batch of findings for the per-finding sections. Section 5 is one part, taken from the standalone tree files. The plan decides who runs the step: the orchestrator after Phase 5 returns, or `/tachi.threat-model` (ADR-050 item 14). → US-1b #4
-- **FR-K5.2 (inline equals standalone) [O]** — Every inline tree MUST be byte-identical to its standalone file. This is true by construction, because the assembly copies the files, and a test checks it. → US-1b #4
+- **FR-K5.2 (inline equals standalone) [O]** — Every inline tree's Mermaid source MUST be byte-identical to its standalone file's, between the file's fences. The inline copy is re-fenced longer than any backtick run inside it (ADR-050 D14). This is true by construction, because the assembly copies the files, and a test checks it. → US-1b #4
 - **FR-K5.3 (carried-forward trees unchanged) [O]** — Tree carry-forward MUST be a file copy done by the shipped step, never a model transcription. A test checks it. → US-1b #4
 - **FR-K5.4 (typed helpers) [S]** — The report agent's sub-dispatches MUST be typed tachi agents only (FR-N4.1). → US-4 #4
 - **FR-K5.5 (tree count) [O]** — Section 5 MUST hold exactly one tree per Critical and High finding in `threats.md`, RESOLVED excluded. Code checks this against `threats.md`, not against the tree agent's manifest. → US-1b #4
@@ -428,7 +428,7 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
 - **FR-K6.2 (SARIF N/N and identity) [R]** — `risk-scores.sarif` MUST satisfy the N/N rule and D-5's identity rules, and agree with the `.md`'s open rows by construction. → US-1a #1, US-6a
 - **FR-K6.3 (the renderer owns the files) [R]** — The renderer MUST write the whole of `risk-scores.md` and `risk-scores.sarif` (D-2). The agent spec drops its output-format instructions. → US-1a #1
 - **FR-N14.1 (overflow) [R; contract text S]** — No agent MAY hand back code. `/tachi.risk-score` MUST own batching and resume (D-3): it runs the shipped planner, dispatches the batches within S-8's limits, reconciles from disk, and re-batches narrower on overflow, with capped retries. Today `risk-scorer.md:93` leaves batching to the command, which invokes the scorer once (`tachi.risk-score.md:114-147`). → US-1a #4, #5, #6
-- **FR-N14.2 (renderer) [R]** — The renderer MUST compute D-2's right-hand column and write both whole files. It is shipped, tested, installed and listed under S-13. → US-1a #1
+- **FR-N14.2 (renderer) [R]** — The renderer MUST compute D-2's right-hand column and write both whole files. It is shipped, tested, installed and listed under F-373's S-13 import gate. → US-1a #1
 - **FR-N16.1 (recompute and flag) [R]** — D-4 and D-6 apply:
   - derived fields are recomputed;
   - vector mismatches are corrected and flagged;
@@ -463,7 +463,7 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
 
 #### Group E — Shared
 
-- **FR-E.1 (N/N and identity reference) [S]** — One shared reference MUST cover all three SARIF files (D-5). It replaces the four contract copies: `sarif-specification.md`, `risk-scorer.md` §10, the installed `sarif-generation.md`, and the control analyzer's Phase 6c. It also:
+- **FR-E.1 (N/N and identity reference) [S; `sarif-specification.md`'s identity and membership sections O, per ADR-050 D7]** — One shared reference MUST cover all three SARIF files (D-5). It replaces the four contract copies: `sarif-specification.md`, `risk-scorer.md` §10, the installed `sarif-generation.md`, and the control analyzer's Phase 6c. It also:
   - states ADR-050's counting rule;
   - corrects `sarif-specification.md:585` ("exactly N entries");
   - resolves the contradiction between `:339` and `:612`;
@@ -486,16 +486,16 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
   The planner runs only where Bash runs, and its batch sizes follow S-1. A test seeds a stale part. → US-1a #4
 - **FR-E.4 (fixture) [S]** — The fixture generator and its outputs MUST be committed, with the shape that S-4 pins. → all stories
 - **FR-E.5 (tests and wiring) [S, R and O, per module]** — Tests MUST run on synthetic fixtures only, in three gates:
-  - **`tachi-install-fidelity.yml`** is the default for the renderer, checker and parser suites. Its scope includes S-13 and `test_write_confinement.py`, which is extended to every new script.
+  - **`tachi-install-fidelity.yml`** is the default for the renderer, checker and parser suites. Its scope includes F-373's S-13 import gate and `test_write_confinement.py`, which is extended to every new script.
   - **`tachi-pytest.yml`** takes only modules that need its cross-platform bash matrix.
   - **`tachi-permissions-verify.yml`** covers every agent, command, §8 and runbook edit.
 
-  Each module is wired together with its input surfaces in its gate's `paths:` list and invocation, in the same commit (KB 3). Every new script, and every helper it imports, goes into all three places in `INSTALL_MANIFEST.md`, into `REQUIRED_SCRIPT_NAMES` and S-13's allowance, and into `ENTRY_SCRIPTS_IMPORTING_PARSERS`. *Scenario:* **Given** a commit that adds a test module or a shipped script, **When** it is checked, **Then** the module is in exactly one gate's `paths:` list and that gate's invocation, with its input surfaces, and the script is in every listing above, all in that same commit.
+  Each module is wired together with its input surfaces in its gate's `paths:` list and invocation, in the same commit (KB 3). Every new script, and every helper it imports, goes into all three places in `INSTALL_MANIFEST.md`, into `REQUIRED_SCRIPT_NAMES` and the allowance of F-373's S-13 import gate, and into `ENTRY_SCRIPTS_IMPORTING_PARSERS`. *Scenario:* **Given** a commit that adds a test module or a shipped script, **When** it is checked, **Then** the module is in exactly one gate's `paths:` list and that gate's invocation, with its input surfaces, and the script is in every listing above, all in that same commit.
 - **FR-E.6 (failure handling) [R+O]** — D-3's failure behavior MUST apply on its three run-ending paths: a typed agent that can't be spawned [text S, check O], a failed provenance or completeness check [O], and an unrecoverable batch [R for the scorer and controls, O for Phase 2 and the trees]. The error names the stage, the agent or finding IDs involved, and the remedy. The outputs are marked failed through a mechanism that needs no N7 change (plan input P-4). There is one test per path. → US-1a #5, US-4 #1
 - **FR-E.7 (in-run signals) [R+O]** — Every rendered output MUST carry the renderer's version and an input digest, and a post-run check MUST assert that the output directory holds only declared paths (D-7). → US-4 #6
 - **FR-E.8 (#409's dispatch-target check)** — *Drops at `/aod.tasks` under R-34 (feasibility row 13).* #409 is sequenced right after this bundle (R-15), and #408 stays open for R-14's run-time bound.
 - **FR-E.9 (#412) [R; `threats.sarif` O]** — Each emitter MUST write the real `informationUri`, and the templates and instructions that carry the placeholder are corrected (R-16). *Scenario:* **Given** any SARIF file a shipped emitter writes, **When** its `tool.driver.informationUri` is read, **Then** it is the real repository URL, never the placeholder.
-- **FR-E.10 (Section 6 parity) [O]** — `threats.md` Section 6's counts and percentages MUST be checked against the reference finding set (D-4), classifying MAESTRO applicability through ADR-047 D2's helper, never re-deriving it from Section 1. They stay model-written unless SV-2b's rendering ships. *Scenario:* **Given** a compiled `threats.md` whose Section 6 disagrees with the reference set, **When** the check runs, **Then** it reports each mismatched count or percentage, and a Section 6 that agrees passes.
+- **FR-E.10 (Section 6 parity) [O]** — `threats.md` Section 6's counts and percentages MUST be checked against the reference finding set (D-4), classifying MAESTRO applicability through ADR-047 D2's helper, never re-deriving it from Section 1. SV-2b is carved (ADR-050 D1), so they stay model-written. *Scenario:* **Given** a compiled `threats.md` whose Section 6 disagrees with the reference set, **When** the check runs, **Then** it reports each mismatched count or percentage, and a Section 6 that agrees passes.
 - **FR-E.11 (upload instructions) [R+O] *(per S-15)*** — Both Code Scanning snippets in the developer guide (`DEVELOPER_GUIDE_TACHI.md:1118-1135` and `:1692-1712`) MUST upload from a run's timestamped output directory, each file with its own category. PR 1 adds the scorer and controls uploads and leaves the `threats.sarif` line as it is. PR 2 changes the `threats.sarif` line together with its identity, keeping `category: threat-model`. The batch files hold absolute local paths, so PR 1's edit also tells adopters to ignore `**/.tachi-build/`, as tachi's own `.gitignore` does (PM plan review, finding 6). → US-6b #4
 - **FR-E.12 (SARIF identity fields) [R; `threats.sarif` O] *(spec S-6)*** — Every result in every tachi SARIF file MUST carry tachi's own `partialFingerprints.primaryLocationLineHash`, and no file MAY carry `runAutomationDetails`. → US-6a #4
 - **FR-E.13 (correlation matching unchanged) [O] *(spec S-7)*** — Phase 3's baseline correlation MUST keep matching findings exactly as it does today. *Scenario:* **Given** the regroup pair, **When** correlation runs before and after the SARIF recipe changes, **Then** it produces the same matches. → US-6b #1
@@ -535,7 +535,7 @@ Each story carries its PM priority (R-12). The stories are grouped by the stage 
   - **Schemas change additively.** The frozen enum and the ceiling are unchanged (NG7).
 - **NFR-2: determinism, imports and arithmetic.**
   - **Byte-stable output.** The renderer's output is byte-stable for the same input, and the scoring date is an input, not the clock.
-  - **Imports.** The core path imports and needs only the standard library, at load time and at run time (S-11). S-13 enforces the load-time half, with the renderer and its helpers on its list. PyYAML stays optional, for the PDF attestation page only. The taxa are sourced without PyYAML (research item 15).
+  - **Imports.** The core path imports and needs only the standard library, at load time and at run time (S-11). F-373's S-13 import gate enforces the load-time half, with the renderer and its helpers on its list. PyYAML stays optional, for the PDF attestation page only. The taxa are sourced without PyYAML (research item 15).
   - **Runtime.** Python 3.9 and later; bytecode suppressed (ADR-049 D8).
   - **The arithmetic ADR-050 pins:**
     - half-up `Decimal` rounding on the stored one-decimal inputs (Python's `round()` gives 4.5 for the documented 4.55 → 4.6);
@@ -620,7 +620,11 @@ The Terminology table defines each entity. Their relationships:
 | C, D | D-2 | **new** | the renderer modules (core, scorer, controls, scoring rules), the CVSS module, the batch planner, and the part loader and validator | S (core, CVSS, planner, loader), R |
 | D | K7, K8 | modified | `.claude/agents/tachi/control-analyzer.md`, `.claude/commands/tachi.compensating-controls.md`, `templates/tachi/output-schemas/compensating-controls.md`, `.claude/skills/tachi-control-analysis/references/*`, `adapters/claude-code/agents/references/sarif-generation.md` | R |
 | D, A | K8.2, K4.1 | modified | `scripts/tachi_parsers.py`, `scripts/extract-report-data.py` | R (K8), O (K4.1 readers) |
-| E | FR-E.1, FR-E.3, N4 templates, the roster, the end marker | **new** and modified | the shared references; `sarif-specification.md`; `finding-format-shared.md`; `coverage-requirements.md` | S |
+| E | FR-E.1, FR-E.3, N4 templates, the roster, the end marker | **new** and modified | the shared references; `finding-format-shared.md`; `coverage-requirements.md` | S |
+| E | FR-E.1 (identity and membership, per ADR-050 D7) | modified | `sarif-specification.md` | O |
+| E | FR-N4.1, FR-E.1, FR-E.3 | modified | `.claude/skills/tachi-shared/SKILL.md` (its Loading Table lists the new shared references) | S |
+| D | NFR-1, ADR-050 D3 (the shared reference decoder) | modified | `scripts/extract-infographic-data.py` | R |
+| A | FR-K4.1 | modified | `templates/tachi/security-report/main.typ` (the Assessment Scope page reads the chain outcome) | O |
 | E | FR-E.4 | **new** | the fixture generator and the fixture tree under `tests/scripts/fixtures/` | S |
 | E | FR-E.5 | modified | `INSTALL_MANIFEST.md`, `tests/scripts/test_install_manifest_completeness.py`, `tests/scripts/test_write_confinement.py`, the three workflows | S, R, O |
 | E | NFR-3 | modified | `docs/standards/CLAUDE_PERMISSIONS.md` §8.3–§8.5, `docs/guides/ISOLATED_OPERATION_TACHI.md` (§5 and its header) | R, O |
@@ -720,11 +724,11 @@ D-1's bundle: #374's K4–K8, and #397's N4, N12, N14, N15 and N16. Three small 
 Definitions are in PRD §10:
 - **SV-1** (K4): fires only on TW-K4(b).
 - **SV-2a**: never carved.
-- **SV-2b** (`threats.md` tables in code): may be carved.
+- **SV-2b** (`threats.md` tables in code): carved at the plan stage (ADR-050 D1).
 - **SV-3**: fires only on its technical trigger at ADR-050, never for schedule (R-23).
 - **SV-4**: pre-fired.
 
-**Budget carves**, in reverse PM priority: SV-2b, then SV-1, then TW-R's fallback (already fired), then SV-4 (already fired). Under R-34, if TW-0 or TW-ESC fires on PR 1, no carve is left, and the decision goes back to the PM.
+**Budget carves**, in reverse PM priority: SV-2b (already carved, ADR-050 D1), then SV-1, then TW-R's fallback (already fired), then SV-4 (already fired). So SV-1 is the only carve left, and it is PR 2's. Under R-34, if TW-0 or TW-ESC fires on PR 1, no carve is left, and the decision goes back to the PM.
 
 **Never carved:**
 - FR-K4.1 and FR-K4.1b;
@@ -851,7 +855,7 @@ The plan states each path's depth.
 - **Follow-up.** A settings-level `Agent(general-purpose)` deny rule in the isolated-operation profile, because the profile is pinned (NFR-3).
 - **Dropped.** #409's static check, under R-34.
 
-**S-11 — The runtime floor.** Every new shipped script runs on Python 3.9 and later, with no syntax or standard-library API newer than 3.9. S-13 checks module-level imports only, so a test also runs the renderer's core path with `yaml` made unimportable.
+**S-11 — The runtime floor.** Every new shipped script runs on Python 3.9 and later, with no syntax or standard-library API newer than 3.9. F-373's S-13 import gate checks module-level imports only, so a test also runs the renderer's core path with `yaml` made unimportable.
 
 **S-12 — The reference set, the drift forms and the oracle** *(amended at the PM's spec review, finding 1)*.
 - **The wrapper.** One shared wrapper around `parse_threats_findings` builds the reference set. The parser itself is unchanged, because the extractors rely on its `[]`-with-a-warning behavior.
@@ -930,7 +934,7 @@ The PM signed the plan APPROVED_WITH_CONCERNS, with 8 findings (1 HIGH, 3 MEDIUM
 - **Condition 4 at `/aod.tasks` (2026-11-22): TRIGGERED, ruled Option A.**
   - **The re-derivation.** tasks.md v1.1 derives each window from its wave's longest dependency chain plus its push-and-gate tail. That puts PR 1's central at T0 + 10.05.
   - **The re-base.** TW-0 for PR 1 is re-based once, to T0 + 11.0, and PR 1 keeps every S-5 claim.
-  - **PR 2's bound** is its central plus 1.0: T0 + 13.75 + 1.0 = T0 + 14.75.
+  - **PR 2's bound** is its central plus 1.0: T0 + 14.0 + 1.0 = T0 + 15.0 (tasks.md v1.4, after the analyze gate's folds).
   - **The caps.** A PR 1 central above T0 + 10.5, or a PR 2 central above T0 + 15.0, would have come back to the PM.
   - **TW-ESC for PR 1** is restated as a re-projection at M3 against the re-based TW-0, and the "4.0 d remaining" test retires.
   - **Full review:** `.aod/results/product-manager-374-tasks.md`.
@@ -1014,7 +1018,7 @@ The PM signed the plan APPROVED_WITH_CONCERNS, with 8 findings (1 HIGH, 3 MEDIUM
 
 ## Assumptions
 
-- **T0 is 2026-11-22**, the day the plan stage started (the 21st was the define day). M1, the tasks sign-off, is also 2026-11-22. PR 1 lands at about T0 + 8.0 and PR 2 at about T0 + 11 to 12 (PRD §11), and `/aod.tasks` re-baselines both: tasks.md v1.1 puts them at about T0 + 10.05 and T0 + 13.75, under the PM's condition-4 ruling.
+- **T0 is 2026-11-22**, the day the plan stage started (the 21st was the define day). M1, the tasks sign-off, is also 2026-11-22. PR 1 lands at about T0 + 8.0 and PR 2 at about T0 + 11 to 12 (PRD §11), and `/aod.tasks` re-baselines both: tasks.md v1.4 puts them at about T0 + 10.05 and T0 + 14.0, under the PM's condition-4 ruling.
 - **Unpriced spec additions.** A few spec rulings add small items that the feasibility check doesn't price:
   - S-9's spike, S-11's checks and S-14's census;
   - S-3's rules and S-4's larger single base set;
