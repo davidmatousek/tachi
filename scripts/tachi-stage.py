@@ -518,7 +518,7 @@ def reconcile_stage(stage: str, out: Any, plan_id: str, digest: str) -> tuple:
 def _detail_problem(detail: str) -> Optional[str]:
     """``--detail`` is at most 500 characters and a string field: D3's character rules apply (ruled at W1)."""
     try:
-        tp._closed(detail, "--detail", 0, 500)  # tachi_parts' one string check (T013 may publish it)
+        tp.closed_string(detail, "--detail", 0, 500)
     except tp.PartError as exc:
         return exc.detail
     return None
@@ -532,66 +532,6 @@ def _current_plan(out: str, stage: str) -> Optional[str]:
         return None
 
 
-def _history(stage: str, out: str, plan: Dict[str, Any]) -> tuple:
-    """The overflow events and retries a plan implies, each failed attempt's cause read back from its part (NFR-5).
-
-    An attempt that was retried as it was, a batch that was halved, and a batch that ran out of retries each leave
-    one event. ``kind`` is the part's state, with an overflow object reported as ``overflow-reported``.
-    """
-    by_id = {entry["batch_id"]: entry for entry in plan["batches"]}
-    children: Dict[str, List[str]] = {}
-    for entry in plan["batches"]:
-        if entry["parent"] is not None:
-            children.setdefault(entry["parent"], []).append(entry["batch_id"])
-
-    def cause(entry: Dict[str, Any], attempt: int) -> str:
-        result = tp.read_part(tp.part_path(out, stage, plan["plan_id"], entry["batch_id"], attempt), out, plan["plan_id"],
-                              entry["batch_id"], stage, plan["agent_type"], entry["finding_ids"])
-        return "missing" if result.state == "done" else result.state  # a part that turned valid late was still not counted
-
-    events: List[Dict[str, Any]] = []
-    retries: List[Dict[str, Any]] = []
-    for entry in plan["batches"]:
-        first = 1 if entry["parent"] is None else by_id[entry["parent"]]["attempt"] + 1
-        failed_attempts = list(range(first, entry["attempt"]))
-        if entry["state"] in ("split", "failed"):
-            failed_attempts.append(entry["attempt"])
-        for attempt in failed_attempts:
-            reason = cause(entry, attempt)
-            events.append({"batch_id": entry["batch_id"], "attempt": attempt,
-                           "kind": "overflow-reported" if reason == "overflow" else reason})
-            if attempt < entry["attempt"] or entry["state"] == "split":
-                retries.append({"batch_id": entry["batch_id"], "attempt": attempt, "cause": reason,
-                                "children": sorted(children.get(entry["batch_id"], [])) if attempt == entry["attempt"] else []})
-    return events, retries
-
-
-def _declared(relpath: str, stage: str, plan_id: str) -> bool:
-    """D4's grammar for a stage: its canonical files and D3's exact layout, nothing else."""
-    parts = relpath.split("/")
-    if len(parts) == 1:
-        return parts[0] in tp.CANONICAL_OUTPUTS[stage]
-    if parts[:2] != [tp.BUILD_DIR, stage]:
-        return False
-    rest = parts[2:]
-    if rest == ["current.json"]:
-        return True
-    if len(rest) < 2 or rest[0] != plan_id:
-        return False
-    rest = rest[1:]
-    if rest in (["plan.json"], ["stage-record.json"]):
-        return True
-    if len(rest) != 2:
-        return False
-    subdirectory, name = rest
-    if subdirectory == "inputs":
-        return name.endswith(".json") and tp.id_matches("batch", name[:-5])
-    if subdirectory == "parts":
-        batch_id, _, tail = name.partition(".a")
-        return tail in ("1.json", "2.json", "3.json") and tp.id_matches("batch", batch_id)
-    return subdirectory in ("preimage", "staged", "failed") and name in tp.CANONICAL_OUTPUTS[stage]
-
-
 def _undeclared_paths(out: str, stage: str, plan: Dict[str, Any]) -> tuple:
     """Paths that are new or changed since the plan and that the stage's grammar doesn't declare.
 
@@ -602,7 +542,7 @@ def _undeclared_paths(out: str, stage: str, plan: Dict[str, Any]) -> tuple:
     if snapshot is None:
         return [], [{"code": "declared-paths-skipped", "detail": "the plan took no snapshot of the output directory"}]
     found = sorted(relpath for relpath, size, mtime in _walk(out)
-                   if snapshot.get(relpath) != [size, mtime] and not _declared(relpath, stage, plan["plan_id"]))
+                   if snapshot.get(relpath) != [size, mtime] and not tp.is_declared_path(relpath, stage, plan["plan_id"]))
     recordable = [relpath for relpath in found if tp.path_problem(relpath) is None]
     warnings = []
     if len(recordable) != len(found):
@@ -695,7 +635,7 @@ def fail_stage(stage: str, out: Any, plan_id: str, digest: str, reason: str, det
     what, remedy = REASONS[reason]
     first = next((e for e in plan["batches"] if e["state"] == "failed"), None) if reason == "unrecoverable-batch" else None
     kept = tp.plan_dir(out, stage, plan_id)
-    events, retries = _history(stage, out, plan)
+    events, retries = tp.retry_history(stage, out, plan)
     undeclared, undeclared_warnings = _undeclared_paths(out, stage, plan)
     accepted = {}
     for entry in plan["batches"]:
