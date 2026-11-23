@@ -756,6 +756,61 @@ def test_headings_inside_a_code_fence_are_not_sections(tmp_path):
     assert list(_read(tmp_path, text).rows) == ["E-1", "AGP-1", "LLM-1"]
 
 
+# ---- `_outline`: which whitespace may come before a fence or a heading (P0-1's residual, ruled at W3, 2026-11-23) ----
+# A fence or a heading may follow spaces and tabs, which is how GitHub reads it. Any other whitespace before the `~~~` or
+# the `#` makes the line prose, so a baseline that tachi did not render can't hide its later sections behind a no-break
+# space (the upgrade-path form of P0-1's silent loss). The trailing side still drops every whitespace character, because
+# a CRLF baseline's lines end in a carriage return. Every non-ASCII character is built with chr(), so no separator
+# character sits in this file's source.
+
+SPACE_LEADS = [
+    pytest.param(chr(0x00A0), id="U+00A0"), pytest.param(chr(0x1680), id="U+1680"), pytest.param(chr(0x2003), id="U+2003"),
+    pytest.param(chr(0x202F), id="U+202F"), pytest.param(chr(0x205F), id="U+205F"), pytest.param(chr(0x3000), id="U+3000"),
+    pytest.param(" " + chr(0x00A0) + "\t", id="space+U+00A0+tab"),
+]
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_a_unicode_space_before_a_tilde_or_backtick_line_does_not_open_a_fence(lead):
+    assert rules._outline([lead + "~~~", "## 4. Governance Fields", "body"]) == [(1, 2, "4. Governance Fields", 3)]
+    assert rules._outline([lead + "```", "## 4. Governance Fields", "body"]) == [(1, 2, "4. Governance Fields", 3)]
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_a_unicode_space_before_a_hash_line_is_not_a_heading(lead):
+    assert rules._outline([lead + "## 4. Governance Fields"]) == []
+    assert rules._outline(["## 1. Real", lead + "## 4. Governance Fields", "body"]) == [(0, 2, "1. Real", 3)]
+
+
+def test_spaces_and_tabs_before_a_fence_or_a_heading_still_count():
+    assert rules._outline(["   ~~~", "## hidden", "~~~", "## shown"]) == [(3, 2, "shown", 4)]
+    assert rules._outline(["\t```", "## hidden", "  ```", "## shown"]) == [(3, 2, "shown", 4)]
+    assert rules._outline(["\t## x", " ## y"]) == [(0, 2, "x", 1), (1, 2, "y", 2)]
+
+
+def test_a_crlf_heading_or_fence_is_read_without_its_carriage_return():
+    assert rules._outline(["## 4. Governance Fields\r", "body\r"]) == [(0, 2, "4. Governance Fields", 2)]
+    assert rules._outline(["~~~\r", "## hidden\r", "~~~\r", "## shown \t\r"]) == [(3, 2, "shown", 4)]
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_a_unicode_space_led_tilde_line_in_section_3_does_not_hide_section_4(tmp_path, lead):
+    """GitHub shows no fence there, so the reader sees none, and section 4's human owners stay in the next run's carry."""
+    text = V4484.replace("**Category**: privilege-escalation", lead + "~~~\n\n**Category**: privilege-escalation", 1)
+    assert text != V4484
+    row = _read(tmp_path, text).rows["E-1"]
+    assert (row.owner, row.disposition, row.review_date) == ("alice", "Accept", date(2026, 11, 3))
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_a_unicode_space_led_heading_in_section_3_does_not_forge_section_4(tmp_path, lead):
+    """The first heading numbered 4 wins, so a forged one ahead of the real one would hide the real governance table."""
+    text = V4484.replace("**Category**: privilege-escalation", lead + "## 4. Governance Fields\n\n**Category**: privilege-escalation", 1)
+    assert text != V4484
+    row = _read(tmp_path, text).rows["E-1"]
+    assert (row.owner, row.disposition, row.review_date) == ("alice", "Accept", date(2026, 11, 3))
+
+
 def test_an_invalid_vector_in_section_3_is_an_issue_and_leaves_the_vector_unset(tmp_path):
     text = V4484.replace(V2, "CVSS:3.1/AV:N/AC:L")
     scores = _read(tmp_path, text)

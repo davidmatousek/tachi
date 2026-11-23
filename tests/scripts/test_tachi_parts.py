@@ -1420,7 +1420,8 @@ def test_prose_cannot_forge_a_provenance_stamp_or_a_heading():
 # --- P0-1: a prose line that starts with `~` would open a code fence for the next run's reader (ruled as a D3 amendment) ---
 # A narrative that holds a `~~~` line passes steps 9 to 11, because step 10 allows `\n`. The sink is where it is stopped:
 # the first `~` of a line, after any spaces or tabs, is written `&#126;`, as `#` is written `&#35;`. A `~` anywhere else
-# stays, and so does every `~` in a table cell (a cell never starts a line, and its newlines are `&#10;`).
+# stays, and so does every `~` in a table cell (a cell never starts a line, and its newlines are `&#10;`). The W3 ruling
+# further down widens "spaces or tabs" to any whitespace but a newline.
 
 @pytest.mark.parametrize("raw,escaped", [
     ("~~~", "&#126;~~"), (" ~~~", " &#126;~~"), ("\t~~~", "\t&#126;~~"), ("  \t ~~~python", "  \t &#126;~~python"),
@@ -1482,6 +1483,91 @@ def test_a_narrative_with_a_tilde_fence_line_is_a_valid_part_and_the_sink_writes
     written = _api("escape_prose")(text, keep_slots=True)
     assert written == "Reachable.\n&#126;~~\nMore."
     assert not re.search(r"(?m)^[ \t]*~", written)
+
+
+# --- P0-1's residual (ruled at W3, 2026-11-23): a Unicode space before the `~` or the `#` ---
+# `_outline` and the extractors' tests strip every `str.isspace()` character, and step 10 lets the Unicode space separators
+# through (U+00A0, U+1680, U+2000 to U+200A, U+202F, U+205F and U+3000). A line led by one of them and then `~~~` or `#` was
+# a fence or a heading to tachi's reader and to nothing else. The guard now looks past any whitespace but a newline and
+# keeps that leading run byte for byte. Line boundaries stay a newline alone: the last test here says why that is safe.
+# Every non-ASCII character is built with chr(), so no separator character sits in this file's source.
+
+SPACE_LEADS = [
+    pytest.param(chr(0x00A0), id="U+00A0"), pytest.param(chr(0x1680), id="U+1680"), pytest.param(chr(0x2003), id="U+2003"),
+    pytest.param(chr(0x202F), id="U+202F"), pytest.param(chr(0x205F), id="U+205F"), pytest.param(chr(0x3000), id="U+3000"),
+    pytest.param(" " + chr(0x00A0) + "\t", id="space+U+00A0+tab"),
+]
+
+
+def structural_lines(text):
+    """The lines a stripping reader (``_outline``, the extractors) would take for a heading or a code fence."""
+    return [line for line in text.split("\n") if line.strip().startswith(("#", "~"))]
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_a_unicode_space_before_a_tilde_fence_is_guarded_and_kept(lead):
+    raw = "x\n" + lead + "~~~\ny"
+    out = _api("escape_prose")(raw)
+    assert out == "x\n" + lead + "&#126;~~\ny"
+    assert structural_lines(out) == []
+    assert decode_references(out) == raw
+    assert structural_lines(raw) == [lead + "~~~"], "the raw line is one that a stripping reader takes for a fence"
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_a_unicode_space_before_a_heading_is_guarded_and_kept(lead):
+    for raw, escaped in (("x\n" + lead + "## 6. Score Integrity", "x\n" + lead + "&#35;# 6. Score Integrity"),
+                         (lead + "# first", lead + "&#35; first")):
+        out = _api("escape_prose")(raw)
+        assert out == escaped
+        assert structural_lines(out) == [] and structural_lines(raw) != []
+        assert decode_references(out) == raw
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_a_tilde_or_a_hash_after_text_on_a_unicode_space_line_is_left_as_it_is(lead):
+    for raw in (lead + "a ~~~", "x" + lead + "~~~", lead + "see #5\n" + lead + "end~", "text" + lead + "# not a heading"):
+        assert _api("escape_prose")(raw) == raw
+        assert _api("escape_cell")(raw) == raw.replace("\n", "&#10;")
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_a_unicode_space_line_decodes_and_re_renders_to_the_same_bytes_on_the_next_run(lead):
+    for text in (lead + "~~~", "x\n" + lead + "## 6. Score Integrity", lead + "~~~\n" + lead + "# h\n" + lead + "~ x"):
+        once = _api("escape_prose")(text, keep_slots=True)
+        assert decode_references(once) == text
+        assert _api("escape_prose")(decode_references(once), keep_slots=True) == once
+
+
+def test_the_guard_looks_past_every_whitespace_character_but_a_newline():
+    """The leading class is ``str.isspace()`` less a newline, which is what ``strip()`` drops, so the writer lets no
+    line through that a stripping reader would take for a heading or a fence."""
+    leads = [chr(code) for code in range(0x110000) if chr(code).isspace() and chr(code) != "\n"]
+    assert {" ", "\t", chr(0x00A0), chr(0x1680), chr(0x2003), chr(0x202F), chr(0x205F), chr(0x3000)} <= set(leads)
+    assert len(leads) > 20
+    for lead in leads:
+        out = _api("escape_prose")(lead + "~~~\n" + lead + "## h\n" + lead + "~ x")
+        assert out == lead + "&#126;~~\n" + lead + "&#35;# h\n" + lead + "&#126; x", "U+%04X" % ord(lead)
+        assert structural_lines(out) == [], "U+%04X" % ord(lead)
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_the_prose_sink_guards_a_unicode_space_line_that_a_resolved_value_would_turn_into_a_code_fence(lead):
+    lookup = lookup_from({("name", "component"): "~~~ Gate"})
+    text = "Exposed.\n" + lead + "{{name:component}}\n" + lead + "~~~\nEnd."
+    prose = _api("resolve_narrative")(text, SCORER_STAGE, lookup, sink="prose")
+    assert prose == "Exposed.\n" + lead + "&#126;~~ Gate\n" + lead + "&#126;~~\nEnd."
+    assert structural_lines(prose) == []
+    cell = _api("resolve_narrative")(text, SCORER_STAGE, lookup)
+    assert cell == "Exposed.&#10;" + lead + "~~~ Gate&#10;" + lead + "~~~&#10;End."
+
+
+def test_every_line_boundary_but_a_newline_is_a_character_step_10_forbids():
+    """The guard starts a line after a newline alone (the W3 ruling). That holds only while no part can carry another
+    boundary that ``str.splitlines()`` knows, and step 10 forbids each of them."""
+    others = [char for char in map(chr, range(0x110000)) if char != "\n" and len(("a" + char + "b").splitlines()) == 2]
+    assert {"\r", chr(0x0B), chr(0x0C), chr(0x1C), chr(0x85), chr(0x2028), chr(0x2029)} <= set(others)
+    assert [char for char in others if _api("forbidden_character")(char) is None] == []
 
 
 def max_backtick_run(text):

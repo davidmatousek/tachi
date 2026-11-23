@@ -651,8 +651,10 @@ _REFERENCE_OF = {char: reference for reference, char in ESCAPE_REFERENCES.items(
 _CELL_TRANSLATION = {ord(char): _REFERENCE_OF[char] for char in "&<>|`\n"}
 _PROSE_TRANSLATION = {ord(char): _REFERENCE_OF[char] for char in "&<>|`"}
 _BRACE_OF_A_PAIR = re.compile(r"\{(?=\{)|(?<=\{)\{")
-# The first ``#`` (a heading) or ``~`` (a code fence, as ``~~~``) of a prose line, after any spaces or tabs.
-_LINE_START_GUARD = re.compile(r"(?m)^([ \t]*)([#~])")
+# The first ``#`` (a heading) or ``~`` (a code fence, as ``~~~``) of a prose line, after any whitespace but a newline.
+# On a ``str`` pattern ``\s`` is ``str.isspace()``, which is what ``strip()`` drops, and leaving the newline out means a
+# match can't span lines. The leading run is group 1, so the replacement keeps it byte for byte.
+_LINE_START_GUARD = re.compile(r"(?m)^([^\S\n]*)([#~])")
 
 
 def _tokens(text: str, stage: str) -> List[Tuple[str, ...]]:
@@ -758,9 +760,11 @@ def _escape(text: str, keep_slots: bool, cell: bool) -> str:
 def _guard_headings(text: str) -> str:
     """Write the first ``#`` or ``~`` of each line as its reference, so prose forges neither a heading nor a code fence.
 
-    A line that starts with ``~~~``, after any spaces or tabs, opens a code fence for the next run's tolerant reader
-    and for GitHub, and every heading after it, §4 and §6 included, is then read as part of the fence (P0-1). A ``~``
-    anywhere else stays as it is.
+    A line that starts with ``~~~``, after any whitespace but a newline, opens a code fence for the next run's tolerant
+    reader, and every heading after it, §4 and §6 included, is then read as part of the fence (P0-1). Spaces and tabs
+    do that for GitHub as well. A Unicode space (a no-break space, an ideographic space) does it for a reader that
+    strips every whitespace character, so the guard looks past those too (ruled at W3). The whitespace before the
+    ``#`` or ``~`` stays as it was, byte for byte. A ``~`` anywhere else stays as it is.
     """
     return _LINE_START_GUARD.sub(lambda match: match.group(1) + _REFERENCE_OF[match.group(2)], text)
 
@@ -779,9 +783,9 @@ def escape_cell(text: str, keep_slots: bool = False) -> str:
 def escape_prose(text: str, keep_slots: bool = False) -> str:
     """Escape untrusted text for prose: the cell rules, but line breaks stay and no line starts with ``#``, ``~`` or ``|``.
 
-    A line that would start with ``#`` or ``~`` (after any spaces or tabs) starts with ``&#35;`` or ``&#126;``
-    instead, and a ``|`` is always ``&#124;``, so agent text can forge neither a heading, a code fence nor a table
-    row. A ``~`` anywhere else, and any ``~`` in a cell, is left as it is.
+    A line that would start with ``#`` or ``~`` (after any whitespace but a newline, which is kept as it is) has
+    ``&#35;`` or ``&#126;`` in its place, and a ``|`` is always ``&#124;``, so agent text can forge neither a
+    heading, a code fence nor a table row. A ``~`` anywhere else, and any ``~`` in a cell, is left as it is.
     """
     return _guard_headings(_escape(text, keep_slots, False))
 

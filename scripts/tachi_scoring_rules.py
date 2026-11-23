@@ -397,11 +397,16 @@ def _outline(lines: List[str]) -> List[Tuple[int, int, str, int]]:
 
     A heading's end is the index of the next heading at or above its level, or the end of the file. They are
     found in one pass with a stack, so a file of many headings costs no more than its length (NFR-10's limits).
+
+    A fence or a heading may be led by spaces and tabs, and by nothing else: a line that starts with another
+    whitespace character (a no-break space, an ideographic space) is prose, so it opens no fence and forges no heading
+    (P0-1's residual, ruled at W3). The trailing side drops every whitespace character, because the lines of a CRLF
+    file end in a carriage return.
     """
     headings: List[Tuple[int, int, str]] = []
     fence: Optional[str] = None
     for index, raw in enumerate(lines):
-        line = raw.strip()
+        line = raw.lstrip(" \t").rstrip()
         if line.startswith("```") or line.startswith("~~~"):
             if fence is None:
                 fence = line[:3]
