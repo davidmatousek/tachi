@@ -17,8 +17,15 @@ pure over its arguments and reads only the paths its caller passes (D5). It impo
   of ``## 6. Score Integrity``) and every legacy form that tachi's shipped samples show.
 * ``recompute_tags`` and ``select_tag_source`` (S-13, D2): the one source of a run's asset tags.
 
-Part 2 (T043) adds R-25's asset outcome, D10's vector check, R-31's peers, overrides and scoring date, and
-ruling A's tag-driven band rule.
+**Part 2 (T043)** is what the renderer's recompute-and-flag step (T045, T046) and the scorer's planner (T044) share:
+
+* ``asset_outcome`` and ``cvss_chain`` (R-25, D10): the CVSS chain of a fresh finding, with the asset modifier.
+* ``check_carried_vector`` (D10): the vector check on a carried finding, whose legacy list tests this run's tags first.
+* ``route_scorer_units``, ``peer_divergence`` (R-31, D2, D9): who goes to the scorer agent, who is carried, and who
+  copies a primary. The groups are the result of ``tachi_parsers.parse_correlation_groups``, the one authority for
+  D8's rules, and none of those rules is restated here.
+* ``original_scoring_date``, ``classify_band_change`` and ``governance_for`` (R-5, R-31, ruling A): the owner, SLA,
+  disposition, review date and scored-on date of a finding, and the flag of each value that moves.
 
 Rules this module holds:
 
@@ -42,7 +49,7 @@ import re
 import stat
 import sys
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
@@ -1009,3 +1016,423 @@ def select_tag_source(*, open_ids: Sequence[str], block: Mapping[str, Sequence[s
     return TagSource("recomputed", expected,
                      "the input threats.md's Affected Assets block %s, so the asset tags were recomputed from the architecture file" % why,
                      cause)
+
+
+# =============================================================================
+# R-25 and the CVSS chain (D10)
+# =============================================================================
+
+@dataclass(frozen=True)
+class CvssChain:
+    base: Decimal                                    # base(v), FIRST's equations (tachi_scoring)
+    score_bounds: Optional[Tuple[Decimal, Decimal]]
+    assessed: Decimal                                # base, clamped to score_bounds when they're given
+    forced: bool                                     # a tag forces a bit (asset-modifiers.md:13-22)
+    elevated_vector: Optional[str]                   # elevate(v), when forced
+    elevated_base: Optional[Decimal]                 # base(elevate(v)), when forced
+    cvss_base: Decimal                               # the final score
+    clamp_cause: Optional[str]                       # "bound" | "ceiling": the clamp that set cvss_base
+
+
+def _decimal_score(value: Any, what: str) -> Decimal:
+    """``value`` if it is a ``Decimal`` or an ``int``. A float never enters stored-value arithmetic (D5)."""
+    if isinstance(value, bool) or not isinstance(value, (Decimal, int)):
+        raise TypeError("%s must be a Decimal, not %s" % (what, type(value).__name__))
+    return Decimal(value)
+
+
+def asset_outcome(assessed: Decimal, vector: str, tags: Sequence[str]) -> Decimal:
+    """R-25's t(a): ``max(a, min(base(elevate(v)), 9.2))`` when a tag forces a bit, otherwise ``a``.
+
+    "A tag forces a bit" means a tag from the closed six is present: each forces its bits to ``H`` (floor only),
+    whether or not ``v`` already carries them. So the modifier never lowers a score, and a finding assessed above
+    9.2 keeps it. A tag outside the closed six raises ``ValueError`` (``tachi_scoring.elevate``): the tags come from
+    :func:`select_tag_source`, which only gives the closed six.
+    """
+    score = _decimal_score(assessed, "the assessed score")
+    tags = tuple(tags)
+    if not tags:
+        return score
+    elevated = tachi_scoring.base_score(tachi_scoring.elevate(vector, tags))
+    return max(score, min(elevated, tachi_scoring.MODIFIER_CEILING))
+
+
+def cvss_chain(vector: str, *, tags: Sequence[str], score_bounds: Optional[Tuple[Decimal, Decimal]]) -> CvssChain:
+    """D10's fresh-scoring chain, step by step: the base, the bound clamp, the elevation and the ceiling.
+
+    ``assessed`` is ``base(v)`` clamped to ``score_bounds`` when they are given: a NEW finding in a baseline-aware run
+    passes its own category's bounds (``tachi_scoring.bounds``), and a carried renderer-form row passes its stored
+    ones. With a tag, ``cvss_base`` is :func:`asset_outcome`, so the elevated score lifts a bound-clamped one
+    (the clamp comes first, and the modifier is meant to exceed it). ``clamp_cause`` names the clamp that set
+    ``cvss_base``: ``bound`` when the bounds did, ``ceiling`` when the 9.2 ceiling cut the elevated score, otherwise
+    ``None``. A vector that is not a full CVSS 3.1 base vector raises ``ValueError``.
+    """
+    tags = tuple(tags)
+    base = tachi_scoring.base_score(vector)
+    assessed = base if score_bounds is None else max(score_bounds[0], min(base, score_bounds[1]))
+    if not tags:
+        return CvssChain(base, score_bounds, assessed, False, None, None, assessed, "bound" if assessed != base else None)
+    elevated_vector = tachi_scoring.elevate(vector, tags)
+    elevated_base = tachi_scoring.base_score(elevated_vector)
+    capped = min(elevated_base, tachi_scoring.MODIFIER_CEILING)
+    if capped > assessed:
+        cvss_base, cause = capped, "ceiling" if elevated_base > tachi_scoring.MODIFIER_CEILING else None
+    else:
+        cvss_base, cause = assessed, "bound" if assessed != base else None
+    return CvssChain(base, score_bounds, assessed, True, elevated_vector, elevated_base, cvss_base, cause)
+
+
+# =============================================================================
+# D10: the vector check on a carried finding
+# =============================================================================
+
+@dataclass(frozen=True)
+class VectorCheck:
+    cvss_base: Optional[Decimal]   # the value to render: the stored one kept, or the corrected or retagged one
+    flag: Optional[str]            # one kind:field:cause, or None when the carried value passes
+    step: str                      # "renderer", or "1" to "6": D10's legacy step that decided
+
+
+# Each category's ±1.0 bounds around its default score, for the N17c test of another category's clamp.
+_BOUNDS_BY_CATEGORY = {
+    category: tachi_scoring.bounds(tachi_scoring.default_score(category))
+    for category in tachi_scoring.CATEGORY_DEFAULT_VECTORS
+}
+
+
+def _clamp(score: Decimal, bounds: Tuple[Decimal, Decimal]) -> Decimal:
+    return max(bounds[0], min(score, bounds[1]))
+
+
+def check_carried_vector(row: BaselineRow, *, tags: Sequence[str]) -> VectorCheck:
+    """D10's check of a carried finding's CVSS base score against its vector, under this run's ``tags`` (R-9, R-25).
+
+    **Renderer form.** The chain is recomputed from the stored vector, ``score_bounds`` and ``tags``. A different
+    value is ``corrected:cvss_base:vector``, unless recomputing with the baseline's ``tags_used`` gives the stored
+    value: then the tags alone moved it, and it is ``retagged:cvss_base:asset-tags`` (ruling A).
+
+    **Legacy form.** The first matching step of D10's list decides, and this run's tags are part of every test (PM
+    plan review, finding 2). With ``v`` the vector, ``s`` the stored score, ``a`` a candidate assessed score (``base(v)``
+    or its own category's bound clamp) and ``t(a)`` R-25's outcome under ``tags``:
+
+    1. no vector: ``unverifiable:cvss_base:no-vector``, ``s`` kept;
+    2. a tag, ``v`` already carries its forced bits, and 9.2 < ``s`` <= ``base(v)``: ``unchecked:cvss_base:assessed-unrecorded``;
+    3. ``s`` = ``t(a)`` for either ``a``, or a tag with ``s`` = 9.2 and ``base(elevate(v))`` above 9.2: passes;
+    4. a tag, and ``s`` = ``a`` < ``t(a)``: ``retagged:cvss_base:asset-tags``, to ``t(a)``;
+    5. ``s`` equals another category's bound clamp of ``base(v)`` (``unchecked:cvss_base:bound-n17c``), or a tag
+       with 9.2 < ``s`` < ``base(elevate(v))`` (``unchecked:cvss_base:assessed-unrecorded``), ``s`` kept;
+    6. otherwise ``corrected:cvss_base:vector``, to ``t(base(v))``.
+
+    A stored score that is missing, where a vector can give one, is rendered from the chain and flagged
+    ``input:cvss_base:missing`` (step ``renderer`` or ``6``). The stored score is compared as written and never
+    rounded, so an off-grid or out-of-range one is simply corrected. ``tags`` must be in the closed six.
+    """
+    tags = tuple(tags)
+    vector, stored = row.cvss_vector, row.stored.get("cvss_base")
+    if vector is None:
+        return VectorCheck(stored, "unverifiable:cvss_base:no-vector", "1")
+    if row.form == _RENDERER:
+        return _check_renderer_vector(row, vector, stored, tags)
+    return _check_legacy_vector(row, vector, stored, tags)
+
+
+def _check_renderer_vector(row: BaselineRow, vector: str, stored: Optional[Decimal], tags: Tuple[str, ...]) -> VectorCheck:
+    now = cvss_chain(vector, tags=tags, score_bounds=row.score_bounds).cvss_base
+    if stored is None:
+        return VectorCheck(now, "input:cvss_base:missing", "renderer")
+    if stored == now:
+        return VectorCheck(stored, None, "renderer")
+    then = cvss_chain(vector, tags=row.tags_used or (), score_bounds=row.score_bounds).cvss_base
+    if stored == then:
+        return VectorCheck(now, "retagged:cvss_base:asset-tags", "renderer")
+    return VectorCheck(now, "corrected:cvss_base:vector", "renderer")
+
+
+def _check_legacy_vector(row: BaselineRow, vector: str, stored: Optional[Decimal], tags: Tuple[str, ...]) -> VectorCheck:
+    base = tachi_scoring.base_score(vector)
+    own = tachi_scoring.category_for_prefix(row.finding_id.partition("-")[0])
+    candidates = [base]
+    if _clamp(base, _BOUNDS_BY_CATEGORY[own]) != base:
+        candidates.append(_clamp(base, _BOUNDS_BY_CATEGORY[own]))
+    outcomes = [asset_outcome(candidate, vector, tags) for candidate in candidates]
+    if stored is None:
+        return VectorCheck(outcomes[0], "input:cvss_base:missing", "6")
+    ceiling = tachi_scoring.MODIFIER_CEILING
+    elevated = tachi_scoring.elevate(vector, tags) if tags else vector
+    elevated_base = tachi_scoring.base_score(elevated)
+    if tags and elevated == vector and ceiling < stored <= base:   # step 2: R-25's legacy case
+        return VectorCheck(stored, "unchecked:cvss_base:assessed-unrecorded", "2")
+    if stored in outcomes or (tags and stored == ceiling and elevated_base > ceiling):   # step 3
+        return VectorCheck(stored, None, "3")
+    if tags:                                                       # step 4: the stored score lacks the elevation
+        for candidate, outcome in zip(candidates, outcomes):
+            if stored == candidate < outcome:
+                return VectorCheck(outcome, "retagged:cvss_base:asset-tags", "4")
+    if any(stored == _clamp(base, bounds) for category, bounds in _BOUNDS_BY_CATEGORY.items() if category != own):
+        return VectorCheck(stored, "unchecked:cvss_base:bound-n17c", "5")   # step 5: a possible cross-category peer
+    if tags and ceiling < stored < elevated_base:
+        return VectorCheck(stored, "unchecked:cvss_base:assessed-unrecorded", "5")
+    return VectorCheck(outcomes[0], "corrected:cvss_base:vector", "6")   # step 6, to t(base(v))
+
+
+# =============================================================================
+# R-31: routing, peers, dates and governance (D2, D9, ruling A)
+# =============================================================================
+
+@dataclass(frozen=True)
+class ScorerRouting:
+    to_agent: Tuple[str, ...]         # non-peers that are NEW or UPDATED, or have no usable baseline row
+    carried: Tuple[str, ...]          # UNCHANGED findings with a usable row, peers included
+    copy_primary: Mapping[str, str]   # every other peer -> its group's primary
+    carried_peers: Mapping[str, str]  # each carried peer -> its primary, for the divergence check
+
+
+def route_scorer_units(open_rows: Sequence[Mapping[str, str]], *, groups: Sequence[Mapping[str, object]],
+                       baseline: Optional[BaselineScores]) -> ScorerRouting:
+    """The one partition of a scorer run's open findings, for the planner (T044) and the renderer (T028, T045) alike.
+
+    ``open_rows`` are the reference set's open rows (at least ``id`` and ``delta_status``, in S-2 order), and
+    ``groups`` is ``tachi_parsers.parse_correlation_groups(...)["groups"]`` filtered to the open IDs: its result is used
+    as it comes, because D8's rules (order, the claim, the primary, the two-member minimum) are applied there and
+    nowhere else. A peer is a member that is not its group's primary. A row without a usable ``delta_status`` counts as
+    NEW. A usable baseline row is an entry of ``baseline.rows`` (an unreadable baseline has none).
+
+    * ``carried``: an UNCHANGED finding with a usable row, a peer or not. Its inputs are inherited (D9);
+    * ``carried_peers``: each carried peer and its primary, whose composites ``peer_divergence`` compares;
+    * ``copy_primary``: every other peer (NEW, UPDATED, or with no usable row) and its primary, whose values it copies;
+    * ``to_agent``: every other finding. A NEW finding is never carried, however its ID sits in the baseline (ruling B).
+    """
+    status: Dict[str, str] = {}
+    for row in open_rows:
+        status.setdefault(tachi_parts.canonical_finding_id(row["id"]), _delta_status(row.get("delta_status")))
+    primary_of: Dict[str, str] = {}
+    for group in groups:
+        primary = group["primary"]
+        for member in group["members"]:
+            if member != primary and member in status and primary in status:
+                primary_of.setdefault(member, primary)
+    usable = baseline.rows if baseline is not None else {}
+    to_agent: List[str] = []
+    carried: List[str] = []
+    copy_primary: Dict[str, str] = {}
+    carried_peers: Dict[str, str] = {}
+    for finding_id, state in status.items():
+        primary = primary_of.get(finding_id)
+        if state == "UNCHANGED" and finding_id in usable:
+            carried.append(finding_id)
+            if primary is not None:
+                carried_peers[finding_id] = primary
+        elif primary is not None:
+            copy_primary[finding_id] = primary
+        else:
+            to_agent.append(finding_id)
+    return ScorerRouting(tuple(to_agent), tuple(carried), copy_primary, carried_peers)
+
+
+def _delta_status(value: Any) -> str:
+    status = tachi_parsers.normalize_delta_status(value) if isinstance(value, str) else ""
+    return status if status in ("NEW", "UPDATED", "UNCHANGED") else "NEW"
+
+
+def peer_divergence(*, peer_composite: Decimal, primary_id: str, primary_composite: Decimal) -> Optional[str]:
+    """``divergent:composite_score:primary=<ID>`` when an UNCHANGED peer's composite differs from its primary's (R-4, R-31)."""
+    if _decimal_score(peer_composite, "the peer's composite") != _decimal_score(primary_composite, "the primary's composite"):
+        return "divergent:composite_score:primary=%s" % primary_id
+    return None
+
+
+@dataclass(frozen=True)
+class ScoringDate:
+    value: Optional[date]
+    flag: Optional[str]
+
+
+def _before(day: date, sla: str) -> Optional[date]:
+    """``day`` less the SLA's days, or ``None`` when the SLA is unparseable or the date would pass year 1."""
+    try:
+        return day - timedelta(days=tachi_scoring.sla_days(sla))
+    except (ValueError, OverflowError):
+        return None
+
+
+def _after(day: date, sla: str) -> Optional[date]:
+    """``day`` plus the SLA's days (``tachi_scoring``'s date arithmetic), or ``None`` when it can't be added."""
+    try:
+        return tachi_scoring.parse_date(tachi_scoring.review_date(day.isoformat(), sla))
+    except ValueError:
+        return None
+
+
+def _known_original(row: BaselineRow) -> Optional[date]:
+    """The stored scored-on date, or the stored review date less the stored SLA. No fallback, and no flag."""
+    if row.scored_on is not None:
+        return row.scored_on
+    if row.review_date is not None and row.sla is not None:
+        return _before(row.review_date, row.sla)
+    return None
+
+
+def original_scoring_date(row: BaselineRow, *, baseline_date: Optional[date]) -> ScoringDate:
+    """The date a carried finding's SLA clock started (R-5): its stored scored-on date, else its stored review date
+    less its stored SLA (a legacy row). If neither can be had, D9's fallbacks apply in order:
+
+    1. the baseline file's frontmatter date, flagged ``corrected:review_date:baseline-date``;
+    2. ``None``, flagged ``unchecked:review_date:scoring-date-unknown``, which tells ``governance_for`` to keep the
+       stored review date.
+
+    The last fallback, the run date plus the SLA (``corrected:review_date:clock-restarted``), is ``governance_for``'s.
+    """
+    known = _known_original(row)
+    if known is not None:
+        return ScoringDate(known, None)
+    if baseline_date is not None:
+        return ScoringDate(baseline_date, "corrected:review_date:baseline-date")
+    return ScoringDate(None, "unchecked:review_date:scoring-date-unknown")
+
+
+_BAND_RANK = {name: rank for rank, name in enumerate(reversed(list(tachi_scoring.SEVERITY_BANDS)))}   # Low is 0
+_BAND_CHANGES = ("none", "corrected", "retagged-up", "retagged-down")
+
+
+def classify_band_change(*, stored_band: Optional[str], rendered_band: str, band_with_baseline_tags: Optional[str]) -> str:
+    """``none``, ``corrected``, ``retagged-up`` or ``retagged-down`` (ruling A).
+
+    The band changed only when ``stored_band`` is a band and differs from ``rendered_band``. The tags alone explain
+    it when recomputing with the baseline's recorded tags (``band_with_baseline_tags``; no tags for a legacy row)
+    gives the stored band: then it is a retag, up or down by band order. Any other change is a correction.
+    """
+    if rendered_band not in _BAND_RANK:
+        raise ValueError("not a severity band: %r" % (rendered_band,))
+    if stored_band not in _BAND_RANK or stored_band == rendered_band:
+        return "none"
+    if band_with_baseline_tags != stored_band:
+        return "corrected"
+    return "retagged-up" if _BAND_RANK[rendered_band] > _BAND_RANK[stored_band] else "retagged-down"
+
+
+@dataclass(frozen=True)
+class Governance:
+    owner: str
+    sla: str
+    disposition: str
+    review_date: date
+    scored_on: date
+    flags: Tuple[str, ...]
+
+
+# The schema's field names, as a flag's <field> (schemas/risk-scoring.yaml).
+_SLA_FIELD, _DISPOSITION_FIELD, _REVIEW_FIELD = "remediation_sla", "risk_disposition", "review_date"
+_HUMAN_DISPOSITIONS = frozenset(("accept", "transfer"))
+
+
+def _stored_band(row: BaselineRow) -> Optional[str]:
+    if row.band in tachi_scoring.SEVERITY_BANDS:
+        return row.band
+    composite = row.stored.get("composite")
+    try:
+        return tachi_scoring.band(composite) if composite is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _fresh_governance(rendered_band: str, run_date: date) -> Governance:
+    rule = tachi_scoring.SEVERITY_BANDS[rendered_band]
+    review = tachi_scoring.parse_date(tachi_scoring.review_date(run_date.isoformat(), rule["sla"]))
+    return Governance("Unassigned", rule["sla"], rule["disposition"], review, run_date, ())
+
+
+def governance_for(status: str, *, rendered_band: str, run_date: date, row: Optional[BaselineRow], band_change: str,
+                   baseline_date: Optional[date]) -> Governance:
+    """The governance fields of one finding (D9: R-5, R-31 and ruling A). ``status`` is NEW, UPDATED or UNCHANGED.
+
+    * **A fresh finding** (NEW, or one with no usable baseline ``row``; a NEW finding whose ID the baseline used does
+      not take that row's owner, ruling B) is ``Unassigned``, takes the rendered band's SLA and disposition, and is
+      scored on ``run_date``, so its review date is ``run_date`` plus the SLA.
+    * **The owner** of a carried finding is always its stored owner, and is never flagged.
+    * **Overrides** are an Accept or Transfer disposition, or an SLA or disposition that differs from the *stored*
+      band's default. They are carried verbatim and flagged ``override:remediation_sla:human`` or
+      ``override:risk_disposition:human``. The other two follow the rendered band.
+    * **The review date** is kept when the SLA is an override ("an SLA override still keeps its review date") and
+      when the band holds. A band change restarts an UPDATED finding's clock (``run_date`` plus the SLA). On an
+      UNCHANGED finding it follows ``band_change``: ``corrected`` and ``retagged-down`` give the original scoring
+      date plus the new SLA (R-5), through ``original_scoring_date``'s fallbacks and, last, the run date plus the SLA
+      (``corrected:review_date:clock-restarted``); ``retagged-up`` gives the run date plus the new SLA unless the
+      stored review date is earlier, which is kept (ruling A).
+    * **Flags.** Each SLA, disposition or review date that moves on an UNCHANGED finding is flagged
+      ``corrected:<field>:follows-band``, or ``retagged:<field>:asset-tags`` when the tags moved the band. A value
+      absent from the baseline is filled silently, except a missing review date (``input:review_date:missing``).
+    * ``scored_on`` is the date that the rendered review date's clock started, so the next run can read it back.
+
+    Raises ``ValueError`` for a ``status``, ``rendered_band`` or ``band_change`` it doesn't know.
+    """
+    if status not in ("NEW", "UPDATED", "UNCHANGED"):
+        raise ValueError("not a delta status: %r" % (status,))
+    if rendered_band not in tachi_scoring.SEVERITY_BANDS:
+        raise ValueError("not a severity band: %r" % (rendered_band,))
+    if band_change not in _BAND_CHANGES:
+        raise ValueError("not a band change: %r" % (band_change,))
+    if status == "NEW" or row is None:
+        return _fresh_governance(rendered_band, run_date)
+    rule = tachi_scoring.SEVERITY_BANDS[rendered_band]
+    stored_band = _stored_band(row)
+    defaults = tachi_scoring.SEVERITY_BANDS.get(stored_band) if stored_band is not None else None
+    sla_override = row.sla is not None and defaults is not None and row.sla != defaults["sla"]
+    disposition_override = row.disposition is not None and (
+        row.disposition.strip().lower() in _HUMAN_DISPOSITIONS or (defaults is not None and row.disposition != defaults["disposition"]))
+    sla = row.sla if sla_override else rule["sla"]
+    disposition = row.disposition if disposition_override else rule["disposition"]
+    flags: List[str] = []
+    if sla_override:
+        flags.append("override:%s:human" % _SLA_FIELD)
+    if disposition_override:
+        flags.append("override:%s:human" % _DISPOSITION_FIELD)
+    owner = row.owner or "Unassigned"
+    dated = sla if _after(run_date, sla) is not None else rule["sla"]   # an unparseable override still needs days
+    stored_review = row.review_date
+    changed = band_change != "none"
+
+    if sla_override and stored_review is not None:
+        scored_on = _known_original(row) or _before(stored_review, dated) or run_date
+        review = stored_review
+    elif status == "UPDATED" and changed:
+        scored_on, review = run_date, _after(run_date, dated)
+    elif not changed and stored_review is not None:
+        scored_on, review = _known_original(row) or _before(stored_review, dated) or run_date, stored_review
+    elif band_change == "retagged-up":
+        restarted = _after(run_date, dated)
+        if stored_review is None or (restarted is not None and restarted <= stored_review):
+            scored_on, review = run_date, restarted
+            if stored_review is None:
+                flags.append("input:review_date:missing")
+        else:
+            scored_on, review = _known_original(row) or _before(stored_review, dated) or run_date, stored_review
+    else:
+        scored_on, review = _from_original(row, dated, stored_review, run_date, baseline_date, flags)
+        if stored_review is None and not any(flag.split(":")[1] == _REVIEW_FIELD for flag in flags):
+            flags.append("input:review_date:missing")
+    if review is None:   # the run date plus the SLA passed year 9999
+        raise ValueError("the review date for %s is past 9999-12-31" % run_date)
+    if status == "UNCHANGED":
+        kind, cause = ("retagged", "asset-tags") if band_change.startswith("retagged") else ("corrected", "follows-band")
+        for name, was, now in ((_SLA_FIELD, row.sla, sla), (_DISPOSITION_FIELD, row.disposition, disposition),
+                               (_REVIEW_FIELD, stored_review, review)):
+            if was is not None and was != now and not any(flag.split(":")[1] == name for flag in flags):
+                flags.append("%s:%s:%s" % (kind, name, cause))
+    return Governance(owner, sla, disposition, review, scored_on, tuple(sorted(set(flags))))
+
+
+def _from_original(row: BaselineRow, sla: str, stored_review: Optional[date], run_date: date, baseline_date: Optional[date],
+                   flags: List[str]) -> Tuple[date, Optional[date]]:
+    """``(scored_on, review date)`` counted from the original scoring date, by D9's rungs (R-5)."""
+    original = original_scoring_date(row, baseline_date=baseline_date)
+    if original.value is not None:
+        review = _after(original.value, sla)
+        if review is not None:
+            if original.flag is not None:
+                flags.append(original.flag)
+            return original.value, review
+    elif stored_review is not None and original.flag is not None:   # rung 2: the stored review date is kept
+        flags.append(original.flag)
+        return _before(stored_review, sla) or run_date, stored_review
+    flags.append("corrected:review_date:clock-restarted")   # rung 3
+    return run_date, _after(run_date, sla)

@@ -19,6 +19,11 @@ FAILED``, the batch or agent, ``Remedy:``, ``Kept for diagnosis:``). The exit co
     3 batches pending (``reconcile`` only)                    4 a cap or the retry budget is exhausted
     5 done, with a warning (``architecture-source`` only, here)
 
+The scorer's plan sends the agent only the findings that need judgment (ADR-050 D2): the non-peers that are NEW or
+UPDATED, or have no usable row in the baseline. The renderer inherits the rest, through the same
+``tachi_scoring_rules.route_scorer_units``, so the planner and the renderer always agree. When ``threats.md`` is absent
+the member set is read from the ``threats.sarif`` beside it (D8's fallback).
+
 The planner is also a function, :func:`plan_stage`. Batch sizes are constants in ``BATCH_SIZES``, not adopter
 settings, so ``plan_stage``'s ``batch_size`` argument is the one way a test sets a smaller one (D6).
 
@@ -42,6 +47,7 @@ import os
 import platform
 import re
 import stat
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 if __name__ == "__main__":  # pragma: no cover  (a process alone shows it: test_write_confinement.py)
@@ -50,7 +56,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import sarif_common as sc  # noqa: E402
 import tachi_parts as tp  # noqa: E402
-from tachi_parsers import ReferenceSetError, parse_reference_set  # noqa: E402
+import tachi_scoring_rules as rules  # noqa: E402
+from tachi_parsers import (  # noqa: E402
+    ReferenceSetError, parse_baseline_frontmatter, parse_correlation_groups, parse_reference_set, parse_sarif_member_set)
 
 # ADR-050 D6, "Amended at W1": the output budget per stage in units per batch. A stage at or below its size
 # plans one batch, so its agent runs once (NFR-4). `trees` is PR 2's stage, listed so the sizes live in one table.
@@ -197,16 +205,36 @@ def _unit_row(finding: Dict[str, Any]) -> Dict[str, Any]:
     return row
 
 
+def _architecture_ref(path: str) -> Optional[str]:
+    """The architecture candidate through the shared resolver (ADR-050 D7), as the absolute path in its canonical spelling.
+
+    The resolver checks what ``architecture-source`` checks for the same flag: a regular file below the working
+    directory, with no symlink on the way, spelled as the volume spells it. So ``refs.architecture`` and the body
+    line name one path. A candidate that fails is dropped with a warning, because a stage never stops for it.
+    """
+    root = os.getcwd()
+    try:
+        resolved = sc.resolve_file(path, root=root, allow_absolute=True)
+    except sc.PathCheckError as failure:
+        sys.stderr.write("WARNING: the architecture path %s is not used (%s), so it is not passed to the agents\n" % (path, failure.check))
+        return None
+    return os.path.join(root, resolved.path)
+
+
 def _pointer_refs(stage: str, risk_scores: Any, baseline_dir: Any, architecture: Any, target: Any) -> tuple:
     """The optional ``--risk-scores``, ``--baseline-dir``, ``--architecture`` and ``--target`` pointers.
 
     Each becomes an absolute path under its closed ``refs`` name, and a file that the stage reads also becomes a
-    digest-checked input, so a change during the run is caught. An architecture candidate that isn't a regular
-    file is dropped with a warning: a stage never stops for it (ADR-050 D7's fallback).
+    digest-checked input, so a change during the run is caught. The architecture goes through the shared resolver
+    and is dropped with a warning when it fails: a stage never stops for it (ADR-050 D7). The scorer's
+    ``--baseline-dir`` is only checked here: it may name a run directory or a file in one (D9), and ``plan_stage``
+    resolves it. It returns ``(inputs, refs, baseline)``, where ``baseline`` is that checked path or ``None``.
     """
     inputs: Dict[str, Dict[str, Any]] = {}
     refs: Dict[str, str] = {}
-    for name, given, kind in (("risk_scores", risk_scores, "file"), ("baseline_dir", baseline_dir, "dir"),
+    baseline: Optional[str] = None
+    for name, given, kind in (("risk_scores", risk_scores, "file"),
+                              ("baseline_dir", baseline_dir, "baseline" if stage == "risk-score" else "dir"),
                               ("architecture", architecture, "candidate"), ("target", target, "dir")):
         if given is None:
             continue
@@ -216,16 +244,22 @@ def _pointer_refs(stage: str, risk_scores: Any, baseline_dir: Any, architecture:
             raise StageError(2, stage, "--%s is not an acceptable path (%s)" % (name.replace("_", "-"), problem),
                              "use a path with no backslash, backtick or control character")
         if kind == "candidate":
-            if not os.path.isfile(path):
-                sys.stderr.write("WARNING: the architecture file %s is not a regular file, so it is not passed to the agents\n" % path)
+            resolved = _architecture_ref(os.fspath(given))  # as typed, so a `..` or a link is refused as `architecture-source` refuses it
+            if resolved is None:
                 continue
+            path = resolved
+        elif kind == "baseline":
+            if not os.path.exists(path):
+                raise StageError(1, stage, "--baseline-dir %s names nothing" % path, "check the path and re-run")
+            baseline = path
+            continue
         elif not (os.path.isfile(path) if kind == "file" else os.path.isdir(path)):
             raise StageError(1, stage, "--%s %s is not a %s" % (name.replace("_", "-"), path, "file" if kind == "file" else "directory"),
                              "check the path and re-run")
         refs[name] = path
         if kind == "file":
             inputs[name] = _input_entry(stage, path)
-    return inputs, refs
+    return inputs, refs, baseline
 
 
 def _input_entry(stage: str, path: str, raw: Optional[bytes] = None) -> Dict[str, Any]:
@@ -318,14 +352,80 @@ def _write_batch_input(stage: str, out: str, plan: Dict[str, Any], entry: Dict[s
     entry["input_sha256"] = tp.sha256_hex(text.encode("utf-8"))
 
 
+def _read_member_set(stage: str, threats: Any, threats_path: str) -> tuple:
+    """The open findings of the run, as ``(raw bytes, [(finding row, unit row)], threats.md text, path read, SARIF groups)``.
+
+    They come from the reference set of ``threats.md`` (S-12). The scorer falls back to the ``threats.sarif`` beside it
+    when ``threats.md`` is absent, read through ``parse_sarif_member_set`` (ADR-050 D8, AR-T2): its units name the
+    finding only, and the agent reads the rest from ``refs.threats``. An empty extraction is an error, never a pass
+    (KB 22), and it ends the run here, before anything is written or dispatched.
+    """
+    beside = os.path.join(os.path.dirname(threats_path), "threats.sarif")
+    if not (stage == "risk-score" and os.path.basename(threats_path) == "threats.md"
+            and not os.path.lexists(threats_path) and os.path.lexists(beside)):
+        raw, text = _read_threats(stage, threats_path)
+        try:
+            reference = parse_reference_set(text, source=os.fspath(threats))
+        except ReferenceSetError as exc:
+            raise StageError(2, stage, "%s. Expected %s" % (exc.reason, exc.expected), exc.remedy) from None
+        for canonical in reference["duplicates"]:
+            sys.stderr.write("WARNING: %s lists %s more than once; the first row is used\n" % (threats_path, canonical))
+        return raw, [(finding, _unit_row(finding)) for finding in reference["open"]], text, threats_path, []
+    sys.stderr.write("WARNING: %s is absent, so the findings are read from %s (the SARIF fallback)\n" % (threats_path, beside))
+    raw, text = _read_threats(stage, beside)
+    try:
+        member_set = parse_sarif_member_set(text)
+    except ValueError as exc:
+        raise StageError(2, stage, "%s: %s" % (beside, str(exc)[:200]), "restore threats.md, or regenerate it with /tachi.threat-model") from None
+    members = sorted(member_set["members"], key=tp.finding_sort_key)
+    return raw, [({"id": member}, {"finding_id": member}) for member in members], None, beside, member_set["groups"]
+
+
+def _scorer_routing(stage: str, members: list, text: Optional[str], sarif_groups: list, baseline_flag: Optional[str],
+                    extra_inputs: Dict[str, Dict[str, Any]], refs: Dict[str, str]) -> "rules.ScorerRouting":
+    """Who the scorer agent scores (ADR-050 D2, D9): the baseline is resolved, read, and the units are partitioned.
+
+    The baseline is the ``--baseline-dir`` pointer, else ``baseline.source`` of the input ``threats.md`` (R-6). A
+    baseline that does not resolve, or whose ``risk-scores.md`` is missing or unreadable, means every finding is
+    scored fresh, and a warning says why (S-12(d)): it never stops the run. A baseline in use is recorded as
+    ``refs.baseline_dir`` and its files as digest-checked inputs, so the renderer routes against the same files.
+    """
+    source = parse_baseline_frontmatter(text)["source"] if text is not None else None
+    resolution = rules.resolve_baseline(flag=baseline_flag, baseline_source=source, cwd=Path(os.getcwd()))
+    scores = None
+    if resolution.run_dir is not None:
+        refs["baseline_dir"] = os.fspath(resolution.run_dir)
+        scored, sarif = resolution.files.get("risk-scores.md"), resolution.files.get("risk-scores.sarif")
+        if scored is None:
+            sys.stderr.write("WARNING: the baseline run directory has no usable risk-scores.md (%s), so every finding is scored fresh\n"
+                             % resolution.file_reasons.get("risk-scores.md", "missing"))
+        else:
+            scores = rules.read_baseline_scores(scored, sarif_path=sarif)
+            if scores.readable:
+                extra_inputs["baseline_risk_scores"] = _input_entry(stage, os.fspath(scored))
+                if sarif is not None and os.path.getsize(sarif) <= tp.MAX_AGENT_INPUT_BYTES:
+                    extra_inputs["baseline_risk_scores_sarif"] = _input_entry(stage, os.fspath(sarif))
+            else:
+                sys.stderr.write("WARNING: the baseline risk-scores.md can't be read (%s), so it counts as missing: its owners, SLAs and "
+                                 "dispositions are not carried, and every finding is scored fresh\n" % scores.reason)
+    elif resolution.reason != "not-named":
+        sys.stderr.write("WARNING: no baseline is used (%s: %s), so every finding is scored fresh\n" % (resolution.origin, resolution.reason))
+    rows = [row for row, _ in members]
+    groups = parse_correlation_groups(text, member_ids=[row["id"] for row in rows])["groups"] if text is not None else sarif_groups
+    return rules.route_scorer_units(rows, groups=groups, baseline=scores)
+
+
 def plan_stage(stage: str, out: Any, date: str, threats: Any = None, risk_scores: Any = None, baseline_dir: Any = None,
                architecture: Any = None, target: Any = None, batch_size: Optional[int] = None) -> Dict[str, Any]:
     """Plan one stage and return ``{plan_id, plan_digest, waves}``, the object ``plan`` prints.
 
     Reads the reference finding set from ``threats`` through the shared wrapper, so an unreadable Section 7 ends the
-    run here, before anything is written or dispatched (S-12(c)). Splits the open findings, in S-2 order, into
-    balanced contiguous batches of at most ``batch_size`` (the stage's constant when ``None``), writes the plan, one
-    batch input for each batch and the pre-image copies, and only then replaces the current-plan pointer.
+    run here, before anything is written or dispatched (S-12(c)). For the scorer it keeps only the findings that need
+    judgment (D2: ``_scorer_routing``), and reads ``threats.sarif`` instead when ``threats.md`` is absent (D8). Splits
+    those units, in S-2 order, into balanced contiguous batches of at most ``batch_size`` (the stage's constant when
+    ``None``), writes the plan, one batch input for each batch and the pre-image copies, and only then replaces the
+    current-plan pointer. A plan with no units (every finding carried or copied) has no batches and a null
+    ``batch_size``, and reconciles as complete.
     """
     if stage not in tp.STAGE_AGENTS:
         raise StageError(2, stage, "%r is not a stage this version plans" % (stage,), "use risk-score or compensating-controls")
@@ -346,16 +446,13 @@ def plan_stage(stage: str, out: Any, date: str, threats: Any = None, risk_scores
     problem = tp.path_problem(threats_path, allow_absolute=True)
     if problem is not None:
         raise StageError(2, stage, "--threats is not an acceptable path (%s)" % problem, "use a path with no backslash, backtick or control character")
-    raw, text = _read_threats(stage, threats_path)
-    try:
-        reference = parse_reference_set(text, source=os.fspath(threats))
-    except ReferenceSetError as exc:
-        raise StageError(2, stage, "%s. Expected %s" % (exc.reason, exc.expected), exc.remedy) from None
-    for canonical in reference["duplicates"]:
-        sys.stderr.write("WARNING: %s lists %s more than once; the first row is used\n" % (threats_path, canonical))
-    units = [_unit_row(finding) for finding in reference["open"]]
-    extra_inputs, refs = _pointer_refs(stage, risk_scores, baseline_dir, architecture, target)
+    raw, members, text, threats_path, sarif_groups = _read_member_set(stage, threats, threats_path)
+    extra_inputs, refs, baseline_flag = _pointer_refs(stage, risk_scores, baseline_dir, architecture, target)
     refs = dict(refs, threats=threats_path)
+    if stage == "risk-score":  # D2: only the findings that need judgment go to the agent
+        to_agent = set(_scorer_routing(stage, members, text, sarif_groups, baseline_flag, extra_inputs, refs).to_agent)
+        members = [pair for pair in members if tp.canonical_finding_id(pair[0]["id"]) in to_agent]
+    units = [unit for _, unit in members]
 
     count = len(units)
     planned = -(-count // size)
@@ -372,10 +469,10 @@ def plan_stage(stage: str, out: Any, date: str, threats: Any = None, risk_scores
         "schema": tp.PLAN_SCHEMA, "plan_id": plan_id, "stage": stage, "agent_type": tp.STAGE_AGENTS[stage],
         "created_utc": _utc_now(), "tachi_version": tp.VERSION,
         "inputs": dict(extra_inputs, threats=_input_entry(stage, threats_path, raw)),
-        "params": {"scoring_date": date}, "batch_size": size, "unit_count": count, "preimage": preimage,
+        "params": {"scoring_date": date}, "batch_size": size if count else None, "unit_count": count, "preimage": preimage,
         "out_snapshot": snapshot, "retry_budget": {"limit": 2 * planned, "used": 0}, "batches": [],
     }
-    base, extra = divmod(count, planned)
+    base, extra = divmod(count, planned) if planned else (0, 0)
     at = 0
     for number in range(planned):
         take = base + (1 if number < extra else 0)

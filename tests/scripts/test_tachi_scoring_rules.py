@@ -1,8 +1,9 @@
-"""Tests for ``scripts/tachi_scoring_rules.py``, part 1 (F-374 T042; ADR-050 D2, D5 and D9).
+"""Tests for ``scripts/tachi_scoring_rules.py``, parts 1 and 2 (F-374 T042 and T043; ADR-050 D2, D5, D9 and D10).
 
 Part 1 holds R-6's baseline resolver, R-26's tolerant reader and S-13's one tag source, which the renderer's
-whole-file render (T028) and the scorer's planner (T044) need first. T043 adds part 2 (R-25, D10, R-31 and
-ruling A) to the same module and extends this file. Lane R1t's T041 adds the golden-level cases to
+whole-file render (T028) and the scorer's planner (T044) need first. Part 2 (T043) holds R-25's asset outcome, D10's
+vector check, R-31's routing, peers, overrides and scoring date, and ruling A's tag-driven band rule. Lane R1t's
+T041 adds the golden-level cases to
 ``test_render_risk_scores.py``; these are the direct unit cases for the functions themselves, so the slice is
 proven before the renderer exists.
 
@@ -20,10 +21,13 @@ Sections
 5. ``read_baseline_scores``: the renderer's Scoring Inputs, and decoding
 6. ``read_baseline_scores``: the SARIF fallback and the unreadable cases
 7. ``recompute_tags`` and ``select_tag_source`` (S-13)
+8. ``asset_outcome`` and ``cvss_chain`` (R-25, D10)
+9. ``check_carried_vector`` (D10, ruling A)
+10. ``route_scorer_units`` and ``peer_divergence`` (R-31, D8's groups through ``parse_correlation_groups``)
+11. ``original_scoring_date``, ``classify_band_change`` and ``governance_for`` (R-5, R-31, ruling A)
 
-``tachi_parsers.decode_references`` is lane P's T033 and may not exist in the tree under test. The autouse
-fixture below installs a stand-in that follows D3's closed table, only while the real one is absent. Once T033
-lands, these same cases run against the real decoder.
+The decoder is the shipped one, ``tachi_parsers.decode_references`` (T033): the round-trip cases write a value
+with ``tachi_parts.escape_cell`` and read it back through the reader, so they pin the two halves together.
 
 Standard library and pytest only, and Python 3.9 syntax.
 """
@@ -61,23 +65,6 @@ finally:
     sys.dont_write_bytecode = _keep_bytecode_flag
 
 D = Decimal
-
-# --------------------------------------------------------------------------- the decoder stand-in
-
-_REFERENCES = {"&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#"}
-_REFERENCE = re.compile("|".join(re.escape(reference) for reference in _REFERENCES))
-
-
-def _closed_decoder(text):
-    """D3's decoder: exactly the eight references, in one left-to-right pass, and replaced text is not re-scanned."""
-    return _REFERENCE.sub(lambda match: _REFERENCES[match.group(0)], text)
-
-
-@pytest.fixture(autouse=True)
-def _reference_decoder(monkeypatch):
-    if not hasattr(tachi_parsers, "decode_references"):
-        monkeypatch.setattr(tachi_parsers, "decode_references", _closed_decoder, raising=False)
-
 
 def _symlink(target, link):
     try:
@@ -1025,7 +1012,7 @@ def test_a_value_is_decoded_exactly_once(tmp_path, monkeypatch):
         calls.append(text)
         return text
 
-    monkeypatch.setattr(tachi_parsers, "decode_references", tracer, raising=False)
+    monkeypatch.setattr(tachi_parsers, "decode_references", tracer)  # a spy: it counts the calls and decodes nothing
     rows = _inputs(**{"rationale.cvss": "abc", "rationale.exploitability": "def", "tags": "pii"})
     row = _read(tmp_path, _renderer_doc(rows)).rows["T-12"]
     assert (row.narrative["rationale.cvss"], row.narrative["rationale.exploitability"]) == ("abc", "def")
@@ -1436,3 +1423,531 @@ def test_the_recomputation_feeds_the_selector_end_to_end(populator):
     ids = list(fresh)
     assert rules.select_tag_source(open_ids=ids, block=dict(fresh), recomputed=fresh).source == "block"
     assert rules.select_tag_source(open_ids=ids, block={}, recomputed=fresh).source == "recomputed"
+
+
+# =============================================================================
+# 8. asset_outcome and cvss_chain (R-25, D10)
+# =============================================================================
+
+TAMPER = "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L"        # base 7.1; pii elevates it to 8.3
+TAMPER_PII = "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L"
+MAXV = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"          # base 10.0; every tag is a no-op
+LOW = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:N/A:N"          # base 0.0
+X3 = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N"           # base 7.2; pii gives 9.3, auth gives 10.0
+X1 = "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:N/A:N"           # base 5.0; auth gives 9.6
+ABOVE = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:L"        # base 9.4, already above the ceiling; safety gives 9.8
+
+
+def test_the_vectors_these_cases_use_have_the_scores_they_are_chosen_for():
+    scoring = rules.tachi_scoring
+    assert [scoring.base_score(v) for v in (TAMPER, TAMPER_PII, MAXV, LOW, X3, X1, ABOVE)] == [
+        D("7.1"), D("8.3"), D("10.0"), D("0.0"), D("7.2"), D("5.0"), D("9.4")]
+    assert scoring.base_score(scoring.elevate(X3, ["pii"])) == D("9.3") and scoring.base_score(scoring.elevate(X3, ["auth"])) == D("10.0")
+    assert scoring.base_score(scoring.elevate(X1, ["auth"])) == D("9.6") and scoring.base_score(scoring.elevate(ABOVE, ["safety"])) == D("9.8")
+    assert scoring.elevate(MAXV, ["pii", "safety"]) == MAXV
+
+
+def _chain(vector, tags=(), bounds=None):
+    return rules.cvss_chain(vector, tags=tags, score_bounds=bounds)
+
+
+def test_without_tags_the_chain_is_the_base_clamped_to_its_bounds():
+    chain = _chain(TAMPER)
+    assert chain == rules.CvssChain(D("7.1"), None, D("7.1"), False, None, None, D("7.1"), None)
+    clamped = _chain(MAXV, bounds=(D("6.1"), D("8.1")))
+    assert (clamped.base, clamped.assessed, clamped.cvss_base, clamped.clamp_cause) == (D("10.0"), D("8.1"), D("8.1"), "bound")
+    assert _chain(LOW, bounds=(D("6.1"), D("8.1"))).cvss_base == D("6.1")
+    assert _chain(TAMPER, bounds=(D("6.1"), D("8.1"))).clamp_cause is None, "inside its bounds nothing is clamped"
+
+
+def test_a_tag_raises_the_score_to_the_elevated_vectors_and_records_both():
+    chain = _chain(TAMPER, ["pii"])
+    assert (chain.forced, chain.elevated_vector, chain.elevated_base) == (True, TAMPER_PII, D("8.3"))
+    assert (chain.assessed, chain.cvss_base, chain.clamp_cause) == (D("7.1"), D("8.3"), None)
+
+
+def test_the_ceiling_cuts_an_elevated_score_and_says_so():
+    chain = _chain(X3, ["pii"])
+    assert (chain.elevated_base, chain.cvss_base, chain.clamp_cause) == (D("9.3"), D("9.2"), "ceiling")
+    assert _chain(X1, ["auth"]).cvss_base == D("9.2")
+
+
+def test_a_finding_assessed_above_the_ceiling_keeps_its_score(  ):
+    """R-25: the modifier never lowers a score, so 9.4 stays 9.4 although the elevated 9.8 is capped at 9.2."""
+    chain = _chain(ABOVE, ["safety"])
+    assert (chain.assessed, chain.elevated_base, chain.cvss_base, chain.clamp_cause) == (D("9.4"), D("9.8"), D("9.4"), None)
+
+
+def test_a_no_op_tag_still_counts_as_forcing_and_a_bound_clamp_gives_way_to_the_modifier():
+    chain = _chain(MAXV, ["pii"])
+    assert (chain.forced, chain.elevated_vector, chain.cvss_base, chain.clamp_cause) == (True, MAXV, D("10.0"), None)
+    lifted = _chain(MAXV, ["pii"], bounds=(D("6.1"), D("8.1")))
+    assert (lifted.assessed, lifted.cvss_base, lifted.clamp_cause) == (D("8.1"), D("9.2"), "ceiling"), (
+        "the modifier follows the clamp and is meant to exceed it (asset-modifiers.md:22)")
+    kept = _chain(TAMPER, ["financial"], bounds=(D("6.1"), D("8.1")))
+    assert kept.elevated_vector == TAMPER and kept.cvss_base == D("7.1")
+
+
+def test_a_bound_that_beats_a_smaller_modifier_result_is_the_cause():
+    chain = _chain(X1, ["pii"], bounds=(D("8.0"), D("9.0")))   # base 5.0 -> 8.0, and pii gives 7.7: the bound wins
+    assert (chain.assessed, chain.elevated_base, chain.cvss_base, chain.clamp_cause) == (D("8.0"), D("7.7"), D("8.0"), "bound")
+
+
+def test_every_chain_score_is_a_one_decimal_decimal():
+    for vector in (TAMPER, MAXV, LOW, X3, X1, ABOVE):
+        for tags in ((), ("pii",), ("auth", "safety")):
+            for bounds in (None, (D("3.3"), D("5.3"))):
+                score = _chain(vector, tags, bounds).cvss_base
+                assert isinstance(score, Decimal) and score == score.quantize(D("0.1")) and rules.tachi_scoring.band(score)
+
+
+def test_asset_outcome_is_the_larger_of_the_assessed_and_the_capped_elevated_score():
+    outcome = rules.asset_outcome
+    assert outcome(D("7.1"), TAMPER, ["pii"]) == D("8.3")
+    assert outcome(D("9.4"), ABOVE, ["safety"]) == D("9.4")
+    assert outcome(D("7.2"), X3, ["pii", "auth"]) == D("9.2")
+    assert outcome(D("9.5"), MAXV, ["pii"]) == D("9.5") and outcome(D("5.0"), MAXV, ["pii"]) == D("9.2")
+    assert outcome(D("7.1"), TAMPER, []) == D("7.1") and outcome(D("7.1"), TAMPER, ()) == D("7.1")
+    assert outcome(7, TAMPER, ()) == D("7")
+
+
+def test_a_score_is_never_a_float_and_a_tag_or_vector_outside_the_contract_raises():
+    with pytest.raises(TypeError):
+        rules.asset_outcome(7.1, TAMPER, ["pii"])
+    with pytest.raises(TypeError):
+        rules.asset_outcome(True, TAMPER, [])
+    with pytest.raises(ValueError):
+        rules.asset_outcome(D("7.1"), TAMPER, ["bogus"])
+    with pytest.raises(ValueError):
+        _chain("CVSS:3.1/AV:N", ["pii"])
+    with pytest.raises(ValueError):
+        _chain(TAMPER, ["bogus"])
+
+
+# =============================================================================
+# 9. check_carried_vector (D10, ruling A)
+# =============================================================================
+
+def make_row(finding_id="T-1", **overrides):
+    """A BaselineRow with every field given, so a case names only what it is about."""
+    fields = dict(
+        finding_id=finding_id, form="legacy", cvss_vector=TAMPER, vector_source="md", score_bounds=None, subscores=None,
+        zone=None, trust_level=None, auth_barriers=None, network_boundaries=None, tags_used=None, scored_on=None,
+        stored={"cvss_base": D("7.1"), "exploitability": D("6.0"), "scalability": D("6.0"), "reachability": D("6.0"),
+                "composite": D("6.3")},
+        band="Medium", owner="alice", sla="30d", disposition="Review", review_date=date(2026, 12, 1), narrative={},
+        legacy_prose={}, flags=())
+    fields.update(overrides)
+    stored = fields["stored"]
+    if "cvss_base" in overrides:
+        fields["stored"] = dict(stored, cvss_base=overrides.pop("cvss_base"))
+    return rules.BaselineRow(**{k: v for k, v in fields.items() if k != "cvss_base"})
+
+
+def _check_vector(row, tags=()):
+    return rules.check_carried_vector(row, tags=tags)
+
+
+def _renderer_row(stored, **overrides):
+    values = dict(form="renderer", cvss_vector=TAMPER, stored={"cvss_base": stored, "exploitability": D("6.0"), "scalability": D("6.0"),
+                                                            "reachability": D("6.0"), "composite": D("6.3")},
+                  subscores={name: 5 for name in tachi_parts.SUBSCORE_NAMES}, tags_used=(), score_bounds=None, scored_on=date(2026, 11, 1))
+    values.update(overrides)
+    return make_row(**values)
+
+
+def test_a_renderer_row_whose_stored_score_the_chain_gives_passes():
+    assert _check_vector(_renderer_row(D("7.1"))) == rules.VectorCheck(D("7.1"), None, "renderer")
+    assert _check_vector(_renderer_row(D("8.3"), tags_used=("pii",)), ["pii"]) == rules.VectorCheck(D("8.3"), None, "renderer")
+    bounded = _renderer_row(D("8.1"), cvss_vector=MAXV, score_bounds=(D("6.1"), D("8.1")))
+    assert _check_vector(bounded) == rules.VectorCheck(D("8.1"), None, "renderer"), "the stored bounds are part of the chain"
+
+
+def test_a_renderer_row_whose_stored_score_is_wrong_is_corrected_to_the_chain():
+    assert _check_vector(_renderer_row(D("9.0"))) == rules.VectorCheck(D("7.1"), "corrected:cvss_base:vector", "renderer")
+    assert _check_vector(_renderer_row(D("7.15"))).flag == "corrected:cvss_base:vector", "an off-grid stored score is wrong"
+    assert _check_vector(_renderer_row(D("9.0"), tags_used=("pii",)), ["pii"]).flag == "corrected:cvss_base:vector"
+
+
+def test_a_renderer_row_that_only_its_tags_moved_is_retagged_never_corrected():
+    added = _check_vector(_renderer_row(D("7.1"), tags_used=()), ["pii"])
+    assert added == rules.VectorCheck(D("8.3"), "retagged:cvss_base:asset-tags", "renderer")
+    removed = _check_vector(_renderer_row(D("8.3"), tags_used=("pii",)), [])
+    assert removed == rules.VectorCheck(D("7.1"), "retagged:cvss_base:asset-tags", "renderer")
+    assert _check_vector(_renderer_row(D("7.1"), tags_used=None), ["pii"]).flag == "retagged:cvss_base:asset-tags", (
+        "no recorded tags means none were used")
+    assert _check_vector(_renderer_row(D("5.0"), tags_used=()), ["pii"]).flag == "corrected:cvss_base:vector", (
+        "a value that no tag set explains stays a correction")
+
+
+def test_a_missing_stored_score_is_rendered_from_the_chain_and_flagged_as_missing():
+    assert _check_vector(_renderer_row(None), ["pii"]) == rules.VectorCheck(D("8.3"), "input:cvss_base:missing", "renderer")
+    assert _check_vector(make_row(cvss_base=None), ["pii"]) == rules.VectorCheck(D("8.3"), "input:cvss_base:missing", "6")
+
+
+def test_a_row_with_no_vector_is_unverifiable_and_keeps_its_score():
+    for form in ("legacy", "renderer"):
+        check = _check_vector(make_row(form=form, cvss_vector=None, vector_source=None, cvss_base=D("6.6")), ["pii"])
+        assert check == rules.VectorCheck(D("6.6"), "unverifiable:cvss_base:no-vector", "1")
+
+
+PREFIXES = tachi_parts.FINDING_PREFIXES
+
+
+def _bounds_of(prefix):
+    scoring = rules.tachi_scoring
+    return scoring.bounds(scoring.default_score(scoring.category_for_prefix(prefix)))
+
+
+def _clamp_to(score, bounds):
+    return max(bounds[0], min(score, bounds[1]))
+
+
+@pytest.mark.parametrize("prefix", PREFIXES)
+def test_d10s_legacy_list_for_each_of_the_12_prefixes_without_tags(prefix):
+    """A wrong-vector score is corrected, an own-bound clamp passes, another category's bound value is unchecked."""
+    finding = "%s-1" % prefix
+    base_high, base_low = D("10.0"), D("0.0")
+    for vector, base in ((MAXV, base_high), (LOW, base_low)):
+        own = _clamp_to(base, _bounds_of(prefix))
+        for stored in {base, own}:
+            check = _check_vector(make_row(finding, cvss_vector=vector, cvss_base=stored))
+            assert (check.cvss_base, check.flag, check.step) == (stored, None, "3"), (prefix, vector, stored)
+        others = {_clamp_to(base, _bounds_of(other)) for other in PREFIXES} - {base, own}
+        for stored in others:
+            check = _check_vector(make_row(finding, cvss_vector=vector, cvss_base=stored))
+            assert (check.cvss_base, check.flag, check.step) == (stored, "unchecked:cvss_base:bound-n17c", "5"), (prefix, stored)
+        wrong = _check_vector(make_row(finding, cvss_vector=vector, cvss_base=D("2.2")))
+        assert (wrong.cvss_base, wrong.flag, wrong.step) == (base, "corrected:cvss_base:vector", "6")
+
+
+def test_the_own_category_is_the_prefixs_so_oi_mi_and_te_score_like_llm_and_agentic():
+    assert _bounds_of("OI") == _bounds_of("MI") == _bounds_of("LLM") and _bounds_of("TE") == _bounds_of("AGP") == _bounds_of("AG")
+    s_low = _bounds_of("S")[0]
+    assert _check_vector(make_row("S-1", cvss_vector=LOW, cvss_base=s_low)).flag is None
+    assert _check_vector(make_row("D-1", cvss_vector=LOW, cvss_base=s_low)).flag == "unchecked:cvss_base:bound-n17c", (
+        "7.2 is the spoofing floor, so for a DoS finding it is another category's clamp")
+
+
+def test_legacy_step_2_a_forcing_tag_on_a_vector_that_already_carries_its_bits_is_unchecked():
+    for stored in (D("9.5"), D("10.0")):
+        check = _check_vector(make_row(cvss_vector=MAXV, cvss_base=stored), ["pii"])
+        assert (check.cvss_base, check.flag, check.step) == (stored, "unchecked:cvss_base:assessed-unrecorded", "2")
+    assert _check_vector(make_row(cvss_vector=MAXV, cvss_base=D("9.5")), []).flag == "corrected:cvss_base:vector", (
+        "without the tag the same stored score is just wrong")
+    assert _check_vector(make_row("E-1", cvss_vector=MAXV, cvss_base=D("10.0")), []).step == "3"
+
+
+def test_legacy_step_3_the_documented_outcomes_pass_under_this_runs_tags():
+    assert _check_vector(make_row(cvss_vector=ABOVE, cvss_base=D("9.4")), ["safety"]).step == "3", "assessed above 9.2 keeps it"
+    check = _check_vector(make_row(cvss_vector=ABOVE, cvss_base=D("9.2")), ["safety"])
+    assert (check.cvss_base, check.flag, check.step) == (D("9.2"), None, "3"), "an old capped score passes"
+    assert _check_vector(make_row(cvss_vector=X3, cvss_base=D("9.2")), ["auth"]).flag is None
+    assert _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("8.3")), ["pii"]).step == "3"
+
+
+def test_legacy_step_4_a_stored_score_without_the_elevation_becomes_the_elevated_one_retagged():
+    check = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("7.1")), ["pii"])
+    assert (check.cvss_base, check.flag, check.step) == (D("8.3"), "retagged:cvss_base:asset-tags", "4")
+    clamped = _check_vector(make_row("S-1", cvss_vector=TAMPER, cvss_base=_bounds_of("S")[0]), ["pii"])
+    assert (clamped.cvss_base, clamped.flag, clamped.step) == (D("8.3"), "retagged:cvss_base:asset-tags", "4"), (
+        "the own-bound clamp 7.2 is the other candidate a")
+
+
+def test_legacy_step_5_a_score_between_the_ceiling_and_the_elevated_score_is_unchecked():
+    check = _check_vector(make_row(cvss_vector=X3, cvss_base=D("9.5")), ["auth"])
+    assert (check.cvss_base, check.flag, check.step) == (D("9.5"), "unchecked:cvss_base:assessed-unrecorded", "5")
+    assert _check_vector(make_row(cvss_vector=X3, cvss_base=D("9.5")), []).flag == "corrected:cvss_base:vector"
+
+
+def test_legacy_step_6_corrects_to_the_outcome_under_this_runs_tags():
+    check = _check_vector(make_row(cvss_vector=X3, cvss_base=D("3.0")), ["pii"])
+    assert (check.cvss_base, check.flag, check.step) == (D("9.2"), "corrected:cvss_base:vector", "6")
+    assert _check_vector(make_row(cvss_vector=X3, cvss_base=D("3.0")), []).cvss_base == D("7.2")
+    assert _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("91"))).flag == "corrected:cvss_base:vector"
+
+
+def test_the_legacy_rule_is_the_same_whether_the_vector_came_from_the_markdown_or_the_sarif():
+    assert _check_vector(make_row(vector_source="sarif", cvss_base=D("7.1"))).flag is None
+
+
+# =============================================================================
+# 10. route_scorer_units and peer_divergence (R-31; D8's groups from parse_correlation_groups)
+# =============================================================================
+
+SECTION_4A = """## 4a. Correlated Findings
+
+| Group | Findings | Component |
+|---|---|---|
+| CG-1 | S-1, T-2, I-3 | api |
+| CG-2 | D-1, D-2 | db |
+| CG-3 | T-2, E-5 | api |
+
+## 5. Coverage Matrix
+"""
+
+
+def _routing(statuses, baseline_ids=(), groups_text=SECTION_4A, ids_in_any_row=()):
+    rows = [{"id": finding_id, "component": "c", "delta_status": status} for finding_id, status in statuses.items()]
+    groups = tachi_parsers.parse_correlation_groups(groups_text, member_ids=[canonical for canonical in
+                                                                          (tachi_parts.canonical_finding_id(i) for i in statuses)])["groups"]
+    baseline = rules.BaselineScores(True, None, "legacy", {i: make_row(i) for i in baseline_ids}, {},
+                                    frozenset(ids_in_any_row) | frozenset(baseline_ids), None, ())
+    return rules.route_scorer_units(rows, groups=groups, baseline=baseline)
+
+
+def test_only_non_peers_that_need_judgment_go_to_the_agent():
+    routing = _routing({"S-1": "NEW", "T-2": "UPDATED", "I-3": "NEW", "D-1": "UPDATED", "D-2": "UNCHANGED", "E-5": "NEW", "R-1": "UPDATED"},
+                       baseline_ids=("D-1", "D-2", "R-1"))
+    # CG-1: primary S-1 with peers T-2 and I-3. CG-2: primary D-1 with peer D-2. CG-3 never forms: T-2 is claimed by CG-1.
+    assert routing.to_agent == ("S-1", "D-1", "E-5", "R-1")
+    assert routing.copy_primary == {"T-2": "S-1", "I-3": "S-1"}
+    assert routing.carried == ("D-2",) and routing.carried_peers == {"D-2": "D-1"}
+
+
+def test_an_unchanged_finding_is_carried_when_its_row_is_usable_and_goes_to_the_agent_when_it_is_not():
+    routing = _routing({"S-1": "UNCHANGED", "T-2": "UNCHANGED", "I-3": "UNCHANGED", "R-1": "UNCHANGED", "R-2": "UNCHANGED"},
+                       baseline_ids=("S-1", "T-2", "R-1"))
+    assert routing.carried == ("S-1", "T-2", "R-1")
+    assert routing.carried_peers == {"T-2": "S-1"}, "a carried peer keeps its own score; the divergence check compares it with S-1's"
+    assert routing.copy_primary == {"I-3": "S-1"}, "an unchanged peer with no usable row copies its primary"
+    assert routing.to_agent == ("R-2",)
+
+
+def test_a_new_finding_is_never_carried_even_when_the_baseline_used_its_id():
+    """Ruling B: a reissued ID goes to the agent (a non-peer) or copies its primary (a peer), never `carried`."""
+    routing = _routing({"S-1": "NEW", "R-1": "NEW", "T-2": "NEW"}, baseline_ids=("S-1", "R-1", "T-2"))
+    assert routing.carried == () and routing.to_agent == ("S-1", "R-1") and routing.copy_primary == {"T-2": "S-1"}
+
+
+def test_a_row_without_a_usable_status_counts_as_new():
+    rows = [{"id": "R-1", "component": "c"}, {"id": "R-2", "component": "c", "delta_status": ""},
+            {"id": "R-3", "component": "c", "delta_status": "**[UNCHANGED]**"}, {"id": "R-4", "component": "c", "delta_status": "—"}]
+    baseline = rules.BaselineScores(True, None, "legacy", {i: make_row(i) for i in ("R-1", "R-2", "R-3", "R-4")}, {}, frozenset(), None, ())
+    routing = rules.route_scorer_units(rows, groups=[], baseline=baseline)
+    assert routing.carried == ("R-3",) and routing.to_agent == ("R-1", "R-2", "R-4")
+
+
+def test_without_a_baseline_every_non_peer_goes_to_the_agent_and_every_peer_copies():
+    for baseline in (None, rules.BaselineScores(False, "missing", None, {}, {}, frozenset(), None, ())):
+        rows = [{"id": "S-1", "component": "c", "delta_status": "UNCHANGED"}, {"id": "T-2", "component": "c", "delta_status": "UNCHANGED"}]
+        groups = tachi_parsers.parse_correlation_groups(SECTION_4A, member_ids=["S-1", "T-2"])["groups"]
+        routing = rules.route_scorer_units(rows, groups=groups, baseline=baseline)
+        assert (routing.to_agent, routing.carried, routing.copy_primary) == (("S-1",), (), {"T-2": "S-1"})
+
+
+def test_the_groups_are_used_as_the_parser_gives_them_and_a_spelling_with_a_zero_is_one_id():
+    text = "## 4a. Correlated Findings\n\n| Group | Findings |\n|---|---|\n| CG-1 | AGP-01, LLM-2 |\n"
+    rows = [{"id": "AGP-01", "component": "c", "delta_status": "NEW"}, {"id": "LLM-2", "component": "c", "delta_status": "NEW"}]
+    groups = tachi_parsers.parse_correlation_groups(text, member_ids=["AGP-01", "LLM-2"])["groups"]
+    routing = rules.route_scorer_units(rows, groups=groups, baseline=None)
+    assert routing.to_agent == ("AGP-1",) and routing.copy_primary == {"LLM-2": "AGP-1"}
+
+
+def test_a_peer_whose_primary_is_not_an_open_finding_is_scored_like_any_other():
+    rows = [{"id": "T-2", "component": "c", "delta_status": "NEW"}]
+    routing = rules.route_scorer_units(rows, groups=[{"group_id": "CG-1", "primary": "S-1", "members": ["S-1", "T-2"]}], baseline=None)
+    assert routing.to_agent == ("T-2",) and routing.copy_primary == {}
+
+
+def test_the_partition_covers_every_open_finding_exactly_once():
+    statuses = {"S-1": "UPDATED", "T-2": "UNCHANGED", "I-3": "NEW", "D-1": "UNCHANGED", "D-2": "UPDATED", "R-1": "NEW", "E-5": "UNCHANGED"}
+    routing = _routing(statuses, baseline_ids=("T-2", "D-1", "E-5"))
+    parts = list(routing.to_agent) + list(routing.carried) + list(routing.copy_primary)
+    assert sorted(parts) == sorted(statuses) and len(parts) == len(set(parts))
+    assert set(routing.carried_peers) <= set(routing.carried)
+
+
+def test_a_divergent_peer_is_flagged_with_its_primary_and_an_equal_one_is_not():
+    assert rules.peer_divergence(peer_composite=D("6.3"), primary_id="S-1", primary_composite=D("7.0")) == "divergent:composite_score:primary=S-1"
+    assert rules.peer_divergence(peer_composite=D("7.0"), primary_id="S-1", primary_composite=D("7.00")) is None
+    with pytest.raises(TypeError):
+        rules.peer_divergence(peer_composite=7.0, primary_id="S-1", primary_composite=D("7.0"))
+
+
+# =============================================================================
+# 11. original_scoring_date, classify_band_change and governance_for (R-5, R-31, ruling A)
+# =============================================================================
+
+RUN = date(2026, 11, 22)
+
+
+def test_the_original_scoring_date_is_the_stored_scored_on_date_or_the_review_date_less_the_sla():
+    assert rules.original_scoring_date(make_row(scored_on=date(2026, 11, 1)), baseline_date=None) == rules.ScoringDate(date(2026, 11, 1), None)
+    legacy = make_row(review_date=date(2026, 12, 1), sla="30d")
+    assert rules.original_scoring_date(legacy, baseline_date=date(2026, 1, 1)) == rules.ScoringDate(date(2026, 11, 1), None)
+    hours = make_row(review_date=date(2026, 11, 2), sla="24h")
+    assert rules.original_scoring_date(hours, baseline_date=None).value == date(2026, 11, 1)
+
+
+def test_the_fallback_rungs_when_the_dates_are_missing_or_unparseable():
+    for row in (make_row(review_date=None), make_row(sla=None), make_row(sla="30 days"), make_row(review_date=date(1, 1, 5), sla="30d")):
+        assert rules.original_scoring_date(row, baseline_date=date(2026, 10, 20)) == rules.ScoringDate(
+            date(2026, 10, 20), "corrected:review_date:baseline-date")
+        assert rules.original_scoring_date(row, baseline_date=None) == rules.ScoringDate(None, "unchecked:review_date:scoring-date-unknown")
+
+
+@pytest.mark.parametrize("stored,rendered,with_tags,expected", [
+    ("High", "High", "High", "none"), (None, "High", None, "none"), ("Bogus", "High", "Bogus", "none"),
+    ("Medium", "High", "Medium", "retagged-up"), ("High", "Medium", "High", "retagged-down"),
+    ("Low", "Critical", "Low", "retagged-up"), ("Critical", "Low", "Critical", "retagged-down"),
+    ("Medium", "High", "High", "corrected"), ("Medium", "High", "Low", "corrected"), ("Medium", "High", None, "corrected"),
+])
+def test_a_band_change_the_baselines_tags_explain_is_a_retag_and_any_other_is_a_correction(stored, rendered, with_tags, expected):
+    assert rules.classify_band_change(stored_band=stored, rendered_band=rendered, band_with_baseline_tags=with_tags) == expected
+
+
+def test_classify_band_change_refuses_a_rendered_band_that_is_not_one():
+    with pytest.raises(ValueError):
+        rules.classify_band_change(stored_band="High", rendered_band="Severe", band_with_baseline_tags="High")
+
+
+def _governance(status="UNCHANGED", band="Medium", change="none", row="default", baseline_date=None, run=RUN):
+    row = make_row() if row == "default" else row
+    return rules.governance_for(status, rendered_band=band, run_date=run, row=row, band_change=change, baseline_date=baseline_date)
+
+
+def test_a_new_finding_is_unassigned_and_starts_its_clock_on_the_run_date():
+    for band, sla, disposition, review in (("Critical", "24h", "Mitigate", date(2026, 11, 23)), ("High", "7d", "Mitigate", date(2026, 11, 29)),
+                                           ("Medium", "30d", "Review", date(2026, 12, 22)), ("Low", "90d", "Review", date(2027, 2, 20))):
+        assert _governance("NEW", band, row=None) == rules.Governance("Unassigned", sla, disposition, review, RUN, ())
+
+
+def test_a_new_finding_never_takes_the_owner_of_a_baseline_row_that_reused_its_id():
+    row = make_row(owner="alice", sla="14d", disposition="Accept")
+    assert _governance("NEW", "High", row=row) == rules.Governance("Unassigned", "7d", "Mitigate", date(2026, 11, 29), RUN, ())
+
+
+def test_a_finding_with_no_baseline_row_is_fresh_whatever_its_status():
+    for status in ("UPDATED", "UNCHANGED"):
+        assert _governance(status, "Low", row=None) == rules.Governance("Unassigned", "90d", "Review", date(2027, 2, 20), RUN, ())
+
+
+def test_when_the_band_holds_the_stored_review_date_and_owner_are_kept_without_a_flag():
+    row = make_row(owner="alice", review_date=date(2026, 12, 1), sla="30d")
+    result = _governance(row=row)
+    assert result == rules.Governance("alice", "30d", "Review", date(2026, 12, 1), date(2026, 11, 1), ())
+    assert _governance(row=make_row(owner=None)).owner == "Unassigned"
+    assert _governance(row=make_row(scored_on=date(2026, 11, 3), form="renderer")).scored_on == date(2026, 11, 3)
+
+
+def test_a_corrected_band_counts_the_new_sla_from_the_original_scoring_date():
+    """R-5: High is 7d, counted from the date the finding was first scored, 2026-11-01 (review 12-01 less 30d)."""
+    result = _governance(band="High", change="corrected", row=make_row(review_date=date(2026, 12, 1), sla="30d"))
+    assert (result.sla, result.disposition, result.review_date, result.scored_on) == ("7d", "Mitigate", date(2026, 11, 8), date(2026, 11, 1))
+    assert result.flags == ("corrected:remediation_sla:follows-band", "corrected:review_date:follows-band", "corrected:risk_disposition:follows-band")
+    stored = _governance(band="High", change="corrected", row=make_row(form="renderer", scored_on=date(2026, 11, 15), review_date=date(2026, 12, 15)))
+    assert stored.review_date == date(2026, 11, 22) and stored.scored_on == date(2026, 11, 15)
+
+
+def test_a_retag_up_takes_the_run_date_plus_the_new_sla_unless_the_stored_date_is_earlier():
+    """Ruling A: tagging never makes a finding overdue on the day, and a higher band never gets more time."""
+    sooner = _governance(band="High", change="retagged-up", row=make_row(scored_on=date(2026, 11, 20), form="renderer", review_date=date(2026, 12, 20)))
+    assert (sooner.review_date, sooner.scored_on) == (date(2026, 11, 29), RUN)
+    assert sooner.flags == ("retagged:remediation_sla:asset-tags", "retagged:review_date:asset-tags", "retagged:risk_disposition:asset-tags")
+    earlier = _governance(band="High", change="retagged-up", row=make_row(scored_on=date(2026, 10, 1), form="renderer", review_date=date(2026, 10, 31)))
+    assert (earlier.review_date, earlier.scored_on) == (date(2026, 10, 31), date(2026, 10, 1)), "overdue already: kept, never later"
+    assert "retagged:review_date:asset-tags" not in earlier.flags and "retagged:remediation_sla:asset-tags" in earlier.flags
+    assert _governance(band="High", change="retagged-up", row=make_row(review_date=date(2026, 11, 29), sla="30d")).review_date == date(2026, 11, 29)
+
+
+def test_a_retag_down_keeps_the_original_scoring_date_so_a_missed_deadline_stays_missed():
+    result = _governance(band="Medium", change="retagged-down", row=make_row(band="High", sla="7d", disposition="Mitigate",
+                                                                             review_date=date(2026, 11, 17)))
+    assert (result.review_date, result.scored_on) == (date(2026, 12, 10), date(2026, 11, 10))
+    assert result.flags == ("retagged:remediation_sla:asset-tags", "retagged:review_date:asset-tags", "retagged:risk_disposition:asset-tags")
+    missed = _governance(band="Medium", change="retagged-down", row=make_row(band="High", sla="7d", disposition="Mitigate", review_date=date(2026, 9, 8)))
+    assert missed.review_date == date(2026, 10, 1) and missed.review_date < RUN, "never moved to the run date"
+
+
+def test_no_value_that_follows_a_tag_moved_band_is_called_a_correction():
+    for change in ("retagged-up", "retagged-down"):
+        flags = _governance(band="High" if change == "retagged-up" else "Low", change=change, row=make_row()).flags
+        assert flags and all(flag.startswith("retagged:") for flag in flags), flags
+
+
+def test_overrides_are_carried_verbatim_and_flagged_and_the_owner_never_is():
+    row = make_row(band="High", owner="bob", sla="14d", disposition="Accept", review_date=date(2026, 11, 20))
+    result = _governance(band="Critical", change="corrected", row=row)
+    assert (result.owner, result.sla, result.disposition) == ("bob", "14d", "Accept")
+    assert result.flags == ("override:remediation_sla:human", "override:risk_disposition:human")
+    assert result.review_date == date(2026, 11, 20), "an SLA override still keeps its review date, even through a correction"
+    assert not any("owner" in flag for flag in result.flags)
+
+
+@pytest.mark.parametrize("disposition", ["Accept", "accept", " Transfer "])
+def test_accept_and_transfer_are_overrides_whatever_the_band(disposition):
+    flags = _governance(row=make_row(disposition=disposition)).flags
+    assert flags == ("override:risk_disposition:human",)
+
+
+def test_a_disposition_or_sla_that_differs_from_the_stored_bands_default_is_an_override_and_the_rest_follow_the_band():
+    assert _governance(band="High", row=make_row(band="High", sla="7d", disposition="Review")).flags == ("override:risk_disposition:human",)
+    follows = _governance(band="High", change="corrected", row=make_row(band="Medium", sla="30d", disposition="Review"))
+    assert (follows.sla, follows.disposition) == ("7d", "Mitigate") and not any(f.startswith("override") for f in follows.flags)
+    composite_band = _governance(row=make_row(band=None, sla="14d"))
+    assert composite_band.flags == ("override:remediation_sla:human",), "the stored band is read from the stored composite, 6.3 Medium"
+
+
+def test_an_updated_finding_keeps_its_owner_and_overrides_and_a_band_change_restarts_its_clock():
+    row = make_row(owner="carol", sla="14d", disposition="Accept", band="High", review_date=date(2026, 11, 28))
+    kept = _governance("UPDATED", "Critical", "corrected", row)
+    assert (kept.owner, kept.review_date, kept.sla) == ("carol", date(2026, 11, 28), "14d"), "an SLA override keeps its date"
+    plain = make_row(owner="carol", band="Medium", sla="30d", disposition="Review", review_date=date(2026, 12, 1))
+    restarted = _governance("UPDATED", "High", "corrected", plain)
+    assert restarted == rules.Governance("carol", "7d", "Mitigate", date(2026, 11, 29), RUN, ()), "fresh values carry no follows-band flag"
+    held = _governance("UPDATED", "Medium", "none", plain)
+    assert (held.review_date, held.scored_on, held.flags) == (date(2026, 12, 1), date(2026, 11, 1), ())
+
+
+def test_each_fallback_rung_when_the_original_scoring_date_is_unknown():
+    unknown = make_row(sla=None, review_date=date(2026, 12, 1), disposition=None)
+    rung1 = _governance(band="High", change="corrected", row=unknown, baseline_date=date(2026, 10, 20))
+    assert rung1.review_date == date(2026, 10, 27) and "corrected:review_date:baseline-date" in rung1.flags
+    rung2 = _governance(band="High", change="corrected", row=unknown)
+    assert rung2.review_date == date(2026, 12, 1) and "unchecked:review_date:scoring-date-unknown" in rung2.flags
+    rung3 = _governance(band="High", change="corrected", row=make_row(sla=None, review_date=None))
+    assert rung3.review_date == date(2026, 11, 29) and rung3.scored_on == RUN and "corrected:review_date:clock-restarted" in rung3.flags
+    assert all(flag.split(":")[1] != "review_date" or flag.count("follows-band") == 0 for flag in rung3.flags), "no second flag on a date a rung explains"
+
+
+def test_a_missing_review_date_is_filled_and_flagged_as_missing_never_silently():
+    row = make_row(form="renderer", scored_on=date(2026, 11, 1), review_date=None)
+    result = _governance(row=row)
+    assert (result.review_date, result.scored_on, result.flags) == (date(2026, 12, 1), date(2026, 11, 1), ("input:review_date:missing",))
+    up = _governance(band="High", change="retagged-up", row=make_row(review_date=None))
+    assert (up.review_date, up.scored_on) == (date(2026, 11, 29), RUN) and "input:review_date:missing" in up.flags
+
+
+def test_an_sla_override_that_is_not_parseable_still_gets_a_review_date_and_is_carried_as_written():
+    row = make_row(band="High", sla="a week", disposition="Mitigate", review_date=None)
+    result = _governance(band="High", row=row)
+    assert result.sla == "a week" and "override:remediation_sla:human" in result.flags
+    assert result.review_date == date(2026, 11, 29), "counted with the band's own SLA, since 'a week' has no days"
+
+
+def test_governance_refuses_a_status_band_or_change_it_does_not_know():
+    for kwargs in (dict(status="RESOLVED"), dict(band="Severe"), dict(change="retagged")):
+        with pytest.raises(ValueError):
+            _governance(**kwargs)
+
+
+def test_governance_is_the_same_for_the_same_inputs():
+    row = make_row(band="Medium", review_date=date(2026, 12, 1))
+    assert _governance(band="High", change="corrected", row=row) == _governance(band="High", change="corrected", row=row)
+
+
+def test_a_stored_band_that_cannot_be_read_leaves_only_accept_and_transfer_as_overrides():
+    off_grid = make_row(band=None, sla="14d", stored={"cvss_base": D("7.1"), "exploitability": D("6.0"), "scalability": D("6.0"),
+                                                    "reachability": D("6.0"), "composite": D("6.35")})
+    result = _governance(row=off_grid)
+    assert result.sla == "30d" and result.flags == ("corrected:remediation_sla:follows-band",)
+    assert _governance(row=make_row(band=None, disposition="Accept", stored={"composite": None})).flags == ("override:risk_disposition:human",)
+
+
+def test_a_review_date_past_the_end_of_the_calendar_is_an_error_not_a_wrong_date():
+    last = date(9999, 12, 31)
+    with pytest.raises(ValueError):
+        _governance("NEW", "High", row=None, run=last)
+    with pytest.raises(ValueError):
+        _governance("UPDATED", "High", "corrected", make_row(), run=last)
