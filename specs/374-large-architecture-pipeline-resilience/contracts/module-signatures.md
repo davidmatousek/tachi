@@ -277,11 +277,11 @@ Both sections use one table, so the writers (R1, R2), the readers (R1b, P) and t
 | ID | Field | Value |
 |---|---|---|
 | T-12 | control_status | partial |
-| T-12 | evidence[0].snippet | first line&#10;second line |
+| T-12 | evidence.0.snippet | first line&#10;second line |
 
 - **One row per value.** A row holds one finding and one field that has a value. A null field or an empty list writes no row.
-- **Order.** Rows go in S-2 order of ID, then in the payload's key order (`contracts/part-files.md`). §6's extra fields come last. List entries are indexed from 0, as in `evidence[1].summary`.
-- **Field names** are the stage payload's key paths, such as `rationale.cvss`, `exploitability.known_techniques`, `subscore_rationale.skill_level` or `evidence[0].assessment.coverage.rationale`.
+- **Order.** Rows go in S-2 order of ID, then in the payload's key order (`contracts/part-files.md`). §6's extra fields come last.
+- **Field names** are value addresses, as `part-files.md`'s "Readings ruled at W1" defines them: dotted, with a list entry as a numeric segment indexed from 0, ending at the string. Examples are `rationale.cvss`, `exploitability.known_techniques`, `subscore_rationale.skill_level`, `evidence.1.summary` and `evidence.0.assessment.coverage.rationale`. A flag's `<field>` drops the indexes (`evidence.summary`, `evidence.assessment.coverage`), because it names a field, not one value.
   - §6 adds the renderer's other step-1 inputs: `score_bounds` (low and high, joined by `,`), `tags` (sorted, joined by `,`, and empty for none) and `scored_on` (`YYYY-MM-DD`).
   - §7 holds the whole controls item (D2, AR-T3's reading).
 - **Values** are escaped on write by D3's table-cell rule, and decoded on read with `decode_references`. Narrative values keep their slot tokens. Booleans are `true` or `false`, and integers are written in decimal.

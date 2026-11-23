@@ -56,3 +56,24 @@ Orchestrator fences pass literal arguments only (C6). `PLAN` below stands for `-
 - `tachi_parsers.py`: extended with the reference-set wrapper, `parse_correlation_groups`, the shared reference decoder (D3) and (PR 2) `parse_chain_outcome`.
 
 The signatures of `tachi_scoring_rules.py` and of lane P's new `tachi_parsers` functions are frozen in [module-signatures.md](module-signatures.md) (W1, T023), together with the persisted-inputs format of `risk-scores.md` §6 and `compensating-controls.md` §7.
+
+### Readings ruled at W1 (2026-11-22, T023)
+
+T017's tests pin these readings for T018. The plan's halving and retry readings are in `part-files.md` ("Readings ruled at W1").
+
+- **`reconcile`'s output** is exactly `{status, plan_digest, done, waves, exhausted}`.
+  - `done` lists the finished batch IDs, in plan order.
+  - `waves` has `plan`'s shape.
+  - `exhausted` is `[{batch_id, finding_ids}]`.
+- **`fail`'s output** is `{moved, restored, record}`. `moved` and `restored` list canonical file names, and `record` is the stage record's path.
+  - The record's `error.code` is the `--reason`.
+  - Under `unrecoverable-batch`, `error.batch_id` and `error.finding_ids` name the exhausted batch. When several lineages are exhausted, they name the first in plan order, and `batches.exhausted` counts them all.
+- **KB 21's four moments,** the four times a `fail` can meet earlier outputs:
+  - **re-run:** an earlier run's outputs survive a new run that fails before it writes, and the earlier plan directory is left whole;
+  - **resume:** a later process can fail the plan using only the last `reconcile`'s digest, and an earlier digest is refused;
+  - **failed run:** an earlier run's quarantined files and restored canonical files survive, and `{out}` never holds a failed file under a canonical name;
+  - **`--output-dir`:** moves and restores stay inside a non-default `--out`.
+- **`architecture-source`** writes from the command's own path only. When the resolver fails that path, it removes any existing line, warns on stderr and exits 5. It never falls back to the constant.
+  - It keeps one line, between the frontmatter and the first `## ` heading, outside code fences.
+  - A forged copy inside a fence is neither read nor changed.
+- **`--version`** prints `tachi_parts.VERSION` and the interpreter's version on stdout, and exits 0. The refusal below 3.9 goes to stderr, with exit 2. Tests may accept either stream.

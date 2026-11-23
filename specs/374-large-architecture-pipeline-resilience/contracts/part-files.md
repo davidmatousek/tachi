@@ -114,3 +114,48 @@ Both payloads use closed key sets, and any other key is rejected, renderer-compu
 - **Carried text (Architect re-review RR1):** the renderers persist each narrative field's validated, slotted text, escaped on write: in `risk-scores.md` §6's `### Scoring Inputs` and `compensating-controls.md` §7's `### Assessment Inputs`. The scorer renderer carries it, and the controls agent copies it from its batch input (§3). Either way it is decoded first, then re-validated as narrative and re-resolved against this run's values, with the per-field fallback. Only legacy prose, which has no slots, is evidence-class (ADR-050 D9).
 
 **Renderer-computed, never in a part:** every field that D2's tables give to the renderer, plus flags, corrections, control IDs, the row-check results, and §3's prose carried from the baseline: persisted slotted text, re-validated as narrative, or a legacy file's prose, which is evidence-class (ADR-050 D9).
+
+## Readings ruled at W1 (2026-11-22, T023)
+
+Each reading is one the sources left open. `tachi_parts` (T012, T013), `tachi-stage.py` (T018) and the shared reference (T006) follow them.
+
+**Field names and flags.**
+- **A flag's `<field>`** is dotted, with no list index. An assessment rationale is named by its dimension. There are 28 names:
+  - the 24 narrative fields: `rationale.<key>`, `metric_rationale.<metric>`, `subscore_rationale.<name>` and `evidence.assessment.<dimension>`;
+  - the four evidence-class prose fields: `evidence.snippet`, `evidence.summary`, `matrix_row` and `recommendation_body`.
+
+  These serve both `input:<field>:narrative-fallback` (the 24 narrative fields) and `input:<field>:truncated` (all 28). An item's flags are a set, so two truncated evidence summaries give one flag, while `counts.truncations` counts both.
+- **The fixed fallback sentences** are keyed by the same 24 names. The wording in the shared reference's "Fixed Fallback Sentences" (T006) is the authority: `tachi_parts` embeds it verbatim (T013), and T010 drift-tests the two.
+- **A value's address** is used only where one value must be found again, as in the persisted-inputs table (`module-signatures.md`). It is the field name with each list entry as a numeric segment, ending at the string: `evidence.0.summary`, `evidence.2.assessment.currency.rationale`.
+- **The assessment dimension object** has exactly `rating` (`High`, `Medium` or `Low`) and `rationale` (narrative, up to 160), the template's Rating and Rationale columns.
+
+**Validation order.**
+- **A `tachi.overflow/1` object is `overflow` only when its `plan_id`, `batch_id`, `stage` and `agent_type` match the planned batch**, step 7's match. Otherwise it is `invalid`. "Well-formed" in ADR-050 D3 includes that match.
+- **Step 10 runs on the strings that step 9 kept.** Over-limit prose is cut and flagged at any length, even above 16,384 characters. A forbidden character beyond the cut is cut away with the rest, and one inside the kept text rejects the part.
+- **A snippet is cut to 5 lines first, then to 600 characters,** and flagged `input:evidence.snippet:truncated` once.
+- **A cut that lands inside a slot token** leaves an unterminated slot, so that field takes the per-field fallback. This is accepted, with no extra rule: the field is flagged both `truncated` and `narrative-fallback`, and the part is never rejected.
+
+**Values.**
+- **`evidence[].file` and `line` are closed values.** Each is checked against its pattern and range: the 1–300 range and the relative-path rule for `file`, and an integer of at least 1 for `line`. A closed value is never cut, so a `file` over 300 characters rejects the part.
+- **A `file` is checked, never rewritten.** `./a//b.py` is kept as written in the validated part. The resolver canonicalizes it at render time (ADR-050 D7), and both rendered files use that canonical spelling, so `.md` and `.sarif` agree. Like all agent text, it is escaped on output.
+- **The validated part carries canonical finding IDs** (ADR-050 D3). `findingId/v1`, and any other place that prints Section 7's spelling, takes it from the reference set.
+- **The total order on finding IDs (S-2)** is defined once in code, `tachi_parts`, and once in a shared reference, `part-file-contract-shared.md`'s "Identifiers". Every other file cites one of the two.
+- **`atomic_write`** gives the replaced file the mode an ordinary write would, `0666 & ~umask`, never the temporary file's `0600`.
+
+**Documents and records** (T012's choices, confirmed).
+- **Items in planned order.** A validated part's items come back in the planned order, whatever order the agent wrote, so `input_digest` is byte-stable (D4).
+- **The document caps.** The plan is capped at 8 MiB, a batch input at 4 MiB, the pointer at 4 KiB and a stage record at 1 MiB. A writer never writes a document over its own cap.
+  - A stage record keeps at most 1,000 `undeclared_paths`, sorted.
+  - When there are more, the writer adds the warning `undeclared-paths-truncated`, with the full count, just as the snapshot is skipped above 20,000 entries with a warning.
+- **Timestamps** are UTC and end in `Z`, and no other form is accepted. They are parsed without `datetime.fromisoformat`, which reads `Z` only from Python 3.11 (S-11).
+- **`preimage`** has exactly one key per canonical output in the stage's closed set (D4), each mapped to a SHA-256 or `null`.
+- **`STAGE_AGENTS`** holds only PR 1's two stages, `risk-score` and `compensating-controls`, and PR 1 rejects every other stage. PR 2 adds its stages with the code that handles them.
+- **A batch's `parent`** is the batch its ID derives from (`B003-1` → `B003`), and `null` for a planned batch.
+- **The stage record's `counts` keys** are the seven base counts plus one per D9 flag kind: `corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `resolved`, `retagged`, `reused-id` and `input`. `resolved` is both the base count and the flag kind, because the flag marks exactly the RESOLVED rows.
+- **The layout path builders** live in `tachi_parts`, as the one copy that `tachi-stage.py` and both renderers call. They build every D3 path only from `--out`, the stage and pattern-checked IDs, and they never take a path read from a file, except the plan's digest-checked `inputs`.
+
+**The batch plan (§4), as T017's tests pin it for T018.**
+- **Halving.** A halving's children are `<parent>-1` and `<parent>-2`. They are split contiguously and differ in size by at most 1, and each carries `attempt` = the parent's + 1.
+- **Retries.** An `invalid` retry keeps the batch ID and raises `attempt`. Each retry rewrites the batch input with its new `attempt` and `part_path`, and the plan's `input_sha256` follows it. So two retries per lineage fit `attempt` 1–3 and the batch-ID pattern.
+- **A one-unit batch can't halve.** When it is `missing`, `overflow` or `unparseable`, it is retried once more with the same member and batch ID, `attempt` + 1, at a cost of 1, as an `invalid` retry is. No batch ever has zero units.
+- **The budget.** A retry costs 1 against `retry_budget.used`, and a halving costs 2. A retry is refused when `used + cost > limit`, or when the batch is already at attempt 3, and either way `reconcile` exits 4.

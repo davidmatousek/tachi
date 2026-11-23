@@ -31,6 +31,11 @@
   - no `automationDetails`;
   - no result carries `guid`, `correlationGuid`, `fingerprints` or SARIF's own `baselineState`.
 - **`message.text`:** the file's own text. A correlated result's ends with one sentence that names its group, and its primary (on a peer) or its peers, up to 10 and then a count (on a primary), for example `Correlated in CG-3; primary S-1.` The message isn't identity, so a regroup changes it and never a key (ruling C, ADR-050 D8).
+  - **The sentence's exact form (ruled at W1, 2026-11-22, T023).** It is appended to the file's own text after one space.
+    - On a peer: `Correlated in CG-3; primary S-1.`
+    - On a primary with at most 10 peers, every peer is named in group order, joined by `, `: `Correlated in CG-3; peers T-2, I-4.`
+    - On a primary with more peers, the first 10 are named, then ` and N more` follows, where N counts the unnamed peers: `…, T-11, I-12 and 3 more.`
+    - Only the file's members are named, so no RESOLVED ID appears.
 - **`relatedLocations`:** controls file only, code evidence, omitted when empty.
 - **Properties:**
   - the correlation keys appear on group members only;
