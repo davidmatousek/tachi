@@ -255,6 +255,10 @@ def parse_controls_assessment_inputs(content: str) -> dict: ...
 - **`parse_correlation_groups` (T048, D8)** returns `{"groups": [{"group_id", "primary", "members"}], "errors": [{"line", "row", "reason"}]}`.
   - Groups come in Section 4a's order. `members` are canonical, in listed order, with the primary first, and filtered to `member_ids` when that is given.
   - A group left with fewer than two members is omitted, and an ID listed in two groups stays in the first.
+  - **Which group claims an ID (ruled at W1, from T015).** The first group that lists an ID claims it, even if that group then falls away, which is D8's literal reading. So a later group never takes the ID over, and an ID claimed by a group that falls away stays uncorrelated.
+  - **This function is the one authority for D8's four rules**: order, the claim, the primary and the two-member minimum. The scorer's routing and peer inheritance and both renderers' SARIF correlation use its result.
+    - `sarif_common.correlation_assignments` receives `(group["group_id"], group["members"])` for each of its groups, and only assigns roles.
+    - Any rule it re-applies must give the same result on the same input, and one test runs the same edge cases through both: a member in two groups, and a first group that falls away.
   - A row whose group ID fails `tachi_parts`' group pattern, or whose members fail its finding pattern, goes to `errors`.
   - A missing or empty Section 4a gives `{"groups": [], "errors": []}`.
 - **`parse_sarif_member_set` (T142, D8's fallback)** returns `{"members": [...], "groups": [...], "scores": {...}}`.

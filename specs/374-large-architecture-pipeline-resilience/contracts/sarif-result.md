@@ -43,6 +43,13 @@
   - all other keys belong to the scoring and control contracts (D2, D9, D10). Flags are sorted `kind:field:cause` arrays: `score-flags` in the scorer's file and `integrity-flags` in the controls file, both always present. Both carry `reused-id:finding_id:baseline` for the same finding (ruling B, D7);
   - no value names a RESOLVED finding.
 - **Key order:** as shown, in two-space JSON (`risk-scorer.md:544`).
+- **Readings ruled at W1 (2026-11-22, T023), from T015 and T016:**
+  - **The rule map.**
+    - The shared emitter's map is `sarif_common.RULE_ID_BY_PREFIX`: the long forms, all twelve prefixes with `TE`, derived from `tachi_scoring`'s one prefix resolver (D10). T010 drift-tests the shared reference against it.
+    - `PREFIX_TO_RULE` stays unchanged for the two legacy generators, whose short forms reach no adopter output (ADR-046 D1), so their pinned bytes don't move. Its new `TE` entry equals `generate-risk-scores-sarif.py`'s existing default, so no output changes.
+    - No new code imports it. T054 (W3) retires one user, and PR 2's rewrite of `generate-threats-sarif.py` on the shared emitter (lane R3b, W2′) deletes the map with its last user.
+  - **The taxa names.** PR 1 keeps the names the scorer and controls files carry today: ASI01 "Agent Autonomy Abuse", and the short CWE-78, CWE-79 and CWE-89 names. A rename would be adopter-visible and is outside this bundle. Aligning ASI and CWE names with the catalogs, and extending the drift test from IDs to names, is a close-out follow-up (T080) that goes to the PM. The OWASP-LLM taxa stay equal to the 2026 catalog, value by value.
+  - **JSON** is ASCII-only (`ensure_ascii=True`), and `findingId/v1` is written as Section 7 gives it.
 - **Test vectors:**
   - `tachi-plh/1|tachi-risk-scorer|S-1` → `4395a0c67e904b90:1`
   - `tachi-plh/1|Tachi|S-1` → `6a1fd93f275ff00b:1`

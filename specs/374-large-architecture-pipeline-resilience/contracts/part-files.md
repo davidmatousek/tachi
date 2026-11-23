@@ -142,6 +142,19 @@ Each reading is one the sources left open. `tachi_parts` (T012, T013), `tachi-st
 - **The total order on finding IDs (S-2)** is defined once in code, `tachi_parts`, and once in a shared reference, `part-file-contract-shared.md`'s "Identifiers". Every other file cites one of the two.
 - **`atomic_write`** gives the replaced file the mode an ordinary write would, `0666 & ~umask`, never the temporary file's `0600`.
 
+**Slots and escaping** (T013's slice 2).
+- **A `finding` slot's argument** must pass `tachi_parts`' finding-ID pattern when the grammar is checked, or the field takes the fallback. It is then canonicalized, and its lookup decides membership: an ID outside the reference set, or outside the chain in a chain narrative, returns `None` and takes the fallback (D3's table; step 8's "before any other use").
+- **`keep_slots=True` keeps every complete slot, whatever the stage.** A complete slot is a recognized kind, an argument matching the pattern, and `}}`.
+  - The stage is checked earlier. Step 11 has already passed persisted narrative text for its stage, or replaced it with a fixed sentence, which holds no slot.
+  - Evidence text, such as `matrix_row`'s score cells, is never resolved, so a token kept in it is never filled.
+  - A complete slot's characters can't break a table cell.
+- **A `{` just before a slot is escaped as `&#123;`.** With the slot's first brace it makes a `{{` that isn't a slot, which D3's rule covers. This holds when slots are kept and when they are resolved.
+  - So `{{{score:x}}` is written `&#123;{{score:x}}`, and it decodes and re-renders to the same bytes on the next run.
+  - A resolved value can't join a stray brace into a slot-like `{{` in the output.
+- **A slot lookup that returns anything other than text or `None` is a shipped-code defect.** It raises, and the render fails through Step F (D4), never through the per-field fallback. `None` means "doesn't resolve", and it takes the fallback.
+  - Where the table says a slot should resolve and the lookup returns `None`, the result is still a fallback in the run.
+  - W5 counts each such fallback as a shipped-code defect to fix, under the PM's ruling 2.
+
 **Documents and records** (T012's choices, confirmed).
 - **Items in planned order.** A validated part's items come back in the planned order, whatever order the agent wrote, so `input_digest` is byte-stable (D4).
 - **The document caps.** The plan is capped at 8 MiB, a batch input at 4 MiB, the pointer at 4 KiB and a stage record at 1 MiB. A writer never writes a document over its own cap.
