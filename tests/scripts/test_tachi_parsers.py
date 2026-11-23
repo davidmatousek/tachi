@@ -76,7 +76,10 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     decode_references,
     parse_attack_chains,
     parse_correlation_groups,
+    parse_controls_assessment_inputs,
     parse_sarif_member_set,
+    FORM_LACKS_CAUSE,
+    FORM_LACKS_FLAG,
     strip_bold,
     _find_table_with_column,
 )
@@ -1748,14 +1751,51 @@ def test_scores_are_only_for_the_results_that_exist_and_the_first_result_of_an_i
     assert parse_sarif_member_set(text, with_scores=False)["scores"] == {}
 
 
-def test_a_hash_is_never_read_and_a_result_has_an_id_only_from_its_finding_id_fingerprint():
+def test_a_hash_is_never_read_and_a_result_has_an_id_only_from_its_fingerprint_or_its_id_property():
     kept = _result("S-1", fingerprints={"primaryLocationLineHash": "not even a hash"})
     only_a_hash = {"ruleId": "x", "message": {"text": "m"}, "partialFingerprints": {"primaryLocationLineHash": "0123456789abcdef:1"}}
-    in_a_property = {"ruleId": "x", "message": {"text": "m"}, "properties": {"id": "T-2", "findingId": "I-3"}}
-    bad_ids = [_result(bad) for bad in (1, None, "", "S-1a", "S-" + chr(0x661), "S-1234567", "X-1", " S-1", "S-1\n", ["S-1"])]
-    result = parse_sarif_member_set(_sarif(kept, only_a_hash, in_a_property, *bad_ids))
-    assert result["members"] == ["S-1"]
+    other_properties = {"ruleId": "x", "message": {"text": "m"}, "properties": {"findingId": "I-3", "finding_id": "E-4", "ID": "D-5"}}
+    bad_ids = [_result(bad) for bad in (1, "", "S-1a", "S-" + chr(0x661), "S-1234567", "X-1", " S-1", "S-1\n", ["S-1"])]
+    bad_ids.append(_result(None, {"id": "S-1a"}))
+    result = parse_sarif_member_set(_sarif(kept, only_a_hash, other_properties, *bad_ids))
+    assert result["members"] == ["S-1"], "no hash, and no property but `id`, names a finding"
     assert "0123456789abcdef" not in json.dumps(result)
+
+
+def test_a_result_with_no_finding_id_fingerprint_takes_its_id_from_properties_id():
+    """ADR-050 D8, option (b): tachi's older SARIF has no fingerprint and carries the ID as ``properties.id``."""
+    older = {"ruleId": "tachi/risk/spoofing", "message": {"text": "m"}, "properties": {"id": "S-1"}}
+    assert parse_sarif_member_set(_sarif(older))["members"] == ["S-1"]
+    assert parse_sarif_member_set(_sarif({**older, "partialFingerprints": {}}))["members"] == ["S-1"]
+    assert parse_sarif_member_set(_sarif({**older, "properties": {"id": "AGP-01"}}))["members"] == ["AGP-1"], "canonical"
+    null_fingerprint = _result(None, {"id": "T-2"})
+    assert parse_sarif_member_set(_sarif(null_fingerprint))["members"] == ["T-2"], "a null fingerprint is no fingerprint"
+    both = _result("S-1", {"id": "T-2"})
+    assert parse_sarif_member_set(_sarif(both))["members"] == ["S-1"], "findingId/v1 wins when both are present"
+    mixed = parse_sarif_member_set(_sarif(older, _result("E-3"), {**older, "properties": {"id": "T-4"}}, both))
+    assert mixed["members"] == ["S-1", "E-3", "T-4"]
+
+
+@pytest.mark.parametrize("result", [
+    _result("S-1a", {"id": "T-2"}), _result("", {"id": "T-2"}), _result(7, {"id": "T-2"}),
+    {"message": {"text": "m"}, "properties": {"id": "X-9"}}, {"message": {"text": "m"}, "properties": {"id": "T-2\n"}},
+    {"message": {"text": "m"}, "properties": {"id": "T-" + chr(0x661)}}, {"message": {"text": "m"}, "properties": {"id": 12}},
+    {"message": {"text": "m"}, "properties": {"id": ["T-2"]}}, {"message": {"text": "m"}, "properties": {"Id": "T-2"}},
+    {"message": {"text": "m"}, "properties": ["id", "T-2"]}, {"message": {"text": "m"}, "properties": {"baselineState": "absent", "id": "T-2"}},
+], ids=["fingerprint-invalid-wins", "fingerprint-empty-wins", "fingerprint-number-wins", "unknown-prefix", "trailing-newline",
+        "unicode-digit", "number", "list", "other-spelling", "properties-a-list", "absent"])
+def test_a_result_that_names_no_allow_listed_id_is_ignored_and_an_extraction_of_only_those_is_empty(result):
+    assert parse_sarif_member_set(_sarif(result, _result("S-1")))["members"] == ["S-1"]
+    with pytest.raises(ValueError):
+        parse_sarif_member_set(_sarif(result))
+
+
+def test_the_properties_id_form_reads_its_scores_and_groups_like_the_other_forms():
+    text = _sarif({"message": {"text": "m"}, "properties": {"id": "S-1", "composite": 8.4, "severity": "Critical", **_correlated("CG-1", "primary", "S-1")}},
+                  {"message": {"text": "m"}, "properties": {"id": "T-2", "security-severity": "7.6", **_correlated("CG-1", "peer", "S-1")}})
+    assert parse_sarif_member_set(text, with_scores=True) == {
+        "members": ["S-1", "T-2"], "groups": [_group("CG-1", ["S-1", "T-2"])],
+        "scores": {"S-1": {"composite": Decimal("8.4"), "band": "Critical"}, "T-2": {"composite": Decimal("7.6"), "band": None}}}
 
 
 def test_an_id_is_one_member_under_any_spelling_and_only_the_first_run_counts():
@@ -1838,7 +1878,9 @@ def test_a_value_that_is_not_text_raises_value_error(value):
 def test_an_empty_extraction_raises_so_the_stage_stops_before_dispatch(document):
     with pytest.raises(ValueError) as raised:
         parse_sarif_member_set(json.dumps(document, default=str))
-    assert "no open finding" in str(raised.value) and "findingId/v1" in str(raised.value) and len(str(raised.value)) < 120
+    message = str(raised.value)
+    assert "no open finding" in message and "findingId/v1" in message and "properties.id" in message and len(message) < 250
+    assert message.endswith("Remedy: regenerate the markdown input")
 
 
 def test_the_reader_is_deterministic_and_returns_fresh_objects():
@@ -1875,14 +1917,37 @@ def test_a_shipped_sarif_that_carries_finding_ids_reads_as_the_distinct_ids_plus
     assert set(members) == distinct | references
 
 
-@pytest.mark.parametrize("relative", [
-    "mobile-banking-app/sample-report/threats.sarif", "predictive-ml-app/sample-report/threats.sarif",
-    "predictive-ml-app/sample-report/risk-scores.sarif", "predictive-ml-app/sample-report/compensating-controls.sarif"])
-def test_a_shipped_sarif_with_no_findingid_fingerprint_is_an_empty_extraction(relative):
-    """These older samples identify a result by `properties.id` alone. D8 reads `findingId/v1`, so a stage that falls
-    back to one of them stops before dispatch, with the error."""
-    with pytest.raises(ValueError):
-        parse_sarif_member_set(_shipped_sarif(relative))
+_PROPERTIES_ID_SAMPLES = [
+    ("mobile-banking-app/sample-report/threats.sarif", 31, ["S-1", "S-2", "S-3", "S-4", "S-5", "T-1"]),
+    ("predictive-ml-app/sample-report/threats.sarif", 49, ["S-1", "S-2", "S-3", "S-4", "S-5", "S-6"]),
+    ("predictive-ml-app/sample-report/risk-scores.sarif", 12, ["S-1", "T-10", "LLM-1", "LLM-2", "LLM-3", "LLM-4", "D-8", "D-9", "D-10", "D-11", "S-5", "S-2"]),
+    ("predictive-ml-app/sample-report/compensating-controls.sarif", 10, ["S-1", "T-10", "LLM-1", "LLM-2", "LLM-3", "LLM-4", "D-8", "D-9"]),
+]
+
+
+@pytest.mark.parametrize("relative,count,first", _PROPERTIES_ID_SAMPLES, ids=[sample[0].split("/")[0] + "-" + sample[0].rsplit("/", 1)[1]
+                                                                            for sample in _PROPERTIES_ID_SAMPLES])
+def test_a_shipped_sarif_that_carries_the_id_only_as_properties_id_yields_its_member_set(relative, count, first):
+    """D8 option (b): `mobile-banking-app`'s `threats.sarif` and all three of `predictive-ml-app`'s files have no
+    fingerprint and no correlation, and every result's `properties.id` is an allow-listed finding ID."""
+    text = _shipped_sarif(relative)
+    results = json.loads(text)["runs"][0]["results"]
+    assert all("partialFingerprints" not in result for result in results)
+    expected = [tachi_parts.canonical_finding_id(result["properties"]["id"]) for result in results]
+    parsed = parse_sarif_member_set(text, with_scores=relative.endswith("risk-scores.sarif"))
+    assert parsed["members"] == expected and len(expected) == len(set(expected)) == count
+    assert parsed["members"][:len(first)] == first
+    assert parsed["groups"] == []
+    if relative.endswith("risk-scores.sarif"):
+        assert set(parsed["scores"]) == set(expected) and all(s["composite"] is not None for s in parsed["scores"].values())
+
+
+def test_the_older_sample_that_matches_its_markdown_reads_the_same_member_set():
+    """`mobile-banking-app`'s `threats.sarif` has one result per Section 7 row, so the two readers agree. (The
+    `predictive-ml-app` SARIF files are partial: 12 results for a 28-row `risk-scores.md`, and no N/N.)"""
+    sarif = parse_sarif_member_set(_shipped_sarif("mobile-banking-app/sample-report/threats.sarif"))["members"]
+    reference = parse_reference_set(_example_threats("mobile-banking-app/sample-report"))
+    assert sorted(sarif, key=tachi_parts.finding_sort_key) == [finding["id"] for finding in reference["open"]]
 
 
 def test_the_scores_of_a_shipped_risk_scores_sarif_read_for_every_result():
@@ -1905,3 +1970,702 @@ def test_the_fallback_reads_the_groups_that_section_4a_gives_on_a_shipped_sample
     assert from_markdown and len(from_markdown) == len(sarif["groups"])
     assert sorted((g["primary"], sorted(g["members"])) for g in sarif["groups"]) == \
         sorted((g["primary"], sorted(g["members"])) for g in from_markdown)
+
+
+# =============================================================================
+# Feature 374 (W2, T032): the drift forms of Section 7 (S-12, FR-E.16)
+#
+# The reference-set wrapper reads Section 7 under `## 7. Recommended Actions` or `## Section 7: Recommended Actions`, as a
+# table or, when there is none, as the numbered list of bolded IDs that two shipped samples show. A value the form lacks is
+# listed in `lacking`, so a stage can derive it from the baseline or score the finding fresh, flag it and list it (S-12(b)).
+# Any other unreadable Section 7 raises, naming the file, the section, the expected forms and the remedy (S-12(c)).
+# =============================================================================
+
+_FINDING_TABLES = ("## 3. Findings\n\n| ID | Component | Threat |\n|----|-----------|--------|\n" + "\n".join(
+    "| %s | Gateway | A threat |" % finding_id for finding_id in ("S-1", "T-1", "T-2", "T-3", "T-5", "E-1", "AGP-01", "LLM-1")) + "\n\n")
+
+
+def _list_md(section_7, heading="## 7. Recommended Actions", tables=_FINDING_TABLES):
+    """A small threats.md whose Section 7 is ``section_7``, after finding tables that a range is checked against."""
+    return "# Report\n\n" + tables + heading + "\n\n" + section_7 + "\n\n## 9. Source Attribution\n\nNothing here.\n"
+
+
+_LIST_SECTION = """\
+### Critical Priority
+
+1. **S-1**: Fix the first thing.
+2. **T-1 + E-1**: Fix two things together.
+
+### High Priority (within sprint)
+
+3. **LLM-1 — A titled action**: Fix with a title.
+
+### Medium / Low Priority
+
+4. **T-2 through T-5**: Fix a span.
+"""
+
+
+def test_the_numbered_list_form_reads_ids_text_and_priority_in_s2_order():
+    reference = parse_reference_set(_list_md(_LIST_SECTION), source="run/threats.md")
+    assert reference["form"] == "list" and reference["resolved"] == [] and reference["duplicates"] == []
+    rows = {finding["id"]: finding for finding in reference["open"]}
+    assert [finding["id"] for finding in reference["open"]] == ["S-1", "T-1", "T-2", "T-3", "T-5", "E-1", "LLM-1"], \
+        "S-2 order, and T-4 is not in the file's tables, so the range keeps T-2, T-3 and T-5"
+    assert rows["S-1"] == {"id": "S-1", "component": "", "threat": "", "likelihood": "—", "impact": "—",
+                           "risk_level": "Critical", "mitigation": "Fix the first thing.", "agentic_pattern": "none"}
+    assert rows["T-1"]["mitigation"] == rows["E-1"]["mitigation"] == "Fix two things together." and rows["E-1"]["risk_level"] == "Critical"
+    assert rows["LLM-1"]["risk_level"] == "High" and rows["LLM-1"]["mitigation"] == "Fix with a title.", "the bold title is dropped"
+    assert rows["T-3"]["risk_level"] == "" and rows["T-3"]["mitigation"] == "Fix a span."
+    assert all("delta_status" not in finding for finding in reference["open"]), "the form has no Status"
+
+
+def test_what_the_list_form_lacks_is_listed_for_every_finding():
+    reference = parse_reference_set(_list_md(_LIST_SECTION))
+    everything = ["component", "threat", "delta_status"]
+    assert reference["lacking"] == {"S-1": everything, "T-1": everything, "E-1": everything, "LLM-1": everything,
+                                    "T-2": everything + ["risk_level"], "T-3": everything + ["risk_level"], "T-5": everything + ["risk_level"]}
+
+
+def test_each_lacking_value_has_the_flag_that_the_closed_vocabulary_gives_it():
+    """S-12(b): `input:<field>:not-in-form`, one for each value the form lacks, sorted, on each finding that lacks any."""
+    reference = parse_reference_set(_list_md(_LIST_SECTION))
+    assert (FORM_LACKS_CAUSE, FORM_LACKS_FLAG) == ("not-in-form", "input:%s:not-in-form")
+    assert reference["flags"]["S-1"] == ["input:component:not-in-form", "input:delta_status:not-in-form", "input:threat:not-in-form"]
+    assert reference["flags"]["T-3"] == ["input:component:not-in-form", "input:delta_status:not-in-form", "input:risk_level:not-in-form",
+                                         "input:threat:not-in-form"]
+    assert set(reference["flags"]) == set(reference["lacking"]), "the same findings"
+    assert all(flags == sorted(FORM_LACKS_FLAG % name for name in reference["lacking"][finding_id]) for finding_id, flags in reference["flags"].items())
+    no_status = parse_reference_set(_ref_md(["| S-1 | Gateway | A threat | High | A fix |"], header="| Finding ID | Component | Threat | Risk Level | Mitigation |\n|---|---|---|---|---|"))
+    assert no_status["flags"] == {"S-1": ["input:delta_status:not-in-form"]}
+    assert parse_reference_set(_ref_md([_ref_row("S-1", "NEW")]))["flags"] == {}, "a table with every column lacks nothing"
+
+
+def test_the_flag_fits_the_scorers_closed_vocabulary_in_kind_field_and_cause():
+    """`<kind>:<field>:<cause>`: the kind is one of the stage record's flag kinds, the field a finding-schema name (as
+    `severity_band` and `remediation_sla` are), the cause kebab-case; and a finding has at most one flag for a kind and field."""
+    finding_fields = {"component", "threat", "delta_status", "risk_level"}
+    for sample in ("consumer-agent-app/sample-report", "predictive-ml-app/sample-report", "maestro-reference", "mobile-banking-app/sample-report"):
+        for finding_id, flags in parse_reference_set(_example_threats(sample))["flags"].items():
+            assert flags == sorted(flags) and len(flags) == len({flag.rsplit(":", 1)[0] for flag in flags}), finding_id
+            for flag in flags:
+                kind, field, cause = flag.split(":")
+                assert kind in tachi_parts.COUNT_KEYS and field in finding_fields and re.fullmatch(r"[a-z]+(-[a-z0-9]+)*", cause), flag
+                assert (kind, cause) == ("input", "not-in-form")
+
+
+@pytest.mark.parametrize("heading", ["Critical Priority", "CRITICAL Priority (immediate action)", "### high priority", "MEDIUM Priority (next quarter)",
+                                     "LOW Priority (backlog)"])
+def test_a_subheading_that_names_one_band_gives_that_risk_level(heading):
+    text = _list_md("### %s\n\n1. **S-1**: Fix.\n" % heading.lstrip("# "))
+    assert parse_reference_set(text)["open"][0]["risk_level"] == heading.lstrip("# ").split()[0].capitalize()
+
+
+@pytest.mark.parametrize("heading", ["Medium / Low Priority", "High-impact fixes (low effort)", "Notes", "Quick wins"])
+def test_a_subheading_that_names_no_band_or_several_gives_no_risk_level(heading):
+    reference = parse_reference_set(_list_md("### %s\n\n1. **S-1**: Fix.\n" % heading))
+    assert reference["open"][0]["risk_level"] == "" and "risk_level" in reference["lacking"]["S-1"]
+
+
+@pytest.mark.parametrize("heading", ["## 7. Recommended Actions", "## Section 7: Recommended Actions", "## 7. Recommended Actions (Prioritized)",
+                                     "## Section 7: Recommended Actions (Prioritized)", "### 7. Recommended Actions", "## Section 7. Recommended Actions"])
+def test_section_7_is_read_under_each_heading_for_a_list_and_for_a_table(heading):
+    list_reference = parse_reference_set(_list_md("1. **S-1**: Fix.\n2. **T-1**: Fix.\n", heading=heading))
+    assert (list_reference["form"], [f["id"] for f in list_reference["open"]]) == ("list", ["S-1", "T-1"])
+    table_reference = parse_reference_set(_ref_md([_ref_row("S-1", "NEW"), _ref_row("T-1", "UPDATED")], heading=heading))
+    assert (table_reference["form"], [f["id"] for f in table_reference["open"]]) == ("table", ["S-1", "T-1"])
+    assert [f["delta_status"] for f in table_reference["open"]] == ["NEW", "UPDATED"] and table_reference["lacking"] == {}
+
+
+@pytest.mark.parametrize("bold,ids", [
+    ("S-1", ["S-1"]), ("S-1 + T-1", ["S-1", "T-1"]), ("S-1+T-1+E-1", ["S-1", "T-1", "E-1"]), ("T-2 through T-5", ["T-2", "T-3", "T-5"]),
+    ("T-2 through T-2", ["T-2"]), ("S-1 — A title", ["S-1"]), ("S-1 – A title", ["S-1"]), ("S-1 - A title", ["S-1"]),
+    ("S-1 + T-1 — A title", ["S-1", "T-1"]), ("T-2 through T-5 — A title", ["T-2", "T-3", "T-5"]), ("AGP-01", ["AGP-01"]),
+])
+def test_the_three_spellings_of_the_bold_text_and_an_optional_title(bold, ids):
+    reference = parse_reference_set(_list_md("1. **%s**: Fix.\n" % bold))
+    assert sorted(f["id"] for f in reference["open"]) == sorted(ids)
+    assert all(f["mitigation"] == "Fix." for f in reference["open"])
+
+
+def test_a_range_is_kept_to_the_ids_the_files_tables_list_and_never_to_a_resolved_one():
+    tables = _FINDING_TABLES + "## 4c. Resolved Findings\n\n| ID | Component | Threat | Last Risk Level | Resolution Reason |\n|---|---|---|---|---|\n| T-3 | Old | Gone | High | Fixed |\n\n"
+    reference = parse_reference_set(_list_md("1. **T-1 through T-5**: Fix.\n", tables=tables))
+    assert [f["id"] for f in reference["open"]] == ["T-1", "T-2", "T-5"], "T-3 is resolved and T-4 is in no table"
+    assert [f["id"] for f in reference["resolved"]] == ["T-3"]
+
+
+def test_an_id_the_list_names_twice_is_one_finding_and_the_first_item_wins():
+    reference = parse_reference_set(_list_md("1. **S-1**: First.\n2. **S-1 + T-1**: Second.\n3. **AGP-01**: Third.\n4. **AGP-1**: Fourth.\n"))
+    assert [(f["id"], f["mitigation"]) for f in reference["open"]] == [("S-1", "First."), ("T-1", "Second."), ("AGP-01", "Third.")]
+    assert reference["duplicates"] == ["S-1", "AGP-1"]
+    assert sorted(reference["lacking"]) == ["AGP-1", "S-1", "T-1"], "the lacking map is keyed by canonical ID"
+
+
+def test_only_a_numbered_item_counts_and_an_indented_line_is_a_continuation():
+    section = ("Some prose before the list.\n\n1. **S-1**: Fix it\n   and then keep going.\n    1. a sub-item that is not bold\n\n"
+               "- a bullet note\n\n2. **T-1**: Fix.\n\n---\n")
+    assert [f["id"] for f in parse_reference_set(_list_md(section))["open"]] == ["S-1", "T-1"]
+
+
+def test_a_table_wins_over_a_list_in_the_same_section_and_a_list_item_never_turns_into_a_row():
+    mixed = _list_md("| Finding ID | Component | Threat | Risk Level | Mitigation |\n|---|---|---|---|---|\n| S-1 | G | T | High | Fix |\n\n1. **T-1**: List.\n")
+    reference = parse_reference_set(mixed)
+    assert (reference["form"], [f["id"] for f in reference["open"]]) == ("table", ["S-1"])
+
+
+@pytest.mark.parametrize("section,problem", [
+    ("1. S-1: not bold.\n", "has a numbered item that doesn't start with a bolded finding ID (line {0})"),
+    ("1. **Note**: not an ID.\n", "names 'Note', which is not a finding ID (line {0})"),
+    ("1. **S-1 + X-9**: unknown prefix.\n", "names 'X-9', which is not a finding ID (line {0})"),
+    ("1. **S-1**: ok.\n2. **T-1:** colon inside the bold.\n", "names 'T-1:', which is not a finding ID (line {1})"),
+    ("1. **S-1, T-1**: comma-joined.\n", "names 'S-1, T-1', which is not a finding ID (line {0})"),
+    ("1. **T-2 through E-1**: two prefixes.\n", "has a range that can't be read (line {0})"),
+    ("1. **T-5 through T-2**: descending.\n", "has a range that can't be read (line {0})"),
+    ("1. **T-1 through T-9999**: too wide.\n", "has a range that can't be read (line {0})"),
+    ("1. **T-1 through X-9**: unknown.\n", "names 'X-9', which is not a finding ID (line {0})"),
+    ("1. **E-5 through E-9**: none listed.\n", "has a range that names no finding the file's tables list (line {0})"),
+    ("- **S-1**: a bullet list.\n- **T-1**: another.\n", "holds no table rows and no numbered list of bolded finding IDs"),
+    ("Fix everything soon.\n", "holds no table rows and no numbered list of bolded finding IDs"),
+    ("", "holds no table rows and no numbered list of bolded finding IDs"),
+    ("1. **\u2014**: a dash placeholder.\n", "names '\u2014', which is not a finding ID (line {0})"),
+], ids=["not-bold", "bold-not-an-id", "unknown-prefix", "colon-in-bold", "comma-joined", "two-prefixes", "descending", "too-wide", "unknown-range-end",
+        "range-confirms-nothing", "bullets", "prose", "empty", "dash-placeholder"])
+def test_any_other_section_7_raises_naming_the_file_the_section_the_forms_and_the_remedy(section, problem):
+    """S-12(c): the run ends before any agent is dispatched. A finding is never lost without a word."""
+    content = _list_md(section)
+    first = content.split("\n").index(section.split("\n")[0]) + 1 if section else 0
+    with pytest.raises(ReferenceSetError) as raised:
+        parse_reference_set(content, source="run/threats.md")
+    error = raised.value
+    assert error.reason == "run/threats.md: Section 7 (Recommended Actions) " + problem.format(first, first + 1)
+    assert "'Finding ID' column" in error.expected and "numbered list" in error.expected and "bolded finding ID" in error.expected
+    assert "table form" in error.remedy and "numbered-list form" in error.remedy and "/tachi.threat-model" in error.remedy
+    assert str(error) == "%s. Expected %s. Remedy: %s" % (error.reason, error.expected, error.remedy)
+
+
+def test_a_range_with_no_finding_tables_to_check_it_against_raises():
+    with pytest.raises(ReferenceSetError) as raised:
+        parse_reference_set(_list_md("1. **T-2 through T-3**: Fix.\n", tables=""))
+    assert "has a range, and the file has no finding tables to check it against (line 5)" in raised.value.reason, raised.value.reason
+
+
+def test_a_table_section_7_that_the_old_reader_read_is_read_the_same_and_nothing_it_lacks_is_a_surprise():
+    full = parse_reference_set(_ref_md([_ref_row("S-1", "NEW"), _ref_row("T-1", "UNCHANGED")]))
+    assert full["form"] == "table" and full["lacking"] == {}
+    no_status = parse_reference_set(_ref_md(["| S-1 | Gateway | A threat | High | A fix |"], header="| Finding ID | Component | Threat | Risk Level | Mitigation |\n|---|---|---|---|---|"))
+    assert no_status["lacking"] == {"S-1": ["delta_status"]}
+    bare = parse_reference_set(_ref_md(["| S-1 | High | A fix |"], header="| Finding ID | Risk Level | Mitigation |\n|---|---|---|"))
+    assert bare["lacking"] == {"S-1": ["component", "threat", "delta_status"]}
+
+
+def test_the_unchanged_parsers_still_say_nothing_for_a_list_form_file(capsys):
+    """FR-E.16: `parse_threats_findings` is unchanged for the extractors, which rely on `[]` and its warning."""
+    content = _list_md(_LIST_SECTION)
+    assert parse_threats_findings(content) == []
+    assert "could not find Recommended Actions table" in capsys.readouterr().err
+    assert delta_status_by_id(content) == ({}, False, 0)
+
+
+# ---- the shipped drift-form samples, as read-only inputs --------------------------------------------------------------
+
+_CONSUMER_IDS = ["S-1", "S-2", "T-1", "T-2", "T-3", "R-1", "R-2", "I-1", "I-2", "I-3", "D-1", "D-2", "D-3", "E-1", "TE-1", "TE-2", "TE-3", "TE-4", "TE-5"]
+
+
+def test_the_consumer_agent_app_sample_reads_as_a_list_under_a_section_7_heading():
+    """`## Section 7: Recommended Actions (Prioritized)`, items `N. **ID — Title**: text` under CRITICAL, HIGH, MEDIUM and LOW."""
+    reference = parse_reference_set(_example_threats("consumer-agent-app/sample-report"), source="threats.md")
+    assert reference["form"] == "list" and reference["resolved"] == [] and reference["duplicates"] == []
+    assert [finding["id"] for finding in reference["open"]] == _CONSUMER_IDS
+    levels = {finding["id"]: finding["risk_level"] for finding in reference["open"]}
+    assert levels["TE-5"] == "Critical" and levels["TE-1"] == levels["S-1"] == "High" and levels["S-2"] == "Medium" and levels["R-2"] == "Low"
+    assert reference["lacking"] == {finding_id: ["component", "threat", "delta_status"] for finding_id in _CONSUMER_IDS}
+    assert reference["flags"] == {finding_id: ["input:component:not-in-form", "input:delta_status:not-in-form", "input:threat:not-in-form"]
+                                  for finding_id in _CONSUMER_IDS}
+    rows = {finding["id"]: finding for finding in reference["open"]}
+    assert rows["TE-5"]["mitigation"].startswith("implement vulnerable-population safeguards layer")
+    assert rows["S-1"]["mitigation"].startswith("deploy multi-factor authentication")
+    members = parse_sarif_member_set(_shipped_sarif("consumer-agent-app/sample-report/threats.sarif"))["members"]
+    assert sorted(members, key=tachi_parts.finding_sort_key) == _CONSUMER_IDS, "the same 19 findings as the sample's own SARIF"
+
+
+def test_the_predictive_ml_app_sample_reads_as_a_list_with_ranges_and_joined_ids():
+    """`## 7. Recommended Actions (Prioritized)`: `**T-10**`, `**LLM-3 + LLM-4**` and `**T-2 through T-9**` under Critical,
+    High and `Medium / Low` subheadings. Section 7 lists 37 of the file's 49 findings, and that is the reference set."""
+    reference = parse_reference_set(_example_threats("predictive-ml-app/sample-report"))
+    ids = [finding["id"] for finding in reference["open"]]
+    assert reference["form"] == "list" and len(ids) == len(set(ids)) == 37
+    for span in (["T-2", "T-3", "T-4", "T-5", "T-6", "T-7", "T-8", "T-9"], ["E-1", "E-2", "E-3", "E-4", "E-5"],
+                 ["R-1", "R-2", "R-3", "R-4", "R-5", "R-6", "R-7"], ["D-1", "D-2", "D-3", "D-4", "D-5", "D-6"]):
+        assert set(span) <= set(ids), span
+    rows = {finding["id"]: finding for finding in reference["open"]}
+    assert rows["T-10"]["risk_level"] == "Critical" and rows["S-5"]["risk_level"] == rows["T-7"]["risk_level"] == "High"
+    assert rows["LLM-3"]["mitigation"] == rows["LLM-4"]["mitigation"] and rows["D-10"]["mitigation"] == rows["D-11"]["mitigation"]
+    assert rows["T-10"]["source_attribution"][0] == {"taxonomy": "owasp", "id": "ML01", "relationship": "primary"}
+    unleveled = sorted(finding_id for finding_id, finding in rows.items() if not finding["risk_level"])
+    assert unleveled == ["D-1", "D-2", "D-3", "D-4", "D-5", "D-6", "R-1", "R-2", "R-3", "R-4", "R-5", "R-6", "R-7"], "`Medium / Low Priority`"
+    assert all(names == ["component", "threat", "delta_status"] + (["risk_level"] if finding_id in unleveled else [])
+               for finding_id, names in reference["lacking"].items()) and len(reference["lacking"]) == 37
+    assert sum(len(flags) for flags in reference["flags"].values()) == 37 * 3 + 13, "four flags on the 13 with no risk level, three on the rest"
+    absent = {"I-1", "I-2", "I-3", "I-4", "I-5", "I-6", "I-7", "S-1", "S-2", "S-3", "S-4", "T-1"}
+    members = set(parse_sarif_member_set(_shipped_sarif("predictive-ml-app/sample-report/threats.sarif"))["members"])
+    assert members == set(ids) | absent and not (absent & set(ids)), "the other 12 of the file's 49 findings are not in its Section 7"
+
+
+def test_the_maestro_reference_sample_is_a_table_without_a_status_column_and_lists_one_finding_twice():
+    reference = parse_reference_set(_example_threats("maestro-reference"))
+    assert reference["form"] == "table" and reference["duplicates"] == ["I-17"] and len(reference["open"]) == 110
+    assert set(tuple(names) for names in reference["lacking"].values()) == {("delta_status",)} and len(reference["lacking"]) == 110
+
+
+def test_the_shipped_table_samples_with_every_column_lack_nothing():
+    for relative in ("agentic-app", "web-app", "microservices"):
+        reference = parse_reference_set(_example_threats(relative))
+        assert reference["form"] == "table" and reference["lacking"] == {}, relative
+
+
+# =============================================================================
+# Feature 374 (W2, T057): the controls file in K8's corrected format and in the pre-fix format (FR-K8.1, FR-K8.2)
+#
+# Both parse to the same rows. K8's one Section 2 schema adds MAESTRO Layer and Control Category to the pre-fix columns
+# (CF is in both), and the parser reads each by header name, per band table. A row only gains keys.
+# =============================================================================
+
+# id, CF, component, MAESTRO layer, control category, threat, inherent, inherent band, control status, residual, residual band
+_CONTROL_ROWS = [
+    ("T-1", "—", "API Gateway", "L4 — Deployment and Infrastructure", "Rate Limiting", "A denial of service threat", "7.5", "High",
+     "No Control Found", "7.5", "High"),
+    ("S-2", "CF", "Auth Service", "L3 — Agent Frameworks", "Authentication", "A spoofing threat", "9.1", "Critical",
+     "Partial Control", "5.5", "Medium"),
+    ("E-3", "—", "Admin UI", "L7 — Agent Ecosystem", "Access Control", "An elevation threat", "6.0", "Medium",
+     "Control Found", "3.0", "Low"),
+]
+_PREFIX_HEADER = ["Threat ID", "CF", "Component", "Threat", "Inherent Score", "Inherent Severity", "Control Status", "Residual Score", "Residual Severity"]
+_K8_HEADER = ["Threat ID", "CF", "Component", "MAESTRO Layer", "Threat", "Inherent Score", "Inherent Severity", "Control Status",
+              "Control Category", "Residual Score", "Residual Severity"]
+_ROW_FIELDS = ["Threat ID", "CF", "Component", "MAESTRO Layer", "Control Category", "Threat", "Inherent Score", "Inherent Severity",
+               "Control Status", "Residual Score", "Residual Severity"]
+
+
+def _control_table(header, rows):
+    cells = lambda values: "| " + " | ".join(values) + " |"  # noqa: E731
+    named = [dict(zip(_ROW_FIELDS, row)) for row in rows]
+    return "\n".join([cells(header), cells(["---"] * len(header))] + [cells([row[name] for name in header]) for row in named])
+
+
+def _controls_md(header, rows=_CONTROL_ROWS, omit_empty_bands=False, tail=""):
+    """A compensating-controls.md with ``header`` for every band table. The pre-fix file lists all four bands."""
+    by_band = {band: [row for row in rows if row[10] == band] for band in ("Critical", "High", "Medium", "Low")}
+    sections = []
+    for band, in_band in by_band.items():
+        if not in_band and omit_empty_bands:
+            continue
+        sections.append("### %s Residual Severity\n\n%s\n" % (band, _control_table(header, in_band)))
+    return ("---\nschema_version: \"1.0\"\n---\n\n# Compensating Controls Report\n\n## 1. Executive Summary\n\n"
+            "**3** threats analyzed\n\n**Risk Reduction**: 22.6 inherent -> 16.0 residual (**29.2%** reduction)\n\n"
+            "**Coverage Distribution:**\n\n| Status | Count | Percentage |\n|---|---|---|\n| Control Found | 1 | 33% |\n"
+            "| Partial Control | 1 | 33% |\n| No Control Found | 1 | 33% |\n\n---\n\n## 2. Coverage Matrix\n\n" + "\n".join(sections) +
+            "\n### Summary Statistics\n\n| Residual Severity | Count | Percentage |\n|---|---|---|\n| High | 1 | 33% |\n\n---\n\n"
+            "## 3. Control Details\n\n### Authentication\n\n#### CTRL-1 — Token validation\n\n"
+            "**Category**: Authentication | **Status**: Found | **Effectiveness**: Medium\n\n**Detected in**: `src/auth.py:12`\n\n"
+            "**Threats Mitigated by This Control**:\n\n| Threat ID | Component | Threat | Inherent Score |\n|---|---|---|---|\n"
+            "| S-2 | Auth Service | A spoofing threat | 9.1 |\n\n---\n\n## 4. Recommendations\n\nActionable recommendations.\n\n"
+            "### Critical / High Risk Gaps\n\n#### 1. S-2 — Auth Service (Composite: 9.1, Critical)\n\n**Current Status**: Partial Control\n\n"
+            "**What to Implement**: Harden the token check.\n\n**Where to Implement**: `src/auth.py`\n\n**Effort Estimate**: Medium\n\n"
+            "#### 2. T-1 — API Gateway (Composite: 7.5, High)\n\n**Current Status**: No Control Found\n\n"
+            "**What to Implement**: Add a rate limit.\n\n**Effort Estimate**: Low\n\n---\n\n## 5. Residual Risk Summary\n\nText.\n" + tail)
+
+
+_K8_SECTION_7 = ("\n## 7. Analysis Integrity\n\n### Input Issues\n\nNone.\n\n### Assessment Inputs\n\n| ID | Field | Value |\n|---|---|---|\n"
+                 "| S-2 | control_status | partial |\n")
+_NEW_CONTROL_KEYS = ("maestro_layer", "control_category")
+
+
+def _without_k8_cells(result):
+    return dict(result, findings=[{key: value for key, value in finding.items() if key not in _NEW_CONTROL_KEYS} for finding in result["findings"]])
+
+
+def test_a_controls_file_in_either_format_parses_to_the_same_rows():
+    pre_fix = parse_compensating_controls_md(_controls_md(_PREFIX_HEADER))
+    corrected = parse_compensating_controls_md(_controls_md(_K8_HEADER, omit_empty_bands=True, tail=_K8_SECTION_7))
+    assert [f["id"] for f in pre_fix["findings"]] == ["T-1", "S-2", "E-3"], "by residual band: High, Medium, Low"
+    assert _without_k8_cells(corrected) == _without_k8_cells(pre_fix), "the same findings, totals, matrix, controls and recommendations"
+    by_id = {finding["id"]: finding for finding in corrected["findings"]}
+    assert by_id["S-2"]["recommendation"] == "Harden the token check." and by_id["T-1"]["recommendation"] == "Add a rate limit."
+    assert by_id["E-3"]["recommendation"] == "" and by_id["S-2"]["status_class"] == "partial"
+    assert pre_fix["controls"] == corrected["controls"] and len(corrected["controls"]) == 1
+
+
+def test_the_corrected_format_adds_maestro_layer_and_control_category_and_the_pre_fix_format_leaves_them_empty():
+    corrected = {f["id"]: f for f in parse_compensating_controls_md(_controls_md(_K8_HEADER))["findings"]}
+    pre_fix = {f["id"]: f for f in parse_compensating_controls_md(_controls_md(_PREFIX_HEADER))["findings"]}
+    for row in _CONTROL_ROWS:
+        assert corrected[row[0]]["maestro_layer"] == row[3] and corrected[row[0]]["control_category"] == row[4]
+        assert pre_fix[row[0]]["maestro_layer"] == "" and pre_fix[row[0]]["control_category"] == ""
+
+
+@pytest.mark.parametrize("order", [
+    ["Threat ID", "CF", "Component", "MAESTRO Layer", "Threat", "Inherent Score", "Inherent Severity", "Control Status", "Control Category",
+     "Residual Score", "Residual Severity"],
+    ["Control Category", "MAESTRO Layer", "Threat ID", "Component", "Threat", "CF", "Inherent Score", "Inherent Severity", "Control Status",
+     "Residual Score", "Residual Severity"],
+], ids=["the-agent-spec-order", "another-order"])
+def test_the_columns_are_read_by_header_name_wherever_they_sit(order):
+    findings = {f["id"]: f for f in parse_compensating_controls_md(_controls_md(order))["findings"]}
+    assert findings["S-2"]["maestro_layer"] == "L3 — Agent Frameworks" and findings["S-2"]["control_category"] == "Authentication"
+    assert findings["S-2"]["carried_forward"] is True and findings["T-1"]["carried_forward"] is False
+    assert findings["T-1"]["component"] == "API Gateway" and findings["T-1"]["residual_severity"] == "High"
+
+
+@pytest.mark.parametrize("header", ["MAESTRO Layer.", "maestro layer", "MAESTRO  Layer", "**MAESTRO Layer**"])
+def test_the_added_headers_are_matched_the_way_the_other_aliases_are(header):
+    table = ("### High Residual Severity\n\n| Threat ID | %s | Control Category. | Threat | Inherent | Status | Residual |\n|---|---|---|---|---|---|---|\n"
+             "| T-1 | L1 | Encryption | A threat | 7.5 | No Control Found | 7.5 |\n" % header)
+    (finding,) = parse_compensating_controls_md("## 2. Coverage Matrix\n\n" + table)["findings"]
+    assert (finding["maestro_layer"], finding["control_category"]) == ("L1", "Encryption")
+
+
+@pytest.mark.parametrize("cell,carried", [("CF", True), ("cf", True), ("**CF**", True), (" CF ", True), ("—", False), ("-", False), ("", False),
+                                          ("Y", False), ("carried", False), ("CF*", False)])
+def test_the_cf_marker_is_a_carried_forward_row_only_when_the_cell_is_cf(cell, carried):
+    table = ("### High Residual Severity\n\n| Threat ID | CF | Component | Threat | Inherent | Status | Residual |\n|---|---|---|---|---|---|---|\n"
+             "| T-1 | %s | API | A threat | 7.5 | No Control Found | 7.5 |\n" % cell)
+    (finding,) = parse_compensating_controls_md("## 2. Coverage Matrix\n\n" + table)["findings"]
+    assert finding["carried_forward"] is carried
+
+
+def test_a_table_with_no_cf_column_has_no_carried_rows():
+    table = "### High Residual Severity\n\n| Threat ID | Component | Threat | Inherent | Status | Residual |\n|---|---|---|---|---|---|\n| T-1 | API | A threat | 7.5 | No Control Found | 7.5 |\n"
+    (finding,) = parse_compensating_controls_md("## 2. Coverage Matrix\n\n" + table)["findings"]
+    assert finding["carried_forward"] is False and finding["maestro_layer"] == ""
+
+
+def test_a_drifted_file_that_mixes_the_two_schemas_between_bands_reads_each_table_by_its_own_header():
+    """The drift K8 removes: before the fix, one file's band tables could carry different columns."""
+    rows = _CONTROL_ROWS
+    high_and_medium = _controls_md(_PREFIX_HEADER).replace(
+        _control_table(_PREFIX_HEADER, [row for row in rows if row[10] == "Medium"]), _control_table(_K8_HEADER, [row for row in rows if row[10] == "Medium"]))
+    findings = {f["id"]: f for f in parse_compensating_controls_md(high_and_medium)["findings"]}
+    assert findings["S-2"]["control_category"] == "Authentication" and findings["T-1"]["control_category"] == ""
+    assert _without_k8_cells(parse_compensating_controls_md(high_and_medium)) == _without_k8_cells(parse_compensating_controls_md(_controls_md(_PREFIX_HEADER)))
+
+
+def test_an_empty_band_table_and_an_omitted_band_heading_read_the_same():
+    kept = parse_compensating_controls_md(_controls_md(_K8_HEADER))
+    omitted = parse_compensating_controls_md(_controls_md(_K8_HEADER, omit_empty_bands=True))
+    assert kept == omitted and "### Critical Residual Severity" in _controls_md(_K8_HEADER) and "### Critical Residual Severity" not in _controls_md(_K8_HEADER, omit_empty_bands=True)
+
+
+def test_the_corrected_formats_section_7_and_its_group_headings_change_nothing():
+    plain = parse_compensating_controls_md(_controls_md(_K8_HEADER))
+    with_integrity = parse_compensating_controls_md(_controls_md(_K8_HEADER, tail=_K8_SECTION_7))
+    assert plain == with_integrity
+
+
+def test_the_extractors_controls_readers_give_the_same_report_data_for_both_formats(extract_report_data):
+    """Tier 1 reads the controls file through the parser, so the PDF's findings, recommendations and roadmap are the same."""
+    outputs = []
+    for header, md in ((_PREFIX_HEADER, _controls_md(_PREFIX_HEADER)), (_K8_HEADER, _controls_md(_K8_HEADER, omit_empty_bands=True, tail=_K8_SECTION_7))):
+        data = parse_compensating_controls_md(md)
+        findings = data["findings"]
+        extract_report_data._apply_recommendation_fallback(findings, "")
+        outputs.append({
+            "section_4": extract_report_data._section4_has_content(md),
+            "typst": [extract_report_data._format_finding(finding, 1) for finding in findings],
+            "roadmap": extract_report_data.build_remediation_actions(findings, 1, cc_data=data),
+            "controls": data["controls"], "matrix": data["coverage_matrix"], "summary": data["coverage_summary"], "severity": data["severity"]})
+    assert outputs[0] == outputs[1]
+    assert outputs[0]["section_4"] is True and len(outputs[0]["typst"]) == 3
+    assert [action["recommendation"] for action in outputs[0]["roadmap"]] == [
+        "Add a rate limit.", "Harden the token check.", extract_report_data.REC_PLACEHOLDER], "the §4 blocks joined their findings"
+
+
+def test_every_shipped_controls_file_reads_as_the_pre_fix_format():
+    paths = sorted((REPO_ROOT / "examples").rglob("compensating-controls.md"))
+    assert len(paths) == 5
+    for path in paths:
+        findings = parse_compensating_controls_md(path.read_text(encoding="utf-8"))["findings"]
+        assert findings and all(f["maestro_layer"] == f["control_category"] == "" and f["carried_forward"] is False for f in findings), path.parent.name
+
+
+# =============================================================================
+# Feature 374 (W2, T143): the controls file's persisted inputs, parse_controls_assessment_inputs (AR-T3)
+#
+# `### Assessment Inputs` holds each finding's whole controls result as `| ID | Field | Value |` rows (contracts/
+# module-signatures.md): one row per value that exists, the field a dotted address (`evidence.0.summary`), each value
+# escaped on write by D3's table-cell rule. The reader decodes it once, checks the closed values, and returns the
+# items, so a carried result is escaped once per render and reads back byte for byte.
+# =============================================================================
+
+_RATINGS = {"coverage": "High", "configuration": "Medium", "currency": "Low", "completeness": "High"}
+
+_PARTIAL_ITEM = {
+    "control_status": "partial", "control_category": "input-validation", "confidence": "Medium", "carried_forward": False,
+    "evidence": [
+        {"file": "src/validate.py", "line": 42, "language": "python",
+         "snippet": "if a < b && c > d:\n    run(\"x|y\")  # `tick` & {{7*7}}",
+         "summary": "Checks a < b and a | b only",
+         "assessment": {name: {"rating": rating, "rationale": "The %s check is {{count:evidence}} deep, &lt; kept" % name}
+                        for name, rating in _RATINGS.items()}},
+        {"file": "src/forms/parse.ts", "line": 7, "language": "typescript", "snippet": "const ok = a>b;", "summary": "A second place"},
+    ],
+    "matrix_row": "| S-2 | CF | Auth Service | L3 — Agent Frameworks | A <threat> | {{score:inherent}} | {{band:inherent}} | Partial Control | "
+                  "input-validation | {{score:residual}} | {{band:residual}} |",
+    "recommendation_body": "**What to Implement**: Validate `a` and `b`.\nAnd escape the | character, keeping &amp; as written.\n\n"
+                           "**Effort Estimate**: Low",
+}
+_MISSING_ITEM = {
+    "control_status": "missing", "control_category": "authentication", "confidence": None, "carried_forward": True, "evidence": [],
+    "matrix_row": "| T-1 | — | API | L1 | A threat | {{score:inherent}} | {{band:inherent}} | No Control Found | authentication | "
+                  "{{score:residual}} | {{band:residual}} |",
+    "recommendation_body": "**What to Implement**: Add one.",
+}
+_FOUND_ITEM = {
+    "control_status": "found", "control_category": "csp-security-headers", "confidence": "High", "carried_forward": False,
+    "evidence": [{"file": "web/headers.py", "line": 3, "language": "python", "snippet": "set_csp()", "summary": "A CSP header"}],
+    "matrix_row": "| E-3 | — | Web | L2 | A threat | {{score:inherent}} | {{band:inherent}} | Control Found | csp-security-headers | "
+                  "{{score:residual}} | {{band:residual}} |",
+    "recommendation_body": None,
+}
+_PERSISTED = {"S-2": _PARTIAL_ITEM, "T-1": _MISSING_ITEM, "E-3": _FOUND_ITEM}
+
+
+def _addressed_values(item):
+    """The (field address, text, kept slots?) of every value that exists, in the payload's key order."""
+    out = []
+    for name in ("control_status", "control_category", "confidence", "carried_forward"):
+        value = item[name]
+        if value is not None:
+            out.append((name, ("true" if value else "false") if name == "carried_forward" else value, False))
+    for index, entry in enumerate(item["evidence"]):
+        for name in ("file", "line", "language", "snippet", "summary"):
+            out.append(("evidence.%d.%s" % (index, name), str(entry[name]), False))
+        for dimension in tachi_parts.ASSESSMENT_DIMENSIONS if "assessment" in entry else ():
+            out.append(("evidence.%d.assessment.%s.rating" % (index, dimension), entry["assessment"][dimension]["rating"], False))
+            out.append(("evidence.%d.assessment.%s.rationale" % (index, dimension), entry["assessment"][dimension]["rationale"], True))
+    out.append(("matrix_row", item["matrix_row"], True))
+    if item["recommendation_body"] is not None:
+        out.append(("recommendation_body", item["recommendation_body"], False))
+    return out
+
+
+def _persisted_table(items, order=None, spelling=None):
+    """What a renderer writes: rows in S-2 order of ID, then the payload's key order, each value escaped for a cell."""
+    ids = order or sorted(items, key=tachi_parts.finding_sort_key)
+    rows = ["| ID | Field | Value |", "|----|-------|-------|"]
+    for finding_id in ids:
+        for field, text, keep in _addressed_values(items[finding_id]):
+            rows.append("| %s | %s | %s |" % ((spelling or {}).get(finding_id, finding_id), field, tachi_parts.escape_cell(text, keep_slots=keep)))
+    return "\n".join(rows) + "\n"
+
+
+def _controls_with_inputs(table, heading="### Assessment Inputs"):
+    return "## 6. Methodology\n\nText.\n\n## 7. Analysis Integrity\n\n### Input Issues\n\nNone.\n\n" + heading + "\n\n" + table + "\n"
+
+
+def test_the_persisted_inputs_read_back_each_controls_item_as_it_was_written():
+    read = parse_controls_assessment_inputs(_controls_with_inputs(_persisted_table(_PERSISTED)))
+    assert read["errors"] == []
+    assert list(read["inputs"]) == ["S-2", "T-1", "E-3"], "S-2 order: the S prefix, then T, then E"
+    for finding_id, item in _PERSISTED.items():
+        assert read["inputs"][finding_id] == item, finding_id
+    assert list(read["inputs"]["S-2"]) == ["control_status", "control_category", "confidence", "carried_forward", "evidence", "matrix_row",
+                                           "recommendation_body"], "the payload's key order, without finding_id"
+
+
+def test_a_carried_value_is_written_the_same_bytes_again_so_escaping_never_compounds():
+    """AR-T3, D16: an UNCHANGED result whose evidence holds `&lt;` and `|` is carried across two runs byte for byte."""
+    first = _persisted_table(_PERSISTED)
+    second = _persisted_table(parse_controls_assessment_inputs(_controls_with_inputs(first))["inputs"])
+    assert second == first
+    third = _persisted_table(parse_controls_assessment_inputs(_controls_with_inputs(second))["inputs"])
+    assert third == first
+    assert "&amp;lt;" in first and "&#124;" in first and "&#10;" in first, "the carried text holds references of its own"
+    snippet = parse_controls_assessment_inputs(_controls_with_inputs(first))["inputs"]["S-2"]["evidence"][0]["snippet"]
+    assert snippet == _PARTIAL_ITEM["evidence"][0]["snippet"] and "a < b && c > d" in snippet and "{{7*7}}" in snippet
+
+
+def test_narrative_and_matrix_row_slots_survive_and_a_value_is_never_decoded_twice():
+    item = parse_controls_assessment_inputs(_controls_with_inputs(_persisted_table(_PERSISTED)))["inputs"]["S-2"]
+    assert "{{score:inherent}}" in item["matrix_row"] and "{{band:residual}}" in item["matrix_row"]
+    assert item["evidence"][0]["assessment"]["coverage"]["rationale"] == "The coverage check is {{count:evidence}} deep, &lt; kept"
+    assert item["recommendation_body"].count("&amp;") == 1, "an `&amp;` the agent wrote stays one"
+
+
+def test_a_value_may_hold_every_character_the_cell_escape_covers():
+    nasty = "a & b < c > d | e ` f {{ g }} {{{score:x}}\nsecond & line # not a heading"
+    item = dict(_FOUND_ITEM, evidence=[dict(_FOUND_ITEM["evidence"][0], summary=nasty, snippet=nasty)])
+    read = parse_controls_assessment_inputs(_controls_with_inputs(_persisted_table({"E-3": item})))
+    assert read["errors"] == [] and read["inputs"]["E-3"] == item
+
+
+def test_a_pre_1_1_file_has_no_persisted_inputs():
+    for text in ("", "# Report\n\n## 2. Coverage Matrix\n\n| Threat ID | CF |\n|---|---|\n| T-1 | — |\n", _controls_md(_PREFIX_HEADER),
+                 _controls_md(_K8_HEADER, tail=_K8_SECTION_7.replace("### Assessment Inputs", "### Something Else"))):
+        assert parse_controls_assessment_inputs(text) == {"inputs": {}, "errors": []}
+    assert parse_controls_assessment_inputs(None) == {"inputs": {}, "errors": []}
+    for path in sorted((REPO_ROOT / "examples").rglob("compensating-controls.md")):
+        assert parse_controls_assessment_inputs(path.read_text(encoding="utf-8")) == {"inputs": {}, "errors": []}, path.parent.name
+
+
+def test_a_heading_with_no_row_gives_nothing_and_the_other_parsers_leave_the_section_alone():
+    assert parse_controls_assessment_inputs(_controls_with_inputs("| ID | Field | Value |\n|---|---|---|\n")) == {"inputs": {}, "errors": []}
+    assert parse_controls_assessment_inputs(_controls_with_inputs("Nothing was persisted.\n")) == {"inputs": {}, "errors": []}
+    persisted = _controls_md(_K8_HEADER, tail="\n## 7. Analysis Integrity\n\n### Assessment Inputs\n\n" + _persisted_table(_PERSISTED))
+    assert parse_compensating_controls_md(persisted) == parse_compensating_controls_md(_controls_md(_K8_HEADER))
+    assert set(parse_controls_assessment_inputs(persisted)["inputs"]) == {"T-1", "S-2", "E-3"}
+
+
+def test_the_id_cell_takes_any_spelling_and_the_item_is_keyed_by_the_canonical_id():
+    item = dict(_FOUND_ITEM)
+    read = parse_controls_assessment_inputs(_controls_with_inputs(_persisted_table({"AGP-1": item}, spelling={"AGP-1": "AGP-01"})))
+    assert list(read["inputs"]) == ["AGP-1"] and read["inputs"]["AGP-1"] == item
+
+
+def test_findings_come_in_s2_order_whatever_order_the_rows_are_in():
+    table = _persisted_table(_PERSISTED, order=["E-3", "T-1", "S-2"])
+    assert list(parse_controls_assessment_inputs(_controls_with_inputs(table))["inputs"]) == ["S-2", "T-1", "E-3"]
+
+
+@pytest.mark.parametrize("field,value,reason", [
+    ("control_status", "sort-of", "control_status is not found, partial or missing"),
+    ("control_category", "Authentication", "control_category is not one of the eight categories"),
+    ("confidence", "Certain", "confidence is not High, Medium or Low"),
+    ("carried_forward", "yes", "carried_forward is not true or false"),
+    ("evidence.0.file", "/etc/passwd", "evidence.file breaks D7's relative path rule"),
+    ("evidence.0.file", "a/../b.py", "evidence.file breaks D7's relative path rule"),
+    ("evidence.0.file", "https://x.example/a.py", "evidence.file breaks D7's relative path rule"),
+    ("evidence.0.file", "a" * 301, "evidence.file breaks D7's relative path rule"),
+    ("evidence.0.line", "0", "evidence.line is not an integer of 1 or more"),
+    ("evidence.0.line", "007", "evidence.line is not an integer of 1 or more"),
+    ("evidence.0.line", "4.5", "evidence.line is not an integer of 1 or more"),
+    ("evidence.0.line", "-3", "evidence.line is not an integer of 1 or more"),
+    ("evidence.0.language", "Python 3", "evidence.language does not match the language pattern"),
+    ("matrix", "x", "'matrix' is not a field of a controls item"),
+    ("finding_id", "T-9", "'finding_id' is not a field of a controls item"),
+    ("evidence.5.file", "a.py", "'evidence.5.file' is not a field of a controls item"),
+    ("evidence.00.file", "a.py", "'evidence.00.file' is not a field of a controls item"),
+    ("evidence.0.owner", "me", "'evidence.0.owner' is not a field of a controls item"),
+    ("evidence.0.assessment.speed.rating", "High", "'evidence.0.assessment.speed.rating' is not a field of a controls item"),
+    ("evidence.0.assessment.coverage.score", "High", "'evidence.0.assessment.coverage.score' is not a field of a controls item"),
+    ("evidence.0.assessment.coverage.rating", "Great", "rating is not High, Medium or Low"),
+    ("evidence..file", "a.py", "'evidence..file' is not a field of a controls item"),
+    ("EVIDENCE.0.file", "a.py", "'EVIDENCE.0.file' is not a field of a controls item"),
+])
+def test_a_row_that_breaks_its_class_or_names_no_field_of_the_payload_is_an_error_and_its_item_is_left_out(field, value, reason, capsys):
+    table = _persisted_table({"E-3": _FOUND_ITEM, "T-1": _MISSING_ITEM}).split("\n")
+    at = next(index for index, row in enumerate(table) if row.startswith("| E-3 | evidence.0.summary |"))
+    table[at] = "| E-3 | %s | %s |" % (field, value)
+    text = _controls_with_inputs("\n".join(table))
+    read = parse_controls_assessment_inputs(text)
+    line = text.split("\n").index(table[at]) + 1
+    assert [e["reason"] for e in read["errors"]] == [reason]
+    assert read["errors"][0]["line"] == line and read["errors"][0]["row"] == table[at][:200], "the row is cut at 200 characters"
+    assert list(read["inputs"]) == ["T-1"] and read["inputs"]["T-1"] == _MISSING_ITEM, "the other finding is unaffected"
+    capsys.readouterr()
+
+
+def test_a_row_with_a_bad_id_or_too_few_cells_is_an_error_and_a_repeated_value_spoils_its_item(capsys):
+    table = _persisted_table({"E-3": _FOUND_ITEM, "T-1": _MISSING_ITEM}).rstrip("\n").split("\n") + [
+        "| X-9 | control_status | found |", "| T-1 | control_status |", "| T-1 | control_status | partial |"]
+    text = _controls_with_inputs("\n".join(table))
+    read = parse_controls_assessment_inputs(text)
+    lines = text.split("\n")
+    assert [(e["row"], e["reason"]) for e in read["errors"]] == [
+        ("| X-9 | control_status | found |", "names 'X-9', which is not a finding ID"),
+        ("| T-1 | control_status |", "has fewer cells than the table's header"),
+        ("| T-1 | control_status | partial |", "T-1 repeats the value control_status")]
+    assert [e["line"] for e in read["errors"]] == [lines.index(e["row"]) + 1 for e in read["errors"]]
+    assert list(read["inputs"]) == ["E-3"], "T-1 is left out"
+    capsys.readouterr()
+
+
+@pytest.mark.parametrize("drop,reason", [
+    ("control_status", "it has no control_status row"), ("control_category", "it has no control_category row"),
+    ("carried_forward", "it has no carried_forward row"), ("matrix_row", "it has no matrix_row row"),
+    ("confidence", "confidence is written exactly when the status isn't missing"),
+    ("recommendation_body", None),
+    ("evidence.0.file", "evidence entry 0 has no file row"), ("evidence.0.summary", "evidence entry 0 has no summary row"),
+])
+def test_an_incomplete_item_is_left_out_with_one_error_at_its_first_row(drop, reason):
+    """The part validator's rules, applied on read: a result that couldn't be a part's isn't carried. A found item has no
+    recommendation_body, so dropping it changes nothing: that row doesn't exist."""
+    rows = [row for row in _persisted_table({"E-3": _FOUND_ITEM}).split("\n") if not row.startswith("| E-3 | %s |" % drop)]
+    read = parse_controls_assessment_inputs(_controls_with_inputs("\n".join(rows)))
+    if reason is None:
+        assert read["errors"] == [] and read["inputs"]["E-3"] == _FOUND_ITEM
+        return
+    assert list(read["inputs"]) == [] and len(read["errors"]) == 1
+    assert read["errors"][0]["reason"] == "E-3: " + reason and read["errors"][0]["row"].startswith("| E-3 | ")
+
+
+@pytest.mark.parametrize("items,target,extra_row,reason", [
+    ({"E-3": _FOUND_ITEM}, "E-3", "| E-3 | recommendation_body | Do more. |", "recommendation_body is written exactly when the status isn't found"),
+    ({"T-1": _MISSING_ITEM}, "T-1", "| T-1 | evidence.0.file | a.py |", "evidence has 1 to 5 entries for found or partial, and none for missing"),
+    ({"T-1": _MISSING_ITEM}, "T-1", "| T-1 | confidence | High |", "confidence is written exactly when the status isn't missing"),
+    ({"E-3": _FOUND_ITEM}, "E-3", "| E-3 | evidence.1.file | a.py |", "evidence entry 1 has no line row"),
+], ids=["found-with-a-recommendation", "missing-with-evidence", "missing-with-a-confidence", "a-second-entry-with-only-a-file"])
+def test_an_item_that_contradicts_its_own_status_is_left_out(items, target, extra_row, reason):
+    rows = _persisted_table(items).rstrip("\n").split("\n") + [extra_row]
+    read = parse_controls_assessment_inputs(_controls_with_inputs("\n".join(rows)))
+    assert read["inputs"] == {} and [e["reason"] for e in read["errors"]] == ["%s: %s" % (target, reason)]
+    assert read["errors"][0]["row"].startswith("| %s | " % target)
+
+
+def test_a_partial_item_with_no_recommendation_is_left_out():
+    rows = [row for row in _persisted_table({"S-2": _PARTIAL_ITEM}).split("\n") if "recommendation_body" not in row]
+    read = parse_controls_assessment_inputs(_controls_with_inputs("\n".join(rows)))
+    assert read["inputs"] == {} and [e["reason"] for e in read["errors"]] == ["S-2: recommendation_body is written exactly when the status isn't found"]
+
+
+def test_evidence_entries_are_indexed_from_zero_without_a_gap_and_at_most_five():
+    table = _persisted_table({"S-2": _PARTIAL_ITEM}).replace("evidence.1.", "evidence.2.")
+    read = parse_controls_assessment_inputs(_controls_with_inputs(table))
+    assert read["inputs"] == {} and read["errors"][0]["reason"] == "S-2: the evidence entries are not indexed from 0 without a gap"
+    six = dict(_PARTIAL_ITEM, evidence=[_PARTIAL_ITEM["evidence"][1]] * 6)
+    read = parse_controls_assessment_inputs(_controls_with_inputs(_persisted_table({"S-2": six})))
+    assert read["inputs"] == {} and read["errors"] and all("not a field of a controls item" in e["reason"] for e in read["errors"])
+    five = dict(_PARTIAL_ITEM, evidence=[_PARTIAL_ITEM["evidence"][1]] * 5)
+    assert parse_controls_assessment_inputs(_controls_with_inputs(_persisted_table({"S-2": five})))["inputs"]["S-2"] == five
+
+
+def test_an_assessment_is_all_four_dimensions_or_none():
+    rows = [row for row in _persisted_table({"S-2": _PARTIAL_ITEM}).split("\n") if "assessment.currency" not in row]
+    read = parse_controls_assessment_inputs(_controls_with_inputs("\n".join(rows)))
+    assert read["inputs"] == {} and read["errors"][0]["reason"] == "S-2: evidence entry 0 has an incomplete assessment"
+    only_rating = [row for row in _persisted_table({"S-2": _PARTIAL_ITEM}).split("\n") if "assessment.coverage.rationale" not in row]
+    assert parse_controls_assessment_inputs(_controls_with_inputs("\n".join(only_rating)))["inputs"] == {}
+
+
+@pytest.mark.parametrize("header", ["| Finding | Field | Value |\n|---|---|---|", "| ID | Name | Value |\n|---|---|---|", "| ID | Field |\n|---|---|"])
+def test_a_table_without_the_three_columns_is_one_error_and_no_input(header, capsys):
+    text = _controls_with_inputs(header + "\n| T-1 | control_status | missing |\n")
+    read = parse_controls_assessment_inputs(text)
+    assert read["inputs"] == {} and len(read["errors"]) == 1
+    assert read["errors"][0]["reason"] in ("the table has no ID, Field and Value columns", "has fewer cells than the table's header")
+    capsys.readouterr()
+
+
+def test_the_heading_may_stand_anywhere_and_only_the_first_table_after_it_is_read():
+    elsewhere = "## 5. Notes\n\n### Assessment Inputs\n\n" + _persisted_table({"E-3": _FOUND_ITEM}) + "\n### Other\n\n| ID | Field | Value |\n|---|---|---|\n| T-1 | control_status | missing |\n"
+    assert list(parse_controls_assessment_inputs(elsewhere)["inputs"]) == ["E-3"]
+    assert list(parse_controls_assessment_inputs(elsewhere.replace("### Assessment Inputs", "### Assessment Inputs  "))["inputs"]) == ["E-3"]
+    assert parse_controls_assessment_inputs(elsewhere.replace("### Assessment Inputs", "## Assessment Inputs")) == {"inputs": {}, "errors": []}
+
+
+def test_keep_bold_keeps_the_markers_a_persisted_value_holds_and_the_default_strips_them_as_it_always_did():
+    """The persisted tables hold `**What to Implement**: ...` as written, so a reader of them asks for the markers kept."""
+    content = "## X\n\n| ID | **Field** | Value |\n|---|---|---|\n| S-1 | note | **bold** and &lt;b&gt; text |\n"
+    assert parse_markdown_table(content, "## X") == [{"ID": "S-1", "Field": "note", "Value": "bold and <b> text"}]
+    assert parse_markdown_table(content, "## X", keep_bold=True) == [{"ID": "S-1", "Field": "note", "Value": "**bold** and <b> text"}]
+    assert parse_markdown_table(content, "## X", keep_bold=False) == parse_markdown_table(content, "## X")
+
+
+def test_a_recommendation_body_keeps_its_bold_labels_through_the_persisted_table():
+    body = parse_controls_assessment_inputs(_controls_with_inputs(_persisted_table(_PERSISTED)))["inputs"]["S-2"]["recommendation_body"]
+    assert body == _PARTIAL_ITEM["recommendation_body"] and body.startswith("**What to Implement**:") and "**Effort Estimate**: Low" in body
+
+
+def test_an_empty_value_cell_is_a_value_the_writer_wrote_and_the_reader_returns_it_as_it_is():
+    item = dict(_FOUND_ITEM, evidence=[dict(_FOUND_ITEM["evidence"][0], summary="")])
+    assert parse_controls_assessment_inputs(_controls_with_inputs(_persisted_table({"E-3": item})))["inputs"]["E-3"] == item

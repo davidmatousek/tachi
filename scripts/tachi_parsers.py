@@ -225,6 +225,25 @@ def _resolve_row_fields(row: dict) -> dict:
     return resolved
 
 
+# K8's added Section 2 cells and the carried-forward marker (FR-K8.1, R-20), read by header name like every other column.
+# The pre-fix format has CF but neither of the two others, and a drifted file can mix the two schemas between bands.
+_K8_COLUMNS = {"maestro layer": "maestro_layer", "control category": "control_category", "cf": "cf"}
+
+
+def _resolve_k8_fields(row: dict) -> dict:
+    """The K8 cells of a Coverage Matrix row, by canonical name: ``maestro_layer``, ``control_category`` and ``cf``.
+
+    A cell comes back as the table gives it (stripped and decoded), and ``""`` when the row's table has no such column,
+    as the pre-fix format has none of the first two.
+    """
+    fields = {"maestro_layer": "", "control_category": "", "cf": ""}
+    for key, value in row.items():
+        canonical = _K8_COLUMNS.get(normalize_header(key))
+        if canonical is not None:
+            fields[canonical] = value.strip()
+    return fields
+
+
 _PLACEHOLDER_ID_RE = re.compile(r"[-–—]+")
 
 
@@ -377,7 +396,7 @@ def classify_maestro_coverage_state(finding_count: int, highest_severity: str) -
 # =============================================================================
 
 def parse_markdown_table(content: str, section_header: str = None, start_line: int = None, skipped: list = None,
-                         row_lines: list = None) -> list:
+                         row_lines: list = None, keep_bold: bool = False) -> list:
     """Parse a markdown table found after a section header.
 
     Args:
@@ -397,12 +416,15 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
         row_lines: An optional list. When given, the 1-based line number of each *returned* row is appended to
             it, in step with the returned rows, so a caller that reports a problem with one row (the Section 4a
             reader) can name its line. The default leaves every caller unchanged.
+        keep_bold: When true, a data cell keeps its ``**`` markers. A cell holds a persisted value as written there
+            (the controls ``recommendation_body`` is markdown with bold labels), so a reader of the persisted-inputs
+            tables asks for them kept. The default strips them, as it always has.
 
     Returns:
         List of dicts, one per row, with keys from the header row.
         Returns empty list if table not found.
 
-    Each header and data cell is stripped, loses its ``**`` markers and is then decoded with
+    Each header and data cell is stripped, loses its ``**`` markers (unless ``keep_bold``) and is then decoded with
     :func:`decode_references` (ADR-050 D3), after the row is split on raw ``|``. So the renderers' references
     (``&#124;`` for a ``|`` in a cell, ``&lt;``, ``&#10;`` and the rest) read back as the text they stand for, and
     decoding never changes a row's cell count. GFM's ``\\|`` is not decoded: a row that holds one splits there, as
@@ -487,7 +509,7 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
         line = lines[i].strip()
         if not line.startswith("|"):
             break
-        cells = [decode_references(strip_bold(c.strip())) for c in line.split("|")[1:-1]]
+        cells = [decode_references(c.strip() if keep_bold else strip_bold(c.strip())) for c in line.split("|")[1:-1]]
         if len(cells) < len(columns):
             print(f"Warning: skipping malformed row at line {i + 1}: expected {len(columns)} columns, got {len(cells)}", file=sys.stderr)
             if skipped is not None:
@@ -1238,7 +1260,14 @@ def parse_threats_findings(content: str) -> list:
     if not rows:
         print("Warning: could not find Recommended Actions table in threats.md", file=sys.stderr)
         return []
+    return _findings_from_section_7_rows(rows, content)
 
+
+def _findings_from_section_7_rows(rows: list, content: str) -> list:
+    """The Tier 3 finding dicts of a Section 7 table's ``rows`` (the body of :func:`parse_threats_findings`).
+
+    The reference-set wrapper calls it too, for a table under any of the heading forms it reads.
+    """
     # Detect the Pattern column key (case-insensitive match on the table
     # header). FR-009 specifies the threats.md Section 3 / 4 tables render
     # the column as "Agentic Pattern"; the orchestrator MAY propagate the
@@ -1293,8 +1322,28 @@ def parse_threats_findings(content: str) -> list:
 # =============================================================================
 
 REFERENCE_SET_SECTION = "## 7. Recommended Actions"
-REFERENCE_SET_FORM = "a table whose header row has a 'Finding ID' column and one row for each open finding"
-REFERENCE_SET_REMEDY = "regenerate threats.md with /tachi.threat-model, or correct the section to that table form"
+REFERENCE_SET_FORM = ("a table whose header row has a 'Finding ID' column and one row for each open finding, "
+                      "or a numbered list whose items each start with a bolded finding ID")
+REFERENCE_SET_REMEDY = ("regenerate threats.md with /tachi.threat-model, or correct the section to the table form "
+                        "or the numbered-list form")
+# S-12(b): the flag for a value that Section 7's form lacks, in the scorer's closed `<kind>:<field>:<cause>` vocabulary
+# (contracts/module-signatures.md). `input` is the kind for what an input says, the field is the finding schema's name for
+# the value (`component`, `threat`, `delta_status` or `risk_level`), and the cause is kebab-case, like `no-vector`.
+FORM_LACKS_CAUSE = "not-in-form"
+FORM_LACKS_FLAG = "input:%s:" + FORM_LACKS_CAUSE
+
+# S-12(a): the drift forms that tachi's shipped samples show. The heading `## Section 7: Recommended Actions`, and a
+# Section 7 that is a numbered list of bolded IDs under priority subheadings, with the bold text in one of three
+# spellings: `**T-10**`, `**LLM-3 + LLM-4**` or `**T-2 through T-9**`, each followed by an optional dash and title. Anything
+# else is unreadable (S-12(c)), so the list of forms stays closed.
+_SECTION_7_DRIFT_HEADING = re.compile(r"^#{2,3}\s+Section\s+7[.:]\s+Recommended Actions")
+_LIST_ITEM = re.compile(r"^ {0,3}[0-9]+[.)]\s+(?P<rest>.*)$")
+_BOLD_LEAD = re.compile(r"^\*\*(?P<bold>.+?)\*\*(?P<tail>.*)$")
+_TITLE_SEPARATOR = re.compile(r"\s+[\u2014\u2013-]\s+")
+_ID_RANGE = re.compile(r"^(?P<first>\S+)\s+through\s+(?P<last>\S+)$")
+_PRIORITY_BAND = re.compile(r"\b(critical|high|medium|low)\b", re.IGNORECASE)
+_FIRST_CELL = re.compile(r"^\|\s*(?:\*\*)?(?P<cell>[^|*]*?)(?:\*\*)?\s*\|")
+_MAX_RANGE = 500
 
 
 class ReferenceSetError(ValueError):
@@ -1332,8 +1381,111 @@ def _checked_findings(findings: list, section: str, source: str, seen: set, dupl
     return sorted(kept, key=lambda finding: tachi_parts.finding_sort_key(finding["id"]))
 
 
+def _reference_set_start(content: str) -> Optional[int]:
+    """The 0-based line of Section 7's heading, in either spelling, or ``None``: ``## 7. Recommended Actions`` (found
+    anywhere on a line, as it always was) or ``## Section 7: Recommended Actions``. The first one in the file wins."""
+    for index, line in enumerate(content.split("\n")):
+        if REFERENCE_SET_SECTION in line or _SECTION_7_DRIFT_HEADING.match(line):
+            return index
+    return None
+
+
+def _finding_ids_in_tables(content: str) -> set:
+    """The canonical IDs that open a table row anywhere in ``content``, less the resolved findings' (a table's first
+    cell is the ID in every finding table). A range in a numbered Section 7 is checked against this set."""
+    found = set()
+    for line in content.split("\n"):
+        cell = _FIRST_CELL.match(line.strip())
+        if cell is not None and tachi_parts.id_matches("finding", cell.group("cell")):
+            found.add(tachi_parts.canonical_finding_id(cell.group("cell")))
+    for finding in parse_resolved_findings(content):
+        if tachi_parts.id_matches("finding", finding["id"]):
+            found.discard(tachi_parts.canonical_finding_id(finding["id"]))
+    return found
+
+
+def _priority_band(heading: str) -> str:
+    """The risk level a priority subheading names (``Critical``, ``High``, ``Medium`` or ``Low``), or ``""`` when it
+    names none or more than one, as ``### Medium / Low Priority`` does."""
+    bands = {band.lower() for band in _PRIORITY_BAND.findall(heading)}
+    return next(iter(bands)).capitalize() if len(bands) == 1 else ""
+
+
+def _ids_of_a_bolded_lead(bold: str, at: int, content: str, source: str, section: str, known: list) -> list:
+    """The finding IDs, as written, that one item's bold text names (S-12(a)'s three spellings).
+
+    ``known`` holds the table IDs once a range needs them. A range is expanded, and kept only to the IDs that the
+    file's tables list, so a range can't invent a finding. ``at`` is the item's 1-based line, for the messages.
+    """
+    head = _TITLE_SEPARATOR.split(bold, 1)[0].strip()
+    span = _ID_RANGE.match(head)
+    if span is None:
+        tokens = [token.strip() for token in re.split(r"\s*\+\s*", head)]
+        for token in tokens:
+            if not tachi_parts.id_matches("finding", token):
+                raise ReferenceSetError(source, section, "names %r, which is not a finding ID (line %d)" % (token[:40], at))
+        return tokens
+    first, last = span.group("first"), span.group("last")
+    for token in (first, last):
+        if not tachi_parts.id_matches("finding", token):
+            raise ReferenceSetError(source, section, "names %r, which is not a finding ID (line %d)" % (token[:40], at))
+    (first_prefix, first_number), (last_prefix, last_number) = (
+        tachi_parts.canonical_finding_id(token).split("-") for token in (first, last))
+    if first_prefix != last_prefix or not 0 <= int(last_number) - int(first_number) < _MAX_RANGE:
+        raise ReferenceSetError(source, section, "has a range that can't be read (line %d)" % at)
+    if not known:
+        known.append(_finding_ids_in_tables(content))
+    if not known[0]:
+        raise ReferenceSetError(source, section, "has a range, and the file has no finding tables to check it against (line %d)" % at)
+    confirmed = ["%s-%d" % (first_prefix, number) for number in range(int(first_number), int(last_number) + 1)
+                 if "%s-%d" % (first_prefix, number) in known[0]]
+    if not confirmed:
+        raise ReferenceSetError(source, section, "has a range that names no finding the file's tables list (line %d)" % at)
+    return confirmed
+
+
+def _numbered_list_findings(content: str, start: int, source: str, section: str) -> list:
+    """The findings of a Section 7 written as a numbered list of bolded IDs (S-12(a)), or an empty list when it has
+    no numbered item.
+
+    The section runs from its heading to the next heading of the same or a higher level. A numbered item holds
+    one or more IDs in bold, then its text; the nearest subheading above it names its priority. A numbered item
+    that doesn't open with a bolded finding ID raises, so a finding is never lost without a word. The finding dicts
+    have the keys :func:`parse_threats_findings` builds, with the values the form lacks (``component`` and
+    ``threat``) empty and no ``delta_status``. The item's bolded title, if it has one, is dropped.
+    """
+    lines = content.split("\n")
+    stop_level = max(_heading_level(lines[start].strip()) or 2, 2)
+    block = _extract_source_attribution_block(content)
+    known: list = []
+    band = ""
+    findings = []
+    for index in range(start + 1, len(lines)):
+        heading = _heading_level(lines[index].strip())
+        if heading is not None:
+            if heading <= stop_level:
+                break
+            band = _priority_band(lines[index])
+            continue
+        item = _LIST_ITEM.match(lines[index])
+        if item is None:
+            continue
+        lead = _BOLD_LEAD.match(item.group("rest"))
+        if lead is None:
+            raise ReferenceSetError(source, section, "has a numbered item that doesn't start with a bolded finding ID (line %d)" % (index + 1))
+        text = lead.group("tail").lstrip(" \t:").strip()
+        for finding_id in _ids_of_a_bolded_lead(lead.group("bold"), index + 1, content, source, section, known):
+            finding = {"id": finding_id, "component": "", "threat": "", "likelihood": "\u2014", "impact": "\u2014",
+                       "risk_level": band, "mitigation": text, "agentic_pattern": "none"}
+            attribution = _extract_source_attribution(finding_id, block)
+            if attribution is not None:
+                finding["source_attribution"] = attribution
+            findings.append(finding)
+    return findings
+
+
 def parse_reference_set(content: str, source: str = "threats.md") -> dict:
-    """The reference finding set of a ``threats.md``: ``{"open": [...], "resolved": [...], "duplicates": [...]}``.
+    """The reference finding set of a ``threats.md``: ``{"open", "resolved", "duplicates", "form", "lacking", "flags"}``.
 
     ``open`` is one finding dict per Section 7 row, exactly as :func:`parse_threats_findings` builds it (``id``,
     ``component``, ``threat``, ``risk_level``, ``mitigation``, ``agentic_pattern`` and, when the table has a Status
@@ -1346,32 +1498,64 @@ def parse_reference_set(content: str, source: str = "threats.md") -> dict:
     canonical IDs that were repeated, so the caller can warn. Placeholder rows (an empty or dash-only ID) are
     dropped, as in the other Section 7 readers.
 
-    ``source`` names the file in error messages. This reads the table form only (T032 adds the drift forms). It
-    raises :class:`ReferenceSetError`, which ends a run before any agent is dispatched, when Section 7 is missing,
-    holds no table or no findings, has no ``Finding ID`` column, loses a malformed row, or names an ID that isn't a
-    finding ID. An empty extraction is an error, never a pass (KB 22). ``parse_threats_findings`` is unchanged,
-    because the extractors rely on its ``[]``-with-a-warning behavior.
+    **The forms (S-12(a)).** Section 7 is read under ``## 7. Recommended Actions`` or ``## Section 7: Recommended
+    Actions``, as a table with a ``Finding ID`` column, or, when it has no table, as the numbered list of bolded IDs
+    that two shipped samples show. An item names one ID (``**T-10**``), several (``**LLM-3 + LLM-4**``) or a range
+    (``**T-2 through T-9**``), and may continue with a dash and a title. A range is expanded to the IDs of its span
+    that the file's tables list, so it can't invent a finding. The nearest subheading names the item's ``risk_level``
+    when it names one band. ``form`` is ``table`` or ``list``.
+
+    **What the form lacks (S-12(b)).** ``lacking`` maps each canonical ID whose row lacks a value that a stage needs
+    to the names of those values, from ``component``, ``threat``, ``delta_status`` and ``risk_level``. A list form
+    lacks the first three on every row, a table with no Status or no Component or Threat column lacks that one,
+    and the list form lacks ``risk_level`` where no subheading names a band. ``flags`` maps the same IDs to the
+    sorted flags that name them, ``input:<field>:not-in-form`` (:data:`FORM_LACKS_FLAG`). The stage derives each value
+    from the baseline where the baseline can supply it (D9's carried findings), scores the rest fresh, and puts the
+    flags on the finding and lists it in the stage record. A row without ``delta_status`` is NEW until then.
+
+    ``source`` names the file in error messages. It raises :class:`ReferenceSetError`, which ends a run before any
+    agent is dispatched (S-12(c)), when Section 7 is missing, holds neither a table nor a numbered list, has a table
+    with no ``Finding ID`` column, loses a malformed row, has a numbered item that doesn't open with a bolded finding
+    ID, has a range that can't be read, or names an ID that isn't a finding ID. The error names the file, the section,
+    the expected forms and the remedy. An empty extraction is an error, never a pass (KB 22).
+    ``parse_threats_findings`` is unchanged, because the extractors rely on its ``[]``-with-a-warning behavior.
     """
     section = "Section 7 (Recommended Actions)"
-    if not any(REFERENCE_SET_SECTION in line for line in content.split("\n")):
+    start = _reference_set_start(content)
+    if start is None:
         raise ReferenceSetError(source, section, "is missing")
     skipped: list = []
-    rows = parse_markdown_table(content, REFERENCE_SET_SECTION, skipped=skipped)
+    rows = parse_markdown_table(content, start_line=start, skipped=skipped)
     if skipped:
         raise ReferenceSetError(source, section, "has a malformed row (line %s)" % ", ".join(str(n) for n in skipped[:5]))
-    if not rows:
-        raise ReferenceSetError(source, section, "holds no table rows")
-    if "Finding ID" not in rows[0]:
-        raise ReferenceSetError(source, section, "has no 'Finding ID' column")
-    listed = [finding for finding in parse_threats_findings(content) if not is_placeholder_id(finding["id"])]
+    if rows:
+        if "Finding ID" not in rows[0]:
+            raise ReferenceSetError(source, section, "has no 'Finding ID' column")
+        form = "table"
+        missing = [name for name, column in (("component", "Component"), ("threat", "Threat"), ("delta_status", "Status"))
+                   if column not in rows[0]]
+        findings = _findings_from_section_7_rows(rows, content)
+    else:
+        form = "list"
+        missing = ["component", "threat", "delta_status"]
+        findings = _numbered_list_findings(content, start, source, section)
+        if not findings:
+            raise ReferenceSetError(source, section, "holds no table rows and no numbered list of bolded finding IDs")
+    listed = [finding for finding in findings if not is_placeholder_id(finding["id"])]
     if not listed:
         raise ReferenceSetError(source, section, "lists no findings")
     seen: set = set()
     repeated: set = set()
     open_rows = _checked_findings(listed, section, source, seen, repeated)
     resolved = _checked_findings(parse_resolved_findings(content), "Section 4c (Resolved Findings)", source, seen, repeated)
-    return {"open": open_rows, "resolved": resolved,
-            "duplicates": sorted(repeated, key=tachi_parts.finding_sort_key)}
+    lacking = {}
+    for finding in open_rows:
+        names = missing + (["risk_level"] if form == "list" and not finding["risk_level"] else [])
+        if names:
+            lacking[tachi_parts.canonical_finding_id(finding["id"])] = names
+    flags = {finding_id: sorted(FORM_LACKS_FLAG % name for name in names) for finding_id, names in lacking.items()}
+    return {"open": open_rows, "resolved": resolved, "duplicates": sorted(repeated, key=tachi_parts.finding_sort_key),
+            "form": form, "lacking": lacking, "flags": flags}
 
 
 # =============================================================================
@@ -1573,10 +1757,11 @@ def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False) -> dic
 
     Returns ``{"members": [...], "groups": [...], "scores": {...}}``.
 
-    * ``members`` are canonical finding IDs: each ``runs[0].results[]`` entry's ``partialFingerprints["findingId/v1"]``
-      (a result without an allow-listed one is ignored, and no hash is ever read), in result order, each ID once.
-      A legacy peer reference follows its result: an allow-listed ID at the start of a ``relatedLocations`` entry's
-      ``message.text``, followed by ``: ``.
+    * ``members`` are canonical finding IDs, one per ``runs[0].results[]`` entry, in result order, each ID once. A
+      result's ID is its ``partialFingerprints["findingId/v1"]``, or, when it has none, its ``properties.id`` (tachi's
+      older samples carry the ID only there). ``findingId/v1`` wins when both are present, and a result whose ID isn't
+      allow-listed is ignored. No hash is ever read. A legacy peer reference follows its result: an allow-listed ID at
+      the start of a ``relatedLocations`` entry's ``message.text``, followed by ``: ``.
     * Results whose ``baselineState`` (as the result's own key or a property) or ``baseline-state`` property is
       ``absent`` are RESOLVED, and appear nowhere: not as members, not as references, not in a group, not in scores.
     * ``groups`` take the shape :func:`parse_correlation_groups` returns, from D8's one set of rules. A group comes
@@ -1593,8 +1778,8 @@ def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False) -> dic
       value that isn't a number from 0 to 10, or a band name, is ``None``.
 
     It raises ``ValueError`` on text that is not JSON (no ``NaN`` or ``Infinity``, an integer of over 20 digits, or
-    nesting too deep) and on an empty extraction, so the stage stops before dispatch (KB 22). Nothing else raises:
-    a result of any other shape is skipped.
+    nesting too deep) and on an empty extraction, so the stage stops before dispatch (KB 22). The error names the
+    remedy: regenerate the markdown input. Nothing else raises: a result of any other shape is skipped.
     """
     document = _load_sarif(sarif_text)
     runs = document.get("runs") if isinstance(document, dict) else None
@@ -1609,6 +1794,8 @@ def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False) -> dic
         properties = result.get("properties") if isinstance(result.get("properties"), dict) else {}
         fingerprints = result.get("partialFingerprints") if isinstance(result.get("partialFingerprints"), dict) else {}
         identifier = fingerprints.get("findingId/v1")
+        if identifier is None:  # tachi's older SARIF has no fingerprint and carries the ID as properties.id (D8, option b)
+            identifier = properties.get("id")
         if not tachi_parts.id_matches("finding", identifier):
             continue
         finding_id = tachi_parts.canonical_finding_id(identifier)
@@ -1629,7 +1816,8 @@ def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False) -> dic
         if with_scores and entry["id"] not in scores:
             scores[entry["id"]] = {"composite": entry["composite"], "band": entry["band"]}
     if not members:
-        raise ValueError("the SARIF holds no open finding: no result in runs[0] has a findingId/v1 that isn't absent")
+        raise ValueError("the SARIF holds no open finding: no result in runs[0] has a finding ID, in findingId/v1 or "
+                         "properties.id, that isn't absent. Remedy: regenerate the markdown input")
     # One group per primary (or, where no primary is named, per group ID), in the order its first result appears.
     records: dict = {}
     for entry in entries:
@@ -1660,6 +1848,170 @@ def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False) -> dic
     # gives it. Then the groups the file doesn't name, in the order their first result appears.
     raw_groups = [(group_id, list(dict.fromkeys(named[group_id]))) for group_id in sorted(named, key=lambda g: int(g[3:]))]
     return {"members": members, "groups": _assign_correlation_groups(raw_groups + unnamed, set(members)), "scores": scores}
+
+
+# =============================================================================
+# The controls file's persisted inputs (F-374 AR-T3, T143)
+# =============================================================================
+
+_ASSESSMENT_INPUTS_HEADING = r"^###\s+Assessment Inputs\s*$"
+_CONTROLS_SCALAR_FIELDS = ("control_status", "control_category", "confidence", "carried_forward", "matrix_row", "recommendation_body")
+_EVIDENCE_FIELDS = ("file", "line", "language", "snippet", "summary")
+_EVIDENCE_ADDRESS = re.compile(r"evidence\.(?P<index>0|[1-9][0-9]*)\.(?P<rest>[a-z_.]+)", re.ASCII)
+_MAX_EVIDENCE_ENTRIES = 5
+
+
+def _controls_input(field: str, value: str):
+    """One persisted row's value, checked against its class: ``(path, parsed)``, or ``ValueError(reason)``.
+
+    ``path`` is the value's place in the item: ``("control_status",)``, ``("evidence", 2, "summary")`` or
+    ``("evidence", 0, "assessment", "currency", "rating")``. Closed values are checked against their enum or pattern,
+    as the part validator checks them. Narrative and evidence-class text comes back as it is: it is re-validated, and
+    its slots re-resolved, where it is used.
+    """
+    if field in _CONTROLS_SCALAR_FIELDS:
+        path: tuple = (field,)
+    else:
+        address = _EVIDENCE_ADDRESS.fullmatch(field)
+        if address is None or int(address.group("index")) >= _MAX_EVIDENCE_ENTRIES:
+            raise ValueError("%r is not a field of a controls item" % field[:40])
+        rest = address.group("rest").split(".")
+        index = int(address.group("index"))
+        if len(rest) == 1 and rest[0] in _EVIDENCE_FIELDS:
+            path = ("evidence", index, rest[0])
+        elif len(rest) == 3 and rest[0] == "assessment" and rest[1] in tachi_parts.ASSESSMENT_DIMENSIONS and rest[2] in ("rating", "rationale"):
+            path = ("evidence", index, "assessment", rest[1], rest[2])
+        else:
+            raise ValueError("%r is not a field of a controls item" % field[:40])
+    name = path[-1]
+    if name == "control_status" and value not in tachi_parts.CONTROL_STATUSES:
+        raise ValueError("control_status is not found, partial or missing")
+    if name == "control_category" and value not in tachi_parts.CONTROL_CATEGORIES:
+        raise ValueError("control_category is not one of the eight categories")
+    if name in ("confidence", "rating") and value not in tachi_parts.CONFIDENCES:
+        raise ValueError("%s is not High, Medium or Low" % name)
+    if name == "carried_forward":
+        if value not in ("true", "false"):
+            raise ValueError("carried_forward is not true or false")
+        return path, value == "true"
+    if name == "file" and not (1 <= len(value) <= 300 and tachi_parts.path_problem(value) is None):
+        raise ValueError("evidence.file breaks D7's relative path rule")
+    if name == "line":
+        if re.fullmatch(r"[1-9][0-9]{0,8}", value) is None:
+            raise ValueError("evidence.line is not an integer of 1 or more")
+        return path, int(value)
+    if name == "language" and not tachi_parts.id_matches("language", value):
+        raise ValueError("evidence.language does not match the language pattern")
+    return path, value
+
+
+def _controls_item(rows: list) -> dict:
+    """One finding's persisted rows, ``[(path, value)]`` in file order, as a controls item; ``ValueError`` if it is incomplete.
+
+    The item has the keys of ``contracts/part-files.md``'s controls payload, less ``finding_id``, in its order, with
+    the null forms the format leaves unwritten (``confidence`` and ``recommendation_body`` as ``None``, ``evidence``
+    as ``[]``). It is checked the way the part validator checks an item, so an item that comes back could be a part's.
+    """
+    item: dict = {}
+    entries: dict = {}
+    for path, value in rows:
+        if path[0] == "evidence":
+            entry = entries.setdefault(path[1], {})
+            target, keys = (entry.setdefault("assessment", {}).setdefault(path[3], {}), path[4:]) if len(path) == 5 else (entry, path[2:])
+            target[keys[0]] = value
+        else:
+            item[path[0]] = value
+    for name in ("control_status", "control_category", "carried_forward", "matrix_row"):
+        if name not in item:
+            raise ValueError("it has no %s row" % name)
+    status = item["control_status"]
+    if (status == "missing") != ("confidence" not in item):
+        raise ValueError("confidence is written exactly when the status isn't missing")
+    if (status == "found") != ("recommendation_body" not in item):
+        raise ValueError("recommendation_body is written exactly when the status isn't found")
+    if (status == "missing") != (not entries):
+        raise ValueError("evidence has 1 to %d entries for found or partial, and none for missing" % _MAX_EVIDENCE_ENTRIES)
+    if sorted(entries) != list(range(len(entries))):
+        raise ValueError("the evidence entries are not indexed from 0 without a gap")
+    evidence = []
+    for index in range(len(entries)):
+        entry = entries[index]
+        for name in _EVIDENCE_FIELDS:
+            if name not in entry:
+                raise ValueError("evidence entry %d has no %s row" % (index, name))
+        assessment = entry.get("assessment")
+        if assessment is not None and not all(set(assessment.get(dimension, ())) == {"rating", "rationale"} for dimension in tachi_parts.ASSESSMENT_DIMENSIONS):
+            raise ValueError("evidence entry %d has an incomplete assessment" % index)
+        ordered = {name: entry[name] for name in _EVIDENCE_FIELDS}
+        if assessment is not None:
+            ordered["assessment"] = {dimension: {"rating": assessment[dimension]["rating"], "rationale": assessment[dimension]["rationale"]}
+                                     for dimension in tachi_parts.ASSESSMENT_DIMENSIONS}
+        evidence.append(ordered)
+    return {"control_status": status, "control_category": item["control_category"], "confidence": item.get("confidence"),
+            "carried_forward": item["carried_forward"], "evidence": evidence, "matrix_row": item["matrix_row"],
+            "recommendation_body": item.get("recommendation_body")}
+
+
+def parse_controls_assessment_inputs(content: str) -> dict:
+    """Each finding's persisted controls result, from a 1.1 ``compensating-controls.md``'s ``### Assessment Inputs`` (AR-T3).
+
+    Returns ``{"inputs": {finding ID: item}, "errors": [{"line", "row", "reason"}]}``, the IDs canonical and in S-2 order.
+    An item is the controls payload as ``contracts/part-files.md`` keys it, without ``finding_id``: ``control_status``,
+    ``control_category``, ``confidence``, ``carried_forward`` (a ``bool``), ``evidence`` (a list of ``file``, ``line``
+    (an ``int``), ``language``, ``snippet`` and ``summary``, and an optional ``assessment`` of the four dimensions, each
+    a ``rating`` and a ``rationale``), ``matrix_row`` and ``recommendation_body``. It is read, decoded, from the
+    format ``contracts/module-signatures.md`` fixes: a table of ``ID``, ``Field`` and ``Value``, one row for each
+    value that exists, the field being the value's dotted address (``evidence.0.summary``). Narrative values keep their
+    slot tokens, and evidence-class values come back as written, ``**`` markers included (``keep_bold``).
+    ``parse_markdown_table`` decodes each cell, so nothing here decodes a value again: a carried value is escaped once
+    per render and reads back the same bytes.
+
+    Closed values are re-checked against their enum or pattern, and an item has to be complete and consistent, as the part
+    validator requires of one. A row whose field isn't in the payload's closed key set, whose value fails its check, or
+    whose ID or cell count is wrong goes to ``errors``, and the item it belongs to is left out, so no stage carries a
+    result that it can't trust. An item that is incomplete is left out with an error at its first row. A file with no
+    ``### Assessment Inputs`` (a pre-1.1 file) gives ``{"inputs": {}, "errors": []}``, as does one whose table has no
+    row. A table without ``ID``, ``Field`` and ``Value`` columns is one error and no input.
+    """
+    result: dict = {"inputs": {}, "errors": []}
+    start = match_heading(_ASSESSMENT_INPUTS_HEADING, content) if isinstance(content, str) and content else None
+    if start is None:
+        return result
+    skipped: list = []
+    at: list = []
+    rows = parse_markdown_table(content, start_line=start, skipped=skipped, row_lines=at, keep_bold=True)
+    text_lines = content.split("\n")
+    problems = [(line, "has fewer cells than the table's header") for line in skipped]
+    if rows and {"ID", "Field", "Value"} - set(rows[0]):
+        problems = [(at[0], "the table has no ID, Field and Value columns")]
+        rows = []
+    collected: dict = {}
+    spoiled: set = set()
+    seen: set = set()
+    for row, line in zip(rows, at):
+        if not tachi_parts.id_matches("finding", row["ID"]):
+            problems.append((line, "names %r, which is not a finding ID" % row["ID"][:40]))
+            continue
+        finding_id = tachi_parts.canonical_finding_id(row["ID"])
+        try:
+            path, value = _controls_input(row["Field"], row["Value"])
+            if (finding_id, path) in seen:
+                raise ValueError("%s repeats the value %s" % (finding_id, ".".join(str(part) for part in path)))
+        except ValueError as exc:
+            problems.append((line, str(exc)))
+            spoiled.add(finding_id)
+            continue
+        seen.add((finding_id, path))
+        collected.setdefault(finding_id, []).append((line, path, value))
+    for finding_id in sorted(collected, key=tachi_parts.finding_sort_key):
+        if finding_id in spoiled:
+            continue
+        try:
+            result["inputs"][finding_id] = _controls_item([(path, value) for _, path, value in collected[finding_id]])
+        except ValueError as exc:
+            problems.append((collected[finding_id][0][0], "%s: %s" % (finding_id, exc)))
+    result["errors"] = [{"line": line, "row": text_lines[line - 1].strip()[:200], "reason": reason} for line, reason in sorted(problems)]
+    return result
 
 
 # Tier 2 referential-integrity validator: resolves each record's id against
@@ -1858,6 +2210,14 @@ def parse_compensating_controls_md(content: str, composites_by_id: dict = None) 
             falling back to the raw ``Inherent Severity`` column, or ``None``.
         residual_score / residual_severity: unchanged in shape, but now
             reflect the post-clamp value when a clamp applied.
+
+    And (T057, FR-K8.2), read by header name from each band table, so K8's corrected
+    schema and the pre-fix one give the same rows:
+        maestro_layer / control_category: the row's ``MAESTRO Layer`` and
+            ``Control Category`` cells, or ``""`` when its table has no such column.
+        carried_forward: ``True`` when the row's ``CF`` cell is ``CF`` (the
+            carried-forward marker, R-20), ``False`` for a dash (``—``), an empty cell
+            or a table with no ``CF`` column.
     """
     result = {
         "findings": [],
@@ -2001,6 +2361,7 @@ def parse_compensating_controls_md(content: str, composites_by_id: dict = None) 
                 inherent_band = aliased["inherent_severity"].strip() or None
 
             residual_score_display = str(residual) if residual is not None else residual_text
+            k8 = _resolve_k8_fields(row)
 
             result["findings"].append({
                 "id": threat_id,
@@ -2013,6 +2374,9 @@ def parse_compensating_controls_md(content: str, composites_by_id: dict = None) 
                 "inherent": inherent,
                 "inherent_severity": inherent_band,
                 "recommendation": recommendations.get(threat_id, ""),
+                "maestro_layer": k8["maestro_layer"],
+                "control_category": k8["control_category"],
+                "carried_forward": k8["cf"].upper() == "CF",
             })
 
     _warn_aggregated(_unrecognized_status_ids,
