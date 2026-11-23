@@ -1817,9 +1817,10 @@ def _actions_and_delta(world: dict) -> list:
            "", "### Baseline Reference", "",
            table(("Field", "Value"), (("Source", "baseline-runs/%s/threats.md" % cfg["dates"]["baseline"]), ("Date", cfg["dates"]["baseline"]),
                                       ("Baseline Findings", baseline_count(world)), ("Run ID", cfg["run_ids"]["baseline"]))),
+           # The block exactly as scripts/populate-affected-assets.py renders it (no introduction, one row per finding in
+           # Section 7's order), so that Step 1.5 of /tachi.risk-score rewrites nothing. No component carries a tag.
            "", "---", "", "## Affected Assets", "",
-           "Asset-sensitivity tags each finding inherits from its component. No component in this architecture carries a tag, so every row is empty.", "",
-           table(("Finding ID", "Affected Assets"), [(f["id"], "[]") for f in findings])]
+           table(("Finding ID", "Affected Assets"), [(f["id"], "[]") for f in ranked])]
     return out
 
 # --------------------------------------------------------------------------- SARIF, stub code, trees, architecture

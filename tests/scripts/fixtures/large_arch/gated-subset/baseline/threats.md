@@ -411,49 +411,47 @@ The lifecycle of every finding relative to the baseline run. Section 4c lists th
 
 ## Affected Assets
 
-Asset-sensitivity tags each finding inherits from its component. No component in this architecture carries a tag, so every row is empty.
-
 | Finding ID | Affected Assets |
 |------------|-----------------|
-| S-1 | [] |
-| S-3 | [] |
-| S-4 | [] |
-| S-5 | [] |
-| T-1 | [] |
-| T-2 | [] |
-| T-3 | [] |
-| T-4 | [] |
-| R-1 | [] |
-| R-3 | [] |
-| R-4 | [] |
-| I-1 | [] |
-| I-3 | [] |
-| I-4 | [] |
 | I-5 | [] |
-| D-1 | [] |
-| D-2 | [] |
-| D-3 | [] |
-| E-1 | [] |
-| E-2 | [] |
-| E-3 | [] |
 | AG-1 | [] |
 | AG-2 | [] |
 | AG-3 | [] |
+| LLM-1 | [] |
+| LLM-6 | [] |
+| LLM-7 | [] |
+| S-4 | [] |
+| T-1 | [] |
+| I-1 | [] |
+| I-4 | [] |
+| D-2 | [] |
+| E-1 | [] |
+| E-3 | [] |
+| LLM-2 | [] |
+| LLM-3 | [] |
+| LLM-5 | [] |
+| S-3 | [] |
+| S-5 | [] |
+| R-1 | [] |
+| R-4 | [] |
+| I-3 | [] |
+| D-1 | [] |
+| D-3 | [] |
+| E-2 | [] |
 | AG-4 | [] |
 | AG-5 | [] |
 | AG-6 | [] |
 | AGP-01 | [] |
-| LLM-1 | [] |
-| LLM-2 | [] |
-| LLM-3 | [] |
-| LLM-4 | [] |
-| LLM-5 | [] |
-| LLM-6 | [] |
-| LLM-7 | [] |
-| OI-1 | [] |
+| TE-1 | [] |
 | OI-2 | [] |
-| OI-3 | [] |
+| S-1 | [] |
+| T-2 | [] |
+| T-3 | [] |
+| T-4 | [] |
+| R-3 | [] |
+| TE-2 | [] |
+| LLM-4 | [] |
+| OI-1 | [] |
 | MI-1 | [] |
 | MI-2 | [] |
-| TE-1 | [] |
-| TE-2 | [] |
+| OI-3 | [] |

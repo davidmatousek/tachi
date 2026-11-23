@@ -17,6 +17,8 @@ What they pin, in the order S-4 gives it:
   serializer, and parts that regenerate alone to the bytes they have in the whole tree.
 * **The base set's shape** (S-4's list), and the property that makes it a clean baseline: its scores carry no
   seeded error, no rounding tie and no band boundary.
+* **A fixed point of the populator.** Step 1.5 of ``/tachi.risk-score`` runs ``populate-affected-assets.py`` on
+  the input ``threats.md`` in place. It must change nothing, or the stage's input digest moves under it (T021(a)).
 
 Not here: chain formation on the fixture's chain material, which T115 and T116 test with the real script, and
 the variants (T040, T148 and T103 extend this module as their parts land).
@@ -420,6 +422,21 @@ def test_json_comes_from_the_generators_serializer(committed):
             assert gen.dumps(json.loads(text), indent=2, sort_keys=False) + "\n" == text, "%s was not written by dumps()" % path
             checked += 1
     assert checked >= 8, "expected the canary probe, three SARIF files, the manifest and the gated subset's files"
+
+
+@pytest.mark.parametrize("run,architecture", [("baseline", "architecture"), ("gated-subset/baseline", "gated-subset/architecture")],
+                         ids=["base", "gated"])
+def test_each_threats_file_is_a_fixed_point_of_the_affected_assets_populator(committed, tmp_path, run, architecture):
+    """The populator runs exactly as /tachi.risk-score's Step 1.5 invokes it, on a copy, and leaves every byte alone:
+    it renders the block with no introduction and its rows in Section 7's order, and the fixture must already do so."""
+    populator = _load_hyphenated_script("populate_affected_assets_for_fixture", "populate-affected-assets.py")
+    original = committed[run + "/threats.md"]
+    threats, arch = tmp_path / "threats.md", tmp_path / "architecture.md"
+    threats.write_bytes(original)
+    arch.write_bytes(committed[architecture + "/architecture.md"])
+    assert populator.main(["--architecture", str(arch), "--threats", str(threats)]) == 0
+    assert threats.read_bytes() == original, "the populator rewrote %s/threats.md: emit the Affected Assets block in its own form" % run
+    assert populator.main(["--architecture", str(arch), "--threats", str(threats), "--check"]) == 0
 
 
 def test_no_file_holds_a_local_path(committed):
