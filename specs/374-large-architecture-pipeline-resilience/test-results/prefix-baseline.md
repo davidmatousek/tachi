@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-22. **Base:** W1's base plus T019 (`c84ff16`, the fixture) and T023 (`de96163`, D6's "Amended at W0" table). **Inputs:** the fixture's `baseline/threats.md` and `architecture/architecture.md`, ADR-050 D6, [s1-proxy.md](s1-proxy.md) and [w0-gate.md](w0-gate.md). **Run:** one live `/tachi.risk-score` on v4.48.4 (Claude Code 2.1.330, macOS), before any renderer code (D-7).
 
-T021(b), SC-8's baselines, runs after the architect rules on D6 and goes in `sc8-baseline.md`.
+T021(b), SC-8's baselines, runs after the architect rules on D6 and goes in `sc8-baseline.md`. Section 8 holds the calibration Write that the architect ruled for after this record's first version. It decides D6's sizes and supersedes section 5.4's implied verdicts.
 
 ## Result: no overflow and no dropped finding, but the scorer did not finish in contract
 
@@ -120,9 +120,11 @@ All come from the same session's usage records. None is a JSON Write.
   | `compensating-controls` | 6 | 8 | 9 | 9 | 10 | 13 |
 
 - **P-7's example** (`ascii-web-api`, 11 findings in one batch per stage) needs both sizes at least 11. That needs r of 2.62 or more for the scorer and 3.32 or more for controls. At r = 3.2, controls would be 10, and P-7's example would return to the PM before T021(b).
-- A clean output-side reading needs one response that Writes a part-shaped JSON file at two-space indentation. A calibration Write by a Sonnet 5.5 scorer at medium effort would cost about 10k output tokens. Counting tokens on the fixture's own `baseline/risk-scores.sarif` would give the tokenizer side. Neither was run: T021 doesn't ask for one.
+- A clean output-side reading needs one response that Writes a part-shaped JSON file at two-space indentation. A calibration Write by a Sonnet 5.5 scorer at medium effort would cost about 10k output tokens. Counting tokens on the fixture's own `baseline/risk-scores.sarif` would give the tokenizer side. Neither was run in T021(a), and section 8 runs the calibration Write.
 
 ### 5.4 Verdicts the stated rule implies
+
+*Superseded by section 8: the architect ruled the sizes neither confirmed nor re-amended until one calibration Write per part stage decides them.*
 
 | Constant | Measured here | Implied by D6's rule |
 |---|---|---|
@@ -151,6 +153,51 @@ All come from the same session's usage records. None is a JSON Write.
 
 1. **Run arrangement.** The private run notes record one environment-dependent effect on this run. So T021(b) and every post-fix run use adopter directories arranged the same way as each other, and the baseline and post-fix runs of each comparison share one arrangement (T072, T075).
 2. **A 128k response cap.** In a clean environment each request carried `max_tokens` 128,000. The 64k in PRD D-2 and in S-4's sizing check is not this environment's cap, so those texts need that qualifier. The fixture's outputs still exceed 128k (section 4).
-3. **Background dispatch.** v4.48.4's command text says to wait for the agent. The main session backgrounded it and ended its turn. S-8's foreground rule has to be in the post-fix command's text.
+3. **Background dispatch.** v4.48.4's command text says to wait for the agent. The main session backgrounded it and ended its turn. S-8's foreground rule can't be met by command text alone: the Agent tool in this Claude Code version has no foreground option (section 8.1).
 4. **The fixture isn't a fixed point of the populator.** Step 1.5 reordered its `## Affected Assets` rows into Section 7's order and dropped the introductory sentence. The values didn't change. Lane F may want the committed block in the populator's own form, so that no run changes the input digest.
 5. **Thinking dominates.** 65% of the stage's output tokens were thinking at medium effort, so SC-8's baseline (T021(b)) will be mostly thinking too. This is one run, so the record has no variance estimate.
+
+## 8. Calibration Write (the architect's ruling (iii), ADR-050 D6 at `282dbbe`)
+
+T021(a) gave D6's two rules no valid input (section 5), so the architect ruled that the sizes are neither confirmed nor re-amended until one calibration Write per part stage decides them. This is that calibration.
+
+### 8.1 Method
+
+- **The files.** Two `tachi.part/1` objects at two-space indentation, built from the fixture's findings: narrative strings with no digit outside a slot, controls evidence drawn from the fixture's stub codebase, and a `matrix_row` of 11 cells with slot tokens in the computed ones. A validator pass against the closed key sets in `contracts/part-files.md` found no error. An item's size is its block inside the part, indented and with its separator.
+
+  | Part | Items | File bytes | Item bytes: mean (min to max) | Target |
+  |---|---|---|---|---|
+  | `risk-score` (scorer) | 16 | 24,713 | 1,519 (1,505 to 1,532) | 1,520, within 5% |
+  | `compensating-controls` | 13 | 25,512 | 1,933 (1,873 to 2,012) | 1,930, within 5% |
+
+  Text-bearing strings are 49% of the scorer part's bytes and 74% of the controls part's. The rest is keys, small integers and indentation.
+- **The session.** A fresh interactive session in adopter A, reset to its install commit with a clean tree, arranged as T021(a)'s was: a clean environment, Opus 5.5 at medium effort, auto permission mode, no session profile. The main session dispatched `tachi-risk-scorer` (Sonnet 5.5, effort medium) once per file, one after the other.
+- **The agent's prompt:** read the source JSON file at a given path, write its exact content to a path inside the adopter in one Write call, byte for byte, and reply with only "Done". The source went by path, so the main session didn't have to re-emit 25 KB per dispatch (the spec's wording puts the JSON in the prompt).
+- **The dispatches were background agents.** The main session was told to dispatch in the foreground, but the Agent tool in this Claude Code version has no foreground option, and each agent's record says `background`. The main session waited for each completion notice before it started the next dispatch. S-8's "every dispatch runs in the foreground" and D4's Step 3 wording need that qualifier.
+- **The check.** Each written file was compared with its source with `cmp`. Both are identical, so no re-run was needed.
+
+### 8.2 Measurements
+
+| Part | Bytes on disk | Response output tokens | Thinking | Visible tokens | r (bytes ÷ visible tokens) |
+|---|---|---|---|---|---|
+| `risk-score` | 24,713 | 9,511 | 0 | 9,511 | **2.598** |
+| `compensating-controls` | 25,512 | 9,175 | 0 | 9,175 | **2.781** |
+
+- Each Write response held that one tool call and nothing else, with no text and no thinking block, so thinking is separated trivially. Each agent made three responses: a Read, the Write and the hand-back.
+- r is slightly conservative. The response's tokens include the call's file path (about 170 characters), and the content travels JSON-escaped in the call (5% to 6.5% more bytes than the file). Per escaped byte the ratios are 2.77 and 2.92. The rule's measure is the file's bytes.
+- The session cost 20,317 output tokens (the main session's 1,253 on Opus, the agents' 19,064 on Sonnet).
+
+### 8.3 The outcome
+
+r is the minimum of the two, 2.598, which is below 3.2.
+
+| Constant | W0 (ruled) | After the calibration | By the rule |
+|---|---|---|---|
+| `risk-score` | 16 | **13** | ⌊8,000 × 2.598 ÷ 1,520⌋ |
+| `compensating-controls` | 13 | **10** | ⌊8,000 × 2.598 ÷ 1,930⌋ |
+| `trees` | 12 | 12 | stays until T130 |
+
+- At the ruled 16 and 13 items, the two parts cost 9,511 and 9,175 tokens, which is 19% and 15% over S-1's 8,000 per Write. The measured tokens per item are 594 and 706, against W0's u of 475 and 603. At 13 and 10 items the parts would cost about 7,600 and 7,400 tokens at this r.
+- **P-7's gate.** `ascii-web-api` (11 open findings) is one batch in both stages only if both sizes are at least 11, which needs r of 2.654 or more for controls. r = 2.598 is 2.1% short, and controls fall to 10. On the one-r rule the example returns to the PM, and **T021(b) was not run.**
+- **The per-stage reading.** D6's text names the thresholds per stage (r of 2.654 or more for controls, 2.09 or more for the scorer). If each stage takes its own r, `risk-score` is 13 (r 2.598) and `compensating-controls` is ⌊8,000 × 2.781 ÷ 1,930⌋ = 11 (r 2.781). Both are at least 11, and P-7's example would stand. The dispatch asked for one r, so the lane stopped here.
+- r depends on the content mix. The scorer part, half of it structure, measured lower than the controls part. W5's stage records log each live part's size, so TW-L2 re-checks the sizes against real parts.
