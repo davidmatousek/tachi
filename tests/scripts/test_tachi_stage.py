@@ -69,8 +69,8 @@ SHA256_HEX = re.compile(r"^[0-9a-f]{64}\Z")
 PREFIX_ORDER = ("S", "T", "R", "I", "D", "E", "AG", "AGP", "LLM", "OI", "MI", "TE")
 
 PLAN_KEYS = {
-    "schema", "plan_id", "stage", "agent_type", "created_utc", "tachi_version", "inputs", "params",
-    "batch_size", "unit_count", "preimage", "out_snapshot", "retry_budget", "batches",
+    "schema", "plan_id", "stage", "agent_type", "created_utc", "tachi_version", "inputs", "refs", "architecture_warning",
+    "params", "batch_size", "unit_count", "preimage", "out_snapshot", "retry_budget", "batches",
 }
 BATCH_ENTRY_KEYS = {"batch_id", "parent", "attempt", "finding_ids", "input_sha256", "state"}
 BATCH_INPUT_KEYS = {
@@ -460,6 +460,8 @@ def test_plan_writes_the_layout_and_prints_the_contract_object(stage, cli, tmp_p
     assert (plan["batch_size"], plan["unit_count"]) == (4, len(MIXED_IDS))
     assert DATE in plan["params"].values(), "the scoring date is an input, and it is recorded"
     assert plan["retry_budget"] == {"limit": 2 * 4, "used": 0}, "limit is 2 x the planned batch count"
+    assert plan["refs"] == {"threats": str(h.threats)}, "the plan holds the pointers once, and is their authority (ruled at W2)"
+    assert plan["architecture_warning"] is None, "no --architecture was given, so there is nothing to warn of"
 
     threats_bytes = h.threats.read_bytes()
     recorded = [v for v in plan["inputs"].values() if v["sha256"] == hashlib.sha256(threats_bytes).hexdigest()]
@@ -493,7 +495,7 @@ def test_plan_writes_the_layout_and_prints_the_contract_object(stage, cli, tmp_p
         assert Path(bi["part_path"]).resolve() == (h.plan_dir / "parts" / ("%s.a1.json" % entry["batch_id"])).resolve()
         assert bi["tree_paths"] == {}, "only the trees stage names tree paths"
         assert unit_ids(bi["units"]) == entry["finding_ids"]
-        assert isinstance(bi["refs"], dict)
+        assert bi["refs"] == plan["refs"], "each batch input keeps a verbatim copy, for its agent"
         assert DATE in bi["params"].values()
 
     flat = [w for wave in res["waves"] for w in wave]
@@ -710,9 +712,11 @@ def test_plan_records_the_optional_pointers_as_refs_and_the_risk_scores_file_as_
 
     res = h.plan_cli("--risk-scores", scores, "--baseline-dir", baseline, "--architecture", architecture, "--target", target)
     assert res.code == 0, res.describe()
-    assert h.batch_input("B001")["refs"] == {
-        "threats": str(h.threats), "risk_scores": str(scores), "baseline_dir": str(baseline),
-        "architecture": str(architecture), "target": str(target)}
+    expected = {"threats": str(h.threats), "risk_scores": str(scores), "baseline_dir": str(baseline),
+                "architecture": str(architecture), "target": str(target)}
+    assert h.plan_json()["refs"] == expected, "the plan holds them once, as the authority (ruled at W2)"
+    assert h.batch_input("B001")["refs"] == expected, "and each batch input keeps a verbatim copy"
+    assert h.plan_json()["architecture_warning"] is None
     assert set(h.plan_json()["inputs"]) == {"threats", "risk_scores"}
     scores.write_text("# edited since plan\n", encoding="utf-8")
     assert h.reconcile().code == 2
@@ -731,18 +735,25 @@ def test_a_risk_scores_pointer_must_be_a_file_and_a_target_a_directory(stage, cl
     assert h.plan_cli("--target", h.threats).code == 1
 
 
-def test_an_architecture_candidate_that_is_not_a_file_is_dropped_with_a_warning(stage, cli, tmp_path):
-    """ADR-050 D7's fallback: a stage never stops for the architecture path."""
+def test_an_architecture_candidate_that_is_not_a_file_is_dropped_with_a_warning(stage, cli, tmp_path, monkeypatch):
+    """ADR-050 D7's fallback: a stage never stops for the architecture path. The plan records the warning (ruled at W2)."""
+    monkeypatch.chdir(tmp_path)
     h = Harness(stage, cli, tmp_path, "risk-score", ids=MIXED_IDS[:6])
-    res = h.plan_cli("--architecture", tmp_path / "docs" / "absent.md")
+    candidate = tmp_path / "docs" / "absent.md"
+    res = h.plan_cli("--architecture", candidate)
     assert res.code == 0, res.describe()
-    assert "architecture" not in h.batch_input("B001")["refs"]
+    assert "architecture" not in h.batch_input("B001")["refs"] and "architecture" not in h.plan_json()["refs"]
     assert "WARNING" in res.err and "absent.md" in res.err
+    warning = h.plan_json()["architecture_warning"]
+    assert warning == stage.sc.resolve_explicit(str(candidate), root=os.getcwd())[1], "the resolver's own warning, byte for byte"
+    assert warning["code"] == "architecture-path:explicit:missing" and "missing check" in warning["detail"]
+    assert "--architecture-path" in warning["detail"], "the detail shortens the candidate to 80 characters, so only stderr is sure to name it"
 
 
-@pytest.mark.parametrize("flag", ["--risk-scores", "--baseline-dir", "--architecture", "--target", "--threats"])
+@pytest.mark.parametrize("flag", ["--risk-scores", "--baseline-dir", "--target", "--threats"])
 def test_a_pointer_with_a_forbidden_character_exits_2(stage, cli, tmp_path, flag):
-    """Each pointer becomes an absolute path in a document, so it must pass D7's syntactic rule first."""
+    """Each pointer becomes an absolute path in a document, so it must pass D7's syntactic rule first. ``--architecture``
+    is not one of them: the shared resolver judges that candidate, and every refusal of it warns and falls back (ruled at W2)."""
     h = Harness(stage, cli, tmp_path, "risk-score")
     argv = ["plan", "--stage", "risk-score", "--out", h.out, "--date", DATE, "--threats", h.threats]
     if flag == "--threats":
@@ -2705,6 +2716,77 @@ def test_the_planner_and_the_renderers_function_agree_on_who_is_carried(stage, c
     assert set(agent_ids(h)) == set(routing.to_agent) and set(routing.carried) == {"T-2", "D-1", "E-1"}
 
 
+# ---- S-12(b): a form that lacks delta_status takes each status from the baseline (ruled at W2; ADR-050 D9)
+
+def without_status_column(text):
+    """``threats.md`` with Section 7's Status column removed: the drift form that leaves ``delta_status`` out of every row."""
+    lines, inside = [], False
+    for line in text.split("\n"):
+        inside = inside or line.startswith("## 7.")
+        if inside and line.startswith("|"):
+            cells = line.split("|")
+            del cells[2]
+            line = "|".join(cells)
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def drifted(stage, cli, tmp_path, monkeypatch, statuses, groups=(), baseline_ids=None):
+    """``routed``'s project with its Section 7 rewritten to the form that has no Status column."""
+    h = routed(stage, cli, tmp_path, monkeypatch, statuses, groups, baseline_ids=baseline_ids)
+    h.threats.write_text(without_status_column(h.threats.read_text(encoding="utf-8")), encoding="utf-8")
+    assert "Status" not in h.threats.read_text(encoding="utf-8").split("## 7.")[1]
+    return h
+
+
+def test_a_form_without_a_status_column_carries_a_finding_the_baseline_has_a_usable_row_for_and_scores_the_rest_fresh(
+        stage, cli, tmp_path, monkeypatch):
+    """The baseline decides, in ``route_scorer_units``: UNCHANGED when it holds an open row for the ID, NEW otherwise.
+    R-1 would be UPDATED in the table form and go to the agent. Without a status it is carried like the rest (ruled at W2:
+    deriving UPDATED would re-score every drift-form finding). I-3 is a peer with no row, so it copies its primary."""
+    h = drifted(stage, cli, tmp_path, monkeypatch, ROUTED, ROUTED_GROUPS, baseline_ids=["T-2", "D-1", "R-1", "E-1"])
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
+    assert agent_ids(h) == ["S-1", "D-2"], "S-1 and D-2 have no row: NEW, and scored fresh"
+    assert h.plan_json()["unit_count"] == 2
+
+
+def test_a_form_without_a_status_column_and_with_no_baseline_scores_every_non_peer_fresh(stage, cli, tmp_path, monkeypatch):
+    h = drifted(stage, cli, tmp_path, monkeypatch, ROUTED, ROUTED_GROUPS)
+    assert h.plan_cli().code == 0
+    assert agent_ids(h) == ["S-1", "R-1", "D-1", "D-2", "E-1"], "every status is NEW, and the peers T-2 and I-3 copy S-1"
+
+
+def test_an_id_that_only_the_baselines_resolved_section_lists_is_new_in_a_form_without_a_status(stage, cli, tmp_path, monkeypatch):
+    """D9: the baseline supplies a status only from a usable open row, never from a RESOLVED one (§2a)."""
+    statuses = {"S-1": "NEW", "T-2": "UNCHANGED", "D-1": "UNCHANGED"}
+    h = routed(stage, cli, tmp_path, monkeypatch, statuses)
+    resolved = ("\n## 2a. Resolved Findings\n\n| ID | Source | Component | Threat | CVSS | Exploit. | Scale. | Reach. | Composite | Severity | SLA "
+                "| Disposition | Status | Owner | Review Date | Flags |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
+                "| D-1 | inherited | c | t | 7.1 | 6.0 | 6.0 | 6.0 | 6.4 | Medium | 30d | Review | RESOLVED | alice | 2026-10-01 | resolved |\n")
+    source = write_baseline(tmp_path, [], content=(baseline_scores_md(["T-2"]) + resolved).encode("utf-8"))
+    h.threats.write_text(without_status_column(make_threats_md(list(statuses), statuses=statuses, baseline_source=source)), encoding="utf-8")
+    assert h.plan_cli().code == 0
+    assert agent_ids(h) == ["S-1", "D-1"], "T-2 has an open row and is carried; D-1 has only a resolved one, so it is NEW"
+
+
+def test_a_form_without_a_status_column_is_routed_as_the_routing_function_routes_it(stage, cli, tmp_path, monkeypatch):
+    """The planner passes the reference set's own ``lacking`` map, so the renderer can pass the same one and agree (D2)."""
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    import tachi_parsers
+    import tachi_scoring_rules as rules
+
+    h = drifted(stage, cli, tmp_path, monkeypatch, ROUTED, ROUTED_GROUPS, baseline_ids=["T-2", "D-1", "R-1", "E-1"])
+    assert h.plan_cli().code == 0
+    reference = tachi_parsers.parse_reference_set(h.threats.read_text(encoding="utf-8"))
+    assert set(reference["lacking"]) == set(ROUTED) and all("delta_status" in names for names in reference["lacking"].values())
+    groups = tachi_parsers.parse_correlation_groups(h.threats.read_text(encoding="utf-8"), member_ids=[row["id"] for row in reference["open"]])["groups"]
+    baseline = rules.read_baseline_scores(tmp_path / "baseline-runs" / "prev" / "risk-scores.md")
+    routing = rules.route_scorer_units(reference["open"], groups=groups, baseline=baseline, lacking=reference["lacking"])
+    assert set(agent_ids(h)) == set(routing.to_agent) == {"S-1", "D-2"}
+    assert routing.status == {"S-1": "NEW", "T-2": "UNCHANGED", "I-3": "NEW", "D-1": "UNCHANGED", "D-2": "NEW", "R-1": "UNCHANGED", "E-1": "UNCHANGED"}
+
+
 # ---- the architecture pointer goes through the shared resolver (D7)
 
 def test_the_architecture_is_recorded_in_its_canonical_absolute_spelling(stage, cli, tmp_path, monkeypatch):
@@ -2712,8 +2794,10 @@ def test_the_architecture_is_recorded_in_its_canonical_absolute_spelling(stage, 
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "architecture.md").write_text("# a\n", encoding="utf-8")
     for given in ("docs/architecture.md", "./docs//architecture.md", str(tmp_path / "docs" / "architecture.md")):
-        assert h.plan_cli("--architecture", given).code == 0, given
+        res = h.plan_cli("--architecture", given)
+        assert res.code == 0 and "WARNING" not in res.err, given
         assert h.batch_input("B001")["refs"]["architecture"] == str(tmp_path / "docs" / "architecture.md"), given
+        assert h.plan_json()["refs"]["architecture"] == str(tmp_path / "docs" / "architecture.md") and h.plan_json()["architecture_warning"] is None, given
 
 
 @pytest.mark.parametrize("kind", ["symlink", "outside", "directory", "missing", "parent"])
@@ -2736,8 +2820,152 @@ def test_an_architecture_the_resolver_refuses_is_dropped_with_its_check_named(st
             pytest.skip("this platform cannot create a symlink")
     res = h.plan_cli("--architecture", given)
     assert res.code == 0, res.describe()
-    assert "architecture" not in h.batch_input("B001")["refs"]
+    assert "architecture" not in h.batch_input("B001")["refs"] and "architecture" not in h.plan_json()["refs"]
     assert "WARNING" in res.err and check in res.err
+    # The plan records the resolver's own warning, so the renderer's record and the plan's agree on its code and text (D7).
+    expected = stage.sc.resolve_explicit(given, root=os.getcwd())[1]
+    assert h.plan_json()["architecture_warning"] == expected
+    assert expected["code"] == "architecture-path:explicit:%s" % check and "--architecture-path" in expected["detail"]
+
+
+@pytest.mark.parametrize("given,check", [
+    ("docs/a\\b.md", "backslash"), ("docs/a`b.md", "backtick"), ("docs/a\nb.md", "control-char"), ("docs/a\tb.md", "control-char"),
+    ("", "empty"), ("https://example.invalid/a.md", "scheme"), ("C:docs/a.md", "drive-letter"),
+], ids=["backslash", "backtick", "newline", "tab", "empty", "scheme", "drive-letter"])
+def test_a_syntactically_refused_architecture_warns_and_falls_back_where_it_used_to_exit_2(stage, cli, tmp_path, monkeypatch, given, check):
+    """Ruled at W2: ``plan`` no longer pre-checks ``--architecture`` with ``path_problem``. Every refusal of the candidate, a
+    control character, backslash or backtick included, is left out of ``refs``, printed on stderr and recorded, and ``plan``
+    exits 0, because nothing in D7 stops a run (``architecture-source`` already treats them alike)."""
+    h = routed(stage, cli, tmp_path, monkeypatch, {"S-1": "NEW"})
+    res = h.plan_cli("--architecture", given)
+    assert res.code == 0, res.describe()
+    assert "architecture" not in h.plan_json()["refs"] and "architecture" not in h.batch_input("B001")["refs"]
+    assert h.plan_json()["architecture_warning"] == {"code": "architecture-path:explicit:%s" % check, "detail": h.plan_json()["architecture_warning"]["detail"]}
+    assert "--architecture-path" in h.plan_json()["architecture_warning"]["detail"]
+    lines = [line for line in res.err.splitlines() if line.startswith("WARNING")]
+    assert lines == ["WARNING: the architecture path %r is not used (%s), so it is not passed to the agents" % (given, check)], (
+        "stderr names the candidate escaped, so a newline or a tab shows as an escape and the line stays one line")
+    assert h.reconcile().code == 3, "the plan is a working plan: its one batch still waits for its agent"
+
+
+def test_the_stderr_line_names_the_whole_candidate_and_the_recorded_warning_the_resolvers_short_form(stage, cli, tmp_path, monkeypatch):
+    """The resolver shortens the candidate to 80 characters of its ``repr``, which could cut a long temporary path, so the
+    planner's own stderr line keeps it whole, and only the recorded warning uses the resolver's text (ruled at W2)."""
+    h = routed(stage, cli, tmp_path, monkeypatch, {"S-1": "NEW"})
+    given = "docs/" + "x" * 150 + ".md"
+    res = h.plan_cli("--architecture", given)
+    assert res.code == 0, res.describe()
+    assert repr(given) in res.err
+    detail = h.plan_json()["architecture_warning"]["detail"]
+    assert repr(given)[:80] in detail and repr(given)[:81] not in detail and given not in detail
+    assert detail == stage.sc.resolve_explicit(given, root=os.getcwd())[1]["detail"]
+
+
+def test_a_candidate_the_working_directory_cannot_carry_exits_2_as_every_other_unacceptable_path_does(stage, cli, tmp_path, monkeypatch):
+    """The candidate is fine, and the working directory it resolves under holds a backtick, which no document can carry. That
+    is an environment fault like ``--out`` and ``--threats``, so it exits 2 before anything is written, not a warning."""
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=["S-1"])
+    odd = tmp_path / "a`b"
+    (odd / "docs").mkdir(parents=True)
+    (odd / "docs" / "architecture.md").write_text("# a\n", encoding="utf-8")
+    monkeypatch.chdir(odd)
+    res = h.plan_cli("--architecture", "docs/architecture.md")
+    assert res.code == 2, res.describe()
+    assert "backtick" in res.err and not (h.build / "current.json").exists()
+
+
+@pytest.mark.parametrize("name", STAGE_NAMES)
+def test_a_refused_architecture_is_recorded_in_the_plan_for_either_stage(stage, cli, tmp_path, monkeypatch, name):
+    h = routed(stage, cli, tmp_path, monkeypatch, {"S-1": "NEW"}, name=name)
+    assert h.plan_cli("--architecture", "docs/absent.md").code == 0
+    assert h.plan_json()["architecture_warning"]["code"] == "architecture-path:explicit:missing"
+    assert h.plan_json()["architecture_warning"] == stage.sc.resolve_explicit("docs/absent.md", root=os.getcwd())[1]
+
+
+def test_an_architecture_pathlike_candidate_resolves_as_its_string_does(stage, cli, tmp_path, monkeypatch):
+    """The function interface takes a ``Path`` as the render tests pass one; the warning names the path as text."""
+    h = routed(stage, cli, tmp_path, monkeypatch, {"S-1": "NEW"})
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "architecture.md").write_text("# a\n", encoding="utf-8")
+    h.plan(architecture=tmp_path / "docs" / "architecture.md")
+    assert h.plan_json()["refs"]["architecture"] == str(tmp_path / "docs" / "architecture.md") and h.plan_json()["architecture_warning"] is None
+    h.plan(architecture=tmp_path / "docs" / "absent.md")
+    assert h.plan_json()["architecture_warning"]["code"] == "architecture-path:explicit:missing"
+    assert repr(str(tmp_path / "docs" / "absent.md"))[:80] in h.plan_json()["architecture_warning"]["detail"]
+
+
+# ---- the plan holds the pointers: refs and architecture_warning are plan-level (ruled at W2)
+
+def test_a_plan_with_nothing_for_an_agent_keeps_its_pointers_and_its_architecture_warning(stage, cli, tmp_path, monkeypatch):
+    """Why ``refs`` moved to the plan: an all-carried run has no batch input, so pointers kept only there were lost, and the
+    renderer's URI fell back to the body line or the default. That re-keys every alert if it differs from an earlier run's."""
+    statuses = {"S-1": "UNCHANGED", "T-2": "UNCHANGED"}
+    h = routed(stage, cli, tmp_path, monkeypatch, statuses, baseline_ids=list(statuses))
+    (tmp_path / "docs").mkdir()
+    architecture = tmp_path / "docs" / "architecture.md"
+    architecture.write_text("# a\n", encoding="utf-8")
+    assert h.plan_cli("--architecture", "docs/architecture.md").code == 0
+    plan = h.plan_json()
+    assert plan["batches"] == [] and plan["unit_count"] == 0, "nothing for an agent, so no batch input exists"
+    assert plan["refs"] == {"threats": str(h.threats), "baseline_dir": str(tmp_path / "baseline-runs" / "prev"), "architecture": str(architecture)}
+    assert plan["architecture_warning"] is None
+    assert not list((h.plan_dir / "inputs").iterdir())
+
+    assert h.plan_cli("--architecture", "docs/absent.md").code == 0
+    plan = h.plan_json()
+    assert plan["batches"] == [] and "architecture" not in plan["refs"] and "baseline_dir" in plan["refs"]
+    assert plan["architecture_warning"]["code"] == "architecture-path:explicit:missing"
+
+
+def test_the_plan_is_the_authority_for_refs_and_a_retry_copies_the_plans_not_its_parents(stage, cli, tmp_path, monkeypatch):
+    """Ruled at W2: ``reconcile`` writes each retry's input from ``plan["refs"]``. The parent input here names another
+    pointer (written consistently, so its digest checks out), and neither a halving nor an ``invalid`` retry takes it."""
+    h = routed(stage, cli, tmp_path, monkeypatch, {"S-1": "NEW", "T-2": "NEW", "D-1": "NEW", "E-1": "NEW"})
+    h.plan(batch_size=2)   # B001 holds S-1 and T-2, B002 holds D-1 and E-1, and the budget is four
+    parent = h.plan_dir / "inputs" / "B001.json"
+    body = json.loads(parent.read_text(encoding="utf-8"))
+    body["refs"] = {"threats": str(h.threats) + ".parent"}
+    parent.write_text(json.dumps(body, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    plan = h.plan_json()
+    plan["batches"][0]["input_sha256"] = sha256_of(parent)
+    (h.plan_dir / "plan.json").write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    h.digest = sha256_of(h.plan_dir / "plan.json")
+
+    h.write_part("B002")
+    assert h.reconcile().code == 3, "B001 has no part: it is halved into B001-1 and B001-2"
+    for child in ("B001-1", "B001-2"):
+        assert h.batch_input(child)["refs"] == plan["refs"] == {"threats": str(h.threats)}, child
+
+    h.write_part("B001-1", mutate=lambda part: part.update(finding_ids=["T-2"]))   # a part for the wrong finding: invalid
+    h.write_part("B001-2")
+    assert h.reconcile().code == 3, "B001-1 is retried as it is, at attempt 3"
+    assert h.batch_input("B001-1")["attempt"] == 3 and h.batch_input("B001-1")["refs"] == plan["refs"]
+
+
+def test_fail_lists_the_plans_architecture_warning_first_when_the_plan_checks_out(stage, cli, tmp_path, monkeypatch):
+    """D7: the explicit candidate's warning comes first in every stage record of the plan, the failed record included."""
+    h = routed(stage, cli, tmp_path, monkeypatch, {"S-1": "NEW"})
+    assert h.plan_cli("--architecture", "docs/absent.md").code == 0
+    warning = h.plan_json()["architecture_warning"]
+    res = h.fail("check-failed")
+    assert res.code == 0, res.describe()
+    record = h.read_json(h.plan_dir / "stage-record.json")
+    assert record["status"] == "failed" and record["warnings"] == [warning] and set(warning) == {"code", "detail"}
+
+
+def test_fail_leaves_the_architecture_warning_out_when_the_plan_fails_its_trust_checks(stage, cli, tmp_path, monkeypatch):
+    """A plan whose digest or pointer doesn't check out has no say in the record: only the reasons it can't be trusted are listed."""
+    h = routed(stage, cli, tmp_path, monkeypatch, {"S-1": "NEW"})
+    assert h.plan_cli("--architecture", "docs/absent.md").code == 0
+    refused = h.fail("check-failed", digest="0" * 64)
+    assert refused.code == 2, refused.describe()
+    assert [w["code"] for w in h.read_json(h.plan_dir / "stage-record.json")["warnings"]] == ["plan-digest-mismatch"]
+    assert h.plan_cli("--architecture", "docs/absent.md").code == 0, "a newer plan takes the pointer"
+    older = h.plan_dir
+    h.plan_cli()
+    stale = h.fail("check-failed", plan_id=older.name, digest=sha256_of(older / "plan.json"))
+    assert stale.code == 2, stale.describe()
+    assert [w["code"] for w in h.read_json(older / "stage-record.json")["warnings"]] == ["pointer-mismatch"]
 
 
 # ---- the SARIF fallback (D8, AR-T2)
@@ -2797,6 +3025,21 @@ def test_an_empty_extraction_from_the_sarif_stops_before_dispatch(stage, cli, tm
 def test_a_sarif_that_is_not_strict_json_stops_before_dispatch(stage, cli, tmp_path, monkeypatch, text):
     h = sarif_only(stage, cli, tmp_path, monkeypatch, text)
     assert h.plan_cli().code == 2 and not (h.build / "current.json").exists()
+
+
+def test_the_sarif_fallback_has_no_status_for_any_member_so_the_baseline_decides(stage, cli, tmp_path, monkeypatch):
+    """D8's fallback lacks ``delta_status`` for every member (ruled at W2): a member with a usable open row in the baseline is
+    UNCHANGED and carried, and every other is NEW. Without the derivation each would count as NEW and be scored again."""
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, make_threats_sarif(["S-1", "T-2", "D-1", "E-1"], peers={"E-1": "S-1"}))
+    write_baseline(tmp_path, ["T-2", "E-1"])
+    res = h.plan_cli("--baseline-dir", "baseline-runs/prev")
+    assert res.code == 0, res.describe()
+    assert agent_ids(h) == ["S-1", "D-1"], "T-2 is carried, and the peer E-1 is carried too, because it has a usable row"
+
+
+def test_the_sarif_fallback_with_no_baseline_scores_every_non_peer_fresh(stage, cli, tmp_path, monkeypatch):
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, make_threats_sarif(["S-1", "T-2", "D-1"], peers={"T-2": "S-1"}))
+    assert h.plan_cli().code == 0 and agent_ids(h) == ["S-1", "D-1"]
 
 
 def test_threats_md_wins_when_both_exist_and_the_fallback_is_the_scorers_alone(stage, cli, tmp_path, monkeypatch):

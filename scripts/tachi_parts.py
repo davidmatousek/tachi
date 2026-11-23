@@ -269,8 +269,9 @@ KEY_SETS: Dict[str, Tuple[Tuple[str, ...], Tuple[str, ...]]] = {
     "overflow": (("schema", "plan_id", "batch_id", "stage", "agent_type", "reason"), ()),
     "batch-input": (("schema", "plan_id", "batch_id", "stage", "agent_type", "finding_ids", "attempt", "part_path",
                      "tree_paths", "units", "refs", "params"), ()),
-    "plan": (("schema", "plan_id", "stage", "agent_type", "created_utc", "tachi_version", "inputs", "params",
-              "batch_size", "unit_count", "preimage", "out_snapshot", "retry_budget", "batches"), ()),
+    "plan": (("schema", "plan_id", "stage", "agent_type", "created_utc", "tachi_version", "inputs", "refs",
+              "architecture_warning", "params", "batch_size", "unit_count", "preimage", "out_snapshot", "retry_budget",
+              "batches"), ()),
     "plan-pointer": (("schema", "plan_id"), ()),
     "stage-record": (("schema", "stage", "plan_id", "status", "tachi_version", "started_utc", "finished_utc",
                       "input_digest", "counts", "batches", "overflow_events", "retries", "warnings",
@@ -1179,13 +1180,36 @@ def _params(value: Any) -> None:
             _fail("params.%s is not a scalar" % key)
 
 
+def _refs(value: Any) -> None:
+    """The stage's pointers: at most 20 closed names, each an absolute path that passes D7's syntactic rule.
+
+    The plan holds them once (the authority) and each batch input holds a verbatim copy, so both are checked here.
+    """
+    if not isinstance(value, dict) or len(value) > 20:
+        _fail("refs is not a small object")
+    for name, path in value.items():
+        _stamp(name, _NAME, "a refs name")
+        _path_text(path, "refs.%s" % name, absolute=True)
+
+
+def _warning_entry(entry: Any, what: str) -> None:
+    """One ``{code, detail}`` warning, as a stage record lists it: a code of ``[a-z0-9:_.-]{1,64}`` and a detail of 0 to 500 characters."""
+    _check_keys(entry, "warning")
+    _stamp(entry["code"], _CODE, "%s.code" % what)
+    closed_string(entry["detail"], "%s.detail" % what, 0, 500)
+
+
 def _stage_pair(stage: Any, agent_type: Any) -> None:
     if not isinstance(stage, str) or STAGE_AGENTS.get(stage) != agent_type:
         _fail("stage is unknown, or agent_type is not the stage's agent")
 
 
 def validate_plan(obj: Any) -> Dict[str, Any]:
-    """``tachi.plan/1`` (contracts/part-files.md section 4). Returns ``obj``, or raises ``PartError("invalid")``."""
+    """``tachi.plan/1`` (contracts/part-files.md section 4). Returns ``obj``, or raises ``PartError("invalid")``.
+
+    ``refs`` is the stage's pointers, as a batch input has them, and ``architecture_warning`` is ``null`` or the one
+    warning that ``plan`` raised when it refused the ``--architecture`` candidate (ruled at W2).
+    """
     _check_keys(obj, "plan")
     if obj["schema"] != PLAN_SCHEMA:
         _fail("schema is not %s" % PLAN_SCHEMA)
@@ -1202,6 +1226,9 @@ def validate_plan(obj: Any) -> Dict[str, Any]:
             _fail("inputs.%s.path is not an acceptable path" % name)
         _stamp(entry["sha256"], _HEX64, "inputs.%s.sha256" % name)
         _int(entry["bytes"], 0, None, "inputs.%s.bytes" % name)
+    _refs(obj["refs"])
+    if obj["architecture_warning"] is not None:
+        _warning_entry(obj["architecture_warning"], "architecture_warning")
     _params(obj["params"])
     if obj["batch_size"] is not None:
         _int(obj["batch_size"], 1, MAX_IDS, "batch_size")
@@ -1273,11 +1300,7 @@ def validate_batch_input(obj: Any) -> Dict[str, Any]:
         _fail("tree_paths is {} outside the trees stage")
     if not isinstance(obj["units"], list) or len(obj["units"]) > MAX_IDS or not all(isinstance(u, dict) for u in obj["units"]):
         _fail("units is not a list of at most %d objects" % MAX_IDS)
-    if not isinstance(obj["refs"], dict) or len(obj["refs"]) > 20:
-        _fail("refs is not a small object")
-    for name, path in obj["refs"].items():
-        _stamp(name, _NAME, "a refs name")
-        _path_text(path, "refs.%s" % name, absolute=True)
+    _refs(obj["refs"])
     _params(obj["params"])
     return obj
 
@@ -1322,9 +1345,7 @@ def validate_stage_record(obj: Any) -> Dict[str, Any]:
         for child in children:
             _id("batch", child, "retries.children")
     for warning in obj["warnings"]:
-        _check_keys(warning, "warning")
-        _stamp(warning["code"], _CODE, "warnings.code")
-        closed_string(warning["detail"], "warnings.detail", 0, 500)
+        _warning_entry(warning, "warnings")
     for relpath in obj["undeclared_paths"]:
         _path_text(relpath, "an undeclared path")
     for output in obj["outputs"]:

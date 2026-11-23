@@ -393,7 +393,7 @@ One allow-list module in `tachi_parts` holds every identifier pattern, and every
 The stage is `risk-score` or `compensating-controls`.
 
 - **Only the planner and the reconciler compute paths.** Each batch input carries an absolute `part_path`, and no path is ever built from part content.
-- **Scripts recompute, never trust.** Every script recomputes each path from `--out`, the stage, and plan and batch IDs that pass the patterns above. It ignores paths stored in files, except the plan's digest-checked `inputs` paths, which the renderer reads.
+- **Scripts recompute, never trust.** Every script recomputes each path from `--out`, the stage, and plan and batch IDs that pass the patterns above. It ignores paths stored in files, except the plan's digest-checked `inputs` paths and its `refs` paths, which the renderer reads.
 - **The plan digest.** `plan` and `reconcile` print the plan file's SHA-256 as `plan_digest`, and the command passes the latest one back as `--plan-digest`. `reconcile`, the renderer, `fail` and `close` refuse a plan file with another digest, with exit code 2.
 - **The plan pointer.** `--plan` names the plan ID and overrides `current.json`. When the two disagree, the script exits 2.
 - **Document caps.** A part is at most 512 KiB (validation step 2). A plan is at most 8 MiB, a batch input 4 MiB, the plan pointer 4 KiB and a stage record 1 MiB, and a writer never writes a document over its own cap.
@@ -442,6 +442,8 @@ A plan is `tachi.plan/1`, with a closed key set.
 | `created_utc` | UTC, ending in `Z`, and no other form is accepted |
 | `tachi_version` | `X.Y.Z` |
 | `inputs` | an object mapping each logical input name to `{path, sha256, bytes}` |
+| `refs` | an object mapping the stage's closed pointer names (architecture, threats, baseline files, target) to absolute paths that the command validated, as in the batch input, with at most 20 names. `plan` writes them once, here, after routing, and copies them verbatim into each batch input. Every script reads them from here, never from a batch input, so a plan with no units keeps them. A `refs` path is a candidate: the shared resolver, or the baseline checks, re-check it before any use |
+| `architecture_warning` | `null`, or the one `{code, detail}` that `plan` raised when it refused the `--architecture` candidate. Its code is `architecture-path:explicit:<check>`, and it follows the rules of a stage record's `warnings` entry. Every stage record of the plan lists it first |
 | `params` | as in the batch input |
 | `batch_size` | an integer from 1 to 500, or `null` for a plan with no units |
 | `unit_count` | an integer, 0 or more |

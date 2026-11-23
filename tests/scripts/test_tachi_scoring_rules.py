@@ -145,14 +145,16 @@ def test_the_frozen_dataclasses_keep_their_field_names_and_order():
     assert _fields(rules.BaselineRow) == (
         "finding_id", "form", "cvss_vector", "vector_source", "score_bounds", "subscores", "zone", "trust_level",
         "auth_barriers", "network_boundaries", "tags_used", "scored_on", "stored", "band", "owner", "sla",
-        "disposition", "review_date", "narrative", "legacy_prose", "flags")
+        "disposition", "review_date", "narrative", "legacy_prose", "flags",
+        "component", "threat", "risk_level")   # the last three are W2's additive fields, each with a default (S-12(b))
+    assert _fields(rules.ScorerRouting) == ("to_agent", "carried", "copy_primary", "carried_peers", "status")   # `status` is W2's
     # BaselineResolution keeps its four frozen fields first. `file_reasons` is T042's additive field (a default, last).
     assert _fields(rules.BaselineResolution)[:4] == ("run_dir", "origin", "files", "reason")
     assert _fields(rules.BaselineResolution)[4:] == ("file_reasons",)
 
 
 @pytest.mark.parametrize("cls", [rules.PathCheck, rules.BaselineResolution, rules.InputIssue, rules.BaselineRow,
-                                 rules.BaselineScores, rules.TagSource])
+                                 rules.BaselineScores, rules.TagSource, rules.ScorerRouting])
 def test_the_dataclasses_are_frozen(cls):
     assert cls.__dataclass_params__.frozen
 
@@ -168,6 +170,8 @@ def test_the_frozen_function_signatures_hold():
     assert _signature(rules.read_baseline_scores) == [("md_path", "POSITIONAL_OR_KEYWORD", True), ("sarif_path", keyword, False)]
     assert _signature(rules.recompute_tags) == [("architecture_text", "POSITIONAL_OR_KEYWORD", True), ("open_rows", "POSITIONAL_OR_KEYWORD", True), ("matcher", "POSITIONAL_OR_KEYWORD", True)]
     assert _signature(rules.select_tag_source) == [("open_ids", keyword, True), ("block", keyword, True), ("recomputed", keyword, True)]
+    assert _signature(rules.route_scorer_units) == [("open_rows", "POSITIONAL_OR_KEYWORD", True), ("groups", keyword, True),
+                                                    ("baseline", keyword, True), ("lacking", keyword, False)], "`lacking` is W2's additive keyword"
     assert rules.BASELINE_FILE_NAMES == ("threats.md", "risk-scores.md", "risk-scores.sarif",
                                          "compensating-controls.md", "compensating-controls.sarif")
 
@@ -1148,6 +1152,151 @@ def test_ids_in_the_scoring_inputs_may_be_spelled_with_leading_zeros(tmp_path):
     assert _read(tmp_path, text).rows["AGP-1"].form == "renderer"
 
 
+# --- the governance cells, by value class (ruled at W2): the owner keeps its `**`, the SLA and the disposition lose theirs
+
+SECTION_4_ROW = "| T-12 | Medium | R&amp;D &#124; lead | 30d | Review | 2026-12-22 |"
+RESOLVED_2A = """
+## 2a. Resolved Findings
+
+| ID | Source | Component | Threat | CVSS | Exploit. | Scale. | Reach. | Composite | Severity | SLA | Disposition | Status | Owner | Review Date | Flags |
+|----|--------|-----------|--------|------|----------|--------|--------|-----------|----------|-----|-------------|--------|-------|-------------|-------|
+| T-13 | inherited | gone | Old threat | 5.4 | 6.5 | 2.5 | 7.0 | 5.6 | **Medium** | **30d** | **Review** | RESOLVED | **Platform** team | 2026-10-01 | resolved |
+"""
+
+
+def _with_governance(owner="R&amp;D &#124; lead", sla="30d", disposition="Review"):
+    text = _renderer_doc(_escaped(_inputs()))
+    assert SECTION_4_ROW in text
+    return text.replace(SECTION_4_ROW, "| T-12 | Medium | %s | %s | %s | 2026-12-22 |" % (owner, sla, disposition))
+
+
+@pytest.mark.parametrize("cell,expected", [
+    ("**Platform** team", "**Platform** team"), ("**Platform team**", "**Platform team**"),
+    ("**R&amp;D** &#124; **lead**", "**R&D** | **lead**"), ("  **alice**  ", "**alice**"), ("alice", "alice"),
+    ("Unassigned", "Unassigned"), ("a ** b", "a ** b"), ("****bold****", "****bold****"),
+    ("**", None), ("****", None), ("** **", None), ("**—**", None), ("**-**", None), ("**n/a**", None), ("**N/A**", None),
+    ("—", None), ("", None),
+], ids=lambda value: repr(value)[:24])
+def test_the_owner_is_carried_with_its_bold_markers_and_is_no_owner_only_when_a_placeholder_remains(tmp_path, cell, expected):
+    """D9 carries the owner verbatim (free text, a human edits it), so ``**Platform** team`` comes back byte for byte, and the
+    renderer's table-cell escape leaves ``*`` alone, so it writes back the same bytes. Today's reader dropped the ``**``."""
+    assert _read(tmp_path, _with_governance(owner=cell)).rows["T-12"].owner == expected
+
+
+def test_a_carried_owner_is_byte_identical_after_a_write_and_a_read():
+    for owner in ("**Platform** team", "**R&D | lead**", "a **b** & c"):
+        cell = tachi_parts.escape_cell(owner)
+        assert "**" in cell
+        assert rules._verbatim_text(cell) == owner
+
+
+@pytest.mark.parametrize("sla,disposition,expected", [
+    ("**7d**", "**Accept**", ("7d", "Accept")), ("7d", "Accept", ("7d", "Accept")), ("**24h**", "**Mitigate**", ("24h", "Mitigate")),
+    ("**—**", "**-**", ("30d", "Review")), ("", "", ("30d", "Review")),   # a placeholder in §4 leaves §2's own cells in force
+])
+def test_the_sla_and_the_disposition_stay_stripped_because_they_are_a_duration_and_an_enum(tmp_path, sla, disposition, expected):
+    """The override test compares each with the band's default, so a bolded legacy ``**Accept**`` must still read as an
+    override and ``**7d**`` must not read as one (ruled at W2)."""
+    row = _read(tmp_path, _with_governance(sla=sla, disposition=disposition)).rows["T-12"]
+    assert (row.sla, row.disposition) == expected
+
+
+SECTION_2_ONLY = """## 2. Scored Threat Table
+
+| ID | Component | Threat | CVSS | Exploit. | Scale. | Reach. | Composite | Severity | SLA | Disposition | Owner |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| S-1 | gw | t | 7.1 | 6.0 | 6.0 | 6.0 | 6.4 | Medium | **30d** | **Review** | **Platform** team |
+"""
+
+
+def test_section_2_reads_its_owner_sla_and_disposition_by_the_same_rules_as_section_4(tmp_path):
+    row = _read(tmp_path, SECTION_2_ONLY).rows["S-1"]
+    assert (row.owner, row.sla, row.disposition) == ("**Platform** team", "30d", "Review")
+
+
+def test_a_resolved_row_is_read_by_the_same_rules(tmp_path):
+    row = _read(tmp_path, _renderer_doc(_escaped(_inputs()), resolved=RESOLVED_2A)).resolved_rows["T-13"]
+    assert (row.owner, row.sla, row.disposition, row.band) == ("**Platform** team", "30d", "Review", "Medium")
+
+
+# --- the identity values the baseline can supply to a carried finding (ruled at W2; ADR-050 D9, S-12(b))
+
+IDENTITY = ("component", "threat", "risk_level")
+
+
+def _identity(row):
+    return tuple(getattr(row, name) for name in IDENTITY)
+
+
+def test_the_row_records_its_component_threat_and_original_risk_level_from_section_3_before_section_2(tmp_path):
+    scores = _read(tmp_path, V4484)
+    assert _identity(scores.rows["E-1"]) == ("gateway", "Object identifiers are trusted without an ownership check.", "High"), (
+        "§3's full threat, not §2's shortened cell, and the level from §3's Category line")
+    assert _identity(scores.rows["LLM-1"]) == ("gateway", "History is replayed.", None), "a peer's §3 has no Original Risk Level line"
+    assert _identity(scores.rows["AGP-1"]) == ("worker", "The bus is shared", None), "no §3 subsection: §2's cells, and no level"
+
+
+def test_a_heading_that_names_a_title_gives_no_component_so_section_2_supplies_it(tmp_path):
+    """``### ID: title`` names a title, not a component (D9). The drift form's §3 line ``**Component**:`` is not read either."""
+    scores = _read(tmp_path, DRIFT)
+    assert _identity(scores.rows["S-1"]) == ("Physician", "Replay of credentials", None)
+    assert _identity(scores.rows["S-2"]) == ("Patient", "Identity spoofing", None)
+
+
+def test_a_renderer_form_row_records_them_too(tmp_path):
+    row = _read(tmp_path, _renderer_doc(_escaped(_inputs()))).rows["T-12"]
+    assert (row.form, _identity(row)) == ("renderer", ("api", "A threat", None))
+
+
+def test_the_identity_values_are_decoded_once_and_keep_their_emphasis(tmp_path):
+    text = _renderer_doc(_escaped(_inputs())).replace(
+        "### T-12 — api\n",
+        "### T-12 — API &amp; **Gateway** &#96;x&#96;\n\n**Threat**: a &lt;b&gt; &amp;lt; **c**\n\n"
+        "**Category**: spoofing | **Original Risk Level**: High &#124; urgent | **Composite**: 5.6 (Medium)\n")
+    assert _identity(_read(tmp_path, text).rows["T-12"]) == ("API & **Gateway** `x`", "a <b> &lt; **c**", "High | urgent")
+
+
+@pytest.mark.parametrize("label", ["**Threat**: text", "**Threat:** text"])
+def test_a_threat_label_may_put_its_colon_inside_the_bold(tmp_path, label):
+    text = _renderer_doc(_escaped(_inputs())).replace("### T-12 — api\n", "### T-12 — api\n\n%s\n" % label)
+    assert _read(tmp_path, text).rows["T-12"].threat == "text"
+
+
+def test_a_placeholder_in_section_3_gives_way_to_section_2_and_a_level_that_is_one_is_none(tmp_path):
+    text = _renderer_doc(_escaped(_inputs())).replace(
+        "### T-12 — api\n",
+        "### T-12 — —\n\n**Threat**:\n\n**Category**: x | **Original Risk Level**: — | **Composite**: 5.6 (Medium)\n")
+    assert _identity(_read(tmp_path, text).rows["T-12"]) == ("api", "A threat", None)
+
+
+def test_a_threat_that_spans_lines_is_read_from_its_one_line(tmp_path):
+    """AOD-SIMPLIFICATION, pinned: ``**Threat**:`` is one line, so a threat with a line break loses what follows it."""
+    text = _renderer_doc(_escaped(_inputs())).replace("### T-12 — api\n", "### T-12 — api\n\n**Threat**: first line\nsecond line\n")
+    assert _read(tmp_path, text).rows["T-12"].threat == "first line"
+
+
+def test_the_first_threat_line_and_the_first_level_win(tmp_path):
+    text = _renderer_doc(_escaped(_inputs())).replace(
+        "### T-12 — api\n", "### T-12 — api\n\n**Threat**: one\n**Threat**: two\n**Category**: x | **Original Risk Level**: High | **Original Risk Level**: Low\n")
+    row = _read(tmp_path, text).rows["T-12"]
+    assert (row.threat, row.risk_level) == ("one", "High")
+
+
+def test_a_resolved_row_supplies_nothing(tmp_path):
+    """D9: the baseline supplies a value only from a usable open row, never from §2a's RESOLVED rows."""
+    scores = _read(tmp_path, _renderer_doc(_escaped(_inputs()), resolved=RESOLVED_2A))
+    assert _identity(scores.resolved_rows["T-13"]) == (None, None, None) and "T-13" not in scores.rows
+    assert _identity(scores.rows["T-12"]) == ("api", "A threat", None)
+
+
+def test_a_row_the_reader_cannot_use_is_no_row_so_it_supplies_nothing(tmp_path):
+    """An unreadable row is an Input Issue and no row: ``route_scorer_units`` and the renderer look only in ``rows``."""
+    text = SECTION_2_ONLY + "| S-2 | gw2 | t2 | 7.1 | 6.0 | 6.0 | n/a | 6.4 | Medium | 30d | Review | bob |\n"
+    scores = _read(tmp_path, text)
+    assert list(scores.rows) == ["S-1"] and "S-2" in scores.ids_in_any_row
+    assert any(issue.finding_id == "S-2" and issue.cause == "incomplete-row" for issue in scores.issues)
+
+
 # =============================================================================
 # 6. read_baseline_scores: the SARIF fallback and the unreadable cases
 # =============================================================================
@@ -1415,15 +1564,32 @@ def test_one_source_is_chosen_for_the_whole_run_and_the_two_are_never_mixed():
     assert source.source == "recomputed" and source.tags["AGP-1"] == ("pii", "secrets")
 
 
-def test_with_no_architecture_file_the_block_is_used_and_recorded_as_unverified():
+def test_with_no_architecture_file_the_block_is_used_and_recorded_as_unverified_with_a_warning():
+    """Ruled at W2 (ADR-050 D2): the stage record has no other key that names the tag source, so the warning, which the
+    renderer records as ``tag-source:no-architecture-file``, is the only trace that the elevation was unverified."""
     source = _select({"S-1": ["auth"], "AGP-01": ["secrets", "pii"]}, recomputed=None)
-    assert (source.source, source.cause, source.warning) == ("block-unverified", "no-architecture-file", None)
+    assert (source.source, source.cause) == ("block-unverified", "no-architecture-file")
+    assert source.warning and "unverified" in source.warning and "no architecture file" in source.warning
+    assert "closed set" not in source.warning, "no tag was dropped, so none is named"
     assert dict(source.tags) == {"S-1": ("auth",), "AGP-1": ("pii", "secrets"), "T-2": ()}, "an open ID the block misses has no tags"
+
+
+def test_every_outcome_except_a_block_that_the_architecture_file_confirms_warns_and_names_its_cause():
+    cases = {
+        "block": _select({"S-1": ["auth"], "AGP-01": ["pii", "secrets"], "T-2": []}),
+        "recomputed": _select({}),
+        "block-unverified": _select({"S-1": ["auth"]}, recomputed=None),
+        "none": _select({}, recomputed=None),
+    }
+    assert {name: (source.source, source.warning is not None) for name, source in cases.items()} == {
+        "block": ("block", False), "recomputed": ("recomputed", True), "block-unverified": ("block-unverified", True), "none": ("none", True)}
+    assert cases["block"].cause is None
+    assert all(re.fullmatch(r"[a-z0-9-]{1,48}", source.cause) for name, source in cases.items() if name != "block")
 
 
 def test_an_unverified_block_never_hands_the_modifier_a_tag_outside_the_closed_six():
     source = _select({"S-1": ["auth", "Bogus"], "AGP-1": ["pii"]}, recomputed=None)
-    assert source.tags["S-1"] == ("auth",) and "bogus" in source.warning
+    assert source.tags["S-1"] == ("auth",) and "bogus" in source.warning and "unverified" in source.warning
     assert all(tag in tachi_parsers.VALID_ASSET_TAGS for tags in source.tags.values() for tag in tags)
     assert tachi_parts is not None and rules.tachi_scoring.elevate(V1, source.tags["S-1"])
 
@@ -1794,6 +1960,81 @@ def test_the_partition_covers_every_open_finding_exactly_once():
     parts = list(routing.to_agent) + list(routing.carried) + list(routing.copy_primary)
     assert sorted(parts) == sorted(statuses) and len(parts) == len(set(parts))
     assert set(routing.carried_peers) <= set(routing.carried)
+
+
+# --- S-12(b): a status that the form lacks is derived here, and nowhere else (ruled at W2; ADR-050 D9)
+
+def _lacking(*ids):
+    return {tachi_parts.canonical_finding_id(i): ["delta_status"] for i in ids}
+
+
+def _derive(ids, baseline_ids=(), resolved_ids=(), lacking="all", baseline="default", groups_text=SECTION_4A):
+    """Rows whose form has no ``delta_status`` at all, as a drift form or D8's SARIF fallback gives them."""
+    rows = [{"id": finding_id, "component": "c"} for finding_id in ids]
+    groups = tachi_parsers.parse_correlation_groups(groups_text, member_ids=[tachi_parts.canonical_finding_id(i) for i in ids])["groups"]
+    if baseline == "default":
+        baseline = rules.BaselineScores(True, None, "legacy", {i: make_row(i) for i in baseline_ids}, {i: make_row(i) for i in resolved_ids},
+                                        frozenset(baseline_ids) | frozenset(resolved_ids), None, ())
+    return rules.route_scorer_units(rows, groups=groups, baseline=baseline, lacking=_lacking(*ids) if lacking == "all" else lacking)
+
+
+def test_a_status_the_form_lacks_is_unchanged_when_the_baseline_has_an_open_row_and_new_otherwise():
+    routing = _derive(["S-1", "T-2", "I-3", "D-1", "D-2", "R-1"], baseline_ids=("T-2", "D-1", "R-1"))
+    assert dict(routing.status) == {"S-1": "NEW", "T-2": "UNCHANGED", "I-3": "NEW", "D-1": "UNCHANGED", "D-2": "NEW", "R-1": "UNCHANGED"}
+    assert routing.carried == ("T-2", "D-1", "R-1") and routing.carried_peers == {"T-2": "S-1"}
+    assert routing.copy_primary == {"I-3": "S-1", "D-2": "D-1"} and routing.to_agent == ("S-1",)
+
+
+def test_the_derived_status_never_comes_from_a_resolved_row_or_an_unreadable_one_or_another_finding():
+    routing = _derive(["D-1", "R-1", "R-2"], baseline_ids=("R-1",), resolved_ids=("D-1",))
+    assert dict(routing.status) == {"D-1": "NEW", "R-1": "UNCHANGED", "R-2": "NEW"}
+    assert routing.carried == ("R-1",) and routing.to_agent == ("D-1", "R-2"), "D-1 is in the baseline's §2a only: scored fresh, as any NEW finding"
+    baseline = rules.BaselineScores(True, None, "legacy", {}, {}, frozenset({"R-1", "D-1"}), None, ())   # IDs the baseline used, with no usable row
+    assert _derive(["R-1", "D-1"], baseline=baseline).carried == ()
+
+
+@pytest.mark.parametrize("baseline", [None, rules.BaselineScores(False, "missing", None, {}, {}, frozenset(), None, ())], ids=["none", "unreadable"])
+def test_with_no_usable_baseline_every_status_the_form_lacks_is_new(baseline):
+    routing = _derive(["S-1", "T-2", "R-1"], baseline=baseline)
+    assert dict(routing.status) == {"S-1": "NEW", "T-2": "NEW", "R-1": "NEW"}
+    assert (routing.to_agent, routing.carried, routing.copy_primary) == (("S-1", "R-1"), (), {"T-2": "S-1"})
+
+
+def test_only_a_lacking_delta_status_derives_a_status_and_the_form_s_own_values_stand_for_every_other_row():
+    rows = [{"id": "S-1", "component": "c", "delta_status": "NEW"}, {"id": "R-1", "component": "c", "delta_status": "UPDATED"},
+            {"id": "R-2", "component": "c"}, {"id": "R-3", "component": "c", "delta_status": "UNCHANGED"}]
+    baseline = rules.BaselineScores(True, None, "legacy", {i: make_row(i) for i in ("S-1", "R-1", "R-2", "R-3")}, {}, frozenset(), None, ())
+    lacking = {"R-2": ["delta_status"], "R-1": ["component", "threat"], "R-3": []}
+    routing = rules.route_scorer_units(rows, groups=[], baseline=baseline, lacking=lacking)
+    assert dict(routing.status) == {"S-1": "NEW", "R-1": "UPDATED", "R-2": "UNCHANGED", "R-3": "UNCHANGED"}, (
+        "R-1 lacks other values, not its status, so it keeps the form's UPDATED")
+    assert routing.carried == ("R-2", "R-3") and routing.to_agent == ("S-1", "R-1")
+
+
+def test_a_lacking_map_that_does_not_apply_changes_nothing():
+    statuses = {"S-1": "NEW", "T-2": "UPDATED", "I-3": "NEW", "D-1": "UPDATED", "D-2": "UNCHANGED", "E-5": "NEW", "R-1": "UPDATED"}
+    rows = [{"id": finding_id, "component": "c", "delta_status": status} for finding_id, status in statuses.items()]
+    groups = tachi_parsers.parse_correlation_groups(SECTION_4A, member_ids=list(statuses))["groups"]
+    baseline = rules.BaselineScores(True, None, "legacy", {i: make_row(i) for i in ("D-1", "D-2", "R-1")}, {}, frozenset(), None, ())
+    plain = rules.route_scorer_units(rows, groups=groups, baseline=baseline)
+    for lacking in (None, {}, {"S-1": []}, {"X-9": ["delta_status"], "": ["delta_status"], "junk": ["delta_status"]}):
+        assert rules.route_scorer_units(rows, groups=groups, baseline=baseline, lacking=lacking) == plain, lacking
+    assert dict(plain.status) == statuses
+
+
+def test_the_status_map_holds_each_open_id_once_in_order_canonical_and_normalized():
+    rows = [{"id": "AGP-01", "component": "c", "delta_status": "**[unchanged]**"}, {"id": "S-1", "component": "c", "delta_status": "garbage"},
+            {"id": "AGP-1", "component": "c", "delta_status": "NEW"}, {"id": "T-2", "component": "c"}]
+    routing = rules.route_scorer_units(rows, groups=[], baseline=None)
+    assert list(routing.status.items()) == [("AGP-1", "UNCHANGED"), ("S-1", "NEW"), ("T-2", "NEW")], "the first row of an ID wins"
+    spelled = rules.route_scorer_units([{"id": "AGP-01", "component": "c"}], groups=[], baseline=None, lacking={"AGP-01": ["delta_status"]})
+    assert dict(spelled.status) == {"AGP-1": "NEW"}, "a lacking key may be spelled with a zero, and still names the one finding"
+
+
+def test_a_finding_the_baseline_used_is_carried_only_when_its_row_is_open_even_for_a_derived_status():
+    """Ruling B holds for a derived NEW as for any NEW finding: the agent scores it fresh, so a reissued ID inherits nothing."""
+    routing = _derive(["S-1", "T-2"], baseline_ids=("T-2",), resolved_ids=("S-1",), groups_text="")
+    assert routing.carried == ("T-2",) and routing.to_agent == ("S-1",)
 
 
 def test_a_divergent_peer_is_flagged_with_its_primary_and_an_equal_one_is_not():

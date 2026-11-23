@@ -14,8 +14,9 @@ short forms those generators emit (`tachi/ai/agentic`); the shared emitter below
 `.claude/skills/tachi-shared/references/sarif-identity-shared.md`, and a drift test keeps the two
 in step. It holds:
 
-* the URI resolver (D7): `resolve_architecture`, `resolve_file` and the body-line reader. One
-  shared resolver sets `artifactLocation.uri`, and no script takes a finished URI;
+* the URI resolver (D7): `resolve_architecture`, `resolve_explicit` (its first step, which
+  `tachi-stage.py plan` runs too), `resolve_file` and the body-line reader. One shared resolver
+  sets `artifactLocation.uri`, and no script takes a finished URI;
 * identity (D7): `RULE_ID_BY_PREFIX` (twelve prefixes, eight rule IDs), the `tachi-plh/1` hash
   and the two partial fingerprints;
 * membership and correlation (D8): `correlation_assignments`, ruling C's sentence and the
@@ -573,6 +574,32 @@ def _check_snapshot(run_dir: Optional[str], resolved: ResolvedPath, root: str, f
         raise PathCheckError("is-snapshot", _short(basename))
 
 
+def resolve_explicit(
+    candidate: object,
+    *,
+    root: Optional[str] = None,
+    fs: Any = None,
+) -> Tuple[Optional[ResolvedPath], Optional[Dict[str, str]]]:
+    """D7's first candidate, the explicit ``--architecture-path``, checked as the resolver checks it.
+
+    It is the first step of ``resolve_architecture``, split out so that ``tachi-stage.py plan`` runs the same
+    step, and so ``plan`` and the renderer agree on every check and on the warning's code and text (ruled at W2).
+    Returns ``(resolved, None)`` when ``resolve_file(candidate, root=root, allow_absolute=True, fs=fs)`` passes.
+    Otherwise it returns ``(None, warning)``, the ``{code, detail}`` that ``resolve_architecture`` lists for that
+    failure: the code is ``architecture-path:explicit:<check>``, so the failed check's name is its last part, and
+    the detail names the candidate in its escaped short form (``_short``), the check and ``--architecture-path``.
+    Every check refuses alike, the syntactic ones (a control character, backslash or backtick) included.
+
+    A candidate that isn't text fails the ``type`` check. ``None`` means "the flag was not given" to
+    ``resolve_architecture``, which never asks here in that case. A ``root`` that isn't absolute is a caller's
+    bug and raises ``ValueError``, as it does in ``resolve_file``.
+    """
+    try:
+        return resolve_file(candidate, root=root, allow_absolute=True, fs=fs), None
+    except PathCheckError as failure:
+        return None, _warning("explicit", failure.check, candidate, "trying the architecture-source line")
+
+
 def resolve_architecture(
     explicit: Optional[str] = None,
     *,
@@ -584,7 +611,7 @@ def resolve_architecture(
     """Choose the architecture path for a run, in D7's order. Nothing here stops a run.
 
     1. ``explicit``: the ``--architecture-path`` flag, which reaches a script as
-       ``--architecture PATH``. ``None`` means the flag was not given.
+       ``--architecture PATH``, checked by ``resolve_explicit``. ``None`` means the flag was not given.
     2. The body line of ``threats_text``, the ``threats.md`` that was read, if it passes the
        checks and NFR-10's name check against the snapshot in ``run_dir``.
     3. ``DEFAULT_ARCHITECTURE_PATH``, in its canonical spelling if it validates, otherwise
@@ -598,13 +625,11 @@ def resolve_architecture(
     warnings: List[Dict[str, str]] = []
 
     if explicit is not None:
-        try:
-            resolved = resolve_file(explicit, root=root, allow_absolute=True, fs=fs)
+        resolved, refusal = resolve_explicit(explicit, root=root, fs=fs)
+        if resolved is not None:
             return ArchitectureResolution(resolved.path, resolved.uri, "explicit", tuple(warnings))
-        except PathCheckError as failure:
-            warnings.append(
-                _warning("explicit", failure.check, explicit, "trying the architecture-source line")
-            )
+        if refusal is not None:  # a refusal always comes with its warning
+            warnings.append(refusal)
 
     line = read_architecture_source(threats_text) if threats_text is not None else None
     if line is None:

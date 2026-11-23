@@ -250,6 +250,9 @@ class BaselineRow:
     narrative: Mapping[str, str]                     # renderer form: field path -> decoded slotted text
     legacy_prose: Mapping[str, str]                  # legacy form: field path -> prose, evidence-class
     flags: Tuple[str, ...]                           # raised while reading, such as input:cvss_vector:sources-disagree
+    component: Optional[str] = None                  # W2: the row's component, for S-12(b)'s supply (D9)
+    threat: Optional[str] = None                     # W2: the row's threat text, for S-12(b)'s supply
+    risk_level: Optional[str] = None                 # W2: the row's original risk level, for S-12(b)'s supply
 
 
 @dataclass(frozen=True)
@@ -311,6 +314,11 @@ _VECTOR_LABEL = re.compile(r"\*\*(?:CVSS[ \t]+)?Vector(?::\*\*|\*\*[ \t]*:)[ \t]
 _TRUST_ZONE_LINE = re.compile(r"\*\*Trust Zone(?::\*\*|\*\*[ \t]*:)[ \t]*(.+?)[ \t]*\(([^()]*)\)[ \t]*$")
 _RATIONALE_BULLET = re.compile(r"^[-*][ \t]+\*\*(CVSS|Exploitability|Scalability|Reachability)\*\*[ \t]*:[ \t]*(.+)$")
 _METRIC_CELL = re.compile(r"\(([A-Z]{1,2})\)$")
+# §3's identity values, for S-12(b)'s supply (D9): the `**Threat**:` line, the value of `**Original Risk Level**:` (it ends at the
+# next raw `|`, because the renderer escapes a `|` in text as `&#124;`), and the component after a heading's dash.
+_THREAT_LINE = re.compile(r"\*\*Threat(?::\*\*|\*\*[ \t]*:)[ \t]*(.*)$")
+_RISK_LEVEL = re.compile(r"\*\*Original Risk Level(?::\*\*|\*\*[ \t]*:)[ \t]*([^|]*)")
+_HEADING_COMPONENT = re.compile(r"^[^\s:\u2014\u2013]+[ \t]*[\u2014\u2013][ \t]*(\S.*)$")
 
 
 # The most issues one read lists. An input with more unreadable rows than this is a hostile or a wrecked file, and
@@ -483,9 +491,26 @@ def _stored_score(cell: str) -> Optional[Decimal]:
 
 
 def _text_value(cell: str) -> Optional[str]:
-    """A text cell decoded once, or ``None`` for an empty cell or a dash placeholder."""
+    """A text cell decoded once, its ``**`` dropped, or ``None`` for an empty cell or a dash placeholder.
+
+    It reads the SLA and the disposition, whose emphasis is formatting around the value: the disposition is an enum
+    and the SLA a duration, and the override test compares each with the band's default. So a bolded legacy ``**Accept**``
+    or ``**7d**`` reads as the value the test compares (ruled at W2).
+    """
     text = _decode(cell.replace("**", "").strip()).strip()
     return None if text.lower() in _PLACEHOLDER_TEXT else text
+
+
+def _verbatim_text(cell: str) -> Optional[str]:
+    """A free-text cell as the cell holds it: decoded once, edge whitespace stripped, its ``**`` kept.
+
+    It reads the owner (``risk_owner``), which D9 carries verbatim and a human edits, so ``**Platform** team`` comes
+    back byte for byte: the renderer's table-cell escape leaves ``*`` alone, so the value round-trips (ruled at W2). It
+    reads a component and a threat the same way. A cell is no value only when it is a placeholder once its ``**`` is
+    set aside: empty, a dash or ``n/a``.
+    """
+    text = _decode(cell.strip()).strip()
+    return None if text.replace("**", "").strip().lower() in _PLACEHOLDER_TEXT else text
 
 
 def _date_value(cell: str) -> Optional[date]:
@@ -546,7 +571,11 @@ def _table_rows(lines: List[str], span: Optional[Tuple[int, int]], what: str, is
 
 def _scored_rows(lines: List[str], span: Optional[Tuple[int, int]], what: str, issues: List[InputIssue],
                  seen: set) -> Dict[str, Dict[str, Any]]:
-    """§2 or §2a, by canonical ID: the stored values, the band and any governance columns the table has."""
+    """§2 or §2a, by canonical ID: the stored values, the band and any governance columns the table has.
+
+    The component and threat cells are read too, for S-12(b)'s supply. §2 holds them as the renderer shortened them
+    (to 30 and 60 characters), so they are the fallback to §3's full text.
+    """
     scored: Dict[str, Dict[str, Any]] = {}
     for number, finding_id, cells in _table_rows(lines, span, what, issues, seen):
         scored[finding_id] = {
@@ -555,8 +584,10 @@ def _scored_rows(lines: List[str], span: Optional[Tuple[int, int]], what: str, i
             "band": _BAND_NAMES.get(cells.get("band", "").replace("**", "").strip().lower()),
             "sla": _text_value(cells.get("sla", "")),
             "disposition": _text_value(cells.get("disposition", "")),
-            "owner": _text_value(cells.get("owner", "")),
+            "owner": _verbatim_text(cells.get("owner", "")),
             "review_date": _date_value(cells.get("review_date", "")),
+            "component": _verbatim_text(cells.get("component", "")),
+            "threat": _verbatim_text(cells.get("threat", "")),
         }
     return scored
 
@@ -567,7 +598,7 @@ def _governance_rows(lines: List[str], span: Optional[Tuple[int, int]], issues: 
     return {
         finding_id: {
             "band": _BAND_NAMES.get(cells.get("band", "").replace("**", "").strip().lower()),
-            "owner": _text_value(cells.get("owner", "")),
+            "owner": _verbatim_text(cells.get("owner", "")),
             "sla": _text_value(cells.get("sla", "")),
             "disposition": _text_value(cells.get("disposition", "")),
             "review_date": _date_value(cells.get("review_date", "")),
@@ -677,7 +708,8 @@ def _heading_finding_id(text: str) -> Optional[str]:
 
 def _read_subsection(body: List[str]) -> Dict[str, Any]:
     """What one §3 subsection holds: the first valid vector (and whether an invalid one was seen), the trust
-    zone line, and the legacy prose by field name. Prose is returned as written, not decoded.
+    zone line, the threat line, the original risk level and the legacy prose by field name. Prose, the threat
+    and the risk level are returned as written, not decoded.
 
     Legacy prose has two shipped forms. The older one is a ``**Scoring Rationale**:`` list with a bullet for each
     of CVSS, Exploitability, Scalability and Reachability. The v4.48.4 one is the rationale column of each metric
@@ -685,7 +717,9 @@ def _read_subsection(body: List[str]) -> Dict[str, Any]:
     renderer's narrative uses, and the first text for a field wins.
     """
     # AOD-SIMPLIFICATION: the two shipped prose forms only — upgrade: add a form here when a baseline needs one
-    found: Dict[str, Any] = {"vector": None, "invalid_vector": False, "zone": None, "trust": None, "prose": {}}
+    # AOD-SIMPLIFICATION: a threat is the one `**Threat**:` line, so a threat that spans lines loses the rest — upgrade: read to the next blank line
+    found: Dict[str, Any] = {"vector": None, "invalid_vector": False, "zone": None, "trust": None, "prose": {},
+                             "threat": None, "risk_level": None}
     prose: Dict[str, str] = found["prose"]
     for number, raw in enumerate(body):
         line = raw.strip()
@@ -698,6 +732,12 @@ def _read_subsection(body: List[str]) -> Dict[str, Any]:
         if zone and found["zone"] is None:
             found["zone"] = zone.group(1)
             found["trust"] = _TRUST_NAMES.get(zone.group(2).strip().lower())
+        threat = _THREAT_LINE.match(line)
+        if threat and found["threat"] is None:
+            found["threat"] = threat.group(1)
+        level = _RISK_LEVEL.search(line)
+        if level and found["risk_level"] is None:
+            found["risk_level"] = level.group(1)
         bullet = _RATIONALE_BULLET.match(line)
         if bullet:
             prose.setdefault("rationale." + bullet.group(1).lower(), bullet.group(2))
@@ -731,7 +771,9 @@ def _finding_sections(lines: List[str], outline: List[Tuple[int, int, str, int]]
                       seen: set, wanted: Any) -> Dict[str, Dict[str, Any]]:
     """§3's per-finding subsections by canonical ID (a repeated heading keeps the first).
 
-    Every ID goes into ``seen``, but only a finding in ``wanted`` (one with a §2 row) has its subsection read.
+    Every ID goes into ``seen``, but only a finding in ``wanted`` (one with a §2 row) has its subsection read. A
+    subsection also holds its heading's ``component``, as written: ``### ID — component`` names one, and ``### ID: title``
+    names a title, so it gives none (D9, S-12(b)).
     """
     sections: Dict[str, Dict[str, Any]] = {}
     if span is None:
@@ -744,7 +786,10 @@ def _finding_sections(lines: List[str], outline: List[Tuple[int, int, str, int]]
             continue
         seen.add(finding_id)
         if finding_id in wanted and finding_id not in sections:
-            sections[finding_id] = _read_subsection(lines[index + 1:end])
+            section = _read_subsection(lines[index + 1:end])
+            named = _HEADING_COMPONENT.match(text)
+            section["component"] = named.group(1) if named else None
+            sections[finding_id] = section
     return sections
 
 
@@ -822,6 +867,7 @@ def _build_row(finding_id: str, scored: Dict[str, Any], governance: Dict[str, An
         # Some sub-scores but not all: a renderer-form row that lost values. A carried legacy finding has none, so it is not this.
         issues.append(InputIssue(finding_id, "scoring_inputs", "incomplete-inputs", "Scoring Inputs lacks %s, so the row is read as a legacy row" % ", ".join(inputs.missing()[:3])))
     values = inputs.values if renderer and inputs is not None else {}
+    section = subsection or {}  # S-12(b)'s identity values (D9): §3's heading, `**Threat**:` line and `**Original Risk Level**:` value, else §2's cells
     trust = subsection["trust"] if subsection is not None and not renderer else values.get("reachability.trust_level")
     zone = subsection["zone"] if subsection is not None and not renderer else values.get("reachability.zone")
     return BaselineRow(
@@ -846,6 +892,9 @@ def _build_row(finding_id: str, scored: Dict[str, Any], governance: Dict[str, An
         narrative=dict(inputs.narrative) if renderer and inputs is not None else {},
         legacy_prose={} if renderer or subsection is None else {name: _decode(text) for name, text in subsection["prose"].items()},
         flags=tuple(sorted(flags)),
+        component=_verbatim_text(section.get("component") or "") or scored["component"],
+        threat=_verbatim_text(section.get("threat") or "") or scored["threat"],
+        risk_level=_verbatim_text(section.get("risk_level") or ""),
     )
 
 
@@ -874,6 +923,14 @@ def read_baseline_scores(md_path: Optional[Path], *, sarif_path: Optional[Path] 
     reason, and counts as missing (S-12(d)). A single unreadable row is an entry of ``issues`` and is scored
     fresh. Narrative text is decoded with ``tachi_parsers.decode_references`` and returned unvalidated; a legacy
     file's prose comes back in ``legacy_prose`` as evidence-class text, and no number is read from either.
+
+    **Values by class (ruled at W2).** The owner, like the component and the threat, is free text that a human may
+    edit: it is read as its cell holds it, decoded once and stripped at its edges, with its ``**`` kept (``_verbatim_text``).
+    The SLA and the disposition are a duration and an enum, so their emphasis is dropped (``_text_value``). The row also
+    records what S-12(b) lets the baseline supply to a carried finding whose form lacks it (D9): ``component`` from §3's
+    heading ``### ID — component`` (a ``### ID: title`` heading names a title, not a component) or else §2's cell,
+    ``threat`` from §3's ``**Threat**:`` line or else §2's cell, and ``risk_level`` from §3's ``**Original Risk Level**:``
+    value. §2a's RESOLVED rows record none of them.
     """
     raw, reason = _read_bytes(md_path)
     if raw is None:
@@ -980,10 +1037,13 @@ def select_tag_source(*, open_ids: Sequence[str], block: Mapping[str, Sequence[s
     * ``recomputed``: the block is absent, differs, or misses an open ID (``cause`` ``block-absent``,
       ``block-differs`` or ``block-missing-id``), with a warning;
     * ``block-unverified``: there is no architecture file, so the block is used as it is, with each tag outside
-      the closed set dropped (``cause`` ``no-architecture-file``). There is a warning only when a tag was dropped;
+      the closed set dropped (``cause`` ``no-architecture-file``). It always warns (ruled at W2): the stage record has
+      no other key that names the tag source, so the warning is the only trace that the elevation was unverified. The
+      text says so, and names each tag that was dropped;
     * ``none``: neither source. No finding is elevated, and the warning says so (``cause`` ``no-tag-source``).
 
-    No outcome stops the run. Every open ID has an entry in ``tags``, ``()`` when it has no tags.
+    Every outcome except ``block`` warns, and the renderer records each warning as ``tag-source:<cause>``. No outcome
+    stops the run. Every open ID has an entry in ``tags``, ``()`` when it has no tags.
     """
     ids = [tachi_parts.canonical_finding_id(finding_id) for finding_id in open_ids]
     block_tags = _canonical_tags(block)
@@ -998,8 +1058,8 @@ def select_tag_source(*, open_ids: Sequence[str], block: Mapping[str, Sequence[s
             tags = block_tags.get(finding_id, ())
             used[finding_id] = tuple(tag for tag in tags if tag in tachi_scoring.TAG_FORCES)
             dropped.update(tag for tag in tags if tag not in tachi_scoring.TAG_FORCES)
-        warning = ("the Affected Assets block names tags outside the closed set, which were ignored: %s" % ", ".join(sorted(dropped))
-                   if dropped else None)
+        warning = ("the Affected Assets block's tags were applied unverified, because the run has no architecture file to check them against"
+                   + ("; the block names tags outside the closed set, which were ignored: %s" % ", ".join(sorted(dropped)) if dropped else ""))
         return TagSource("block-unverified", used, warning, "no-architecture-file")
     fresh = _canonical_tags(recomputed) or {}
     expected = {finding_id: fresh.get(finding_id, ()) for finding_id in ids}
@@ -1185,33 +1245,50 @@ class ScorerRouting:
     carried: Tuple[str, ...]          # UNCHANGED findings with a usable row, peers included
     copy_primary: Mapping[str, str]   # every other peer -> its group's primary
     carried_peers: Mapping[str, str]  # each carried peer -> its primary, for the divergence check
+    status: Mapping[str, str] = field(default_factory=dict)  # W2: each open ID -> the status it was routed under
 
 
 def route_scorer_units(open_rows: Sequence[Mapping[str, str]], *, groups: Sequence[Mapping[str, object]],
-                       baseline: Optional[BaselineScores]) -> ScorerRouting:
+                       baseline: Optional[BaselineScores], lacking: Optional[Mapping[str, Sequence[str]]] = None) -> ScorerRouting:
     """The one partition of a scorer run's open findings, for the planner (T044) and the renderer (T028, T045) alike.
 
     ``open_rows`` are the reference set's open rows (at least ``id`` and ``delta_status``, in S-2 order), and
     ``groups`` is ``tachi_parsers.parse_correlation_groups(...)["groups"]`` filtered to the open IDs: its result is used
     as it comes, because D8's rules (order, the claim, the primary, the two-member minimum) are applied there and
     nowhere else. A peer is a member that is not its group's primary. A row without a usable ``delta_status`` counts as
-    NEW. A usable baseline row is an entry of ``baseline.rows`` (an unreadable baseline has none).
+    NEW, unless ``lacking`` says its form has none (below). A usable baseline row is an entry of ``baseline.rows`` (an
+    unreadable baseline has none).
+
+    **S-12(b)'s derivation (ruled at W2; ADR-050 D9).** ``lacking`` is the reference set's ``lacking`` map, canonical ID to
+    the names of the values its form lacks, and for D8's SARIF fallback ``{id: ["delta_status"]}`` for every member. For an
+    ID whose names include ``delta_status`` the status is derived here and nowhere else: UNCHANGED, so carried, when
+    ``baseline.rows`` holds the ID (never its RESOLVED rows, an unreadable row or another finding's), and NEW otherwise, so
+    the agent scores it fresh and ruling B's test applies to it as to any NEW finding. The default, ``None``, changes no
+    caller.
 
     * ``carried``: an UNCHANGED finding with a usable row, a peer or not. Its inputs are inherited (D9);
     * ``carried_peers``: each carried peer and its primary, whose composites ``peer_divergence`` compares;
     * ``copy_primary``: every other peer (NEW, UPDATED, or with no usable row) and its primary, whose values it copies;
-    * ``to_agent``: every other finding. A NEW finding is never carried, however its ID sits in the baseline (ruling B).
+    * ``to_agent``: every other finding. A NEW finding is never carried, however its ID sits in the baseline (ruling B);
+    * ``status``: every open ID and the status it was routed under, the Section 7 value or the derived one. The renderer
+      takes each row's status from it, so it can't disagree with the planner.
     """
+    usable = baseline.rows if baseline is not None else {}
+    derive = frozenset(tachi_parts.canonical_finding_id(finding_id) for finding_id, names in (lacking or {}).items()
+                       if tachi_parts.id_matches("finding", finding_id) and "delta_status" in names)
     status: Dict[str, str] = {}
     for row in open_rows:
-        status.setdefault(tachi_parts.canonical_finding_id(row["id"]), _delta_status(row.get("delta_status")))
+        finding_id = tachi_parts.canonical_finding_id(row["id"])
+        if finding_id in derive:
+            status.setdefault(finding_id, "UNCHANGED" if finding_id in usable else "NEW")
+        else:
+            status.setdefault(finding_id, _delta_status(row.get("delta_status")))
     primary_of: Dict[str, str] = {}
     for group in groups:
         primary = group["primary"]
         for member in group["members"]:
             if member != primary and member in status and primary in status:
                 primary_of.setdefault(member, primary)
-    usable = baseline.rows if baseline is not None else {}
     to_agent: List[str] = []
     carried: List[str] = []
     copy_primary: Dict[str, str] = {}
@@ -1226,7 +1303,7 @@ def route_scorer_units(open_rows: Sequence[Mapping[str, str]], *, groups: Sequen
             copy_primary[finding_id] = primary
         else:
             to_agent.append(finding_id)
-    return ScorerRouting(tuple(to_agent), tuple(carried), copy_primary, carried_peers)
+    return ScorerRouting(tuple(to_agent), tuple(carried), copy_primary, carried_peers, status)
 
 
 def _delta_status(value: Any) -> str:

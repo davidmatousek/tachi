@@ -1563,8 +1563,9 @@ PART_KEYS = ["schema", "plan_id", "batch_id", "stage", "agent_type", "finding_id
 OVERFLOW_KEYS = ["schema", "plan_id", "batch_id", "stage", "agent_type", "reason"]
 BATCH_INPUT_KEYS = ["schema", "plan_id", "batch_id", "stage", "agent_type", "finding_ids", "attempt", "part_path",
                     "tree_paths", "units", "refs", "params"]
-PLAN_KEYS = ["schema", "plan_id", "stage", "agent_type", "created_utc", "tachi_version", "inputs", "params", "batch_size",
-             "unit_count", "preimage", "out_snapshot", "retry_budget", "batches"]
+PLAN_KEYS = ["schema", "plan_id", "stage", "agent_type", "created_utc", "tachi_version", "inputs", "refs",
+             "architecture_warning", "params", "batch_size", "unit_count", "preimage", "out_snapshot", "retry_budget",
+             "batches"]
 POINTER_KEYS = ["schema", "plan_id"]
 STAGE_RECORD_KEYS = ["schema", "stage", "plan_id", "status", "tachi_version", "started_utc", "finished_utc", "input_digest",
                      "counts", "batches", "overflow_events", "retries", "warnings", "undeclared_paths", "outputs", "error"]
@@ -1664,6 +1665,8 @@ def valid_plan():
     return {"schema": "tachi.plan/1", "plan_id": PLAN, "stage": "risk-score", "agent_type": "tachi-risk-scorer",
             "created_utc": "2026-11-22T10:15:00Z", "tachi_version": "4.48.4",
             "inputs": {"threats": {"path": "/work/run/threats.md", "sha256": HEX, "bytes": 1234}},
+            "refs": {"threats": "/work/run/threats.md", "architecture": "/work/docs/architecture.md"},
+            "architecture_warning": None,
             "params": {"scoring_date": "2026-11-22"}, "batch_size": 40, "unit_count": 3,
             "preimage": {"risk-scores.md": None, "risk-scores.sarif": HEX},
             "out_snapshot": {"threats.md": [1234, 1700000000000000000]}, "retry_budget": {"limit": 2, "used": 0},
@@ -1696,6 +1699,33 @@ PLAN_VIOLATIONS = {
     "input path with a dot-dot": setter(("inputs", "threats", "path"), "/work/../x"),
     "input path with a newline": setter(("inputs", "threats", "path"), "/work/a\nb"),
     "input name with a space": setter(("inputs",), {"a b": {"path": "/x", "sha256": HEX, "bytes": 1}}),
+    # `refs` is the plan's own copy of the stage's pointers (ruled at W2): the batch input's rule, once more.
+    "refs not an object": setter(("refs",), []), "refs null": setter(("refs",), None),
+    "refs over 20 names": setter(("refs",), {"r%d" % n: "/work/x%d.md" % n for n in range(21)}),
+    "refs name with a capital": setter(("refs",), {"Threats": "/work/run/threats.md"}),
+    "refs name with a space": setter(("refs",), {"a b": "/work/run/threats.md"}),
+    "ref relative": setter(("refs", "threats"), "run/threats.md"),
+    "ref with a dot-dot": setter(("refs", "threats"), "/work/../x"),
+    "ref with a backslash": setter(("refs", "threats"), "/work/a\\b"),
+    "ref with a backtick": setter(("refs", "threats"), "/work/`x`"),
+    "ref with a newline": setter(("refs", "threats"), "/work/a\nb"),
+    "ref empty": setter(("refs", "threats"), ""), "ref not text": setter(("refs", "threats"), 7),
+    # `architecture_warning` is null, or one warning under a stage record's entry rules.
+    "warning a string": setter(("architecture_warning",), "architecture-path:explicit:missing"),
+    "warning a list": setter(("architecture_warning",), []),
+    "warning unknown key": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing", "detail": "d", "level": 1}),
+    "warning missing detail": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing"}),
+    "warning missing code": setter(("architecture_warning",), {"detail": "d"}),
+    "warning code empty": setter(("architecture_warning",), {"code": "", "detail": "d"}),
+    "warning code with a capital": setter(("architecture_warning",), {"code": "Architecture-path", "detail": "d"}),
+    "warning code with a space": setter(("architecture_warning",), {"code": "architecture path", "detail": "d"}),
+    "warning code over 64": setter(("architecture_warning",), {"code": "a" * 65, "detail": "d"}),
+    "warning code with a trailing newline": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing\n", "detail": "d"}),
+    "warning code not text": setter(("architecture_warning",), {"code": 7, "detail": "d"}),
+    "warning detail not text": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing", "detail": None}),
+    "warning detail over 500": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing", "detail": "d" * 501}),
+    "warning detail with a control character": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing", "detail": "a\x00b"}),
+    "warning detail with a bidi control": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing", "detail": "a\u202eb"}),
     "params nested object": setter(("params", "scoring_date"), {"a": 1}),
     "params list": setter(("params", "extra"), [1]),
     "params key with a capital": setter(("params", "Bad"), 1),
@@ -1745,6 +1775,40 @@ def test_a_plan_that_follows_the_contract_validates_and_comes_back_as_it_was():
     assert _api("validate_plan")(plan) is plan
     plan.update(out_snapshot=None, batch_size=None, unit_count=0, batches=[])   # a plan with no units
     assert _api("validate_plan")(plan) is plan
+
+
+def test_a_plan_with_no_units_keeps_its_pointers_and_may_carry_the_architecture_warning():
+    """Ruled at W2: ``refs`` and ``architecture_warning`` are plan-level, so an all-carried run (no batch input) still has them."""
+    plan = valid_plan()
+    plan.update(out_snapshot=None, batch_size=None, unit_count=0, batches=[],
+                refs={name: "/work/%s" % name for name in ("threats", "risk_scores", "baseline_dir", "architecture", "target")},
+                architecture_warning={"code": "architecture-path:explicit:outside-root", "detail": "d" * 500})
+    assert _api("validate_plan")(plan) is plan
+
+
+def test_the_pointers_and_the_warning_of_a_plan_have_the_limits_of_a_batch_input_and_a_stage_record():
+    plan = valid_plan()
+    plan["refs"] = {"r%d" % n: "/work/x%d.md" % n for n in range(20)}
+    assert _api("validate_plan")(plan) is plan, "twenty pointer names is the limit"
+    plan["refs"] = {}
+    assert _api("validate_plan")(plan) is plan, "which names the planner writes is the planner's rule, not the schema's"
+    plan["architecture_warning"] = {"code": "a" * 64, "detail": ""}
+    assert _api("validate_plan")(plan) is plan, "a code of 1 to 64 characters, and a detail of 0 to 500"
+
+
+@pytest.mark.parametrize("refs,valid", [
+    ({"threats": "/work/run/threats.md", "architecture": "/work/docs/a.md"}, True), ({}, True),
+    ({"threats": "run/threats.md"}, False), ({"threats": "/work/../x"}, False), ({"Threats": "/work/x"}, False),
+    ({"threats": "/work/a\\b"}, False), ({"threats": 7}, False), (["/work/x"], False),
+], ids=["good", "empty", "relative", "dot-dot", "capital", "backslash", "not-text", "not-an-object"])
+def test_a_plan_and_its_batch_inputs_apply_one_rule_to_refs(refs, valid):
+    plan, batch_input = valid_plan(), valid_batch_input()
+    plan["refs"] = batch_input["refs"] = refs
+    for validator, document in ((_api("validate_plan"), plan), (_api("validate_batch_input"), batch_input)):
+        if valid:
+            assert validator(document) is document
+        else:
+            raises_invalid(validator, document)
 
 
 @pytest.mark.parametrize("label", sorted(PLAN_VIOLATIONS))
@@ -1874,6 +1938,8 @@ STAGE_RECORD_VIOLATIONS = {
     "warning detail over 500": setter(("warnings", 0, "detail"), "d" * 501),
     "warning detail with a control character": setter(("warnings", 0, "detail"), "a\x00b"),
     "warning unknown key": setter(("warnings", 0, "level"), "high"),
+    "warning code with a capital": setter(("warnings", 0, "code"), "Undeclared-paths"),
+    "warning code empty": setter(("warnings", 0, "code"), ""), "warning code over 64": setter(("warnings", 0, "code"), "a" * 65),
     "undeclared path with a dot-dot": setter(("undeclared_paths",), ["../x"]),
     "undeclared paths over 1000": setter(("undeclared_paths",), ["f%d.py" % n for n in range(1001)]),
     "undeclared path absolute": setter(("undeclared_paths",), ["/etc/x"]),

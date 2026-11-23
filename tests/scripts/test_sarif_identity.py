@@ -663,6 +663,98 @@ def test_a_flag_that_is_a_case_variant_gives_the_same_uri_as_the_canonical_flag(
     assert one.uri == two.uri == three.uri == "docs/design/architecture.md"
 
 
+# --- resolve_explicit: the resolver's first step, which `tachi-stage.py plan` runs too (ruled at W2, ADR-050 D7) --------
+
+
+def explicit_of(fs, candidate, **kwargs):
+    return sc.resolve_explicit(candidate, root="/repo", fs=fs, **kwargs)
+
+
+def test_a_candidate_that_passes_comes_back_resolved_and_with_no_warning():
+    fs = make_repo()
+    got, warning = explicit_of(fs, "docs/design/architecture.md")
+    assert warning is None
+    assert got == sc.resolve_file("docs/design/architecture.md", root="/repo", allow_absolute=True, fs=fs)
+    assert (got.path, got.uri) == ("docs/design/architecture.md", "docs/design/architecture.md")
+
+
+def test_the_candidate_may_be_an_absolute_path_below_the_root_as_the_flag_may():
+    got, warning = explicit_of(make_repo(), "/repo/docs/design/./architecture.md")
+    assert warning is None and (got.path, got.uri) == ("docs/design/architecture.md", "docs/design/architecture.md")
+
+
+def test_the_candidate_is_spelled_as_the_volume_spells_it():
+    got, warning = explicit_of(make_repo(case_insensitive=True), "DOCS/Design/ARCHITECTURE.md")
+    assert warning is None and got.path == "docs/design/architecture.md"
+
+
+REFUSED = [  # the candidate, then the failed check: the filesystem ones, and the syntactic ones that `plan` used to exit 2 for
+    ("docs/security/missing.md", "missing"), ("../outside.md", "parent-reference"), ("/etc/passwd", "outside-root"),
+    ("docs", "not-a-regular-file"), ("docs/design/link.md", "symlink"), ("docs/architecture.md/x", "not-a-directory"),
+    ("docs\\x", "backslash"), ("docs/a`b.md", "backtick"), ("docs/a\nb.md", "control-char"), ("docs/a\tb.md", "control-char"),
+    ("", "empty"), ("./", "empty"), ("https://example.invalid/a.md", "scheme"), ("C:docs/a.md", "drive-letter"),
+    ("docs/" + "x" * 5000, "too-long"), ("docs/\udc80.md", "encoding"), (None, "type"), (7, "type"), (b"docs/a.md", "type"),
+]
+
+
+def refusing_repo():
+    fs = make_repo()
+    fs.file("/etc/passwd")
+    fs.file("/repo/docs/architecture.md")
+    fs.symlink("/repo/docs/design/link.md", "other.md")
+    return fs
+
+
+@pytest.mark.parametrize("candidate,check", REFUSED, ids=[check + ":" + repr(candidate)[:20] for candidate, check in REFUSED])
+def test_a_refused_candidate_comes_back_with_no_path_and_the_resolvers_own_warning(candidate, check):
+    got, warning = explicit_of(refusing_repo(), candidate)
+    assert got is None
+    assert set(warning) == {"code", "detail"} and warning["code"] == "architecture-path:explicit:%s" % check
+    detail = warning["detail"]
+    assert "--architecture path" in detail and ("%s check" % check) in detail and "--architecture-path" in detail
+    assert sc._short(candidate) in detail, "the candidate, in its escaped short form"
+    assert len(detail) < 500 and detail.isprintable(), "a stage record's warning rules: at most 500 characters, nothing a record forbids"
+
+
+@pytest.mark.parametrize("candidate,check", [case for case in REFUSED if case[0] is not None],
+                         ids=[check + ":" + repr(candidate)[:20] for candidate, check in REFUSED if candidate is not None])
+def test_plan_and_the_renderer_agree_on_the_warning_for_every_refusal(candidate, check):
+    """``resolve_architecture`` runs this step first, so its first warning is this one, whatever check fails. (``None`` is
+    the flag not given, which ``resolve_architecture`` never asks this step about.)"""
+    fs = refusing_repo()
+    _got, warning = explicit_of(fs, candidate)
+    chain = sc.resolve_architecture(candidate, threats_text=None, run_dir=None, root="/repo", fs=fs)
+    assert chain.warnings[0] == warning, "plan records what the renderer would list first"
+    assert chain.source in ("default", "default-literal") and "architecture-path:body-line:absent" in codes(chain)
+
+
+def test_a_long_candidate_is_named_in_its_80_character_short_form_and_never_whole():
+    candidate = "docs/" + "y" * 300
+    detail = explicit_of(make_repo(), candidate)[1]["detail"]
+    assert sc._short(candidate) in detail and candidate not in detail and len(sc._short(candidate)) == 80
+
+
+def test_a_control_character_is_escaped_in_the_warning_and_a_record_can_carry_it():
+    detail = explicit_of(make_repo(), "docs/\x00\u202e\u2028b.md")[1]["detail"]
+    assert "\\x00" in detail and "\\u202e" in detail and "\\u2028" in detail
+    tachi_parts.closed_string(detail, "architecture_warning.detail", 0, 500)   # the rule of a stage record's warning detail
+
+
+def test_a_root_that_is_not_absolute_is_the_callers_bug_and_raises():
+    with pytest.raises(ValueError):
+        sc.resolve_explicit("docs/design/architecture.md", root="repo", fs=make_repo())
+
+
+def test_the_root_and_the_filesystem_default_to_the_working_directory_and_the_real_one(tmp_path, monkeypatch):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "architecture.md").write_text("# a\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    got, warning = sc.resolve_explicit("docs/architecture.md")
+    assert warning is None and got.path == "docs/architecture.md"
+    refused, warning = sc.resolve_explicit("docs/absent.md")
+    assert refused is None and warning["code"] == "architecture-path:explicit:missing"
+
+
 # --- NFR-10's name check on the body line --------------------------------------
 
 
@@ -2145,7 +2237,11 @@ def test_a_run_always_gets_a_uri_even_when_nothing_validates(rrs, entries, tmp_p
     res = project.run(architecture=str(outside_file))
     assert res.code == 5, res.describe()
     assert [w["code"] for w in project.record["warnings"]] == [
-        "architecture-path:explicit:outside-root", "architecture-path:body-line:absent", "architecture-path:default:missing"]
+        "architecture-path:explicit:outside-root", "architecture-path:body-line:absent", "architecture-path:default:missing",
+        "tag-source:no-architecture-file"], (
+        "D7's chain in order, then the tag source: with no architecture file the block's tags are applied unverified, and "
+        "that warns, because the stage record has no other trace of it (ruled at W2, ADR-050 D2)")
+    assert "unverified" in project.record["warnings"][-1]["detail"]
     uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in project.sarif["runs"][0]["results"]}
     assert uris == {sc.DEFAULT_ARCHITECTURE_PATH}, "the constant is emitted as written, and nothing here stops a run"
 
