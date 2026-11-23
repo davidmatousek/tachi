@@ -860,6 +860,7 @@ def build_result(
     properties: Optional[Mapping[str, Any]] = None,
     correlation: Optional[Correlation] = None,
     related_locations: Sequence[Mapping[str, Any]] = (),
+    markdown: Optional[str] = None,
 ) -> Dict[str, Any]:
     """One SARIF result, in the shared shape and key order (ADR-050 D7, D8).
 
@@ -869,12 +870,21 @@ def build_result(
     ``correlation`` is given, and the three ``correlation-*`` properties follow ``properties``.
     No result carries ``guid``, ``correlationGuid``, ``fingerprints`` or SARIF's own
     ``baselineState``. ``properties`` may not hold a ``correlation-*`` key: the emitter owns them.
+
+    ``markdown`` is the optional ``message.markdown`` that a file whose contract maps it keeps
+    (the scorer's mitigation text; NFR-1 keeps adopter fields). Given, the message is
+    ``{text, markdown}`` in that order, and ruling C's sentence is added to ``text`` alone. Not
+    given, the message is ``{text}`` and the result is byte-for-byte what it was without the
+    parameter. Any string is accepted, an empty one included: shipped scorer files carry empty
+    mitigations. ``self_check`` refuses a local path in it.
     """
     for name, value in (("uri", uri), ("component", component), ("zone", zone), ("kind", kind)):
         if not isinstance(value, str) or not value:
             raise ValueError("%s must be a non-empty string, not %s" % (name, _short(value)))
     if level not in LEVELS:
         raise ValueError("not a SARIF level: %s" % _short(level))
+    if markdown is not None and not isinstance(markdown, str):
+        raise ValueError("markdown must be a string, not %s" % _short(markdown))
     props: Dict[str, Any] = dict(properties or {})
     clash = [key for key in CORRELATION_KEYS if key in props]
     if clash:
@@ -883,9 +893,12 @@ def build_result(
         props["correlation-group"] = correlation.group
         props["correlation-role"] = correlation.role
         props["correlation-primary"] = correlation.primary
+    message_object: Dict[str, str] = {"text": correlated_message(message, correlation)}
+    if markdown is not None:
+        message_object["markdown"] = markdown
     result: Dict[str, Any] = {
         "ruleId": rule_id_for(finding_id),
-        "message": {"text": correlated_message(message, correlation)},
+        "message": message_object,
         "level": level,
         "locations": [
             {
@@ -1000,6 +1013,15 @@ class SelfCheckError(ValueError):
 _HASH_FORM = re.compile(r"[0-9a-f]{16}:1")
 _LEGACY_PEER_REFERENCE = re.compile(r"([A-Za-z]+-[0-9]+): ")
 
+# A local path: an absolute path that starts at one of H8's roots (NFR-6's list, as in
+# ``test_fixture_374.py``), or a Windows drive path. The root must start the path, so a relative path or a
+# URL path with a segment of that name is not a hit, and a ``file:`` URL on a root is. Built in pieces, so
+# this file holds no path itself.
+_LOCAL_PATH_ROOTS = ("Us" + "ers", "ho" + "me", "pri" + "vate", "t" + "mp", "var/fol" + "ders")
+_LOCAL_PATH = re.compile(
+    "(?<![A-Za-z0-9_.~-])/(%s)/|(?<![A-Za-z0-9])[A-Za-z]:\\\\[A-Za-z]" % "|".join(_LOCAL_PATH_ROOTS)
+)
+
 
 def _is_text(value: object) -> bool:
     return isinstance(value, str) and value != ""
@@ -1018,8 +1040,19 @@ def _shape_problems(result: object) -> List[str]:
         out.append("its keys are %s, not %s" % (list(result), expected))
     out += ["it carries %s" % key for key in FORBIDDEN_RESULT_KEYS if key in result]
     message = result.get("message")
-    if not (isinstance(message, dict) and list(message) == ["text"] and _is_text(message["text"])):
-        out.append("message is not {text: <non-empty string>}")
+    if not (
+        isinstance(message, dict)
+        and list(message) in (["text"], ["text", "markdown"])
+        and _is_text(message["text"])
+    ):
+        out.append("message is not {text: <non-empty string>} or {text, markdown}, in that order")
+    elif "markdown" in message:
+        if not isinstance(message["markdown"], str):
+            out.append("message.markdown is not a string")
+        else:
+            local = _LOCAL_PATH.search(message["markdown"])
+            if local:
+                out.append("message.markdown holds a local path (%s)" % _short(local.group(0)))
     if result.get("level") not in LEVELS:
         out.append("level is not a SARIF level")
     locations = result.get("locations")
@@ -1082,6 +1115,8 @@ def _shape_problems(result: object) -> List[str]:
 def _strings_that_name_findings(result: Mapping[str, Any]) -> Iterable[Tuple[str, str]]:
     """``(where, text)`` for every place a result may name a finding: message, properties, evidence."""
     yield "message", result["message"]["text"]
+    if "markdown" in result["message"]:
+        yield "message.markdown", result["message"]["markdown"]
     yield "findingId/v1", result["partialFingerprints"][FINGERPRINT_KEYS[1]]
     stack: List[Tuple[str, Any]] = [("properties", result["properties"])]
     while stack:
@@ -1119,14 +1154,15 @@ def self_check(
     Raises ``SelfCheckError`` listing every problem. It asserts that:
 
     * each result has the shared shape and key order, and no ``guid``, ``correlationGuid``,
-      ``fingerprints`` or ``baselineState``;
+      ``fingerprints`` or ``baselineState``; its message is ``{text}`` or ``{text, markdown}``,
+      and a ``markdown`` is a string (an empty one passes) that holds no local path;
     * the result count equals the number of distinct finding IDs, which equals the member set;
     * every ``primaryLocationLineHash`` is tachi's own for ``tool`` and the ID, and no two
       present results share one (the error names both IDs); every ``ruleId`` is the ID's rule;
     * every result has the one ``uri`` (``uri``, when given);
-    * no RESOLVED ID (``resolved_ids`` less the member set) appears in a message, a property or
-      a ``relatedLocations`` entry, and no ``relatedLocations`` entry names a finding or sits
-      outside the controls file;
+    * no RESOLVED ID (``resolved_ids`` less the member set) appears in a message (its markdown
+      included), a property or a ``relatedLocations`` entry, and no ``relatedLocations`` entry
+      names a finding or sits outside the controls file;
     * every ``correlation-primary`` and every group member is a result, with one primary per
       group, every correlated result's message ends with ruling C's sentence, and an
       uncorrelated result carries neither the keys nor the sentence.
