@@ -21,7 +21,7 @@ consumers:
 
 # STRIDE+AI Categories — Shared Reference
 
-Canonical definitions for all 11 threat categories used across the tachi pipeline: 6 STRIDE categories and 5 AI-specific categories. This is the single source of truth for category descriptions, ID prefixes, agent mappings, and the DFD element-to-category applicability matrix. All consuming agents should Read this file rather than maintaining inline definitions.
+Canonical definitions for all 11 threat categories used across the tachi pipeline: 6 STRIDE categories and 5 AI-specific categories. This is the single source of truth for category descriptions, ID prefixes, agent mappings, and the DFD element-to-category applicability matrix. All consuming agents should Read this file rather than maintaining inline definitions. Where an agent list in this file differs from the canonical roster in `.claude/skills/tachi-shared/references/agent-roster-shared.md`, the roster governs.
 
 ---
 

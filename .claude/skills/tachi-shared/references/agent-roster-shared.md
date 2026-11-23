@@ -6,7 +6,6 @@ source_schema: schemas/finding.yaml
 source_reference: .claude/skills/tachi-orchestration/references/dispatch-rules.md
 consumers:
   - orchestrator
-  - threat-report
 ---
 
 # Agent Roster — Shared Reference
@@ -19,7 +18,7 @@ The roster has 21 agents, one per agent file in `.claude/agents/tachi/`: 14 thre
 
 ## Typed Dispatch Rules
 
-These rules bind every layer that dispatches a tachi agent: the orchestrator, the report agent and the tachi commands.
+These rules bind every layer that dispatches a tachi agent: the orchestrator, the report agent and the tachi commands. Only the orchestrator loads this file. The other layers carry the names they dispatch inline, and those names equal the roster's.
 
 1. **Name the agent by its `subagent_type`.** Set `subagent_type` on the Agent call to a name from the tables below, character for character. Describing the agent in the prompt is not a dispatch.
 2. **Dispatch roster agents only.** A name outside these tables is not a tachi agent. Don't dispatch a `general-purpose` agent or any other type in its place, and don't imitate a roster agent by pasting its prompt file into another agent's prompt. A stand-in holds tools the roster agent doesn't: each Phase 2 threat agent holds `Read`, `Glob` and `Grep` and nothing else.
@@ -65,7 +64,7 @@ The 14 agents the orchestrator dispatches in Phase 2, and again when the coverag
 
 ## Stage and Helper Agents
 
-The 7 agents that run a stage or help one. Whatever dispatches one of them, a command or an agent, names it from this table under the rules above. `tachi-attack-tree-delta` is the only helper: the report's attack trees come from it, and no other helper exists.
+The 7 agents that run a stage or help one. Whatever dispatches one of them, a command or an agent, uses the name in this table under the rules above, even where it carries the name inline. `tachi-attack-tree-delta` is the only helper: the report's attack trees come from it, and no other helper exists.
 
 | `subagent_type` | Role |
 |-----------------|------|

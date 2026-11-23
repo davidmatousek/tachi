@@ -64,7 +64,7 @@ A part is `tachi.part/1`: exactly eight keys, all required. An absent value is w
 | `stage` | the planned batch's stage |
 | `agent_type` | the planned batch's agent |
 | `finding_ids` | 1 to 500 unique finding IDs, equal to the planned set |
-| `items` | an array of objects, one per finding ID, each `{finding_id, ...the stage's closed payload}` |
+| `items` | an array of objects, one per finding ID, each `{finding_id, ...the stage's closed payload}`. A validated part returns its items in the planned order, whatever order you wrote them |
 | `fragments` | an array of at most 50 `{slot_key, text}` objects. Both live stages write `[]` |
 
 | Stage | `agent_type` |
@@ -78,7 +78,7 @@ Later stages join this table when they ship. The `agent_type` names are the rost
 
 ## Stage Payloads
 
-Both payloads use closed key sets, and any other key is rejected. `finding_id` is allow-listed, belongs to the batch's list and is unique in the part. Prose limits are in characters. A field typed prose that runs over its limit is cut there before escaping, flagged `input:<field>:truncated` and counted. It never rejects the part.
+Both payloads use closed key sets, and any other key is rejected. `finding_id` is allow-listed, belongs to the batch's list and is unique in the part. Prose limits are in characters. A field typed prose that runs over its limit is cut there before escaping, flagged `input:<field>:truncated` and counted. It never rejects the part. The 28 prose fields are listed under "Truncation".
 
 ### Scorer item (stage `risk-score`)
 
@@ -141,17 +141,17 @@ The eight sub-score names are the four exploitability keys and the four scalabil
 | `confidence` | `High`, `Medium` or `Low`, and `null` exactly when `control_status` is `missing` |
 | `carried_forward` | boolean. Accepted only for an UNCHANGED finding with a resolved baseline controls file, and otherwise cleared with the reason recorded |
 | `evidence` | an array of 1 to 5 entries for `found` or `partial`, and empty for `missing`. Each entry has exactly the keys in "Evidence entry keys" |
-| `matrix_row` | one line of up to 1,200 characters: the 11 cells of the finding's row in the controls section 2 table |
-| `recommendation_body` | up to 2,000 characters. Required for `partial` or `missing`, and `null` for `found` |
+| `matrix_row` | prose, one line of up to 1,200 characters, cut at 1,200: the 11 cells of the finding's row in the controls section 2 table |
+| `recommendation_body` | prose up to 2,000, cut at 2,000. Required for `partial` or `missing`, and `null` for `found` |
 
 **Evidence entry keys.**
 
 | Key | Type and range |
 |-----|----------------|
-| `file` | 1 to 300 characters, relative to the target, with no scheme, leading `/`, backslash, drive letter or `..` |
-| `line` | integer, 1 or more |
-| `language` | a full match of `[a-z0-9+#-]{1,20}` |
-| `snippet` | at most 5 lines and 600 characters |
+| `file` | a closed value: 1 to 300 characters, relative to the target, with no scheme, leading `/`, backslash, drive letter or `..`. It is checked and never cut, so a bad or over-long `file` rejects the part |
+| `line` | a closed value: an integer, 1 or more |
+| `language` | a closed value: a full match of `[a-z0-9+#-]{1,20}` |
+| `snippet` | prose, at most 5 lines and 600 characters: cut to 5 lines first, then to 600 characters |
 | `summary` | prose up to 160, cut at 160 |
 | `assessment` | optional. An object with exactly the keys in "Assessment keys" |
 
@@ -181,13 +181,15 @@ Every payload string has exactly one class.
 
 | Class | Fields | Rule |
 |-------|--------|------|
-| Closed value | IDs, enums, vectors, paths, and names that must match an input (a zone names a Section 2 row) | Checked against its pattern, enum or input |
+| Closed value | IDs, enums, vectors, paths, and names that must match an input (a zone names a Section 2 row); an evidence entry's `file`, `line` and `language` | Checked against its pattern, enum, range or input, and never cut |
 | Narrative | `rationale.*`, `metric_rationale.*`, `subscore_rationale.*`, each `evidence[].assessment.*.rationale` | Slots for every number; no digit outside a slot |
-| Evidence | `evidence[].file`, `line`, `snippet` and `summary`; `matrix_row`; `recommendation_body`; a legacy baseline's prose, which has no slots | Digits allowed. The renderer escapes these fields and never reads a number from them |
+| Evidence | `evidence[].snippet` and `summary`; `matrix_row`; `recommendation_body`; a legacy baseline's prose, which has no slots | Digits allowed. The renderer escapes these fields and never reads a number from them |
+
+**`file` and `line` are closed on input and evidence on output.** Each is checked against its pattern and range and never cut, so a bad or over-long `file` rejects the part. A valid `file` is kept as written, and the resolver canonicalizes it at render time. On output both are evidence: escaped like any agent text, digits allowed, and never read for a number.
 
 **Carried text.** The renderers persist each narrative field's validated, slotted text, escaped on write, in `risk-scores.md` section 6, `### Scoring Inputs`, and in `compensating-controls.md` section 7, `### Assessment Inputs`. Carried text is decoded first, then re-validated as narrative and re-resolved against this run's values, with the per-field fallback. Only legacy prose, which has no slots, is evidence.
 
-**Every string** is at most 16,384 characters. It holds no control character except newline and tab, and none of U+2028, U+2029, U+200E, U+200F, U+061C, U+202A to U+202E or U+2066 to U+2069. A string that breaks this rejects the part.
+**Every string** is at most 16,384 characters. It holds no control character except newline and tab, and none of U+2028, U+2029, U+200E, U+200F, U+061C, U+202A to U+202E or U+2066 to U+2069. A string that breaks this rejects the part, with one exception: over-limit prose is cut at its own limit first, at any length, and these checks run on what is kept. A forbidden character beyond a cut is cut away with the rest, and one inside the kept text rejects the part.
 
 ---
 
@@ -265,7 +267,43 @@ How to write the terms that carry digits:
 
 ### Truncation
 
-A prose field over its limit is cut at the limit before escaping. It is flagged `input:<field>:truncated` and counted in the stage record, and it never rejects the part. The same rule covers the prose limits in the tables above and, in later stages, `fragments[].text`.
+A prose field over its limit is cut at the limit before escaping. It is flagged `input:<field>:truncated` and counted in the stage record, and it never rejects the part. The same rule covers, in later stages, `fragments[].text`.
+
+`<field>` is one of the 28 names below, dotted and with no list index. The 24 narrative names are also the ones `input:<field>:narrative-fallback` uses (see "Fixed Fallback Sentences"), and the four evidence names are the other prose fields. An item's flags are a set, so two truncated evidence summaries give one `input:evidence.summary:truncated` flag, while `counts.truncations` counts both cuts.
+
+| Flag field | Part path | Cut at (characters) | Class |
+|------------|-----------|---------------------|-------|
+| `rationale.cvss` | `items[].rationale.cvss` | 400 | narrative |
+| `rationale.exploitability` | `items[].rationale.exploitability` | 400 | narrative |
+| `rationale.scalability` | `items[].rationale.scalability` | 400 | narrative |
+| `rationale.reachability` | `items[].rationale.reachability` | 400 | narrative |
+| `metric_rationale.AV` | `items[].metric_rationale.AV` | 160 | narrative |
+| `metric_rationale.AC` | `items[].metric_rationale.AC` | 160 | narrative |
+| `metric_rationale.PR` | `items[].metric_rationale.PR` | 160 | narrative |
+| `metric_rationale.UI` | `items[].metric_rationale.UI` | 160 | narrative |
+| `metric_rationale.S` | `items[].metric_rationale.S` | 160 | narrative |
+| `metric_rationale.C` | `items[].metric_rationale.C` | 160 | narrative |
+| `metric_rationale.I` | `items[].metric_rationale.I` | 160 | narrative |
+| `metric_rationale.A` | `items[].metric_rationale.A` | 160 | narrative |
+| `subscore_rationale.known_techniques` | `items[].subscore_rationale.known_techniques` | 160 | narrative |
+| `subscore_rationale.attack_complexity` | `items[].subscore_rationale.attack_complexity` | 160 | narrative |
+| `subscore_rationale.tooling_availability` | `items[].subscore_rationale.tooling_availability` | 160 | narrative |
+| `subscore_rationale.skill_level` | `items[].subscore_rationale.skill_level` | 160 | narrative |
+| `subscore_rationale.scriptability` | `items[].subscore_rationale.scriptability` | 160 | narrative |
+| `subscore_rationale.target_scope` | `items[].subscore_rationale.target_scope` | 160 | narrative |
+| `subscore_rationale.resource_requirements` | `items[].subscore_rationale.resource_requirements` | 160 | narrative |
+| `subscore_rationale.detection_difficulty` | `items[].subscore_rationale.detection_difficulty` | 160 | narrative |
+| `evidence.assessment.coverage` | `items[].evidence[].assessment.coverage.rationale` | 160 | narrative |
+| `evidence.assessment.configuration` | `items[].evidence[].assessment.configuration.rationale` | 160 | narrative |
+| `evidence.assessment.currency` | `items[].evidence[].assessment.currency.rationale` | 160 | narrative |
+| `evidence.assessment.completeness` | `items[].evidence[].assessment.completeness.rationale` | 160 | narrative |
+| `evidence.snippet` | `items[].evidence[].snippet` | 600 | evidence |
+| `evidence.summary` | `items[].evidence[].summary` | 160 | evidence |
+| `matrix_row` | `items[].matrix_row` | 1200 | evidence |
+| `recommendation_body` | `items[].recommendation_body` | 2000 | evidence |
+
+- **A snippet** is cut to 5 lines first, then to 600 characters, and flagged `input:evidence.snippet:truncated` once.
+- **A cut that lands inside a slot** leaves an unterminated slot, so that narrative field also takes its fixed sentence. It is flagged both `truncated` and `narrative-fallback`, and the part is never rejected.
 
 ---
 
@@ -282,7 +320,7 @@ If your part won't fit in one Write, write a `tachi.overflow/1` object at your `
 | `agent_type` | your agent |
 | `reason` | `output-budget`, `input-too-large` or `other` |
 
-`schema` selects the key set before any other check, so a well-formed overflow object is classified `overflow`, never `invalid`. The error is advisory. It is counted, but no decision depends on it: a missing part triggers the same retry, narrower.
+`schema` selects the key set before any other check, so a well-formed overflow object is classified `overflow`, never `invalid`. Well-formed includes the match with the planned batch: an object whose `plan_id`, `batch_id`, `stage` or `agent_type` differs from the planned batch's is `invalid`. The error is advisory. It is counted, but no decision depends on it: a missing part triggers the same retry, narrower.
 
 ---
 
@@ -358,6 +396,7 @@ The stage is `risk-score` or `compensating-controls`.
 - **Scripts recompute, never trust.** Every script recomputes each path from `--out`, the stage, and plan and batch IDs that pass the patterns above. It ignores paths stored in files, except the plan's digest-checked `inputs` paths, which the renderer reads.
 - **The plan digest.** `plan` and `reconcile` print the plan file's SHA-256 as `plan_digest`, and the command passes the latest one back as `--plan-digest`. `reconcile`, the renderer, `fail` and `close` refuse a plan file with another digest, with exit code 2.
 - **The plan pointer.** `--plan` names the plan ID and overrides `current.json`. When the two disagree, the script exits 2.
+- **Document caps.** A part is at most 512 KiB (validation step 2). A plan is at most 8 MiB, a batch input 4 MiB, the plan pointer 4 KiB and a stage record 1 MiB, and a writer never writes a document over its own cap.
 - **Retention and staleness.** Nothing under `.tachi-build/` is deleted. Each invocation makes a fresh `<plan_id>/` and replaces `current.json` atomically. Readers open only the paths the current plan names, and count a part only if its `plan_id` equals the pointer's. An earlier plan's part, or an earlier attempt's, never counts.
 
 ## Validation Order
@@ -368,12 +407,12 @@ The renderer validates a part in this order. A failure in steps 1 to 10 rejects 
 2. It is at most 512 KiB. A markdown or SARIF input written by an agent is at most 16 MiB.
 3. It is strict UTF-8, with no BOM and no surrogates.
 4. `json.loads` runs with four hooks. `object_pairs_hook` rejects duplicate keys. `parse_constant` rejects `NaN` and `Infinity`. `parse_float=Decimal` means `1e999` arrives as `Decimal("1E+999")`, which the range checks reject. A bounded `parse_int` rejects an integer literal of more than 20 digits. A `RecursionError` also rejects the part. Nesting is at most 8 levels, and the top level is an object.
-5. `schema` selects the key set. `tachi.overflow/1` is checked against its six keys and classified `overflow`. `tachi.part/1` continues. Any other value is `invalid`.
+5. `schema` selects the key set. `tachi.overflow/1` is checked against its six keys, types and ranges, and then against step 7's match: an overflow object that matches the planned batch is classified `overflow`, and one that doesn't is `invalid`. `tachi.part/1` continues. Any other value is `invalid`.
 6. The closed key set is checked, then the types and ranges.
 7. `plan_id` equals the current plan's. `batch_id`, `stage` and `agent_type` equal the planned batch's.
 8. Each ID passes the finding-ID pattern before any other use. `finding_ids` equals the planned set by canonical ID, with no duplicates, and there is exactly one item per ID.
-9. The stage payload is checked field by field, with each string's class. Only keys, types, closed values, IDs and structure reject the part here. A prose field over its limit is cut at its limit before escaping, flagged `input:<field>:truncated` and counted.
-10. Every string is at most 16,384 characters and passes the character rules above.
+9. The stage payload is checked field by field, with each string's class. Only keys, types, closed values, IDs and structure reject the part here. A prose field over its limit is cut at its limit before escaping, flagged `input:<field>:truncated` and counted. A closed value is never cut.
+10. The strings that step 9 kept are at most 16,384 characters and pass the character rules above. A forbidden character beyond a cut was cut away with the rest, and one inside the kept text rejects the part.
 11. Narrative fields get the slot grammar, then the numeral ban. A failure takes the per-field fallback and never rejects the part.
 
 ## Output Escaping
@@ -400,16 +439,16 @@ A plan is `tachi.plan/1`, with a closed key set.
 | `plan_id` | the plan's ID |
 | `stage` | the stage |
 | `agent_type` | the stage's agent |
-| `created_utc` | ISO 8601, ending in `Z` |
+| `created_utc` | UTC, ending in `Z`, and no other form is accepted |
 | `tachi_version` | `X.Y.Z` |
 | `inputs` | an object mapping each logical input name to `{path, sha256, bytes}` |
 | `params` | as in the batch input |
 | `batch_size` | an integer from 1 to 500, or `null` for a plan with no units |
 | `unit_count` | an integer, 0 or more |
-| `preimage` | an object mapping each canonical file name to its SHA-256, or to `null` when the file didn't exist. `plan` copies each existing file to `<plan_id>/preimage/<canonical name>`, and `fail` restores a copy whose digest matches |
+| `preimage` | an object with exactly one key per canonical output in the stage's closed set, each mapped to that file's SHA-256, or to `null` when the file didn't exist. `plan` copies each existing file to `<plan_id>/preimage/<canonical name>`, and `fail` restores a copy whose digest matches |
 | `out_snapshot` | an object mapping each relative path to `[size, mtime_ns]`, with at most 20,000 entries, or `null` |
 | `retry_budget` | `{limit, used}`, both integers. `limit` is 2 times the planned batch count, and `used` counts retry dispatches, so a halving counts 2 |
-| `batches` | an array of `{batch_id, parent, attempt, finding_ids, input_sha256, state}`. `parent` is a batch ID or `null`, `attempt` is 1 to 3, and `state` is `pending`, `done`, `failed` or `split`. Input and part paths are recomputed from the IDs, never stored |
+| `batches` | an array of `{batch_id, parent, attempt, finding_ids, input_sha256, state}`. `parent` is the batch that this batch's ID derives from (`B003-1` has parent `B003`), and `null` for a planned batch; `attempt` is 1 to 3; and `state` is `pending`, `done`, `failed` or `split`. Input and part paths are recomputed from the IDs, never stored |
 
 ### Plan pointer keys
 
@@ -447,10 +486,12 @@ The model keeps no state of its own. The reconciler classifies each batch from t
 
 ### Retry cap
 
-- **At most 2 retries per lineage,** and at most 2 times the planned batch count in retry dispatches per stage. `retry_budget.used` counts retry dispatches, so a halving counts 2.
-- **On `missing`, `overflow` or `unparseable`,** the batch is halved, to a minimum of 1 unit. The children are `B003-1` and `B003-2` for a batch `B003`.
-- **On `invalid`,** the batch is retried with the same members.
-- **Exhaustion exits 4,** and names the lineage and its finding IDs.
+- **At most 2 retries per lineage,** and at most 2 times the planned batch count in retry dispatches per stage.
+- **On `missing`, `overflow` or `unparseable`,** the batch is halved, to a minimum of 1 unit. The children are `<parent>-1` and `<parent>-2`, so `B003-1` and `B003-2` for a batch `B003`. They are split contiguously and differ in size by at most 1, and each carries an `attempt` one higher than its parent's.
+- **On `invalid`,** the batch is retried with the same members. It keeps its batch ID and raises `attempt`.
+- **Each retry rewrites the batch input** with its new `attempt` and `part_path`, and the plan's `input_sha256` follows it. So two retries per lineage fit `attempt` 1 to 3 and the batch-ID pattern.
+- **A one-unit batch can't halve.** When it is `missing`, `overflow` or `unparseable`, it is retried once more with the same member and batch ID, at `attempt` plus 1, at a cost of 1, as an `invalid` retry is. No batch ever has zero units.
+- **The budget.** A retry costs 1 against `retry_budget.used`, and a halving costs 2. A retry is refused when `used` plus its cost is more than `limit`, or when the batch is already at attempt 3. Either way, `reconcile` exits 4 and names the lineage and its finding IDs.
 
 ### Limits
 
@@ -469,14 +510,14 @@ Every stage writes one stage record, `tachi.stage-record/1`, with a closed key s
 | `plan_id` | the plan's ID |
 | `status` | `success`, `success-with-warnings` or `failed` |
 | `tachi_version` | `X.Y.Z` |
-| `started_utc` | ISO 8601 |
-| `finished_utc` | ISO 8601 |
+| `started_utc` | UTC, ending in `Z`, and no other form is accepted |
+| `finished_utc` | UTC, ending in `Z`, and no other form is accepted |
 | `input_digest` | `sha256:` and the hex digest |
-| `counts` | non-negative integers under the stage's closed keys: `units`, `open`, `resolved`, `rendered`, `parse_errors`, `narrative_fallbacks`, `truncations`, and the flag counts by kind, `retagged` and `reused-id` included |
+| `counts` | non-negative integers under exactly these keys: `units`, `open`, `resolved`, `rendered`, `parse_errors`, `narrative_fallbacks`, `truncations`, `corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `retagged`, `reused-id` and `input`. The seven base counts come first, then one count per flag kind, and `resolved` is both the base count and the flag kind, because the flag marks exactly the RESOLVED rows |
 | `batches` | `{planned, dispatched, done, retried, split, exhausted}` |
 | `overflow_events` | an array of `{batch_id, attempt, kind}`, where `kind` is `missing`, `overflow-reported`, `unparseable` or `invalid` |
 | `retries` | an array of `{batch_id, attempt, cause, children}` |
 | `warnings` | an array of `{code, detail}` |
-| `undeclared_paths` | an array of relative paths |
+| `undeclared_paths` | an array of relative paths, sorted, with at most 1,000 entries. When there are more, the writer adds the warning `undeclared-paths-truncated`, with the full count |
 | `outputs` | an array of `{path, sha256}` |
 | `error` | `null`, or `{code, message, batch_id, finding_ids, remedy}` |
