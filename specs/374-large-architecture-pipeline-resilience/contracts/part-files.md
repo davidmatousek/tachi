@@ -133,6 +133,14 @@ Each reading is one the sources left open. `tachi_parts` (T012, T013), `tachi-st
 - **A `tachi.overflow/1` object is `overflow` only when its `plan_id`, `batch_id`, `stage` and `agent_type` match the planned batch**, step 7's match. Otherwise it is `invalid`. "Well-formed" in ADR-050 D3 includes that match.
 - **Step 10 runs on the strings that step 9 kept.** Over-limit prose is cut and flagged at any length, even above 16,384 characters. A forbidden character beyond the cut is cut away with the rest, and one inside the kept text rejects the part.
 - **A snippet is cut to 5 lines first, then to 600 characters,** and flagged `input:evidence.snippet:truncated` once.
+- **Edge whitespace is removed at intake** (ruled at W1, from T033).
+  - **The rule.** In step 9, after any cut, every narrative and evidence-class string loses its edge whitespace, by `str.strip()`, the same predicate the table readers apply to a cell before they decode. A snippet is dedented first (`textwrap.dedent`), so its lines keep their relative indentation.
+  - **Why.** No value begins or ends with whitespace, so a table cell loses nothing on the round trip. A carried value is then byte-identical on every later run: T056's UNCHANGED controls results, and RR1's carried scorer prose. The rule is idempotent, because a value that is normalized again doesn't change.
+  - **What it doesn't do.** Removing edge whitespace isn't a cut and raises no flag. A required prose field that is empty afterwards rejects the part, just as an empty one does.
+  - **Not chosen:**
+    - stripping only on write, inside `escape_cell` and `escape_prose`, because SARIF strings and code fences would keep the whitespace and drift between runs;
+    - escaping edge whitespace as references, because that would turn D3's closed set of eight references into an open whitespace class.
+  - **Owner.** R0a makes the edit, as a T013 follow-up slice before W1's push, since it owns `tachi_parts.py` and `test_tachi_parts.py` in W1. Its test carries a value with edge spaces, a tab, a newline and an indented snippet through two write-and-read round trips.
 - **A cut that lands inside a slot token** leaves an unterminated slot, so that field takes the per-field fallback. This is accepted, with no extra rule: the field is flagged both `truncated` and `narrative-fallback`, and the part is never rejected.
 
 **Values.**

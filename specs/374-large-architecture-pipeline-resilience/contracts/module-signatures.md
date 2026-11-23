@@ -306,7 +306,7 @@ Both sections use one table, so the writers (R1, R2), the readers (R1b, P) and t
 - **Field names** are value addresses, as `part-files.md`'s "Readings ruled at W1" defines them: dotted, with a list entry as a numeric segment indexed from 0, ending at the string. Examples are `rationale.cvss`, `exploitability.known_techniques`, `subscore_rationale.skill_level`, `evidence.1.summary` and `evidence.0.assessment.coverage.rationale`. A flag's `<field>` drops the indexes (`evidence.summary`, `evidence.assessment.coverage`), because it names a field, not one value.
   - §6 adds the renderer's other step-1 inputs: `score_bounds` (low and high, joined by `,`), `tags` (sorted, joined by `,`, and empty for none) and `scored_on` (`YYYY-MM-DD`).
   - §7 holds the whole controls item (D2, AR-T3's reading).
-- **Values** are escaped on write by D3's table-cell rule, and decoded on read with `decode_references`. Narrative values keep their slot tokens. Booleans are `true` or `false`, and integers are written in decimal.
+- **Values** are escaped on write by D3's table-cell rule, and decoded on read with `decode_references`. Narrative values keep their slot tokens. Booleans are `true` or `false`, and integers are written in decimal. No value has edge whitespace, because `tachi_parts` removes it at intake (`part-files.md`), so the readers' cell strip loses nothing.
 - **Reading.**
   - A reader re-checks each value's class: closed values against their pattern or enum, and narrative values by D3's step 11 when they're re-resolved.
   - A row with an unknown field goes to the reader's issues or errors.
