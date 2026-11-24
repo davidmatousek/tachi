@@ -375,19 +375,51 @@ def scorer_item(fid="S-1"):
     }
 
 
+MATRIX_COLUMNS = ("Threat ID", "CF", "Component", "MAESTRO Layer", "Threat", "Inherent Score", "Inherent Severity",
+                  "Control Status", "Control Category", "Residual Score", "Residual Severity")
+
+
+def matrix_cells(fid="S-1"):
+    """The 11 cells of K8's section 2 row for ``fid``, in the order ``contracts/module-signatures.md`` pins, with the
+    computed cells as the slot tokens an agent writes there."""
+    return [fid, "\u2014", "Gateway", "L1", "A threat", "{{score:inherent}}", "{{band:inherent}}", "Control Found",
+            "authentication", "{{score:residual}}", "{{band:residual}}"]
+
+
+def row_of(cells, outer=True):
+    """``cells`` as a GFM table line: with its outer pipes, or without them (a reader takes either)."""
+    line = " | ".join(cells)
+    return "| " + line + " |" if outer else line
+
+
+BODY_KEYS = ("What to Implement", "Where to Implement", "Reference Patterns", "Effort Estimate")
+
+
+def body_lines(effort="Low"):
+    """The four lines of a valid ``recommendation_body``: the keys of the 1.1 template's section 4 block, each once, in order."""
+    return ["**What to Implement**: Add the missing check to the login path.",
+            "**Where to Implement**: `src/auth/login.py`, beside the call to `check`.",
+            "**Reference Patterns**: Extend the validation library that the other routes use.",
+            "**Effort Estimate**: " + effort]
+
+
+def body_of(effort="Low"):
+    return "\n".join(body_lines(effort))
+
+
 def controls_item(fid="S-1", status="found"):
     entry = {"file": "src/auth/login.py", "line": 42, "language": "python",
              "snippet": "def login(user):\n    check(user)", "summary": "Login path calls the check at line 42."}
     item = {
         "finding_id": fid, "control_status": status, "control_category": "authentication",
         "confidence": "High", "carried_forward": False, "evidence": [entry],
-        "matrix_row": "| " + fid + " | Spoofing | found |",
+        "matrix_row": row_of(matrix_cells(fid)),
         "recommendation_body": None,
     }
     if status == "partial":
-        item["recommendation_body"] = "What: add the missing check. Where: the login path. Effort: Low."
+        item["recommendation_body"] = body_of("Low")
     if status == "missing":
-        item.update(confidence=None, evidence=[], recommendation_body="What: add a control. Effort: Medium.")
+        item.update(confidence=None, evidence=[], recommendation_body=body_of("Medium"))
     return item
 
 
@@ -1015,9 +1047,7 @@ def truncation_cases():
         (SCORER, ("subscore_rationale", "known_techniques"), 160, "subscore_rationale.known_techniques"),
         (CONTROLS, ("evidence", 0, "summary"), 160, "evidence.summary"),
         (CONTROLS, ("evidence", 0, "snippet"), 600, "evidence.snippet"),
-        (CONTROLS, ("matrix_row",), 1200, "matrix_row"),
-        (CONTROLS, ("recommendation_body",), 2000, "recommendation_body"),
-    ]
+    ]  # `matrix_row` and `recommendation_body` have their own cut cases in section 22: a run of `a` is neither a row nor a body
 
 
 def with_text(kind, path, text):
@@ -1300,12 +1330,18 @@ def test_digits_and_any_text_are_allowed_in_evidence_fields_and_never_flagged():
     part = make_part(kind=CONTROLS, ids=("S-1",), items=[controls_item("S-1", "partial")])
     entry = part["items"][0]["evidence"][0]
     entry.update(summary="Line 42 of auth.py calls check() 3 times.", snippet="x = 1\nreturn 0x2A")
-    part["items"][0]["matrix_row"] = "| S-1 | 9.8 | Critical |"
+    cells = matrix_cells("S-1")
+    cells[5:7], cells[9:11] = ["9.8", "Critical"], ["3.2", "High"]  # the agent's numbers in the computed cells
+    part["items"][0]["matrix_row"] = row_of(cells)
+    lines = body_lines("Low \u2014 about 2 days")
+    lines[0] = "**What to Implement**: Check the 3 admin routes on port 8080."
+    part["items"][0]["recommendation_body"] = "\n".join(lines)
     result = classify(part, ids=("S-1",), kind=CONTROLS)
     assert result.state == "done"
     assert result.flags.get("S-1", []) == []
     assert result.counts["narrative_fallbacks"] == 0
     assert result.part["items"][0]["evidence"][0]["summary"] == "Line 42 of auth.py calls check() 3 times."
+    assert result.part["items"][0]["recommendation_body"] == "\n".join(lines)
 
 
 @pytest.mark.parametrize("field", ["summary", "snippet"])
@@ -2913,9 +2949,7 @@ PROSE_FIELDS = [
     ("metric_rationale.AV", SCORER, ("metric_rationale", "AV")),
     ("subscore_rationale.known_techniques", SCORER, ("subscore_rationale", "known_techniques")),
     ("evidence.summary", CONTROLS, ("evidence", 0, "summary")),
-    ("matrix_row", CONTROLS, ("matrix_row",)),
-    ("recommendation_body", CONTROLS, ("recommendation_body",)),
-]
+]  # `matrix_row` and `recommendation_body` follow the same rules with a row and a body for a value: section 22 repeats these cases
 
 
 def assessment_part(text):
@@ -2967,8 +3001,7 @@ def test_the_strip_follows_the_cut_and_the_cut_is_still_flagged():
 def test_a_required_field_that_is_empty_after_the_strip_rejects_the_part_and_an_optional_one_may_be_empty():
     for blank in ("   ", "\t\n ", " 　"):
         assert classify(with_text(SCORER, ("rationale", "cvss"), blank), ids=("S-1",)).state == "invalid", repr(blank)
-        for kind, path in ((CONTROLS, ("evidence", 0, "summary")), (CONTROLS, ("matrix_row",)), (CONTROLS, ("recommendation_body",)),
-                           (SCORER, ("metric_rationale", "AV"))):
+        for kind, path in ((CONTROLS, ("evidence", 0, "summary")), (SCORER, ("metric_rationale", "AV"))):
             result = classify(with_text(kind, path, blank), ids=("S-1",), kind=kind)
             assert result.state == "done", (path, result.detail)
             assert stored_at(result, *path) == ""
@@ -3082,3 +3115,530 @@ def test_a_narrative_with_edge_whitespace_and_slots_round_trips_byte_for_byte():
         assert value == first_value
         again = classify(with_text(SCORER, ("rationale", "reachability"), value), ids=("S-1",))
         assert stored_at(again, "rationale", "reachability") == first_value
+
+
+# =============================================================================
+# 22. The controls matrix_row: 11 cells, and the item's own ID first (W3; ADR-050 D2 and D3 step 9)
+#
+# ``contracts/module-signatures.md`` pins the form: K8's section 2 header, in order, written as a GFM table line that a reader
+# takes with or without its outer pipes. A row that doesn't split into 11 cells on raw ``|``, or whose first cell isn't the
+# item's own finding ID, rejects the item (D2), so ``reconcile`` re-dispatches its batch and the renderer never meets it.
+# Every other cell is the renderer's to check or to overwrite (D2): a mismatch there never rejects an item here.
+# =============================================================================
+
+def classify_row(row, fid="S-1", status="found"):
+    """The result of a one-item controls part whose ``matrix_row`` is ``row``."""
+    item = controls_item(fid, status)
+    item["matrix_row"] = row
+    return classify(make_part(kind=CONTROLS, ids=(fid,), items=[item]), ids=(fid,), kind=CONTROLS)
+
+
+def stored_row(result):
+    return result.part["items"][0]["matrix_row"]
+
+
+OUTER_PIPES = [(True, True), (True, False), (False, True), (False, False)]
+
+
+def with_outer(cells, outer):
+    return ("| " if outer[0] else "") + " | ".join(cells) + (" |" if outer[1] else "")
+
+
+def test_the_row_is_the_11_cells_of_k8s_section_2_header():
+    assert _api("MATRIX_ROW_CELLS") == 11 == len(MATRIX_COLUMNS) == len(matrix_cells())
+
+
+@pytest.mark.parametrize("outer", OUTER_PIPES)
+def test_matrix_row_cells_reads_a_row_with_or_without_its_outer_pipes(outer):
+    cells = matrix_cells("S-1")
+    row = with_outer(cells, outer)
+    assert _api("matrix_row_cells")(row) == cells
+    assert _api("matrix_row_cells")("  \t" + row + " \n") == cells, "the line's edge whitespace goes first"
+    assert _api("matrix_row_cells")(row.replace(" | ", "|")) == cells, "the spaces round a pipe are the cells' edges"
+
+
+def test_matrix_row_cells_splits_on_raw_pipes_only_and_decodes_nothing():
+    cells_of = _api("matrix_row_cells")
+    assert cells_of("| a &#124; b | c |") == ["a &#124; b", "c"], "a reference holds no pipe: one cell, still encoded"
+    assert cells_of("| a \\| b | c |") == ["a \\", "b", "c"], "GFM's backslash pipe is not decoded, so it splits (NFR-1)"
+    assert cells_of("| a |  | c |") == ["a", "", "c"], "an empty cell is a cell"
+    assert cells_of("|| a | b ||") == ["", "a", "b", ""], "one outer pipe at each end goes, and no more"
+    assert cells_of("") == cells_of("   ") == cells_of("|") == cells_of("||") == [""]
+
+
+@pytest.mark.parametrize("cells", [
+    matrix_cells("S-1"),
+    ["T-2", "CF", "Gate &#124; way", "L3 \u2014 Agent Frameworks", "A &lt;threat&gt; &amp; `tick`", "{{score:inherent}}",
+     "{{band:inherent}}", "Partial Control", "Input Validation", "{{score:residual}}", "{{band:residual}}"],
+    ["E-3", "", "", "", "", "9.8", "", "", "", "", "High"],
+], ids=["plain", "references", "empty cells"])
+def test_matrix_row_cells_agree_with_the_table_reader(cells):
+    """The persisted-inputs reader and the renderers split a table line on raw ``|`` and decode after the split, so the
+    part check counts the cells that they read."""
+    import tachi_parsers
+    separator = row_of(["---"] * len(MATRIX_COLUMNS))
+    document = "\n".join(["## 2. Coverage Matrix", "", row_of(MATRIX_COLUMNS), separator, row_of(cells), ""])
+    read = tachi_parsers.parse_markdown_table(document, "## 2. Coverage Matrix", keep_bold=True)
+    assert len(read) == 1
+    ours = [decode_references(cell) for cell in _api("matrix_row_cells")(row_of(cells))]
+    assert [read[0][name] for name in MATRIX_COLUMNS] == ours
+
+
+@pytest.mark.parametrize("outer", OUTER_PIPES)
+def test_a_row_of_11_cells_for_the_items_own_id_is_accepted_with_or_without_its_outer_pipes(outer):
+    row = with_outer(matrix_cells("S-1"), outer)
+    result = classify_row(row)
+    assert result.state == "done", result.detail
+    assert stored_row(result) == row, "kept as the agent wrote it: the renderer rebuilds the canonical row"
+    assert "{{score:inherent}}" in stored_row(result), "a slot token in evidence text is never resolved"
+    assert result.flags.get("S-1", []) == [] and result.counts == {"narrative_fallbacks": 0, "truncations": 0}
+
+
+@pytest.mark.parametrize("count", [1, 2, 5, 10, 12, 13, 22])
+def test_a_row_without_11_cells_rejects_the_part_and_the_detail_names_the_item_the_field_and_the_cause(count):
+    cells = (matrix_cells("S-1") * 2)[:count]
+    cells[0] = "S-1"
+    if count > 4:
+        cells[4] = "text-the-detail-must-not-echo"
+    result = classify_row(row_of(cells))
+    assert result.state == "invalid" and result.part is None
+    assert "matrix_row" in result.detail and "S-1" in result.detail and "cell count of %d, not 11" % count in result.detail
+    assert "text-the-detail-must-not-echo" not in result.detail
+
+
+@pytest.mark.parametrize("row", ["", "   ", "\n\t", "A plain sentence.", "S-1", "|", "||", "| |", "|||"])
+def test_a_matrix_row_that_is_blank_or_prose_rejects_the_part(row):
+    result = classify_row(row)
+    assert result.state == "invalid", repr(row)
+    assert "cell count of" in result.detail and ", not 11" in result.detail
+
+
+def test_a_raw_pipe_inside_a_cell_makes_a_twelfth_cell_and_rejects_the_row():
+    cells = matrix_cells("S-1")
+    cells[4] = "Reads A | B"
+    result = classify_row(row_of(cells))
+    assert result.state == "invalid" and "cell count of 12, not 11" in result.detail
+
+
+def test_a_gfm_backslash_pipe_still_splits_the_row_as_it_does_for_every_reader():
+    cells = matrix_cells("S-1")
+    cells[4] = "Reads A \\| B"
+    result = classify_row(row_of(cells))
+    assert result.state == "invalid" and "cell count of 12, not 11" in result.detail
+
+
+def test_a_pipe_written_as_its_reference_stays_inside_its_cell_and_is_kept_undecoded():
+    cells = matrix_cells("S-1")
+    cells[4] = "Reads A &#124; B"
+    result = classify_row(row_of(cells))
+    assert result.state == "done", result.detail
+    assert stored_row(result) == row_of(cells)
+
+
+@pytest.mark.parametrize("cell", [
+    "T-2", "S-2", "S-11", "S-10", "AG-1", "T-1", "s-1", "S-", "S-1234567", "S1", "S 1", "", "S-1 (spoofing)", "**S-1**", "`S-1`",
+    "S-\u0661", "S-\uff11", "S-1\u200b", "cell 1", "{{finding:S-1}}",
+])
+def test_a_threat_id_cell_that_is_not_the_items_own_id_rejects_the_part(cell):
+    cells = matrix_cells("S-1")
+    cells[0] = cell
+    result = classify_row(row_of(cells))
+    assert result.state == "invalid", repr(cell)
+    assert "matrix_row of S-1 has a Threat ID cell" in result.detail
+
+
+def test_the_detail_tells_another_findings_id_from_a_cell_that_is_no_id_at_all_and_never_echoes_the_cell():
+    other = matrix_cells("S-1")
+    other[0] = "T-2"
+    assert "for another finding" in classify_row(row_of(other)).detail
+    junk = matrix_cells("S-1")
+    junk[0] = "cell-text-the-detail-must-not-echo"
+    result = classify_row(row_of(junk))
+    assert "not an allow-listed finding ID" in result.detail
+    assert "cell-text-the-detail-must-not-echo" not in result.detail
+
+
+@pytest.mark.parametrize("fid,cell", [
+    ("S-1", "S-1"), ("S-1", "S-01"), ("S-1", "S-000001"), ("AGP-1", "AGP-01"), ("AGP-12", "AGP-012"), ("LLM-3", "LLM-3"),
+])
+def test_a_threat_id_cell_may_spell_the_items_id_in_any_allow_listed_form(fid, cell):
+    cells = matrix_cells(fid)
+    cells[0] = cell
+    result = classify_row(row_of(cells), fid=fid)
+    assert result.state == "done", result.detail
+    assert stored_row(result) == row_of(cells), "not rewritten here: the renderer rebuilds the canonical row"
+
+
+def test_the_item_and_its_row_may_each_use_a_different_spelling_of_one_canonical_id():
+    item = controls_item("AGP-01")
+    item["matrix_row"] = row_of(matrix_cells("AGP-0001"))
+    result = classify(make_part(kind=CONTROLS, ids=("AGP-01",), items=[item]), ids=("AGP-1",), kind=CONTROLS)
+    assert result.state == "done", result.detail
+
+
+@pytest.mark.parametrize("index,value", [
+    (1, "CF"), (1, "\u2014"), (1, "yes"), (1, ""),
+    (2, "A component that is not in the input"), (2, ""),
+    (3, "L7"), (3, "Unclassified"), (3, "L3 \u2014 Agent Frameworks"), (3, "no layer"), (3, ""),
+    (4, ""), (4, "x" * 80),
+    (7, "Partial Control"), (7, "No Control Found"), (7, "Missing"), (7, ""),
+    (8, "input-validation"), (8, "Input Validation"), (8, "Not A Category"), (8, ""),
+], ids=lambda value: repr(value)[:24])
+def test_a_mismatch_in_a_cell_the_renderer_checks_never_rejects_the_item(index, value):
+    """Component, MAESTRO Layer, Status and Category are flagged by the renderer against the input and the structured
+    judgment, CF is the renderer's own cell, and Threat is model text (D2): none of them can reject an item here."""
+    cells = matrix_cells("S-1")
+    cells[index] = value
+    result = classify_row(row_of(cells))
+    assert result.state == "done", result.detail
+    assert stored_row(result) == row_of(cells)
+
+
+@pytest.mark.parametrize("computed", [
+    ["9.8", "Critical", "3.2", "High"], ["", "", "", ""], ["n/a", "unknown", "n/a", "unknown"],
+    ["{{score:residual}}", "{{band:residual}}", "{{score:inherent}}", "{{band:inherent}}"],
+], ids=["numbers", "empty", "text", "swapped tokens"])
+def test_numbers_and_text_in_the_four_computed_cells_never_reject_the_item(computed):
+    """The renderer overwrites those cells by column position and counts each overwrite (D2)."""
+    cells = matrix_cells("S-1")
+    cells[5:7], cells[9:11] = computed[:2], computed[2:]
+    result = classify_row(row_of(cells))
+    assert result.state == "done", result.detail
+    assert stored_row(result) == row_of(cells)
+    assert result.flags.get("S-1", []) == []
+
+
+def test_one_bad_row_rejects_the_whole_part_and_the_detail_names_its_item():
+    part = make_part(kind=CONTROLS)
+    part["items"][1]["matrix_row"] = row_of(matrix_cells("T-2")[:10])
+    result = classify(part, kind=CONTROLS)
+    assert result.state == "invalid" and result.part is None
+    assert result.detail == "matrix_row of T-2 has a cell count of 10, not 11"
+
+
+def test_a_part_file_whose_row_has_10_cells_reads_as_invalid(tmp_path):
+    """The path ``reconcile`` takes: ``read_part`` on the file, then the batch is retried as it was."""
+    item = controls_item("S-1")
+    item["matrix_row"] = row_of(matrix_cells("S-1")[:10])
+    result = read(tmp_path, make_part(kind=CONTROLS, ids=("S-1",), items=[item]), ids=("S-1",), kind=CONTROLS)
+    assert result.state == "invalid" and result.part is None
+
+
+# --- the two fields are prose, so each is cut at its limit first (RR2), and the check reads what is kept ---
+
+def classify_field(field, value, fid="S-1", status="partial"):
+    """The result of a one-item controls part whose ``field`` is ``value``."""
+    item = controls_item(fid, status)
+    item[field] = value
+    return classify(make_part(kind=CONTROLS, ids=(fid,), items=[item]), ids=(fid,), kind=CONTROLS)
+
+
+def stored_field(result, field):
+    return result.part["items"][0][field]
+
+
+def padded_row(length, fid="S-1"):
+    """A row of exactly ``length`` characters whose last cell is padding, so a cut anywhere in it leaves 11 cells."""
+    head = "| " + " | ".join(matrix_cells(fid)[:10]) + " | "
+    return head + "a" * (length - len(head))
+
+
+def padded_body(length):
+    """A body of exactly ``length`` characters whose Effort Estimate ends in padding, so a cut in it keeps the structure."""
+    head = "\n".join(body_lines()[:3] + ["**Effort Estimate**: Low \N{EM DASH} "])
+    return head + "a" * (length - len(head))
+
+
+def row_that_loses_cells():
+    """A long Threat cell pushes the computed cells past the cut."""
+    cells = matrix_cells("S-1")
+    cells[4] = "a" * 1300
+    return row_of(cells)
+
+
+def body_that_loses_keys():
+    """A long first key pushes the other three past the cut."""
+    return "\n".join(["**What to Implement**: " + "a" * 2100] + body_lines()[1:])
+
+
+# field, limit, a valid value, a valid value of a given length, a value whose cut loses its structure, what the detail says then
+STRUCTURED_FIELDS = [
+    ("matrix_row", 1200, lambda: row_of(matrix_cells("S-1")), padded_row, row_that_loses_cells, "cell count of 5, not 11"),
+    ("recommendation_body", 2000, body_of, padded_body, body_that_loses_keys, "keys [What to Implement]"),
+]
+FIELD_IDS = [case[0] for case in STRUCTURED_FIELDS]
+
+
+@pytest.mark.parametrize("field,limit,valid,padded,loses,says", STRUCTURED_FIELDS, ids=FIELD_IDS)
+def test_a_value_over_its_limit_is_cut_flagged_and_counted_when_the_cut_keeps_its_structure(field, limit, valid, padded, loses, says):
+    value = padded(limit + 50)
+    result = classify_field(field, value)
+    assert result.state == "done", result.detail
+    assert stored_field(result, field) == value[:limit]
+    assert "input:%s:truncated" % field in result.flags["S-1"]
+    assert result.counts["truncations"] == 1
+
+
+@pytest.mark.parametrize("field,limit,valid,padded,loses,says", STRUCTURED_FIELDS, ids=FIELD_IDS)
+def test_a_value_of_exactly_its_limit_is_kept_unflagged(field, limit, valid, padded, loses, says):
+    value = padded(limit)
+    assert len(value) == limit
+    result = classify_field(field, value)
+    assert result.state == "done", result.detail
+    assert stored_field(result, field) == value
+    assert result.flags.get("S-1", []) == [] and result.counts["truncations"] == 0
+
+
+@pytest.mark.parametrize("field,limit,valid,padded,loses,says", STRUCTURED_FIELDS, ids=FIELD_IDS)
+def test_a_value_whose_cut_loses_its_structure_is_rejected(field, limit, valid, padded, loses, says):
+    """The cut comes first (RR2) and the check reads what is kept, so the renderer never meets a row or a body that the
+    cut has broken: the batch is re-dispatched instead."""
+    result = classify_field(field, loses())
+    assert result.state == "invalid" and result.part is None
+    assert says in result.detail
+
+
+# --- the same rules as every other prose field (section 21), with a row and a body for a value ---
+
+EDGES = [(" \t", " \n "), ("\n\n  ", ""), ("", "\t\t"), ("\N{IDEOGRAPHIC SPACE}", "\N{IDEOGRAPHIC SPACE}")]
+
+
+@pytest.mark.parametrize("edges", EDGES)
+@pytest.mark.parametrize("field,limit,valid,padded,loses,says", STRUCTURED_FIELDS, ids=FIELD_IDS)
+def test_a_structured_value_loses_its_edge_whitespace_and_raises_no_flag(field, limit, valid, padded, loses, says, edges):
+    result = classify_field(field, edges[0] + valid() + edges[1])
+    assert result.state == "done", result.detail
+    assert stored_field(result, field) == valid()
+    assert result.flags.get("S-1", []) == [] and result.counts == {"narrative_fallbacks": 0, "truncations": 0}
+
+
+@pytest.mark.parametrize("field,limit,valid,padded,loses,says", STRUCTURED_FIELDS, ids=FIELD_IDS)
+def test_a_structured_value_that_is_blank_is_rejected(field, limit, valid, padded, loses, says):
+    """Unlike an optional prose field, a row and a body have a form: nothing is not one."""
+    for blank in ("", "   ", "\t\n "):
+        assert classify_field(field, blank).state == "invalid", repr(blank)
+
+
+MESSY_ROWS = [
+    "\n\n  | S-1 | CF | Gate &#124; way | L3 \N{EM DASH} Agent Frameworks | A `tick`, <b>, & {{braces}} | {{score:inherent}} | "
+    "{{band:inherent}} | Partial Control | input-validation | {{score:residual}} | {{band:residual}} |  \t",
+    row_of(matrix_cells("S-1"), outer=False) + " ",
+]
+MESSY_BODIES = [
+    "\n\n  " + "\n".join([
+        "**What to Implement**: A | pipe, a `tick`, <b>, & {{braces}} and C# \N{EM DASH} fine.",
+        "  **Where to Implement**: `src/a.py#L10` and a continuation",
+        "that runs on.",
+        "",
+        "**Reference Patterns**: &#124; stays one reference, and &amp; stays one.",
+        "**Effort Estimate**: Low \N{EM DASH} 2 days"]) + " \t\n",
+    body_of("Medium") + "\n",
+]
+MESSY = [("matrix_row", raw) for raw in MESSY_ROWS] + [("recommendation_body", raw) for raw in MESSY_BODIES]
+
+
+@pytest.mark.parametrize("field,raw", MESSY, ids=["row-references", "row-no-outer-pipes", "body-messy", "body-plain"])
+def test_a_carried_structured_value_is_byte_identical_across_two_write_and_read_round_trips(field, raw):
+    """T056 for the row and the body: written as the renderer writes a persisted value, read back as the next run reads
+    it and validated again, twice over. The reader splits the table line on raw ``|``, so the value's own pipes are escaped."""
+    first = classify_field(field, raw)
+    assert first.state == "done", first.detail
+    first_value = stored_field(first, field)
+    first_cell = _api("escape_cell")(first_value, keep_slots=True)
+    assert "|" not in first_cell
+    value = first_value
+    for _ in range(2):
+        value = read_back(_api("escape_cell")(value, keep_slots=True))
+        assert value == first_value
+        again = classify_field(field, value)
+        assert again.state == "done", again.detail
+        assert stored_field(again, field) == first_value
+        assert _api("escape_cell")(stored_field(again, field), keep_slots=True) == first_cell
+
+
+# =============================================================================
+# 23. The controls recommendation_body: the four keys, the Effort level, and no heading or table line (W3; ADR-050 D2)
+#
+# The 1.1 template's section 4 ("Who writes what") has the agent write the four lines after the block's heading and
+# ``Current Status`` line, as the ``recommendation_body``: ``**What to Implement**:``, ``**Where to Implement**:``,
+# ``**Reference Patterns**:`` and ``**Effort Estimate**:``, each once and in this order. The Effort Estimate starts with
+# ``Low``, ``Medium`` or ``High``, and the body holds no heading and no table line. A body that breaks these rules rejects
+# the item, so ``reconcile`` re-dispatches its batch. Lines that aren't a key, a heading or a table row are a key's own text.
+# =============================================================================
+
+def classify_body(body, fid="S-1", status="partial"):
+    return classify_field("recommendation_body", body, fid, status)
+
+
+def test_the_four_keys_and_the_effort_levels_are_the_templates():
+    assert tuple(_api("RECOMMENDATION_KEYS")) == BODY_KEYS
+    assert tuple(_api("EFFORT_LEVELS")) == ("Low", "Medium", "High")
+
+
+def indented(lines):
+    return [line if n == 0 else "  " + line for n, line in enumerate(lines)]
+
+
+ACCEPTED_BODIES = {
+    "one key to a line": body_of(),
+    "blank lines between the keys": "\n\n".join(body_lines()),
+    "a value that runs on over lines": "\n".join(body_lines()[:1] + ["It also covers the admin routes."] + body_lines()[1:]),
+    "indented keys": "\n".join(indented(body_lines())),
+    "a preamble line": "Recommendation:\n" + body_of(),
+    "a line that is another label": "**Current Status**: Partial Control\n" + body_of(),
+    "Medium": body_of("Medium"),
+    "High": body_of("High"),
+    "a rationale after a dash": body_of("Low \N{EM DASH} a configuration change"),
+    "a rationale after a full stop": body_of("Low. A flag to toggle."),
+    "a rationale after a comma": body_of("Medium, one new middleware"),
+    "a rationale in brackets": body_of("High (an architectural change)"),
+    "a rationale after a colon": body_of("High: it touches every service"),
+    "no space after a key": "\n".join(line.replace("**: ", "**:") for line in body_lines()),
+    "a hash and a pipe inside a line": "\n".join(
+        ["**What to Implement**: Use A | B and C# on the path src/a.py#L10.", *body_lines()[1:]]),
+    "a continuation that begins with a code span or a digit": "\n".join(
+        body_lines()[:2] + ["`validate()` runs first,", "2 routes follow."] + body_lines()[2:]),
+    "a key named inside a value": "\n".join(
+        ["**What to Implement**: See **Where to Implement**: below, and **Effort Estimate**: Low too.", *body_lines()[1:]]),
+}
+
+
+@pytest.mark.parametrize("label", sorted(ACCEPTED_BODIES))
+def test_a_body_with_the_four_keys_once_each_in_order_and_an_effort_level_is_accepted(label):
+    body = ACCEPTED_BODIES[label]
+    result = classify_body(body)
+    assert result.state == "done", (label, result.detail)
+    assert stored_field(result, "recommendation_body") == body.strip(), "kept as the agent wrote it, less its edge whitespace"
+    assert result.flags.get("S-1", []) == [] and result.counts == {"narrative_fallbacks": 0, "truncations": 0}
+
+
+def test_the_agent_texts_own_example_body_is_accepted():
+    """The body that ``control-analyzer.md`` shows in its worked part, one key to a line."""
+    body = ("**What to Implement**: Apply the schema check to the admin routes and to the query parameters.\n"
+            "**Where to Implement**: `src/api/admin.ts`, beside the order routes' call to `validateOrder`.\n"
+            "**Reference Patterns**: Extend the schema library the order routes already use.\n"
+            "**Effort Estimate**: Low")
+    assert classify_body(body).state == "done"
+
+
+@pytest.mark.parametrize("status", ["partial", "missing"])
+def test_a_partial_and_a_missing_result_take_a_valid_body(status):
+    assert classify_body(body_of(), status=status).state == "done"
+
+
+def test_the_structure_is_never_checked_on_a_null_body_and_a_body_on_a_found_result_is_still_rejected():
+    found = controls_item("S-1", "found")
+    assert found["recommendation_body"] is None
+    assert classify(make_part(kind=CONTROLS, ids=("S-1",), items=[found]), ids=("S-1",), kind=CONTROLS).state == "done"
+    found["recommendation_body"] = body_of()
+    assert classify(make_part(kind=CONTROLS, ids=("S-1",), items=[found]), ids=("S-1",), kind=CONTROLS).state == "invalid"
+
+
+@pytest.mark.parametrize("missing", BODY_KEYS)
+def test_a_body_without_one_of_the_keys_is_rejected_and_the_detail_lists_the_keys_found(missing):
+    lines = [line for line in body_lines() if not line.startswith("**%s**" % missing)]
+    result = classify_body("\n".join(lines))
+    assert result.state == "invalid" and result.part is None
+    kept = [key for key in BODY_KEYS if key != missing]
+    assert result.detail == "recommendation_body of S-1 has the keys [%s], not the four once each and in order" % ", ".join(kept)
+
+
+@pytest.mark.parametrize("repeated", range(4))
+def test_a_body_that_repeats_a_key_is_rejected(repeated):
+    lines = body_lines()
+    lines.insert(repeated + 1, lines[repeated])
+    assert classify_body("\n".join(lines)).state == "invalid"
+    lines = body_lines() + [body_lines()[repeated]]
+    assert classify_body("\n".join(lines)).state == "invalid"
+
+
+@pytest.mark.parametrize("swap", [(0, 1), (1, 2), (2, 3), (0, 3), (0, 2), (1, 3)])
+def test_a_body_with_its_keys_out_of_order_is_rejected(swap):
+    lines = body_lines()
+    lines[swap[0]], lines[swap[1]] = lines[swap[1]], lines[swap[0]]
+    result = classify_body("\n".join(lines))
+    assert result.state == "invalid" and "not the four once each and in order" in result.detail
+
+
+NOT_THE_KEYS = {
+    "empty": "",
+    "blank": "  \n ",
+    "a plain sentence": "A plain sentence.",
+    "the old unlabelled shape": "What: add the missing check. Where: the login path. Effort: Low.",
+    "all four keys on one line": " ".join(body_lines()),
+    "the colon inside the bold": "\n".join(line.replace("**:", ":**", 1) for line in body_lines()),
+    "a lower case label": "\n".join(body_lines()).replace("**Reference Patterns**:", "**reference patterns**:"),
+    "a label that is not the key": "\n".join(body_lines()).replace("**Effort Estimate**:", "**Effort**:"),
+    "no bold": "\n".join(line.replace("**", "") for line in body_lines()),
+    "keys as list items": "\n".join("- " + line for line in body_lines()),
+    "keys in a block quote": "\n".join("> " + line for line in body_lines()),
+    **{"only the %s as a list item" % key: "\n".join("- " + line if line.startswith("**%s**" % key) else line for line in body_lines())
+       for key in BODY_KEYS},
+    "a key only mentioned inside a value": "**What to Implement**: Do the **Where to Implement**: and the rest.",
+}
+
+
+@pytest.mark.parametrize("label", sorted(NOT_THE_KEYS))
+def test_a_body_that_does_not_hold_the_four_keys_at_line_starts_is_rejected(label):
+    assert classify_body(NOT_THE_KEYS[label]).state == "invalid", label
+
+
+@pytest.mark.parametrize("effort", [
+    "", "low", "LOW", "medium", "Lowest", "Highly", "Mediumish", "Low2", "Low_", "Low\N{LATIN SMALL LETTER E WITH ACUTE}", "Critical", "None",
+    "n/a", "1 day", "**Low**", "`Low`", "\N{EM DASH} Low", "Very Low", "Hi",
+])
+def test_an_effort_estimate_that_does_not_start_with_a_level_is_rejected(effort):
+    result = classify_body(body_of(effort))
+    assert result.state == "invalid", repr(effort)
+    assert result.detail == "recommendation_body of S-1 has an Effort Estimate that does not start with Low, Medium or High"
+
+
+def test_the_effort_level_has_to_start_on_the_estimates_own_line():
+    lines = body_lines()
+    lines[3] = "**Effort Estimate**:\nLow"
+    assert classify_body("\n".join(lines)).state == "invalid"
+
+
+@pytest.mark.parametrize("heading", [
+    "# Recommendation", "## Where", "###### Deep", "#", "#hashtag", "   # indented", "\t# tabbed",
+    "\N{IDEOGRAPHIC SPACE}# wide", "\N{NO-BREAK SPACE}# no-break", "\N{EM SPACE}## em space",
+])
+@pytest.mark.parametrize("place", [0, 2, 4])
+def test_a_body_with_a_heading_line_is_rejected_wherever_the_line_sits(heading, place):
+    lines = body_lines()
+    lines.insert(place, heading)
+    result = classify_body("\n".join(lines))
+    assert result.state == "invalid"
+    assert result.detail == "recommendation_body of S-1 has a heading line"
+
+
+@pytest.mark.parametrize("row", ["| a | b |", "|---|---|", "  | indented |", "\t|x", "|", "\N{IDEOGRAPHIC SPACE}| wide |"])
+@pytest.mark.parametrize("place", [0, 2, 4])
+def test_a_body_with_a_table_line_is_rejected_wherever_the_line_sits(row, place):
+    lines = body_lines()
+    lines.insert(place, row)
+    result = classify_body("\n".join(lines))
+    assert result.state == "invalid"
+    assert result.detail == "recommendation_body of S-1 has a table line"
+
+
+def test_a_heading_or_a_table_line_rejects_a_body_whose_keys_are_otherwise_right():
+    """The heading and table checks come first, so the detail names the line shape and not the keys."""
+    assert classify_body("# Title\n" + body_of()).detail.endswith("has a heading line")
+    assert classify_body(body_of() + "\n| a | b |").detail.endswith("has a table line")
+
+
+def test_a_detail_never_echoes_the_body():
+    for body in ("body-text-the-detail-must-not-echo", "# heading-text-the-detail-must-not-echo\n" + body_of(),
+                 "| table-text-the-detail-must-not-echo |\n" + body_of(), body_of("effort-text-the-detail-must-not-echo")):
+        result = classify_body(body)
+        assert result.state == "invalid"
+        assert "must-not-echo" not in result.detail
+
+
+def test_a_part_file_whose_body_has_no_effort_reads_as_invalid(tmp_path):
+    """The path ``reconcile`` takes: ``read_part`` on the file, then the batch is retried as it was."""
+    item = controls_item("S-1", "partial")
+    item["recommendation_body"] = "\n".join(body_lines()[:3])
+    result = read(tmp_path, make_part(kind=CONTROLS, ids=("S-1",), items=[item]), ids=("S-1",), kind=CONTROLS)
+    assert result.state == "invalid" and result.part is None

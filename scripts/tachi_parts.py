@@ -93,6 +93,16 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
 
 * ``forbidden_character(text)``: the first character of ``text`` that D3's step 10 forbids, or ``None``. Step 10 uses it,
   and a renderer calls it where it takes a value from an input that isn't a part, so the set has one definition.
+
+**Added at W3 (the two structured text fields of a controls item, ADR-050 D2):**
+
+* ``MATRIX_ROW_CELLS`` (11) and ``matrix_row_cells(row)``: the cells of a controls ``matrix_row``, split the one way that a
+  reader splits a table line, so the part check and the renderer count the same cells (``contracts/module-signatures.md``).
+  Step 9 uses them: a controls item whose ``matrix_row`` has any other count of cells, or whose first (Threat ID) cell isn't
+  the item's own finding ID, rejects the part, and ``reconcile`` re-dispatches its batch. No other cell can reject an item.
+* ``RECOMMENDATION_KEYS`` and ``EFFORT_LEVELS``: the four keys of the section 4 block and the levels that its Effort
+  Estimate starts with. Step 9 rejects a ``recommendation_body`` that doesn't hold the keys once each and in order, whose
+  Effort Estimate doesn't start with a level, or that has a heading line or a table line (the 1.1 template's "Who writes what").
 """
 from __future__ import annotations
 
@@ -1016,6 +1026,82 @@ def _evidence_entry(entry: Dict[str, Any], state: _ItemState) -> None:
             cell["rationale"] = _prose(cell["rationale"], 160, "evidence.assessment." + dimension, state, narrative=True)
 
 
+# The controls `matrix_row` (ADR-050 D2; `contracts/module-signatures.md`, "The controls `matrix_row`"): the 11 cells of
+# K8's section 2 table, the finding's ID first. Only the count and the ID cell are structural, so only they reject an item.
+MATRIX_ROW_CELLS = 11
+
+
+def matrix_row_cells(row: str) -> List[str]:
+    """The cells of a controls ``matrix_row``, split the one way that a reader splits a table line (ADR-050 D3).
+
+    The line's edge whitespace goes first, then one leading and one trailing ``|`` where present, so a row reads the
+    same with or without its outer pipes. The rest splits on raw ``|``, and each cell loses its edge whitespace, as
+    ``tachi_parsers.parse_markdown_table`` strips a cell. A reference such as ``&#124;`` holds no ``|``, so it never
+    splits a row; GFM's ``\\|`` does, as it always has (NFR-1). Nothing is decoded here: the readers decode a cell after
+    the split, and no check on a row reads a decoded value, because no reference decodes to a character that a finding
+    ID holds. ``row`` must be a ``str``.
+    """
+    line = row.strip()
+    if line.startswith("|"):
+        line = line[1:]
+    if line.endswith("|"):
+        line = line[:-1]
+    return [cell.strip() for cell in line.split("|")]
+
+
+def _check_matrix_row(row: str, finding_id: str) -> None:
+    """ADR-050 D2's two structural checks on a controls ``matrix_row``: 11 cells, and the item's own ID in the first.
+
+    ``finding_id`` is the item's canonical ID, which ``_classify`` has checked against the allow-list, so a detail may
+    name it. The row's own text is never echoed. A mismatch in any other cell is the renderer's to flag, or to overwrite
+    and count (D2), so it never rejects the item here.
+    """
+    cells = matrix_row_cells(row)
+    if len(cells) != MATRIX_ROW_CELLS:
+        _fail("matrix_row of %s has a cell count of %d, not %d" % (finding_id, len(cells), MATRIX_ROW_CELLS))
+    if not id_matches("finding", cells[0]):
+        _fail("matrix_row of %s has a Threat ID cell that is not an allow-listed finding ID" % finding_id)
+    if canonical_finding_id(cells[0]) != finding_id:
+        _fail("matrix_row of %s has a Threat ID cell for another finding" % finding_id)
+
+
+# The controls `recommendation_body` (ADR-050 D2, "The §4 body"; the 1.1 template's "Who writes what"): the four keys of
+# the section 4 block, each once and in this order, each at the start of a line. The Effort Estimate starts with a level.
+RECOMMENDATION_KEYS = ("What to Implement", "Where to Implement", "Reference Patterns", "Effort Estimate")
+EFFORT_LEVELS = ("Low", "Medium", "High")
+_EFFORT_LEVEL = re.compile(r"(?:%s)(?!\w)" % "|".join(EFFORT_LEVELS))
+
+
+def _check_recommendation_body(body: str, finding_id: str) -> None:
+    """ADR-050 D2's structural checks on a controls ``recommendation_body``: its keys, its Effort, and no heading or table.
+
+    A key is a line that starts, after any whitespace, with ``**<key>**:``. The four have to come once each and in
+    order. Other lines are the keys' own text, so a value may run on over more than one line. The Effort Estimate has
+    to start with ``Low``, ``Medium`` or ``High``, and no line may start with ``#`` or ``|``, as a heading or a table
+    row does (``escape_prose`` guards the same line start). ``finding_id`` is the item's canonical ID, which a detail may
+    name. A key name comes from the closed set, so a detail may list the ones found. The body's own text is never echoed.
+    """
+    found: List[str] = []
+    effort = ""
+    for line in body.split("\n"):
+        text = line.lstrip()
+        if text.startswith("#"):
+            _fail("recommendation_body of %s has a heading line" % finding_id)
+        if text.startswith("|"):
+            _fail("recommendation_body of %s has a table line" % finding_id)
+        for key in RECOMMENDATION_KEYS:
+            label = "**%s**:" % key
+            if text.startswith(label):
+                found.append(key)
+                if key == RECOMMENDATION_KEYS[-1]:
+                    effort = text[len(label):].lstrip()
+                break
+    if found != list(RECOMMENDATION_KEYS):
+        _fail("recommendation_body of %s has the keys [%s], not the four once each and in order" % (finding_id, ", ".join(found)))
+    if _EFFORT_LEVEL.match(effort) is None:
+        _fail("recommendation_body of %s has an Effort Estimate that does not start with Low, Medium or High" % finding_id)
+
+
 def _controls_item(item: Dict[str, Any], state: _ItemState) -> None:
     _check_keys(item, "controls-item")
     status = _enum(item["control_status"], CONTROL_STATUSES, "control_status")
@@ -1032,10 +1118,12 @@ def _controls_item(item: Dict[str, Any], state: _ItemState) -> None:
     for entry in evidence:
         _evidence_entry(entry, state)
     item["matrix_row"] = _prose(item["matrix_row"], 1200, "matrix_row", state)
+    _check_matrix_row(item["matrix_row"], item["finding_id"])  # after the cut, so it checks the row that is kept
     if (item["recommendation_body"] is None) != (status == "found"):
         _fail("recommendation_body is null exactly when the status is found")
     if item["recommendation_body"] is not None:
         item["recommendation_body"] = _prose(item["recommendation_body"], 2000, "recommendation_body", state)
+        _check_recommendation_body(item["recommendation_body"], item["finding_id"])  # after the cut, as the row's check is
 
 
 # Stage -> its payload validator. PR 2's stages join this table with their payloads.
