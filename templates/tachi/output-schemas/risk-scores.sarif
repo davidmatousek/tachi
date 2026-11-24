@@ -1,5 +1,5 @@
 {
-  "_comment": "RISK SCORING OUTPUT (risk-scores.sarif) — NOT the threat model output (threats.sarif). This is the quantitative risk scoring SARIF produced by the /tachi.risk-score command, and the shipped renderer (scripts/render-risk-scores.py, through scripts/sarif_common.py) writes it: an agent never authors it. It extends threats.sarif with per-finding composite scores, four-dimensional risk metrics (CVSS, exploitability, scalability, reachability), and governance fields in the result property bag. Key distinction: security-severity in threats.sarif is a static category-level value; in risk-scores.sarif it is the per-finding composite score as a numeric string. Rule-level security-severity reflects the MAX composite score among that rule's findings. The file holds one result per open finding, correlated peers included, and the identity of each alert (tool, ruleId, primaryLocationLineHash, artifactLocation.uri) is fixed by .claude/skills/tachi-shared/references/sarif-identity-shared.md. Producer: scripts/render-risk-scores.py. Schema: schemas/risk-scoring.yaml.",
+  "_comment": "RISK SCORING OUTPUT (risk-scores.sarif) — NOT the threat model output (threats.sarif). This is the quantitative risk scoring SARIF produced by the /tachi.risk-score command, and the shipped renderer (scripts/render-risk-scores.py, through scripts/sarif_common.py) writes it: an agent never authors it. It extends threats.sarif with per-finding composite scores, four-dimensional risk metrics (CVSS, exploitability, scalability, reachability), and governance fields in the result property bag. Key distinction: security-severity in threats.sarif is a static category-level value; in risk-scores.sarif it is the per-finding composite score as a numeric string. Rule-level security-severity reflects the MAX composite score among that rule's findings. The file holds one result per open finding, correlated peers included, and the identity of each alert (tool, ruleId, primaryLocationLineHash, artifactLocation.uri) is fixed by .claude/skills/tachi-shared/references/sarif-identity-shared.md. The run-level values are the renderer's fixed values: the driver's version and semanticVersion both carry tachi's release version (the placeholder below), supportedTaxonomies and taxonomies are the entries of scripts/sarif_common.py's TAXONOMIES (supported_taxonomies() derives the driver's list from it), and runs[0].properties.tachi_provenance records the renderer, its version and the input digest, the same values as the stamp that ends risk-scores.md. A rule's relationships name their taxonomy only, as they did in 1.0. Producer: scripts/render-risk-scores.py. Schema: schemas/risk-scoring.yaml.",
   "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
   "version": "2.1.0",
   "runs": [
@@ -7,12 +7,31 @@
       "tool": {
         "driver": {
           "name": "tachi-risk-scorer",
-          "version": "1.0",
-          "semanticVersion": "1.0",
+          "version": "<tachi-release-version-X.Y.Z>",
+          "semanticVersion": "<tachi-release-version-X.Y.Z>",
           "informationUri": "https://github.com/davidmatousek/tachi",
           "supportedTaxonomies": [
-            { "name": "OWASP", "index": 0 },
-            { "name": "CWE", "index": 1 }
+            {
+              "name": "OWASP-LLM",
+              "index": 0,
+              "guid": "b4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
+              "version": "2026",
+              "informationUri": "https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/"
+            },
+            {
+              "name": "OWASP-ASI",
+              "index": 1,
+              "guid": "c4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
+              "version": "2026",
+              "informationUri": "https://owasp.org/"
+            },
+            {
+              "name": "CWE",
+              "index": 2,
+              "guid": "a4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
+              "version": "4.13",
+              "informationUri": "https://cwe.mitre.org/"
+            }
           ],
           "rules": [
             {
@@ -253,18 +272,47 @@
       },
       "taxonomies": [
         {
-          "name": "OWASP",
-          "version": "2021",
-          "informationUri": "https://owasp.org/Top10/",
-          "organization": "OWASP Foundation",
-          "shortDescription": { "text": "OWASP Top 10 Web Application Security Risks" }
+          "name": "OWASP-LLM",
+          "version": "2026",
+          "guid": "b4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
+          "informationUri": "https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/",
+          "taxa": [
+            { "id": "LLM01", "name": "Prompt Injection" },
+            { "id": "LLM02", "name": "Sensitive Information Disclosure" },
+            { "id": "LLM03", "name": "Excessive Agency" },
+            { "id": "LLM04", "name": "Supply Chain" },
+            { "id": "LLM05", "name": "Data and Model Poisoning" },
+            { "id": "LLM06", "name": "Unbounded Consumption" },
+            { "id": "LLM07", "name": "Misinformation" },
+            { "id": "LLM08", "name": "Hidden Context Exposure" },
+            { "id": "LLM09", "name": "Vector and Embedding Weaknesses" },
+            { "id": "LLM10", "name": "Improper Output Handling" }
+          ]
+        },
+        {
+          "name": "OWASP-ASI",
+          "version": "2026",
+          "guid": "c4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
+          "informationUri": "https://owasp.org/",
+          "taxa": [
+            { "id": "ASI01", "name": "Agent Autonomy Abuse" },
+            { "id": "ASI07", "name": "Insecure Inter-Agent Communication" }
+          ]
         },
         {
           "name": "CWE",
           "version": "4.13",
+          "guid": "a4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
           "informationUri": "https://cwe.mitre.org/",
-          "organization": "MITRE",
-          "shortDescription": { "text": "Common Weakness Enumeration" }
+          "taxa": [
+            { "id": "CWE-78", "name": "OS Command Injection" },
+            { "id": "CWE-79", "name": "Cross-site Scripting" },
+            { "id": "CWE-89", "name": "SQL Injection" },
+            { "id": "CWE-223", "name": "Omission of Security-relevant Information" },
+            { "id": "CWE-287", "name": "Improper Authentication" },
+            { "id": "CWE-345", "name": "Insufficient Verification of Data Authenticity" },
+            { "id": "CWE-918", "name": "Server-Side Request Forgery (SSRF)" }
+          ]
         }
       ],
       "results": [
@@ -420,7 +468,7 @@
           }
         },
         {
-          "_comment": "Correlation group example, 2 of 2: a peer. A NEW or UPDATED peer takes its primary's vector and scores; an UNCHANGED peer keeps its own score and carries a divergent flag in score-flags when it differs from its primary's.",
+          "_comment": "Correlation group example, 2 of 2: a peer. A NEW or UPDATED peer takes its primary's assessment and is scored with its own asset tags, so it shows its primary's scores when the tags are equal; an UNCHANGED peer keeps its own score. Either carries a divergent flag in score-flags when its score differs from its primary's.",
           "ruleId": "tachi/stride/information-disclosure",
           "message": {
             "text": "<threat-description-for-correlation-group-peer> Correlated in CG-1; primary T-3.",
@@ -472,7 +520,14 @@
             "correlation-primary": "T-3"
           }
         }
-      ]
+      ],
+      "properties": {
+        "tachi_provenance": {
+          "renderer": "render-risk-scores.py",
+          "version": "<tachi-release-version-X.Y.Z>",
+          "input_digest": "sha256:<64-lowercase-hex-digits>"
+        }
+      }
     }
   ]
 }

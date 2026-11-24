@@ -80,11 +80,11 @@ Groups come from Section 4a of the source `threats.md`, read through `tachi_pars
 
 1. **Identify primary finding**: The first finding ID listed in the correlation group is the primary
 2. **Score the primary**: The agent assesses the primary with the full four-dimensional model, as it does any finding that needs judgment
-3. **NEW and UPDATED peers inherit**: A NEW or UPDATED peer takes its primary's vector, `score_bounds`, dimensional scores and derived fields. An UPDATED peer keeps its own owner
+3. **NEW and UPDATED peers take their primary's assessment**: A NEW or UPDATED peer takes its primary's assessed vector, `score_bounds`, sub-scores (a legacy-carried primary's stored exploitability, scalability and reachability) and reachability inputs, and the renderer scores it with its own asset tags. A peer whose tags equal its primary's shows its primary's scores exactly. A peer whose own tags move its composite keeps that score and is flagged `divergent:composite_score:primary=<ID>` from the run that scores it. Where the primary's assessed score isn't recorded, the peer keeps its primary's score, flagged `unchecked:cvss_base:assessed-unrecorded`. An UPDATED peer keeps its own owner (ADR-050 D9; PM W3 ruling 1)
 4. **An UNCHANGED peer keeps its own score**: When its composite differs from its primary's, the renderer flags it `divergent:composite_score:primary=<ID>` and leaves the score alone
 5. **A regroup changes no carried value**: A new primary, or a finding that moves to another group, never changes a carried score, band or SLA by itself
-6. **Rationale**: Correlated findings represent the same underlying issue from different perspectives. One score for the group, set by its primary, keeps a NEW group a coherent risk unit, and the divergence flag keeps an old group's differences visible
-7. **SC-001 exemption**: Correlated peer groups are excluded from the score differentiation metric (SC-001). Peers that inherit intentionally receive identical scores; this is correct behavior, not a differentiation failure
+6. **Rationale**: Correlated findings represent the same underlying issue from different perspectives. One assessment per group, and one score where the members share asset tags, keeps a NEW group a coherent risk unit, while each member's own tags still set its elevation. The divergence flag keeps every difference visible
+7. **SC-001 exemption**: Correlated peer groups are excluded from the score differentiation metric (SC-001). Peers whose tags match their primary's receive identical scores on purpose; this is correct behavior, not a differentiation failure
 
 ---
 
@@ -92,7 +92,7 @@ Groups come from Section 4a of the source `threats.md`, read through `tachi_pars
 
 The renderer takes each finding through these steps, in order (ADR-050 D2, D9, D10):
 
-1. **Route** the finding. A NEW or UPDATED non-peer, or a finding with no usable baseline row, has its judgment fields from the agent's part. An UNCHANGED finding with a baseline row inherits its inputs from that row (the assessed vector, the sub-scores, the reachability inputs, the tags used and the scored-on date). A NEW or UPDATED peer copies its primary
+1. **Route** the finding. A NEW or UPDATED non-peer, or a finding with no usable baseline row, has its judgment fields from the agent's part. An UNCHANGED finding with a baseline row inherits its inputs from that row (the assessed vector, the sub-scores, the reachability inputs, the tags used and the scored-on date). A NEW or UPDATED peer takes its primary's assessment and is scored with its own asset tags
 2. Look up the finding's category from its ID prefix (`tachi_scoring.category_for_prefix`) to get the default CVSS vector and its bound
 3. Compute the CVSS base score from the assessed vector (Section 3), clamp it to the category bound for a NEW finding in a baseline-aware run, then apply the asset-sensitivity pass (Section 3.5) -> produces `cvss_base`
 4. Compute exploitability as the mean of the four sub-scores (Section 4), rounded half up -> produces `exploitability`
@@ -197,9 +197,8 @@ Overridden values must be preserved in both output formats (risk-scores.md and r
 Governance fields for correlation groups follow the same rule as scoring fields (Correlation Group Handling above):
 
 1. The **primary finding** receives governance fields derived from its severity band
-2. **NEW and UPDATED peers** inherit the primary's derived governance fields, and an UPDATED peer keeps its own owner
+2. **NEW and UPDATED peers** take the governance of their own band, as any NEW or UPDATED finding does (fresh when NEW, the UPDATED rule otherwise), and an UPDATED peer keeps its own owner
 3. An **UNCHANGED peer** keeps its own governance fields, which follow its own band
-4. If a human overrides governance fields on the primary, a NEW or UPDATED peer reflects the same override
 
 This ensures a correlation group -- which represents a single underlying risk from multiple perspectives -- receives consistent remediation tracking.
 

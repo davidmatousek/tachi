@@ -47,7 +47,7 @@ All dimension scores and composite scores are formatted with exactly one decimal
 
 ### Correlation Group Display
 
-Correlated peer findings appear in the table with their own IDs. A NEW or UPDATED peer carries its primary's scores, and an UNCHANGED peer keeps its own and shows `divergent` in the Flags column when they differ. No other notation is needed in the table -- a peer looks like any independently scored finding.
+Correlated peer findings appear in the table with their own IDs. A NEW or UPDATED peer takes its primary's assessment and is scored with its own asset tags, so it shows its primary's scores when the tags are equal, and `divergent` in the Flags column when its own tags moved its composite. An UNCHANGED peer keeps its own scores and shows `divergent` when they differ from its primary's. No other notation is needed in the table -- a peer looks like any independently scored finding.
 
 ### Resolved Findings (Section 2a)
 
@@ -57,33 +57,44 @@ Findings that Section 4c of the source threat model lists as RESOLVED are listed
 
 ## Dimensional Breakdown Format
 
-Section 3 of risk-scores.md provides per-finding breakdowns. One subsection per finding, ordered by `composite_score` descending.
+Section 3 of risk-scores.md provides per-finding breakdowns. One subsection per open finding, ordered by `composite_score` descending. The layout is the one in Section 3 of `templates/tachi/output-schemas/risk-scores.md`, and both describe what the renderer writes.
 
 ### Per-Finding Subsection Template
 
 ```markdown
-### {id}: {threat_description}
+### {id} — {component}
 
-**Component**: {component}
-**Category**: {category}
-**Composite Score**: {composite_score} ({severity_band})
+**Threat**: {threat_description}
+
+**Category**: {category} | **MAESTRO Layer**: {maestro_layer} | **Original Risk Level**: {original_risk_level} | **Composite**: {composite_score} ({severity_band})
+
+**Correlation Group**: {correlation_group}   (only for a finding in a correlation group)
+
 **Integrity**: {flags as kind:field:cause, comma-separated}   (only when the finding carries a flag)
 
 | Dimension | Score | Weight | Weighted |
 |-----------|-------|--------|----------|
-| CVSS Base | {cvss_base} | 0.35 | {cvss_base * 0.35} |
-| Exploitability | {exploitability} | 0.30 | {exploitability * 0.30} |
-| Scalability | {scalability} | 0.15 | {scalability * 0.15} |
-| Reachability | {reachability} | 0.20 | {reachability * 0.20} |
+| CVSS Base | {cvss_base} | 0.35 | {cvss_base x 0.35} |
+| Exploitability | {exploitability} | 0.30 | {exploitability x 0.30} |
+| Scalability | {scalability} | 0.15 | {scalability x 0.15} |
+| Reachability | {reachability} | 0.20 | {reachability x 0.20} |
 | **Composite** | | | **{composite_score}** |
 
-**CVSS Vector**: `{cvss_vector}`
+#### CVSS 3.1 Base
 
-**Scoring Rationale**:
-- **CVSS**: {the agent's justification for the CVSS vector, with its slots filled}
-- **Exploitability**: {the agent's justification, with its slots filled}
-- **Scalability**: {the agent's justification, with its slots filled}
-- **Reachability**: {the agent's justification referencing the trust zone, with its slots filled}
+{the Score and Vector line, the metric table and the CVSS rationale}
+
+#### Exploitability
+
+{the Score line, the four sub-dimension rows and the rationale}
+
+#### Scalability
+
+{the Score line, the four sub-dimension rows and the rationale}
+
+#### Reachability
+
+{the Score and Trust Zone line and the rationale}
 ```
 
 ### Field Rules
@@ -91,19 +102,23 @@ Section 3 of risk-scores.md provides per-finding breakdowns. One subsection per 
 | Field | Rule |
 |-------|------|
 | `{id}` | Finding ID, untruncated |
-| `{threat_description}` | Full threat description text, untruncated (no 60-character limit) |
 | `{component}` | Full component name, untruncated |
+| `{threat_description}` | Full threat description text, untruncated (no 60-character limit) |
 | `{category}` | The category ID, as `tachi_scoring.category_for_prefix` returns it for the finding's ID prefix, such as `info-disclosure` or `agentic` |
+| `{maestro_layer}` | The finding's MAESTRO layer as the threat model records it (such as `L7 — Agent Ecosystem`), or `Unclassified`. It is the string that the finding's SARIF result carries as `maestro-layer` |
+| `{original_risk_level}` | The risk level that the threat model gave the finding |
 | `{composite_score}` | Decimal with one digit |
 | `{severity_band}` | `Critical`, `High`, `Medium`, or `Low` |
 | Dimension scores | Decimal with one digit |
-| Weighted values | Decimal with two digits (e.g., `2.52`, `1.95`). Calculated as score multiplied by weight |
-| `{cvss_vector}` | Full CVSS 3.1 vector string |
-| Scoring Rationale | The agent's prose for that dimension, with its slots filled by the renderer, so every number in it equals the table's. A fallback sentence stands in for a field that broke the narrative rules, and Section 6 flags it |
+| Weight | `0.35`, `0.30`, `0.15` and `0.20`, as in the frontmatter's `scoring_weights` |
+| Weighted values | Always two decimals (e.g., `2.52`, `1.95`, `0.50`). The stored one-decimal score multiplied by its weight in exact decimal arithmetic, then rounded half up to two decimals, never with a float: `8.3 x 0.35` is `2.905` and shows `2.91` |
+| Composite row | The composite score, which the renderer rounds once, half up to one decimal, from the exact sum of the four products. It is not the sum of the four shown Weighted values, so those can add to as much as a hundredth more |
+| `{cvss_vector}` | Full CVSS 3.1 vector string, or `—` when the finding has none |
+| Rationale | The agent's prose for that dimension, under its `####` heading, with its slots filled by the renderer, so every number in it equals the table's. A fallback sentence stands in for a field that broke the narrative rules, and Section 6 flags it |
 
 ### Correlation Group Display in Breakdown
 
-A NEW or UPDATED peer gets its own subsection with an additional line after the Category line: `**Correlation Group**: Scores inherited from primary finding {primary_id}`. Its dimensional table and rationale reflect the primary's assessment. An UNCHANGED peer shows its own scores, and its Integrity line carries the `divergent` flag.
+A finding in a correlation group has a `**Correlation Group**:` line after the Category line, and every member has its own subsection. A primary's line names its group and its peers (up to ten, then a count). A NEW or UPDATED peer's line reads `Scores inherited from primary finding {primary_id} ({group})`: the peer takes its primary's assessment, so its rationale is its primary's text with the slots filled against the peer's own values, and its table is scored with the peer's own asset tags. With equal tags the table equals its primary's. A peer whose own tags moved its composite carries the `divergent` flag in its Integrity line. An UNCHANGED peer's line says that it keeps its own score, its table shows its own scores, and its Integrity line carries `divergent` when they differ from its primary's.
 
 ---
 
@@ -144,7 +159,7 @@ Section 4 of risk-scores.md provides a consolidated governance tracking table.
 - Every scored finding must appear (no omissions)
 - Owner column reads `Unassigned` for a fresh finding, and shows the baseline's owner for a carried one
 - Review Date calculated per governance rules: scoring date + SLA duration, with the carried-forward rules in `severity-bands.md`
-- NEW and UPDATED correlation group peers inherit governance fields from the primary
+- NEW and UPDATED correlation group peers take the governance of their own band, as any NEW or UPDATED finding does (fresh when NEW, the UPDATED rule otherwise), and an UPDATED peer keeps its own owner
 
 ---
 

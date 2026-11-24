@@ -51,7 +51,7 @@ baseline:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Risk scoring schema version. Always `"1.1"` for this release. 1.1 is additive to 1.0: Section 2a, the `Flags` column, the `**Integrity**:` line and Section 6. |
+| `schema_version` | string | Risk scoring schema version. Always `"1.1"` for this release. 1.1 is additive to 1.0: Section 2a, the `Flags` column, Section 3's `**MAESTRO Layer**:` field, `**Correlation Group**:` line, `**Integrity**:` line and weighted table, and Section 6. |
 | `date` | string | ISO 8601 date when scoring was performed, as the command passed it to the renderer. The clock never enters this file. Format: `YYYY-MM-DD`. |
 | `source_file` | string | Path to the input threat model file that was scored. |
 | `classification` | string | Data classification label. Default: `confidential`. |
@@ -142,11 +142,27 @@ Per-finding detail showing the full scoring rationale for each dimension. One su
 
 **Threat**: {threat_full_description}
 
-**Category**: {category} | **Original Risk Level**: {original_risk_level} | **Composite**: {composite_score} ({severity_band})
+**Category**: {category} | **MAESTRO Layer**: {maestro_layer} | **Original Risk Level**: {original_risk_level} | **Composite**: {composite_score} ({severity_band})
+
+`{maestro_layer}` is the finding's MAESTRO layer as the threat model records it (for example `L7 — Agent Ecosystem`), or `Unclassified`. It is the same string as the `maestro-layer` property of the finding's result in risk-scores.sarif.
+
+**Correlation Group**: {correlation_group}
+
+The `**Correlation Group**:` line appears only for a finding that Section 4a of the source threat model lists in a correlation group. It names the group and says whether the finding is the group's primary, a NEW or UPDATED peer that takes its primary's assessment, or an UNCHANGED peer that keeps its own score.
 
 **Integrity**: {flags_as_kind_field_cause}
 
 The `**Integrity**:` line appears only for a finding that carries at least one flag. It lists each flag as `kind:field:cause`, comma-separated, as Section 6's Score Flags table does.
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | {cvss_base} | 0.35 | {cvss_base_weighted} |
+| Exploitability | {exploitability} | 0.30 | {exploitability_weighted} |
+| Scalability | {scalability} | 0.15 | {scalability_weighted} |
+| Reachability | {reachability} | 0.20 | {reachability_weighted} |
+| **Composite** | | | **{composite_score}** |
+
+Every finding has this table, after its optional lines. A Weighted value is the stored one-decimal score times its weight, computed in exact decimal arithmetic and rounded half up to two decimals, so it always shows two decimals (`8.3 x 0.35 = 2.905` shows `2.91`, and `2.5 x 0.20 = 0.50` shows `0.50`). The Composite cell repeats the composite score. The renderer rounds that once, from the exact sum of the four products, and does not add up the four rounded cells, so the cells can add to as much as a hundredth more.
 
 #### CVSS 3.1 Base
 
@@ -330,7 +346,7 @@ The table counts the flags of Section 6's Score Flags by kind and cause. A diffe
 |----|------|-------|--------|----------|-------|
 | {id} | {kind} | {field} | {stored_value} | {rendered_value} | {cause} |
 
-One row for each flag, in finding-ID order (prefix rank `S`, `T`, `R`, `I`, `D`, `E`, `AG`, `AGP`, `LLM`, `OI`, `MI`, `TE`, then the numeric suffix as an integer). `Stored` is the value the baseline held, `Rendered` is the value this file shows, and `Cause` says why they differ. The kinds are `corrected` (a stored value the renderer recomputed to a different one), `unverifiable` (no vector to check the score against), `unchecked` (a check that depends on an ambiguity, so the value is kept), `divergent` (an UNCHANGED peer whose score differs from its primary's), `override` (a human choice carried as it was), `retagged` (a change that the asset tags alone explain), `reused-id` (a NEW finding whose ID the baseline used) and `input` (a kept input with a problem, a narrative field that took its fixed sentence, or a prose field cut at its length limit).
+One row for each flag, in finding-ID order (prefix rank `S`, `T`, `R`, `I`, `D`, `E`, `AG`, `AGP`, `LLM`, `OI`, `MI`, `TE`, then the numeric suffix as an integer). `Stored` is the value the baseline held, `Rendered` is the value this file shows, and `Cause` says why they differ. The kinds are `corrected` (a stored value the renderer recomputed to a different one), `unverifiable` (no vector to check the score against), `unchecked` (a check that depends on an ambiguity, so the value is kept), `divergent` (an UNCHANGED peer whose score differs from its primary's, or a NEW or UPDATED peer whose own asset tags moved its score), `override` (a human choice carried as it was), `retagged` (a change that the asset tags alone explain), `reused-id` (a NEW finding whose ID the baseline used) and `input` (a kept input with a problem, a narrative field that took its fixed sentence, or a prose field cut at its length limit).
 
 ### Input Issues
 
