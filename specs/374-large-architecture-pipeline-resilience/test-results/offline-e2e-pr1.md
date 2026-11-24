@@ -271,3 +271,33 @@ A clean report proves little unless the instrument could have shown a defect. Ea
 - **H2.** No PDF baseline was regenerated, and nothing under `examples/` changed. No test was added: every case above is a process-level run of shipped code, and `test_render_risk_scores.py`, `test_render_compensating_controls.py`, `test_tachi_stage.py` and `test_sarif_identity.py` already pin the same properties in-process.
 - **H8.** Fixture names only (the synthetic platform's components, `S-1`-style IDs). No path, company or real finding is in this record.
 - **The driver** (the synthetic agents, the readers, the checks and the positive controls) is in the session scratchpad, not in the repository, as T065 asks. Its inputs are the committed fixture and the installed scripts, so a re-run is the sequence in section 1.
+
+## 12. P1-1: the re-run on W5's install commit (27d58bd)
+
+**Date:** 2026-11-24. **Tip:** `27d58bd`, W4's pushed, CI-green tip. **Interpreters:** Python 3.11.13 and 3.9.6. **Driver:** T065's, copied byte for byte (no path, tip or check in it edited); every agent still synthetic. **Findings:** none in shipped code, and one records note in the first difference below. Every difference is attributed, and no check failed.
+
+**Result: PASS.** 2592 checks run on each interpreter, none failed (2339 in the 29 scenario passes, 4 on the pre-fix fixtures, 249 in the failure suite): T065's counts. 15 of 15 deliberate defects are caught and the 3 clean controls pass, on both. All 63 stage runs write byte-identical `.md` and `.sarif` files on the two interpreters, the 63 repeat runs in other project roots equal them, and all 63 equal T065's files from `f43440b` byte for byte. 612 process calls on each (T065: 614), the same set of exit codes.
+
+**Install.** Each pass, and one by hand first, ran `scripts/install.sh --source <install clone>` into its own empty `<adopter root>`: `Version: v4.48.4-154-g27d58bd`, `Copied: 45 item(s)`. (The two passes' installs print `g27d58bdc`: git's automatic abbreviation grew a character, same commit.) The 11 installed scripts equal the clone's byte for byte. 7 differ from T065's install (`tachi-stage.py`, `tachi_parsers.py`, `tachi_parts.py`, `sarif_common.py`, `tachi_scoring_rules.py` and both renderers: T146's fixes); the other 4 are unchanged.
+
+**Differences from T065.** A structural diff of the 86 project roots of each pass against T065's, with paths, plan IDs and clocks normalized, leaves 3,518 identical files and three differences:
+
+| Difference | Seen as | Commit |
+|---|---|---|
+| `plan` refuses a control character in `threats.md` before any agent runs: exit 2, the renderer's own message, nothing written. T065: `plan` 0, `reconcile` 0, `render` 2 | The hostile case. Exit census: `plan` 0 183 to 182, `plan` 2 5 to 6, `reconcile` 0 167 to 166, `render` 2 17 to 16 (614 to 612 calls) | `c129e78`, T146's SA-1 row. O2 no longer reproduces. T146's record still lists SA-3, which T064 words as O2 does, as deferred to T080: T080 should read it against this |
+| Each controls unit row carries its finding's `layer` | 436 of 438 controls batch inputs differ in that key alone; the other 2 are `ties-controls`' (O4: no reachable threat model, so no layer). The agent's matrix cell equals it in 1,699 of 1,699 units of the scenario passes, and no `maestro_layer` flag is raised | key `c129e78` (T067 M3, part b); value from U-1's one reader, `d8cf928` |
+| 7 of the 11 installed scripts | `scripts/` of every project root | T146's fix commits (`t146-fixes-pr1.md`) |
+
+The driver's hostile check accepts a refusal at `plan` or at `render`, so its count didn't move with the behavior. Everything else is identical: every output, plan, part, stage record, warning and flag, and every check's detail, apart from paths and plan IDs. Run alone, base-set script time on 3.11 equals T065's (scorer 0.52 s, controls 0.65 s, against 0.54 and 0.67). It read about 10% higher while both interpreters ran side by side.
+
+**What this run can't show.** 0 `carried-forward-cleared` warnings (ADR-050 D2's W4 amendment, `bfe3e85` and `9bd337e`) and 0 `correlation-member-repeated` warnings (R-F, `d8cf928` and `977a622`) in all 178 stage records of each pass. The synthetic agent claims a carry only where the planner copied the baseline's result into the unit, and no fixture lists a finding in two groups, so those fixes change nothing here, as do H1's quoted heading and S7-2's quoting (the driver runs argv, not a shell). W4's in-process tests pin them. Section 8's generator `diff -r` is outside the driver and wasn't re-run: the fixture and its generator are unchanged between the two tips. O1 and O3 to O6 hold as written.
+
+| Item | Verdict on `27d58bd` | What shows it |
+|---|---|---|
+| SC-4 | **PASS** | 234 of 234 findings equal their expected outcomes in values and flags (13 scenarios), on both interpreters |
+| SC-5, offline half | **PASS**; the live half is T074's | 32 controls runs, 1,119 `C.*`, `sc5.*` and `P.*` checks (section 4's properties), none failed |
+| SC-6, Track R | **PASS** | The regroup pair, both files: 9 of 9 present findings keep their key, run 3 repeats run 2's 10 keys, no two findings share a key. 408 of 408 at scale |
+| US-1a #4 | **PASS** | 207 `F-*` checks: a missing, invalid, unparseable, overflowed or stale part lists only the unfinished batches again, and none is counted by `reconcile` or the renderer |
+| US-1a #5 | **PASS** | The same checks: `reconcile` exits 4 naming the batch and its finding IDs, `fail` exits 0 with a `failed` record and the remedy, and no canonical file holds a failed output |
+
+**Hygiene.** H1: no pytest, extractor or renderer ran in a tracked tree; the scripts ran from project roots under the scratchpad. The driver imports `tachi_parts` and `tachi_parsers` from the install clone, as T065's did, with bytecode writing off. After both passes the clone's `git status`, also with `--ignored`, and the main checkout's were empty, and this lane's worktree held only this section. The installer's own `git fetch --tags` touches the clone's `.git`, not its tree. H8: fixture IDs only.
