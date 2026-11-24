@@ -12,6 +12,11 @@
 - **Additions ruled at the P0 checkpoint (2026-11-23, T061), all additive:** `BaselineResolution.file_reasons` (R1b's, named in T042's commit and recorded here, P0-12); `parse_sarif_member_set(..., with_details=False)` (P0-3); `tachi_parts.forbidden_character` (P0-4); and `"3a"` among `VectorCheck.step`'s values (P0-2). The comments on `BaselineRow.tags_used` and `.scored_on` now read "whenever §6 records them" (P0-2), which widens what the reader fills without changing a type.
 - **Additions ruled at W3 (2026-11-23), from P0-6 and the PM's W3 ruling 1, all additive:** `VectorCheck.assessed`, last, defaulting to `None`. `peer_divergence` keeps its signature and now also serves NEW and UPDATED peers. The controls `matrix_row`'s form is pinned in the persisted-inputs format below, with no change to a type.
 - **From the W3 sweep (2026-11-23), also additive:** `parse_sarif_member_set`'s return gains `details` only with `with_details=True`, and each entry carries `kind` too (FX0, named in `7d133c6`); `match_heading` gains `outside_fences=False`, keyword-only (from T087's observation). The fallback risk label is pinned under `details`, with no new function.
+- **From W3's closing sweep (2026-11-23), also additive, each recorded below from W3's code:**
+  - `tachi_parts.MATRIX_ROW_CELLS`, `matrix_row_cells`, `RECOMMENDATION_KEYS` and `EFFORT_LEVELS`, with the two controls checks that step 9 runs (FX0c, named in `c6ee943`);
+  - `sarif_common.RULES`, `taxonomy_name_for`, `build_rules` and `COPIED_TEXT_PROPERTIES`, `build_driver(..., version=None)` and `self_check`'s evidence-URI guard (R3a, named in `d0277a3`), and the RESOLVED scan's skip list (`b9b4962`, W3 ruling Q9).
+
+  W3's rulings d had already recorded `COUNT_KEYS`' `cell_overwrites` and `forbidden_character`'s lone surrogate. No name is renamed or removed.
 
 **Shared conventions.**
 - Every module has `from __future__ import annotations` and runs on Python 3.9 (S-11). Annotations use `typing` forms, so nothing here needs 3.10.
@@ -410,7 +415,35 @@ def resolve_explicit(candidate: object, *, root: Optional[str] = None, fs: Any =
 - **The planner** records the warning as the plan's `architecture_warning` (`part-files.md` §4). The renderer lists it ahead of its own resolver's warnings.
 - **Order.** It lands before R1b's planner change that calls it.
 
-## `scripts/tachi_parts.py`: W3 additions (lane FX0; the first ruled at the P0 checkpoint, the others at W3's rulings, 2026-11-23)
+## `scripts/sarif_common.py`: W3 additions (lane R3a, named in `d0277a3`; the scan's skip list from `b9b4962`; recorded at W3's closing sweep, 2026-11-23)
+
+```python
+RULES: Tuple[Tuple[str, str, str, Tuple[str, ...], Tuple[str, ...]], ...]  # (category, short description, full description, tags, taxonomy IDs), in the 1.1 templates' order
+COPIED_TEXT_PROPERTIES: Dict[str, Tuple[str, ...]]  # driver name -> the top-level properties whose text is copied from an input
+
+def taxonomy_name_for(taxon_id: str) -> str: ...
+def build_rules(highest: Mapping[str, Decimal]) -> List[Dict[str, Any]]: ...
+def build_driver(sarif_file: str, *, semantic_version: str, rules: Sequence[Mapping[str, Any]],
+                 supported: Optional[Sequence[Mapping[str, Any]]] = None, version: Optional[str] = None) -> Dict[str, Any]: ...  # existing; W3 adds version, last
+def self_check(results: Sequence[Mapping[str, Any]], *, tool: str, member_ids: Iterable[str],
+               assignments: Optional[Mapping[str, Correlation]] = None, resolved_ids: Iterable[str] = (),
+               uri: Optional[str] = None) -> None: ...  # existing; W3 changes what it checks, not its signature
+```
+
+- **`RULES`** is the one rule table of `risk-scores.sarif` and `compensating-controls.sarif` (PM W3 ruling 2, gap A). It moved here from the scorer's renderer, and each renderer keys it by category. A row holds what the 1.1 templates write for the rule. Its taxonomy IDs are the rule's `relationships`, and the IDs that a finding's `{{ref:...}}` slot may cite for that category (ADR-050 D3's table). `test_sarif_identity.py` pins every field to both templates.
+- **`taxonomy_name_for`** is a closed map: `CWE-<n>` gives `CWE`, and `A01` to `A10` gives `OWASP`. Any other ID is a defect in shipped code and raises `ValueError`. The links name a taxonomy only, so they may not resolve inside the file (ADR-050, Known limitations).
+- **`build_rules`** returns one rule per category in `highest`, in `RULES`' order and in `sarif-result.md`'s form: `id`, `shortDescription`, `fullDescription`, `properties` (`tags`, then `security-severity`) and `relationships`, one entry per taxonomy ID of the row, in the row's order.
+  - `highest` maps a category to the highest score among that file's results: the composite in the scorer's file, the residual in the controls file. The rule writes it as text, rounded with `tachi_scoring.q1`.
+  - A category with no result has no rule. A key that isn't one of the eight categories raises `ValueError`. Each call returns new lists and objects.
+  - The controls renderer's from-disk check compares the staged driver's `rules` with it.
+- **`build_driver`'s `version` (PM W3 ruling 2, gap C).** Given, `"version"` is written right after `"name"`, where the 1.1 templates put it. Both PR 1 renderers pass `tachi_parts.VERSION`, the value they pass as `semantic_version` (`sarif-result.md`). Not given, the driver has no `version` key, so `threats.sarif`'s generator, which passes none, keeps its bytes. A value that isn't a non-empty string raises `ValueError`.
+- **`self_check`'s RESOLVED scan (ruled at W3 as Q9, settling P0-10; ADR-050 D8).** It reads `findingId/v1` and every property at any depth, except the top-level properties that `COPIED_TEXT_PROPERTIES` lists for `tool`: the scorer's `risk-owner`, and the controls file's `control-evidence` and `recommendation`. It never reads `message.text`, `message.markdown` or a `relatedLocations` message. An ID in copied text is a mention, not a reference, and ruling C's sentence keeps its own exact check. A driver with no entry, which is `threats.sarif`'s until PR 2, has every property read.
+- **`self_check`'s evidence-URI guard (from R3a; ADR-050 D7).** Each `relatedLocations` entry's `uri` must pass `tachi_parts.path_problem`, the resolver's own relative-path rule. So a scheme, a leading `/`, a drive letter, a backslash or a `..` fails the render, and the problem names the finding and the check.
+  - The URI is checked as written, not percent-decoded, which holds while the emitter encodes `%` (the code's `AOD-SIMPLIFICATION` marker).
+  - A malformed entry is a shape problem, never an `AttributeError`.
+  - The primary `artifactLocation.uri` is only compared with the run's `uri`. T064's SA-11, which asks for the check on both URIs and for decoding first, goes to T146.
+
+## `scripts/tachi_parts.py`: W3 additions (lane FX0; the first ruled at the P0 checkpoint, the others at W3's rulings and its closing sweep, 2026-11-23)
 
 ```python
 def forbidden_character(text: str) -> Optional[str]: ...
@@ -424,6 +457,26 @@ def forbidden_character(text: str) -> Optional[str]: ...
   - `tachi-stage.py plan` keeps its own codec test, for the values it copies from a JSON input.
 - **`COUNT_KEYS` gains `cell_overwrites`** (ruled at W3, 2026-11-23, from T056 and T059), the eighth base count (`part-files.md`). One commit adds it in four places: here, in `test_tachi_parts.py`'s key set, in the shared reference's §5 `counts` row and in `test_contract_text_374.py`'s key count (15 to 16).
 - **Who calls it (P0-4, ADR-050 D3).** Step 10 itself, on every string of a part. A renderer, at the point it takes a value from an input that isn't a part, refusing the value with exit 2. `_check_staged`'s whole-file backstop, on the staged markdown and every decoded SARIF string, with exit 4. The controls renderer and PR 2's writers call it too, so the set has one definition.
+
+**The controls item's structural checks (recorded at W3's closing sweep, 2026-11-23, from FX0c, `c6ee943`).** They carry out ADR-050 D2's cell table, where a structural mismatch rejects the item and its batch is re-dispatched. They run at `read_part` time, so `reconcile` retries the batch (exit 3) instead of the render failing after the agents have run.
+
+```python
+MATRIX_ROW_CELLS: int = 11
+RECOMMENDATION_KEYS: Tuple[str, ...] = ("What to Implement", "Where to Implement", "Reference Patterns", "Effort Estimate")
+EFFORT_LEVELS: Tuple[str, ...] = ("Low", "Medium", "High")
+
+def matrix_row_cells(row: str) -> List[str]: ...
+```
+
+- **`matrix_row_cells`** is the controls `matrix_row`'s "Pipes" rule (below) as code. It strips the line's edge whitespace, drops one leading and one trailing `|` where present, splits on raw `|`, and strips each cell's edge whitespace, as `parse_markdown_table` strips a cell. Nothing is decoded, and `row` must be a `str`. Step 9 and the controls renderer both split a row with it, so they count the same cells.
+- **Step 9's controls checks** run on each value after its cut and strip, so they judge the value that is kept. A failure makes the part `invalid`.
+  - **`matrix_row`:** exactly `MATRIX_ROW_CELLS` cells, and a first (Threat ID) cell that passes the finding allow-list and canonicalizes to the item's `finding_id`. No other cell rejects the item. The renderer flags a checked cell that disagrees, and fills a computed one, counting it when it held anything but its slot token (the controls `matrix_row`, below).
+  - **`recommendation_body`, when it isn't null:**
+    - each of `RECOMMENDATION_KEYS` once and in order, on a line that starts, after any whitespace, with `**<key>**:`. Any other line belongs to the key above it, so a value may run over several lines;
+    - an Effort Estimate whose text after the key, on the key's own line, starts with `Low`, `Medium` or `High` as a whole word;
+    - no line that starts, after any whitespace, with `#` or `|`.
+  - A detail names the finding and, for the keys, the key names that it found. It never echoes the row's or the body's text.
+- **The renderer reads §4 back with the same names.** It takes each block's Effort word after `**Effort Estimate**:` through `EFFORT_LEVELS`, and SARIF's `effort-estimate` is that word (ADR-050 D2). So the part check, the render and the from-disk check agree.
 
 ## The persisted-inputs format: `risk-scores.md` §6 and `compensating-controls.md` §7
 
@@ -454,7 +507,7 @@ Both sections use one table, so the writers (R1, R2), the readers (R1b, P) and t
 `matrix_row` is one finding's row of `compensating-controls.md` §2 (K8, R-34). The agent writes it in its part, the renderer checks and fills it (ADR-050 D2's cell table) and §7 persists it. The planner then copies it into an UNCHANGED unit's row, and the agent copies it back. One form serves every step. `parse_controls_assessment_inputs` returns it as written, so the reader needs no change.
 
 - **Cells, in this order:** `Threat ID | CF | Component | MAESTRO Layer | Threat | Inherent Score | Inherent Severity | Control Status | Control Category | Residual Score | Residual Severity`. It is K8's §2 header, which the 1.1 template writes (T060), and the order of lane D's example and lane P's fixtures.
-- **Pipes.** The row is written as a GFM table line: `| ` before the first cell, ` | ` between cells and ` |` after the last, with no `|` inside a cell. The renderer reads a row with or without the outer pipes: it strips the line's edge whitespace, drops one leading and one trailing `|` where present, and splits on raw `|`. A count other than 11 cells rejects the item (D2).
+- **Pipes.** The row is written as a GFM table line: `| ` before the first cell, ` | ` between cells and ` |` after the last, with no `|` inside a cell. The renderer reads a row with or without the outer pipes: it strips the line's edge whitespace, drops one leading and one trailing `|` where present, and splits on raw `|`. A count other than 11 cells rejects the item (D2). Step 9 counts them with `tachi_parts.matrix_row_cells` (above). Only `|` splits a row, so a line break inside one isn't refused. The renderer writes it as `&#10;`, so the row stays one line in §2 and §7, and it reads back with the same cells (T064's SA-17, a T080 note).
 - **Cell values.**
   - **Threat ID:** the finding's ID. It must pass the allow-list and canonicalize to the item's `finding_id`, or the item is rejected (D2).
   - **Component:** the unit row's component, checked against the input (D2). **Threat:** model text, under NFR-10 only (D2).

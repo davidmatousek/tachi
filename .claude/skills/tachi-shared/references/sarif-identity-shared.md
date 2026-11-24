@@ -141,7 +141,7 @@ The URI is the user's architecture file: repo-relative, in one canonical spellin
 
 - **The counting rule.** A file's findings are `runs[0].results[]`. N is the number of results, which equals the number of distinct `findingId/v1` values, which equals the size of the member set. Nothing else counts.
 - **No `relatedLocations` entry names a finding, in any file.** The controls file's entries are code evidence only, each with a `physicalLocation` in the scanned code.
-- **RESOLVED findings appear nowhere.** A finding in Section 4c, or a legacy result with `baselineState: absent`, is not a result, not a `relatedLocations` entry and not a property value.
+- **RESOLVED findings appear nowhere.** A finding in Section 4c, or a legacy result with `baselineState: absent`, is not a result, not a `relatedLocations` entry and not a property value. Text that the renderer copies from an input, a quoted code snippet for example, may still mention one, because a mention isn't a reference (the self-check, below).
 - **One alert per open finding per file.** A correlation group changes properties, never membership or a key.
 
 ---
@@ -208,7 +208,7 @@ The shared emitter writes every result in this shape and key order, in two-space
   - The correlation keys appear on group members only.
   - `threats.sarif` adds `baseline-run-id`, moved out of `partialFingerprints` with its value unchanged.
   - Every other key belongs to the scoring and controls contracts. Flags are sorted arrays of `kind:field:cause` strings: `score-flags` in the scorer's file and `integrity-flags` in the controls file, both always present. Both carry `reused-id:finding_id:baseline` for the same finding.
-  - No value names a RESOLVED finding.
+  - No value names a RESOLVED finding, though copied text may mention one (the self-check, below).
 
 ---
 
@@ -239,7 +239,7 @@ The emitter runs these checks on the finished result list, before any file is wr
 
 - The result count equals the number of distinct finding IDs, which equals the member set.
 - No two present results share a `primaryLocationLineHash`.
-- No RESOLVED ID appears anywhere in the file.
+- No RESOLVED ID appears in a string that the renderer composes or takes as a closed value: `findingId/v1` and every property, except copied text. Copied text is `message.text` and `message.markdown`, the scorer's `risk-owner`, and the controls file's `control-evidence`, `recommendation` and `relatedLocations` messages. An ID in it is a mention, not a reference. The correlation sentence keeps its own check, below.
 - No `relatedLocations` entry names a finding.
 - Every `correlation-primary` and every group member is a result, with one primary per group.
 - Every correlated result's message ends with the sentence above, and an uncorrelated result's message has none.

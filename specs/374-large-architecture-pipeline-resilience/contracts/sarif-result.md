@@ -32,7 +32,7 @@
   - no `automationDetails`;
   - no result carries `guid`, `correlationGuid`, `fingerprints` or SARIF's own `baselineState`;
   - **the rules (ruled at W3, 2026-11-23, from the PM's W3 ruling 2, gap A).** The scorer and controls files write one rule per category that has a result. Each has `id`, `shortDescription`, `fullDescription`, `properties` (`tags`, then `security-severity`) and `relationships`, in that order, as all four templates show them.
-    - `relationships` holds one entry per taxonomy ID of the renderer's rule table, in the table's order, in the templates' form: `{"target": {"id": "CWE-287", "toolComponent": {"name": "CWE"}}, "kinds": ["relevant"]}`. A `CWE-` ID names `CWE`, and an `A01` to `A10` ID names `OWASP`.
+    - `relationships` holds one entry per taxonomy ID of the renderer's rule table, `sarif_common.RULES`, which both renderers share (`module-signatures.md`), in the table's order, in the templates' form: `{"target": {"id": "CWE-287", "toolComponent": {"name": "CWE"}}, "kinds": ["relevant"]}`. A `CWE-` ID names `CWE`, and an `A01` to `A10` ID names `OWASP`.
     - They are the IDs that ADR-050 D3's `ref` slot calls "its rule's relationships in the renderer's rule table". `risk-scorer.md:470` on `b040fa1` has the agent copy them, and the shipped files that carry them keep the field (NFR-1).
     - The targets name their taxonomy only, as in 1.0 (ADR-050, Known limitations).
 - **`message.text`:** the file's own text. A correlated result's ends with one sentence that names its group, and its primary (on a peer) or its peers, up to 10 and then a count (on a primary), for example `Correlated in CG-3; primary S-1.` The message isn't identity, so a regroup changes it and never a key (ruling C, ADR-050 D8).
