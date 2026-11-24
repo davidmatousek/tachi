@@ -1659,9 +1659,9 @@ New/modified phases:
 **Purpose**: Support score inheritance for stable findings and bounded scoring for new findings.
 
 Delta-aware scoring rules:
-- **UNCHANGED**: Inherit all scores (composite, CVSS vector, governance fields) verbatim from baseline. `score_source: inherited`.
-- **UPDATED**: Re-score fresh using full 4-dimensional model. `score_source: fresh`.
-- **NEW**: Score fresh with CVSS base bounded within +/-1.0 of category defaults from `schemas/risk-scoring.yaml`. `score_source: fresh`.
+- **UNCHANGED**: Inherit all scores (composite, CVSS vector, governance fields) verbatim from baseline. `score_source: inherited`, because the finding's scoring inputs come from the baseline.
+- **UPDATED**: Re-score fresh using full 4-dimensional model. `score_source: fresh`, because the finding's scoring inputs are assessed this run.
+- **NEW**: Score fresh with CVSS base bounded within +/-1.0 of category defaults from `schemas/risk-scoring.yaml`. `score_source: fresh`, for the same reason. `score_source` says where a finding's scoring inputs came from, not its delta status, so a correlated peer that copies its primary takes the primary's source: a NEW or UPDATED peer of a carried primary is `inherited`, and one of a primary assessed this run is `fresh` (Feature 374).
 - **RESOLVED**: Retain last-known scores for historical reference.
 
 ### Component 5: Control Analyzer Agent Enhancement
