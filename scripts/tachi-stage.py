@@ -34,7 +34,16 @@ beside it. Each row holds the finding's Section 7 values from the ``threats.md``
 names (a SARIF names none, so its rows hold each member's own text instead). An UNCHANGED finding's row also holds its
 baseline's persisted result (``evidence[]``, ``matrix_row``, ``recommendation_body`` and the judgment values, narrative text
 included), decoded, from the baseline's Section 7 ``### Assessment Inputs`` through
-``tachi_parsers.parse_controls_assessment_inputs``, never from the rendered file (AR-T3).
+``tachi_parsers.parse_controls_assessment_inputs``, never from the rendered file (AR-T3). A row built from ``threats.md`` also holds
+the finding's MAESTRO ``layer``, by the renderer's chain (Section 7's cell, else the component's Section 1 layer, else
+``Unclassified``), under the key that the SARIF fallback's rows use. In that fallback, a member that the renderer
+could not score ends the plan here, before dispatch (KB 22): one that no result of its own names (a legacy peer reference), or whose
+result gives no composite from 0.0 to 10.0 on the 0.1 grid.
+
+Every string that a batch input would carry is checked against D3 step 10's character set before anything is written, a
+baseline's persisted result included, and a character that it forbids is exit 2, naming the finding, the field and the file
+(P0-4, SA-1). A file whose path this step derives (the SARIF beside a markdown input) is read only when it is a regular file
+and no link (SA-10). A file that this step reads only to take its digest as a plan input is read the same way, and at most 16 MiB (S7-4).
 
 The plan holds the stage's pointers as ``refs`` (the authority, so a plan with no units keeps them), and each batch input
 copies them for its agent. A ``--architecture`` candidate that the shared resolver refuses, whatever check fails, is left
@@ -76,8 +85,8 @@ import tachi_parts as tp  # noqa: E402
 import tachi_scoring as ts  # noqa: E402
 import tachi_scoring_rules as rules  # noqa: E402
 from tachi_parsers import (  # noqa: E402
-    ReferenceSetError, parse_baseline_frontmatter, parse_controls_assessment_inputs, parse_correlation_groups, parse_reference_set,
-    parse_sarif_member_set, parse_score)
+    REFERENCE_SET_SECTION, ReferenceSetError, parse_baseline_frontmatter, parse_controls_assessment_inputs, parse_correlation_groups,
+    parse_markdown_table, parse_reference_set, parse_sarif_member_set, parse_score)
 
 CONTROLS = "compensating-controls"
 
@@ -206,8 +215,17 @@ def _waves(out: str, stage: str, plan_id: str, entries: List[Dict[str, Any]]) ->
 # plan
 # =============================================================================
 
-def _read_threats(stage: str, path: str, remedy: str = "regenerate threats.md with /tachi.threat-model") -> tuple:
-    """The bytes and text of ``threats.md`` (or of another input, with its own ``remedy``): at most 16 MiB (D3 step 2) and strict UTF-8."""
+def _read_capped(stage: str, path: str, remedy: str, regular: bool = False) -> bytes:
+    """A file's bytes, at most 16 MiB (D3 step 2), or a ``StageError``: exit 1 when it can't be read, exit 2 when it is over the cap.
+
+    With ``regular``, a file that is a link, or isn't a regular file, is refused first with exit 2 (SA-10, S7-4). That is
+    ``tachi_parts.path_guard_problem`` over the file's own directory, so a link in the directory's path is followed and the file
+    itself may be none. It is for a path that this step derives, and for a file whose digest becomes a plan input. It is not for
+    ``--threats``, which the operator names and may point through a link. A file that isn't there is left to the read, which
+    gives the ordinary exit 1.
+    """
+    if regular and tp.path_guard_problem(path, os.path.dirname(path)) not in (None, "missing"):
+        raise StageError(2, stage, "%s is a symbolic link or not a regular file" % path, "name the file itself, not a link to it")
     try:
         with open(path, "rb") as handle:
             raw = handle.read(tp.MAX_AGENT_INPUT_BYTES + 1)
@@ -215,10 +233,30 @@ def _read_threats(stage: str, path: str, remedy: str = "regenerate threats.md wi
         raise StageError(1, stage, "cannot read %s (%s)" % (path, exc.strerror or "error"), "check the path and re-run") from None
     if len(raw) > tp.MAX_AGENT_INPUT_BYTES:
         raise StageError(2, stage, "%s is over %d bytes" % (path, tp.MAX_AGENT_INPUT_BYTES), remedy)
+    return raw
+
+
+def _read_threats(stage: str, path: str, remedy: str = "regenerate threats.md with /tachi.threat-model") -> tuple:
+    """The bytes and text of ``threats.md`` (or of another input, with its own ``remedy``): at most 16 MiB (D3 step 2) and strict UTF-8."""
+    raw = _read_capped(stage, path, remedy)
     try:
         return raw, raw.decode("utf-8")
     except UnicodeDecodeError:
         raise StageError(2, stage, "%s is not strict UTF-8" % path, remedy) from None
+
+
+def _derived_sibling(path: str) -> bool:
+    """Whether ``path``, a file that this step derives from another input's name (the SARIF beside a markdown input), is there and may be read.
+
+    A link, or anything that isn't a regular file, is left unread with a warning, so the fallback isn't taken and the run goes on by the
+    rules it already has for a missing input (SA-10). The directory is one that a repository may fill, and git stores links.
+    """
+    if not os.path.lexists(path):
+        return False
+    if tp.path_guard_problem(path, os.path.dirname(path)) is not None:
+        sys.stderr.write("WARNING: %s is a symbolic link or not a regular file, so it is not read as the fallback input\n" % path)
+        return False
+    return True
 
 
 def _unit_row(finding: Dict[str, Any]) -> Dict[str, Any]:
@@ -270,6 +308,54 @@ def _sarif_unit_row(finding_id: str, details: Dict[str, Optional[str]]) -> Dict[
             raise ValueError("the %s of %s holds a lone surrogate code point, which a batch input cannot carry" % (key, finding_id)) from None
         row[key] = _sarif_risk_level(value) if key == "risk_level" else value
     return row
+
+
+def _first_forbidden(value: Any, path: str) -> Optional[tuple]:
+    """``(path, character)`` of the first string under ``value`` that holds a character D3's step 10 forbids, or ``None`` (P0-4).
+
+    Text, mapping keys and the items of a list are searched in order, and a number or ``None`` holds no text. ``path`` is dotted, and is
+    for a message only. The character set is ``tachi_parts.forbidden_character``'s, so the parts, the renderers' inputs and this planner
+    share one definition. (Both renderers keep a copy of this walk; SA-12 hoists the three.)
+    """
+    if isinstance(value, str):
+        found = tp.forbidden_character(value)
+        return (path, found) if found is not None else None
+    if isinstance(value, dict):
+        children = value.items()
+    elif isinstance(value, list):
+        children = enumerate(value)
+    else:
+        return None
+    for key, child in children:
+        label = "%s.%s" % (path, key)
+        found = _first_forbidden(key, label) or _first_forbidden(child, label)   # a key is text too
+        if found is not None:
+            return found
+    return None
+
+
+def _refuse_forbidden_units(stage: str, units: List[Dict[str, Any]], text_path: str) -> None:
+    """Exit 2, before anything is written, when a value that a batch input would carry holds a character that D3's step 10 forbids (P0-4, SA-1).
+
+    Step 10 checks a part. A row's text comes from ``threats.md`` or a SARIF, and the renderer would refuse it only after every agent had
+    run. A controls unit also carries its baseline's persisted result, which the agent copies back into its part verbatim, so one
+    forbidden character in it would fail that part on every attempt and the batch would be dispatched until its retries ran out.
+    So each string of each unit is checked here, and the message names the finding, the field and the file that the value came from
+    (``text_path`` for a row's text, the baseline's ``compensating-controls.md`` for a carried result), with the regenerate-or-edit
+    remedy. It gives the character's code point and never the text, so it can't carry the character to a terminal.
+    """
+    for unit in units:
+        for key, value in unit.items():
+            found = _first_forbidden(value, key)
+            if found is None:
+                continue
+            carried = key in CARRIED_KEYS
+            name = "compensating-controls.md" if carried else os.path.basename(text_path)
+            where = ("the baseline " if carried else "") + name
+            command = "/tachi.compensating-controls" if carried else "/tachi.risk-score" if name == "risk-scores.sarif" else "/tachi.threat-model"
+            raise StageError(2, stage, "%s holds the character U+%04X, which the part contract forbids, in the %s of %s"
+                             % (where, ord(found[1]), ascii(found[0])[1:-1], unit["finding_id"]),
+                             "regenerate %s with %s, or edit the value to remove the character, then re-run the command" % (where, command))
 
 
 def _architecture_ref(stage: str, candidate: Any) -> tuple:
@@ -344,12 +430,10 @@ def _pointer_refs(stage: str, risk_scores: Any, baseline_dir: Any, architecture:
 
 
 def _input_entry(stage: str, path: str, raw: Optional[bytes] = None) -> Dict[str, Any]:
+    """A digest-checked plan input: its absolute path, SHA-256 and size. Given no ``raw``, the file is read here: at most 16 MiB,
+    and not through a link, as every other read of an input is (S7-4)."""
     if raw is None:
-        try:
-            with open(path, "rb") as handle:
-                raw = handle.read()
-        except OSError as exc:
-            raise StageError(1, stage, "cannot read %s (%s)" % (path, exc.strerror or "error"), "check the path and re-run") from None
+        raw = _read_capped(stage, path, "name a smaller file", regular=True)
     return {"path": os.path.abspath(path), "sha256": tp.sha256_hex(raw), "bytes": len(raw)}
 
 
@@ -366,16 +450,32 @@ def _walk(out: str):
             yield os.path.relpath(path, out).replace(os.sep, "/"), status.st_size, max(0, status.st_mtime_ns)
 
 
+def _snapshot_key(relpath: str) -> str:
+    """A file's key in the plan's ``out_snapshot``: its path, or, for a name that D7's rule refuses and so no plan could hold, a stand-in (SA-5).
+
+    The test is ``tachi_parts.path_problem`` itself, the rule that the plan's own validator applies to each key, so the stand-in is for any
+    name that the rule refuses, whatever it comes to refuse (SA-8 widened it to the separators, bidi controls and tag characters), and no
+    list of cases is kept here. The stand-in is ``./unrecordable:`` and the SHA-256 of the name's bytes. It passes the plan's own path
+    check, because the ``./`` keeps the colon out of the first component, and no path that ``_walk`` yields can equal it, because those
+    never start with ``./``. So an odd name that was there when the plan was made is found again unchanged and is not reported, while a
+    file planted beside it is. Before this, one such name (a colon in the first component, a backslash) skipped the whole check, which a
+    repository could use to hide a file.
+    """
+    if tp.path_problem(relpath) is None:
+        return relpath
+    return "./unrecordable:" + tp.sha256_hex(os.fsencode(relpath))
+
+
 def _snapshot(out: str) -> Optional[Dict[str, List[int]]]:
-    """D4's ``{out}`` snapshot: each path with its size and ``mtime_ns``. None above 20,000 entries or for a name the
-    plan can't record, and the declared-paths check is then skipped with a warning."""
+    """D4's ``{out}`` snapshot: each path with its size and ``mtime_ns``, under the key that ``_snapshot_key`` gives it. None above
+    20,000 entries, and the declared-paths check is then skipped with a warning."""
     entries: Dict[str, List[int]] = {}
     for relpath, size, mtime in _walk(out):
-        if len(entries) >= tp.MAX_SNAPSHOT_ENTRIES or tp.path_problem(relpath) is not None:
-            sys.stderr.write("WARNING: the {out} snapshot is skipped, so the declared-paths check is too "
-                             "(more than %d files, or a name that can't be recorded)\n" % tp.MAX_SNAPSHOT_ENTRIES)
+        if len(entries) >= tp.MAX_SNAPSHOT_ENTRIES:
+            sys.stderr.write("WARNING: the {out} snapshot is skipped, so the declared-paths check is too (more than %d files)\n"
+                             % tp.MAX_SNAPSHOT_ENTRIES)
             return None
-        entries[relpath] = [size, mtime]
+        entries[_snapshot_key(relpath)] = [size, mtime]
     return entries
 
 
@@ -441,7 +541,8 @@ def _read_member_set(stage: str, threats: Any, threats_path: str) -> tuple:
     """The open findings of the run, as ``(raw bytes, [(finding row, unit row)], threats.md text, path read, SARIF groups, lacking)``.
 
     They come from the reference set of ``threats.md`` (S-12). The scorer falls back to the ``threats.sarif`` beside it
-    when ``threats.md`` is absent, read through ``parse_sarif_member_set`` (ADR-050 D8, AR-T2): each unit row holds the
+    when ``threats.md`` is absent, and that file is a regular file and no link (``_derived_sibling``, SA-10). It is read through
+    ``parse_sarif_member_set`` (ADR-050 D8, AR-T2): each unit row holds the
     text of that member's own result, in either ID form (``_sarif_unit_row``, P0-3), and the agent reads the rest from
     ``refs.threats``. An empty extraction is an error, never a pass (KB 22), and it ends the run here, before anything is
     written or dispatched.
@@ -454,7 +555,7 @@ def _read_member_set(stage: str, threats: Any, threats_path: str) -> tuple:
     """
     beside = os.path.join(os.path.dirname(threats_path), "threats.sarif")
     if not (stage == "risk-score" and os.path.basename(threats_path) == "threats.md"
-            and not os.path.lexists(threats_path) and os.path.lexists(beside)):
+            and not os.path.lexists(threats_path) and _derived_sibling(beside)):
         raw, text = _read_threats(stage, threats_path)
         try:
             reference = parse_reference_set(text, source=os.fspath(threats))
@@ -555,6 +656,26 @@ def _id_list(finding_ids: List[str]) -> str:
     return shown + (" and %d more" % (len(finding_ids) - 5) if len(finding_ids) > 5 else "")
 
 
+def _refuse_unscorable(stage: str, name: str, found: Dict[str, Any], remedy: str) -> None:
+    """Exit 2, before dispatch, for a member of D8's controls fallback that the renderer could not render (KB 22).
+
+    ``found`` is ``parse_sarif_member_set(..., with_scores=True)``. Its ``scores`` has an entry for each member that has a result of
+    its own, so a member that only a legacy peer reference names (D8 counts it a member) has none, and no score either. A member also
+    needs a composite from 0.0 to 10.0 on the 0.1 grid, which is what ``render-compensating-controls.py`` takes as its inherent score
+    (``_valid_inherent``). The messages and the remedy are the renderer's, from the same member data, so a run that would end there,
+    after every agent had run, ends here, before any has.
+    """
+    for member in sorted(found["members"], key=tp.finding_sort_key):
+        score = found["scores"].get(member)
+        if score is None:
+            raise StageError(2, stage, "%s names %s only as a peer reference, so it holds no result and no score for it" % (name, member), remedy)
+        try:
+            ts.band(score["composite"])
+        except (ValueError, TypeError):   # no composite (None), or one off the 0.1 grid
+            raise StageError(2, stage, "the input %s holds no score from 0.0 to 10.0 on the 0.1 grid for %s, so its residual risk can't be computed"
+                             % (name, member), remedy) from None
+
+
 def _controls_scored_input(stage: str, given: Any) -> tuple:
     """The controls stage's input, as ``(path read, its bytes, the scored finding IDs in S-2 order, markdown text or None, unit rows)``.
 
@@ -563,8 +684,9 @@ def _controls_scored_input(stage: str, given: Any) -> tuple:
     are not in it (D8). When ``risk-scores.md`` is absent and a ``risk-scores.sarif`` lies beside it, that file is read
     instead, through ``parse_sarif_member_set`` (D8's fallback, AR-T2), and no markdown text comes back: the last item is then
     each member's unit row (``_sarif_unit_row``, P0-3), and ``{}`` for the markdown input. An empty extraction, a SARIF string
-    that a document can't carry, or an input that can't be read, is an error and ends the run here, before anything is written
-    or dispatched (KB 22).
+    that a document can't carry, a member that the renderer could not score (``_refuse_unscorable``), or an input that can't
+    be read, is an error and ends the run here, before anything is written or dispatched (KB 22). The SARIF is read only when it
+    is a regular file and no link (``_derived_sibling``, SA-10).
     """
     path = os.path.abspath(os.fspath(given))
     problem = tp.path_problem(path, allow_absolute=True)
@@ -572,15 +694,16 @@ def _controls_scored_input(stage: str, given: Any) -> tuple:
         raise StageError(2, stage, "--risk-scores is not an acceptable path (%s)" % problem, "use a path with no backslash, backtick or control character")
     remedy = "regenerate it with /tachi.risk-score"
     beside = os.path.join(os.path.dirname(path), "risk-scores.sarif")
-    if os.path.basename(path) == "risk-scores.md" and not os.path.lexists(path) and os.path.lexists(beside):
+    if os.path.basename(path) == "risk-scores.md" and not os.path.lexists(path) and _derived_sibling(beside):
         sys.stderr.write("WARNING: %s is absent, so the findings are read from %s (the SARIF fallback)\n" % (path, beside))
         raw, text = _read_threats(stage, beside, remedy)
         try:
-            found = parse_sarif_member_set(text, with_details=True)
+            found = parse_sarif_member_set(text, with_scores=True, with_details=True)
             members = sorted(found["members"], key=tp.finding_sort_key)
             rows = {member: _sarif_unit_row(member, found["details"].get(member, {})) for member in members}
         except ValueError as exc:
             raise StageError(2, stage, "%s: %s" % (beside, str(exc)[:200]), "restore risk-scores.md, or " + remedy) from None
+        _refuse_unscorable(stage, os.path.basename(beside), found, remedy)
         return beside, raw, members, None, rows
     raw, text = _read_threats(stage, path, remedy)
     scores = rules.read_baseline_scores(Path(path))
@@ -621,18 +744,51 @@ def _controls_baseline(stage: str, resolution: "rules.BaselineResolution", input
     return persisted["inputs"]
 
 
+def _finding_layers(text: str, findings: Dict[str, Dict[str, Any]]) -> Dict[str, str]:
+    """Each finding's MAESTRO layer, by canonical ID, as the controls renderer takes it.
+
+    ``findings`` holds the open rows of ``threats.md``'s Section 7 (``parse_reference_set``) and ``text`` is that file. The chain is the
+    renderer's (``render-compensating-controls.py``, ``_read_reference`` and ``_overlay_reference``), and both read the same two
+    tables the same way: the MAESTRO Layer cell of the finding's own Section 7 row (the first row of an ID), else the MAESTRO Layer of
+    its component's Section 1 row (found by name, then case-folded; ``Unspecified`` for a row with no component, as the scorer writes
+    it), else ``Unclassified``. The agent copies it, and the renderer checks the agent's cell against it, so a row without it
+    would have the agent guess and every classified finding flagged ``input:maestro_layer:sources-disagree``.
+    """
+    by_component: Dict[str, str] = {}
+    for row in parse_markdown_table(text, "### Components"):
+        name = row.get("Component", "").strip()
+        if name and name not in by_component:
+            by_component[name] = row.get("MAESTRO Layer", "").strip()
+    by_finding: Dict[str, str] = {}
+    for row in parse_markdown_table(text, REFERENCE_SET_SECTION):
+        finding_id = row.get("Finding ID", "").strip()
+        if tp.id_matches("finding", finding_id):
+            by_finding.setdefault(tp.canonical_finding_id(finding_id), row.get("MAESTRO Layer", "").strip())
+    layers: Dict[str, str] = {}
+    for canonical, finding in findings.items():
+        component = finding["component"] or "Unspecified"
+        of_component = by_component.get(component)
+        if of_component is None:
+            folded = component.casefold()
+            of_component = next((layer for name, layer in by_component.items() if name.casefold() == folded), "")
+        layers[canonical] = by_finding.get(canonical) or of_component or "Unclassified"
+    return layers
+
+
 def _controls_units(stage: str, risk_scores: Any, threats: Any, baseline_flag: Optional[str], inputs: Dict[str, Dict[str, Any]],
                     refs: Dict[str, str]) -> List[Dict[str, Any]]:
     """The controls plan's units: every scored open finding of ``risk-scores.md``, in S-2 order (ADR-050 D2, D8, D9).
 
     The agent gets every scored finding, because it copies an UNCHANGED result from its row. A row holds the finding's
-    Section 7 values (``_unit_row``) from the ``threats.md`` that the input's validated ``source_file`` names: the path
-    must pass ``check_run_file`` (a regular file called ``threats.md``, no symlink on the way, under the working
-    directory), the reach that D8 gives the renderer too. A ``--threats`` that is also given must be that file, because one
-    stage must read one threat model. When the file can't be reached, a row holds the finding's ID only. When the input is
-    ``risk-scores.sarif``, which names no threat model, a row holds what the member's own result gives (``_sarif_unit_row``:
-    D8's details, from the reader that the renderer uses too, P0-3), and the ID alone for a member that only a legacy peer
-    reference names. In both, nothing is carried forward, with a warning: the agent reads the rest from ``refs.risk_scores``.
+    Section 7 values (``_unit_row``) and its MAESTRO ``layer`` from the ``threats.md`` that the input's validated
+    ``source_file`` names. The layer is the renderer's chain (``_finding_layers``), so the agent copies the value that the
+    renderer checks its cell against. The path must pass ``check_run_file`` (a regular file called ``threats.md``, no symlink
+    on the way, under the working directory), the reach that D8 gives the renderer too. A ``--threats`` that is also given
+    must be that file, because one stage must read one threat model. When the file can't be reached, a row holds the finding's
+    ID only. When the input is ``risk-scores.sarif``, which names no threat model, a row holds what the member's own result
+    gives (``_sarif_unit_row``: D8's details, from the reader that the renderer uses too, P0-3), the layer included, and
+    ``_controls_scored_input`` has already refused a member with no result of its own. In both, nothing is carried forward, with
+    a warning: the agent reads the rest from ``refs.risk_scores``.
 
     An UNCHANGED finding's row also takes its baseline's persisted result (``CARRIED_KEYS``), decoded, from
     ``_controls_baseline``. A finding whose form has no Status gets no ``delta_status`` and no carried result: the agent
@@ -649,6 +805,7 @@ def _controls_units(stage: str, risk_scores: Any, threats: Any, baseline_flag: O
     source = _scored_source_file(scored_text) if scored_text is not None else None
     checked = rules.check_run_file(source, cwd=Path(cwd), expected_name="threats.md")
     reference: Dict[str, tuple] = {}
+    layers: Dict[str, str] = {}
     threats_text: Optional[str] = None
     lacking: Dict[str, List[str]] = {}
     if checked.path is not None:
@@ -662,6 +819,7 @@ def _controls_units(stage: str, risk_scores: Any, threats: Any, baseline_flag: O
                              "drop --threats: this stage reaches threats.md through risk-scores.md's source_file")
         raw, pairs, threats_text, _, _, lacking = _read_member_set(stage, threats_path, threats_path)
         reference = {tp.canonical_finding_id(finding["id"]): (finding, unit) for finding, unit in pairs}
+        layers = _finding_layers(threats_text, {finding_id: pair[0] for finding_id, pair in reference.items()})
         refs["threats"] = threats_path
         inputs["threats"] = _input_entry(stage, threats_path, raw)
     else:
@@ -684,8 +842,10 @@ def _controls_units(stage: str, risk_scores: Any, threats: Any, baseline_flag: O
     for finding_id in members:
         found = reference.get(finding_id)
         unit = dict(found[1]) if found is not None else sarif_rows.get(finding_id, {"finding_id": finding_id})  # a SARIF member's own row, else the ID
-        if found is not None and found[0].get("delta_status") == "UNCHANGED" and finding_id in persisted:
-            unit.update({key: persisted[finding_id][key] for key in CARRIED_KEYS})
+        if found is not None:
+            unit["layer"] = layers[finding_id]
+            if found[0].get("delta_status") == "UNCHANGED" and finding_id in persisted:
+                unit.update({key: persisted[finding_id][key] for key in CARRIED_KEYS})
         units.append(unit)
 
     if threats_text is not None:
@@ -717,7 +877,9 @@ def plan_stage(stage: str, out: Any, date: str, threats: Any = None, risk_scores
     ``threats.md`` comes from the input's ``source_file``. Splits those units, in S-2 order, into balanced contiguous
     batches of at most ``batch_size`` (the stage's constant when ``None``), writes the plan, one batch input for each
     batch and the pre-image copies, and only then replaces the current-plan pointer. A plan with no units (every
-    finding carried or copied) has no batches and a null ``batch_size``, and reconciles as complete.
+    finding carried or copied) has no batches and a null ``batch_size``, and reconciles as complete. A value that a batch
+    input would carry, and that D3's step 10 forbids, ends the plan before anything is written (exit 2,
+    ``_refuse_forbidden_units``; P0-4, SA-1).
 
     The plan holds the stage's pointers as ``refs``, built once after the routing (which adds ``baseline_dir``), and each
     batch input copies them for its agent, so a plan with no units keeps them for the renderer's URI. It also holds
@@ -762,6 +924,7 @@ def plan_stage(stage: str, out: Any, date: str, threats: Any = None, risk_scores
         units = [unit for _, unit in members]
         plan_inputs = dict(extra_inputs, threats=_input_entry(stage, threats_path, raw))
 
+    _refuse_forbidden_units(stage, units, refs.get("threats") or refs["risk_scores"])  # before anything is written (P0-4, SA-1)
     count = len(units)
     planned = -(-count // size)
     if planned > MAX_BATCHES:
@@ -948,7 +1111,7 @@ def _undeclared_paths(out: str, stage: str, plan: Dict[str, Any]) -> tuple:
     if snapshot is None:
         return [], [{"code": "declared-paths-skipped", "detail": "the plan took no snapshot of the output directory"}]
     found = sorted(relpath for relpath, size, mtime in _walk(out)
-                   if snapshot.get(relpath) != [size, mtime] and not tp.is_declared_path(relpath, stage, plan["plan_id"]))
+                   if snapshot.get(_snapshot_key(relpath)) != [size, mtime] and not tp.is_declared_path(relpath, stage, plan["plan_id"]))
     recordable = [relpath for relpath in found if tp.path_problem(relpath) is None]
     warnings = []
     if len(recordable) != len(found):

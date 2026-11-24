@@ -1781,17 +1781,119 @@ def test_a_name_a_record_cannot_hold_is_counted_not_listed(stage, cli, tmp_path)
     assert [w["code"] for w in rec["warnings"]] == ["undeclared-paths-unrecordable"]
 
 
-def test_a_plan_with_no_snapshot_skips_the_declared_paths_check_with_a_warning(stage, cli, tmp_path):
-    """ADR-050 D4: the snapshot is skipped, with a warning, for a name the plan can't record (or above 20,000 files)."""
+def test_a_plan_with_no_snapshot_skips_the_declared_paths_check_with_a_warning(stage, cli, tmp_path, monkeypatch):
+    """ADR-050 D4: the snapshot is skipped, with a warning, above 20,000 files (made 2 here). A name that the plan can't record no longer
+    skips it (SA-5, below)."""
     h = Harness(stage, cli, tmp_path, "risk-score")
-    (h.out / "odd\\name.txt").write_bytes(b"x")
+    monkeypatch.setattr(stage.tp, "MAX_SNAPSHOT_ENTRIES", 2)
+    for name in ("a.txt", "b.txt"):
+        (h.out / name).write_bytes(b"x")  # with threats.md, three files
     res = h.plan_cli()
-    assert res.code == 0 and "snapshot is skipped" in res.err, res.describe()
+    assert res.code == 0 and "snapshot is skipped" in res.err and "more than 2 files" in res.err, res.describe()
     assert h.plan_json()["out_snapshot"] is None
     (h.out / "gen.py").write_bytes(b"x")
     assert h.fail("check-failed").code == 0
     rec = h.read_json(h.plan_dir / "stage-record.json")
     assert rec["undeclared_paths"] == [] and [w["code"] for w in rec["warnings"]] == ["declared-paths-skipped"]
+
+
+def test_a_snapshot_at_its_cap_is_still_taken(stage, cli, tmp_path, monkeypatch):
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    monkeypatch.setattr(stage.tp, "MAX_SNAPSHOT_ENTRIES", 2)
+    (h.out / "a.txt").write_bytes(b"x")  # threats.md and this: exactly the cap
+    assert h.plan_cli().code == 0 and sorted(h.plan_json()["out_snapshot"]) == ["a.txt", "threats.md"]
+
+
+# ---- SA-5: a name that the plan can't record doesn't switch the declared-paths check off
+#
+# One name with a colon in its first component, or a backslash, used to make the snapshot None, so a file that an agent wrote later (or a
+# repository planted) was never reported. The name is now keyed by a stand-in made from its digest: an odd name that was there at plan time
+# is unchanged, and a changed or new one is counted through ``undeclared-paths-unrecordable``, as it is when it turns up later.
+
+ODD_NAMES = ["note:final.txt", "back\\slash.txt", "tick`name.txt"]  # a scheme-like first component, a backslash and a backtick: D7's rule refuses each
+
+
+def keys_of_odd_names(snapshot):
+    return sorted(key for key in snapshot if key.startswith("./unrecordable:"))
+
+
+def test_an_odd_name_present_at_plan_time_does_not_hide_a_planted_file(stage, cli, tmp_path):
+    """Probe C of the advisory: with ``note:final.txt`` in ``--out``, the plan had no snapshot and ``evil.sh`` was never listed."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    for name in ODD_NAMES:
+        (h.out / name).write_bytes(b"x" * (len(name) + 1))
+    res = h.plan_cli()
+    assert res.code == 0 and "snapshot is skipped" not in res.err and "WARNING" not in res.err, res.describe()
+    snapshot = h.plan_json()["out_snapshot"]
+    assert snapshot is not None and "threats.md" in snapshot and len(keys_of_odd_names(snapshot)) == len(ODD_NAMES)
+    assert not any(name in snapshot for name in ODD_NAMES), "no plan holds an odd name itself"
+    (h.out / "evil.sh").write_bytes(b"x")
+    assert h.fail("check-failed").code == 0
+    rec = h.read_json(h.plan_dir / "stage-record.json")
+    assert rec["undeclared_paths"] == ["evil.sh"]
+    assert rec["warnings"] == [], "the odd names were there at plan time and are unchanged, so nothing is said of them"
+
+
+@pytest.mark.parametrize("change", ["a size", "a new odd name"])
+def test_an_odd_name_that_changed_or_arrived_since_the_plan_is_counted_not_listed(stage, cli, tmp_path, change):
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    (h.out / ODD_NAMES[0]).write_bytes(b"x")
+    assert h.plan_cli().code == 0
+    if change == "a size":
+        (h.out / ODD_NAMES[0]).write_bytes(b"xx")
+    else:
+        (h.out / ODD_NAMES[1]).write_bytes(b"x")
+    assert h.fail("check-failed").code == 0
+    rec = h.read_json(h.plan_dir / "stage-record.json")
+    assert rec["undeclared_paths"] == []
+    assert rec["warnings"] == [{"code": "undeclared-paths-unrecordable", "detail": "1 undeclared paths have names a record can't hold"}]
+
+
+# Names that D7's rule came to refuse when SA-8 made ``path_problem`` follow step 10's set: a separator, a bidi control and a tag character. A copy of
+# the rule's names would go stale each time it changes, so the test below sorts every name by asking ``path_problem`` itself, whichever version of it
+# runs. (Before SA-8 these six are ordinary names and keep their own keys. After it they are refused and take a stand-in.)
+WIDENED_NAMES = ["bidi" + chr(0x202E) + "name.txt", "separator" + chr(0x2028) + "name.txt", "paragraph" + chr(0x2029) + "name.txt",
+                 "mark" + chr(0x200E) + "name.txt", "arabic" + chr(0x061C) + "name.txt", "tag" + chr(0xE0001) + "name.txt"]
+
+
+def test_every_name_that_the_path_rule_refuses_gets_a_stand_in_whatever_the_rule_is(stage, cli, tmp_path):
+    """SA-5 keys by ``path_problem`` and not by a list of cases, so a name that the rule comes to refuse needs no change here: it is a stand-in in
+    the plan, an unchanged one is not reported, and a changed one is counted and not listed. A name that the rule accepts keeps its own key, is
+    unchanged, and is listed when it changes. The planted file is found either way."""
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    names = ODD_NAMES + WIDENED_NAMES
+    refused = [name for name in names if stage.tp.path_problem(name) is not None]
+    accepted = [name for name in names if name not in refused]
+    assert set(ODD_NAMES) <= set(refused), "a colon, a backslash and a backtick are refused by every version of the rule"
+    for name in names:
+        (h.out / name).write_bytes(b"x")
+    res = h.plan_cli()
+    assert res.code == 0 and "snapshot is skipped" not in res.err, res.describe()
+    snapshot = h.plan_json()["out_snapshot"]
+    assert snapshot is not None and set(accepted) <= set(snapshot) and not set(refused) & set(snapshot)
+    assert len(keys_of_odd_names(snapshot)) == len(refused) and len(snapshot) == 1 + len(names), "threats.md and one key for each name"
+    (h.out / "evil.sh").write_bytes(b"x")
+    assert h.fail("check-failed").code == 0
+    rec = h.read_json(h.plan_dir / "stage-record.json")
+    assert rec["undeclared_paths"] == ["evil.sh"] and rec["warnings"] == [], "nothing else is new or changed"
+    for name in names:
+        (h.out / name).write_bytes(b"xx")  # every name changes
+    assert h.fail("check-failed").code == 0
+    rec = h.read_json(h.plan_dir / "stage-record.json")
+    assert rec["undeclared_paths"] == sorted(["evil.sh"] + accepted)
+    assert rec["warnings"] == [{"code": "undeclared-paths-unrecordable", "detail": "%d undeclared paths have names a record can't hold" % len(refused)}]
+
+
+def test_the_stand_in_for_an_odd_name_is_stable_unique_and_valid_in_a_plan(stage):
+    """The key is the name's digest, so it doesn't change between runs, two names never share one, and a name that isn't UTF-8 has one too. It
+    passes the plan's own path check, which the ``./`` makes possible (the colon is then not in the first component)."""
+    ordinary = ["threats.md", "a/b.txt", ".tachi-build/risk-score/current.json"]
+    assert [stage._snapshot_key(name) for name in ordinary] == ordinary
+    odd = ODD_NAMES + ["bad" + chr(0xDCFF) + ".txt", "tab\tname"]  # a surrogate stands for a byte that no UTF-8 name holds
+    keys = [stage._snapshot_key(name) for name in odd]
+    assert keys == [stage._snapshot_key(name) for name in odd] and len(set(keys)) == len(odd)
+    for key in keys:
+        assert re.fullmatch(r"\./unrecordable:[0-9a-f]{64}", key) and stage.tp.path_problem(key) is None and not key.startswith(("/", "../"))
 
 
 def test_fail_leaves_earlier_outputs_alone_on_a_re_run(stage, cli, tmp_path):
@@ -3100,11 +3202,14 @@ def test_fail_leaves_the_architecture_warning_out_when_the_plan_fails_its_trust_
 
 # ---- the SARIF fallback (D8, AR-T2)
 
-def make_threats_sarif(ids, peers=None, absent=()):
-    """A ``threats.sarif`` with one result for each ID. ``peers`` maps a peer to its primary, which are grouped as CG-1."""
+def make_threats_sarif(ids, peers=None, absent=(), score=None):
+    """A ``threats.sarif`` with one result for each ID. ``peers`` maps a peer to its primary, which are grouped as CG-1. ``score`` gives
+    each result that composite (a scored SARIF: the controls stage needs one on every member of its fallback)."""
     results = []
     for fid in ids:
         properties = {"baseline-state": "absent"} if fid in absent else {}
+        if score is not None:
+            properties["composite"] = score
         if peers and fid in peers:
             properties.update({"correlation-group": "CG-1", "correlation-role": "peer", "correlation-primary": peers[fid]})
         elif peers and fid in peers.values():
@@ -3214,8 +3319,13 @@ def shipped_sarif(shape):
 
 
 def fallback_only(stage, cli, tmp_path, monkeypatch, sarif, name="risk-score"):
-    """A project whose only scored input is a SARIF: ``threats.sarif`` for the scorer, ``risk-scores.sarif`` for the controls stage."""
-    return (sarif_only if name == "risk-score" else scores_sarif_only)(stage, cli, tmp_path, monkeypatch, sarif)
+    """A project whose only scored input is a SARIF: ``threats.sarif`` for the scorer, ``risk-scores.sarif`` for the controls stage.
+
+    The controls stage plans only a member that its renderer can score, so the SARIF that stands in for its ``risk-scores.sarif`` gets a
+    composite on each result that has none. A row's text is what the results give, so nothing else changes."""
+    if name == "risk-score":
+        return sarif_only(stage, cli, tmp_path, monkeypatch, sarif)
+    return scores_sarif_only(stage, cli, tmp_path, monkeypatch, with_composites(sarif))
 
 
 def sarif_of(*results):
@@ -3444,8 +3554,9 @@ def test_the_planners_risk_label_equals_the_renderers_over_each_shipped_sample(s
     """Each member's own level, read as D8 reads it, gets the same label from the renderer's function as the controls stage's row holds (that
     stage plans every member, peers too). The threats.sarif samples hold a band word or none, and the other five hold a score."""
     text = (REPO_ROOT / "examples" / sample).read_text(encoding="utf-8")
-    h = scores_sarif_only(stage, cli, tmp_path, monkeypatch, text)
-    assert h.plan_cli().code == 0
+    h = scores_sarif_only(stage, cli, tmp_path, monkeypatch, with_composites(text))   # a threats.sarif has no composite, which the controls stage now needs
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
     rows = unit_rows(h)
     levels = {finding_id: own_text(result)["risk_level"] for finding_id, result in kept_results(text).items()}
     assert len(levels) > 5 and set(levels) <= set(rows)
@@ -3472,11 +3583,11 @@ def test_the_component_falls_back_to_the_property_when_the_location_has_no_name(
 
 
 def test_the_rows_hold_each_text_as_the_file_writes_it_and_the_first_result_of_an_id_wins(stage, cli, tmp_path, monkeypatch):
-    """The renderer checks each value where it takes it (P0-4), so the planner neither escapes, trims nor refuses a character: the agent
-    reads the text as data. Two results for one ID give the first one's text, as the reader says. The batch input that holds the rows
-    reads back through the document reader (a retry does that), a character outside the basic plane included: JSON spells it as a
-    surrogate pair, which is not a lone surrogate."""
-    awkward = " a < b & c | `d` {{e}} " + chr(0xE9) + chr(0x2014) + chr(0x1B) + "[0m" + chr(0x202E) + chr(0x1F600) + "\n\t "
+    """The planner neither escapes nor trims a value, and refuses only a character that step 10 forbids (``test_a_character_that_step_10_forbids_...``
+    below): the agent reads the rest as data, and the renderer escapes it where it writes it. Two results for one ID give the first one's
+    text, as the reader says. The batch input that holds the rows reads back through the document reader (a retry does that), a character
+    outside the basic plane included: JSON spells it as a surrogate pair, which is not a lone surrogate."""
+    awkward = " a < b & c | `d` {{e}} " + chr(0xE9) + chr(0x2014) + "[0m" + chr(0x1F600) + "\n\t "
     sarif = sarif_of(detail_result("S-1", name=awkward, text=awkward, markdown=awkward, properties={"maestro-layer": awkward, "risk_level": awkward}),
                      detail_result("S-1", name="second", text="second"))
     h = sarif_only(stage, cli, tmp_path, monkeypatch, sarif)
@@ -3514,17 +3625,102 @@ def test_a_lone_surrogate_in_a_peers_text_stops_the_scorer_too(stage, cli, tmp_p
     assert res.code == 2 and "the threat of E-1" in res.err, res.describe()
 
 
-@pytest.mark.parametrize("name", STAGE_NAMES)
-def test_a_member_that_only_a_legacy_peer_reference_names_has_a_row_of_its_id_alone(stage, cli, tmp_path, monkeypatch, name):
-    """It has no result of its own, so it has no text. The scorer never plans it, because a peer copies its primary."""
+def test_a_member_that_only_a_legacy_peer_reference_names_is_never_planned_by_the_scorer(stage, cli, tmp_path, monkeypatch):
+    """It has no result of its own, so it has no text, and a peer copies its primary, so the scorer never plans it. (The controls stage
+    would plan it, and its renderer could not score it: ``test_the_controls_plan_refuses_a_member_...`` below.)"""
     primary = detail_result("S-1", name="Gateway", text="the primary's threat")
     primary["relatedLocations"] = [{"message": {"text": "E-1: a legacy peer reference"}}]
-    h = fallback_only(stage, cli, tmp_path, monkeypatch, sarif_of(primary), name)
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, sarif_of(primary))
     assert h.plan_cli().code == 0
-    expected = {"S-1": {"finding_id": "S-1", "component": "Gateway", "threat": "the primary's threat"}}
-    if name != "risk-score":
-        expected["E-1"] = {"finding_id": "E-1"}
-    assert unit_rows(h) == expected
+    assert unit_rows(h) == {"S-1": {"finding_id": "S-1", "component": "Gateway", "threat": "the primary's threat"}}
+
+
+# ---- the controls fallback plans only a member that its renderer can score (ADR-050 D8; KB 22)
+#
+# D8's member set is the SARIF's results plus any legacy peer reference in ``relatedLocations``. ``render-compensating-controls.py`` can't
+# score a member that no result of its own names (a peer reference holds no score), or one whose result has no composite from 0.0 to 10.0
+# on the 0.1 grid, and it ended the run with exit 2 after every agent had run. The planner refuses such a member before any is dispatched,
+# with the renderer's message and remedy (``_members_from_sarif`` and ``_valid_inherent``), which the tests below read from the renderer
+# itself, so the two can't drift apart.
+
+@pytest.fixture(scope="module")
+def controls_renderer():
+    return _load_hyphenated_script("render_compensating_controls_for_stage_tests", "render-compensating-controls.py")
+
+
+def renderer_refusal(controls_renderer, sarif_text):
+    """The error that the controls renderer's reader of D8's fallback raises for this SARIF."""
+    run = controls_renderer.Run()
+    with pytest.raises(controls_renderer.RenderError) as caught:
+        controls_renderer._members_from_sarif(run, {"path": "/run/risk-scores.sarif"}, sarif_text.encode("utf-8"), "kept")
+    return caught.value
+
+
+def assert_refused_before_dispatch(h, res, controls_renderer, sarif_text, needle):
+    """Exit 2 with the renderer's own reason and remedy, and nothing written. ``needle`` is what that reason has to say."""
+    refusal = renderer_refusal(controls_renderer, sarif_text)
+    assert refusal.code == 2 and needle in refusal.reason, "the renderer ends the run on this member, so the planner must too"
+    assert res.code == 2, res.describe()
+    assert "TACHI COMPENSATING-CONTROLS FAILED: " + refusal.reason in res.err and "Remedy: " + refusal.remedy in res.err, res.describe()
+    assert refusal.remedy == "regenerate it with /tachi.risk-score"
+    assert not (h.build / "current.json").exists() and not list(h.out.glob(".tachi-build/compensating-controls/*/plan.json"))
+
+
+def test_the_controls_plan_refuses_a_member_that_only_a_legacy_peer_reference_names(stage, cli, controls_renderer, tmp_path, monkeypatch):
+    """The v4.48.x scorer lists each peer in its primary's ``relatedLocations`` and gives it no result. A plan made from such a file
+    exited 0 with a unit for that peer, every agent ran, and the render then exited 2."""
+    primary = detail_result("S-1", name="Gateway", text="the primary's threat", properties={"composite": SCORE})
+    primary["relatedLocations"] = [{"message": {"text": "E-1: a legacy peer reference"}}]
+    sarif = sarif_of(primary)
+    h = scores_sarif_only(stage, cli, tmp_path, monkeypatch, sarif)
+    res = h.plan_cli()
+    assert_refused_before_dispatch(h, res, controls_renderer, sarif, "E-1 only as a peer reference")
+    assert "risk-scores.sarif names E-1 only as a peer reference, so it holds no result and no score for it" in res.err
+
+
+def test_the_controls_plan_refuses_the_shipped_scorer_sarif_once_its_peers_are_only_peer_references(stage, cli, controls_renderer, tmp_path, monkeypatch):
+    """``examples/maestro-reference/risk-scores.sarif`` lists its peers in ``relatedLocations`` and gives each one a result too, so the file
+    plans as shipped (``test_the_planners_risk_label_equals_the_renderers_over_each_shipped_sample``). Taking the peers' results out of a copy
+    leaves the form that the v4.48.x scorer wrote (primaries and uncorrelated findings only), and the plan refuses it."""
+    text = (REPO_ROOT / "examples" / "maestro-reference" / "risk-scores.sarif").read_text(encoding="utf-8")
+    document = json.loads(text)
+    results = document["runs"][0]["results"]
+    named = {canon(match.group("id")) for result in results for location in result.get("relatedLocations", [])
+             for match in [re.match(r"(?P<id>[A-Z]+-[0-9]+): ", location["message"]["text"])] if match}
+    assert len(named) >= 3 and {canon(kept["partialFingerprints"]["findingId/v1"]) for kept in results} >= named, "each peer has a result of its own in the sample"
+    document["runs"][0]["results"] = [result for result in results if canon(result["partialFingerprints"]["findingId/v1"]) not in named]
+    sarif = json.dumps(document)
+    h = scores_sarif_only(stage, cli, tmp_path, monkeypatch, sarif)
+    res = h.plan_cli()
+    assert_refused_before_dispatch(h, res, controls_renderer, sarif, "only as a peer reference")
+    assert re.search(r"risk-scores\.sarif names [A-Z]+-[0-9]+ only as a peer reference", res.err)
+
+
+@pytest.mark.parametrize("composite", [None, "not a number", "", "11", "-1", 11, -1, 7.25, "7.25", "6.45", True],
+                         ids=["absent", "text", "empty", "above-10-text", "below-0-text", "above-10", "below-0", "off-grid-number", "off-grid-text",
+                              "off-grid-hundredths", "boolean"])
+def test_the_controls_plan_refuses_a_member_whose_result_has_no_composite_on_the_grid(stage, cli, controls_renderer, tmp_path, monkeypatch, composite):
+    """A result that gives no composite the reader accepts, or one off the 0.1 grid, has no inherent score for the renderer. The first such
+    member in S-2 order is named, though a later one has the same fault."""
+    properties = {} if composite is None else {"composite": composite}
+    sarif = sarif_of(detail_result("S-1", text="scored", properties={"composite": SCORE}), detail_result("T-2", text="unscored", properties=properties),
+                     detail_result("D-1", text="also unscored"))
+    h = scores_sarif_only(stage, cli, tmp_path, monkeypatch, sarif)
+    res = h.plan_cli()
+    assert_refused_before_dispatch(h, res, controls_renderer, sarif, "for T-2,")
+    assert "the input risk-scores.sarif holds no score from 0.0 to 10.0 on the 0.1 grid for T-2, so its residual risk can't be computed" in res.err
+
+
+def test_a_score_in_security_severity_counts_and_so_does_a_composite_on_the_grid_at_each_end(stage, cli, tmp_path, monkeypatch):
+    """The reader takes the composite from ``composite``, else ``security-severity`` (the scorer agent's own property), and 0.0 and 10.0 are on the grid."""
+    sarif = sarif_of(detail_result("S-1", properties={"security-severity": "8.4"}), detail_result("T-2", properties={"composite": "0.0"}),
+                     detail_result("D-1", properties={"composite": 10}), detail_result("E-1", properties={"composite": "9.95", "security-severity": "4.0"}))
+    h = scores_sarif_only(stage, cli, tmp_path, monkeypatch, sarif)
+    res = h.plan_cli()
+    assert res.code == 2 and "for E-1" in res.err, "a composite that is set wins over security-severity, and 9.95 is off the grid"
+    (tmp_path / "again").mkdir()
+    h = scores_sarif_only(stage, cli, tmp_path / "again", monkeypatch, sarif.replace("9.95", "9.9"))
+    assert h.plan_cli().code == 0 and agent_ids(h) == ["S-1", "T-2", "D-1", "E-1"]
 
 
 # =========================================================================== controls planning (T036; ADR-050 D2, D8, D9)
@@ -3649,7 +3845,8 @@ def test_the_controls_plan_sends_every_scored_finding_with_its_section_7_row_and
         assert rows[finding_id]["delta_status"] == status, finding_id
         assert rows[finding_id]["threat"] == "Threat text for %s" % finding_id
         assert rows[finding_id]["mitigation"] == "Mitigation text for %s" % finding_id
-    assert set(rows["S-1"]) == {"finding_id", "component", "threat", "risk_level", "mitigation", "agentic_pattern", "delta_status"}
+        assert rows[finding_id]["layer"] == "L4 " + _DASH + " Deployment", "Section 7's MAESTRO Layer cell"
+    assert set(rows["S-1"]) == {"finding_id", "component", "threat", "risk_level", "mitigation", "agentic_pattern", "delta_status", "layer"}
     plan = h.plan_json()
     assert plan["refs"] == h.expected_refs and set(plan["inputs"]) == {"risk_scores", "threats"}
     assert plan["inputs"]["risk_scores"]["sha256"] == sha256_of(h.risk_scores) and plan["inputs"]["threats"]["sha256"] == sha256_of(h.threats)
@@ -4029,7 +4226,23 @@ def test_the_scorer_still_needs_its_threats(stage, cli, tmp_path):
 
 # ---- the SARIF fallback: risk-scores.sarif when risk-scores.md is absent (D8, AR-T2)
 
-make_scores_sarif = make_threats_sarif  # the same shape: one result for each finding, with its findingId/v1
+SCORE = "6.4"
+
+
+def make_scores_sarif(ids, peers=None, absent=()):
+    """The same shape as ``make_threats_sarif``, scored: one result for each finding, with its findingId/v1 and a composite."""
+    return make_threats_sarif(ids, peers=peers, absent=absent, score=SCORE)
+
+
+def with_composites(sarif_text, score=SCORE):
+    """``sarif_text`` with a composite on each result that has none, so a ``threats.sarif`` can stand in for a ``risk-scores.sarif``. A result that has
+    one keeps it, and nothing else about a result changes, so a row's text, level and layer are what they were."""
+    document = json.loads(sarif_text)
+    for result in document["runs"][0]["results"]:
+        properties = result.setdefault("properties", {})
+        if "composite" not in properties and "security-severity" not in properties:
+            properties["composite"] = score
+    return json.dumps(document)
 
 
 def scores_sarif_only(stage, cli, tmp_path, monkeypatch, sarif):
@@ -4089,3 +4302,249 @@ def test_risk_scores_md_wins_when_both_exist_and_the_fallback_has_no_other_file(
     assert h.plan_cli().code == 1, "the scorer's fallback is not the controls stage's"
     renamed = h.cli("plan", "--stage", CONTROLS, "--out", h.out, "--date", DATE, "--risk-scores", h.out / "renamed.md", "--target", h.target)
     assert renamed.code == 1, "only risk-scores.md has a SARIF to fall back to"
+
+
+# =========================================================================== a character that step 10 forbids ends the plan before dispatch (P0-4, SA-1)
+#
+# Step 10 checks a part, and a batch input carries text that no part check has seen: each row's text, from threats.md or a SARIF, and, for an
+# UNCHANGED controls finding, the baseline's persisted result, which the agent copies into its part verbatim. One forbidden character in that
+# result made the part invalid on every attempt (the advisory's probe K: exit 3, 3, then 4, with the whole batch exhausted), and the renderer
+# refuses a row's text only after every agent has run. So the planner refuses it first, with exit 2, naming the finding, the field and the
+# file, and giving the character's code point and never the character.
+
+FORBIDDEN_CHARACTERS = {"escape": "\x1b", "bidi-override": chr(0x202E), "line-separator": chr(0x2028), "next-line": "\x85", "carriage-return": "\r"}
+ESC = FORBIDDEN_CHARACTERS["escape"]
+REGENERATE = "regenerate %s with %s, or edit the value to remove the character, then re-run the command"
+
+
+def assert_forbidden_refusal(h, res, char, where, field, finding_id, command):
+    """Exit 2 before anything is written: the message names the file, the character's code point, the field and the finding, and the remedy
+    names the file and the command. The character itself is nowhere in the output."""
+    assert res.code == 2, res.describe()
+    assert ("TACHI %s FAILED: %s holds the character U+%04X, which the part contract forbids, in the %s of %s"
+            % (h.name.upper(), where, ord(char), field, finding_id)) in res.err, res.describe()
+    assert "Remedy: " + REGENERATE % (where, command) in res.err, res.describe()
+    assert char not in res.err and char not in res.out, "the code point is given, never the text"
+    assert not (h.build / "current.json").exists() and not list(h.out.glob(".tachi-build/*/*/plan.json")), "nothing is written"
+
+
+@pytest.mark.parametrize("kind", sorted(FORBIDDEN_CHARACTERS))
+@pytest.mark.parametrize("field,cell", [("threat", "Threat text for T-2"), ("mitigation", "Mitigation text for T-2")])
+def test_a_character_that_step_10_forbids_in_a_scorer_row_ends_the_plan_before_dispatch(stage, cli, tmp_path, kind, field, cell):
+    char = FORBIDDEN_CHARACTERS[kind]
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=["S-1", "T-2"])
+    h.threats.write_bytes(h.threats.read_bytes().replace(cell.encode(), cell.replace("text", char + "text").encode("utf-8")))
+    assert_forbidden_refusal(h, h.plan_cli(), char, "threats.md", field, "T-2", "/tachi.threat-model")
+
+
+SARIF_FIELDS = [
+    ("component", dict(name="Gate" + ESC + "way")), ("threat", dict(text="a" + ESC + "b")), ("mitigation", dict(markdown="a" + ESC + "b")),
+    ("layer", dict(properties={"maestro-layer": "L" + ESC + "3"})), ("risk_level", dict(properties={"risk_level": "Hi" + ESC + "gh"})),
+]
+
+
+@pytest.mark.parametrize("name", STAGE_NAMES)
+@pytest.mark.parametrize("field,result", SARIF_FIELDS, ids=[field for field, _ in SARIF_FIELDS])
+def test_a_character_that_step_10_forbids_in_a_sarif_fallback_row_ends_the_plan_before_dispatch(stage, cli, tmp_path, monkeypatch, name, field, result):
+    """Each stage names its own SARIF and the command that writes it. (A lone surrogate, which only JSON can spell, is refused as it always was.)"""
+    sarif = sarif_of(detail_result("S-1", name="Gateway", text="a threat"), detail_result("T-2", **result))
+    h = fallback_only(stage, cli, tmp_path, monkeypatch, sarif, name)
+    where, command = ("threats.sarif", "/tachi.threat-model") if name == "risk-score" else ("risk-scores.sarif", "/tachi.risk-score")
+    assert_forbidden_refusal(h, h.plan_cli(), ESC, where, field, "T-2", command)
+
+
+@pytest.mark.parametrize("field,cell,finding_id", [("mitigation", "Mitigation text for T-2", "T-2"), ("layer", "L4 " + _DASH + " Deployment", "S-1")])
+def test_a_character_that_step_10_forbids_in_a_controls_row_names_the_threat_model(stage, cli, tmp_path, monkeypatch, field, cell, finding_id):
+    """The row's text comes from the ``threats.md`` that ``risk-scores.md`` names. The layer is in the row too, and the first row in plan order is named."""
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, {"S-1": "NEW", "T-2": "NEW"})
+    h.threats.write_bytes(h.threats.read_bytes().replace(cell.encode("utf-8"), (cell[:3] + ESC + cell[3:]).encode("utf-8")))
+    assert_forbidden_refusal(h, h.plan_cli(), ESC, "threats.md", field, finding_id, "/tachi.threat-model")
+
+
+# What an UNCHANGED finding's row carries: each field of a persisted result that the agent copies back, whose text the reader doesn't check.
+# (``evidence.0.file`` isn't here: the reader holds it to D7's path rule, and a row that fails it is scanned fresh, with a warning.)
+CARRY_FIELDS = [
+    ("evidence.0.summary", lambda item, char: item["evidence"][0].update(summary="Checks" + char + " a")),
+    ("evidence.0.snippet", lambda item, char: item["evidence"][0].update(snippet="x = 1" + char + "[0m")),
+    ("evidence.0.assessment.coverage.rationale",
+     lambda item, char: item["evidence"][0]["assessment"]["coverage"].update(rationale="The check" + char + " is deep")),
+    ("matrix_row", lambda item, char: item.update(matrix_row=item["matrix_row"].replace("A <threat>", "A " + char + "<threat>"))),
+    ("recommendation_body", lambda item, char: item.update(recommendation_body=item["recommendation_body"].replace("Validate", "Val" + char + "idate"))),
+]
+
+
+@pytest.mark.parametrize("kind", ["bidi-override", "escape"])
+@pytest.mark.parametrize("field,change", CARRY_FIELDS, ids=[field for field, _ in CARRY_FIELDS])
+def test_a_character_that_step_10_forbids_in_a_baselines_persisted_result_ends_the_plan_before_dispatch(stage, cli, tmp_path, monkeypatch, field, change, kind):
+    """Probe K of the advisory: the planner carried the value, the agent copied it into a part, step 10 refused the part, and ``reconcile`` re-dispatched
+    the same batch (exit 3, 3, then 4), as often as the baseline was used. It now stops at the plan, and names the baseline's file and the field."""
+    char = FORBIDDEN_CHARACTERS[kind]
+    item = json.loads(json.dumps(CARRY_PARTIAL))
+    change(item, char)
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, CARRY_STATUSES, {"T-2": item, "D-1": CARRY_MISSING})
+    assert_forbidden_refusal(h, h.plan_cli(), char, "the baseline compensating-controls.md", field, "T-2", "/tachi.compensating-controls")
+
+
+def test_a_persisted_result_that_nothing_carries_is_not_checked(stage, cli, tmp_path, monkeypatch):
+    """Only what a batch input would carry is refused. R-1 is UPDATED, so it is scanned fresh and its persisted result is not copied into its row."""
+    item = json.loads(json.dumps(CARRY_MISSING))
+    item["recommendation_body"] = item["recommendation_body"].replace("Add one", "Add" + ESC + " one")
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, CARRY_STATUSES, {"R-1": item, "D-1": CARRY_MISSING})
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
+    assert carried_values(unit_rows(h)["R-1"]) == {} and carried_values(unit_rows(h)["D-1"]) != {}
+
+
+def test_the_walk_for_a_forbidden_character_reads_text_keys_and_lists_and_nothing_else(stage):
+    walk = stage._first_forbidden
+    assert [walk(value, "x") for value in ("clean", "", 7, None, True, 1.5, ("a\x1b",), {"ok": 1})] == [None] * 8
+    assert walk("a\x1bb", "x") == ("x", "\x1b")
+    assert walk({"a": ["ok", {"b": "c" + chr(0x202E) + "d"}]}, "x") == ("x.a.1.b", chr(0x202E))
+    assert walk({"k\x00ey": "fine"}, "x") == ("x.k\x00ey", "\x00"), "a key is text too"
+    assert walk([0, "\ud800"], "x") == ("x.1", "\ud800"), "a lone surrogate is in the set (ruled at W3)"
+
+
+# =========================================================================== SA-10 and S7-4: what the planner reads through a link, or with no cap
+#
+# A path that the planner derives (the SARIF beside a markdown input) lies in a directory that a repository may fill, and git stores symlinks. A
+# file whose digest becomes a plan input is read at most 16 MiB and through no link, as every other input is.
+
+SIBLINGS = {"risk-score": "threats.sarif", CONTROLS: "risk-scores.sarif"}
+
+
+@pytest.mark.parametrize("kind", ["symlink", "dangling-symlink", "directory"])
+@pytest.mark.parametrize("name", STAGE_NAMES)
+def test_a_derived_sarif_that_is_a_link_or_not_a_file_is_left_unread(stage, cli, tmp_path, monkeypatch, name, kind):
+    """Probe O of the advisory: a ``threats.sarif`` that was a symlink to a file outside the run directory was planned (33 units). It is left unread,
+    with a warning, and the plan goes on by its rules for a markdown input that isn't there: exit 1."""
+    h = fallback_only(stage, cli, tmp_path, monkeypatch, make_threats_sarif(["S-1", "T-2"]), name)
+    sibling = h.out / SIBLINGS[name]
+    outside = tmp_path / "outside.sarif"
+    sibling.rename(outside)
+    if kind == "symlink":
+        os.symlink(str(outside), str(sibling))
+    elif kind == "dangling-symlink":
+        os.symlink(str(tmp_path / "nowhere.sarif"), str(sibling))
+    else:
+        sibling.mkdir()
+    res = h.plan_cli()
+    assert res.code == 1 and "cannot read" in res.err, res.describe()
+    assert "WARNING: %s is a symbolic link or not a regular file, so it is not read as the fallback input" % sibling in res.err
+    assert "the SARIF fallback" not in res.err and not (h.build / "current.json").exists()
+
+
+@pytest.mark.parametrize("name", STAGE_NAMES)
+def test_a_sibling_link_is_not_looked_at_when_the_markdown_is_there(stage, cli, tmp_path, monkeypatch, name):
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, name, ids=["S-1"])
+    os.symlink(str(tmp_path / "nowhere.sarif"), str(h.out / SIBLINGS[name]))
+    res = h.plan_cli()
+    assert res.code == 0 and "WARNING" not in res.err, res.describe()
+
+
+def test_a_sibling_that_is_a_regular_file_in_a_directory_reached_through_a_link_is_read(stage, cli, tmp_path, monkeypatch):
+    """The guard is over the file's own directory, so a link in that directory's path is followed, as it always was: only the file may not be one."""
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, make_threats_sarif(["S-1", "T-2"]))
+    (tmp_path / "linked").symlink_to(h.out, target_is_directory=True)
+    res = h.cli("plan", "--stage", "risk-score", "--out", h.out, "--date", DATE, "--threats", tmp_path / "linked" / "threats.md")
+    assert res.code == 0 and "the SARIF fallback" in res.err, res.describe()
+
+
+def test_a_scorer_pointer_file_that_is_a_link_is_refused(stage, cli, tmp_path, monkeypatch):
+    """S7-4: ``--risk-scores`` of the scorer was read whole, through any link, with no cap, and became a digest-checked input."""
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=MIXED_IDS[:3])
+    (tmp_path / "real-scores.md").write_text("# scores\n", encoding="utf-8")
+    os.symlink(str(tmp_path / "real-scores.md"), str(h.out / "risk-scores.md"))
+    res = h.plan_cli("--risk-scores", h.out / "risk-scores.md")
+    assert res.code == 2 and "risk-scores.md is a symbolic link or not a regular file" in res.err, res.describe()
+    assert "Remedy: name the file itself, not a link to it" in res.err and not (h.build / "current.json").exists()
+
+
+def test_a_scorer_pointer_file_over_the_cap_is_refused(stage, cli, tmp_path, monkeypatch):
+    h = Harness(stage, cli, tmp_path, "risk-score", ids=MIXED_IDS[:3])
+    cap = h.threats.stat().st_size + 10
+    monkeypatch.setattr(stage.tp, "MAX_AGENT_INPUT_BYTES", cap)  # D3 step 2's 16 MiB, made small: threats.md fits, the pointer file doesn't
+    (h.out / "risk-scores.md").write_bytes(b"x" * (cap + 1))
+    res = h.plan_cli("--risk-scores", h.out / "risk-scores.md")
+    assert res.code == 2 and "risk-scores.md is over %d bytes" % cap in res.err and "Remedy: name a smaller file" in res.err, res.describe()
+    assert not (h.build / "current.json").exists()
+
+
+# =========================================================================== the controls row's MAESTRO layer
+#
+# The agent copies its row's ``layer`` into its Section 2 cell, and the renderer checks that cell against its own chain: the MAESTRO Layer cell of the
+# finding's Section 7 row, else its component's Section 1 layer (found by name, then case-folded), else ``Unclassified``. A row without the layer left
+# the agent to read the whole risk-scores.md for it, or to write ``Unclassified``, which the renderer flags for every classified finding.
+
+COMPONENTS_TABLE = [("Alpha", "Process", "L5 " + _DASH + " Evaluation and Observability"), ("Beta", "Process", "L3 " + _DASH + " Agent Frameworks"),
+                    ("Gamma", "Process", ""), ("GAMMA", "Process", "L6 " + _DASH + " Security and Compliance")]
+LAYER_CELLS = {
+    "S-1": ("Alpha", "L2 " + _DASH + " Data Operations"),   # a Section 7 cell comes first, whatever its component's layer is
+    "T-2": ("Beta", ""),                                    # blank: the component's Section 1 layer
+    "I-3": ("beta", ""),                                    # the same component in another case: found once the name isn't
+    "D-1": ("Delta", ""),                                   # blank, and Section 1 doesn't list it
+    "D-2": ("", ""),                                        # no component at all: ``Unspecified``, which Section 1 doesn't list either
+    "E-1": ("Gamma", ""),                                   # the name is listed, with no layer: that is the answer, and ``GAMMA`` isn't tried
+    "R-1": ("GAMMA", ""),                                   # an exact name of its own
+}
+LAYERS = {"S-1": "L2 " + _DASH + " Data Operations", "T-2": "L3 " + _DASH + " Agent Frameworks", "I-3": "L3 " + _DASH + " Agent Frameworks",
+          "D-1": "Unclassified", "D-2": "Unclassified", "E-1": "Unclassified", "R-1": "L6 " + _DASH + " Security and Compliance"}
+
+
+def with_layers(text, cells, components=COMPONENTS_TABLE):
+    """``text`` with the Component and MAESTRO Layer cells of the listed Section 7 rows set (``{finding ID: (component, layer)}``), and a ``### Components``
+    table in Section 1: the two tables that the renderer reads a layer from."""
+    lines = text.split("\n")
+    for number, line in enumerate(lines):
+        for finding_id, (component, layer) in cells.items():
+            if line.startswith("| %s | " % finding_id):
+                parts = line.split(" | ")
+                parts[4], parts[5] = component, layer
+                lines[number] = " | ".join(parts)
+    table = ["### Components", "", "| Component | Type | MAESTRO Layer |", "|---|---|---|"] + ["| %s | %s | %s |" % row for row in components] + [""]
+    return "\n".join(lines).replace("A synthetic system for the tests.\n", "A synthetic system for the tests.\n\n" + "\n".join(table), 1)
+
+
+def renderer_layers(controls_renderer, threats_text):
+    """The layer that the controls renderer gives each open finding of this threat model, by canonical ID (``_read_reference``, then ``_overlay_reference``).
+    The scored input's own component is what the scorer writes for a row that has none: ``Unspecified``."""
+    run = controls_renderer.Run()
+    run.threats_text, run.threats_path = threats_text, "threats.md"
+    reference = controls_renderer._read_reference(run, "kept")
+    members = [{"id": finding["id"], "canon": canon(finding["id"]), "component": "Unspecified", "threat": "", "layer": ""} for finding in reference["open"]]
+    controls_renderer._overlay_reference(run, members, reference)
+    return {member["canon"]: member["layer"] for member in members}
+
+
+def test_a_controls_row_holds_the_layer_by_the_renderers_chain(stage, cli, controls_renderer, tmp_path, monkeypatch):
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, {finding_id: "NEW" for finding_id in LAYER_CELLS})
+    text = with_layers(h.threats.read_text(encoding="utf-8"), LAYER_CELLS)
+    h.threats.write_text(text, encoding="utf-8")
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
+    layers = {finding_id: row["layer"] for finding_id, row in unit_rows(h).items()}
+    assert layers == LAYERS
+    assert layers == renderer_layers(controls_renderer, text), "the planner's layer is the renderer's, finding by finding"
+
+
+def test_a_numbered_list_section_7_gives_every_row_the_unclassified_layer_as_the_renderer_does(stage, cli, controls_renderer, tmp_path, monkeypatch):
+    """The list form of Section 7 (S-12(a)) has no component and no layer cell, so a row's component is ``Unspecified``, which no Section 1 row
+    lists, and its layer is ``Unclassified``: the planner reads it, and the renderer gives each finding the same."""
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, {"S-1": "NEW", "T-2": "NEW"})
+    head = h.threats.read_text(encoding="utf-8").split("## 7. Recommended Actions")[0]
+    text = head + "## 7. Recommended Actions\n\n1. **S-1** " + _DASH + " Add authentication\n2. **T-2** " + _DASH + " Validate input\n"
+    h.threats.write_text(text, encoding="utf-8")
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
+    layers = {finding_id: row["layer"] for finding_id, row in unit_rows(h).items()}
+    assert layers == {"S-1": "Unclassified", "T-2": "Unclassified"} == renderer_layers(controls_renderer, text)
+
+
+def test_a_carried_row_holds_its_layer_too_and_the_layer_is_not_a_carried_key(stage, cli, tmp_path, monkeypatch):
+    """The layer is the current threat model's, like the row's other text. It is not in the baseline's persisted result, which holds the
+    judgment values only."""
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, CARRY_STATUSES, {"T-2": CARRY_PARTIAL})
+    assert h.plan_cli().code == 0
+    row = unit_rows(h)["T-2"]
+    assert row["layer"] == "L4 " + _DASH + " Deployment" and "layer" not in CARRIED and carried_values(row) != {}
