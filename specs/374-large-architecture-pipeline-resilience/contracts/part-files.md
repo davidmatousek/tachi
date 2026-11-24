@@ -156,7 +156,7 @@ Each reading is one the sources left open. `tachi_parts` (T012, T013), `tachi-st
   - **The judgment.** The control status and every computed value follow the part.
 - **The validated part carries canonical finding IDs** (ADR-050 D3). `findingId/v1`, and any other place that prints Section 7's spelling, takes it from the reference set.
 - **The total order on finding IDs (S-2)** is defined once in code, `tachi_parts`, and once in a shared reference, `part-file-contract-shared.md`'s "Identifiers". Every other file cites one of the two.
-- **`atomic_write`** gives the replaced file the mode an ordinary write would, `0666 & ~umask`, never the temporary file's `0600`.
+- **`atomic_write`** keeps the `rwx` bits of the regular file that it replaces, or of the file that its `mode_of` names (a renderer's staged write names its canonical file, and `fail`'s restore names the pre-image), and gives a new file, or anything that isn't a regular file, `0666 & ~umask`, never the temporary file's `0600`.
 
 **Slots and escaping** (T013's slice 2).
 - **A `finding` slot's argument** must pass `tachi_parts`' finding-ID pattern when the grammar is checked, or the field takes the fallback. It is then canonicalized, and its lookup decides membership: an ID outside the reference set, or outside the chain in a chain narrative, returns `None` and takes the fallback (D3's table; step 8's "before any other use").

@@ -3390,9 +3390,10 @@ def test_a_header_cell_with_no_name_still_counts_toward_the_width_of_a_row():
                          ids=["raw-pipe", "raw-pipe-after-an-escaped-backslash"])
 def test_reference_set_refuses_a_row_with_a_pipe_in_a_cell_instead_of_shifting_its_values(threat):
     """M1 (T067a). The row has a cell too many, so every value after the pipe moved one column: an UNCHANGED finding read as NEW, with
-    part of its threat as its risk level. The run ends before any agent is dispatched, and the remedy says what works. A pipe is raw
-    when no backslash escapes it, and an even run of backslashes (here, one escaped backslash) escapes nothing (P1-3 narrowed the stop to
-    these: GFM's ``\\|`` is a pipe in its cell now, and has a test of its own below)."""
+    part of its threat as its risk level. The run ends before any agent is dispatched, and the remedy says what works. The stop is for a
+    pipe outside GitHub's ``\\|`` form: a raw one, and one after an even run of backslashes (here, one escaped backslash), which GitHub's own
+    parser reads as escaped and this reader fails closed on (P2-1). P1-3 narrowed the stop to these: GitHub's ``\\|`` is a pipe in its cell
+    now, and has a test of its own below."""
     row = _ref_row("T-1", "UNCHANGED", threat=threat)
     content = _ref_md([_ref_row("S-1"), row, _ref_row("T-2")])
     line = content.split("\n").index(row) + 1
@@ -3419,7 +3420,7 @@ def test_the_remedys_spelling_of_a_pipe_reads_back_as_a_pipe_and_shifts_nothing(
 _ESCAPED_PIPE_TABLE = (
     "## 7. Recommended Actions\n\n| A | B | C |\n|---|---|---|\n"
     "| 1 | a \\| b | 3 |\n"                # line 5: GFM's escaped pipe, a pipe inside the cell
-    "| 4 | c \\\\| d | 6 |\n"               # line 6: an escaped backslash, then a raw pipe, so four cells
+    "| 4 | c \\\\| d | 6 |\n"               # line 6: an escaped backslash, then a raw pipe, so four cells (GitHub reads one cell here; this fails closed)
     "| 7 | e \\\\\\| f | 9 |\n"             # line 7: an escaped backslash, then an escaped pipe: one cell, two backslashes kept
     "| 10 | g \\* h | 12 |\n"               # line 8: another escape, no pipe in it
     "| 13 | i \\|\\| j | 15 |\n"            # line 9: two escaped pipes in a row
@@ -3428,8 +3429,10 @@ _ESCAPED_PIPE_TABLE = (
 
 def test_markdown_table_reads_a_gfm_escaped_pipe_as_a_pipe_in_its_cell_only_when_asked():
     """P1-3: ``escaped_pipes`` reads a ``|`` that an odd run of backslashes ends as a pipe inside its cell, the one backslash that escapes it gone,
-    as GFM renders it (cmark-gfm's ``unescape_pipes``). A pipe after an even run, none included, is raw and splits the row. The default is as it
-    always was: it splits at every ``|`` (NFR-1), and the reference set's Section 7 reader alone asks for the other reading."""
+    as GitHub renders it (cmark-gfm's ``unescape_pipes``), and accepts nothing else (P2-1). A pipe after an even run, none included, is raw and
+    splits the row, though GitHub's own parser reads one after a double backslash as escaped, so the reader is stricter there and its caller
+    refuses the row. The default is as it always was: it splits at every ``|`` (NFR-1), and the reference set's Section 7 reader alone asks
+    for the other reading."""
     overlong = []
     rows = parse_markdown_table(_ESCAPED_PIPE_TABLE, "## 7. Recommended Actions", overlong=overlong, escaped_pipes=True)
     assert [row["B"] for row in rows] == ["a | b", "c \\\\", "e \\\\| f", "g \\* h", "i || j", "k \\\\\\\\| l"]

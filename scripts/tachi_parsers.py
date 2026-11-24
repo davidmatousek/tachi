@@ -449,10 +449,13 @@ def classify_maestro_coverage_state(finding_count: int, highest_severity: str) -
 # =============================================================================
 
 def _escaped_pipe_cells(line: str) -> list:
-    """The cells of a table ``line`` between its first and last ``|``, each as the line writes it (not stripped, not decoded), with GFM's
-    escaped pipe read as GFM reads it: a ``|`` that an odd run of backslashes ends is a pipe inside its cell, and the backslash that
-    escapes it is dropped (cmark-gfm's ``unescape_pipes``). A ``|`` that an even run ends, none included, still ends the cell, because a
-    backslash that another backslash escapes escapes nothing.
+    """The cells of a table ``line`` between its first and last ``|``, each as the line writes it (not stripped, not decoded), with GitHub's
+    ``\\|`` form read as a pipe in its cell: a ``|`` that an odd run of backslashes ends stays in its cell, and the backslash that escapes
+    it is dropped, as cmark-gfm's ``unescape_pipes`` drops it. That form is all it accepts, and it fails closed on anything else. A ``|``
+    that an even run ends, none included, ends the cell, because a backslash that another backslash escapes escapes nothing. GitHub's
+    parser reads a pipe after a double backslash as escaped too, and a row whose closing pipe is escaped has no closing pipe here, so
+    this rule is stricter than GitHub's in those two cases. The row then has a cell too many or too few, and ``parse_reference_set``
+    refuses it, so a cell that the two could read differently is refused and never misread (P2-1).
 
     This is ``line.split("|")[1:-1]`` for a line with no ``\\|`` in it, so the two readings differ only where a cell holds one
     (``parse_markdown_table``'s ``escaped_pipes`` chooses between them, and its callers decode each cell, D3).
@@ -507,11 +510,13 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
             and a stray ``|`` (or GFM's ``\\|``, unless ``escaped_pipes``) has already shifted every value after it. A
             caller that can't afford a shifted value (the F-374 reference set) reads the list and refuses the file.
             The default leaves every caller unchanged.
-        escaped_pipes: When true, a ``|`` that GFM escapes (``\\|``) is a pipe inside its cell and not the end of it, and the
-            cell holds the pipe without the backslash, as GFM renders it. A ``|`` after an even run of backslashes still ends the
-            cell. The header row is read by the same rule as the rows under it, so both count their cells alike. The default splits
-            at every ``|``, as it always has (NFR-1), and the F-374 reference set's Section 7 reader alone asks for the other reading
-            (P1-3, ADR-050 D3): the per-finding tables and every extractor keep the default.
+        escaped_pipes: When true, GitHub's ``\\|`` form (a ``|`` that an odd run of backslashes ends) is a pipe inside its cell and
+            not the end of it, and the cell holds the pipe without that backslash, as GitHub renders it. That form is all it accepts,
+            and it fails closed on anything else: a ``|`` after an even run of backslashes, none included, still ends the cell, though
+            GitHub's parser reads one after a double backslash as escaped, so a row that holds one comes out with a cell too many or
+            too few and its caller can refuse it (P2-1). The header row is read by the same rule as the rows under it, so both count
+            their cells alike. The default splits at every ``|``, as it always has (NFR-1), and the F-374 reference set's Section 7
+            reader alone asks for the other reading (P1-3, ADR-050 D3): the per-finding tables and every extractor keep the default.
 
     Returns:
         List of dicts, one per row, with keys from the header row.
@@ -1424,9 +1429,9 @@ REFERENCE_SET_FORM = ("a table whose header row has a 'Finding ID' column and on
 REFERENCE_SET_REMEDY = ("regenerate threats.md with /tachi.threat-model, or correct the section to the table form "
                         "or the numbered-list form")
 # M1 (T067a): a row with more cells than its header holds a raw `|` in a cell. The renderers write a pipe as `&#124;`, which a
-# reader decodes after it splits the row. GFM's `\|` is a pipe in its cell for this reader (P1-3, through `parse_markdown_table`'s
-# `escaped_pipes`), so only a pipe that no backslash escapes is refused. The extractors and the per-finding tables still split at
-# `\|` (NFR-1), so `&#124;` is the spelling that every reader of threats.md reads as a pipe.
+# reader decodes after it splits the row. GitHub's `\|` form is a pipe in its cell for this reader (P1-3, through
+# `parse_markdown_table`'s `escaped_pipes`), and anything else fails closed (P2-1), so a raw pipe is refused. The extractors and the
+# per-finding tables still split at `\|` (NFR-1), so `&#124;` is the spelling that every reader of threats.md reads as a pipe.
 REFERENCE_SET_PIPE_REMEDY = ("write each '|' inside a cell as '&#124;', the spelling that every reader of threats.md reads as a pipe, "
                              "or regenerate threats.md with /tachi.threat-model")
 # S-12(b): the flag for a value that Section 7's form lacks, in the scorer's closed `<kind>:<field>:<cause>` vocabulary
@@ -1631,9 +1636,11 @@ def parse_reference_set(content: str, source: str = "threats.md") -> dict:
 
     **GFM's escaped pipe (P1-3, ADR-050 D3).** The table is read with ``escaped_pipes``: GFM, and GitHub's rendering of ``threats.md``,
     read ``\\|`` as a pipe inside its cell, and the threat-model contract never tells its writer to avoid one, so the cell holds the pipe
-    and no value moves. Only a pipe that no backslash escapes splits a row, and a row that it makes too wide is still refused. This
-    reader alone reads the pipe so (:func:`_section_7_layers` reads Section 7's layer cells by the same rule, so a row here is a row
-    there): ``parse_threats_findings``, the extractors and the per-finding tables split at ``\\|`` as they always have (NFR-1).
+    and no value moves. It accepts GitHub's ``\\|`` form and fails closed on anything else: any other pipe splits the row, and a row that
+    it makes too wide, or too short, is still refused. That includes a pipe after a double backslash, which GitHub reads as escaped and
+    this reader does not (P2-1). This reader alone reads the pipe so (:func:`_section_7_layers` reads Section 7's layer cells by the same
+    rule, so a row here is a row there): ``parse_threats_findings``, the extractors and the per-finding tables split at ``\\|`` as they
+    always have (NFR-1).
 
     ``parse_threats_findings`` is unchanged, because the extractors rely on its ``[]``-with-a-warning behavior.
     """
