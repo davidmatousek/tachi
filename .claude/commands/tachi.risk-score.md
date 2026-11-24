@@ -44,7 +44,7 @@ Single-command entry point for tachi quantitative risk scoring. Validates prereq
 - `risk-scores.md` — scored threat table, executive summary, dimensional breakdowns, governance fields, methodology, and score integrity
 - `risk-scores.sarif` — SARIF 2.1.0 with per-finding composite scores in `security-severity` and scoring properties in result property bags
 
-**Who does what**: the risk-scorer agent supplies judgment only (a CVSS vector, sub-scores, reachability inputs and rationale for each finding) and writes one part file per batch. The scripts plan the batches, reconcile them from disk, compute every score, and write both files. This command runs only the shipped scripts it names, `scripts/tachi-stage.py`, `scripts/populate-affected-assets.py` and `scripts/render-risk-scores.py`, each as a single `python3` call with literal arguments. It writes no script of its own, and it stops on a failure rather than working around it.
+**Who does what**: the risk-scorer agent supplies judgment only (a CVSS vector, sub-scores, reachability inputs and rationale for each finding) and writes one part file per batch. The scripts plan the batches, reconcile them from disk, compute every score, and write both files. This command runs only the shipped scripts it names, `scripts/tachi-stage.py`, `scripts/populate-affected-assets.py` and `scripts/render-risk-scores.py`, each as a single `python3` call with literal arguments. It writes no script of its own, and it stops on a failure rather than working around it. Its only `python3` calls are those scripts, and it runs no other code, not even to inspect a file: no `-c`, `-m` or heredoc program, no other interpreter, and no copy of a script's output in a file. `reconcile` and the renderer are the checks, and a listing or a file test is enough for Step 1.
 
 **Paths go in single quotes**: put each path into its call between the single quotes that the call shows, so the shell expands nothing in it. Inside quotes the shell doesn't expand a leading `~` either, so write the home directory's path in its place. A path that holds a single quote can't be quoted this way: stop there, and print the path.
 
@@ -156,7 +156,7 @@ python3 scripts/populate-affected-assets.py \
    - Add `--architecture '{architecture_flag}'` when `--architecture-path` was given, and only then. The URI of every SARIF result comes from this path, so a per-run snapshot must never stand in for it.
    - Always pass the `threats.md` path, even when only `threats.sarif` exists: `plan` reads `threats.sarif` when `threats.md` is absent.
 
-3. `plan` prints one JSON object: `plan_id`, `plan_digest`, and `waves`, a list of waves with at most 16 batches each. Every batch is `{batch_id, input_path}`. Keep `plan_id` and the latest `plan_digest` for every later step. A step that prints a newer `plan_digest` replaces it.
+3. `plan` prints one JSON object: `plan_id`, `plan_digest`, and `waves`, a list of waves with at most 16 batches each. Every batch is `{batch_id, input_path}`. Keep `plan_id` and the latest `plan_digest` for every later step. A step that prints a newer `plan_digest` replaces it. The plan can hold fewer findings than `threats.md` lists: a correlated peer takes its primary's assessment, and an UNCHANGED finding with a baseline row keeps its inputs, so neither goes to an agent, and the renderer scores both.
 
 4. Route by the exit code:
 
@@ -213,13 +213,13 @@ Route by the exit code:
 | Exit | What to do |
 |------|------------|
 | 0 | Success. Go to Step 6 |
-| 5 | Success with warnings. Print the warnings, then go to Step 6 |
+| 5 | Success with warnings. Print the warnings in Step 6, with the renderer's other lines |
 | 4 | A completeness or parity check failed. Go to Step F with `--reason check-failed` |
 | anything else | Go to Step F with `--reason render-failed` |
 
 ## Step 6: Report Results
 
-Print the summary lines that the renderer wrote, exactly as it wrote them. Restate no number and compute none: the renderer's counts are the only counts. Then print:
+Print the summary lines that the renderer wrote, its warnings among them, exactly as it wrote them. Restate no number and compute none: the renderer's counts are the only counts. Print nothing else of your own: no summary, caveat or advice, and nothing from the agents' replies. Then print:
 
 ```
 Next steps:
@@ -278,4 +278,4 @@ python3 scripts/tachi-stage.py fail --stage risk-score --out '{output_dir}' --pl
 - [ ] Scored threat table sorted by composite descending
 - [ ] One SARIF result for each open finding, and its fingerprint is tachi's own hash
 - [ ] Scores consistent between risk-scores.md and risk-scores.sarif
-- [ ] The summary printed is the renderer's, with no number restated
+- [ ] The report is the renderer's lines and the Next steps block, with nothing added

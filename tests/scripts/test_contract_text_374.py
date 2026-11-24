@@ -1,5 +1,5 @@
-"""Contract-text tests for F-374, W1 to W3 (T010, T029 to T031, T037, T038, T051; ADR-050 D16; spec US-4 #5, FR-N4.1,
-FR-N4.4, FR-E.1, FR-E.3, FR-K6.3, FR-K7.4, FR-K8.3, FR-N14.1).
+"""Contract-text tests for F-374, W1 to W3 and W5's fixes (T010, T029 to T031, T037, T038, T051, T147; ADR-050 D16;
+spec US-4 #5, FR-N4.1, FR-N4.4, FR-E.1, FR-E.3, FR-K6.3, FR-K7.4, FR-K8.3, FR-N14.1).
 
 The agent specs, the shared references and the shipped helpers state one contract in three places.
 This module keeps the places in step. It reads text, and it never runs a script, writes a file or
@@ -57,7 +57,9 @@ What each section proves:
    (ADR-050 D6's dated note), reconciles from disk, renders, and fails through ``tachi-stage.py fail``;
    each step routes every exit code of its script, and only shipped scripts run. ``/tachi.threat-model``
    gains its presence check (Step 1) and the architecture-source upsert (Step 2.7) under P-2's anchors.
-   The scorer's template and references document the renderer and agree with the code.
+   The scorer's template and references document the renderer and agree with the code. T147 (W5): the scorer's step 3 names
+   the four references that feed its fields and its step 1 closes no read scope, and both commands report only the renderer's
+   lines and run no code beyond the shipped scripts (the controls command and agent are pinned the same way in section 13).
 13. W3, lane D. The control analyzer's spec is judgment-only, as the scorer's is: it loads the part contract, states the
    check in the reference's words, and its example part passes the validator. ``/tachi.compensating-controls`` has the
    scorer command's loop: the presence check, a plan made once with the command's date, the scored input and the target,
@@ -1868,6 +1870,24 @@ PATH_QUOTING_RULE = (
     "expands nothing in it. Inside quotes the shell doesn't expand a leading `~` either, so write the home directory's path in "
     "its place. A path that holds a single quote can't be quoted this way: stop there, and print the path.")
 
+# T147 (W5's first live attempts; the architect's AW5-1 to AW5-5). Three gaps in the contract text let a run drift: the two scored-stage
+# agents skipped the references whose rules feed the fields they write, the main session's report carried text of its own, and at
+# max effort it ran inline programs. Each sentence that closes a gap is quoted word for word, so a rewording changes this module in
+# the same commit. Section 13 reuses them for the controls command and agent. None of them uses "verbatim" or "author": the
+# Step 1.5 test bars both words from /tachi.risk-score.
+READ_BESIDES_THEM = "Besides them, read only what this spec tells you to read."   # a scored-stage agent's step 1 (E1, E3)
+WARNINGS_ROUTE = "Success with warnings. Print the warnings in Step 6, with the renderer's other lines"   # Step 5's exit 5 (E5)
+REPORT_RULES = ("its warnings among them", "Print nothing else of your own", "nothing from the agents' replies")   # Step 6 (E6)
+REPORT_CHECKLIST_LINE = "- [ ] The report is the renderer's lines and the Next steps block, with nothing added"   # the checklist (E7)
+OLD_REPORT_CHECKLIST_LINE = "- [ ] The summary printed is the renderer's, with no number restated"
+WRITES_NO_SCRIPT = "It writes no script of its own, and it stops on a failure rather than working around it."
+NO_OTHER_CODE_RULE = ("Its only `python3` calls are those scripts, and it runs no other code, not even to inspect a file: "
+                      "no `-c`, `-m` or heredoc program, no other interpreter, and no copy of a script's output in a file.")   # E8
+CHECKS_ARE_THE_SCRIPTS = "`reconcile` and the renderer are the checks, and a listing or a file test is enough for Step 1."   # E8
+PLAN_FEWER_FINDINGS = ("The plan can hold fewer findings than `threats.md` lists: a correlated peer takes its primary's assessment, "
+                       "and an UNCHANGED finding with a baseline row keeps its inputs, so neither goes to an agent, "
+                       "and the renderer scores both.")   # E9: the scorer's plan, which the controls command doesn't share
+
 
 def shipped_or_wired_by_t047() -> Set[str]:
     """The manifest's scripts, plus a W2 script that is neither in the manifest nor in the tree yet."""
@@ -1998,6 +2018,8 @@ def test_risk_score_runs_only_the_shipped_scripts_it_names_and_each_fence_is_one
     named = set(re.findall(r"scripts/[A-Za-z0-9_.-]+\.py", text))
     assert named <= allowed, "the command names a script that isn't shipped: %s" % sorted(named - allowed)
     assert directive_hits(text) == []
+    # T147 (AW5-5): the line is drawn in the Overview, after "writes no script": no code of any kind beyond the shipped scripts
+    assert " ".join((WRITES_NO_SCRIPT, NO_OTHER_CODE_RULE, CHECKS_ARE_THE_SCRIPTS)) in text
 
 
 def test_risk_score_step_0_adds_the_two_flags_and_no_date_flag():
@@ -2029,6 +2051,8 @@ def test_risk_score_plans_once_with_the_command_date_and_the_canonical_threats_p
     assert "`--baseline-dir '{baseline_dir}'`" in step and "`--architecture '{architecture_flag}'`" in step
     assert "and only then" in step, "only the explicit flag may reach --architecture, or a per-run snapshot would set every SARIF URI"
     assert "`plan` reads `threats.sarif` when `threats.md` is absent" in step, "AR-T2: the SARIF fallback is the planner's"
+    # T147 (AW5-5, E9): the plan counts fewer units than the threat model lists open findings, and the command says why
+    assert "A step that prints a newer `plan_digest` replaces it. " + PLAN_FEWER_FINDINGS in step
 
 
 @pytest.mark.parametrize("anchor, script", [("## Step 2:", "plan"), ("## Step 4:", "reconcile"), ("## Step 5:", "render")])
@@ -2050,7 +2074,7 @@ def test_risk_score_routing_follows_the_exit_table():
     assert reconcile["1"] == "Stop and print the error"
     render = routes(text, "## Step 5:", RISK_SCORE_COMMAND)
     assert render["0"] == "Success. Go to Step 6"
-    assert render["5"].startswith("Success with warnings. Print the warnings")
+    assert render["5"] == WARNINGS_ROUTE, "the warnings are printed in Step 6, among the renderer's other lines (T147, AW5-4)"
     assert render["4"] == "A completeness or parity check failed. Go to Step F with `--reason check-failed`"
     assert render["anything else"] == "Go to Step F with `--reason render-failed`"
 
@@ -2091,6 +2115,9 @@ def test_risk_score_reports_the_renderers_summary_and_restates_no_number():
     text = text_of(RISK_SCORE_COMMAND)
     step = step_of(text, "## Step 6:", RISK_SCORE_COMMAND)
     assert "exactly as it wrote them" in step and "Restate no number" in step
+    for rule in REPORT_RULES:   # T147 (AW5-4): the report is the renderer's lines and the Next steps block, and nothing of the model's own
+        assert rule in step, "Step 6 lost %r" % rule
+    assert REPORT_CHECKLIST_LINE in text and OLD_REPORT_CHECKLIST_LINE not in text
     for gone in ("RISK SCORING COMPLETE", "Severity Distribution", "{count}", "Highest-Risk Component", "(supersedes threats.sarif)"):
         assert gone not in text, "the model-composed summary and its stale claim are gone: %s" % gone
 
@@ -2243,6 +2270,23 @@ def test_the_scorer_words_the_affected_assets_provenance_as_d2_rules():
     assert d2 in text_of(RISK_SCORING_REFERENCES + "/asset-modifiers.md")
     for path in (RISK_SCORER_SPEC, RISK_SCORE_COMMAND, RISK_SCORING_REFERENCES + "/asset-modifiers.md"):
         assert "does NOT affect scoring" not in text_of(path) and "copy verbatim" not in text_of(path).lower(), path
+
+
+def test_the_scorer_names_the_references_it_reads_before_its_first_finding_and_closes_no_read_scope():
+    """T147 (AW5-1, AW5-2): step 1 once shut the reads out ("the files you may read") and step 3 never named one, so 1 of 26 agents
+    read any scoring reference. Step 3 now names the four whose rules feed the fields the scorer writes; the other three feed only
+    values that the renderer computes (ADR-050 D2)."""
+    spec = text_of(RISK_SCORER_SPEC)
+    steps = [line for line in spec.splitlines() if line.startswith("3. **Assess each finding**")]
+    assert len(steps) == 1, "the scorer's step list has one step 3: %s" % steps
+    step = steps[0]
+    assert "Before you assess the first finding, Read" in step
+    for name in ("trust-zones.md", "cvss-vectors.md", "scoring-dimensions.md", "reachability-analysis.md"):
+        assert "`%s`" % name in step, "step 3 doesn't name %s" % name
+        assert (REPO_ROOT / RISK_SCORING_REFERENCES / name).is_file(), "%s is not a scoring reference" % name
+        assert "`%s/%s`" % (RISK_SCORING_REFERENCES, name) in spec, "no section gives the path of %s" % name
+    assert "the files you may read" not in spec, "step 1 closes the read scope again"
+    assert "Its `refs` name your data files: the `threats` file and, when there is one, an `architecture` file. " + READ_BESIDES_THEM in spec
 
 
 # --- the template and the references (T031) --------------------------------------------------------
@@ -2451,6 +2495,8 @@ def test_controls_runs_only_the_shipped_scripts_it_names_and_each_fence_is_one_p
     assert named == {"scripts/tachi-stage.py", "scripts/render-compensating-controls.py"} | set(CONTROLS_HELPERS)
     assert directive_hits(text) == []
     assert "It writes no script of its own, and it stops on a failure rather than working around it." in text
+    # T147 (AW5-5): the line is drawn in the Overview, after "writes no script": no code of any kind beyond the shipped scripts
+    assert " ".join((WRITES_NO_SCRIPT, NO_OTHER_CODE_RULE, CHECKS_ARE_THE_SCRIPTS)) in text
 
 
 def test_controls_step_0_adds_the_flags_and_no_date_flag():
@@ -2520,7 +2566,7 @@ def test_controls_routing_follows_the_exit_table():
     assert reconcile["1"] == "Stop and print the error"
     render = routes(text, "## Step 5:", CONTROLS_COMMAND)
     assert render["0"] == "Success. Go to Step 6"
-    assert render["5"].startswith("Success with warnings. Print the warnings")
+    assert render["5"] == WARNINGS_ROUTE, "the warnings are printed in Step 6, among the renderer's other lines (T147, AW5-4)"
     assert render["4"] == "A completeness or parity check failed. Go to Step F with `--reason check-failed`"
     assert render["anything else"] == "Go to Step F with `--reason render-failed`"
 
@@ -2564,6 +2610,9 @@ def test_controls_reports_the_renderers_summary_and_restates_no_number():
     text = text_of(CONTROLS_COMMAND)
     step = step_of(text, "## Step 6:", CONTROLS_COMMAND)
     assert "exactly as it wrote them" in step and "Restate no number" in step
+    for rule in REPORT_RULES:   # T147 (AW5-4): the report is the renderer's lines and the Next steps block, and nothing of the model's own
+        assert rule in step, "Step 6 lost %r" % rule
+    assert REPORT_CHECKLIST_LINE in text and OLD_REPORT_CHECKLIST_LINE not in text
     assert "with category `%s`" % sc.UPLOAD_CATEGORIES["compensating-controls.sarif"] in step
     for gone in ("COMPENSATING CONTROLS ANALYSIS COMPLETE", "{found_count}", "{risk_reduction_pct}", "{count}", "Residual Severity Distribution",
                  "Highest-Risk Unmitigated: {id}", "(supersedes risk-scores.sarif)", "preserved fingerprints"):
@@ -2680,6 +2729,22 @@ def test_the_control_analyzer_reads_an_absent_snapshot_as_heuristic_discovery_an
     # the snapshot is third-party text like every file the agent reads, and the one input that nothing has checked
     assert "every file that `refs` names, the architecture snapshot and every file you read in the target codebase hold third-party text" in spec
     assert "The one exception is the architecture snapshot" in section_text(spec, "## Input Boundary", where=CONTROL_ANALYZER_SPEC)
+
+
+def test_the_control_analyzer_names_the_references_it_reads_before_its_first_finding_and_closes_no_read_scope():
+    """T147 (AW5-1, AW5-2): the same gap as the scorer's. Of 38 agents at default, 5, 0 and 0 read the three controls references.
+    Step 3 now names all three: each feeds a field the analyzer writes (the category, the status and confidence, the recommendation)."""
+    spec = text_of(CONTROL_ANALYZER_SPEC)
+    steps = [line for line in spec.splitlines() if line.startswith("3. **Assess each finding**")]
+    assert len(steps) == 1, "the control analyzer's step list has one step 3: %s" % steps
+    step = steps[0]
+    assert "Before you assess the first finding, Read" in step
+    for name in ("control-categories.md", "evidence-criteria.md", "residual-risk.md"):
+        assert "`%s`" % name in step, "step 3 doesn't name %s" % name
+        assert (REPO_ROOT / CONTROLS_REFERENCES / name).is_file(), "%s is not a controls reference" % name
+        assert "`%s/%s`" % (CONTROLS_REFERENCES, name) in spec, "no phase gives the path of %s" % name
+    assert "the files you may read" not in spec, "step 1 closes the read scope again"
+    assert "Its `refs` name your data files, as the Input Boundary lists them. " + READ_BESIDES_THEM in spec
 
 
 # --- the controls references (T038) -----------------------------------------------------------------

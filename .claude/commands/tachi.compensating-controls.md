@@ -49,7 +49,7 @@ Single-command entry point for tachi compensating controls analysis — the thir
 - `compensating-controls.md` — Coverage matrix, control details with file:line evidence, recommendations, residual risk summary, and analysis integrity
 - `compensating-controls.sarif` — SARIF 2.1.0 with per-finding residual scores, control properties, and tachi's own alert keys
 
-**Who does what**: the control-analyzer agent supplies judgment only (for each finding, the control status and category, the code evidence, and the recommendation for a gap) and writes one part file per batch. The scripts plan the batches, reconcile them from disk, compute every score, band, factor and total, and write both files. This command runs only the shipped scripts it names, `scripts/tachi-stage.py` and `scripts/render-compensating-controls.py`, each as a single `python3` call with literal arguments. It writes no script of its own, and it stops on a failure rather than working around it.
+**Who does what**: the control-analyzer agent supplies judgment only (for each finding, the control status and category, the code evidence, and the recommendation for a gap) and writes one part file per batch. The scripts plan the batches, reconcile them from disk, compute every score, band, factor and total, and write both files. This command runs only the shipped scripts it names, `scripts/tachi-stage.py` and `scripts/render-compensating-controls.py`, each as a single `python3` call with literal arguments. It writes no script of its own, and it stops on a failure rather than working around it. Its only `python3` calls are those scripts, and it runs no other code, not even to inspect a file: no `-c`, `-m` or heredoc program, no other interpreter, and no copy of a script's output in a file. `reconcile` and the renderer are the checks, and a listing or a file test is enough for Step 1.
 
 **Paths go in single quotes**: put each path into its call between the single quotes that the call shows, so the shell expands nothing in it. Inside quotes the shell doesn't expand a leading `~` either, so write the home directory's path in its place. A path that holds a single quote can't be quoted this way: stop there, and print the path.
 
@@ -191,13 +191,13 @@ Route by the exit code:
 | Exit | What to do |
 |------|------------|
 | 0 | Success. Go to Step 6 |
-| 5 | Success with warnings. Print the warnings, then go to Step 6 |
+| 5 | Success with warnings. Print the warnings in Step 6, with the renderer's other lines |
 | 4 | A completeness or parity check failed. Go to Step F with `--reason check-failed` |
 | anything else | Go to Step F with `--reason render-failed` |
 
 ## Step 6: Report Results
 
-Print the summary lines that the renderer wrote, exactly as it wrote them. Restate no number and compute none: the renderer's counts are the only counts. Then print:
+Print the summary lines that the renderer wrote, its warnings among them, exactly as it wrote them. Restate no number and compute none: the renderer's counts are the only counts. Print nothing else of your own: no summary, caveat or advice, and nothing from the agents' replies. Then print:
 
 ```
 Next steps:
@@ -258,4 +258,4 @@ python3 scripts/tachi-stage.py fail --stage compensating-controls --out '{output
 - [ ] Residual risk computed by the renderer for every open finding, and the totals equal the sums of the rows
 - [ ] One SARIF result for each open finding, and its fingerprint is tachi's own hash
 - [ ] Scores consistent between compensating-controls.md and compensating-controls.sarif
-- [ ] The summary printed is the renderer's, with no number restated
+- [ ] The report is the renderer's lines and the Next steps block, with nothing added
