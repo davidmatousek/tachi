@@ -582,7 +582,7 @@ def _delta_status(finding: Mapping[str, Any]) -> str:
 
 
 def _risk_level(level: Optional[str]) -> str:
-    """The "Original Risk Level" of a fallback member (D8, P0-3), from what its result holds: ``properties.risk_level``, else ``security-severity``.
+    """The "Original Risk Level" of a fallback member (D8, P0-3), from what its result holds: ``properties.risk_level``, else ``properties.severity``, else ``security-severity`` (W3 ruling Q6; the shared reader picks the first that holds text).
 
     A word (``Critical``, ``Note``) stays as written. A score, which is all that ``security-severity`` ever is, becomes
     its severity band through ``tachi_scoring.band``, after the score is put on the 0.1 grid inside 0.0 to 10.0 that the
