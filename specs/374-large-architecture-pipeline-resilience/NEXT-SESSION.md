@@ -1,130 +1,101 @@
 # Session Continuation: F-374 Large-Architecture Pipeline Resilience
 
-**Generated:** 2026-11-24 14:40
+**Generated:** 2026-11-24, at session L's close
 **Branch:** `374-large-architecture-pipeline-resilience`, draft PR #423 (PR 1)
-**Last pushed commit:** `27d58bd`, W4's push, with CI 14 of 14 green (7 workflows). This handoff's records commit follows it locally (see "State").
+**Last pushed commit:** `1e3614a`, W5's one push (T147's fix), with CI 14 of 14 green. The W5 records commits follow it locally (see "State").
 
-## Completed in session 2 (S2)
+## Completed in session L (PR 1's W5, M5a)
 
-PR 1's W3 and W4, and PR 2's W1′, are complete. S2 hit the 3-wave ceiling, as `agent-assignments.md` planned. S2's orchestrator session ran out of context during W4's close-out. A fresh session finished W4 from the orchestrator's private status log, and nothing was lost.
+- **Before the live runs:**
+  - P1-1 re-ran T065's offline driver on W5's install commit `27d58bd` and passed on Python 3.11, 3.9 and 3.14.4, the live runs' interpreter (`offline-e2e-pr1.md` section 12).
+  - T072 built the scratch adopters and recorded dispositions (a) to (c) in advance (`w5-setup-pr1.md`).
+- **Attempt 1, on `27d58bd`.** All four fixture runs met their structural claims. Three contract-text defects surfaced (AW5-1 to AW5-9):
+  - agents skipped the binding references their sections mark mandatory, because step 1 limited reads to `refs`;
+  - the final reports added the main session's own text (Step 6);
+  - at max effort, the main session ran inline programs.
 
-- **W3, with the fix lane FX0.**
-  - P0-1 to P0-9 landed as ruled (`test-results/w3-p0-fixes.md`). P0-10 to P0-12 are T080 follow-ups.
-  - Also done: T034–T039, T052–T056, T059, T060 and T064.
-  - Pushed as `f43440b`, with CI green.
-- **W4.**
-  - **T065, the offline end-to-end run:** SC-4, SC-5's offline half, SC-6 (R) and US-1a #4 and #5 pass, on Python 3.11 and 3.9 (`test-results/offline-e2e-pr1.md`).
-  - **T066, the oracle:** clean under the PM's W4 rulings R-A to R-J (`test-results/oracle-pr1.md`, its W4 re-run and W4-10).
-    - The classes are eleven, and the example-defect table is closed at five groups.
-    - The gate is confirmed again on the merge candidate in W6 (plan.md Verification 7).
-  - **T067's two reviews and T068's Step 7 scan:** the 2 HIGH findings are fixed, and the scan passes its gate.
-  - **T146, the fix lane:** `test-results/t146-fixes-pr1.md` maps every finding to its commit. These include:
-    - U-1: each finding's MAESTRO layer comes from its own row;
-    - R-F: a correlation member listed twice is reported;
-    - ADR-050 D2's W4 amendment (`9bd337e`): a `carried_forward` claim needs a result that the baseline holds.
-  - **T069:** one push, `27d58bd`, with CI 14 of 14 green and both pytest legs at T001's totals plus PR 1's tests. TW-CI doesn't fire (`test-results/ci-pr1.md`).
-  - **T070, the P1 checkpoint:** APPROVED_WITH_CONCERNS, with 8 items: 1 MEDIUM, 5 LOW and 2 INFO. See "Next Actions".
-- **PR 2's W1′,** on `374-pipeline-resilience-track-o` (draft PR #425, pushed as `b302d2d`, CI green):
-  - T084: the cut at `03a8f0d`;
-  - T086–T088: ADR-050 rev. 3, with O-α, O-β, O-γ and RR3;
-  - T089: the TW-ADR gate passes;
-  - T148: the fixture cases;
-  - T093: held at the local branch `374-hold-t093-orchestrator` (`8a08fb0`) until T094, in W2′, inverts its three inertness pins in the same commit.
-- **Tests on `27d58bd`.**
-  - The gated set: 6271 passed, 0 failed.
-  - ADR-050 D16's gate: 96.35%, against 80%.
-  - The `tachi_parsers` ratchet: 83%, against its 44.9% floor.
-  - The census (`test-results/wave-04`): 7597 passed, 0 regressions, and the same 34 pre-existing out-of-gate failures as T001.
+  Also, `claude --effort max` reaches only the main session: the first "max" runs had their agents at medium. Max runs now launch with `CLAUDE_CODE_EFFORT_LEVEL=max` plus the flag.
+- **T147, `1e3614a`:** fixed all three in 0.2 d (`t147-fixes-pr1.md`), pushed, with CI green.
+- **Attempt 2, on `1e3614a`:**
+  - T073 and T074, at the default effort and at true max: every claim holds, with 0 Step 6 additions and 0 unnamed programs.
+  - Binding reads: controls 38 of 38 at both efforts; scorer 26 of 26 at max, and 17 of 26 reading all four at the default.
+- **T075 (SC-8):** the scorer came in −64.9% and controls −71.0% against v4.48.4, with one batch each (`sc8.md`).
+- **T076 (R-27):**
+  - Passed under the published profile, with every write inside the runbook's write locations (`r27-smoke-pr1.md`).
+  - The runbook's "Last validated" header names this run (T072 part 2).
+- **T077 (`w5-gate-pr1.md`):** M5a passes with one return.
+- **T078:** the PM ruled option A, so the claims stand. The binding reading, which also binds T133: TW-L2's "don't claim" withdraws only a claim that measures the departure, or one whose evidence the departure could change.
+- **The architect's W5 checkpoint:** T147 as landed matches its spec (APPROVED_WITH_CONCERNS: the two residuals above, now ruled).
+- **Census (`test-results/wave-05`, on `867b611`):** 7599 passed, 0 regressions, and the same 34 pre-existing out-of-gate failures as T001 and W4.
 
 ## State
 
-- **Phase:** implement. **Tasks:** 84 of 150 done (PR 1: 77 of 91; PR 2: 7 of 59, marked on its own branch).
-- **ADR-050** carries:
-  - the W3 and W4 rulings;
-  - D2's W4 amendment;
-  - D3's copy of NFR-1's eleven classes (R-A to R-J).
-  `contracts/module-signatures.md` holds W3's new public names.
-- **TW-N3: ARMED.** N3 hasn't merged. Any edit to an agent file that the stages load needs the private no-touch notes (see the private track).
-- **The local records commit is not pushed.** It holds `ci-pr1.md`, `wave-04/results.json`, this file, and tasks.md's T069 and T070 marks. H6 forbids pushing records alone, so the next push carries it: S3's P1 batch, or an earlier W5 fix.
+- **Phase:** implement. **Tasks:** PR 1 85 of 91 (open: T071, conditional on TW-CI, and W6's T079–T083). PR 2 7 of 59, on its own branch.
+- **TW-N3: ARMED**, unchanged. Any edit to an agent file the stages load needs the private no-touch notes (see the private track).
+- **The local records commits after `1e3614a` aren't pushed** (H6 forbids pushing records alone). S3's first push, P1's batch, carries them.
+- **Usage:** the week stood at about 48% at L's close, and resets Nov 26 at 9pm ET. The true-max fixture runs are the expensive ones: 4.1 to 4.3M output tokens each, about 45 minutes each.
 
-## Next Actions: session L, which is PR 1's W5
+## Next Actions: session S3, which is PR 1's W6
 
-1. **Resume** `/aod.build 374` on the branch. The branch lives in a linked worktree, so check `git worktree list`, and never switch branches in the main checkout (H9). The handoff check finds this file.
-2. **Before T073's first dispatch.** These come from P1, and none is code.
-   - **P1-1 (MEDIUM): re-run T065's offline driver on the W5 install commit,** about 0.05 d. T065's evidence is from `f43440b`, before W4's shipped changes. The re-run can overlap T072.
-   - **T072's record decides three dispositions in advance** (TW-L2):
-     - **(a) Exit 5 is the pass state** for T073 and T074 on the fixture. Its `threats.md` has no architecture-source line, and its baseline isn't shipped. So each run warns `architecture-path:body-line:absent` and `baseline-unresolved`.
-     - **(b) A main-session departure from the command text is off-contract.** Examples: a `reconcile` before every listed wave's agents report, or a render before `reconcile` exits 0. Record it, file the follow-up, and don't claim that stage's SC. T073 and T074 record each run's `reconcile` calls, and the wave each one ran after.
-     - **(c) A refusal for a pipe in a Section 7 cell is a code defect.** If T076 refuses a live `threats.md` for one (P1-3), it goes to T147 as a shipped-code defect. It isn't an agent off its contract.
-3. **W5.**
-   - T072: the adopters.
-   - T073 and T074: the scorer and the controls stage, live, at the default effort and at `effort=max`.
-   - T075: SC-8's post-fix runs.
-   - T076: R-27's smoke run.
-   - Then T077, the W5 gate (M5a). T078 runs only on a return from T077.
-4. **Session L ends at T077 (M5a).** S3 follows, with PR 1's W6.
-   - **First, P1's batch:** about 0.14 d, in one push.
-     - P1-2: SA-4's file modes, through the renderers' `os.replace` and `fail`'s restore.
-     - P1-4: the effort-estimate check, and D2's standing rule.
-     - P1-5: `score-source`'s wording.
-     - The ADR text: D2 near `:146`, D4's step 5, D3's two nits and D7's `%3A` note.
-     - Four Known-limitations lines: SA-1's residual, SA-9, SA-14 and SA-15.
-     - The same push carries the merge-candidate oracle (Verification 7) and P1-1's second run.
-   - **Then** T079–T083.
-5. **PR 2's S1′** (W2′ and W3′) can run beside L and S3, in PR 2's own worktree. T085 opens W2′, and T094 lands T093's held commit.
-
-## How S2 ran, and what L should repeat
-
-- **S1's rules held** (H9):
-  - lane worktrees and cherry-picks;
-  - agents never commit;
-  - one task per agent instance;
-  - a lane's worktree is created before its agent is dispatched.
-- **Resume, don't re-brief.** A finished agent, resumed with one short message, did its follow-up with its context intact: T066's tester recorded R-J, and P1's architect took CI's result.
-- **Keep the orchestrator light.** S2's main session ran three waves and about 65 agents in one context, and ran out at W4's close-out.
-  - Keep agent returns short and tool outputs small.
-  - Append to a private status log at every step. That log is what let a fresh session finish W4.
-  - If the context runs long, start a fresh session at a wave boundary.
-- **H1:** no pytest, extractor or renderer runs in a tracked tree. `rm -rf` is blocked here, so give every scratch clone a new name.
+1. **Resume** `/aod.build 374` on the branch. The branch lives in a linked worktree, so check `git worktree list` and never switch branches in the main checkout (H9).
+2. **First, P1's batch,** about 0.14 d, in one push, as S2's handoff planned:
+   - P1-2: SA-4's file modes through the renderers' `os.replace` and `fail`'s restore.
+   - P1-4: the effort-estimate check and D2's standing rule.
+   - P1-5: `score-source`'s wording.
+   - The ADR text: D2 near `:146`, D4's step 5, D3's two nits and D7's `%3A` note.
+   - Four Known-limitations lines: SA-1's residual, SA-9, SA-14 and SA-15.
+   - **New from L, records only:** `t146-fixes-pr1.md` still lists SA-3 as deferred, but `c129e78` (T146's SA-1 row) also cured T065's O2, which is SA-3. Correct the row, and drop SA-3 from T080's list if nothing remains.
+   - **The same push carries** the merge-candidate oracle (Verification 7) and P1-1's second run, if P1-2 changes a script.
+3. **Then T079 to T083,** in the order the tasks give: T080 files the follow-ups before T079 writes the notes that link them.
 
 ## Notes for later tasks
 
-- **W5 (T072–T077).** S1's notes stand:
-  - **The adopters** run under a neutral path that doesn't embed the source checkout's path. T072 and T075 reproduce SC-8's arrangement.
-  - **The controls target** is the fixture's stub codebase at `c84ff16`, passed as `--target`. Its tree digest is in `sc8-baseline.md`.
-  - **The SC-8 ceilings** are 29,753 output tokens for the scorer and 38,720 for controls.
-  - **Pricing.** F17 is about 132–152 dispatches, and each effort level runs 26 scorer and 38 controls batches (P1). Controls has no margin at size 11, so check each live part's size.
-  - **The completion rule** replaces "foreground" (ADR-050 D6's dated note).
-- **T079 (W6's release notes):**
-  - **O1 (T065):** an upgrading adopter's first run warns and exits 5 until the next `/tachi.threat-model` writes the architecture-source line, even at the default path.
-  - **P1-3:** a raw or GFM-escaped pipe in a Section 7 cell now stops the run (exit 2, with the `&#124;` remedy).
-  - **Item 4's lines:** the W4 ones from the PM's rulings, and the re-run line (`CF` is 1.0's column, now filled by the renderer). Whether to add "a `CF` mark needs a result that the baseline holds" is the PM's call.
-  - **S1's notes stand:** the response cap depends on the environment; `&amp;`-style text now reads as the character; and the ASI01 taxa name stays in PR 1.
-- **T080 follow-ups:**
-  - S1's list, and `t146-fixes-pr1.md`'s "Deferred" list.
-  - From P1: SA-1's residual (an issue), the `https%3A//` hardening, P1-3 unless it moves into PR 1, the read-back widening with T067a's L8, and SA-3's remainder.
-  - U-2's colon-form title.
-  - A list-form Section 7 with no baseline, which is a PM question when filed.
-  - Merging correlation groups that share a member (an idea).
-  - T065's O4: the fixture's stale `source_file`.
+- **T079 (PR 1's release notes):**
+  - **Claims:** take them from `w5-gate-pr1.md` sections 5 and 5a.
+    - SC-8's "cheaper" holds only for the small example at the default effort (the gate's G-4).
+    - Under T078, the notes may describe the new instruction text, but may not claim, at any effort, that agents read their references or keep to their read list.
+    - US-1a #6 is stated only as its listed items.
+    - One known-limitation line covers the default-effort scorer's skipped reads, linked to T078's follow-up 1.
+  - **Release-note items from S1, S2 and L:**
+    - S2's O1 and P1-3 items still stand.
+    - **New from T076:** a first run with no baseline writes `threats.md` without `delta_status`, so both stages flag every finding `input:delta_status:not-in-form` and exit 5. Note it, or file it if it's a defect.
+    - **Adopter guidance:** `--effort max` sets only the main session, while `CLAUDE_CODE_EFFORT_LEVEL` reaches the agents.
+- **T080 (the follow-ups and the KB entry):**
+  - **The lists to file:**
+    - `w5-gate-pr1.md` section 7: 10 to file, plus 3 notes items;
+    - T078's two follow-ups, in its exact generic titles;
+    - S1's and S2's lists, and `t146-fixes-pr1.md`'s "Deferred" list.
+  - **Also from L:**
+    - `test_tachi_parsers`' 5000-deep JSON case fails on Python 3.12 and later, which parse that input. CI's 3.11 and 3.9 pass it, but S-4's determinism claim names 3.9 to 3.13.
+    - `control-analyzer.md:84` still asks the agent for scan limits in its reply, which the command no longer relays (AW5-8's residual).
+    - The runbook's section 11 has no entry for the 2026-11-24 run.
+  - **S-16's KB entry (Entry 27)** should carry W5's true-max evidence. At max, thinking fills the response: 9 scorer agents hit thinking-only `max_tokens` stops, and two Writes came within 1k tokens of the 128k cap. D6's sizing bounds writes, not thinking.
 - **T066 at W6:**
   - the merge-candidate confirmation (Verification 7);
-  - P1-6: spec `:588` and D3's quote state D2's pre-W4 rule, so a one-line PM erratum is needed;
-  - either add D2's held condition to the oracle's derivation, or record the equivalence.
-- **#364 at delivery:**
-  - the example-defect table at the re-run's counts: U-4 178, U-12 6, U-15 1, U-17 10, and Reachability 7 findings;
-  - `agentic-app`'s controls file, which claims 84 carried with no `CF` marked.
-- **PR 2.** S1's notes stand: T114, R3b, O2's Phase 3.6, O3 and FR-K5.6. From T148:
-  - 45 of the 120 chains need undirected reachability, so T116 confirms that reading;
-  - the reissue check for an unused ID under a seeded mark is unruled;
-  - the AGP mark's spelling goes to T092.
+  - P1-6's spec erratum;
+  - D2's held-condition note;
+  - T075's two NFR-1 notes: template sub-sections that neither run writes, and the controls output's "no mapped threat" controls, which v4.48.4 listed and the per-finding output doesn't carry. The PM may need to rule on the second.
+- **#364 at delivery:** S2's notes stand.
+- **PR 2:**
+  - S2's notes stand.
+  - T078's reading binds T133.
+  - Launch W5′'s max runs with the environment variable, and check the agents' effort in the transcripts.
+
+## How session L ran, and what S3 can reuse
+
+- **Lane worktrees per task:** agents never commit, one agent instance per live run, and the orchestrator commits on the lane and cherry-picks.
+- **Each live run** is a fresh interactive session in tmux:
+  - a neutral adopter path, the clean environment (`env -i`) and `--effort medium`, because the account's settings now open Opus at xhigh;
+  - one shared protocol brief for the testers;
+  - a private status log at every step.
+- **The user-scope settings that R-27's runbook asks for** were applied for that one session, with the maintainer's approval, and restored byte for byte.
 
 ## Context files
 
-`tasks.md` (W5 and W6), `agent-assignments.md`, `test-results/offline-e2e-pr1.md`, `test-results/sc8-baseline.md`, `test-results/oracle-pr1.md`, `test-results/t146-fixes-pr1.md`, `test-results/ci-pr1.md`, ADR-050, `contracts/`, `plan.md` and `quickstart.md`.
+`tasks.md` (W6), `agent-assignments.md`, `test-results/w5-gate-pr1.md`, `test-results/t147-fixes-pr1.md`, `test-results/sc8.md`, `test-results/r27-smoke-pr1.md`, the four `live-*-a2.md` records, `test-results/oracle-pr1.md`, `test-results/ci-pr1.md`, ADR-050, `contracts/`, `plan.md` and `quickstart.md`.
 
 ## Resume command
 
 ```bash
-claude "Resume F-374 implementation (branch: 374-large-architecture-pipeline-resilience). PR 1's W0-W4 complete (77/91 PR 1 tasks; W4 pushed 27d58bd, CI 14/14 green; P1 APPROVED_WITH_CONCERNS). Run /aod.build 374 to continue with session L: P1-1's offline re-run and T072's three pre-decided dispositions, then W5's live matrix (T072-T077)."
+claude "Resume F-374 implementation (branch: 374-large-architecture-pipeline-resilience). PR 1's W0-W5 complete (85/91 PR 1 tasks; M5a passed, T078 ruled option A; W5's fix 1e3614a pushed, CI 14/14 green). Run /aod.build 374 to continue with session S3: P1's batch with the merge-candidate oracle in one push, then W6 (T079-T083) to deliver PR 1."
 ```
