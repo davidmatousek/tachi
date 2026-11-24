@@ -1,6 +1,6 @@
 # T066: the small-run oracle over the shipped examples (NFR-1), PR 1's W4
 
-> **Two runs are recorded here.** The first run is dated 2026-11-23, at commit `f43440b`: everything from the first heading to section 10 below. The **W4 re-run** is dated 2026-11-24, at commit `d8cf928`, after T146's fixes and the PM's W4 rulings: the last section, W4-1 to W4-9. The first run's sections are kept unchanged as the dated record.
+> **Two runs are recorded here.** The first run is dated 2026-11-23, at commit `f43440b`: everything from the first heading to section 10 below. The **W4 re-run** is dated 2026-11-24, at commit `d8cf928`, after T146's fixes and the PM's W4 rulings: the last section, W4-1 to W4-10 (W4-10, the same day, applies the PM's re-run rulings R-H and R-I to the same renders). The first run's sections are kept unchanged as the dated record.
 
 **Date:** 2026-11-23. **Commit under test:** `f43440b`, PR 1's pushed W3 tip, so `tachi_parts.VERSION` is `4.48.4`. **Python:** 3.11.13. **Where it ran:** scratch clones and scratch work trees only, never a tracked tree (H1). **Method:** T058's, reused: the code ran from a clone of the committed tip, and every render went to a separate work tree that mirrors the examples' relative paths, so `examples/**` was never written. **Contract reading:** PM W3 rulings 2, 2b and 2c, and spec NFR-1's W3 errata (six value classes, the contract reading of "every field").
 
@@ -210,7 +210,9 @@ The harness is scratch code, not a tracked file. Its steps:
 
 **Commit under test:** `d8cf928`, the W4 preview: PR 1's W3 tip with T146's fixes (FX-1 to FX-7), U-1's layer reader `tachi_parsers.parse_finding_layers`, R-F's repeated-member report, and the PM's W4 errata in the spec. `tachi_parts.VERSION` is `4.48.4`. **Python:** 3.11.13. **Where it ran:** scratch clones only (H1): one for the renders and one for the taxa pin, both clean afterwards. **Method:** the first run's (its sections 1 and 10), with the scratch harness copied rather than edited, so the first run's evidence stays. **Contract reading:** the spec's eleven classes (W3 errata plus W4 errata R-A to R-G), the example-defect table closed at five groups, and the gating rule: Run A gates, Run B gates the fifth class, and each other Run B diff takes the disposition of the identical Run A diff (same finding, field, shipped value and rendered value).
 
-### Result: not clean. Run A leaves 81 diffs unattributed, all of one cause, and Run B returns 80 value diffs on 10 findings
+### Result under the PM's re-run rulings (2026-11-24, W4-10): Run A is clean, and Run B returns 4 value diffs on 1 finding (TE-4's composite) to the PM
+
+*As first recorded the same day, before the PM's re-run rulings R-H and R-I: not clean. Run A leaves 81 diffs unattributed, all of one cause, and Run B returns 80 value diffs on 10 findings. The table below is that first reading, kept as the record. W4-10 applies the two rulings and gives the counts under them: Run A's class 8 is 102 and its unattributed count 0, and Run B's fifth class takes 114 value diffs, where the ruling counted 118.*
 
 | Question | Result |
 |---|---|
@@ -391,3 +393,60 @@ The harness is scratch code, not tracked. This run's steps, over the first run's
 2. Apply the three harness fixes (no clip; carry the UNCHANGED findings that the shipped controls file holds; the rendered-only sections are additive). Run A as before, then Run B (the scorer with no baseline).
 3. Attribute each diff by the class tests above, with the oracle's own readers for the added class-4 sources and for class 11's block. Map each Run B diff to the identical Run A diff.
 4. `git status` stays empty in both clones and in the lane worktree outside this record.
+
+### W4-10. The PM's re-run rulings applied (R-H and R-I, 2026-11-24)
+
+**What this is.** An attribution-only pass: the two amended class tests, as spec NFR-1's W4 re-run errata word them, applied by the harness's attribution and report scripts over this re-run's existing renders. No render ran, no shipped code changed and no input moved. The commit under test, both runs' files and every other test are as in W4-1 to W4-9. Every disposition was compared before and after, and **only the intended ones moved**: in Run A the 81 `CF` cells; in Run B 76 value diffs, the 2 §1 counts that follow them, and the row-order entries that split by class.
+
+| | As first recorded (W4-2, W4-6) | Under R-H and R-I |
+|---|---|---|
+| Run A, class 8 (the markdown frame values) | 21 | **102** |
+| Run A, unattributed | 81 | **0** |
+| Run A, value diffs in all | 3,834 | 3,834 |
+| Run B, class 5, value diffs | 38 | **114** (38 under the signed text, 76 under the added case) |
+| Run B, class 5, aggregated entries | 2 alone | **4 alone** (agentic-app's row order in each file, 46 pairs; consumer-agent-app's High and Medium §1 counts) and 6 joint with another class |
+| Run B, back to the PM, value diffs | 80 | **4** |
+| Run B, back to the PM, aggregated entries | 4 | **0** |
+| Run B, the other dispositions | identity 1,635; own groups 161; rule chain 16 | unchanged |
+
+The 4 aggregated entries that had returned are attributed. agentic-app's 68 unexplained pairs per file now sit in the class-5 entry (28 of them, making 46) and in three joint entries (classes 1 and 5: 32 pairs; 5 and 7: 2; 5 and the Reachability group: 6). consumer-agent-app's High and Medium counts follow TE-3's band move from Medium to High, so they are class 5. Run B's aggregated entries are 49 (45 before), none unattributed.
+
+**R-H, the eighth class's `CF` test as applied.** agentic-app is the only example whose controls stage ran with a baseline controls file in this re-run. The other four ran fresh: their parts claim nothing, nothing is accepted, and their rendered §2 tables read `—` on every row (19, 110, 31 and 37 rows).
+- *The source*, from the oracle's own readers: the accepted set is the findings whose controls part claims `carried_forward` and whose Section 7 status is UNCHANGED, when a baseline controls file resolved (the plan names one). The 8 part files (each batch's accepted attempt) hold 81 claims, all of them UNCHANGED. Section 7 has 82 UNCHANGED and 4 NEW; T-1 is the UNCHANGED finding that no part claims, and the shipped file has no row for it. Accepted: **81**. The oracle's Section 7 reader and the shared parser agree on every status.
+- *The test*, on each cell: the rendered cell is `CF` for an accepted finding and `—` for every other row. The rendered §2 has 86 rows, with `CF` on exactly the 81 accepted findings (none extra, none missing) and `—` on the other 5. All 81 diffs pass. `carry_forward_count` is 81, equal to the `CF` cells, and `rescan_scope` is `incremental`, as W4-3 recorded. The controls stage record carries no `carried-forward-cleared` warning.
+- *The shipped value's origin*, as class 8's table records each: the agent left every §2 cell `—` (0 of 85 rows read `CF`) against its own frontmatter (`carry_forward_count: 84`, `rescan_scope: incremental`) and its §1 note (84 findings carried forward). #364's regeneration replaces it.
+
+**R-I, the fifth class's widened test as applied.** The two readings were already in the first re-run's tests (NEW through S-12(b); the disposition, the SARIF `level` and the §3 copies as values that follow). The added case runs only on a Run B score diff that no other disposition took (no identical Run A diff, and not an own group), which is why Run B's other dispositions did not move. For each such finding, conditions 1 to 4 are tested on the finding and condition 5 on each of its diffs:
+1. The stage record states the missing baseline: `baseline-unresolved`, in both Run B stage records.
+2. The rendered `cvss_base` equals the chain without any bound on the assessment the run used: the finding's own vector and tags, or for a peer (LLM-11, a peer of T-8 in Run B) its primary's assessment with its own tags, which are none.
+3. The shipped value equals the chain on the finding's own vector (the shipped file's) and tags, held to a range from `cvss-vectors.md`'s table. The oracle's own reader reads the ranges and the prefix map, and agrees with `tachi_scoring` on all 8 ranges and 12 prefixes. All eight ranges are tried, and the categories that give the shipped value are listed.
+4. In Run A the same finding is carried with the shipped `cvss_base`, flagged `unchecked:cvss_base:bound-n17c` where the range is another category's. The vector is the same in the shipped file, Run A and Run B.
+5. The values that follow do so by their own rules: each side's composite is the formula on that side's own score and dimensions; the band follows it; the SLA, disposition and review date are the band's fresh governance at the run date; the SARIF `level` follows the band; the §2, §3 and SARIF copies read the same values; the weighted row reads each side's score, the weight 0.35 and their product to two decimals. This check accepts all 38 diffs that the signed text already takes, and rejects 76 of 76 variants with a score nudged by 1.0.
+
+Ten findings pass conditions 1 to 4, and **76 of their 80 value diffs pass condition 5**:
+
+| Example | Finding | Section 7 status | Shipped | Range that gives it (own category) | Run A | Run B | Diffs taken |
+|---|---|---|---|---|---|---|---|
+| agentic-app | T-8 | UNCHANGED | 8.5 | denial-of-service (tampering) | 8.5 | 9.9 | 7 of 7 |
+| agentic-app | R-7 | UNCHANGED | 6.5 | denial-of-service (repudiation) | 6.5 | 4.3 | 7 of 7 |
+| agentic-app | R-9 | UNCHANGED | 6.5 | denial-of-service (repudiation) | 6.5 | 4.3 | 7 of 7 |
+| agentic-app | AG-7 | UNCHANGED | 8.5 | denial-of-service (agentic) | 8.5 | 9.9 | 7 of 7 |
+| agentic-app | LLM-3 | UNCHANGED | 6.5 | denial-of-service (llm) | 6.5 | 5.3 | 7 of 7 |
+| agentic-app | LLM-9 | UNCHANGED | 8.5 | denial-of-service (llm) | 8.5 | 9.9 | 7 of 7 |
+| agentic-app | LLM-11 | UNCHANGED | 8.5 | denial-of-service (llm) | 8.5 | 9.9 (peer of T-8) | 7 of 7 |
+| agentic-app | LLM-12 | UNCHANGED | 6.5 | denial-of-service (llm) | 6.5 | 5.3 | 7 of 7 |
+| consumer-agent-app | TE-3 | absent from the form (derived NEW, S-12(b)) | 8.5 | denial-of-service (agentic) | 8.5 | 9.3 | 17 of 17 |
+| consumer-agent-app | TE-4 | absent from the form (derived NEW, S-12(b)) | 8.5 | denial-of-service (agentic) | 8.5 | 9.3 | **3 of 7** |
+
+For all ten, the denial-of-service range (6.5 to 8.5) is the only one of the eight that gives the shipped value, and the finding's own category's clamp would give another: 8.1 for T-8, 4.3 for R-7 and R-9, 9.9 for AG-7, LLM-9 and LLM-11, 8.3 for LLM-3 and LLM-12, and 9.3 for TE-3 and TE-4. The own ranges are tampering 6.1 to 8.1 (T-8), repudiation 3.3 to 5.3 (R-7, R-9), agentic 8.9 to 10.0 (AG-7, TE-3, TE-4) and llm 8.3 to 10.0 (the LLM findings). Run A carries each of the ten at its shipped value and flags it `unchecked:cvss_base:bound-n17c`, because the range is another category's. The eight agentic-app findings take 7 diffs each (the score and the composite in the SARIF file and the §2 row, §3's Composite Score and its two weighted rows). TE-3 takes 17 (the score, the composite, the band, the SLA, the disposition, the review date and the `level`, across the SARIF file, the §2 row and §3), and its band moves from Medium to High.
+
+**Where the count differs from the PM's: TE-4's composite, 4 value diffs.** The ruling's 118 includes 4 diffs that the test as worded doesn't take. They are TE-4's composite, shipped 6.5 and rendered 6.8, in the SARIF `security-severity`, the §2 row, §3's Composite Score and the weighted table's composite cell. TE-4's other 3 diffs (its score in the SARIF file, the §2 row and the weighted row) pass.
+- *Why they fail condition 5.* On the shipped score (8.5) and the shipped dimensions, the formula gives exactly 6.550, which rounds half-up to 6.6. The shipped file holds 6.5, the other one-decimal neighbour. That is R-11's rounding-only difference, and it is why TE-4 is one of Run A's fifteen class 7 findings (the same finding and field in Run A: shipped 6.5, rendered 6.6, class 7). The rendered 6.8 is the formula, half-up, on the rendered score (9.3, exact 6.830), and both bands are Medium.
+- *What they are.* One value with two attributed causes: class 7's rounding of the shipped value (6.5 to 6.6, Run A's own diff for this finding) and class 5's score (the formula on 8.5 against 9.3, 6.6 to 6.8). No identical Run A diff exists, because Run A's rendered value is 6.6. Class 7's own test fails on Run B's pair: it needs the shipped value to be the other neighbour of the rendered exact composite (6.830, neighbours 6.8 and 6.9), and 6.5 isn't. The W4 re-run supersede block lets a value that follows from attributed diffs take their dispositions, and names joint row-order entries, which have no value of their own. It doesn't say whether that reaches a value with one cause from each class, so I did not apply it.
+- *If the PM rules them joint (classes 5 and 7):* Run B's class 5, with the joint, is 118, and the count back to the PM is 0. No other count moves.
+
+**Back to the PM.** (1) TE-4's four composite diffs, above. (2) Nothing else: no `CF` cell outside the accepted set, no no-baseline diff whose shipped score no documented range gives or whose finding Run A doesn't carry at the shipped value with the flag, and no other disposition moved in this pass.
+
+**Where the oracle isn't independent, for these two tests.** R-H: nowhere; the cells, the part files and Section 7's status come from the oracle's own readers. R-I: the CVSS chain, the composite and band formulas, the `level` map and the fresh-governance rule are the shipped modules' own, as the signed class 5's follow rules use them (each is pinned by its own tests). The ranges, the prefix map and Section 7's status come from the oracle's own readers.
+
+**Re-running.** After W4-9's step 3, apply the two amended tests and re-run the harness's attribution and its report scripts over the same renders. No render is needed.
