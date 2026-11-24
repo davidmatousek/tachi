@@ -1752,10 +1752,42 @@ def _sarif_entry(result: dict, properties: dict, fingerprints: dict, finding_id:
     }
 
 
-def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False) -> dict:
-    """D8's fallback reader: the member set, the groups and (for ``risk-scores.sarif``) the scores of a SARIF file.
+def _sarif_text(*values) -> Optional[str]:
+    """The first of ``values`` that is a string with something in it, else ``None``. A missing key, an empty or blank
+    string and a value of any other type all count as "the result holds none" (D8)."""
+    return next((value for value in values if isinstance(value, str) and value.strip()), None)
 
-    Returns ``{"members": [...], "groups": [...], "scores": {...}}``.
+
+def _sarif_details(result: dict, properties: dict) -> dict:
+    """D8's reading of what one result says about its own finding (P0-3), the same for either ID form.
+
+    ``component`` is the first logical location's ``name``, else ``properties.component``. ``threat`` is
+    ``message.text`` and ``mitigation`` is ``message.markdown``. ``risk_level`` is ``properties.risk_level``, else
+    ``security-severity`` (a score as the file writes it, not a band). ``layer`` is ``maestro-layer``. ``kind`` is the
+    first logical location's ``kind``, which the renderer reads from the same result. Each value is the string as
+    written, or ``None``. Nothing here raises: a result of any other shape reads as holding none.
+    """
+    locations = result.get("locations")
+    location = locations[0] if isinstance(locations, list) and locations else None
+    logical = location.get("logicalLocations") if isinstance(location, dict) else None
+    logical = logical[0] if isinstance(logical, list) and logical else None
+    logical = logical if isinstance(logical, dict) else {}
+    message = result.get("message") if isinstance(result.get("message"), dict) else {}
+    return {
+        "component": _sarif_text(logical.get("name"), properties.get("component")),
+        "threat": _sarif_text(message.get("text")),
+        "mitigation": _sarif_text(message.get("markdown")),
+        "risk_level": _sarif_text(properties.get("risk_level"), properties.get("security-severity")),
+        "layer": _sarif_text(properties.get("maestro-layer")),
+        "kind": _sarif_text(logical.get("kind")),
+    }
+
+
+def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False, with_details: bool = False) -> dict:
+    """D8's fallback reader: the member set, the groups, the scores (for ``risk-scores.sarif``) and each member's text.
+
+    Returns ``{"members": [...], "groups": [...], "scores": {...}}``, and a fourth key, ``details``, only when
+    ``with_details`` is true, so the default call returns what it always did.
 
     * ``members`` are canonical finding IDs, one per ``runs[0].results[]`` entry, in result order, each ID once. A
       result's ID is its ``partialFingerprints["findingId/v1"]``, or, when it has none, its ``properties.id`` (tachi's
@@ -1771,11 +1803,19 @@ def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False) -> dic
       ``correlationGroup`` fingerprint, and is ``None`` where the file names none. One group ID names one group.
       Named groups come in group-number order (``CG-1`` before ``CG-2``, which is Section 4a's order, so an ID that
       two groups list goes to the same group as in the Section 4a reader), then the unnamed ones in the order their
-      first result appears.
+      first result appears. An unnamed group has the same shape: its ``primary`` is the first result's ID and
+      ``members`` lists it first, so a caller can route its peers. No ID names it, so a caller passes only the named
+      groups to ``sarif_common.correlation_assignments``, which raises on a ``None`` group ID, and counts the others
+      (D8, P0-3).
     * ``scores`` is ``{}`` unless ``with_scores``. Then each member that has a result maps to
       ``{"composite": Decimal or None, "band": str or None}``, from the first such result. The composite is read from
       ``composite`` or ``security-severity``, the band from ``severity-band``, ``severity_band`` or ``severity``. A
       value that isn't a number from 0 to 10, or a band name, is ``None``.
+    * ``details`` is in the return only with ``with_details`` (P0-3). Then it maps each member that has a result of its
+      own, with either ID form, to D8's reading of that result, from the first such result (see
+      :func:`_sarif_details`): ``component``, ``threat``, ``mitigation``, ``risk_level``, ``layer`` and ``kind``, each a
+      string as written or ``None``. A member that only a legacy peer reference names has no entry. Nothing is escaped
+      or checked here: a caller that writes a value checks it where it takes it (P0-4).
 
     It raises ``ValueError`` on text that is not JSON (no ``NaN`` or ``Infinity``, an integer of over 20 digits, or
     nesting too deep) and on an empty extraction, so the stage stops before dispatch (KB 22). The error names the
@@ -1788,6 +1828,7 @@ def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False) -> dic
     entries = []
     kept: set = set()
     dropped: set = set()
+    details: dict = {}
     for result in results if isinstance(results, list) else []:
         if not isinstance(result, dict):
             continue
@@ -1804,6 +1845,8 @@ def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False) -> dic
             continue
         kept.add(finding_id)
         entries.append(_sarif_entry(result, properties, fingerprints, finding_id))
+        if with_details and finding_id not in details:
+            details[finding_id] = _sarif_details(result, properties)
     resolved = dropped - kept
     members: list = []
     scores: dict = {}
@@ -1847,7 +1890,10 @@ def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False) -> dic
     # Named groups in group-number order, which is Section 4a's order, so the claim goes where the Section 4a reader
     # gives it. Then the groups the file doesn't name, in the order their first result appears.
     raw_groups = [(group_id, list(dict.fromkeys(named[group_id]))) for group_id in sorted(named, key=lambda g: int(g[3:]))]
-    return {"members": members, "groups": _assign_correlation_groups(raw_groups + unnamed, set(members)), "scores": scores}
+    found = {"members": members, "groups": _assign_correlation_groups(raw_groups + unnamed, set(members)), "scores": scores}
+    if with_details:
+        found["details"] = details
+    return found
 
 
 # =============================================================================

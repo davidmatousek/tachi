@@ -1989,6 +1989,231 @@ def test_the_fallback_reads_the_groups_that_section_4a_gives_on_a_shipped_sample
 
 
 # =============================================================================
+# Feature 374 (W3, lane FX0, P0-3): D8's fallback details, parse_sarif_member_set(..., with_details=True)
+#
+# A fallback member's text comes from its own result, whichever ID form the result uses: the component, the threat, the
+# mitigation, the risk level and the layer, and the logical location's kind, which the renderer reads from the same
+# result. So a legacy-form member keeps its identity text (P0-3 (b)), and the planner's fallback units and the renderer's
+# reference set read one reader. An unnamed group keeps the shape it always had, with a `group_id` of `None`, so the
+# renderer can route its peers and hand `correlation_assignments` only the named groups (P0-3 (a)). The default call
+# returns what it always did: the three whole-dict comparisons above (`== {"members", "groups", "scores"}`) fail if it
+# gains a key.
+# =============================================================================
+
+_DETAIL_KEYS = {"component", "threat", "mitigation", "risk_level", "layer", "kind"}
+_NO_DETAILS = dict.fromkeys(_DETAIL_KEYS)
+# (the sample, the form its results carry their ID in, the number of results where it is fixed). The two legacy samples are
+# the ones whose results have no `findingId/v1` at all.
+_DETAIL_SAMPLES = [
+    ("agentic-app/sample-report/threats.sarif", "findingId/v1", None),
+    ("maestro-reference/threats.sarif", "findingId/v1", None),
+    ("mobile-banking-app/sample-report/threats.sarif", "properties.id", 31),
+    ("predictive-ml-app/sample-report/threats.sarif", "properties.id", 49),
+]
+
+
+def _own_id(result):
+    """A shipped result's canonical ID: ``findingId/v1``, else ``properties.id``."""
+    fingerprint = (result.get("partialFingerprints") or {}).get("findingId/v1")
+    return tachi_parts.canonical_finding_id(fingerprint or result["properties"]["id"])
+
+
+def _result_says(result):
+    """What a shipped result says, by plain lookups on the shapes the four samples show: D8's reading, restated."""
+    properties = result.get("properties") or {}
+    logical = ((result.get("locations") or [{}])[0].get("logicalLocations") or [{}])[0]
+    message = result["message"]
+    return {"component": logical.get("name") or properties.get("component"), "threat": message.get("text"),
+            "mitigation": message.get("markdown") or None,
+            "risk_level": properties.get("risk_level") or properties.get("security-severity"),
+            "layer": properties.get("maestro-layer"), "kind": logical.get("kind")}
+
+
+def _at(name, kind=None):
+    """``locations`` as tachi's threats.sarif writes them: one logical location, with a name and, here, a kind."""
+    logical = {"name": name}
+    if kind is not None:
+        logical["kind"] = kind
+    return [{"physicalLocation": {"artifactLocation": {"uri": "architecture.md"}, "region": {"startLine": 1}}, "logicalLocations": [logical]}]
+
+
+def _details_of(*results, **kwargs):
+    return parse_sarif_member_set(_sarif(*results), with_details=True, **kwargs)["details"]
+
+
+@pytest.mark.parametrize("relative,form,count", _DETAIL_SAMPLES, ids=[sample[0].split("/")[0] for sample in _DETAIL_SAMPLES])
+def test_a_fallback_member_takes_its_details_from_its_own_result_in_either_id_form(relative, form, count):
+    text = _shipped_sarif(relative)
+    results = json.loads(text)["runs"][0]["results"]
+    has_fingerprint = ["findingId/v1" in (result.get("partialFingerprints") or {}) for result in results]
+    assert all(has_fingerprint) if form == "findingId/v1" else not any(has_fingerprint), "the sample shows the form it is here for"
+    assert count is None or len(results) == count
+    expected = {_own_id(result): _result_says(result) for result in results}
+    assert len(expected) == len(results), "one result per ID, so each member's own result is unambiguous"
+    got = parse_sarif_member_set(text, with_details=True)
+    assert got["details"] == expected
+    assert set(got["details"]) <= set(got["members"]) and all(set(entry) == _DETAIL_KEYS for entry in got["details"].values())
+
+
+def test_the_legacy_form_samples_keep_their_identity_text_instead_of_blanking_it():
+    """P0-3 (b): the renderer read its details from `findingId/v1` alone, so the 31 and the 49 results that carry only
+    `properties.id` all rendered with no component, no threat and no risk level, and no warning said so."""
+    for relative, count in (("mobile-banking-app/sample-report/threats.sarif", 31), ("predictive-ml-app/sample-report/threats.sarif", 49)):
+        details = parse_sarif_member_set(_shipped_sarif(relative), with_details=True)["details"]
+        assert len(details) == count, relative
+        for finding_id, entry in details.items():
+            assert entry["component"] and entry["threat"], (relative, finding_id)
+            assert entry["risk_level"] in ("Critical", "High", "Medium", "Low", "Note"), (relative, finding_id)
+            assert entry["mitigation"] is None and entry["layer"] is None, "these files carry neither: " + finding_id
+
+
+def test_a_result_with_no_location_takes_its_component_from_properties_component():
+    """23 of `predictive-ml-app`'s 49 results have no `locations`, so only `properties.component` names their component."""
+    text = _shipped_sarif("predictive-ml-app/sample-report/threats.sarif")
+    results = json.loads(text)["runs"][0]["results"]
+    bare = [result for result in results if "locations" not in result]
+    assert len(bare) == 23
+    details = parse_sarif_member_set(text, with_details=True)["details"]
+    assert all(details[_own_id(r)]["component"] == r["properties"]["component"] and details[_own_id(r)]["kind"] is None for r in bare)
+    located = [result for result in results if "locations" in result]
+    assert located and all(details[_own_id(r)]["component"] == r["locations"][0]["logicalLocations"][0]["name"] for r in located)
+
+
+def test_the_modern_form_sample_reads_its_mitigation_and_kind_as_written():
+    text = _shipped_sarif("agentic-app/sample-report/threats.sarif")
+    results = json.loads(text)["runs"][0]["results"]
+    details = parse_sarif_member_set(text, with_details=True)["details"]
+    assert all(details[_own_id(result)]["mitigation"] == result["message"]["markdown"] for result in results)
+    assert {entry["kind"] for entry in details.values()} == {"external-entity", "process", "data-store"}, "the kind is not mapped here"
+
+
+@pytest.mark.parametrize("relative", [sample[0] for sample in _DETAIL_SAMPLES] + ["agentic-app/sample-report/risk-scores.sarif"],
+                         ids=[sample[0].split("/")[0] for sample in _DETAIL_SAMPLES] + ["a-scores-file"])
+def test_the_default_call_returns_what_it_always_did_and_the_flag_only_adds_the_details(relative):
+    text = _shipped_sarif(relative)
+    scored = relative.endswith("risk-scores.sarif")
+    default = parse_sarif_member_set(text, with_scores=scored)
+    assert set(default) == {"members", "groups", "scores"}
+    assert parse_sarif_member_set(text, with_scores=scored, with_details=False) == default
+    asked = parse_sarif_member_set(text, with_scores=scored, with_details=True)
+    assert set(asked) == {"members", "groups", "scores", "details"}
+    assert {key: value for key, value in asked.items() if key != "details"} == default, "members, groups and scores are not touched"
+
+
+def test_the_unnamed_groups_of_a_shipped_sample_keep_their_shape_and_every_member_has_details():
+    """`maestro-reference`'s `threats.sarif` names no group: it has three pairs of legacy peer references, each reciprocal.
+    They come back as groups with a `group_id` of `None`, each with a primary and its peers, and every member has a result
+    of its own, so the renderer can route the peers (D9) and pass only the named groups on (P0-3 (a))."""
+    text = _shipped_sarif("maestro-reference/threats.sarif")
+    got = parse_sarif_member_set(text, with_details=True)
+    assert got["groups"] == [_group(None, ["T-7", "AG-7"]), _group(None, ["R-6", "AG-1"]), _group(None, ["I-7", "LLM-1"])]
+    assert got["groups"] == parse_sarif_member_set(text)["groups"], "the flag leaves the groups as they were"
+    assert all(member in got["details"] for group in got["groups"] for member in group["members"])
+    pairs = [(group["group_id"], group["members"]) for group in got["groups"]]
+    with pytest.raises(ValueError):  # the crash that P0-3 (a) found: the emitter's role assignment refuses a group with no ID
+        sarif_common.correlation_assignments(pairs, got["members"])
+    assert sarif_common.correlation_assignments([pair for pair in pairs if pair[0] is not None], got["members"]) == {}
+
+
+def test_an_unnamed_group_beside_a_named_one_is_routable_and_only_the_named_one_goes_to_the_emitter():
+    text = _sarif(_result("S-1", _correlated("CG-1", "primary", "S-1")), _result("T-2", _correlated("CG-1", "peer", "S-1")),
+                  _result("E-3", related=["D-4: a peer"]), _result("D-4"), _result("R-5"))
+    got = parse_sarif_member_set(text, with_details=True)
+    assert got["groups"] == [_group("CG-1", ["S-1", "T-2"]), _group(None, ["E-3", "D-4"])], "the named ones first"
+    assert all(member in got["details"] for group in got["groups"] for member in group["members"])
+    named = [(group["group_id"], group["members"]) for group in got["groups"] if group["group_id"] is not None]
+    assert set(sarif_common.correlation_assignments(named, got["members"])) == {"S-1", "T-2"}
+
+
+def test_details_come_from_the_result_whichever_id_form_it_uses():
+    modern = _result("S-1", {"maestro-layer": "L3", "security-severity": "8.2"}, locations=_at("Gateway", "process"),
+                     message={"text": "A threat.", "markdown": "A mitigation."})
+    legacy = {"ruleId": "tachi/risk/spoofing", "message": {"text": "Another threat."},
+              "properties": {"id": "AGP-01", "component": "Store", "risk_level": "Low"}}
+    assert _details_of(modern, legacy) == {
+        "S-1": {"component": "Gateway", "threat": "A threat.", "mitigation": "A mitigation.", "risk_level": "8.2", "layer": "L3",
+                "kind": "process"},
+        "AGP-1": {"component": "Store", "threat": "Another threat.", "mitigation": None, "risk_level": "Low", "layer": None, "kind": None}}
+
+
+@pytest.mark.parametrize("name,component,expected", [
+    ("Gateway", "Store", "Gateway"), (None, "Store", "Store"), ("", "Store", "Store"), ("   ", "Store", "Store"),
+    (7, "Store", "Store"), (["Gateway"], "Store", "Store"), ("Gateway", None, "Gateway"), ("Gateway", 7, "Gateway"),
+    (None, None, None), ("", "", None), (7, 7, None),
+])
+def test_the_component_is_the_logical_location_name_else_properties_component(name, component, expected):
+    logical = {} if name is None else {"name": name}
+    properties = {} if component is None else {"component": component}
+    result = _result("S-1", properties, locations=[{"logicalLocations": [logical]}])
+    assert _details_of(result)["S-1"]["component"] == expected
+
+
+@pytest.mark.parametrize("risk_level,severity,expected", [
+    ("High", "8.2", "High"), (None, "8.2", "8.2"), ("", "8.2", "8.2"), (3, "8.2", "8.2"), ("High", None, "High"), ("High", 8.2, "High"),
+    (None, 8.2, None), (None, None, None), ("", "  ", None),
+])
+def test_the_risk_level_is_properties_risk_level_else_security_severity_as_the_file_writes_it(risk_level, severity, expected):
+    properties = {}
+    if risk_level is not None:
+        properties["risk_level"] = risk_level
+    if severity is not None:
+        properties["security-severity"] = severity
+    assert _details_of(_result("S-1", properties))["S-1"]["risk_level"] == expected, "a score is not turned into a band here"
+
+
+@pytest.mark.parametrize("parts", [
+    {}, {"locations": "x"}, {"locations": []}, {"locations": [None]}, {"locations": [5]}, {"locations": [{}]}, {"locations": {"a": 1}},
+    {"locations": [{"logicalLocations": "x"}]}, {"locations": [{"logicalLocations": []}]}, {"locations": [{"logicalLocations": [None]}]},
+    {"locations": [{"logicalLocations": ["x"]}]}, {"locations": [{"logicalLocations": {"name": "Gateway", "kind": "process"}}]},
+    {"locations": [{"logicalLocation": {"name": "Gateway", "kind": "process"}}]},
+    {"message": "text"}, {"message": None}, {"message": ["text"]}, {"message": {}}, {"message": {"text": 5, "markdown": ["x"]}},
+    {"message": {"text": "", "markdown": "  "}}, {"properties": ["id", "S-1"]}, {"properties": "x"},
+    {"properties": {"component": ["x"], "risk_level": 3, "security-severity": 8.2, "maestro-layer": 4}},
+], ids=lambda parts: json.dumps(parts)[:60])
+def test_a_result_of_any_other_shape_has_no_details_and_never_raises(parts):
+    """The singular `logicalLocation` appears only in tachi's scorer and controls SARIF, never in a `threats.sarif`, so it isn't read."""
+    result = dict({"partialFingerprints": {"findingId/v1": "S-1"}}, **parts)
+    got = parse_sarif_member_set(_sarif(result), with_details=True)
+    assert got["members"] == ["S-1"] and got["details"] == {"S-1": _NO_DETAILS}
+
+
+def test_details_are_the_first_open_result_of_an_id_and_a_resolved_or_peer_only_member_has_none():
+    gone = _result("S-1", {"baselineState": "absent"}, message={"text": "Resolved."}, locations=_at("Old"))
+    first = _result("S-1", {"baselineState": "new"}, message={"text": "First."}, locations=_at("Gateway"))
+    again = _result("S-1", message={"text": "Second."}, locations=_at("Other"))
+    resolved_only = _result("T-2", {"baselineState": "absent"})
+    referring = _result("E-3", related=["D-4: a peer with no result of its own", "T-2: a resolved one"])
+    got = parse_sarif_member_set(_sarif(gone, first, again, resolved_only, referring), with_details=True)
+    assert got["members"] == ["S-1", "E-3", "D-4"], "T-2 is resolved, so neither a result nor a reference"
+    assert set(got["details"]) == {"S-1", "E-3"}, "D-4 is named only by a reference, so it has no entry"
+    assert got["details"]["S-1"]["threat"] == "First." and got["details"]["S-1"]["component"] == "Gateway"
+
+
+def test_details_come_back_as_written_so_the_renderer_checks_them_where_it_takes_them():
+    """The reader escapes nothing, drops nothing and refuses nothing (P0-4): a control character in a result's text reaches
+    the caller, whose intake check names the finding and the field."""
+    nasty = " a | b <i> & `c` {{x}}\x1b[0m\r## Forged" + chr(0x202E) + " "
+    entry = _details_of(_result("S-1", locations=_at("  Gateway | A & B  "), message={"text": nasty, "markdown": nasty}))["S-1"]
+    assert entry["threat"] == nasty and entry["mitigation"] == nasty and entry["component"] == "  Gateway | A & B  "
+
+
+def test_details_and_scores_can_be_asked_for_together_and_an_empty_extraction_still_raises():
+    got = parse_sarif_member_set(_sarif(_result("S-1", {"composite": 8.2, "security-severity": "8.2"}, locations=_at("Gateway"))),
+                                 with_scores=True, with_details=True)
+    assert got["scores"]["S-1"]["composite"] == Decimal("8.2")
+    assert got["details"]["S-1"]["component"] == "Gateway" and got["details"]["S-1"]["risk_level"] == "8.2"
+    with pytest.raises(ValueError) as raised:
+        parse_sarif_member_set(json.dumps({"runs": [{"results": []}]}), with_details=True)
+    assert "no open finding" in str(raised.value) and str(raised.value).endswith("Remedy: regenerate the markdown input")
+
+
+def test_details_are_fresh_objects_on_every_call():
+    text = _sarif(_result("S-1", locations=_at("Gateway")), _result("T-2"))
+    first, second = parse_sarif_member_set(text, with_details=True), parse_sarif_member_set(text, with_details=True)
+    assert first == second and first["details"] is not second["details"] and first["details"]["S-1"] is not second["details"]["S-1"]
+
+
+# =============================================================================
 # Feature 374 (W2, T032): the drift forms of Section 7 (S-12, FR-E.16)
 #
 # The reference-set wrapper reads Section 7 under `## 7. Recommended Actions` or `## Section 7: Recommended Actions`, as a
