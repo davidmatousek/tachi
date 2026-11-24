@@ -116,3 +116,5 @@ T147 changed two agent files and two commands, so the second attempts, T075 and 
 ## Part 2: the runbook header (after T076)
 
 Pending. T076 decides it: update the line with the run's date, versions and build, or mark the header as predating this release if the run fails (R-27).
+
+**Done: T076 passed ([r27-smoke-pr1.md](r27-smoke-pr1.md)), so line 5 of the runbook now names the 2026-11-24 key-less run on the published 18-rule profile (Claude Code 2.1.331, build `v4.48.4-162-g1e3614a`, SHA-256 `36df2a9a...`) and keeps the 2026-11-20 keyed validation and re-check as the earlier runs.** The edit is that one line. The runbook is not an init-baseline substitution target (H4) and no test pins the header. Section 11 still records only the 2026-11-20 runs, and the new header cites none.
