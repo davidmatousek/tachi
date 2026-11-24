@@ -1796,9 +1796,14 @@ def _repeated_members(raw_groups, members, groups) -> list:
     repeated = []
     for member in sorted(also_in, key=tachi_parts.finding_sort_key):
         first, later = claimed_by[member], also_in[member]
-        falls = [group_id for group_id in later if group_id not in emitted and eligible[group_id] >= 2]
         reason = "%s is listed in %s. %s claims it, and %s %s not." % (
             member, _group_names([first] + later), first, _group_names(later), "does" if len(later) == 1 else "do")
+        if members is not None and member not in members:
+            # An ID outside the run's open findings is in no group at all, so no group falls away because of it (ADR-050 D8, W4).
+            reason += " It is not one of the run's open findings, so no group holds it."
+            repeated.append({"id": member, "claimed_by": first, "also_in": list(later), "falls_away": [], "reason": reason})
+            continue
+        falls = [group_id for group_id in later if group_id not in emitted and eligible[group_id] >= 2]
         if falls:
             reason += " %s %s left with fewer than two findings and emit%s no correlation." % (
                 _group_names(falls), "is" if len(falls) == 1 else "are", "s" if len(falls) == 1 else "")

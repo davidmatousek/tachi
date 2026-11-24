@@ -1521,8 +1521,22 @@ def test_an_id_that_is_not_a_member_is_reported_too_and_a_group_that_it_does_not
     content = _section_4a([_group_row("CG-1", "S-1, T-2, D-9"), _group_row("CG-2", "I-3, E-4, D-9")])
     result = parse_correlation_groups(content, ["S-1", "T-2", "I-3", "E-4"])
     assert result["groups"] == [_group("CG-1", ["S-1", "T-2"]), _group("CG-2", ["I-3", "E-4"])]
-    assert result["repeated"] == [_repeat("D-9", "CG-1", ["CG-2"], [], "D-9 is listed in CG-1 and CG-2. CG-1 claims it, and CG-2 does not.")]
+    assert result["repeated"] == [_repeat("D-9", "CG-1", ["CG-2"], [], "D-9 is listed in CG-1 and CG-2. CG-1 claims it, and CG-2 does not. "
+                                          "It is not one of the run's open findings, so no group holds it.")]
     assert [entry["id"] for entry in parse_correlation_groups(content)["repeated"]] == ["D-9"], "no member set gives the same report"
+
+
+def test_an_id_that_is_not_a_member_never_takes_the_blame_for_a_group_that_falls_away():
+    """ADR-050 D8 (W4): CG-2 falls away because CG-1 claimed S-1, not because of D-9, which is no member. So S-1's entry names
+    CG-2's fall, and D-9's names none and says that no group holds it."""
+    content = _section_4a([_group_row("CG-1", "S-1, D-9"), _group_row("CG-2", "S-1, D-9, T-2")])
+    result = parse_correlation_groups(content, ["S-1", "T-2"])
+    assert result["groups"] == []
+    by_id = {entry["id"]: entry for entry in result["repeated"]}
+    assert by_id["S-1"]["falls_away"] == ["CG-2"]
+    assert by_id["D-9"]["falls_away"] == []
+    assert by_id["D-9"]["reason"].endswith("It is not one of the run's open findings, so no group holds it.")
+    assert "falls" not in by_id["D-9"]["reason"] and "left with fewer" not in by_id["D-9"]["reason"]
 
 
 def test_a_group_that_would_not_have_been_one_anyway_does_not_fall_away_as_a_result():
