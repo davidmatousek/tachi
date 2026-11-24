@@ -45,8 +45,9 @@ the test says ``# reading:``, or the docstring says so, and the architect rules 
    inherent one; a Section 3 control's heading names its evidence entry's ``summary``; the SARIF result order is
    Section 2's; ``recommendation`` is the "What to Implement" text and
    ``effort-estimate`` the Effort word, both ``""`` for a found finding; ``control-carry-forward`` is a JSON boolean;
-   ``message`` is ``{text}`` alone; and the zone and DFD kind of a result's logical location come from ``threats.md``
-   as the scorer renderer takes them.
+   ``message`` is ``{text, markdown}`` (P0-8, extended to this file at W3): the markdown is the reference set's
+   mitigation text, ``""`` when the finding has none, and under D8's fallback the source result's ``markdown`` (or ``""``);
+   and the zone and DFD kind of a result's logical location come from ``threats.md`` as the scorer renderer takes them.
 
 Expected values are literals (``GOLDEN``), and ``test_harness_the_literal_goldens_equal_the_shipped_arithmetic``
 re-derives each from the shipped arithmetic (``tachi_scoring``), so a wrong number in a test fails there first.
@@ -65,6 +66,12 @@ The groups of tests, by the task that turns them green:
 * ``test_narrative_*``: the slots, the per-field fallback, cuts and hostile text.
 * ``test_template_*``: the 1.1 template and the renderer agree (D15). They skip until T060 (lane D) brings the
   template to 1.1, and then they pin it.
+* ``test_r34_*`` (Section 15 at the end, written by T056 before T059): R-34's cell-by-cell goldens for Sections 2 and
+  4, the carried rows (AR-T3, AR-T4) and ``CF``. They need the whole renderer, so they wait for T035 and T059; the list
+  at the head of Section 15 says which of the two turns each group green.
+* Section 16 (T056 too): the gaps that T035's own goldens left (D8's fallback, the baseline, the inputs' forbidden
+  characters, the evidence file, the shift table's cap, the failure path) and the SARIF as the 1.1 template shows it
+  (``message.markdown``, the rules' ``relationships``, the properties' order). They wait for T035, T053 and T060.
 
 Standard library and pytest only, and Python 3.9 syntax.
 """
@@ -81,6 +88,7 @@ import json
 import math
 import os
 import re
+import shutil
 import sys
 from decimal import ROUND_HALF_EVEN, Decimal
 from pathlib import Path
@@ -90,8 +98,8 @@ import pytest
 from ..conftest import _load_hyphenated_script
 from .test_render_risk_scores import (
     COMPONENTS, DASH, DATE, DIGEST, KIND_OF, LOCAL_PATH, RESOLVED, RESOLVED_IDS, URI, ZONES, canon, decode, frozen_clock,
-    has_section, invoke, make_architecture_md, make_threats_md, records, s2_key, section, section_text, sha256_of,
-    split_headings, subsection_of, table_of, tables, tree_state, working_directory)
+    has_section, invoke, make_architecture_md, make_threats_md, mitigation_of, records, s2_key, section, section_text,
+    sha256_of, split_headings, subsection_of, table_of, tables, tree_state, working_directory)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
@@ -1271,7 +1279,8 @@ def test_md_section_5_has_the_band_shift_table(base):
     assert list(plain) == list(SHIFTS) + ["Total"], "the six shifts, then No Shift, then the total"
     for label, ids in SHIFTS.items():
         assert int(plain[label][1]) == len(ids), label
-        assert label_ids(plain[label][2]) == sorted(canon(i) for i in ids), "%s names the IDs of its shift (reading: all of them, as there are at most four)" % label
+        assert label_ids(plain[label][2]) == sorted(canon(i) for i in ids), \
+            "%s names the IDs of its shift (reading: a shift of at most four findings is named in full, whatever cap the cell has: see test_md_section_5_the_examples_cell_names_a_prefix_of_its_shift_and_counts_the_rest)" % label
     assert int(re.sub(r"\*", "", plain["Total"][1])) == len(FINDINGS) == sum(int(row[1]) for label, row in plain.items() if label != "Total")
 
 
@@ -1394,8 +1403,9 @@ def test_sarif_each_result_carries_its_goldens(base):
         inherent, _inherent_band, _factor, residual, residual_band = golden(finding_id)
         assert result["ruleId"] == sc.rule_id_for(finding_id)
         assert result["level"] == sc.level_for_band(residual_band), "the level follows the RESIDUAL band (Phase 6c)"
-        assert result["message"] == {"text": "%s [Control: %s]" % (item["threat"], item["control"])}, \
-            "the full threat text of the reference set, a status suffix, and no markdown (control-analyzer.md Phase 6c)"
+        assert result["message"] == {"text": "%s [Control: %s]" % (item["threat"], item["control"]), "markdown": mitigation_of(item)}, \
+            "the full threat text of the reference set with a status suffix, and its mitigation as the markdown (P0-8: the key is always written)"
+        assert list(result["message"]) == ["text", "markdown"], "the markdown follows the text"
         assert result["partialFingerprints"] == sc.partial_fingerprints(TOOL, finding_id)
         zone = next(name for name, _label, _level, members in ZONES if item["component"] in members)
         location = result["locations"][0]
@@ -1475,6 +1485,8 @@ def test_corr_a_correlated_peer_is_a_result_with_the_correlation_properties_and_
     primary, peer = results["S-2"], results["S-10"]
     assert primary["message"]["text"] == "%s [Control: found] Correlated in CG-1; peers S-10." % by_id("S-2")["threat"]
     assert peer["message"]["text"] == "%s [Control: found] Correlated in CG-1; primary S-2." % by_id("S-10")["threat"]
+    assert (primary["message"]["markdown"], peer["message"]["markdown"]) == (mitigation_of(by_id("S-2")), mitigation_of(by_id("S-10"))), \
+        "ruling C's sentence ends the text, not the markdown"
     assert [primary["properties"][key] for key in sc.CORRELATION_KEYS] == ["CG-1", "primary", "S-2"]
     assert [peer["properties"][key] for key in sc.CORRELATION_KEYS] == ["CG-1", "peer", "S-2"]
     for result in results.values():
@@ -1980,3 +1992,1177 @@ def test_cli_the_entry_keeps_the_populators_shape(renderer):
     assert guards, "a __main__ guard"
     guard = guards[-1]
     assert len(guard.body) == 1 and "main" in ast.dump(guard.body[0]), "a thin guard: the work is in main(argv)"
+
+
+# =============================================================================
+# 15. R-34: Sections 2 and 4, cell by cell, and the carried rows (T056; written before T059)
+# =============================================================================
+#
+# ADR-050 D2's table "Controls Sections 2 and 4 in PR 1 (R-34), cell by cell" says what the renderer does with each cell of the
+# agent's Section 2 row (``matrix_row``) and with its Section 4 body (``recommendation_body``), and the W3 rulings pin the row's
+# form and ``CF`` (``contracts/module-signatures.md``, "The controls ``matrix_row``"). Every line of that table has its goldens
+# below, driven as the command drives them: the real planner, a part for each batch, ``reconcile``, the renderer, and then a
+# reader of the files. The groups, and what turns each green:
+#
+# * ``test_r34_fill_*``: the band tables, header and order, and the four computed cells, overwritten by position and counted.
+# * ``test_r34_cf_*``: ``CF`` is the renderer's cell, from the accepted ``carried_forward``, and it is never counted.
+# * ``test_r34_reject_*``: the Threat ID and the 11-cell count, and Section 4's body, reject the item.
+# * ``test_r34_flag_*``: a Control Status, Control Category, Component or MAESTRO Layer cell that disagrees is flagged.
+# * ``test_r34_section_4_*``: Section 4's group, order, number, heading and Current Status are written by the renderer.
+# * ``test_r34_carry_*``: the carried row (AR-T3), the carried narrative (AR-T4), ``carry_forward_count`` and byte identity.
+#
+# What turns them green: every case needs T035 (the whole file, Section 7, the records), and most read the SARIF too
+# (``assert_same_as_clean``, ``flags_of``), so they need T053. Past those two, T059 turns green the overwrite counts, the four
+# flagged checks, the Threat cell, Section 4's body checks and the carried runs' counts. The reject group has a second possible
+# owner, whoever writes D3 step 9's structural checks in ``tachi_parts`` (reading 7, ``assert_rejected``).
+#
+# Readings that no contract states are marked ``# reading:`` where they are used. They are collected here so that the
+# architect rules each once at integration, and each sits in one helper or one line, so that a ruling is a small change:
+#
+# 1. The overwrite count. ADR-050 D2 says "overwritten and counted in the stage record" and names no key, and
+#    ``tachi_parts.COUNT_KEYS`` is closed. ``overwrites`` reads the count as everything in ``counts`` beyond the seven base
+#    counts (``part-files.md`` §5: the flag counts by kind), one for each computed cell whose content is not its own slot token.
+#    A new key in ``COUNT_KEYS`` or a reuse of the ``corrected`` kind both satisfy it.
+# 2. The flag strings of the four row checks. ``module-signatures.md`` closes the scorer's vocabulary, not the controls'. The
+#    goldens ask for ``kind:field:cause`` (``FLAG_FORM``), one flag for a mismatch, in a kind that the record counts, whose
+#    field names the cell (``cell_flag``). Section 1's ``>`` lines and Section 7 name the finding.
+# 3. What Section 2 shows in a mismatched cell is left open (as written, or replaced by the structured value).
+# 4. Section 4's three group headings are the 1.0 template's, and its numbers run unbroken across the groups, as in every shipped example.
+# 5. Section 2's Threat ID cell is Section 7's spelling of the ID, whichever allow-listed spelling of it the agent wrote.
+# 6. A cleared ``carried_forward`` claim is "recorded" (D2) in some form: a count or a warning in the stage record, or Section 7.
+#    What Section 7 keeps for it is the cleared value (false), so that the next run copies no claim.
+# 7. Where a structural mismatch is rejected (D2: "rejects the item (D3), and its batch is re-dispatched"). Only ``reconcile``
+#    re-dispatches, and it reads parts through ``tachi_parts.read_part``, whose controls validator checks lengths and nothing of
+#    the row or the body. The task list gives the check to the renderer (T059), which can only refuse the render. Both places are
+#    accepted (``assert_rejected``), each held to what it owes; the first is the one that does what D2 says.
+# 8. Section 2's Threat cell is the agent's text, escaped and never flagged (D2: "model text (NFR-10 only)"). Lane R2's T035
+#    writes the reference set's text there, so ``test_r34_flag_section_2_threat_*`` waits for T059.
+# 9. A baseline that resolved and carried nothing has ``carry_forward_count`` 0 and scope ``full`` ("null when no baseline");
+#    a directory with no controls file, or an unreadable one, is no baseline (null). Section 16 names the scorer's warning codes
+#    for these (``baseline-unresolved``, ``baseline-unreadable``, ``value-not-in-form``, ``duplicate-finding-id``).
+
+COMPUTED_CELLS = ("Inherent Score", "Inherent Severity", "Residual Score", "Residual Severity")
+SLOT_OF = dict(zip(COMPUTED_CELLS, ("{{score:inherent}}", "{{band:inherent}}", "{{score:residual}}", "{{band:residual}}")))
+BASE_COUNTS = ("units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations")  # part-files.md section 5
+FLAG_FORM = re.compile(r"(?P<kind>[a-z-]+):(?P<field>[A-Za-z0-9_.-]+):(?P<cause>[^\s:][^\s]*)")
+GROUP_OF = {"Critical": "### Critical / High Risk Gaps", "High": "### Critical / High Risk Gaps", "Medium": "### Medium Risk Gaps",
+            "Low": "### Low Risk Gaps"}  # reading 4
+S2_ID = "S-2"  # the finding that the single-cell cases edit: inherent 9.1 (Critical), residual 4.6 (Medium), found
+
+
+# --------------------------------------------------------------------------- the agent's row and body, edited
+
+def row_cells(row):
+    """A Section 2 row's cells as ``module-signatures.md`` has the renderer read them: edge whitespace dropped, one leading and
+    one trailing ``|`` dropped where present, a split on raw ``|``, and each cell stripped."""
+    text = row.strip()
+    text = text[1:] if text.startswith("|") else text
+    text = text[:-1] if text.endswith("|") else text
+    return [cell.strip() for cell in text.split("|")]
+
+
+def join_row(cells):
+    """The canonical form: ``| `` before the first cell, `` | `` between cells and `` |`` after the last."""
+    return "| " + " | ".join(cells) + " |"
+
+
+def edit_item(finding_id, change):
+    """A ``mutate`` for ``Project.write_parts``: ``change(item)`` on the part's item for ``finding_id``, in whichever batch it is."""
+    def mutate(part):
+        for item in part["items"]:
+            if canon(item["finding_id"]) == canon(finding_id):
+                change(item)
+    return mutate
+
+
+def with_cells(finding_id, changes):
+    """The agent wrote ``changes`` (``{K8 column: text}``) in those cells of its row for ``finding_id``, and its own text in the rest."""
+    def change(item):
+        cells = row_cells(item["matrix_row"])
+        assert len(cells) == len(K8_HEADER), "the harness's own row has 11 cells"
+        for name, text in changes.items():
+            cells[K8_HEADER.index(name)] = text
+        item["matrix_row"] = join_row(cells)
+    return edit_item(finding_id, change)
+
+
+def with_row(finding_id, row):
+    return edit_item(finding_id, lambda item: item.__setitem__("matrix_row", row))
+
+
+def with_body(finding_id, body):
+    return edit_item(finding_id, lambda item: item.__setitem__("recommendation_body", body))
+
+
+def every_item(change):
+    def mutate(part):
+        for item in part["items"]:
+            change(item)
+    return mutate
+
+
+def together(*mutations):
+    def mutate(part):
+        for each in mutations:
+            each(part)
+    return mutate
+
+
+def the_agent_wrote_the_numbers(finding_id):
+    """An agent that writes the four computed cells out in full (the right numbers, which are still not the slot tokens)."""
+    inherent, inherent_band, _factor, residual, residual_band = golden(finding_id)
+    return with_cells(finding_id, dict(zip(COMPUTED_CELLS, (inherent, inherent_band, residual, residual_band))))
+
+
+# --------------------------------------------------------------------------- reading the records and the files
+
+def gained_counts(record):
+    """The stage record's counts beyond the seven base counts (``part-files.md`` section 5: the flag counts by kind)."""
+    return {key: value for key, value in record["counts"].items() if key not in BASE_COUNTS and value}
+
+
+def overwrites(record):
+    """reading 1: the count of overwritten computed cells, which is whatever ``counts`` holds beyond the base counts."""
+    return sum(gained_counts(record).values())
+
+
+def id_pattern(finding_id):
+    """A regex for ``finding_id`` in any spelling that canonicalizes to it (``AGP-01`` and ``AGP-1``), as a whole token."""
+    prefix, _dash, number = canon(finding_id).partition("-")
+    return r"(?<![A-Za-z0-9-])%s-0*%s(?![A-Za-z0-9-])" % (re.escape(prefix), number)
+
+
+def flags_of(doc):
+    """``{finding ID as the SARIF spells it: its integrity-flags}``."""
+    return {finding_id: result["properties"]["integrity-flags"] for finding_id, result in results_by_id(doc).items()}
+
+
+def cell_flag(flags, word):
+    """reading 2: the flags in ``flags`` whose field names the cell ``word`` (``status``, ``category``, ``component`` or ``layer``)."""
+    found = []
+    for flag in flags:
+        assert FLAG_FORM.fullmatch(flag), "a flag is kind:field:cause: %r" % (flag,)
+        if word in FLAG_FORM.fullmatch(flag).group("field").lower():
+            found.append(flag)
+    return found
+
+
+def integrity_text(md):
+    """Section 7 up to its ``### Assessment Inputs``: where D2 lists input issues, row checks and each finding's flags (FR-K7.4)."""
+    return section(md, "## 7. Analysis Integrity").split("### Assessment Inputs")[0]
+
+
+def warning_lines(md):
+    """The ``>`` lines of Section 1, where the template puts the analysis warnings (``> {analysis_warnings}``)."""
+    return [line for line in section(md, "## 1. Executive Summary").split("\n") if line.startswith(">")]
+
+
+def persisted(md):
+    """``{canonical ID: item}`` read back from Section 7's Assessment Inputs, as the next run's planner reads them (T143)."""
+    return tachi_parsers.parse_controls_assessment_inputs(md)["inputs"]
+
+
+def inputs_table(md):
+    """Section 7's Assessment Inputs table as ``(header, rows)``, decoded."""
+    return table_of(subsection_of(md, "## 7. Analysis Integrity", "### Assessment Inputs"), "ID")
+
+
+def sarif_without_flags(doc):
+    """A SARIF document's results and rules with each result's ``integrity-flags`` taken out, the one property that a flagged run adds to."""
+    run = copy.deepcopy(doc["runs"][0])
+    for result in run["results"]:
+        result["properties"].pop("integrity-flags", None)
+    return {"results": run["results"], "rules": run["tool"]["driver"]["rules"]}
+
+
+def the_other_sections(md):
+    """Sections 3 to 6, which no cell of Section 2 or 4 reaches."""
+    return {title: section(md, title) for title in SECTION_TITLES[2:6]}
+
+
+def without_warnings(text):
+    """``text`` without its ``>`` lines, and with runs of blank lines folded, so that a flagged run's Section 1 reads as the clean run's."""
+    kept = "\n".join(line for line in text.split("\n") if not line.startswith(">"))
+    return re.sub(r"\n{3,}", "\n\n", kept).strip("\n")
+
+
+def assert_same_as_clean(project, clean, open_cells=None, carried_differs=False):
+    """``project``'s files hold what the clean render's do: the SARIF (bar ``integrity-flags``), Sections 3 to 6, Section 1 (bar its
+    warnings); and Section 2, bar the cells that ``open_cells`` (``{canonical ID: (column, ...)}``) leaves open. That is how the goldens
+    say "SARIF and totals follow the structured value", and that a cell is "filled", not "checked". With ``carried_differs`` the
+    ``CF`` column and the SARIF's ``control-carry-forward`` are left open for every finding, as a follow-up run differs in them."""
+    def results_of(doc):
+        data = sarif_without_flags(doc)
+        for result in data["results"]:
+            if carried_differs:
+                result["properties"]["control-carry-forward"] = None
+        return data
+
+    assert results_of(project.sarif) == results_of(clean.sarif)
+    assert the_other_sections(project.md) == the_other_sections(clean.md)
+    one, two = "## 1. Executive Summary", "## 2. Coverage Matrix"
+    assert without_warnings(section(project.md, one)) == without_warnings(section(clean.md, one))
+    open_cells = dict(open_cells or {})
+    if carried_differs:
+        open_cells = {finding_id: tuple(open_cells.get(finding_id, ())) + ("CF",) for finding_id in matrix_rows(clean.md)}
+    if not open_cells:
+        assert section(project.md, two) == section(clean.md, two)
+        return
+    assert [(band, [row["Threat ID"] for row in rows]) for band, _h, rows in band_tables(project.md)] == [
+        (band, [row["Threat ID"] for row in rows]) for band, _h, rows in band_tables(clean.md)], "the same rows under the same bands, in the same order"
+    mine, theirs = matrix_rows(project.md), matrix_rows(clean.md)
+    assert sorted(mine) == sorted(theirs)
+    for finding_id, (band, row) in mine.items():
+        left = {name: text for name, text in row.items() if name not in open_cells.get(finding_id, ())}
+        right = {name: text for name, text in theirs[finding_id][1].items() if name not in open_cells.get(finding_id, ())}
+        assert (band, left) == (theirs[finding_id][0], right), finding_id
+    summary = "### Summary Statistics"
+    assert subsection_of(project.md, two, summary) == subsection_of(clean.md, two, summary)
+
+
+# --------------------------------------------------------------------------- running a project, and following it up
+
+def run_ok(stage_module, renderer_module, root, mutate=None, findings=None, **run_options):
+    """One render of the eleven findings (or ``findings``), with the agent's part edited by ``mutate``; it finishes (exit 0 or 5)."""
+    project = Project(stage_module, renderer_module, root, findings=findings)
+    res = project.run(mutate=mutate, **run_options)
+    assert res.code in (0, 5), res.describe()
+    tp.validate_stage_record(project.record)
+    return project
+
+
+def follow_up(stage_module, renderer_module, root, previous, statuses=None, default="UNCHANGED", with_baseline=True):
+    """The next run of the same project: ``threats.md`` names ``baseline/threats.md`` as its baseline, and the baseline is the previous
+    run's own files, copied there (``run_carried`` then passes ``baseline_dir=follow.baseline`` to the planner). Each finding has the
+    delta status that ``statuses`` (``{canonical ID: status}``) gives it, else ``default``. With ``with_baseline`` false the baseline
+    directory holds no controls file."""
+    follow = Project(stage_module, renderer_module, root,
+                     findings=[dict(item, status=(statuses or {}).get(canon(item["id"]), default)) for item in previous.findings],
+                     resolved=previous.resolved, baseline_source="baseline/threats.md")
+    follow.baseline = Path(root) / "baseline"
+    follow.baseline.mkdir()
+    for name in (("threats.md", "risk-scores.md", MD, SARIF) if with_baseline else ("threats.md", "risk-scores.md")):
+        if (previous.out / name).is_file():
+            shutil.copyfile(str(previous.out / name), str(follow.baseline / name))
+    return follow
+
+
+def carried(previous_md, only=None):
+    """What a controls agent hands in for an UNCHANGED finding (its instructions: copy the baseline's values as they stand, and set
+    ``carried_forward``): the previous run's persisted inputs, decoded (T143's reader, which the planner reads them through, AR-T3), for
+    the findings in ``only`` (canonical IDs), or for all."""
+    inputs = persisted(previous_md)
+
+    def mutate(part):
+        for index, item in enumerate(part["items"]):
+            key = canon(item["finding_id"])
+            if only is None or key in only:
+                part["items"][index] = dict(copy.deepcopy(inputs[key]), finding_id=item["finding_id"], carried_forward=True)
+    return mutate
+
+
+def run_carried(follow, previous, also=None, only=None):
+    """Run ``follow`` with every finding (or the ones in ``only``) copied from ``previous``'s Section 7, and ``also`` on top."""
+    mutate = carried(previous.md, only) if also is None else together(carried(previous.md, only), also)
+    res = follow.run(mutate=mutate, baseline_dir=follow.baseline)
+    assert res.code in (0, 5), res.describe()
+    tp.validate_stage_record(follow.record)
+    return follow
+
+
+# --------------------------------------------------------------------------- fill: the band tables, the header, the order, and the four computed cells
+
+def claim_carried(value=True):
+    return every_item(lambda item: item.__setitem__("carried_forward", value))
+
+
+def test_r34_fill_a_clean_run_counts_no_overwrite(base):
+    assert gained_counts(base.record) == {}, "the agent wrote a slot token in each computed cell, so nothing was overwritten or flagged"
+
+
+def test_r34_fill_the_band_tables_the_header_and_the_row_order_are_the_renderers_whatever_the_agent_wrote(stage, renderer, base, tmp_path):
+    """D2: the band table that each row sits under, the band headers (empty bands left out), the K8 header row and the row order are
+    filled. The agent writes only rows, so this agent puts a wrong band in two cells of every row and hands its items in reverse."""
+    def wrong_bands(item):
+        cells = row_cells(item["matrix_row"])
+        cells[K8_HEADER.index("Inherent Severity")], cells[K8_HEADER.index("Residual Severity")] = "Low", "Critical"
+        item["matrix_row"] = join_row(cells)
+
+    project = run_ok(stage, renderer, tmp_path, together(every_item(wrong_bands), lambda part: part["items"].reverse()))
+    found = band_tables(project.md)
+    assert [band for band, _header, _rows in found] == list(BANDS)
+    assert [header for _band, header, _rows in found] == [K8_HEADER] * 4
+    for band, _header, rows in found:
+        assert [canon(row["Threat ID"]) for row in rows] == [canon(i) for i in RESIDUAL_BANDS[band]], "each row is under its COMPUTED band: %s" % band
+        assert {row["Residual Severity"] for row in rows} == {band}
+    lines = section(project.md, "## 2. Coverage Matrix").split("\n")
+    heads = [number for number, line in enumerate(lines) if line.startswith("| Threat ID ")]
+    assert len(heads) == 4 and all(re.fullmatch(r"\|(\s*:?-+:?\s*\|){11}", lines[number + 1]) for number in heads), "a separator row under each header"
+    assert overwrites(project.record) == 2 * len(FINDINGS), "the two wrong cells of each row are overwritten and counted"
+    assert_same_as_clean(project, base)
+
+
+OVERWRITES = [  # S-2 is 9.1 (Critical) inherent and 4.6 (Medium) residual
+    ("a-wrong-score", "Inherent Score", "1.0"),
+    ("a-wrong-band", "Inherent Severity", "Low"),
+    ("a-wrong-residual", "Residual Score", "9.9"),
+    ("a-wrong-residual-band", "Residual Severity", "Critical"),
+    ("the-right-number-written-out", "Inherent Score", "9.1"),
+    ("prose-where-a-number-belongs", "Residual Score", "about five"),
+    ("an-empty-cell", "Residual Severity", ""),
+    ("another-cells-slot", "Inherent Score", "{{score:residual}}"),  # reading: only its own slot token is "the slot token"
+    ("a-slot-with-text-around-it", "Residual Score", "{{score:residual}} (est.)"),
+]
+
+
+@pytest.mark.parametrize("name,cell,text", OVERWRITES, ids=[case[0] for case in OVERWRITES])
+def test_r34_fill_a_computed_cell_that_holds_anything_but_its_slot_is_overwritten_by_position_and_counted(stage, renderer, base, tmp_path, name, cell, text):
+    """D2: the four computed cells are "fill, overwritten by column position. The agent writes slot tokens there; other content is
+    overwritten and counted in the stage record". One cell is wrong here, so one overwrite is counted, the row shows the computed values,
+    and everything else is as in the clean render, Section 7's persisted row included (it is rebuilt with the tokens, ruled at W3)."""
+    project = run_ok(stage, renderer, tmp_path, with_cells(S2_ID, {cell: text}))
+    inherent, inherent_band, _factor, residual, residual_band = golden(S2_ID)
+    band, row = matrix_rows(project.md)[S2_ID]
+    assert [row[column] for column in COMPUTED_CELLS] == [inherent, inherent_band, residual, residual_band] and band == residual_band
+    assert overwrites(project.record) == 1, gained_counts(project.record)
+    assert_same_as_clean(project, base)
+    assert inputs_table(project.md) == inputs_table(base.md)
+    assert persisted(project.md)[S2_ID]["matrix_row"] == matrix_row_of(by_id(S2_ID)), "the four computed cells hold their slot tokens in Section 7"
+
+
+def test_r34_fill_every_computed_cell_of_every_row_is_counted_once_each(stage, renderer, base, tmp_path):
+    wrong = every_item(lambda item: item.__setitem__("matrix_row", join_row(
+        ["0.0" if name in COMPUTED_CELLS else cell for name, cell in zip(K8_HEADER, row_cells(item["matrix_row"]))])))
+    project = run_ok(stage, renderer, tmp_path, wrong)
+    assert overwrites(project.record) == 4 * len(FINDINGS), gained_counts(project.record)
+    assert_same_as_clean(project, base)
+
+
+@pytest.mark.parametrize("text", ["CF", "", "yes", DASH])
+def test_r34_cf_is_the_renderers_cell_so_the_agents_text_in_it_is_never_counted(stage, renderer, base, tmp_path, text):
+    """W3 ruling (``module-signatures.md``): the renderer fills ``CF`` from the accepted ``carried_forward`` by column position, and never
+    counts it as an overwrite. This finding is fresh (``carried_forward`` false), so it shows the dash whatever the agent put there."""
+    project = run_ok(stage, renderer, tmp_path, with_cells(S2_ID, {"CF": text}))
+    assert matrix_rows(project.md)[S2_ID][1]["CF"] == DASH
+    assert overwrites(project.record) == 0, gained_counts(project.record)
+    assert_same_as_clean(project, base)
+    assert persisted(project.md)[S2_ID]["matrix_row"] == matrix_row_of(by_id(S2_ID)), "Section 7 holds the value that Section 2 shows in CF"
+
+
+def assert_recorded(project, finding_ids):
+    """reading 6: D2 says that a cleared ``carried_forward`` is "cleared with the reason recorded" and gives no form, so the goldens ask
+    only that the clearing left a trace in the stage record (a count or a warning) or in Section 7's integrity text, so that none is silent."""
+    text = integrity_text(project.md)
+    named = all(re.search(id_pattern(finding_id), text) for finding_id in finding_ids)
+    assert gained_counts(project.record) or project.record["warnings"] or named, "a cleared claim left no trace"
+
+
+def assert_all_fresh(project, counts=("null",)):
+    rows = matrix_rows(project.md)
+    assert {row["CF"] for _band, row in rows.values()} == {DASH}, "no claim was accepted, so no row shows CF"
+    assert frontmatter_value(project.md, "rescan_scope") == "full" and frontmatter_value(project.md, "carry_forward_count") in counts
+    assert {result["properties"]["control-carry-forward"] for result in project.sarif["runs"][0]["results"]} == {False}
+
+
+def test_r34_cf_a_claim_with_no_baseline_is_cleared_and_recorded(stage, renderer, base, tmp_path):
+    """D2: ``carried_forward`` is "accepted only for an UNCHANGED finding with a resolved baseline controls file, otherwise cleared with the
+    reason recorded". Here every finding is UNCHANGED and every agent claims it, but the run has no baseline."""
+    project = Project(stage, renderer, tmp_path, findings=[dict(item, status="UNCHANGED") for item in FINDINGS])
+    res = project.run(mutate=claim_carried())
+    assert res.code in (0, 5), res.describe()
+    assert_all_fresh(project)
+    assert_recorded(project, OPEN_IDS)
+    assert {item["carried_forward"] for item in persisted(project.md).values()} == {False}, "reading 6: cleared is what Section 7 keeps, so the next run copies no claim"
+    assert_same_as_clean(project, base)
+
+
+def test_r34_cf_a_baseline_with_no_controls_file_clears_every_claim(stage, renderer, base, tmp_path):
+    first = run_ok(stage, renderer, tmp_path / "first")
+    follow = follow_up(stage, renderer, tmp_path / "second", first, with_baseline=False)
+    run_carried(follow, first)
+    assert_all_fresh(follow)  # no baseline controls file is no baseline: the template says "null when no baseline"
+    assert_recorded(follow, OPEN_IDS)
+    assert_same_as_clean(follow, base)
+
+
+def test_r34_cf_a_baseline_accepts_a_claim_only_for_an_unchanged_finding_that_the_agent_carried(stage, renderer, tmp_path):
+    """Four claims, one run: S-2 and T-1 are UNCHANGED and carried (accepted); S-10 is UNCHANGED but its agent scanned it afresh (no claim);
+    D-2 is UPDATED and AG-1 is NEW, and their agents claim anyway (cleared). ``carry_forward_count`` counts exactly the ``CF`` cells."""
+    first = run_ok(stage, renderer, tmp_path / "first")
+    statuses = {canon(item["id"]): "NEW" for item in FINDINGS}
+    statuses.update({"S-2": "UNCHANGED", "T-1": "UNCHANGED", "S-10": "UNCHANGED", "D-2": "UPDATED"})
+    follow = follow_up(stage, renderer, tmp_path / "second", first, statuses=statuses)
+    run_carried(follow, first, only={"S-2", "T-1", "D-2", "AG-1"})
+    shown = {finding_id: row["CF"] for finding_id, (_band, row) in matrix_rows(follow.md).items()}
+    assert {finding_id for finding_id, cell in shown.items() if cell == "CF"} == {"S-2", "T-1"}
+    assert {cell for finding_id, cell in shown.items() if finding_id not in ("S-2", "T-1")} == {DASH}
+    assert frontmatter_value(follow.md, "rescan_scope") == "incremental" and frontmatter_value(follow.md, "carry_forward_count") == "2"
+    flagged = {finding_id for finding_id, result in results_by_id(follow.sarif).items() if result["properties"]["control-carry-forward"] is True}
+    assert flagged == {"S-2", "T-1"}
+    assert_recorded(follow, ["D-2", "AG-1"])
+    kept = persisted(follow.md)
+    assert {finding_id: kept[finding_id]["carried_forward"] for finding_id in ("S-2", "T-1", "S-10", "D-2", "AG-1")} == {
+        "S-2": True, "T-1": True, "S-10": False, "D-2": False, "AG-1": False}, "Section 7 keeps the accepted value"
+
+
+# --------------------------------------------------------------------------- carry: AR-T3, AR-T4, carry_forward_count and byte identity
+
+def two_runs(stage_module, renderer_module, root, first_mutate=None):
+    """A first run (the agent's part edited by ``first_mutate``) and a second in which every finding is UNCHANGED and carried: the agent
+    copies the first run's persisted inputs, the way the planner hands them over (AR-T3)."""
+    first = run_ok(stage_module, renderer_module, Path(root) / "first", first_mutate)
+    follow = run_carried(follow_up(stage_module, renderer_module, Path(root) / "second", first), first)
+    return first, follow
+
+
+def assert_carried_from(follow, first):
+    """Every finding of ``follow`` is carried from ``first``: each row shows ``CF``, and ``carry_forward_count`` is the number of ``CF``
+    cells and of results that say so (R-20: "the carried-forward marker that ``carry_forward_count`` counts"). A carried row is copied,
+    read and checked with no overwrite and no flag, and its narrative takes no fallback. Everything else is what ``first`` wrote."""
+    rows = matrix_rows(follow.md)
+    shown = [finding_id for finding_id, (_band, row) in rows.items() if row["CF"] == "CF"]
+    marked = [finding_id for finding_id, result in results_by_id(follow.sarif).items() if result["properties"]["control-carry-forward"] is True]
+    assert sorted(shown) == sorted(rows) and len(rows) == len(FINDINGS)
+    assert len(shown) == len(marked) == int(frontmatter_value(follow.md, "carry_forward_count"))
+    assert frontmatter_value(follow.md, "rescan_scope") == "incremental"
+    assert gained_counts(follow.record) == {}, "a carried row shows no overwrite count and no flag (AR-T3)"
+    assert (follow.record["counts"].get("narrative_fallbacks", 0), follow.record["counts"].get("truncations", 0)) == (0, 0), "AR-T4"
+    assert_same_as_clean(follow, first, carried_differs=True)
+
+
+def test_r34_carry_run_1s_numbers_are_counted_on_run_1_and_the_carried_run_2_counts_none(stage, renderer, base, tmp_path):
+    """The architect's first case (W3): run 1's agent wrote numbers in the computed cells. They are counted on run 1, and Section 7
+    persists the row with the slot tokens, so the carried run 2 copies a row that needs no overwrite."""
+    first, follow = two_runs(stage, renderer, tmp_path, together(*[the_agent_wrote_the_numbers(item["id"]) for item in FINDINGS]))
+    assert overwrites(first.record) == 4 * len(FINDINGS), gained_counts(first.record)
+    assert_same_as_clean(first, base)
+    assert all(persisted(first.md)[canon(item["id"])]["matrix_row"] == matrix_row_of(item) for item in FINDINGS), "Section 7 holds the tokens, not the numbers"
+    assert_carried_from(follow, first)
+
+
+def test_r34_carry_a_fresh_row_is_shown_as_carried_on_run_2_with_no_overwrite_and_no_fallback(stage, renderer, base, tmp_path):
+    """The architect's second case (W3): fresh on run 1, with ``CF`` shown as the dash, then carried on run 2. The copied row still has the dash,
+    ``CF`` is shown, and nothing is overwritten, because ``CF`` is the renderer's cell. Section 7 then holds the value that Section 2 shows."""
+    first, follow = two_runs(stage, renderer, tmp_path)
+    assert_all_fresh(first)
+    assert_same_as_clean(first, base)
+    assert_carried_from(follow, first)
+    inputs = persisted(follow.md)
+    for item in FINDINGS:
+        cells = row_cells(matrix_row_of(item))
+        cells[K8_HEADER.index("CF")] = "CF"
+        assert inputs[canon(item["id"])]["matrix_row"] == join_row(cells), "Section 7 persists CF as Section 2 shows it: %s" % item["id"]
+        assert inputs[canon(item["id"])]["carried_forward"] is True
+    assert not [sentence for sentence in tp.FALLBACK_SENTENCES.values() if sentence in follow.md], "AR-T4: no fixed fallback sentence anywhere"
+
+
+def test_r34_carry_the_carried_row_and_narrative_are_filled_again_from_this_runs_values(stage, renderer, tmp_path):
+    """AR-T3 and AR-T4: Section 7 persists the row and the narrative with their slots, so a carried finding shows this run's numbers, not the
+    baseline's. T-1 (a found finding with an effectiveness assessment) is 7.3 in run 1 and 6.0 in run 2: its residual is 3.0 and Low, and its
+    narrative says so, with no fallback."""
+    first = run_ok(stage, renderer, Path(tmp_path) / "first")
+    follow = follow_up(stage, renderer, Path(tmp_path) / "second", first)
+    moved = [dict(item, inherent="6.0") if item["id"] == "T-1" else item for item in follow.findings]
+    follow.risk_scores.write_text(make_risk_scores_md(moved, follow.resolved), encoding="utf-8")
+    run_carried(follow, first)
+    band, row = matrix_rows(follow.md)["T-1"]
+    assert (band, row["CF"], [row[column] for column in COMPUTED_CELLS]) == ("Low", "CF", ["6.0", "Medium", "3.0", "Low"])
+    assert gained_counts(follow.record) == {}
+    assert follow.record["counts"].get("narrative_fallbacks", 0) == 0
+    values = {("score", "inherent"): "6.0", ("score", "residual"): "3.0", ("band", "inherent"): "Medium", ("band", "residual"): "Low",
+              ("count", "evidence"): "1", ("pct", "reduction"): str(ts.reduction_percentage(Decimal("6.0"), Decimal("3.0"))), ("name", "component"): "auth-broker"}
+    block = next(body for cat, heading, body in control_blocks(follow.md) if "`src/validate/schema.py:17`" in body and slug(cat) == "input-validation")
+    _header, rows = table_of(block, "Dimension")
+    shown = {row[0]: row[2] for row in rows}
+    for dimension, cell in ASSESSMENT.items():
+        assert shown[dimension.capitalize()] == decode(tp.resolve_narrative(cell["rationale"], STAGE, lambda kind, argument: values.get((kind, argument)), sink="cell")), dimension
+    assert "{{" not in block and "7.3" not in block and "3.7" not in block, "the baseline's numbers are nowhere in the carried prose"
+    assert persisted(follow.md)["T-1"]["evidence"][0]["assessment"]["configuration"]["rationale"] == ASSESSMENT["configuration"]["rationale"], "and Section 7 still holds the slots"
+
+
+ENTITY_SUMMARY = "Escapes &lt; and splits on | before parsing."
+ENTITY_SNIPPET = "fields = line.split('|')  # &lt; stays text"
+ENTITY_WHAT = "Split on the pipe | and keep &lt; as text."
+ENTITY_RATIONALE = "Rejects &lt; and | in the names of {{name:component}}."
+ENTITY_THREAT = "Shared tokens let callers pass &lt;b&gt; as text."
+
+
+def with_entities(findings):
+    """Copies of ``findings`` in which three results hold text that a renderer must escape exactly once, however many runs carry it: a literal
+    ``&lt;`` (four characters of text, not a less-than sign) and a ``|``, in an evidence summary and snippet, a narrative rationale and a body."""
+    out = copy.deepcopy(findings)
+    for item in out:
+        if item["id"] in ("T-1", "AGP-01"):
+            entry = item["evidence"][0]
+            entry["summary"], entry["snippet"] = ENTITY_SUMMARY, ENTITY_SNIPPET
+        if item["id"] == "T-1":
+            item["evidence"][0]["assessment"]["coverage"]["rationale"] = ENTITY_RATIONALE
+        if item["id"] in ("AGP-01", "E-3"):
+            item["rec"]["what"] = ENTITY_WHAT
+    return out
+
+
+def without_stamp(text):
+    """A markdown file without its last line, the provenance stamp, whose digest names the run's own parts."""
+    return text.rstrip("\n").rsplit("\n", 1)[0]
+
+
+def test_r34_carry_an_unchanged_result_with_entities_and_pipes_is_byte_identical_on_every_carried_run(stage, renderer, tmp_path):
+    """An UNCHANGED result whose evidence holds ``&lt;`` and ``|`` is escaped once per render and never compounds (ADR-050 D2, RR1): the
+    carried runs 2 and 3 write the same bytes (bar the stamp, which names each run's own parts), and run 1's escape is still one level deep."""
+    first = run_ok(stage, renderer, Path(tmp_path) / "r1", with_cells("S-2", {"Threat": ENTITY_THREAT}), findings=with_entities(FINDINGS))
+    second = run_carried(follow_up(stage, renderer, Path(tmp_path) / "r2", first), first)
+    third = run_carried(follow_up(stage, renderer, Path(tmp_path) / "r3", second), second)
+    for run in (first, second, third):
+        assert "&amp;lt;" in run.md and "&amp;amp;" not in run.md and "&#124;" in run.md, "escaped once, on every run"
+        results = results_by_id(run.sarif)
+        assert results["AGP-01"]["properties"]["control-evidence"][0]["snippet"] == ENTITY_SNIPPET, "SARIF strings are json.dumps only: raw text"
+        assert results["AGP-01"]["properties"]["recommendation"] == results["E-3"]["properties"]["recommendation"] == ENTITY_WHAT, "the section 4 round trip"
+        assert read_findings(run.md)[canon("AGP-01")]["recommendation"] == ENTITY_WHAT
+        assert matrix_rows(run.md)["S-2"][1]["Threat"] == ENTITY_THREAT
+    assert_carried_from(second, first)
+    assert_carried_from(third, second)
+    assert without_stamp(second.md) == without_stamp(third.md), "carried twice: byte-identical"
+
+    def sarif_of(run):
+        doc = copy.deepcopy(run.sarif)
+        doc["runs"][0]["properties"]["tachi_provenance"]["input_digest"] = None
+        return doc
+
+    assert sarif_of(second) == sarif_of(third)
+    assert persisted(second.md) == persisted(third.md)
+    for key, item in persisted(first.md).items():
+        cells = row_cells(item["matrix_row"])
+        cells[K8_HEADER.index("CF")] = "CF"
+        assert persisted(second.md)[key] == dict(item, carried_forward=True, matrix_row=join_row(cells)), "Section 7 differs only in what carrying changes: %s" % key
+
+
+# --------------------------------------------------------------------------- reject: the Threat ID, the 11 cells and Section 4's body
+
+def assert_rejected(project, mutate, finding_id):
+    """D2: "a mismatch rejects the item (D3), and its batch is re-dispatched". D3 step 9 says that structure rejects the part, and only
+    ``reconcile`` re-dispatches a batch, from what ``tachi_parts.read_part`` says. The task list gives the check to the renderer
+    (T059), which can only refuse. The goldens accept it at either place and hold each to what it owes (reading 7, ruled at integration):
+
+    * in ``read_part``: ``reconcile`` finds the part ``invalid`` and re-dispatches the batch (exit 3, attempt 2). A good second part then
+      renders what a clean run renders, nothing of the rejected row survives, and the record shows the one retry;
+    * in the renderer: ``reconcile`` passes the part, and the render refuses (exit 2 or 4) with a message that names the finding. No
+      canonical file is replaced, and the command has no re-dispatch to offer, which is why the first place is better.
+
+    A first, clean render gives the bytes that both outcomes are held to. Returns where the rejection happened."""
+    assert project.run().code == 0
+    clean = project.outputs()
+    project.plan()
+    project.write_parts(mutate=mutate)
+    first = project.reconcile()
+    if first.code == 3:
+        pending = [batch["batch_id"] for wave in json.loads(first.out)["waves"] for batch in wave]
+        assert pending == ["B001"], first.describe()
+        retry = project.batch_input("B001")
+        assert retry["attempt"] == 2 and retry["part_path"].endswith("B001.a2.json"), "the same batch, a second attempt"
+        project.write_parts(only={"B001"})
+        assert project.reconcile().code == 0
+        res = project.render()
+        assert res.code == 0, res.describe()
+        assert project.outputs() == clean, "the second attempt renders what a clean run renders"
+        assert project.record["overflow_events"] == [{"batch_id": "B001", "attempt": 1, "kind": "invalid"}]
+        assert project.record["batches"] == {"planned": 1, "dispatched": 2, "done": 1, "retried": 1, "split": 0, "exhausted": 0}
+        return "read_part"
+    assert first.code == 0, first.describe()
+    res = project.render()
+    assert res.code in (2, 4), "a row or a body that D2 rejects is never rendered: %s" % res.describe()
+    assert_failure_message(res, project.plan_id)
+    assert re.search(id_pattern(finding_id), res.err), "the message names the finding: " + res.describe()
+    assert project.outputs() == clean, "no canonical file was replaced"
+    return "renderer"
+
+
+def a_row(change):
+    """An agent whose row for the finding is ``change(its own cells)``, a list of cells or the row's text."""
+    def edit(item):
+        made = change(row_cells(item["matrix_row"]))
+        item["matrix_row"] = made if isinstance(made, str) else join_row(made)
+    return edit
+
+
+BAD_ROWS = [
+    ("the-id-of-another-finding", "S-2", lambda cells: ["T-1"] + cells[1:]),
+    ("an-id-outside-the-allow-list", "S-2", lambda cells: ["X-99"] + cells[1:]),
+    ("a-lowercase-id", "S-2", lambda cells: ["s-2"] + cells[1:]),
+    ("an-empty-id", "S-2", lambda cells: [""] + cells[1:]),
+    ("ten-cells", "S-2", lambda cells: cells[:8] + cells[9:]),
+    ("twelve-cells-from-a-pipe-in-the-threat", "S-2", lambda cells: cells[:4] + ["Tokens | shared"] + cells[5:]),
+    ("one-cell", "S-2", lambda cells: cells[:1]),
+    ("an-empty-row", "S-2", lambda cells: ""),
+]
+
+
+@pytest.mark.parametrize("name,finding_id,change", BAD_ROWS, ids=[case[0] for case in BAD_ROWS])
+def test_r34_reject_a_wrong_threat_id_or_a_cell_count_other_than_11_rejects_the_item(project, name, finding_id, change):
+    assert_rejected(project, edit_item(finding_id, a_row(change)), finding_id)
+
+
+@pytest.mark.parametrize("finding_id,spelled", [("AGP-01", "AGP-1"), ("S-2", "S-02")])
+def test_r34_reject_an_id_that_canonicalizes_to_the_findings_is_accepted_and_spelled_as_section_7_spells_it(stage, renderer, base, tmp_path, finding_id, spelled):
+    """The row's Threat ID "must pass the allow-list and canonicalize to the item's ``finding_id``". These do, so the item stands. Section 2
+    and Section 4 are one file that the shipped reader joins by string, so both spell the ID as ``threats.md``'s Section 7 does (reading 5)."""
+    project = run_ok(stage, renderer, tmp_path, with_cells(finding_id, {"Threat ID": spelled}))
+    assert_same_as_clean(project, base)
+    rendered = project.md.split("## 7. Analysis Integrity")[0]
+    assert not re.search(r"(?<![A-Za-z0-9-])%s(?![A-Za-z0-9-])" % re.escape(spelled), rendered), "the agent's spelling is in no rendered section"
+    assert gained_counts(project.record) == {} and all(not found for found in flags_of(project.sarif).values())
+
+
+def drop_line(key):
+    return lambda body: "\n".join(line for line in body.split("\n") if not line.startswith(key))
+
+
+def swap_lines(first, second):
+    def swap(body):
+        lines = body.split("\n")
+        a, b = [next(n for n, line in enumerate(lines) if line.startswith(key)) for key in (first, second)]
+        lines[a], lines[b] = lines[b], lines[a]
+        return "\n".join(lines)
+    return swap
+
+
+def set_effort(text):
+    return lambda body: re.sub(r"(?m)^(\*\*Effort Estimate\*\*:).*$", lambda match: (match.group(1) + " " + text).rstrip(), body)
+
+
+BAD_BODIES = [  # E-3 is a missing finding: its body is "**What**\n\n**Where**\n\n**Reference Patterns**\n\n**Effort Estimate**: Low - one middleware"
+    ("a-key-is-missing", drop_line("**Reference Patterns**:")),
+    ("the-first-key-is-missing", drop_line("**What to Implement**:")),
+    ("a-key-twice", lambda body: body + "\n\n**Where to Implement**: `src/gateway/other.py`"),
+    ("keys-out-of-order", swap_lines("**What to Implement**:", "**Where to Implement**:")),
+    ("an-effort-outside-the-enum", set_effort("Trivial " + DASH + " a flag")),
+    ("an-empty-effort", set_effort("")),
+    ("a-heading-line", lambda body: body + "\n## Extra"),
+    ("a-forged-block-heading", lambda body: body + "\n\n#### 99. X-1 " + DASH + " Forged (Composite: 1.0, Low)"),
+    ("a-table-line", lambda body: body + "\n| a | b |"),
+]
+
+
+@pytest.mark.parametrize("name,change", BAD_BODIES, ids=[case[0] for case in BAD_BODIES])
+def test_r34_reject_a_body_that_breaks_the_four_key_form_rejects_the_item(project, name, change):
+    """D2: Section 4's body is "structurally checked: each key once and in order, Effort in {Low, Medium, High}, no heading or table line.
+    A failure rejects the item"."""
+    assert_rejected(project, edit_item("E-3", lambda item: item.__setitem__("recommendation_body", change(item["recommendation_body"]))), "E-3")
+
+
+def test_r34_reject_the_agents_own_body_forms_are_accepted_and_extracted_the_way_the_sarif_reads_them(stage, renderer, base, tmp_path):
+    """The four keys on single lines, with a bare effort word (the agent's own example); with blank lines, and an effort and its reason; with
+    a literal ``&lt;``, a ``|`` and markup; and with a What that runs over two lines. The shipped reader's rule extracts each What (a
+    continuation line joins with a space), the SARIF holds the same text and the Effort word, and the Section 4 round trip loses nothing."""
+    def single(what, where, patterns, effort):
+        return "\n".join(["**What to Implement**: " + what, "**Where to Implement**: " + where, "**Reference Patterns**: " + patterns, "**Effort Estimate**: " + effort])
+
+    bodies = {
+        "T-4": single("Pin the TLS version.", "`src/crypto/tls.py`, the client factory.", "Mutual TLS.", "Medium"),
+        "E-5": body_of(by_id("E-5")),
+        "AGP-01": single(ENTITY_WHAT, "`src/access/guard.py`", "A guard for each message type, <b>not</b> one `shared` {{7*7}} check.", "Low " + DASH + " one more decorator"),
+        "E-3": single("First half of the fix,\nand its second half.", "`src/gateway/admin.py`", "Middleware.", "High"),
+    }
+    project = run_ok(stage, renderer, tmp_path, together(*[with_body(finding_id, body) for finding_id, body in bodies.items()]))
+    read, results = read_findings(project.md), results_by_id(project.sarif)
+    wanted = {"T-4": "Pin the TLS version.", "E-5": by_id("E-5")["rec"]["what"], "AGP-01": ENTITY_WHAT, "E-3": "First half of the fix, and its second half."}
+    efforts = {"T-4": "Medium", "E-5": "High", "AGP-01": "Low", "E-3": "High"}
+    for finding_id, what in wanted.items():
+        assert read[canon(finding_id)]["recommendation"] == what == results[finding_id]["properties"]["recommendation"], finding_id
+        assert results[finding_id]["properties"]["effort-estimate"] == efforts[finding_id], finding_id
+    block = recommendation_blocks(project.md)[canon("AGP-01")]
+    assert "<b>" not in project.md and "{{7*7}}" not in project.md and "&lt;b&gt;not&lt;/b&gt;" in block and "&amp;lt;" in block
+    assert gained_counts(project.record) == {}
+
+
+# --------------------------------------------------------------------------- flag: Control Status, Control Category, Component and MAESTRO Layer
+
+MISMATCHES = [  # (name, finding, cell, the agent's text, the word its flag's field contains)
+    ("a-found-status-for-a-partial-finding", "AGP-01", "Control Status", "Control Found", "status"),
+    ("a-missing-status-for-a-found-finding", S2_ID, "Control Status", "No Control Found", "status"),
+    ("another-category", "T-1", "Control Category", "Encryption", "category"),
+    ("a-word-that-is-no-category", "S-10", "Control Category", "Biometrics", "category"),
+    ("another-component", "T-4", "Component", "edge-gateway", "component"),
+    ("another-layer-code", "LLM-4", "MAESTRO Layer", "L5 " + DASH + " Evaluation and Observability", "layer"),
+    ("unclassified-for-a-classified-layer", "AG-1", "MAESTRO Layer", "Unclassified", "layer"),
+]
+
+
+@pytest.mark.parametrize("name,finding_id,cell,text,word", MISMATCHES, ids=[case[0] for case in MISMATCHES])
+def test_r34_flag_a_cell_that_disagrees_with_the_structured_value_is_flagged_and_every_file_follows_the_structure(stage, renderer, base, tmp_path, name, finding_id, cell, text, word):
+    """D2: Control Status (through ``classify_control_status``), Control Category, Component and MAESTRO Layer are "check against the
+    structured judgment or input. A mismatch is flagged per finding in Section 1's warnings, Section 7 and the stage record; SARIF and
+    totals follow the structured value". A mismatch never rejects the item (``module-signatures.md``). What Section 2 shows in the cell
+    is left open (reading 3); every other value is the clean run's."""
+    project = run_ok(stage, renderer, tmp_path, with_cells(finding_id, {cell: text}))
+    flags = flags_of(project.sarif)
+    mine = cell_flag(flags[finding_id], word)
+    assert len(mine) == 1 and flags[finding_id] == mine, "exactly one flag, and it names the %s cell: %r" % (word, flags[finding_id])
+    assert [other for other, found in flags.items() if found and other != finding_id] == [], "no other finding is flagged"
+    kind, field, cause = FLAG_FORM.fullmatch(mine[0]).group("kind", "field", "cause")
+    assert project.record["counts"].get(kind) == 1, "the stage record counts the flag by its kind: %s" % project.record["counts"]
+    assert any(re.search(id_pattern(finding_id), line) for line in warning_lines(project.md)), "Section 1's warnings name the finding"
+    assert any(re.search(id_pattern(finding_id), line) and kind in line and field in line and cause in line
+               for line in integrity_text(project.md).split("\n")), "Section 7 lists the flag with its finding"
+    assert_same_as_clean(project, base, open_cells={canon(finding_id): (cell,)})
+    cells = row_cells(matrix_row_of(by_id(finding_id)))
+    cells[K8_HEADER.index(cell)] = text
+    assert persisted(project.md)[canon(finding_id)]["matrix_row"] == join_row(cells), "Section 7 keeps every cell but the computed ones as the part wrote it"
+
+
+AGREEMENTS = [  # a spelling that classifies, or names, the same value is not a mismatch
+    ("a-short-status", "AGP-01", "Control Status", "Partial"),
+    ("the-word-missing", "E-3", "Control Status", "Missing"),
+    ("a-lowercase-found", S2_ID, "Control Status", "found"),
+    ("the-category-slug", "T-1", "Control Category", "input-validation"),
+    ("a-layer-name-with-the-same-code", "LLM-4", "MAESTRO Layer", "L3 " + DASH + " Agent Frameworks"),  # the input says "Agent Framework"
+]
+
+
+@pytest.mark.parametrize("name,finding_id,cell,text", AGREEMENTS, ids=[case[0] for case in AGREEMENTS])
+def test_r34_flag_a_spelling_that_means_the_same_value_is_not_a_mismatch(stage, renderer, base, tmp_path, name, finding_id, cell, text):
+    """The status is compared through ``classify_control_status``, the category by its name or its slug, and the layer by its code (``L1`` to
+    ``L7``), so the "Agent Framework" and "Agent Frameworks" variants of the shipped files agree (``module-signatures.md``)."""
+    project = run_ok(stage, renderer, tmp_path, with_cells(finding_id, {cell: text}))
+    assert all(not found for found in flags_of(project.sarif).values()) and gained_counts(project.record) == {}
+    assert not [line for line in warning_lines(project.md) if re.search(id_pattern(finding_id), line)]
+    assert_same_as_clean(project, base, open_cells={canon(finding_id): (cell,)})
+
+
+@pytest.mark.parametrize("agent,flagged", [("Unclassified", False), ("L7 " + DASH + " Agent Ecosystem", True)])
+def test_r34_flag_unclassified_matches_only_itself(stage, renderer, tmp_path, agent, flagged):
+    """``Unclassified`` is the layer of a component that ``threats.md`` leaves without one, and it "matches only itself": the agent's
+    ``Unclassified`` agrees with it, and any classified layer is a mismatch."""
+    project = Project(stage, renderer, tmp_path)
+    project.threats.write_text(project.threats.read_text(encoding="utf-8").replace("L7 " + DASH + " Agent Ecosystem", "Unclassified"), encoding="utf-8")
+    res = project.run(mutate=with_cells("E-5", {"MAESTRO Layer": agent}))
+    assert res.code in (0, 5), res.describe()
+    assert results_by_id(project.sarif)["E-5"]["properties"]["maestro-layer"] == "Unclassified", "the SARIF follows the input"
+    found = cell_flag(flags_of(project.sarif)["E-5"], "layer")
+    assert len(found) == (1 if flagged else 0), found
+
+
+def test_r34_flag_section_2_threat_is_model_text_shown_escaped_and_never_checked_or_filled(stage, renderer, base, tmp_path):
+    """D2: "§2 Threat | model text (NFR-10 only)". It may differ from the reference set's text, it is never flagged, a slot token in it is never
+    filled (``part-files.md``), and the SARIF message keeps the reference set's full text."""
+    text = "Tokens <i>can</i> be shared & `reused` {{7*7}} and {{count:evidence}} here."
+    project = run_ok(stage, renderer, tmp_path, with_cells(S2_ID, {"Threat": text}))
+    assert matrix_rows(project.md)[S2_ID][1]["Threat"] == text
+    rendered = project.md.split("## 7. Analysis Integrity")[0]
+    assert "<i>" not in rendered and "{{7*7}}" not in rendered and "{{count:evidence}}" not in rendered, "escaped, and the slot token is not filled"
+    assert text in persisted(project.md)[S2_ID]["matrix_row"], "Section 7 keeps the agent's cell as written"
+    assert all(not found for found in flags_of(project.sarif).values()) and gained_counts(project.record) == {}
+    assert_same_as_clean(project, base, open_cells={S2_ID: ("Threat",)})
+
+
+def test_r34_the_row_is_read_with_or_without_outer_pipes_and_persisted_in_the_canonical_form(stage, renderer, base, tmp_path):
+    """``module-signatures.md``: the renderer "reads a row with or without the outer pipes", and Section 7 persists "the row in this form,
+    rebuilt from its 11 cells". These rows have no outer pipes, tight pipes, and spaces and a tab around the line. None needs an overwrite."""
+    rows = {S2_ID: lambda cells: " | ".join(cells), "T-1": lambda cells: "|" + "|".join(cells) + "|", "S-10": lambda cells: "  \t" + join_row(cells) + " \t "}
+    project = run_ok(stage, renderer, tmp_path, together(*[edit_item(finding_id, a_row(change)) for finding_id, change in rows.items()]))
+    assert gained_counts(project.record) == {} and all(not found for found in flags_of(project.sarif).values())
+    assert_same_as_clean(project, base)
+    assert all(persisted(project.md)[canon(item["id"])]["matrix_row"] == matrix_row_of(item) for item in FINDINGS)
+
+
+# --------------------------------------------------------------------------- Section 4: the group, order, number, heading and Current Status
+
+def test_r34_section_4_the_group_order_number_heading_and_status_are_the_renderers(base):
+    """D2: "The §4 group each block sits under (band of inherent), block order (inherent descending, then S-2), number, heading
+    ``#### n. ID — Component (Composite: x, Band)``, ``**Current Status**:`` line: fill". The numbers run on through the groups (reading 4)."""
+    groups = [(heading, body) for heading, body in split_headings(section_text(base.md, "## 4. Recommendations"), "### ") if heading.endswith(" Risk Gaps")]
+    assert [heading for heading, _body in groups] == ["### Critical / High Risk Gaps", "### Medium Risk Gaps", "### Low Risk Gaps"]
+    number, seen = 0, []
+    for heading, body in groups:
+        for block_heading, block in split_headings(heading + "\n" + body, "#### "):
+            number += 1
+            match = re.fullmatch(r"#### (\d+)\. (\S+) %s (.+) \(Composite: (\d+\.\d), (Critical|High|Medium|Low)\)" % DASH, block_heading)
+            assert match, block_heading
+            finding_id = match.group(2)
+            item = by_id(finding_id)
+            inherent, inherent_band = golden(finding_id)[:2]
+            assert (int(match.group(1)), match.group(3), match.group(4), match.group(5)) == (number, item["component"], inherent, inherent_band), block_heading
+            assert finding_id == item["id"], "the ID as Section 7 spells it"
+            assert GROUP_OF[inherent_band] == heading, "%s is %s, so it sits under %s" % (finding_id, inherent_band, GROUP_OF[inherent_band])
+            lines = [line for line in block.split("\n") if line.strip()]
+            assert lines[0] == "**Current Status**: " + STATUS_CELL[item["control"]], "the status that the structured judgment gives"
+            seen.append(finding_id)
+    assert seen == RECOMMENDED, "inherent descending, then S-2's order"
+
+
+def test_r34_section_4_each_body_line_is_written_as_the_agent_wrote_it_under_the_renderers_status_line(base):
+    blocks = recommendation_blocks(base.md)
+    for finding_id in RECOMMENDED:
+        for line in (line for line in body_of(by_id(finding_id)).split("\n") if line.strip()):
+            assert tp.escape_prose(line) in blocks[canon(finding_id)].split("\n"), "%s: %s" % (finding_id, line)
+
+
+# =============================================================================
+# 16. What T035's goldens left out (the gaps that lane R2's proposed cases found, reviewed and adapted by T056)
+# =============================================================================
+#
+# D8's SARIF fallback, the baseline, forbidden characters in the inputs, the evidence file, a repeated ID, an unreadable threat model,
+# the extremes (every finding found, none found), the shift table's cap, the failure path, and the SARIF's ``message`` and rules as the
+# 1.1 template shows them. They reach branches of the renderer that the goldens above don't (ADR-050 D16's 80% gate), and each asserts
+# what a contract rules. Where one names a form that no contract fixes (a warning code, say), it says ``reading:``.
+
+ODD_LAYER = "L9 odd layer"  # a layer with no code in L1 to L7, so it is compared as written (module-signatures.md)
+
+
+def layers_unclassified(item):
+    cells = row_cells(item["matrix_row"])
+    cells[K8_HEADER.index("MAESTRO Layer")] = "Unclassified"
+    item["matrix_row"] = join_row(cells)
+
+
+def assert_done_with_warnings(res, project):
+    assert res.code == 5 and project.record["status"] == "success-with-warnings" and project.record["warnings"], res.describe()
+
+
+def test_md_section_5_the_examples_cell_names_a_prefix_of_its_shift_and_counts_the_rest(stage, renderer, tmp_path):
+    """The template calls the column "Examples" and states no number. A shipped sample names ten IDs and "(and 98 more)", and ``sarif_common``
+    caps a primary's peers at ten the same way, so a long shift is a sample, not a list. What the cell names are the first findings of its
+    shift in S-2's order, and what it leaves out is counted, so that nothing is dropped without a word. A shift of at most four findings is
+    named in full (the base project's), whatever the cap. This shift has 14 findings."""
+    many = [finding("I-%d" % number, "vector-store", "Synthetic gap number %d." % number, "Low", "2.8", "missing", "logging-audit", None, [],
+                    recommendation("Log it.", "src/audit/log.py", "Events.", "Low", "one line")) for number in range(1, 15)]
+    project = run_ok(stage, renderer, tmp_path, findings=many)
+    _header, rows = table_of(subsection_of(project.md, "## 5. Residual Risk Summary", "### Per-Severity-Band Shift"), "Shift")
+    shown = {re.sub(r"\*", "", row[0]).strip(): row for row in rows}
+    assert int(shown["No Shift"][1]) == 14 and int(re.sub(r"\*", "", shown["Total"][1])) == 14
+    cell = shown["No Shift"][2]
+    named = re.findall(r"(?<![A-Za-z0-9-])I-\d+(?![A-Za-z0-9-])", cell)
+    assert named == sorted((canon(item["id"]) for item in many), key=s2_key)[:len(named)] and len(named) >= 4, cell
+    if len(named) < 14:
+        more = re.search(r"and (\d+) more", cell)
+        assert more and int(more.group(1)) == 14 - len(named), "what the cell leaves out is counted: " + cell
+
+
+def test_md_when_every_finding_has_a_control_none_is_unmitigated_and_nothing_is_recommended(stage, renderer, tmp_path):
+    project = run_ok(stage, renderer, tmp_path, findings=[by_id(i) for i in ("S-2", "T-1")])  # both found
+    summary = section(project.md, "## 1. Executive Summary")
+    assert not re.search(r"\*\*Highest-Risk Unmitigated Finding\*\*: (?:S|T|R|I|D|E|AG|AGP|LLM|OI|MI|TE)-\d+", summary), "a found finding is never it"
+    assert recommendation_blocks(project.md) == {} and len(matrix_rows(project.md)) == 2
+
+
+def test_md_when_no_control_was_found_section_3_has_no_control(stage, renderer, tmp_path):
+    project = run_ok(stage, renderer, tmp_path, findings=[by_id(i) for i in ("E-5", "E-3", "R-1")])  # all missing
+    assert control_blocks(project.md) == []
+    assert persisted(project.md) and tachi_parsers.parse_controls_assessment_inputs(project.md)["errors"] == []
+    assert len(recommendation_blocks(project.md)) == 3
+
+
+# --------------------------------------------------------------------------- the baseline
+
+def test_baseline_a_directory_with_no_controls_file_is_no_baseline_and_says_so(stage, renderer, tmp_path):
+    """D9: "a missing file means no baseline: the stage scores fresh and records why". reading: the scorer's warning code."""
+    project = Project(stage, renderer, tmp_path)
+    empty = tmp_path / "empty-baseline"
+    empty.mkdir()
+    res = project.run(baseline_dir=str(empty))
+    assert_done_with_warnings(res, project)
+    assert [warning["code"] for warning in project.record["warnings"]] == ["baseline-unresolved"]
+    assert_all_fresh(project)
+
+
+def test_baseline_an_unreadable_controls_file_is_no_baseline_and_says_so(stage, renderer, tmp_path):
+    """D9 (S-12(d)): a present file that "isn't UTF-8" counts as missing, and the stage warns. reading: the scorer's warning code."""
+    project = Project(stage, renderer, tmp_path)
+    baseline = tmp_path / "baseline"
+    baseline.mkdir()
+    (baseline / MD).write_bytes(b"\xff\xfe not utf-8")
+    res = project.run(baseline_dir=str(baseline))
+    assert_done_with_warnings(res, project)
+    assert [warning["code"] for warning in project.record["warnings"]] == ["baseline-unreadable"]
+    assert_all_fresh(project)
+
+
+def test_baseline_a_resolved_baseline_with_nothing_carried_counts_zero_and_is_a_full_scan(stage, renderer, tmp_path):
+    """The template: ``carry_forward_count`` is "null when no baseline", so a baseline that resolved and carried nothing counts 0, and the
+    scope is full (every agent scanned afresh)."""
+    first = run_ok(stage, renderer, Path(tmp_path) / "first")
+    follow = follow_up(stage, renderer, Path(tmp_path) / "second", first)
+    res = follow.run(baseline_dir=follow.baseline)
+    assert res.code == 0, res.describe()
+    assert frontmatter_value(follow.md, "carry_forward_count") == "0" and frontmatter_value(follow.md, "rescan_scope") == "full"
+    assert follow.record["warnings"] == [] and gained_counts(follow.record) == {}
+
+
+def test_carry_the_agent_copies_the_planners_unit_row_and_the_renderer_takes_it_unchanged(stage, renderer, tmp_path):
+    """AR-T3 end to end (T036 with T035): the planner puts run 1's persisted results in each UNCHANGED unit's row (``part-files.md``: its
+    ``evidence[]``, ``matrix_row`` and ``recommendation_body``, decoded, beside the status, category and confidence), the agent copies them
+    back with ``carried_forward`` set, and the renderer shows ``CF`` and keeps the same values, with no overwrite and no fallback."""
+    first = run_ok(stage, renderer, Path(tmp_path) / "first")
+    follow = follow_up(stage, renderer, Path(tmp_path) / "second", first)
+    follow.plan(baseline_dir=str(follow.baseline))
+    keys = ("control_status", "control_category", "confidence", "evidence", "matrix_row", "recommendation_body")
+    seen = []
+    for batch_id in follow.batches():
+        units = {canon(unit["finding_id"]): unit for unit in follow.batch_input(batch_id)["units"]}
+
+        def copy_units(part, units=units):
+            for item in part["items"]:
+                unit = units[canon(item["finding_id"])]
+                assert all(key in unit for key in keys), "the planner puts every persisted value in an UNCHANGED unit's row"
+                item.update({key: copy.deepcopy(unit[key]) for key in keys})
+                item["carried_forward"] = True
+                seen.append(canon(item["finding_id"]))
+
+        follow.write_part(batch_id, mutate=copy_units)
+    assert sorted(seen, key=s2_key) == [canon(i) for i in S2_ORDER]
+    assert follow.reconcile().code == 0
+    res = follow.render()
+    assert res.code in (0, 5), res.describe()
+    tp.validate_stage_record(follow.record)
+    assert_carried_from(follow, first)
+
+
+# --------------------------------------------------------------------------- D8's fallback: only risk-scores.sarif
+
+def sarif_input(findings, mitigated=True):
+    """A ``risk-scores.sarif`` in the fields that T142's reader takes (D8): the member set, each result's composite and band, and its
+    component, threat and layer. ``mitigated`` gives each result but E-3's a ``message.markdown``."""
+    results = []
+    for item in findings:
+        inherent = golden(item["id"])[0]
+        message = {"text": item["threat"]}
+        if mitigated and item["id"] != "E-3":
+            message["markdown"] = "Source mitigation for %s." % item["id"]
+        results.append({
+            "ruleId": "tachi/stride/spoofing", "level": "warning", "message": message,
+            "locations": [{"physicalLocation": {"artifactLocation": {"uri": URI}, "region": {"startLine": 1}},
+                           "logicalLocations": [{"name": item["component"], "kind": "process"}]}],
+            "partialFingerprints": {"primaryLocationLineHash": "0000000000000000:1", "findingId/v1": item["id"]},
+            "properties": {"security-severity": inherent, "severity-band": ts.band(Decimal(inherent)),
+                           "maestro-layer": ODD_LAYER if item["id"] == S2_ID else COMPONENTS[item["component"]][1]}})
+    return json.dumps({"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "tachi-risk-scorer"}}, "results": results}]})
+
+
+def use_sarif(project, text):
+    """T036's fallback: ``--risk-scores`` names a ``risk-scores.md`` that is absent, and ``risk-scores.sarif`` lies beside it."""
+    project.risk_scores.unlink()
+    (project.out / "risk-scores.sarif").write_text(text, encoding="utf-8")
+
+
+def test_fallback_a_run_with_only_risk_scores_sarif_renders_the_same_findings(stage, renderer, tmp_path):
+    """D8 (AR-T2): when ``risk-scores.md`` is absent the member set and the inherent scores come from ``risk-scores.sarif``, and each member's
+    layer from its own result (gap B). That form records no ``delta_status``, so each member is flagged ``input:delta_status:not-in-form`` and the
+    stage record warns. The SARIF's ``message.markdown`` is the source result's, or ``""`` where it has none (P0-8)."""
+    project = Project(stage, renderer, tmp_path)
+    use_sarif(project, sarif_input(FINDINGS))
+    res = project.run(mutate=with_cells(S2_ID, {"MAESTRO Layer": ODD_LAYER}))
+    assert_done_with_warnings(res, project)
+    assert frontmatter_value(project.md, "source_file") == "run/risk-scores.sarif"
+    found = matrix_rows(project.md)
+    assert sorted(found, key=s2_key) == [canon(i) for i in S2_ORDER]
+    for finding_id, (band, row) in found.items():
+        inherent, inherent_band, _factor, residual, _residual_band = golden(finding_id)
+        assert (row["Inherent Score"], row["Inherent Severity"], row["Residual Score"], band) == (inherent, inherent_band, residual, golden(finding_id)[4])
+    assert found[S2_ID][1]["MAESTRO Layer"] == ODD_LAYER
+    assert "value-not-in-form" in [warning["code"] for warning in project.record["warnings"]]  # reading: the scorer's code for it
+    lines = integrity_text(project.md).split("\n")
+    for finding_id in OPEN_IDS:
+        assert any(re.search(id_pattern(finding_id), line) and "input" in line and "delta_status" in line and "not-in-form" in line for line in lines), finding_id
+    results = results_by_id(project.sarif)
+    for item in FINDINGS:
+        assert results[item["id"]]["message"]["markdown"] == ("" if item["id"] == "E-3" else "Source mitigation for %s." % item["id"]), item["id"]
+        assert results[item["id"]]["properties"]["maestro-layer"] == (ODD_LAYER if item["id"] == S2_ID else COMPONENTS[item["component"]][1])
+        assert "input:delta_status:not-in-form" in results[item["id"]]["properties"]["integrity-flags"]
+
+
+def test_fallback_a_member_with_no_score_ends_the_render(stage, renderer, tmp_path):
+    project = Project(stage, renderer, tmp_path)
+    document = json.loads(sarif_input(FINDINGS))
+    del document["runs"][0]["results"][0]["properties"]["security-severity"]  # S-2's
+    use_sarif(project, json.dumps(document))
+    project.earlier()
+    project.prepare()
+    res = project.render()
+    assert res.code == 2, res.describe()
+    assert_failure_message(res, project.plan_id)
+    assert re.search(id_pattern(S2_ID), res.err), "the message names the finding: " + res.describe()
+    project.assert_earlier_outputs_untouched()
+
+
+def test_fallback_the_legacy_id_form_names_the_same_members(stage, renderer, tmp_path):
+    """reading (T142's reader): an older ``risk-scores.sarif`` names its finding in ``properties.id`` and has no ``findingId/v1``."""
+    project = Project(stage, renderer, tmp_path)
+    document = json.loads(sarif_input(FINDINGS))
+    for result in document["runs"][0]["results"]:
+        result["properties"]["id"] = result["partialFingerprints"].pop("findingId/v1")
+    use_sarif(project, json.dumps(document))
+    res = project.run(mutate=with_cells(S2_ID, {"MAESTRO Layer": ODD_LAYER}))
+    assert_done_with_warnings(res, project)
+    assert sorted(matrix_rows(project.md), key=s2_key) == [canon(i) for i in S2_ORDER]
+
+
+# --------------------------------------------------------------------------- the evidence file
+
+def test_evidence_a_file_is_shown_in_its_canonical_spelling_and_persisted_as_written(stage, renderer, tmp_path):
+    """``part-files.md``: "A ``file`` is checked, never rewritten. ``./a//b.py`` is kept as written in the validated part. The resolver
+    canonicalizes it at render time (ADR-050 D7), and both rendered files use that canonical spelling, so ``.md`` and ``.sarif`` agree"."""
+    def untidy(part):
+        for item in part["items"]:
+            for entry in item["evidence"]:
+                if entry["file"] == "src/auth/tokens.py":
+                    entry["file"] = "./src//auth/tokens.py"
+
+    project = run_ok(stage, renderer, tmp_path, untidy)
+    assert "**Detected in**: `src/auth/tokens.py:42`" in project.md and "./src//auth" not in project.md.split("## 7. Analysis Integrity")[0]
+    assert persisted(project.md)[S2_ID]["evidence"][0]["file"] == "./src//auth/tokens.py"
+    result = results_by_id(project.sarif)[S2_ID]
+    assert result["properties"]["control-evidence"][0]["file"] == "src/auth/tokens.py"
+    assert result["relatedLocations"][0]["physicalLocation"]["artifactLocation"]["uri"] == "src/auth/tokens.py"
+
+
+def test_evidence_a_file_that_is_not_in_the_target_fails_the_render(stage, renderer, tmp_path):
+    """reading (T052's open question 1, lane R2's decision): a finding whose evidence names a file that the resolver can't open under the
+    target is unusable, so the render ends with exit 2 and the earlier files stay."""
+    project = Project(stage, renderer, tmp_path)
+    (project.target / "src" / "auth" / "tokens.py").unlink()
+    project.earlier()
+    res = project.run()
+    assert res.code == 2, res.describe()
+    assert_failure_message(res, project.plan_id)
+    project.assert_earlier_outputs_untouched()
+
+
+# --------------------------------------------------------------------------- what the inputs hold
+
+def test_input_a_forbidden_character_in_the_threat_model_is_refused_and_not_echoed(stage, renderer, tmp_path):
+    """P0-4 (``module-signatures.md``, ``forbidden_character``): "A renderer, at the point it takes a value from an input that isn't a part,
+    refusing the value with exit 2"."""
+    project = Project(stage, renderer, tmp_path)
+    original = by_id("E-3")["threat"]
+    text = project.threats.read_text(encoding="utf-8")
+    assert original in text
+    project.threats.write_text(text.replace(original, original.replace("skip", "skip\x1b[31m")), encoding="utf-8")
+    project.earlier()
+    res = project.run()
+    assert res.code == 2, res.describe()
+    assert re.search(id_pattern("E-3"), res.err) and "\x1b" not in res.err, res.describe()
+    project.assert_earlier_outputs_untouched()
+
+
+def test_input_a_forbidden_character_in_a_value_taken_from_the_scored_input_is_refused(stage, renderer, tmp_path):
+    """The same rule for ``risk-scores.md``. With no ``source_file`` the finding texts come from it, so a bidi control in one would reach the
+    output unless it is refused."""
+    original = by_id("E-3")["threat"]
+    text = make_risk_scores_md().replace('source_file: "run/threats.md"', "source_file: null").replace(original, original.replace("skip", "skip‮"))
+    assert "‮" in text
+    project = Project(stage, renderer, tmp_path, risk_scores_text=text)
+    project.earlier()
+    res = project.run(mutate=every_item(layers_unclassified))
+    assert res.code == 2, res.describe()
+    assert re.search(id_pattern("E-3"), res.err) and "‮" not in res.err, res.describe()
+    project.assert_earlier_outputs_untouched()
+
+
+def test_input_reused_id_is_carried_over_from_the_scored_input(stage, renderer, tmp_path):
+    """Ruling B (D7; ``sarif-result.md``): both files carry ``reused-id:finding_id:baseline`` for the same finding, and the scored input's
+    Score Flags table is where the next stage finds it."""
+    text = make_risk_scores_md() + ("\n## 6. Score Integrity\n\n### Score Flags\n\n| ID | Flag | Field | Stored | Rendered | Cause |\n"
+                                    "|----|------|-------|--------|----------|-------|\n| T-1 | reused-id | finding_id | T-1 | " + DASH + " | baseline |\n\n")
+    project = Project(stage, renderer, tmp_path, risk_scores_text=text)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert project.record["counts"]["reused-id"] == 1
+    assert any(re.search(id_pattern("T-1"), line) and "reused-id" in line and "finding_id" in line and "baseline" in line for line in integrity_text(project.md).split("\n"))
+    flags = flags_of(project.sarif)
+    assert flags["T-1"] == ["reused-id:finding_id:baseline"] and [i for i, found in flags.items() if found and i != "T-1"] == []
+
+
+def test_input_a_finding_listed_twice_in_the_threat_model_is_read_once_and_warned(stage, renderer, tmp_path):
+    """``part-files.md``: a repeated canonical ID is read, never refused; "each renderer lists the IDs under Input Issues (scorer §6, controls §7)
+    and as the stage record's warning ``duplicate-finding-id``, and exits 5"."""
+    project = Project(stage, renderer, tmp_path, repeated=[("T-1", "auth-broker")])
+    res = project.run()
+    assert_done_with_warnings(res, project)
+    assert [warning["code"] for warning in project.record["warnings"]] == ["duplicate-finding-id"]
+    assert re.search(id_pattern("T-1"), subsection_of(project.md, "## 7. Analysis Integrity", "### Input Issues"))
+    assert len(matrix_rows(project.md)) == len(FINDINGS), "one ID is one finding (D-4)"
+
+
+def test_input_a_scored_input_with_no_source_file_leaves_the_threat_model_unread_and_the_layers_unclassified(stage, renderer, tmp_path):
+    """T053 and gap B: with no readable ``threats.md`` there is none, with a reason in the stage record that says the layers fell back
+    too, and each layer is ``Unclassified``. The component and threat come from the scored input."""
+    text = make_risk_scores_md().replace('source_file: "run/threats.md"', "source_file: null")
+    project = Project(stage, renderer, tmp_path, risk_scores_text=text)
+    res = project.run(mutate=every_item(layers_unclassified))
+    assert_done_with_warnings(res, project)
+    assert any("layer" in warning["detail"].lower() for warning in project.record["warnings"]), project.record["warnings"]
+    found = matrix_rows(project.md)
+    assert len(found) == len(FINDINGS) and {row["MAESTRO Layer"] for _band, row in found.values()} == {"Unclassified"}
+    assert {row["Component"] for _band, row in found.values()} == {item["component"] for item in FINDINGS}
+    assert {result["properties"]["maestro-layer"] for result in project.sarif["runs"][0]["results"]} == {"Unclassified"}
+
+
+def test_input_a_source_file_that_does_not_validate_is_explained_in_the_record(stage, renderer, tmp_path):
+    text = make_risk_scores_md(source="../elsewhere/threats.md")
+    project = Project(stage, renderer, tmp_path, risk_scores_text=text)
+    res = project.run(mutate=every_item(layers_unclassified))
+    assert_done_with_warnings(res, project)
+    reason = rules.check_run_file("../elsewhere/threats.md", cwd=Path(project.root), expected_name="threats.md").reason
+    assert reason and any(reason in warning["detail"] for warning in project.record["warnings"]), project.record["warnings"]
+
+
+# --------------------------------------------------------------------------- the SARIF as the 1.1 template shows it
+
+def test_sarif_a_finding_with_no_mitigation_has_an_empty_markdown_and_the_key_stays(stage, renderer, tmp_path):
+    """P0-8: ``message.markdown`` is always written, the empty string included, and the self-check passes."""
+    project = Project(stage, renderer, tmp_path)
+    cell = mitigation_of(by_id("E-3"))
+    text = project.threats.read_text(encoding="utf-8")
+    assert text.count(cell) == 1
+    project.threats.write_text(text.replace(cell, ""), encoding="utf-8")
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    results = results_by_id(project.sarif)
+    assert results["E-3"]["message"] == {"text": "%s [Control: missing]" % by_id("E-3")["threat"], "markdown": ""}
+    assert results["E-5"]["message"]["markdown"] == mitigation_of(by_id("E-5"))
+    sc.self_check(project.sarif["runs"][0]["results"], tool=TOOL, member_ids=OPEN_IDS, assignments={}, resolved_ids=RESOLVED_IDS, uri=URI)
+
+
+def test_template_the_sarif_rules_are_the_templates_with_a_computed_severity(base):
+    """Gap A (``sarif-result.md``): each rule has ``id``, ``shortDescription``, ``fullDescription``, ``properties`` (``tags``, then
+    ``security-severity``) and ``relationships``, in that order, as the template shows them. Only the severity is computed."""
+    require_the_1_1_template()
+    template = {rule["id"]: rule for rule in json.loads(template_text(SARIF))["runs"][0]["tool"]["driver"]["rules"]}
+    written = base.sarif["runs"][0]["tool"]["driver"]["rules"]
+    assert written
+    for rule in written:
+        wanted = copy.deepcopy(template[rule["id"]])
+        wanted["properties"]["security-severity"] = rule["properties"]["security-severity"]
+        assert rule == wanted, rule["id"]
+        assert list(rule) == ["id", "shortDescription", "fullDescription", "properties", "relationships"] and list(rule["properties"]) == ["tags", "security-severity"]
+
+
+def test_template_each_result_carries_the_templates_properties_in_its_order(base):
+    """Gap B (``sarif-result.md``): ``maestro-layer`` follows ``residual-risk``; ``integrity-flags`` is last, and a group member's correlation keys
+    come after it. The order is the template's."""
+    require_the_1_1_template()
+    order = list(json.loads(template_text(SARIF))["runs"][0]["results"][0]["properties"])
+    assert order.index("maestro-layer") == order.index("residual-risk") + 1 and order[-1] == "integrity-flags"
+    for result in base.sarif["runs"][0]["results"]:
+        assert list(result["properties"]) == order, result["partialFingerprints"]["findingId/v1"]
+
+
+# --------------------------------------------------------------------------- the failure path
+
+def test_failure_an_unexpected_error_is_a_failure_message_and_replaces_no_file(stage, renderer, tmp_path, monkeypatch):
+    """AR-T5 (D4): a failure prints the stage's FAILED message with a remedy and the plan's place, whatever raised it. An exception that no
+    check meant to raise is the renderer's own defect, and it too leaves every canonical file as it was. ``tachi_parts.fence_for`` is the
+    shared function that every Section 3 control calls, so an error seeded there is no check's."""
+    project = Project(stage, renderer, tmp_path)
+    project.earlier()
+    project.prepare()
+
+    def boom(snippet):
+        raise RuntimeError("seeded defect\x07")
+
+    monkeypatch.setattr(tp, "fence_for", boom)
+    res = project.render()
+    assert res.code not in (0, 5), res.describe()
+    assert_failure_message(res, project.plan_id)
+    assert "seeded defect" in res.err and "\x07" not in res.err, "reading: the error is named, with its control characters made plain (the scorer's)"
+    project.assert_earlier_outputs_untouched()
