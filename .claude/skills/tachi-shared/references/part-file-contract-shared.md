@@ -139,7 +139,7 @@ The eight sub-score names are the four exploitability keys and the four scalabil
 | `control_status` | `found`, `partial` or `missing` |
 | `control_category` | one of `authentication`, `input-validation`, `rate-limiting`, `encryption`, `logging-audit`, `csrf-protection`, `csp-security-headers` or `access-control` |
 | `confidence` | `High`, `Medium` or `Low`, and `null` exactly when `control_status` is `missing` |
-| `carried_forward` | boolean. Accepted only for an UNCHANGED finding with a resolved baseline controls file, and otherwise cleared with the reason recorded |
+| `carried_forward` | boolean. Accepted only for an UNCHANGED finding whose result the resolved baseline controls file holds (its persisted values in a 1.1 file, its Section 2 row in a 1.0 file), and otherwise cleared with the reason recorded |
 | `evidence` | an array of 1 to 5 entries for `found` or `partial`, and empty for `missing`. Each entry has exactly the keys in "Evidence entry keys" |
 | `matrix_row` | prose, one line of up to 1,200 characters, cut at 1,200: the 11 cells of the finding's row in the controls section 2 table |
 | `recommendation_body` | prose up to 2,000, cut at 2,000. Required for `partial` or `missing`, and `null` for `found` |

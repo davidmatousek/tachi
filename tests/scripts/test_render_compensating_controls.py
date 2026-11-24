@@ -2481,6 +2481,84 @@ def test_r34_cf_a_baseline_accepts_a_claim_only_for_an_unchanged_finding_that_th
         "S-2": True, "T-1": True, "S-10": False, "D-2": False, "AG-1": False}, "Section 7 keeps the accepted value"
 
 
+# A claim needs a result to carry (ADR-050 D2, ruled at W4): the renderer accepts ``carried_forward`` only for an UNCHANGED finding whose result the
+# resolved baseline controls file holds. A 1.1 file holds a result in Section 7's Assessment Inputs, which is what the planner hands the agent to copy
+# (AR-T3), and a rendered Section 2 row doesn't count there (RR1). A 1.0 file persists nothing, so it holds a result as a Section 2 row.
+
+def claims(*finding_ids):
+    """The agent sets ``carried_forward`` on the items of ``finding_ids`` and changes nothing else in them."""
+    return together(*[edit_item(finding_id, lambda item: item.__setitem__("carried_forward", True)) for finding_id in finding_ids])
+
+
+def without_rows(md, body, finding_id):
+    """``md`` with the table rows of ``finding_id`` taken out of ``body``, a section or subsection of it. A seed that finds no row fails the test."""
+    kept = "\n".join(line for line in body.split("\n") if not line.startswith("| %s |" % finding_id))
+    assert kept != body and md.count(body) == 1, "the seeded edit changed nothing"
+    return md.replace(body, kept)
+
+
+def as_a_1_0_file(md, missing=()):
+    """``md`` as a 1.0 controls file holds it: schema 1.0 and no Section 7 table to persist from (so the planner hands over no result), with no
+    Section 2 row for each finding of ``missing``."""
+    text = drop_table(md.replace('schema_version: "1.1"', 'schema_version: "1.0"', 1), "### Assessment Inputs")
+    for finding_id in missing:
+        text = without_rows(text, section(text, "## 2. Coverage Matrix"), finding_id)
+    assert tachi_parsers.parse_frontmatter(text)["schema_version"] == "1.0" and persisted(text) == {}, "the seeded file reads as a 1.0 file"
+    return text
+
+
+def assert_s2_carried_and_t1_cleared(follow):
+    """S-2 and T-1 are UNCHANGED and both claim, and the baseline holds a result for S-2 only. S-2 shows ``CF`` and is counted, and T-1's claim is
+    cleared with the reason recorded (the stage record's warning and one Input Issue line, no flag), so T-1 shows the dash and counts as scanned."""
+    shown = {finding_id: row["CF"] for finding_id, (_band, row) in matrix_rows(follow.md).items()}
+    assert {finding_id for finding_id, cell in shown.items() if cell == "CF"} == {"S-2"} and shown["T-1"] == DASH
+    assert frontmatter_value(follow.md, "carry_forward_count") == "1" and frontmatter_value(follow.md, "rescan_scope") == "incremental"
+    flagged = {finding_id for finding_id, result in results_by_id(follow.sarif).items() if result["properties"]["control-carry-forward"] is True}
+    assert flagged == {"S-2"}
+    assert_recorded(follow, ["T-1"])
+    assert [warning["detail"] for warning in follow.record["warnings"] if warning["code"] == "carried-forward-cleared"] == [
+        "the control analyzer set carried_forward on 1 findings that can't be carried (the baseline %s holds no result for it), such as T-1" % MD]
+    assert "- " + tp.escape_prose("1 findings had carried_forward cleared (carried_forward is accepted only for an UNCHANGED finding whose result the "
+                                  "resolved baseline %s holds), so they count as scanned: T-1" % MD) in integrity_text(follow.md).split("\n")
+    kept = persisted(follow.md)
+    assert (kept["S-2"]["carried_forward"], kept["T-1"]["carried_forward"]) == (True, False), "Section 7 keeps the accepted value"
+
+
+def test_r34_cf_a_1_1_baseline_that_persists_no_result_for_a_finding_clears_its_claim_though_its_section_2_row_is_there(stage, renderer, tmp_path):
+    """D2, ruled at W4: in a 1.1 file the result is the one Section 7 persists, and T-1's Section 2 row is no result, because its text is rendered and the
+    agent never copies from it. The planner hands S-2's result over and hands T-1 none, so S-2 copies its own and is carried, and T-1's claim, made with
+    its own values, is cleared. Before the ruling the renderer accepted it, and showed ``CF`` for a result that came from no baseline."""
+    first = run_ok(stage, renderer, tmp_path / "first")
+    (first.out / MD).write_text(without_rows(first.md, subsection_of(first.md, "## 7. Analysis Integrity", "### Assessment Inputs"), "T-1"), encoding="utf-8")
+    assert "T-1" in matrix_rows(first.md) and "T-1" not in persisted(first.md) and "S-2" in persisted(first.md), "T-1 is in Section 2 and not in Section 7"
+    follow = follow_up(stage, renderer, tmp_path / "second", first, statuses={"S-2": "UNCHANGED", "T-1": "UNCHANGED"}, default="NEW")
+    run_carried(follow, first, also=claims("T-1"), only={"S-2"})
+    assert_s2_carried_and_t1_cleared(follow)
+
+
+def test_r34_cf_a_1_0_baseline_with_no_section_2_row_for_a_finding_clears_its_claim(stage, renderer, tmp_path):
+    """D2, ruled at W4: a 1.0 file has no persisted results, so the agent copies from the file itself, and the file holds a finding as its Section 2 row
+    under a band heading. Run 1's file is rewritten as a 1.0 file would be, without T-1's row. S-2 and T-1 are UNCHANGED and both claim: S-2's row is
+    there and is carried, T-1's is not and is cleared. Before the ruling the renderer accepted both."""
+    first = run_ok(stage, renderer, tmp_path / "first")
+    (first.out / MD).write_text(as_a_1_0_file(first.md, missing=("T-1",)), encoding="utf-8")
+    assert sorted(matrix_rows(first.md)) == sorted(canon(item["id"]) for item in FINDINGS if canon(item["id"]) != "T-1"), "T-1 has no Section 2 row"
+    follow = follow_up(stage, renderer, tmp_path / "second", first, statuses={"S-2": "UNCHANGED", "T-1": "UNCHANGED"}, default="NEW")
+    run_carried(follow, first, also=claims("S-2", "T-1"), only=())
+    assert_s2_carried_and_t1_cleared(follow)
+
+
+def test_r34_cf_a_1_0_baseline_with_a_section_2_row_for_every_finding_accepts_every_unchanged_claim(stage, renderer, tmp_path):
+    """The upgrade path: every controls file written before schema 1.1 is a 1.0 file, which persists nothing and holds each finding as its Section 2 row.
+    Every finding is UNCHANGED and every agent claims it, so every claim is accepted and nothing is cleared, as before the ruling."""
+    first = run_ok(stage, renderer, tmp_path / "first")
+    (first.out / MD).write_text(as_a_1_0_file(first.md), encoding="utf-8")
+    follow = follow_up(stage, renderer, tmp_path / "second", first)
+    run_carried(follow, first, also=claim_carried(), only=())
+    assert follow.record["warnings"] == []
+    assert_carried_from(follow, first)
+
+
 # --------------------------------------------------------------------------- carry: AR-T3, AR-T4, carry_forward_count and byte identity
 
 def two_runs(stage_module, renderer_module, root, first_mutate=None):

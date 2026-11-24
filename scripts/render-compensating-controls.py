@@ -21,8 +21,8 @@ the canonical files untouched.
 ``risk-scores.md``, read through D9's reader and never re-scored, and its band is ``band(inherent)``. The P0 effectiveness
 and the reduction factor follow from the agent's status, and the residual score and its band follow from both, by
 ``q1`` (half up, so 4.55 is 4.6). ``CF``, ``carry_forward_count`` and ``rescan_scope`` follow from the agent's
-``carried_forward`` once the renderer has accepted it: only for an UNCHANGED finding, and only when a baseline
-``compensating-controls.md`` resolved (otherwise it is cleared, and the reason is recorded). Which findings are scored is
+``carried_forward`` once the renderer has accepted it: only for an UNCHANGED finding whose result the resolved baseline
+``compensating-controls.md`` holds (otherwise it is cleared, and the reason is recorded). Which findings are scored is
 the input's open rows (D8), and the text of each comes from the ``threats.md`` that the planner reached through the input's
 validated ``source_file`` and holds as a plan input. When ``risk-scores.md`` is absent the plan reads ``risk-scores.sarif`` instead, and the member set and the scores
 come from it (``parse_sarif_member_set``, D8's fallback).
@@ -468,6 +468,7 @@ class Run(object):
         self.target_path: Optional[str] = None              # ... and relative to the working directory, or None
         self.uri = ""                                       # the architecture file's URI: every SARIF result's one ``artifactLocation.uri`` (D7)
         self.baseline_resolved = False
+        self.baseline_held: frozenset = frozenset()         # canonical IDs of the findings whose result the resolved baseline controls file holds (D2, W4)
         self.carry_forward_count: Optional[int] = None
         self.rescan_scope = "full"
         self.overwritten = 0                                # the computed cells of Section 2 that the renderer overwrote, over every row (R-34)
@@ -925,15 +926,35 @@ def _prepare_correlation(run: Run) -> None:
     run.assignments = sc.correlation_assignments(named, run.open_ids)
 
 
-def _prepare_baseline(run: Run, plan: Mapping[str, Any], refs: Mapping[str, str]) -> None:
-    """Whether a baseline ``compensating-controls.md`` resolved (R-6, D9): the one condition, with the finding's status, under
-    which the renderer accepts ``carried_forward``.
+def _baseline_held(text: str) -> frozenset:
+    """The canonical IDs of the findings whose result a baseline ``compensating-controls.md`` holds: the only findings whose
+    ``carried_forward`` the renderer accepts (ADR-050 D2, amended at W4).
+
+    A 1.1 file holds a result in Section 7's ``### Assessment Inputs``, which ``parse_controls_assessment_inputs`` reads as the planner
+    does for a unit's row (AR-T3). A rendered Section 2 row doesn't count there: its text is escaped, and the agent never copies from
+    it (RR1). A 1.0 file persists nothing, so it holds a result as a Section 2 row with the finding's ID under one of the four band
+    headings, read by ``_rows_under`` as this renderer's own from-disk check reads it. The split is the file's ``schema_version`` as
+    ``parse_frontmatter`` reads it, which is ``"1.0"`` for a file that has none. Nothing is written, and no warning is raised.
+    """
+    if tachi_parsers.parse_frontmatter(text)["schema_version"] == "1.0":
+        named = [row.get("Threat ID", "") for band in BANDS for row in _rows_under(text, r"^### %s Residual Severity[ \t]*$" % band)[0]]
+    else:
+        named = list(tachi_parsers.parse_controls_assessment_inputs(text)["inputs"])
+    return frozenset(tp.canonical_finding_id(name) for name in named if tp.id_matches("finding", name))
+
+
+def _prepare_baseline(run: Run, plan: Mapping[str, Any], refs: Mapping[str, str], inputs: Mapping[str, bytes]) -> None:
+    """Whether a baseline ``compensating-controls.md`` resolved (R-6, D9), and which findings' results it holds: with the finding's
+    status, the conditions under which the renderer accepts ``carried_forward`` (ADR-050 D2, amended at W4).
 
     The planner resolved the baseline and recorded its controls file as the digest-checked input
-    ``baseline_compensating_controls``, so that input is the answer. When there is none, why is worked out again for the record.
+    ``baseline_compensating_controls``, so that input is the answer, and its bytes are the file that ``_baseline_held`` reads. The
+    planner decoded them as strict UTF-8 before it recorded the input, so decoding them again can't fail. When there is no input,
+    why is worked out again for the record.
     """
     if "baseline_compensating_controls" in plan["inputs"]:
         run.baseline_resolved = True
+        run.baseline_held = _baseline_held(inputs["baseline_compensating_controls"].decode("utf-8"))
         return
     source = tachi_parsers.parse_baseline_frontmatter(run.threats_text)["source"] if run.threats_text is not None else None
     resolution = rules.resolve_baseline(flag=refs.get("baseline_dir"), baseline_source=source, cwd=Path(run.cwd))
@@ -989,7 +1010,7 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
     run.uri = resolution.uri
     for found in resolution.warnings:
         run.warn(found["code"], found["detail"])
-    _prepare_baseline(run, plan, refs)
+    _prepare_baseline(run, plan, refs, inputs)
     return members
 
 
@@ -1114,11 +1135,13 @@ def _score(run: Run, members: Sequence[Mapping[str, Any]], items: Mapping[str, M
             row.flags.append(Flag("input", "evidence.file", "unresolved"))
             run.issues += ["%s: evidence entry %d, %s, is not a usable file under the target (%s), so it is kept as written and has no relatedLocations entry"
                            % (row.finding_id, number + 1, ascii(_shorten(file, 80)), check) for number, file, check in row.unresolved]
-        if item["carried_forward"]:   # accepted only for an UNCHANGED finding with a resolved baseline controls file (D2); else cleared
+        if item["carried_forward"]:   # accepted only for an UNCHANGED finding whose result the resolved baseline controls file holds (D2, W4); else cleared
             if not run.baseline_resolved:
                 cleared.append((row.finding_id, "no baseline %s resolved" % MD))
             elif row.delta != "UNCHANGED":
                 cleared.append((row.finding_id, "its status in the threat model is %s, not UNCHANGED" % row.delta))
+            elif row.canon not in run.baseline_held:
+                cleared.append((row.finding_id, "the baseline %s holds no result for it" % MD))
             else:
                 row.carried = True
         _narrate(run, row)
@@ -1137,7 +1160,8 @@ def _score(run: Run, members: Sequence[Mapping[str, Any]], items: Mapping[str, M
                  "and has no relatedLocations entry: %s" % (sum(len(row.unresolved) for row in refused), len(refused), _named([row.finding_id for row in refused])))
     if cleared:
         run.issues.append("%d findings had carried_forward cleared (%s), so they count as scanned: %s" % (
-            len(cleared), "carried_forward is accepted only for an UNCHANGED finding when a baseline %s resolved" % MD, _named([name for name, _why in cleared])))
+            len(cleared), "carried_forward is accepted only for an UNCHANGED finding whose result the resolved baseline %s holds" % MD,
+            _named([name for name, _why in cleared])))
         run.warn("carried-forward-cleared", "the control analyzer set carried_forward on %d findings that can't be carried (%s), such as %s"
                  % (len(cleared), cleared[0][1], ", ".join(name for name, _why in cleared[:5])))
     run.carry_forward_count = sum(1 for row in run.rows if row.carried) if run.baseline_resolved else None
