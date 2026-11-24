@@ -19,9 +19,10 @@ canonical files untouched.
 
 Which findings the agent scored is the planner's partition, ``tachi_scoring_rules.route_scorer_units``, and this
 script calls the same function: an UNCHANGED finding with a usable baseline row is carried (its inputs, owner and
-SLA come from the baseline, and everything derived is recomputed), any other peer copies its group's primary, and
-the rest come from the parts. The reference set is ``threats.md``; when the plan reads ``threats.sarif`` instead
-(D8's fallback) the member set and each finding's text come from that file.
+SLA come from the baseline, and everything derived is recomputed), any other peer takes its group's primary's
+assessment and is scored with its own asset tags (D9), and the rest come from the parts. The reference set is
+``threats.md``; when the plan reads ``threats.sarif`` instead (D8's fallback) the member set and each finding's text
+come from that file.
 
 Exit codes are ``contracts/cli.md``'s: 0 done, 1 an input is missing or unreadable, 2 a validation, usage or guard
 failure (a digest or pointer mismatch, a part that fails re-validation, a forbidden character in an input), 4 a
@@ -99,44 +100,11 @@ SUBSCORE_LABELS = {
     "detection_difficulty": "Detection Difficulty"}
 RATIONALE_KEYS = ("cvss", "exploitability", "scalability", "reachability")
 
-# What each rule says in risk-scores.sarif, copied from the template (templates/tachi/output-schemas/risk-scores.sarif)
-# in that file's order: (category, short description, full description, tags, taxonomy IDs the rule relates to). The IDs
-# are what a ``{{ref:...}}`` slot may cite for a finding of that category (ADR-050 D3's table); they are not emitted.
-RULES = (
-    ("spoofing", "Identity spoofing threats",
-     "Threats where an attacker pretends to be something or someone else, such as forging authentication credentials, "
-     "replaying tokens, or impersonating trusted components to gain unauthorized access.",
-     ("security", "stride", "spoofing", "authentication", "owasp", "cwe"), ("A07", "CWE-287")),
-    ("tampering", "Data tampering threats",
-     "Threats where an attacker modifies data, code, or configuration without authorization, violating integrity "
-     "guarantees and causing systems to operate on corrupted inputs or persist falsified records.",
-     ("security", "stride", "tampering", "data-integrity", "owasp", "cwe"), ("A08", "CWE-345")),
-    ("repudiation", "Repudiation threats",
-     "Threats where a user or system can deny having performed an action, and the system lacks sufficient evidence to "
-     "prove otherwise, undermining accountability and forensic investigation.",
-     ("security", "stride", "repudiation", "logging", "accountability", "owasp", "cwe"), ("A09", "CWE-778")),
-    ("info-disclosure", "Information disclosure threats",
-     "Threats where sensitive information is exposed to unauthorized parties through direct data leaks, verbose error "
-     "messages, side-channel observations, or insufficient access controls on stored data.",
-     ("security", "stride", "information-disclosure", "data-exposure", "owasp", "cwe"), ("A01", "CWE-200")),
-    ("denial-of-service", "Denial of service threats",
-     "Threats where an attacker degrades or eliminates system availability through resource exhaustion, flooding, "
-     "algorithmic complexity exploitation, or cascading dependency failures.",
-     ("security", "stride", "denial-of-service", "availability", "owasp", "cwe"), ("A05", "CWE-400")),
-    ("privilege-escalation", "Privilege escalation threats",
-     "Threats where an attacker gains higher privileges than authorized, performing actions reserved for "
-     "administrators, accessing other users' resources, or bypassing access control boundaries.",
-     ("security", "stride", "elevation-of-privilege", "access-control", "owasp", "cwe"), ("A01", "CWE-269")),
-    ("agentic", "AI agent autonomy and misuse threats",
-     "Threats arising from autonomous agent behavior, including uncontrolled tool use, excessive autonomy, "
-     "agent-to-agent trust violations, and lack of human oversight in high-impact operations.",
-     ("security", "ai", "agentic", "autonomy", "tool-use", "mcp"), ("CWE-693",)),
-    ("llm", "LLM-specific threats",
-     "Threats from prompt injection vulnerabilities, data poisoning risks, and model theft in LLM-integrated "
-     "components, covering direct and indirect injection, RAG pipeline manipulation, and model extraction.",
-     ("security", "ai", "llm", "prompt-injection", "data-poisoning", "model-theft"), ("CWE-74",)),
-)
-RULE_BY_CATEGORY = {entry[0]: entry for entry in RULES}
+# What each rule says in risk-scores.sarif is ``sarif_common.RULES``, the one table that this file and
+# compensating-controls.sarif share (templates/tachi/output-schemas/): (category, short description, full description, tags,
+# taxonomy IDs the rule relates to). The IDs are what a ``{{ref:...}}`` slot may cite for a finding of that category
+# (ADR-050 D3's table), and each rule writes them as its ``relationships`` (PM W3 ruling 2, gap A).
+RULE_BY_CATEGORY = {entry[0]: entry for entry in sc.RULES}
 
 KIND_OF_DFD_TYPE = {"External Entity": "external-entity", "Process": "process", "Data Store": "data"}
 # The reverse, for D8's fallback: the ``kind`` of a ``threats.sarif`` result's logical location, back to a DFD type.
@@ -345,6 +313,7 @@ class Row(object):
         self.net: Optional[int] = None
         self.tags: Tuple[str, ...] = ()
         self.bounds: Optional[Tuple[Decimal, Decimal]] = None
+        self.assessed: Optional[Decimal] = None   # the a whose R-25 outcome is ``cvss``; a peer with other tags is scored on its primary's (P0-6)
         self.scored_on: Optional[datetime.date] = None
         self.owner, self.sla, self.disposition, self.review_date = "Unassigned", "", "", ""
         self.legacy_prose: Dict[str, str] = {}  # field -> a legacy baseline's prose (evidence-class, never resolved)
@@ -699,12 +668,13 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
     _refuse_forbidden_inputs(run, reference, os.path.basename(run.threats_path), kept)   # NFR-10: a value from an input is checked where it is taken
     # D8 (P0-3): only a group with an ID reaches the emitter, whose role assignment, ``correlation-*`` properties and ruling C's
     # sentence all name it. A group the SARIF names no ID for (``group_id`` is ``None``) still routes its peers through
-    # ``run.groups`` (copy and divergence, D9), and the record counts it. No ID is invented.
+    # ``run.groups`` (the peer's assessment and divergence, D9), and the record counts it. No ID is invented.
     named = [(group["group_id"], group["members"]) for group in run.groups if group["group_id"] is not None]
     if len(named) != len(run.groups):
         run.warn("correlation-group-unnamed", "%s gives no group ID to %d of its %d correlation groups, so their members carry no correlation "
-                 "properties and no correlation sentence. Their peers are still peers: a new or updated one copies its primary, and a "
-                 "carried one is compared with it" % (os.path.basename(run.threats_path), len(run.groups) - len(named), len(run.groups)))
+                 "properties and no correlation sentence. Their peers are still peers: a new or updated one takes its primary's assessment "
+                 "and is scored with its own tags, and a carried one is compared with it"
+                 % (os.path.basename(run.threats_path), len(run.groups) - len(named), len(run.groups)))
     run.assignments = sc.correlation_assignments(named, open_ids)
 
     # The baseline first: S-12(b) needs it to route and to supply a carried finding's component before the tag join.
@@ -996,7 +966,8 @@ def _score_fresh(run: Run, row: Row, item: Mapping[str, Any], stored: Any, scori
     row.tags = tuple(run.tag_source.tags.get(row.canon, ()))
     if run.baseline is not None and row.status == "NEW":
         row.bounds = ts.bounds(ts.default_score(row.category))
-    row.cvss = rules.cvss_chain(row.vector, tags=row.tags, score_bounds=row.bounds).cvss_base
+    chain = rules.cvss_chain(row.vector, tags=row.tags, score_bounds=row.bounds)
+    row.cvss, row.assessed = chain.cvss_base, chain.assessed
     row.exploit = ts.sub_score_mean([row.subs[name] for name in tp.SUBSCORE_NAMES[:4]])
     row.scale = ts.sub_score_mean([row.subs[name] for name in tp.SUBSCORE_NAMES[4:]])
     row.reach = _reachability(row.trust, row.zone, row.auth, row.net)
@@ -1076,7 +1047,7 @@ def _carry(run: Run, row: Row, stored: Any, scoring_date: datetime.date) -> None
     held = stored.stored
     row.vector, row.bounds, row.zone, row.trust = stored.cvss_vector, stored.score_bounds, stored.zone, stored.trust_level
     check = rules.check_carried_vector(stored, tags=row.tags)
-    row.cvss = _grid(check.cvss_base)
+    row.cvss, row.assessed = _grid(check.cvss_base), check.assessed
     rounded = False   # some difference was only rounding (R-11)
     if renderer_form:
         row.subs = dict(stored.subscores)
@@ -1134,13 +1105,30 @@ def _carry(run: Run, row: Row, stored: Any, scoring_date: datetime.date) -> None
 
 
 def _copy_peer(run: Run, row: Row, primary: Row, stored: Any, scoring_date: datetime.date) -> None:
-    """A NEW or UPDATED peer takes its primary's vector, bounds, dimensions and derived scores (R-31). It keeps its own
-    identity and its own governance. Its prose is its primary's slotted text, resolved against the peer's own values,
+    """A NEW or UPDATED peer takes its primary's assessment and is scored with its own asset tags (R-31; PM W3 ruling 1, P0-6).
+
+    The assessment is the vector, the bounds, the sub-scores, the reachability inputs and, from a legacy-carried primary, its stored
+    exploitability, scalability and reachability. The tags are the peer's own, from S-13's one source as ``_carry`` and ``_score_fresh``
+    read it, so its ``affected_assets`` and Section 6's tags are its own and the run that carries it moves nothing. With tags equal to its
+    primary's it takes the primary's scores exactly and no chain runs. With other tags its CVSS score is R-25's outcome on the primary's
+    assessed score (D10), its composite and band follow, and ``_score`` flags a composite that moves ``divergent``. Where no assessed
+    score is recorded (a legacy primary that D10 decided at step 2 or 5, or passed by step 3's ceiling clause alone) it keeps the
+    primary's score, never a guess, flagged ``unchecked``, or ``unverifiable`` when the primary has no vector. It keeps its own
+    identity and its own governance, on its own band. Its prose is its primary's slotted text, resolved against the peer's own values,
     so the text reads true for the peer now and again on the run that carries it."""
     for name in ("source", "vector", "cvss", "exploit", "scale", "reach", "composite", "band", "subs", "zone", "trust", "auth", "net",
-                 "tags", "bounds", "defaulted_reach"):
+                 "bounds", "defaulted_reach", "assessed"):
         setattr(row, name, getattr(primary, name))
+    row.tags = tuple(run.tag_source.tags.get(row.canon, ()))
     row.copied = True
+    if row.tags != primary.tags:
+        if primary.assessed is not None:   # R-25 on the primary's assessment, under the peer's own tags
+            row.cvss = rules.asset_outcome(primary.assessed, primary.vector, row.tags)
+            _finish_numbers(row)
+        else:                              # no assessed score is known, so the peer keeps its primary's score and says so
+            text = "unverifiable:cvss_base:no-vector" if primary.vector is None else "unchecked:cvss_base:assessed-unrecorded"
+            own = stored if row.status == "UPDATED" else None   # a NEW peer's baseline row is a reused ID's, another finding's (ruling B)
+            row.flags.append(_flag_with_values(text, own, row))
     change = "none"
     if stored is not None and row.status == "UPDATED":
         change = rules.classify_band_change(stored_band=stored.band, rendered_band=row.band, band_with_baseline_tags=None)
@@ -1184,7 +1172,9 @@ def _score(run: Run, reference: Mapping[str, Any], items: Mapping[str, Mapping[s
             row.flags.append(Flag("reused-id", "finding_id", "baseline", stored=row.finding_id))  # ruling B: scored fresh, and never from that row
         for text in reference.get("flags", {}).get(row.canon, ()):  # S-12(b): a value that the input's form lacks
             row.flags.append(_flag_from_text(text))
-    for peer, primary in routing.carried_peers.items():   # R-4: an UNCHANGED peer keeps its own score, and a difference is flagged
+    # R-4: an UNCHANGED peer keeps its own score, and a difference is flagged. So is a NEW or UPDATED peer's, once its own tags have
+    # scored it (P0-6): a peer with its primary's tags has its composite and is never flagged.
+    for peer, primary in list(routing.carried_peers.items()) + list(routing.copy_primary.items()):
         found = rules.peer_divergence(peer_composite=by_canon[peer].composite, primary_id=primary, primary_composite=by_canon[primary].composite)
         if found is not None:
             flag = _flag_from_text(found)
@@ -1542,10 +1532,10 @@ def _render_sarif(run: Run, digest: str) -> str:
     highest: Dict[str, Decimal] = {}
     for row in run.rows:
         highest[row.category] = max(highest.get(row.category, row.composite), row.composite)
-    rule_list = [{"id": sc.RULE_ID_BY_CATEGORY[category], "shortDescription": {"text": short}, "fullDescription": {"text": full},
-                  "properties": {"tags": list(tags), "security-severity": _one(highest[category])}}
-                 for category, short, full, tags, _ids in RULES if category in highest]
-    driver = sc.build_driver(SARIF, semantic_version=tp.VERSION, rules=rule_list, supported=sc.supported_taxonomies())
+    # The rules and the driver's version are the shared emitter's (PM W3 ruling 2, gaps A and C): each rule carries its taxonomy
+    # ``relationships``, and ``version`` sits beside ``semanticVersion`` as the 1.1 templates show them, both the tool's version.
+    driver = sc.build_driver(SARIF, semantic_version=tp.VERSION, version=tp.VERSION, rules=sc.build_rules(highest),
+                             supported=sc.supported_taxonomies())
     return sc.to_json(sc.build_document(driver, sc.TAXONOMIES, results, sc.provenance_stamp(RENDERER, tp.VERSION, digest)))
 
 

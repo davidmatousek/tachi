@@ -22,7 +22,7 @@ Sections
 6. ``read_baseline_scores``: the SARIF fallback and the unreadable cases
 7. ``recompute_tags`` and ``select_tag_source`` (S-13)
 8. ``asset_outcome`` and ``cvss_chain`` (R-25, D10)
-9. ``check_carried_vector`` (D10, ruling A)
+9. ``check_carried_vector`` (D10, ruling A), and ``VectorCheck.assessed`` (W3, P0-6: the assessed score a peer is scored on)
 10. ``route_scorer_units`` and ``peer_divergence`` (R-31, D8's groups through ``parse_correlation_groups``)
 11. ``original_scoring_date``, ``classify_band_change`` and ``governance_for`` (R-5, R-31, ruling A)
 
@@ -148,13 +148,14 @@ def test_the_frozen_dataclasses_keep_their_field_names_and_order():
         "disposition", "review_date", "narrative", "legacy_prose", "flags",
         "component", "threat", "risk_level")   # the last three are W2's additive fields, each with a default (S-12(b))
     assert _fields(rules.ScorerRouting) == ("to_agent", "carried", "copy_primary", "carried_peers", "status")   # `status` is W2's
+    assert _fields(rules.VectorCheck) == ("cvss_base", "flag", "step", "assessed")   # `assessed` is W3's additive field, last, with a default (P0-6)
     # BaselineResolution keeps its four frozen fields first. `file_reasons` is T042's additive field (a default, last).
     assert _fields(rules.BaselineResolution)[:4] == ("run_dir", "origin", "files", "reason")
     assert _fields(rules.BaselineResolution)[4:] == ("file_reasons",)
 
 
 @pytest.mark.parametrize("cls", [rules.PathCheck, rules.BaselineResolution, rules.InputIssue, rules.BaselineRow,
-                                 rules.BaselineScores, rules.TagSource, rules.ScorerRouting])
+                                 rules.BaselineScores, rules.TagSource, rules.ScorerRouting, rules.VectorCheck])
 def test_the_dataclasses_are_frozen(cls):
     assert cls.__dataclass_params__.frozen
 
@@ -1986,23 +1987,24 @@ def _renderer_row(stored, **overrides):
 
 
 def test_a_renderer_row_whose_stored_score_the_chain_gives_passes():
-    assert _check_vector(_renderer_row(D("7.1"))) == rules.VectorCheck(D("7.1"), None, "renderer")
-    assert _check_vector(_renderer_row(D("8.3"), tags_used=("pii",)), ["pii"]) == rules.VectorCheck(D("8.3"), None, "renderer")
+    # The last field is the assessed score a (W3, P0-6): the chain's own, before the elevation, so 7.1 under pii's 8.3.
+    assert _check_vector(_renderer_row(D("7.1"))) == rules.VectorCheck(D("7.1"), None, "renderer", D("7.1"))
+    assert _check_vector(_renderer_row(D("8.3"), tags_used=("pii",)), ["pii"]) == rules.VectorCheck(D("8.3"), None, "renderer", D("7.1"))
     bounded = _renderer_row(D("8.1"), cvss_vector=MAXV, score_bounds=(D("6.1"), D("8.1")))
-    assert _check_vector(bounded) == rules.VectorCheck(D("8.1"), None, "renderer"), "the stored bounds are part of the chain"
+    assert _check_vector(bounded) == rules.VectorCheck(D("8.1"), None, "renderer", D("8.1")), "the stored bounds are part of the chain, and of a"
 
 
 def test_a_renderer_row_whose_stored_score_is_wrong_is_corrected_to_the_chain():
-    assert _check_vector(_renderer_row(D("9.0"))) == rules.VectorCheck(D("7.1"), "corrected:cvss_base:vector", "renderer")
+    assert _check_vector(_renderer_row(D("9.0"))) == rules.VectorCheck(D("7.1"), "corrected:cvss_base:vector", "renderer", D("7.1"))
     assert _check_vector(_renderer_row(D("7.15"))).flag == "corrected:cvss_base:vector", "an off-grid stored score is wrong"
     assert _check_vector(_renderer_row(D("9.0"), tags_used=("pii",)), ["pii"]).flag == "corrected:cvss_base:vector"
 
 
 def test_a_renderer_row_that_only_its_tags_moved_is_retagged_never_corrected():
     added = _check_vector(_renderer_row(D("7.1"), tags_used=()), ["pii"])
-    assert added == rules.VectorCheck(D("8.3"), "retagged:cvss_base:asset-tags", "renderer")
+    assert added == rules.VectorCheck(D("8.3"), "retagged:cvss_base:asset-tags", "renderer", D("7.1"))
     removed = _check_vector(_renderer_row(D("8.3"), tags_used=("pii",)), [])
-    assert removed == rules.VectorCheck(D("7.1"), "retagged:cvss_base:asset-tags", "renderer")
+    assert removed == rules.VectorCheck(D("7.1"), "retagged:cvss_base:asset-tags", "renderer", D("7.1"))
     assert _check_vector(_renderer_row(D("7.1"), tags_used=None), ["pii"]).flag == "retagged:cvss_base:asset-tags", (
         "no recorded tags means none were used")
     assert _check_vector(_renderer_row(D("5.0"), tags_used=()), ["pii"]).flag == "corrected:cvss_base:vector", (
@@ -2010,8 +2012,8 @@ def test_a_renderer_row_that_only_its_tags_moved_is_retagged_never_corrected():
 
 
 def test_a_missing_stored_score_is_rendered_from_the_chain_and_flagged_as_missing():
-    assert _check_vector(_renderer_row(None), ["pii"]) == rules.VectorCheck(D("8.3"), "input:cvss_base:missing", "renderer")
-    assert _check_vector(make_row(cvss_base=None), ["pii"]) == rules.VectorCheck(D("8.3"), "input:cvss_base:missing", "6")
+    assert _check_vector(_renderer_row(None), ["pii"]) == rules.VectorCheck(D("8.3"), "input:cvss_base:missing", "renderer", D("7.1"))
+    assert _check_vector(make_row(cvss_base=None), ["pii"]) == rules.VectorCheck(D("8.3"), "input:cvss_base:missing", "6", D("7.1"))
 
 
 def test_a_row_with_no_vector_is_unverifiable_and_keeps_its_score():
@@ -2079,35 +2081,36 @@ def test_legacy_step_3a_a_score_that_the_recorded_tags_gave_is_retagged_to_the_o
     """P0-2: a legacy finding that a renderer run carried records the tags it was scored with. A stored score that those tags gave
     moved because of the tags alone, so it is a retag and never a correction, and it becomes t(a) under this run's tags."""
     removed = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("8.3"), tags_used=("pii",)), [])
-    assert removed == rules.VectorCheck(D("7.1"), "retagged:cvss_base:asset-tags", "3a")
+    assert removed == rules.VectorCheck(D("7.1"), "retagged:cvss_base:asset-tags", "3a", D("7.1"))
     changed = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("8.3"), tags_used=("pii",)), ["safety"])
-    assert changed == rules.VectorCheck(D("8.1"), "retagged:cvss_base:asset-tags", "3a"), "t(a) under this run's tags, not the stored score"
+    assert changed == rules.VectorCheck(D("8.1"), "retagged:cvss_base:asset-tags", "3a", D("7.1")), "t(a) under this run's tags, not the stored score"
 
 
 def test_legacy_step_3a_the_own_bound_clamp_is_the_second_candidate_and_base_v_is_tried_first():
     # E-1's bounds are (8.9, 10.0), so X1 (base 5.0) has the candidates 5.0 and 8.9. pii gives X1 7.7, so 8.9 is the clamp's outcome only.
     clamp = _check_vector(make_row("E-1", cvss_vector=X1, cvss_base=D("8.9"), tags_used=("pii",)), ["auth"])
-    assert clamp == rules.VectorCheck(D("9.2"), "retagged:cvss_base:asset-tags", "3a"), "the clamp a gives t(8.9) under auth, the ceiling 9.2"
+    assert clamp == rules.VectorCheck(D("9.2"), "retagged:cvss_base:asset-tags", "3a", D("8.9")), "the clamp a gives t(8.9) under auth, the ceiling 9.2"
     # T-1's bounds are (6.1, 8.1), so X1 has the candidates 5.0 and 6.1, and pii's 7.7 is both of their outcomes: base(v) wins.
     both = _check_vector(make_row("T-1", cvss_vector=X1, cvss_base=D("7.7"), tags_used=("pii",)), [])
-    assert both == rules.VectorCheck(D("5.0"), "retagged:cvss_base:asset-tags", "3a"), "t(base(v)) is 5.0 and t(clamp) is 6.1"
+    assert both == rules.VectorCheck(D("5.0"), "retagged:cvss_base:asset-tags", "3a", D("5.0")), "t(base(v)) is 5.0 and t(clamp) is 6.1"
 
 
 def test_legacy_step_3a_the_recorded_tags_ceiling_case_takes_base_v():
     # ABOVE has base 9.4 and safety gives 9.8, so a safety-tagged score was capped at 9.2. The only candidate is 9.4, whose outcome under safety is
     # 9.4 and not 9.2, so no candidate explains the stored 9.2 and the ceiling case does: a is unrecorded, and base(v) is taken.
     row = make_row("E-1", cvss_vector=ABOVE, cvss_base=D("9.2"), tags_used=("safety",))
-    assert _check_vector(row, []) == rules.VectorCheck(D("9.4"), "retagged:cvss_base:asset-tags", "3a")
-    assert _check_vector(row, ["safety"]) == rules.VectorCheck(D("9.2"), None, "3"), "the same tags again: step 3's own ceiling clause passes it"
+    assert _check_vector(row, []) == rules.VectorCheck(D("9.4"), "retagged:cvss_base:asset-tags", "3a", D("9.4")), "the ceiling case takes base(v) as a"
+    assert _check_vector(row, ["safety"]) == rules.VectorCheck(D("9.2"), None, "3"), (
+        "the same tags again: step 3's own ceiling clause passes it, and no candidate's outcome is 9.2, so no a is known")
     unforced = _check_vector(make_row("E-1", cvss_vector=ABOVE, cvss_base=D("9.2"), tags_used=()), [])
     assert (unforced.flag, unforced.step) == ("unchecked:cvss_base:bound-n17c", "5"), "no recorded tag forces a bit, so there is no ceiling case"
 
 
 def test_legacy_step_3a_runs_for_a_row_that_records_an_empty_tag_set_and_then_gives_step_4s_answer():
     empty = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("7.1"), tags_used=()), ["pii"])
-    assert empty == rules.VectorCheck(D("8.3"), "retagged:cvss_base:asset-tags", "3a")
+    assert empty == rules.VectorCheck(D("8.3"), "retagged:cvss_base:asset-tags", "3a", D("7.1"))
     unrecorded = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("7.1"), tags_used=None), ["pii"])
-    assert unrecorded == rules.VectorCheck(D("8.3"), "retagged:cvss_base:asset-tags", "4"), "the same value and flag, one step later"
+    assert unrecorded == rules.VectorCheck(D("8.3"), "retagged:cvss_base:asset-tags", "4", D("7.1")), "the same value, flag and a, one step later"
 
 
 def test_legacy_step_3a_needs_the_recorded_tags_to_explain_the_score_and_otherwise_the_check_goes_on():
@@ -2123,7 +2126,7 @@ def test_legacy_step_3a_needs_the_recorded_tags_to_explain_the_score_and_otherwi
 
 def test_legacy_step_3a_comes_after_steps_2_and_3():
     same = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("8.3"), tags_used=("pii",)), ["pii"])
-    assert same == rules.VectorCheck(D("8.3"), None, "3"), "no tag changed since the carry, so nothing is flagged"
+    assert same == rules.VectorCheck(D("8.3"), None, "3", D("7.1")), "no tag changed since the carry, so nothing is flagged"
     legacy_case = _check_vector(make_row(cvss_vector=MAXV, cvss_base=D("10.0"), tags_used=("auth",)), ["pii"])
     assert (legacy_case.flag, legacy_case.step) == ("unchecked:cvss_base:assessed-unrecorded", "2"), "R-25's legacy case is tested first"
 
@@ -2151,6 +2154,69 @@ def test_legacy_step_6_corrects_to_the_outcome_under_this_runs_tags():
 
 def test_the_legacy_rule_is_the_same_whether_the_vector_came_from_the_markdown_or_the_sarif():
     assert _check_vector(make_row(vector_source="sarif", cvss_base=D("7.1"))).flag is None
+
+
+# --- VectorCheck.assessed (W3, P0-6; PM W3 ruling 1): the a whose R-25 outcome under this run's tags is the returned score.
+# A NEW or UPDATED peer of a carried finding is scored on it, under the peer's own tags, so each step has to give the a it
+# used, and none where it used none. (Row, this run's tags, the step that decides, the expected a.)
+
+_S1_FLOOR = _bounds_of("S")[0]   # 7.2: S-1's own-bound floor, so TAMPER (base 7.1) has the two candidates 7.1 and 7.2 for an S finding
+
+ASSESSED_CASES = [
+    ("renderer form passes", _renderer_row(D("7.1")), (), "renderer", D("7.1")),
+    ("renderer form passes under a tag: a is before the elevation", _renderer_row(D("8.3"), tags_used=("pii",)), ("pii",), "renderer", D("7.1")),
+    ("renderer form passes inside its bounds: the clamp is part of a",
+     _renderer_row(D("8.1"), cvss_vector=MAXV, score_bounds=(D("6.1"), D("8.1"))), (), "renderer", D("8.1")),
+    ("renderer form retagged", _renderer_row(D("7.1"), tags_used=()), ("pii",), "renderer", D("7.1")),
+    ("renderer form corrected", _renderer_row(D("9.0")), (), "renderer", D("7.1")),
+    ("renderer form with a missing stored score", _renderer_row(None), ("pii",), "renderer", D("7.1")),
+    ("renderer form with no vector", make_row(form="renderer", cvss_vector=None, vector_source=None, cvss_base=D("6.6")), ("pii",), "1", None),
+    ("legacy step 1: no vector", make_row(cvss_vector=None, vector_source=None, cvss_base=D("6.6")), ("pii",), "1", None),
+    ("legacy step 2", make_row(cvss_vector=MAXV, cvss_base=D("9.5")), ("pii",), "2", None),
+    ("legacy step 3 by base(v), no tags", make_row(cvss_vector=TAMPER, cvss_base=D("7.1")), (), "3", D("7.1")),
+    ("legacy step 3 by base(v) under a tag", make_row(cvss_vector=TAMPER, cvss_base=D("8.3")), ("pii",), "3", D("7.1")),
+    ("legacy step 3 by base(v) above the ceiling", make_row(cvss_vector=ABOVE, cvss_base=D("9.4")), ("safety",), "3", D("9.4")),
+    ("legacy step 3 by the own-bound clamp, the second candidate", make_row("S-1", cvss_vector=TAMPER, cvss_base=_S1_FLOOR), (), "3", _S1_FLOOR),
+    ("legacy step 3 by the clamp under a tag", make_row("T-1", cvss_vector=ABOVE, cvss_base=D("9.2")), ("safety",), "3", D("8.1")),
+    ("legacy step 3 passed by the ceiling clause alone", make_row("E-1", cvss_vector=ABOVE, cvss_base=D("9.2")), ("safety",), "3", None),
+    ("legacy step 3a by base(v)", make_row(cvss_vector=TAMPER, cvss_base=D("8.3"), tags_used=("pii",)), (), "3a", D("7.1")),
+    ("legacy step 3a by the clamp", make_row("E-1", cvss_vector=X1, cvss_base=D("8.9"), tags_used=("pii",)), ("auth",), "3a", D("8.9")),
+    ("legacy step 3a, the ceiling case takes base(v)", make_row("E-1", cvss_vector=ABOVE, cvss_base=D("9.2"), tags_used=("safety",)), (), "3a", D("9.4")),
+    ("legacy step 4 from base(v)", make_row(cvss_vector=TAMPER, cvss_base=D("7.1")), ("pii",), "4", D("7.1")),
+    ("legacy step 4 from the clamp", make_row("S-1", cvss_vector=TAMPER, cvss_base=_S1_FLOOR), ("pii",), "4", _S1_FLOOR),
+    ("legacy step 5, a possible cross-category peer", make_row("D-1", cvss_vector=LOW, cvss_base=_S1_FLOOR), (), "5", None),
+    ("legacy step 5, between the ceiling and the elevated score", make_row(cvss_vector=X3, cvss_base=D("9.5")), ("auth",), "5", None),
+    ("legacy step 6", make_row(cvss_vector=X3, cvss_base=D("3.0")), ("pii",), "6", D("7.2")),
+    ("legacy step 6 with no tag", make_row(cvss_vector=TAMPER, cvss_base=D("2.0")), (), "6", D("7.1")),
+    ("legacy form with a missing stored score", make_row(cvss_base=None), ("pii",), "6", D("7.1")),
+]
+
+
+@pytest.mark.parametrize("label,row,tags,step,expected", ASSESSED_CASES, ids=[case[0] for case in ASSESSED_CASES])
+def test_assessed_is_the_candidate_that_decided_and_none_where_no_a_is_known(label, row, tags, step, expected):
+    check = _check_vector(row, tags)
+    assert (check.step, check.assessed) == (step, expected), label
+
+
+@pytest.mark.parametrize("label,row,tags,step,expected", [case for case in ASSESSED_CASES if case[4] is not None],
+                         ids=[case[0] for case in ASSESSED_CASES if case[4] is not None])
+def test_a_known_assessed_score_gives_the_returned_score_under_this_runs_tags(label, row, tags, step, expected):
+    """R-25's outcome on a, under the tags of this run, is the value the check returns, so a peer scored on a with its own tags
+    gets exactly what this finding would get under those tags."""
+    check = _check_vector(row, tags)
+    assert rules.asset_outcome(check.assessed, row.cvss_vector, tags) == check.cvss_base, label
+
+
+def test_a_renderer_form_rows_assessed_is_the_chains_own_with_the_stored_bounds_for_every_outcome():
+    for stored, tags_used, tags in ((D("7.1"), (), ()), (D("8.3"), ("pii",), ("pii",)), (D("7.1"), (), ("pii",)), (D("9.0"), (), ()), (None, (), ("pii",))):
+        for bounds in (None, (D("7.5"), D("9.0"))):
+            row = _renderer_row(stored, tags_used=tags_used, score_bounds=bounds)
+            assert _check_vector(row, tags).assessed == rules.cvss_chain(TAMPER, tags=tags, score_bounds=bounds).assessed, (stored, tags_used, tags, bounds)
+
+
+def test_assessed_defaults_to_none_so_a_three_field_check_still_builds():
+    assert rules.VectorCheck(D("7.1"), None, "3").assessed is None
+    assert rules.VectorCheck(D("7.1"), None, "3") != rules.VectorCheck(D("7.1"), None, "3", D("7.1")), "and it is part of the comparison"
 
 
 # =============================================================================

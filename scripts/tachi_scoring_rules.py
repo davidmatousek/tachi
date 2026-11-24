@@ -23,8 +23,8 @@ pure over its arguments and reads only the paths its caller passes (D5). It impo
 * ``check_carried_vector`` (D10): the vector check on a carried finding, whose legacy list tests this run's tags first
   and then, as step 3a, the tags that a legacy row recorded when an earlier run carried it (P0-2).
 * ``route_scorer_units``, ``peer_divergence`` (R-31, D2, D9): who goes to the scorer agent, who is carried, and who
-  copies a primary. The groups are the result of ``tachi_parsers.parse_correlation_groups``, the one authority for
-  D8's rules, and none of those rules is restated here.
+  takes a primary's assessment. The groups are the result of ``tachi_parsers.parse_correlation_groups``, the one
+  authority for D8's rules, and none of those rules is restated here.
 * ``original_scoring_date``, ``classify_band_change`` and ``governance_for`` (R-5, R-31, ruling A): the owner, SLA,
   disposition, review date and scored-on date of a finding, and the flag of each value that moves.
 
@@ -1176,6 +1176,7 @@ class VectorCheck:
     cvss_base: Optional[Decimal]   # the value to render: the stored one kept, or the corrected or retagged one
     flag: Optional[str]            # one kind:field:cause, or None when the carried value passes
     step: str                      # "renderer", or "1" to "6" or "3a" (P0-2): D10's legacy step that decided
+    assessed: Optional[Decimal] = None   # W3 (P0-6): the a whose R-25 outcome under this run's tags is cvss_base, or None when none is known
 
 
 # Each category's ±1.0 bounds around its default score, for the N17c test of another category's clamp.
@@ -1216,6 +1217,13 @@ def check_carried_vector(row: BaselineRow, *, tags: Sequence[str]) -> VectorChec
     A stored score that is missing, where a vector can give one, is rendered from the chain and flagged
     ``input:cvss_base:missing`` (step ``renderer`` or ``6``). The stored score is compared as written and never
     rounded, so an off-grid or out-of-range one is simply corrected. ``tags`` must be in the closed six.
+
+    ``assessed`` (W3, P0-6) is the assessed score ``a``, before R-25's elevation, whose outcome under ``tags`` is the
+    returned ``cvss_base``: a NEW or UPDATED peer of this finding takes it and is scored on it under its own tags.
+    The renderer form gives the chain's own. The legacy form gives the candidate that decided: at step 3 the first
+    whose outcome is the stored score, at 3a the one it used (``base(v)`` in its ceiling case), at 4 the one it
+    retagged from, and at 6, and for a missing stored score, ``base(v)``. It is ``None`` where no ``a`` is known:
+    steps 1, 2 and 5, and step 3 when only its ceiling clause passed the score.
     """
     tags = tuple(tags)
     vector, stored = row.cvss_vector, row.stored.get("cvss_base")
@@ -1227,15 +1235,16 @@ def check_carried_vector(row: BaselineRow, *, tags: Sequence[str]) -> VectorChec
 
 
 def _check_renderer_vector(row: BaselineRow, vector: str, stored: Optional[Decimal], tags: Tuple[str, ...]) -> VectorCheck:
-    now = cvss_chain(vector, tags=tags, score_bounds=row.score_bounds).cvss_base
+    chain = cvss_chain(vector, tags=tags, score_bounds=row.score_bounds)
+    now = chain.cvss_base
     if stored is None:
-        return VectorCheck(now, "input:cvss_base:missing", "renderer")
+        return VectorCheck(now, "input:cvss_base:missing", "renderer", chain.assessed)
     if stored == now:
-        return VectorCheck(stored, None, "renderer")
+        return VectorCheck(stored, None, "renderer", chain.assessed)
     then = cvss_chain(vector, tags=row.tags_used or (), score_bounds=row.score_bounds).cvss_base
     if stored == then:
-        return VectorCheck(now, "retagged:cvss_base:asset-tags", "renderer")
-    return VectorCheck(now, "corrected:cvss_base:vector", "renderer")
+        return VectorCheck(now, "retagged:cvss_base:asset-tags", "renderer", chain.assessed)
+    return VectorCheck(now, "corrected:cvss_base:vector", "renderer", chain.assessed)
 
 
 def _check_legacy_vector(row: BaselineRow, vector: str, stored: Optional[Decimal], tags: Tuple[str, ...]) -> VectorCheck:
@@ -1246,30 +1255,31 @@ def _check_legacy_vector(row: BaselineRow, vector: str, stored: Optional[Decimal
         candidates.append(_clamp(base, _BOUNDS_BY_CATEGORY[own]))
     outcomes = [asset_outcome(candidate, vector, tags) for candidate in candidates]
     if stored is None:
-        return VectorCheck(outcomes[0], "input:cvss_base:missing", "6")
+        return VectorCheck(outcomes[0], "input:cvss_base:missing", "6", candidates[0])
     ceiling = tachi_scoring.MODIFIER_CEILING
     elevated = tachi_scoring.elevate(vector, tags) if tags else vector
     elevated_base = tachi_scoring.base_score(elevated)
-    if tags and elevated == vector and ceiling < stored <= base:   # step 2: R-25's legacy case
+    if tags and elevated == vector and ceiling < stored <= base:   # step 2: R-25's legacy case, and no a is known
         return VectorCheck(stored, "unchecked:cvss_base:assessed-unrecorded", "2")
     if stored in outcomes or (tags and stored == ceiling and elevated_base > ceiling):   # step 3
-        return VectorCheck(stored, None, "3")
+        # a is the first candidate whose outcome is the stored score, and none when only the ceiling clause passed it (W3, P0-6)
+        return VectorCheck(stored, None, "3", next((a for a, outcome in zip(candidates, outcomes) if stored == outcome), None))
     if row.tags_used is not None:                                  # step 3a: the tags the row was scored with moved it (P0-2)
         was = tuple(row.tags_used)
         for candidate, outcome in zip(candidates, outcomes):       # base(v) first, then its clamp
             if stored == asset_outcome(candidate, vector, was):
-                return VectorCheck(outcome, "retagged:cvss_base:asset-tags", "3a")
+                return VectorCheck(outcome, "retagged:cvss_base:asset-tags", "3a", candidate)
         if was and stored == ceiling and tachi_scoring.base_score(tachi_scoring.elevate(vector, was)) > ceiling:
-            return VectorCheck(outcomes[0], "retagged:cvss_base:asset-tags", "3a")   # a is unrecorded: the ceiling case takes base(v)
+            return VectorCheck(outcomes[0], "retagged:cvss_base:asset-tags", "3a", candidates[0])   # a is unrecorded: the ceiling case takes base(v)
     if tags:                                                       # step 4: the stored score lacks the elevation
         for candidate, outcome in zip(candidates, outcomes):
             if stored == candidate < outcome:
-                return VectorCheck(outcome, "retagged:cvss_base:asset-tags", "4")
+                return VectorCheck(outcome, "retagged:cvss_base:asset-tags", "4", candidate)
     if any(stored == _clamp(base, bounds) for category, bounds in _BOUNDS_BY_CATEGORY.items() if category != own):
-        return VectorCheck(stored, "unchecked:cvss_base:bound-n17c", "5")   # step 5: a possible cross-category peer
+        return VectorCheck(stored, "unchecked:cvss_base:bound-n17c", "5")   # step 5: a possible cross-category peer, and no a is known
     if tags and ceiling < stored < elevated_base:
         return VectorCheck(stored, "unchecked:cvss_base:assessed-unrecorded", "5")
-    return VectorCheck(outcomes[0], "corrected:cvss_base:vector", "6")   # step 6, to t(base(v))
+    return VectorCheck(outcomes[0], "corrected:cvss_base:vector", "6", candidates[0])   # step 6, to t(base(v))
 
 
 # =============================================================================
@@ -1305,7 +1315,7 @@ def route_scorer_units(open_rows: Sequence[Mapping[str, str]], *, groups: Sequen
 
     * ``carried``: an UNCHANGED finding with a usable row, a peer or not. Its inputs are inherited (D9);
     * ``carried_peers``: each carried peer and its primary, whose composites ``peer_divergence`` compares;
-    * ``copy_primary``: every other peer (NEW, UPDATED, or with no usable row) and its primary, whose values it copies;
+    * ``copy_primary``: every other peer (NEW, UPDATED, or with no usable row) and its primary, whose assessment it takes (D9);
     * ``to_agent``: every other finding. A NEW finding is never carried, however its ID sits in the baseline (ruling B);
     * ``status``: every open ID and the status it was routed under, the Section 7 value or the derived one. The renderer
       takes each row's status from it, so it can't disagree with the planner.
@@ -1349,7 +1359,9 @@ def _delta_status(value: Any) -> str:
 
 
 def peer_divergence(*, peer_composite: Decimal, primary_id: str, primary_composite: Decimal) -> Optional[str]:
-    """``divergent:composite_score:primary=<ID>`` when an UNCHANGED peer's composite differs from its primary's (R-4, R-31)."""
+    """``divergent:composite_score:primary=<ID>`` when a peer's composite differs from its primary's: a carried peer (R-4),
+    or a NEW or UPDATED peer after its own-tag chain (PM W3 ruling 1, P0-6). A peer whose tags equal its primary's has its
+    primary's composite, so it is never flagged."""
     if _decimal_score(peer_composite, "the peer's composite") != _decimal_score(primary_composite, "the primary's composite"):
         return "divergent:composite_score:primary=%s" % primary_id
     return None

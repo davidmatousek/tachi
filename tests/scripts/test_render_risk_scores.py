@@ -70,6 +70,10 @@ The groups of tests, by the task that turns them green:
   heading lines and never as text, so a cell, a line of prose or a component name that holds another section's heading doesn't
   fail a right file with exit 4. The two ``should`` messages of the same ruling: a staged file over the reader's cap, and a
   Section 1 or 2 cell that holds a forbidden character, named by its table and line.
+* ``test_p0_6_*`` and ``test_p0_9_*`` (section 32, W3's P0-6 and P0-9; the PM's W3 ruling 1): a NEW or UPDATED peer takes its primary's
+  assessment and is scored with its own asset tags (the architect's cases C1 to C6), and the ±1.0 bound on a NEW finding applies only when a
+  usable baseline ``risk-scores.md`` was read. ``test_template_*`` also pins the rendered rules' ``relationships`` and the driver's ``version``
+  to the 1.1 template (the PM's W3 ruling 2, gaps A and C).
 
 Standard library and pytest only, and Python 3.9 syntax.
 """
@@ -1354,6 +1358,20 @@ def test_sarif_each_rule_carries_the_highest_composite_of_its_findings(base):
         assert rules[rule_id]["properties"]["security-severity"] == str(score), rule_id
 
 
+def test_sarif_a_rule_carries_its_taxonomy_ids_as_relationships_and_the_driver_carries_its_version(base):
+    """The goldens for PM W3 ruling 2: gap A (each rule's ``relationships``, after ``properties``, in the template's form) and gap C
+    (``version`` right after ``name``). The template comparisons in ``test_template_*`` pin every field; these pin a few literally."""
+    driver = base.sarif["runs"][0]["tool"]["driver"]
+    assert list(driver)[:3] == ["name", "version", "semanticVersion"] and driver["version"] == driver["semanticVersion"] == tp.VERSION
+    rules_by_id = {rule["id"]: rule for rule in driver["rules"]}
+    assert list(rules_by_id["tachi/stride/spoofing"]) == ["id", "shortDescription", "fullDescription", "properties", "relationships"]
+    assert rules_by_id["tachi/stride/spoofing"]["relationships"] == [
+        {"target": {"id": "A07", "toolComponent": {"name": "OWASP"}}, "kinds": ["relevant"]},
+        {"target": {"id": "CWE-287", "toolComponent": {"name": "CWE"}}, "kinds": ["relevant"]}]
+    assert [entry["target"] for entry in rules_by_id["tachi/ai/agentic-threats"]["relationships"]] == [{"id": "CWE-693", "toolComponent": {"name": "CWE"}}]
+    assert [entry["target"]["id"] for entry in rules_by_id["tachi/ai/llm-threats"]["relationships"]] == ["CWE-74"]
+
+
 def test_sarif_carries_the_provenance_stamp(base):
     stamp = base.sarif["runs"][0]["properties"]["tachi_provenance"]
     assert list(stamp) == ["renderer", "version", "input_digest"]
@@ -1916,6 +1934,39 @@ def test_template_the_markdown_template_is_schema_1_1_and_has_the_renderers_head
 def test_template_the_sarif_template_carries_the_real_information_uri():
     document = json.loads((TEMPLATES / SARIF).read_text(encoding="utf-8"))
     assert document["runs"][0]["tool"]["driver"]["informationUri"] == sc.INFORMATION_URI, "FR-E.9 (#412)"
+
+
+def template_driver():
+    return json.loads((TEMPLATES / SARIF).read_text(encoding="utf-8"))["runs"][0]["tool"]["driver"]
+
+
+def test_template_the_rendered_driver_has_the_templates_keys_and_version_sits_beside_semantic_version(base):
+    """PM W3 ruling 2c (gap C): ``version`` is written right after ``name``, as the template shows it, and both version fields are the tool's."""
+    driver = base.sarif["runs"][0]["tool"]["driver"]
+    assert list(driver) == list(template_driver()) == ["name", "version", "semanticVersion", "informationUri", "supportedTaxonomies", "rules"]
+    assert driver["version"] == driver["semanticVersion"] == tp.VERSION
+
+
+def test_template_each_rendered_rule_is_the_templates_rule_and_only_the_security_severity_is_the_runs(base):
+    """PM W3 ruling 2 (gap A): a rule carries its taxonomy IDs as ``relationships``, in the template's form, and nothing else of it is improvised.
+
+    A drift test: each rendered rule equals the 1.1 template's rule with the same ID, field for field and in key order (``json.dumps`` keeps
+    the nested order too), with the one run-level value, ``security-severity``, excepted. Rules are written only for categories with results.
+    """
+    rendered = base.sarif["runs"][0]["tool"]["driver"]["rules"]
+    template = {rule["id"]: rule for rule in template_driver()["rules"]}
+    used = {result["ruleId"] for result in base.sarif["runs"][0]["results"]}
+    assert [rule["id"] for rule in rendered] == [rule_id for rule_id in template if rule_id in used], "the template's order, categories with results only"
+    assert len(rendered) == len(used) == 6, "the nine findings fall in six categories"
+    for rule in rendered:
+        want = template[rule["id"]]
+        assert list(rule) == list(want) == ["id", "shortDescription", "fullDescription", "properties", "relationships"], rule["id"]
+        assert list(rule["properties"]) == list(want["properties"]) == ["tags", "security-severity"], rule["id"]
+        for key in ("id", "shortDescription", "fullDescription", "relationships"):
+            assert json.dumps(rule[key]) == json.dumps(want[key]), (rule["id"], key)
+        assert json.dumps(rule["properties"]["tags"]) == json.dumps(want["properties"]["tags"]), rule["id"]
+        assert [entry["kinds"] for entry in rule["relationships"]] == [["relevant"]] * len(want["relationships"]), rule["id"]
+        assert re.fullmatch(r"[0-9]{1,2}\.[0-9]", rule["properties"]["security-severity"]), rule["id"]
 
 
 # =============================================================================
@@ -3072,10 +3123,13 @@ def edit_section_2_cell(md, finding_id, column, value):
     return edit_table_cell(md, "## 2. Scored Threat Table", finding_id, column, value)
 
 
-def second_run(stage_module, renderer_module, root, first, edit_baseline=None, architecture_text=None, specs=None, resolved=None):
-    """The nine findings again (or ``specs``), every one UNCHANGED, with the first run's own ``threats.md``, ``risk-scores.md`` and SARIF as the baseline."""
+def second_run(stage_module, renderer_module, root, first, edit_baseline=None, architecture_text=None, specs=None, resolved=None,
+               **threats_options):
+    """The nine findings again (or ``specs``), every one UNCHANGED, with the first run's own ``threats.md``, ``risk-scores.md`` and SARIF as the baseline.
+
+    ``threats_options`` go to ``make_threats_md`` (``groups``, for a run whose findings are correlated)."""
     project = Project(stage_module, renderer_module, root, specs=[dict(item, status="UNCHANGED") for item in (SPECS if specs is None else specs)],
-                      resolved=resolved, baseline_source="baseline/threats.md")
+                      resolved=resolved, baseline_source="baseline/threats.md", **threats_options)
     baseline = Path(root) / "baseline"
     baseline.mkdir()
     for name in ("threats.md", MD, SARIF):
@@ -4042,11 +4096,14 @@ def legacy_prose(finding_id, field):
     return "%s %s" % (finding_id, LEGACY_PROSE[field])
 
 
-def legacy_risk_scores(specs):
-    """A v4.48.x ``risk-scores.md`` for ``specs``: ``## N.`` headings, §3's ``**Scoring Rationale**:`` list, no Section 6."""
+def legacy_risk_scores(specs, numbers=None):
+    """A v4.48.x ``risk-scores.md`` for ``specs``: ``## N.`` headings, §3's ``**Scoring Rationale**:`` list, no Section 6.
+
+    ``numbers`` is ``{finding ID: (CVSS, exploitability, scalability, reachability)}`` as the baseline stored them, ``LEGACY_NUMBERS`` by default.
+    """
     rows, subsections, governance = [], [], []
     for item in specs:
-        cvss, exploit, scale, reach = LEGACY_NUMBERS[item["id"]]
+        cvss, exploit, scale, reach = (LEGACY_NUMBERS if numbers is None else numbers)[item["id"]]
         composite = ts.composite(Decimal(cvss), Decimal(exploit), Decimal(scale), Decimal(reach))
         band = ts.band(composite)
         rule = ts.SEVERITY_BANDS[band]
@@ -4337,3 +4394,365 @@ def test_refusal_a_section_1_or_2_place_is_found_in_the_markdown_only_and_in_the
     assert renderer._scope_place(make_threats_md(), "threats.md", RLO) is None, "and a character that no such row holds has no place"
     described = make_threats_md().replace("A synthetic process.", "A synthetic{} process.".format(RLO), 1)
     assert renderer._scope_place(described, "threats.md", RLO) is None, "a Description cell is not a column that the renderer takes"
+
+
+# =============================================================================
+# 32. P0-6: a NEW or UPDATED peer takes its primary's assessment and is scored with its own asset tags (W3, lane FX0; PM W3 ruling 1)
+# =============================================================================
+#
+# R-31 had a copied peer take its primary's tags along with its scores. The run that then carried the now-UNCHANGED peer recomputed it with
+# its own component's tags, so a peer on a component with other tags flipped once, flagged ``retagged`` and ``divergent`` though no input had
+# changed, and its ``affected_assets`` and Section 6's tags named another component's tags. The PM ruled (W3 ruling 1; ADR-050 D9, "Peers")
+# that such a peer takes its primary's assessment (the vector, the bounds, the sub-scores and the reachability inputs) and is scored with its
+# own tags, from S-13's one source. The cases are the architect's C1 to C6:
+#
+#   C1  equal tags: the peer's values are its primary's exactly, and no chain runs;
+#   C2  other tags: its CVSS score is R-25's outcome on the primary's assessed score under its own tags, its composite and band follow, the
+#       flag ``divergent`` is on the run that scores it exactly when its composite moves, and its governance is its own band's;
+#   C3  the next run carries it as UNCHANGED with the same values and the same flag, and retags nothing;
+#   C4  its ``affected_assets`` and Section 6's tags are its own, always;
+#   C5  never silent: where the primary's assessed score isn't recorded (a legacy primary that D10 decides at step 2 or 5) the peer keeps its
+#       primary's score and says so, ``unchecked``, or ``unverifiable`` for a primary with no vector, and never guesses;
+#   C6  where a legacy primary's assessed score is known (step 3) the peer's is computed, and the next run's legacy check passes it.
+#
+# The group is ``GROUPS``: S-2 on edge-gateway is the primary, and S-10 and T-1 on auth-broker are its peers. ``secrets`` forces I:H, so S-2's
+# vector (C:H/I:L/A:N, 8.2) scores 9.1 under it, and the composite moves from 5.9 to 6.2. The fixtures are synthetic (H8).
+
+PEERS = ("S-10", "T-1")
+SIX = ("cvss_base", "exploitability", "scalability", "reachability", "composite_score", "severity_band")
+GROUP_OF_TWO = [("CG-1", ["S-2", "S-10"])]
+DIVERGENT = "divergent:composite_score:primary=S-2"
+UNRECORDED_FLAG = "unchecked:cvss_base:assessed-unrecorded"
+NO_VECTOR_FLAG = "unverifiable:cvss_base:no-vector"
+MAX_VECTOR = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H"      # base 10.0, and every tag's bits are in it already
+MID_VECTOR = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N"      # base 7.2; auth lifts it to 10.0
+BELOW_BOUND = "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:N/A:N"     # base 5.0; privilege escalation's bound lifts it to 8.9, and pii's elevation gives 7.7
+LAYOUTS = {   # layout -> (the tag on each component, the primary's tags, the peers' tags)
+    "equal": ({"edge-gateway": "secrets", "auth-broker": "secrets"}, ("secrets",), ("secrets",)),
+    "peers-only": ({"auth-broker": "secrets"}, (), ("secrets",)),
+    "primary-only": ({"edge-gateway": "secrets"}, ("secrets",), ()),
+}
+UNRECORDED = {   # how -> (the primary's vector, the score its baseline stored, the tag on its component, the D10 step that decides it)
+    "step-2": (MAX_VECTOR, "9.5", "pii", "2"),    # pii's bit is in the vector, so 9.2 < 9.5 <= 10.0 is R-25's legacy case
+    "step-5": (MID_VECTOR, "9.5", "auth", "5"),   # auth lifts 7.2 to 10.0, so 9.2 < 9.5 < 10.0 is a score that nothing records
+}
+
+
+def tagged_architecture(tags):
+    """The synthetic architecture file with one Mermaid block that marks each component in ``tags`` (``{component: tag}``) ``[asset:tag]``."""
+    nodes = ['    %s["%s<br/>[asset:%s]"]' % (name.replace("-", "_"), name, tag) for name, tag in tags.items()]
+    return make_architecture_md() + "\n" + "\n".join(["```mermaid", "flowchart LR"] + nodes + ["```"]) + "\n"
+
+
+def peer_project(stage_module, renderer_module, root, tags, specs=None, **options):
+    """The nine-finding project (or ``specs``) with ``GROUPS`` (or ``groups=``) and the tags of ``tagged_architecture``."""
+    options.setdefault("groups", GROUPS)
+    project = Project(stage_module, renderer_module, root, specs=specs, **options)
+    project.architecture.write_text(tagged_architecture(tags), encoding="utf-8")
+    return project
+
+
+def finished(project):
+    res = project.run()
+    assert res.code in (0, 5), res.describe()   # reading: the input block names no tag, so S-13 recomputes it and warns
+    return project
+
+
+def facts(project, finding_id):
+    """What a render wrote for one finding: Section 2's values, the SARIF's vector, flags and ``affected_assets``, and Section 6's ``tags``."""
+    properties = results_by_id(project.sarif)[finding_id]["properties"]
+    return {"values": MdView(project.md).values(finding_id), "vector": properties["cvss-vector"], "flags": properties["score-flags"],
+            "assets": properties["affected_assets"], "tags": persisted_inputs(project)[(canon(finding_id), "tags")]}
+
+
+def six_of(found):
+    return {name: found["values"][name] for name in SIX}
+
+
+def write_legacy_baseline(project, specs, numbers=None, mutate=None):
+    """A v4.48.x baseline beside ``project`` (its ``baseline/`` directory): a ``threats.md`` and the legacy ``risk-scores.md`` of ``specs``."""
+    baseline = project.root / "baseline"
+    baseline.mkdir()
+    (baseline / "threats.md").write_text(make_threats_md(specs, []), encoding="utf-8")
+    text = legacy_risk_scores(specs, numbers)
+    (baseline / MD).write_text(text if mutate is None else mutate(text), encoding="utf-8")
+    return baseline / MD
+
+
+def legacy_primary_project(stage_module, renderer_module, root, vector, stored, tags, peer_status="NEW", baseline_peer=False, drop_vector=False):
+    """S-2, UNCHANGED, with a v4.48.x baseline row of ``vector`` and the stored CVSS score ``stored``, and its peer S-10 in a group of two.
+
+    ``baseline_peer`` also puts a baseline row of S-10's own in the baseline, and ``drop_vector`` leaves S-2's vector out of the baseline's
+    markdown (there is no baseline SARIF beside it). Returns the project and the baseline's ``risk-scores.md``.
+    """
+    primary = dict(by_id("S-2"), vector=vector, status="UNCHANGED")
+    peer = dict(by_id("S-10"), status=peer_status)
+    project = Project(stage_module, renderer_module, root, specs=[primary, peer], resolved=[], groups=GROUP_OF_TWO,
+                      baseline_source="baseline/threats.md")
+    project.architecture.write_text(tagged_architecture(tags), encoding="utf-8")
+    numbers = {"S-2": (stored, "5.0", "4.0", "4.5"), "S-10": LEGACY_NUMBERS["S-10"]}
+    drop = (lambda text: text.replace("**CVSS Vector**: `%s`\n\n" % vector, "", 1)) if drop_vector else None
+    path = write_legacy_baseline(project, [primary, dict(peer, status="UNCHANGED")] if baseline_peer else [primary], numbers, drop)
+    return project, path
+
+
+def decided(path, tags):
+    """``(step, flag, assessed)``: what D10 says of the baseline's S-2 row under ``tags``, read by the shipped reader."""
+    check = rules.check_carried_vector(rules.read_baseline_scores(path).rows["S-2"], tags=tags)
+    return check.step, check.flag, check.assessed
+
+
+# --------------------------------------------------------------------------- C1 and C2: the peer's own tags, on its primary's assessment
+
+@pytest.mark.parametrize("layout", sorted(LAYOUTS))
+def test_p0_6_a_peer_is_scored_with_its_own_tags_on_its_primarys_assessment_and_flagged_divergent_exactly_when_its_composite_moves(
+        stage, renderer, tmp_path, layout):
+    tags, primary_tags, peer_tags = LAYOUTS[layout]
+    vector = by_id("S-2")["vector"]
+    e, s, r = golden("S-2")[1:4]
+
+    def under(used):
+        return rules.cvss_chain(vector, tags=used, score_bounds=None).cvss_base
+
+    def composite_under(used):
+        return ts.composite(under(used), Decimal(e), Decimal(s), Decimal(r))
+
+    moves = composite_under(peer_tags) != composite_under(primary_tags)
+    assert moves == (layout != "equal"), "precondition: secrets is a forcing tag, so the component that lacks it scores differently"
+    project = finished(peer_project(stage, renderer, tmp_path, tags))
+    primary = facts(project, "S-2")
+    assert primary["values"]["cvss_base"] == str(under(primary_tags)) and primary["flags"] == []
+    for peer in PEERS:
+        got = facts(project, peer)
+        want = {"cvss_base": str(under(peer_tags)), "exploitability": e, "scalability": s, "reachability": r,
+                "composite_score": str(composite_under(peer_tags)), "severity_band": ts.band(composite_under(peer_tags))}
+        assert six_of(got) == want, peer
+        assert got["vector"] == primary["vector"] == vector, "the vector is the primary's"
+        assert got["flags"] == ([DIVERGENT] if moves else []), "flagged from the run that scores it, and exactly when its composite moves"
+        if layout == "equal":
+            assert six_of(got) == six_of(primary), "equal tags: the peer shows its primary's scores exactly"
+
+
+def test_p0_6_a_peer_with_its_primarys_tags_runs_no_chain_and_one_with_other_tags_runs_it_once(stage, renderer, tmp_path, monkeypatch):
+    """C1: ``asset_outcome`` is R-25's outcome. A fresh primary uses ``cvss_chain`` and a peer with equal tags runs nothing, so any call is a peer's."""
+    calls = []
+    real = rules.asset_outcome
+
+    def spy(*args, **kwargs):
+        calls.append(args)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(rules, "asset_outcome", spy)
+    finished(peer_project(stage, renderer, tmp_path / "equal", LAYOUTS["equal"][0]))
+    assert calls == [], "equal tags copy the primary's scores exactly"
+    finished(peer_project(stage, renderer, tmp_path / "other", LAYOUTS["peers-only"][0]))
+    assert [call[2] for call in calls] == [("secrets",)] * len(PEERS), "other tags run it once for each peer, under the peer's own tags"
+
+
+@pytest.mark.parametrize("layout", sorted(LAYOUTS))
+def test_p0_6_a_peers_affected_assets_and_section_6_tags_are_its_own_and_never_its_primarys(stage, renderer, tmp_path, layout):
+    """C4: D2's sentence for ``affected_assets`` (the tags the asset-modifier step used for this finding) holds for a peer too."""
+    tags, primary_tags, peer_tags = LAYOUTS[layout]
+    project = finished(peer_project(stage, renderer, tmp_path, tags))
+    for finding_id, want in (("S-2", primary_tags), ("S-10", peer_tags), ("T-1", peer_tags)):
+        got = facts(project, finding_id)
+        assert (got["assets"], got["tags"]) == (list(want), ",".join(sorted(want))), finding_id
+
+
+@pytest.mark.parametrize("layout", sorted(LAYOUTS))
+def test_p0_6_the_next_run_carries_each_peer_with_the_same_values_and_the_same_flag_and_retags_nothing(stage, renderer, tmp_path, layout):
+    """C3, no flip: run 1's files are run 2's baseline, with the same inputs. Before P0-6 a peer on a component with other tags was
+    flagged ``retagged`` here, with no input changed."""
+    tags = LAYOUTS[layout][0]
+    first = finished(peer_project(stage, renderer, tmp_path / "first", tags))
+    second = second_run(stage, renderer, tmp_path / "second", first, architecture_text=tagged_architecture(tags), groups=GROUPS)
+    res = second.run()
+    assert res.code in (0, 5), res.describe()
+    assert second.plan_json()["unit_count"] == 0, "run 1's file is a usable baseline, so every finding is carried"
+    before, after = MdView(first.md), MdView(second.md)
+    for finding_id in ("S-2",) + PEERS:
+        assert after.values(finding_id) == before.values(finding_id), finding_id
+        flags = flags_of(second, finding_id)
+        assert not [flag for flag in flags if flag.startswith(("retagged:", "corrected:"))], (finding_id, flags)
+        assert flags == flags_of(first, finding_id), "divergent is on run 2 exactly when it was on run 1"
+
+
+def test_p0_6_a_peer_takes_the_governance_of_its_own_band_and_an_updated_peer_keeps_its_owner(stage, renderer, tmp_path):
+    """C2 (c): secrets lifts the peers from the primary's Medium into High, so their SLA, disposition and review date are High's (never the
+    primary's), a NEW peer is fresh, and an UPDATED peer whose own band differs from its stored one restarts its clock and keeps its owner."""
+    heavy = dict(by_id("S-2"), e=(8, 8, 8, 8), s=(5, 5, 5, 5))   # 6.9 Medium untagged, and 7.2 High with secrets' 9.1
+    e, s, r = Decimal("8.0"), Decimal("5.0"), Decimal("4.5")
+    low, high = ts.composite(Decimal("8.2"), e, s, r), ts.composite(Decimal("9.1"), e, s, r)
+    assert (ts.band(low), ts.band(high)) == ("Medium", "High"), "precondition: the peers' own tag moves them across a band"
+    specs = [heavy, dict(by_id("S-10"), status="UPDATED"), dict(by_id("T-1"), status="NEW")]
+    project = peer_project(stage, renderer, tmp_path, {"auth-broker": "secrets"}, specs=specs, resolved=[], baseline_source="baseline/threats.md")
+    write_legacy_baseline(project, [dict(by_id("S-10"), status="UPDATED")],
+                          mutate=lambda text: edit_table_cell(text, "## 4. Governance Fields", "S-10", "Owner", "Platform team"))
+    finished(project)
+    view = MdView(project.md)
+    assert (view.values("S-2")["severity_band"], view.values("S-2")["remediation_sla"]) == ("Medium", GOVERNANCE["Medium"][0])
+    for peer, owner in (("S-10", "Platform team"), ("T-1", "Unassigned")):
+        got = view.values(peer)
+        assert (got["composite_score"], got["severity_band"]) == (str(high), "High"), peer
+        assert (got["remediation_sla"], got["review_date"], got["risk_owner"]) == (GOVERNANCE["High"][0], GOVERNANCE["High"][2], owner), peer
+        assert view.governance[peer]["Disposition"] == GOVERNANCE["High"][1], peer
+        assert flags_of(project, peer) == [DIVERGENT], peer
+
+
+def test_p0_6_the_bound_that_held_the_primary_is_part_of_the_assessment_that_its_peers_take(stage, renderer, tmp_path):
+    """A NEW primary in a run that read a usable baseline is held to its category's bound (D10), and the peer starts from that score: a
+    tag whose elevation is under the bound leaves the peer at the bound, and the bound is stored for the run that carries it."""
+    lifted = ts.bounds(ts.default_score("privilege-escalation"))[0]
+    primary = spec("E-1", "edge-gateway", "A route skips the role check.", "High", "NEW", BELOW_BOUND, (5, 5, 5, 5), (4, 4, 4, 4),
+                   "Edge DMZ", "Semi-Trusted", 1, 0)
+    peer = dict(primary, id="E-2", component="auth-broker", threat="The broker skips the role check.")
+    specs = [dict(by_id("S-2"), status="UNCHANGED"), primary, peer]
+    project = peer_project(stage, renderer, tmp_path, {"auth-broker": "pii"}, specs=specs, resolved=[], groups=[("CG-1", ["E-1", "E-2"])],
+                           baseline_source="baseline/threats.md")
+    write_legacy_baseline(project, [specs[0]])
+    unbounded = rules.cvss_chain(BELOW_BOUND, tags=("pii",), score_bounds=None).cvss_base
+    assert unbounded < lifted and ts.base_score(BELOW_BOUND) < lifted, "precondition: pii's own elevation is under the bound that lifts the primary"
+    finished(project)
+    got, held = facts(project, "E-2"), facts(project, "E-1")
+    assert held["values"]["cvss_base"] == got["values"]["cvss_base"] == str(lifted) != str(unbounded)
+    assert six_of(got) == six_of(held) and got["flags"] == [], "the same score, so the same composite and no divergence"
+    assert (got["assets"], got["tags"]) == (["pii"], "pii") and (held["assets"], held["tags"]) == ([], "")
+    inputs = persisted_inputs(project)
+    assert inputs[("E-2", "score_bounds")] == inputs[("E-1", "score_bounds")] == "%s,%s" % ts.bounds(ts.default_score("privilege-escalation"))
+
+
+# --------------------------------------------------------------------------- C1 (b) and C5: a legacy primary whose assessed score isn't recorded
+
+@pytest.mark.parametrize("how", sorted(UNRECORDED))
+def test_p0_6_a_new_peer_with_its_primarys_tags_copies_a_legacy_primary_exactly_and_carries_no_flag_of_its_own(stage, renderer, tmp_path, how):
+    """C1 (b): whatever D10 step decided the primary's score, equal tags copy it. The primary keeps its ``unchecked`` flag, and the peer none."""
+    vector, stored, tag, step = UNRECORDED[how]
+    project, baseline = legacy_primary_project(stage, renderer, tmp_path, vector, stored, {"edge-gateway": tag, "auth-broker": tag})
+    assert decided(baseline, (tag,)) == (step, UNRECORDED_FLAG, None), "precondition: D10 decides the primary here, and records no assessed score"
+    finished(project)
+    primary, peer = facts(project, "S-2"), facts(project, "S-10")
+    assert primary["flags"] == [UNRECORDED_FLAG]
+    assert peer["flags"] == [], "an exact copy: no divergent, and no unchecked on the peer"
+    assert six_of(peer) == six_of(primary) and peer["values"]["cvss_base"] == stored and peer["vector"] == vector
+    assert (peer["assets"], peer["tags"]) == ([tag], tag)
+
+
+@pytest.mark.parametrize("peer_tag", [None, "safety"])
+@pytest.mark.parametrize("how", sorted(UNRECORDED))
+def test_p0_6_a_peer_with_other_tags_keeps_the_score_of_a_primary_whose_assessed_score_is_not_recorded_and_says_so(
+        stage, renderer, tmp_path, how, peer_tag):
+    """C5: with no a to score on, the peer keeps its primary's values, flagged ``unchecked``, and never a guess, a tag of its own included."""
+    vector, stored, tag, step = UNRECORDED[how]
+    tags = {"edge-gateway": tag}
+    if peer_tag:
+        tags["auth-broker"] = peer_tag
+    project, baseline = legacy_primary_project(stage, renderer, tmp_path, vector, stored, tags)
+    assert decided(baseline, (tag,)) == (step, UNRECORDED_FLAG, None), "precondition: D10 decides the primary here, and records no assessed score"
+    finished(project)
+    primary, peer = facts(project, "S-2"), facts(project, "S-10")
+    assert primary["flags"] == [UNRECORDED_FLAG]
+    assert six_of(peer) == six_of(primary) and peer["values"]["cvss_base"] == stored, "the primary's score, kept"
+    assert peer["flags"] == [UNRECORDED_FLAG], "flagged, and not divergent: its composite is the primary's"
+    assert (peer["assets"], peer["tags"]) == ([peer_tag] if peer_tag else [], peer_tag or ""), "and its tags are its own"
+
+
+@pytest.mark.parametrize("status,shown", [("UPDATED", ("6.5", "9.5")), ("NEW", (DASH, DASH))])
+def test_p0_6_the_flag_shows_a_stored_value_only_when_the_baseline_row_is_the_peers_own(stage, renderer, tmp_path, status, shown):
+    """An UPDATED peer's baseline row is its own earlier score, which Section 6 shows against the kept one. A NEW peer whose ID the
+    baseline used is a reused ID (ruling B), whose row is another finding's, so nothing is shown as stored."""
+    vector, stored, tag, _step = UNRECORDED["step-2"]
+    project, _baseline = legacy_primary_project(stage, renderer, tmp_path, vector, stored, {"edge-gateway": tag}, peer_status=status, baseline_peer=True)
+    finished(project)
+    _found, rows = score_flag_rows(project.md)
+    flagged = [row for row in rows if canon(row["ID"]) == "S-10" and row["Flag"] == "unchecked"]
+    assert [(row["Field"], row["Cause"], row["Stored"], row["Rendered"]) for row in flagged] == [("cvss_base", "assessed-unrecorded") + shown]
+    assert ("reused-id:finding_id:baseline" in flags_of(project, "S-10")) == (status == "NEW")
+
+
+def test_p0_6_a_peer_of_a_primary_with_no_vector_is_flagged_unverifiable_and_keeps_its_score(stage, renderer, tmp_path):
+    project, baseline = legacy_primary_project(stage, renderer, tmp_path, by_id("S-2")["vector"], "8.2", {"auth-broker": "secrets"}, drop_vector=True)
+    assert rules.read_baseline_scores(baseline).rows["S-2"].cvss_vector is None, "precondition: no vector in the markdown, and no SARIF beside it"
+    assert decided(baseline, ()) == ("1", NO_VECTOR_FLAG, None)
+    finished(project)
+    primary, peer = facts(project, "S-2"), facts(project, "S-10")
+    assert primary["flags"] == [NO_VECTOR_FLAG]
+    assert six_of(peer) == six_of(primary) and peer["values"]["cvss_base"] == "8.2"
+    assert peer["flags"] == [NO_VECTOR_FLAG], "R-7's flag for the same fact, and not divergent"
+    assert (peer["assets"], peer["tags"]) == (["secrets"], "secrets")
+
+
+# --------------------------------------------------------------------------- C6: a legacy primary whose assessed score is known
+
+def test_p0_6_a_peer_of_a_legacy_primary_decided_at_step_3_is_computed_and_passes_the_next_runs_legacy_check(stage, renderer, tmp_path):
+    vector, tags = by_id("S-2")["vector"], {"auth-broker": "secrets"}
+    first, baseline = legacy_primary_project(stage, renderer, tmp_path / "first", vector, "8.2", tags)
+    assert decided(baseline, ()) == ("3", None, Decimal("8.2")), "precondition: an untagged primary at step 3 gives base(v) as its assessed score"
+    finished(first)
+    raised = rules.asset_outcome(Decimal("8.2"), vector, ("secrets",))
+    primary, peer = facts(first, "S-2"), facts(first, "S-10")
+    assert raised == Decimal("9.1") and peer["values"]["cvss_base"] == str(raised) and primary["values"]["cvss_base"] == "8.2"
+    assert (peer["flags"], primary["flags"]) == ([DIVERGENT], [])
+    # The peer's own row records no sub-scores, since its primary has none, so the next run reads it as a legacy row (ADR-050, Known limitations).
+    row = rules.read_baseline_scores(first.out / MD).rows["S-10"]
+    assert (row.form, row.tags_used, row.subscores) == ("legacy", ("secrets",), None)
+    after = rules.check_carried_vector(row, tags=("secrets",))
+    assert (after.step, after.flag) == ("3", None), "step 3 passes 9.1 under secrets, so there is nothing to retag or correct"
+    second = second_run(stage, renderer, tmp_path / "second", first, specs=[by_id("S-2"), by_id("S-10")], resolved=[], groups=GROUP_OF_TWO,
+                        architecture_text=tagged_architecture(tags))
+    res = second.run()
+    assert res.code in (0, 5), res.describe()
+    assert second.plan_json()["unit_count"] == 0
+    for finding_id in ("S-2", "S-10"):
+        assert MdView(second.md).values(finding_id) == MdView(first.md).values(finding_id), finding_id
+        assert flags_of(second, finding_id) == flags_of(first, finding_id), "no retagged and no corrected, and divergent as before"
+
+
+# --------------------------------------------------------------------------- P0-9: the bound on a NEW finding needs a usable baseline risk-scores.md
+
+UNUSABLE_RISK_SCORES = {   # how the baseline's risk-scores.md is unusable -> (its bytes, or None for no such file; the warning that says so)
+    "missing": (None, "baseline-unresolved"),
+    "not-utf8": (b"# Risk Scores Report\n\xff\xfe not text \x80\n", "baseline-unreadable"),
+    "no-rows": ("# Risk Scores Report\n\nNothing was scored.\n".encode("utf-8"), "baseline-unreadable"),
+}
+
+
+def new_below_its_bound():
+    """R-1 as a NEW finding: repudiation's bound is 3.3 to 5.3, and its vector scores 1.8, so a bound would lift it."""
+    finding = dict(by_id("R-1"), status="NEW")
+    floor = ts.bounds(ts.default_score(ts.category_for_prefix("R")))[0]
+    unbounded = rules.cvss_chain(finding["vector"], tags=(), score_bounds=None).cvss_base
+    assert unbounded < floor, "precondition: the bound would change this finding's score"
+    return finding, floor, unbounded
+
+
+@pytest.mark.parametrize("how", sorted(UNUSABLE_RISK_SCORES))
+def test_p0_9_a_delta_mode_threats_md_whose_baseline_risk_scores_is_unusable_scores_its_new_findings_unbounded_and_the_record_says_why(
+        stage, renderer, tmp_path, how):
+    """ADR-050 D10, as P0-9 amends it: the ±1.0 bound applies only when a usable baseline ``risk-scores.md`` was read. A baseline that names
+    its run directory, but whose ``risk-scores.md`` is missing or unreadable, counts as missing (S-12(d)), so nothing is bounded."""
+    finding, _floor, unbounded = new_below_its_bound()
+    project = Project(stage, renderer, tmp_path, specs=[finding], resolved=[], baseline_source="baseline/threats.md")
+    baseline = project.root / "baseline"
+    baseline.mkdir()
+    (baseline / "threats.md").write_text(make_threats_md([finding], []), encoding="utf-8")
+    content, code = UNUSABLE_RISK_SCORES[how]
+    if content is not None:
+        (baseline / MD).write_bytes(content)
+    res = project.run()
+    assert res.code == 5, res.describe()
+    assert MdView(project.md).values("R-1")["cvss_base"] == str(unbounded), "scored on its own vector, with no bound"
+    assert ("R-1", "score_bounds") not in persisted_inputs(project), "and no bound is stored for the next run"
+    assert labelled(project.md, "Baseline source").lower() == "none"
+    named = [warning for warning in project.record["warnings"] if MD in warning["detail"] and warning["code"].startswith("baseline-")]
+    assert [warning["code"] for warning in named] == [code], "the stage record states the missing baseline: %s" % project.record["warnings"]
+
+
+def test_p0_9_with_a_usable_baseline_risk_scores_the_same_new_finding_is_bounded(stage, renderer, tmp_path):
+    """The other side of the predicate: what the missing baseline above changes is only that no baseline ``risk-scores.md`` was read."""
+    finding, floor, _unbounded = new_below_its_bound()
+    kept = dict(by_id("S-2"), status="UNCHANGED")
+    project = Project(stage, renderer, tmp_path, specs=[kept, finding], resolved=[], baseline_source="baseline/threats.md")
+    write_legacy_baseline(project, [kept])
+    finished(project)
+    assert MdView(project.md).values("R-1")["cvss_base"] == str(floor), "held to its category's bound"
+    assert persisted_inputs(project)[("R-1", "score_bounds")] == "%s,%s" % ts.bounds(ts.default_score("repudiation"))
