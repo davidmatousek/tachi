@@ -10,6 +10,7 @@
 - A rename, removal, reorder or type change needs an architect amendment to this file.
 - **Additions ruled at W2 (2026-11-23), all additive:** `BaselineRow.component`, `.threat` and `.risk_level`; `ScorerRouting.status`; `route_scorer_units(..., lacking=None)`; `parse_markdown_table`'s `row_lines` and `keep_bold` (lane P's, recorded here); and `sarif_common.resolve_explicit`. The scorer's closed flag vocabulary gains four strings.
 - **Additions ruled at the P0 checkpoint (2026-11-23, T061), all additive:** `BaselineResolution.file_reasons` (R1b's, named in T042's commit and recorded here, P0-12); `parse_sarif_member_set(..., with_details=False)` (P0-3); `tachi_parts.forbidden_character` (P0-4); and `"3a"` among `VectorCheck.step`'s values (P0-2). The comments on `BaselineRow.tags_used` and `.scored_on` now read "whenever §6 records them" (P0-2), which widens what the reader fills without changing a type.
+- **Additions ruled at W3 (2026-11-23), from P0-6 and the PM's W3 ruling 1, all additive:** `VectorCheck.assessed`, last, defaulting to `None`. `peer_divergence` keeps its signature and now also serves NEW and UPDATED peers. The controls `matrix_row`'s form is pinned in the persisted-inputs format below, with no change to a type.
 
 **Shared conventions.**
 - Every module has `from __future__ import annotations` and runs on Python 3.9 (S-11). Annotations use `typing` forms, so nothing here needs 3.10.
@@ -192,9 +193,16 @@ class VectorCheck:
     cvss_base: Optional[Decimal]   # the value to render: the stored one kept, or the corrected or retagged one
     flag: Optional[str]            # one kind:field:cause, or None when the carried value passes
     step: str                      # "renderer", or "1" to "6" or "3a" (P0-2): D10's legacy step that decided
+    assessed: Optional[Decimal] = None   # W3 (P0-6): the a whose R-25 outcome is cvss_base, or None when none is known
 
 def check_carried_vector(row: BaselineRow, *, tags: Sequence[str]) -> VectorCheck: ...
 ```
+
+- **`assessed` (ruled at W3, 2026-11-23, P0-6; PM W3 ruling 1).** It is the assessed score a, before R-25's elevation, whose outcome under `tags` is the returned `cvss_base`. A NEW or UPDATED peer with other tags is scored on it (ADR-050 D9, "Peers").
+  - **Renderer form:** `cvss_chain(vector, tags=tags, score_bounds=row.score_bounds).assessed`, whatever the flag.
+  - **Legacy form:** the candidate that decided. At step 3, it is the first candidate, in order, whose outcome equals the stored score; at step 3a, the a it used, `base(v)` in its ceiling case; at step 4, the candidate it retagged from; and at step 6, and for a missing stored score, `base(v)`.
+  - **`None`** at step 1 (no vector), step 2 and step 5, and at step 3 when only its ceiling clause passed, because no candidate's outcome is the stored score there.
+  - The renderer takes a fresh row's a from `cvss_chain(...).assessed`, so every rendered row has one source for it.
 
 - **Renderer form.** It recomputes `cvss_chain` from the stored vector, `score_bounds` and this run's `tags`. A difference is `corrected:cvss_base:vector`, unless recomputing with `row.tags_used` gives the stored value, in which case it is `retagged:cvss_base:asset-tags` (ruling A).
 - **Legacy form.** It runs D10's steps 1–6 in order, testing this run's tags first (PM plan review, finding 2). The candidates are `base(v)` and its own-category bound clamp.
@@ -272,6 +280,7 @@ def governance_for(status: str, *, rendered_band: str, run_date: date, row: Opti
   - **`status`** maps every open ID to the status it was routed under, the Section 7 value or the derived one. The renderer takes each row's status from it, for governance, ruling B's test and the bounds of a NEW finding. So the planner (T044) and the renderer (T045) can't disagree. Both pass the same `lacking`: the planner gets it from the reference set it read, or builds the SARIF fallback's.
   - **The renderer's supply (T045).** For each carried ID, each of `component`, `threat` and `risk_level` that `lacking` names takes the `BaselineRow`'s value, when the row records one. It happens before S-13's tag join, so the join, the zone lookup and §1's type lookup use the supplied component. A fresh ID is never supplied. Each lacking value keeps `input:<field>:not-in-form`, supplied or not, and the stage record's `value-not-in-form` warning lists the IDs.
 - **`peer_divergence`** gives `divergent:composite_score:primary=<ID>` when the two composites differ, and otherwise `None`.
+  - **Its callers (ruled at W3, 2026-11-23, PM W3 ruling 1).** The renderer calls it for every peer: each of `carried_peers` (R-4), and each of `copy_primary` once the peer is scored with its own tags. So a peer whose tags move its composite is flagged on the run that scores it, and a peer with equal tags has its primary's composite and no flag (ADR-050 D9, "Peers").
 - **`original_scoring_date`** returns the stored scored-on date (whenever §6 records one, P0-2), or the stored review date minus the stored SLA (legacy). If neither exists, D9's fallbacks apply in order:
   1. the baseline file's frontmatter date, flagged `corrected:review_date:baseline-date`;
   2. `None`, flagged `unchecked:review_date:scoring-date-unknown`, which tells `governance_for` to keep the stored review date.
@@ -403,3 +412,20 @@ Both sections use one table, so the writers (R1, R2), the readers (R1b, P) and t
   - A reader re-checks each value's class: closed values against their pattern or enum, and narrative values by D3's step 11 when they're re-resolved.
   - A row with an unknown field goes to the reader's issues or errors.
   - No number is ever read from a narrative value.
+
+### The controls `matrix_row` (ruled at W3, 2026-11-23, from lane D's T037 question)
+
+`matrix_row` is one finding's row of `compensating-controls.md` §2 (K8, R-34). The agent writes it in its part, the renderer checks and fills it (ADR-050 D2's cell table) and §7 persists it. The planner then copies it into an UNCHANGED unit's row, and the agent copies it back. One form serves every step. `parse_controls_assessment_inputs` returns it as written, so the reader needs no change.
+
+- **Cells, in this order:** `Threat ID | CF | Component | MAESTRO Layer | Threat | Inherent Score | Inherent Severity | Control Status | Control Category | Residual Score | Residual Severity`. It is K8's §2 header, which the 1.1 template writes (T060), and the order of lane D's example and lane P's fixtures.
+- **Pipes.** The row is written as a GFM table line: `| ` before the first cell, ` | ` between cells and ` |` after the last, with no `|` inside a cell. The renderer reads a row with or without the outer pipes: it strips the line's edge whitespace, drops one leading and one trailing `|` where present, and splits on raw `|`. A count other than 11 cells rejects the item (D2).
+- **Cell values.**
+  - **Threat ID:** the finding's ID. It must pass the allow-list and canonicalize to the item's `finding_id`, or the item is rejected (D2).
+  - **Component:** the unit row's component, checked against the input (D2). **Threat:** model text, under NFR-10 only (D2).
+  - **MAESTRO Layer:** the finding's layer as the input records it, or `Unclassified`. It is checked against the value that the controls SARIF writes as `maestro-layer` (`sarif-result.md`), by layer code (`L1` to `L7`), with `Unclassified` matching only itself. A value with no code is compared as written.
+  - **Control Status:** `Control Found`, `Partial Control` or `No Control Found`, the display form of `control_status`, checked through `classify_control_status` (D2).
+  - **Control Category:** the display name of `control_category`, as `control-categories.md` heads it: `Authentication`, `Input Validation`, `Rate Limiting`, `Encryption`, `Logging/Audit`, `CSRF Protection`, `CSP/Security Headers` or `Access Control`. The slug itself, such as `input-validation`, names the same value, so it isn't flagged.
+  - **The four computed cells:** exactly `{{score:inherent}}`, `{{band:inherent}}`, `{{score:residual}}` and `{{band:residual}}`.
+  - A mismatch in Component, MAESTRO Layer, Control Status or Control Category is flagged, never rejected, and the SARIF and every total follow the structured value (D2).
+- **`CF` is the renderer's cell, and it isn't counted.** The renderer fills it by column position from the accepted `carried_forward` (`CF` or `—`), and never counts it as an overwrite. The judgment is `carried_forward` itself, and the renderer already records a cleared one with its reason (D2). So a row copied from a run in which the finding was fresh holds `—` and shows `CF`, with no overwrite. The overwrite count covers only the four computed cells.
+- **What §7 persists:** the row in this form, rebuilt from its 11 cells. The four computed cells hold their slot tokens, never the numbers §2 shows, and `CF` holds the value §2 shows. Every other cell is kept as the part wrote it. So a carried row is copied, read and checked with no overwrite (T056), whatever its first run put in those cells.

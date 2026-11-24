@@ -29,7 +29,11 @@
 - **The run:**
   - `tool.driver.name` per D7, with the real `informationUri` (FR-E.9);
   - no `automationDetails`;
-  - no result carries `guid`, `correlationGuid`, `fingerprints` or SARIF's own `baselineState`.
+  - no result carries `guid`, `correlationGuid`, `fingerprints` or SARIF's own `baselineState`;
+  - **the rules (ruled at W3, 2026-11-23, from the PM's W3 ruling 2, gap A).** The scorer and controls files write one rule per category that has a result. Each has `id`, `shortDescription`, `fullDescription`, `properties` (`tags`, then `security-severity`) and `relationships`, in that order, as all four templates show them.
+    - `relationships` holds one entry per taxonomy ID of the renderer's rule table, in the table's order, in the templates' form: `{"target": {"id": "CWE-287", "toolComponent": {"name": "CWE"}}, "kinds": ["relevant"]}`. A `CWE-` ID names `CWE`, and an `A01` to `A10` ID names `OWASP`.
+    - They are the IDs that ADR-050 D3's `ref` slot calls "its rule's relationships in the renderer's rule table". `risk-scorer.md:470` on `b040fa1` has the agent copy them, and the shipped files that carry them keep the field (NFR-1).
+    - The targets name their taxonomy only, as in 1.0 (ADR-050, Known limitations).
 - **`message.text`:** the file's own text. A correlated result's ends with one sentence that names its group, and its primary (on a peer) or its peers, up to 10 and then a count (on a primary), for example `Correlated in CG-3; primary S-1.` The message isn't identity, so a regroup changes it and never a key (ruling C, ADR-050 D8).
   - **The sentence's exact form (ruled at W1, 2026-11-22, T023).** It is appended to the file's own text after one space.
     - On a peer: `Correlated in CG-3; primary S-1.`
@@ -40,7 +44,11 @@
 - **Properties:**
   - the correlation keys appear on group members only;
   - `threats.sarif` adds `baseline-run-id`, moved from `partialFingerprints` with its value unchanged;
-  - all other keys belong to the scoring and control contracts (D2, D9, D10). Flags are sorted `kind:field:cause` arrays: `score-flags` in the scorer's file and `integrity-flags` in the controls file, both always present. Both carry `reused-id:finding_id:baseline` for the same finding (ruling B, D7);
+  - all other keys belong to the scoring and control contracts (D2, D9, D10), and no other key is written (PM W3 ruling 2: NFR-1 keeps the fields a contract names, and the oracle lists each uncontracted key a shipped file carried). Flags are sorted `kind:field:cause` arrays: `score-flags` in the scorer's file and `integrity-flags` in the controls file, both always present. Both carry `reused-id:finding_id:baseline` for the same finding (ruling B, D7);
+  - **the controls file's `maestro-layer` (ruled at W3, 2026-11-23, from the PM's W3 ruling 2, gap B).** Every controls result carries it, as `control-analyzer.md:385` names it and four of the five shipped controls files carry it on every result.
+    - **The value** is the finding's MAESTRO layer, the string the scorer file writes for that finding. The controls renderer derives it by the scorer's rule: the reference set's MAESTRO Layer cell, else the finding's own layer, else its component's §1 layer, else `Unclassified`. It reads the `threats.md` that the validated `source_file` names, which it already reads (D7, D8).
+    - **Without that file:** under D8's fallback, the member's `details.layer` (P0-3), else `Unclassified`. With no readable `threats.md`, it is `Unclassified`, under the stage record's reason for that file.
+    - **Its place** is after `residual-risk`, as Phase 6c lists it. The 1.1 controls template (T060) fixes the full order and shows the key. §2's MAESTRO Layer cell is checked against it (`module-signatures.md`, the controls `matrix_row`);
   - no value names a RESOLVED finding.
 - **Key order:** as shown, in two-space JSON (`risk-scorer.md:544`).
 - **Readings ruled at W1 (2026-11-22, T023), from T015 and T016:**

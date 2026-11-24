@@ -106,7 +106,7 @@ Both payloads use closed key sets, and any other key is rejected, renderer-compu
 | `confidence` | `High`, `Medium` or `Low`; null exactly when `missing` |
 | `carried_forward` | boolean |
 | `evidence` | array of 1–5 entries for found or partial, empty for missing. Each entry has `file` (1–300, relative to the target, passing ADR-050 D7's resolver checks: no scheme, leading `/`, backslash, drive letter or `..`), `line` (integer ≥ 1), `language` (`[a-z0-9+#-]{1,20}`, a `tachi_parts` full match), `snippet` (at most 5 lines and 600), `summary` (prose up to 160, cut at 160) and an optional `assessment` (coverage, configuration, currency and completeness, each a rating of High, Medium or Low with a rationale of prose up to 160, cut at 160) |
-| `matrix_row` | one line of up to 1,200, the 11 K8 cells (R-34) |
+| `matrix_row` | one line of up to 1,200, the 11 K8 cells (R-34), in the form `module-signatures.md` pins (W3) |
 | `recommendation_body` | up to 2,000, required for partial or missing, null for found (R-34) |
 
 **String classes (ADR-050 D3):**
