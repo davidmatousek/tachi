@@ -569,7 +569,7 @@ Each result in `risk-scores.sarif` includes these properties in its `properties`
 | `maestro-layer` | string | The finding's MAESTRO layer, or `Unclassified` |
 | `affected_assets` | array | The asset-sensitivity tags the asset-modifier step used for the finding. Emitting it changes no score |
 
-`compensating-controls.sarif` carries the same `maestro-layer` property on every result, with these control properties beside it: `control-status`, `control-evidence`, `control-effectiveness`, `inherent-risk`, `residual-risk`, `recommendation` and `effort-estimate`, and `integrity-flags`, a sorted array of `kind:field:cause` strings that is always present. The renderer takes `recommendation` and `effort-estimate` from the finding's Section 4 block, so the two files agree. `templates/tachi/output-schemas/compensating-controls.sarif` lists the whole property bag.
+`compensating-controls.sarif` carries the same `maestro-layer` property on every result, with these control properties beside it: `control-status`, `control-evidence`, `control-carry-forward`, `control-effectiveness`, `inherent-risk`, `residual-risk`, `recommendation` and `effort-estimate`, and `integrity-flags`, a sorted array of `kind:field:cause` strings that is always present. `control-carry-forward` is a JSON boolean, `true` for a result carried forward from the baseline. The renderer takes `recommendation` and `effort-estimate` from the finding's Section 4 block, so the two files agree. `templates/tachi/output-schemas/compensating-controls.sarif` lists the whole property bag.
 
 #### The Result Message
 

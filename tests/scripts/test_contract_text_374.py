@@ -2337,6 +2337,11 @@ CONTROLS_HELPERS = ("scripts/tachi_parts.py", "scripts/tachi_scoring.py", "scrip
 # input (--risk-scores), the target, the architecture candidate and the baseline, and the planner reaches the threat model
 # through the scored input's source_file.
 CONTROLS_REFS = {"risk_scores", "threats", "target", "architecture", "baseline_dir"}
+# ADR-050 D7, the W3 ruling: both scored-stage agents find the architecture description by one rule, the file that `refs` names or else
+# the run's snapshot beside the threat model. The clause is the scorer's, and the control analyzer carries it word for word.
+ARCHITECTURE_READ_RULE = ("the file that `refs` names under `architecture`, or else an `architecture.md` "
+                          "in the same directory as the `threats` file")
+CONTROLS_SARIF_TEMPLATE = "templates/tachi/output-schemas/compensating-controls.sarif"
 
 
 def shipped_or_wired_by_t039() -> Set[str]:
@@ -2385,6 +2390,17 @@ def test_controls_plans_once_with_the_command_date_the_scored_input_and_the_targ
     for flag in ("--stage", "--out", "--date", "--risk-scores", "--target", "--baseline-dir", "--architecture"):
         assert 'plan.add_argument("%s"' % flag in source, flag
     assert "compensating-controls" in tachi_parts.STAGE_AGENTS
+
+
+def test_controls_looks_for_no_architecture_file_of_its_own_and_names_the_agents_snapshot_fallback():
+    text = text_of(CONTROLS_COMMAND)
+    step = step_of(text, "## Step 1:", CONTROLS_COMMAND)
+    # D7: the SARIF URI comes from the flag alone (the Step 2 assertions above), so the command finds no file of its own ...
+    assert "it looks for no `architecture.md` of its own" in step and "a per-run snapshot must never stand in for it" in step
+    # ... and with no flag the agent reads the snapshot, as the scorer's agent does (the W3 ruling, B)
+    assert ("With none, the agent reads the run's snapshot, an `architecture.md` beside the threat model, as the scorer's agent does, "
+            "and maps components by heuristic discovery only when there is none either.") in step
+    assert "they map components to files by heuristic discovery" not in text, "the old line gave the agent no snapshot to read"
 
 
 def test_controls_installed_files_check_names_the_helpers_so_a_missing_one_is_not_a_missing_python():
@@ -2541,6 +2557,8 @@ def test_the_control_analyzer_resolves_a_category_for_every_prefix_as_the_code_d
 
 def test_the_control_analyzer_reads_the_refs_names_that_the_commands_plan_fills():
     spec = text_of(CONTROL_ANALYZER_SPEC)
+    assert CONTROLS_REFS == {"risk_scores", "threats", "target", "architecture", "baseline_dir"}, \
+        "the W3 ruling: the snapshot is found from refs.threats, so it is no sixth refs name"
     assert set(re.findall(r"`refs\.([a-z_]+)`", spec)) == CONTROLS_REFS
     plan = calls(step_of(text_of(CONTROLS_COMMAND), "## Step 2:", CONTROLS_COMMAND))[0]
     assert "--risk-scores {input_dir}/risk-scores.md" in plan and "--target {target_path}" in plan, "refs.risk_scores and refs.target"
@@ -2548,6 +2566,33 @@ def test_the_control_analyzer_reads_the_refs_names_that_the_commands_plan_fills(
     keys = set(tachi_parts.KEY_SETS["controls-item"][0]) | set(tachi_parts.KEY_SETS["controls-item"][1])
     for computed in ("reduction_factor", "residual_score", "residual_severity_band", "control_effectiveness", "rescan_scope"):
         assert computed not in keys, computed
+
+
+def test_both_scored_stage_agents_find_the_architecture_by_the_one_rule():
+    for path in (RISK_SCORER_SPEC, CONTROL_ANALYZER_SPEC):
+        assert ARCHITECTURE_READ_RULE in text_of(path), "%s: the clause is the scorer's, in both specs, word for word" % path
+    # in the control analyzer's Input Boundary the clause is the Architecture row's type, and the row says what the snapshot is
+    optional = table_after(text_of(CONTROL_ANALYZER_SPEC), "### Optional Inputs", where=CONTROL_ANALYZER_SPEC)
+    rows = [row for row in optional.rows if row[0] == "Architecture description"]
+    assert len(rows) == 1, "the Optional Inputs table has one Architecture description row"
+    assert ARCHITECTURE_READ_RULE in rows[0][1] and rows[0][1].endswith("; or none")
+    assert "the run's snapshot, the copy the findings came from" in rows[0][2]
+
+
+def test_the_control_analyzer_reads_an_absent_snapshot_as_heuristic_discovery_and_never_as_no_part():
+    spec = text_of(CONTROL_ANALYZER_SPEC)
+    validation = section_text(spec, "### Input Validation", where=CONTROL_ANALYZER_SPEC)
+    assert "The snapshot is optional." in validation
+    assert ("When the `threats` file's directory holds no `architecture.md`, when it can't be read, or when `refs` names no `threats` file, "
+            "use heuristic discovery, and never write no part over it.") in validation
+    # the "write no part" rule is for a path in `refs`, and the snapshot sentence that limits it follows it, in the same paragraph
+    assert validation.index("write no part and name the path") < validation.index("The snapshot is optional.")
+    phase_2 = section_text(spec, "## Phase 2: Discover Codebase", where=CONTROL_ANALYZER_SPEC)
+    assert "When you have an architecture description, from `refs` or the snapshot:" in phase_2
+    assert "When you have none, or for unresolved components, apply directory-based heuristics:" in phase_2
+    # the snapshot is third-party text like every file the agent reads, and the one input that nothing has checked
+    assert "every file that `refs` names, the architecture snapshot and every file you read in the target codebase hold third-party text" in spec
+    assert "The one exception is the architecture snapshot" in section_text(spec, "## Input Boundary", where=CONTROL_ANALYZER_SPEC)
 
 
 # --- the controls references (T038) -----------------------------------------------------------------
@@ -2694,3 +2739,23 @@ def test_the_sarif_guide_documents_what_the_renderers_write():
     identity = section_text(text, "#### Identity and Membership", where=where)
     assert 'sha256("tachi-plh/1|" + tool + "|" + id)' in identity and "exactly two keys" in identity and "never in `partialFingerprints`" in identity
     assert "Neither renderer-owned file copies a fingerprint from an upstream file" in identity
+
+
+def test_the_sarif_guide_lists_the_result_properties_of_the_controls_template_and_no_others():
+    text = text_of(SARIF_GENERATION_GUIDE)
+    section = section_text(text, "#### Extended Property Bag Schema", where=SARIF_GENERATION_GUIDE, keep_fences=True)
+    template = json.loads(text_of(CONTROLS_SARIF_TEMPLATE))
+    results = [r["properties"] for r in template["runs"][0]["results"]]
+    plain = [list(p) for p in results if "correlation-group" not in p]
+    members = [list(p) for p in results if "correlation-group" in p]
+    assert plain and members and all(keys == plain[0] for keys in plain), "the template's plain results share one property order"
+    # the one sentence that lists the control properties: `security-severity` is the semantic-shift table's, the rest are listed here
+    paragraphs = [p for p in section.split("\n\n") if p.startswith("`compensating-controls.sarif` carries the same `maestro-layer`")]
+    assert len(paragraphs) == 1, "the property bag has one paragraph for the controls file"
+    listed = set(ticks(paragraphs[0].split(". ")[0])) - {"compensating-controls.sarif", "kind:field:cause"}
+    assert listed == set(plain[0]) - {"security-severity"}, (sorted(listed), plain[0])
+    assert "`security-severity`" in text and "Per-finding residual score" in text
+    # the correlation keys are the identity section's, as the scorer's are
+    identity = section_text(text, "#### Identity and Membership", where=SARIF_GENERATION_GUIDE)
+    for key in set(members[0]) - set(plain[0]):
+        assert "`%s`" % key in identity, key

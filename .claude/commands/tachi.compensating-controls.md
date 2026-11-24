@@ -113,7 +113,7 @@ Single-command entry point for tachi compensating controls analysis — the thir
 
 7. **Architecture file** (optional):
    - The command passes an architecture file only when `--architecture-path` was given (Step 2), and it looks for no `architecture.md` of its own: the path it passes becomes the URI of every SARIF result, so a per-run snapshot must never stand in for it
-   - The planner checks the path, and the agents get only a path that passed the check. With none, they map components to files by heuristic discovery
+   - The planner checks the path, and the agents get only a path that passed the check. With none, the agent reads the run's snapshot, an `architecture.md` beside the threat model, as the scorer's agent does, and maps components by heuristic discovery only when there is none either.
 
 ## Step 2: Plan the Batches
 
