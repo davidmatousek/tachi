@@ -1,6 +1,6 @@
 # Contract: part files, batch plans and stage records
 
-> Normative for F-374. ADR-050 decision D3 (envelope), D6 (plan, overflow, stage record) and D2 (payloads) owns this contract; where this file and the ADR disagree, the ADR governs. Pointers are to `b040fa1`.
+> Normative for F-374. ADR-050 decision D3 (envelope), D6 (plan, overflow, stage record, and item O-β for the `threats-md` payload) and D2 (payloads) owns this contract; where this file and the ADR disagree, the ADR governs. Pointers are to `b040fa1`.
 
 ## Envelope, plan and record schemas
 
@@ -18,11 +18,11 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 |---|---|
 | `schema` | `"tachi.part/1"` |
 | `plan_id`, `batch_id` | the current plan's; the planned batch's |
-| `stage` | `risk-score` \| `compensating-controls` (PR 1); `trees` \| `report` \| `threats-md` (PR 2; `threats-md`'s payload is item O-β). Phase 2 has no stage here: it writes records, not parts, and has no plan (item O-α, ruled at ADR-050 rev. 3, D6; `threat-model-records.md`, "Phase 2 dispatches") |
+| `stage` | `risk-score` \| `compensating-controls` (PR 1); `trees` \| `report` \| `threats-md` (PR 2; `threats-md`'s payload is item O-β, ruled at ADR-050 rev. 3: "Stage payload: `threats-md`", below). Phase 2 has no stage here: it writes records, not parts, and has no plan (item O-α, ruled at ADR-050 rev. 3, D6; `threat-model-records.md`, "Phase 2 dispatches") |
 | `agent_type` | the stage's agent: `tachi-risk-scorer`, `tachi-control-analyzer`, `tachi-attack-tree-delta`, `tachi-threat-report` or `tachi-orchestrator` |
-| `finding_ids` | 1–500 unique IDs, equal to the planned set; `[]` only in a `report` section part |
-| `items` | an array of objects, one per ID, each `{finding_id, …the stage's closed payload}` |
-| `fragments` | an array of 0–50 `{slot_key, text}`. PR 1's stages carry none (`[]`). In a `report` section part, `slot_key` is one of the template's paragraph keys for that section (ADR-050 D6), and `text` is narrative prose of at most 4,000 characters, cut at 4,000 (ADR-050 D3, step 9) |
+| `finding_ids` | 1–500 unique IDs, equal to the planned set; `[]` only in a `report` section part or a `threats-md` row-section part (item O-β) |
+| `items` | an array of objects, one per ID, each `{finding_id, …the stage's closed payload}`. In a `threats-md` row-section part, one per planned row, in order, with no `finding_id` (item O-β) |
+| `fragments` | an array of 0–50 `{slot_key, text}`. PR 1's stages and `threats-md` carry none (`[]`). In a `report` section part, `slot_key` is one of the template's paragraph keys for that section (ADR-050 D6), and `text` is narrative prose of at most 4,000 characters, cut at 4,000 (ADR-050 D3, step 9) |
 
 **§2 Overflow error, `tachi.overflow/1`** (advisory). Six keys:
 - `schema`, `plan_id`, `batch_id`, `stage` and `agent_type`, as in §1;
@@ -38,7 +38,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `attempt` | an integer, 1–3 |
 | `part_path` | an absolute path under `<plan_id>/parts/` |
 | `tree_paths` | in `trees`, `{finding_id: absolute path under <plan_id>/trees/}`, one per ID; `{}` elsewhere |
-| `units` | the batch's unit rows, as verbatim data. In `compensating-controls`, an UNCHANGED unit's row also holds its baseline's persisted narrative text and its evidence-class values (`evidence[]`, `matrix_row`, `recommendation_body`), all decoded, for the agent to copy. So a carried string is escaped once per render (ADR-050 D2, RR1) |
+| `units` | the batch's unit rows, as verbatim data. In `compensating-controls`, an UNCHANGED unit's row also holds its baseline's persisted narrative text and its evidence-class values (`evidence[]`, `matrix_row`, `recommendation_body`), all decoded, for the agent to copy. So a carried string is escaped once per render (ADR-050 D2, RR1). In `threats-md`, each unit is `{section, finding_id}` or `{section, row}` (item O-β) |
 | `refs` | an object mapping the stage's closed pointer names (architecture, threats, baseline files, target) to absolute paths that the command validated |
 | `params` | an object of the stage's closed parameters, for example `scoring_date` as `YYYY-MM-DD` |
 
@@ -56,7 +56,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `preimage` | `{canonical name: sha256 \| null}`. `plan` copies each existing file to `<plan_id>/preimage/<canonical name>`, and `fail` restores a copy whose digest matches (ADR-050 D4) |
 | `out_snapshot` | `{relpath: [size, mtime_ns]}`, at most 20,000 entries, or `null` |
 | `retry_budget` | `{limit, used}`, both integers. `limit` is 2 × the planned batch count, and `used` counts retry dispatches, so a halving counts 2 |
-| `batches` | an array of `{batch_id, parent: id \| null, attempt: 1–3, finding_ids, input_sha256, state: pending \| done \| failed \| split}`. Input and part paths are recomputed from the IDs, never stored |
+| `batches` | an array of `{batch_id, parent: id \| null, attempt: 1–3, finding_ids, input_sha256, state: pending \| done \| failed \| split}`. Input and part paths are recomputed from the IDs, never stored. In `threats-md`, a row section's batches have `finding_ids` `[]`, and their batch inputs' `units` name the rows (item O-β) |
 
 - **The digest.** `plan` and `reconcile` print `plan_digest`, the SHA-256 of this file. `reconcile`, the renderers, `fail` and `close` take it back as `--plan-digest` and exit 2 on a mismatch, or on a batch input whose digest differs from `input_sha256`.
 - **The pointer,** `tachi.plan-pointer/1`, has two keys: `{schema, plan_id}`. `--plan` overrides it, and a disagreement between the two exits 2.
@@ -172,3 +172,102 @@ Each reading is one the sources left open. `tachi_parts` (T012, T013), `tachi-st
 - **Retries.** An `invalid` retry keeps the batch ID and raises `attempt`. Each retry rewrites the batch input with its new `attempt` and `part_path`, and the plan's `input_sha256` follows it. So two retries per lineage fit `attempt` 1–3 and the batch-ID pattern.
 - **A one-unit batch can't halve.** When it is `missing`, `overflow` or `unparseable`, it is retried once more with the same member and batch ID, `attempt` + 1, at a cost of 1, as an `invalid` retry is. No batch ever has zero units.
 - **The budget.** A retry costs 1 against `retry_budget.used`, and a halving costs 2. A retry is refused when `used + cost > limit`, or when the batch is already at attempt 3, and either way `reconcile` exits 4.
+
+## Stage payload: `threats-md` (item O-β; ADR-050 D6, rev. 3)
+
+The orchestrator writes these parts itself, after Phase 4 and its section manifest (`threat-model-records.md`, "The section manifest"), and `join-threats-md.py` joins them. Every part holds rows of one table, and nothing in a part is markdown.
+
+**The sections** are the template's 24 tables, in this order. `tachi_parts` holds this table as one constant, which the planner and the joiner import. A drift test pins its headings and headers against `templates/tachi/output-schemas/threats.md`. Each header cell is the template's, in item-key order.
+
+| Section key | Heading it sits under | Keyed by | Item keys, in header order | Size (rows per part) |
+|---|---|---|---|---|
+| `components` | `## 1. System Overview`, then `### Components` | row | `component`, `type`, `maestro_layer`, `description` | 59 |
+| `data_flows` | `### Data Flows` | row | `source`, `destination`, `data`, `protocol` | 59 |
+| `technologies` | `### Technologies` | row | `category`, `technology`, `version` | 59 |
+| `trust_zones` | `## 2. Trust Boundaries`, then `### Trust Zones` | row | `zone`, `trust_level`, `components` | 59 |
+| `boundary_crossings` | `### Boundary Crossings` | row | `crossing`, `from_zone`, `to_zone`, `components`, `controls` | 59 |
+| `spoofing`, `tampering`, `repudiation`, `information_disclosure`, `denial_of_service`, `elevation_of_privilege` | `## 3. STRIDE Tables`, then `### 3.1 Spoofing (S)` to `### 3.6 Elevation of Privilege (E)` | finding: the prefixes `S`, `T`, `R`, `I`, `D` and `E` | `finding_id`, `status`, `component`, `maestro_layer`, `threat`, `likelihood`, `impact`, `risk_level`, `mitigation` | 16 |
+| `agentic` | `## 4. AI Threat Tables`, then `### 4.1 Agentic Threats (AG)` | finding: `AG`, `AGP` and `TE` | as for the STRIDE tables, with `owasp_reference` after `threat` | 16 |
+| `llm` | `### 4.2 LLM Threats (LLM)` | finding: `LLM`, `OI` and `MI` | as for `agentic` | 16 |
+| `correlated` | `## 4a. Correlated Findings` | row | `group`, `findings`, `component`, `threat_summary`, `risk_level` | 27 |
+| `patterns` | `## 4b. Findings by Agentic Pattern`, only when it has rows | row | `pattern`, `count`, `findings` | 59 |
+| `resolved` | `## 4c. Resolved Findings`, only when the run has a baseline | finding: the manifest's `resolved` | `finding_id`, `component`, `threat`, `last_risk_level`, `resolution_reason` | 59 |
+| `coverage` | `## 5. Coverage Matrix` | row | `component`, `s`, `t`, `r`, `i`, `d`, `e`, `ag`, `llm`, `total` | 59 |
+| `gate_requirements` | `## 5a. Coverage Gate Results`, then `### Coverage Requirements Matrix` | row | `component`, `determined_type`, `required_categories`, `evaluated`, `gaps` | 59 |
+| `gate_gaps` | `### Gap Resolution Details`, only when it has rows | row | `component`, `missing_category`, `agents_dispatched`, `resolution`, `findings_added` | 59 |
+| `risk_by_layer` | `## 6. Risk Summary`, then `#### Risk by MAESTRO Layer` | row | `maestro_layer`, `finding_count`, `highest_severity` | 59 |
+| `risk_levels` | the same heading, after the template's sentence | row | `risk_level`, `count`, `percentage` | 59 |
+| `actions` | `## 7. Recommended Actions` | finding: every open ID | `finding_id`, `status`, `pattern`, `component`, `maestro_layer`, `threat`, `risk_level`, `mitigation`. The joiner writes `Category` after `Status` | 41 |
+| `lifecycle` | `## 8. Delta Summary`, only when the run has a baseline, then `### Finding Lifecycle` | row | `status`, `count`, `description` | 59 |
+| `baseline_reference` | `### Baseline Reference` | row | `field`, `value` | 59 |
+
+Where `output-schemas.md` and the template disagree, the template governs, except Section 4b, which takes `output-schemas.md`'s single table. So the category tables have no Agentic Pattern column, Section 7 has the template's nine columns, and Components has its MAESTRO Layer column. T119 aligns both files.
+
+**The envelope (§1) in `threats-md`.**
+- `agent_type` is `tachi-orchestrator`, and `fragments` is `[]`.
+- **A finding section's part:** `finding_ids` is its batch's planned set, and it has one item per ID, each `{finding_id, …the section's other keys}` (step 8, unchanged).
+- **A row section's part:** `finding_ids` is `[]`, and `items` holds exactly the rows its batch input names, in order. Each item has the section's keys and no `finding_id`. Any other count is `invalid`.
+- Keys are closed per section, and every value is a string.
+
+**String classes (ADR-050 D3).**
+- **Closed values** are checked against their sets and never cut:
+  - `finding_id`;
+  - in a finding section, where it has them: `status` (`NEW`, `UNCHANGED` or `UPDATED`); `likelihood` and `impact` (`LOW`, `MEDIUM` or `HIGH`); `risk_level` and `last_risk_level` (`Critical`, `High`, `Medium`, `Low` or `Note`); and `maestro_layer` (`L1` to `L7`, optionally followed by ` — ` and a name of at most 60 characters, or `Unclassified`);
+  - in `actions`, `pattern`: one of the six pattern values, `multiple`, or `—`.
+- **Evidence** is every other value. Its digits stand, it is escaped on output, and the joiner never reads a number from it.
+  - No value has a limit below step 10's 16,384 characters, so none is cut.
+  - Edge whitespace is removed at intake, by PR 1's W1 reading for every evidence string, and a value that is empty after that rejects the part.
+- No `threats-md` value is narrative, so step 11 doesn't run.
+
+**The orchestrator's protocol** (T112):
+1. After Phase 4, write `.tachi-build/sections.json` once.
+2. Run `tachi-stage.py plan --stage threats-md --out {out} --date {date}`.
+3. Write each listed part at its `part_path`, in one Write, one part per response, from the compiled findings. Waves don't apply here, because nothing is dispatched.
+4. Run `reconcile` until it exits 0, writing the parts it lists. On 4, stop with ADR-050 D4's error.
+5. Run `join-threats-md.py --out {out} PLAN`. On anything but 0, stop with D4's error.
+
+**What `plan` and `reconcile` print for `threats-md`.** This overrides `cli.md`'s wave entry for this stage only, and T088 folds it into `cli.md`. Each wave entry is `{batch_id, input_path, part_path, section, finding_ids, rows, problem}`:
+- `rows` is `[first, last]`, 1-based, for a row section, and `null` for a finding section;
+- `problem` is `null` on a first attempt, and `missing` for a part that wasn't written. Otherwise it is the earlier attempt's first validation failure, naming the item and the key, never the value.
+
+So the orchestrator writes each part without reading its batch input. The batch input stays the record that the plan's digest pins.
+
+**Units, halving and retries.**
+- A finding section's batch input has `units` `[{section, finding_id}]`, one per ID, in S-2 order. A row section's has `[{section, row}]`, one per row, contiguous.
+- §4's readings apply, with a batch's units in place of its IDs:
+  - a batch of two or more units that is `missing` or `unparseable` is halved into two contiguous runs;
+  - an `invalid` batch, or a one-unit batch, is retried with the same units.
+- The budget and the attempt cap are §4's.
+
+**The joiner's layout.**
+- **The frontmatter** comes from the manifest, in the template's YAML shape. `schema_version` is D15's `"1.4"`, as a constant. Strings are written double-quoted, and the manifest has already refused a `"`, a `\` or a control character in any of them.
+- **The title** is the template's `# Threat Model Report`.
+- **Then each section in order:**
+  - its heading;
+  - the template's fixed tables: Section 3's and Section 4's prefix tables, and Section 3's and Section 6's risk matrices;
+  - its header and separator;
+  - its rows. A finding section's rows are in S-2 order. Section 7's are sorted by risk level, `Critical` first, then in the order the findings appear in Sections 3 and 4 (the eight tables in order, and S-2 order within each). A row section's rows are in plan order.
+- **Category** in Section 7 is the prefix's table title: `Spoofing`, `Tampering`, `Repudiation`, `Information Disclosure`, `Denial of Service` or `Elevation of Privilege`; `Agentic` for `AG`, `AGP` and `TE`; `LLM` for `LLM`, `OI` and `MI`.
+- **IDs** are written as the manifest spells them, and compared in canonical form (D3).
+- **Each cell** takes D3's cell sink. Every `#` in it is also written `&#35;`, in the same pass, so that a reference the sink writes is never escaped twice. `parse_markdown_table` finds a section by the first line that holds its heading's text, so without this a cell quoting `### Data Flows` would capture that table's reader.
+- **Notes**, in fixed text, each printed only in its state:
+  - Section 2's, when both of its tables are empty;
+  - Section 4's, when both AI tables are empty, worded so that it stays true: `No AI threat findings were recorded.`;
+  - Section 4a's `No cross-agent correlations detected.`, when it is empty;
+  - Section 4c's `No baseline findings were resolved in this run.`, when the run has a baseline and no RESOLVED finding;
+  - the coverage matrix's footnote, when Section 4a has rows. It holds no number: `Counts reflect deduplicated findings: each correlation group counts once.`;
+  - Section 5a's `Coverage gate passed — all required threat categories evaluated for every component.`, when `gate_gaps` is empty;
+  - Section 6's sentence before the risk-level table.
+- **No other prose** is written. The joiner writes nothing for Phase 3.5's record, the populator's block or the two body lines, because their scripts upsert them after the join.
+- **The stamp** follows D4, with `renderer=join-threats-md.py`. The input digest covers the manifest's digest and the accepted parts' items in plan order.
+
+**The joiner's checks and exit codes.**
+- **Exit 1:** the plan, the manifest or a part is missing or unreadable.
+- **Exit 2:** the plan's digest differs, a batch isn't `done`, the manifest's digest differs from the one the plan recorded, or the manifest or a part fails re-validation.
+- **Exit 4:** the staged file, read back from disk, fails a check:
+  - `tachi_parsers.parse_reference_set` must return exactly the manifest's `open` IDs and its `resolved` IDs (none when it is null), with no duplicate. Each finding's values must equal its item's, under the reader's own normalization.
+  - No character in step 10's set may appear (P0-4's backstop, through `tachi_parts.forbidden_character`).
+- **Exit 0:** the staged file replaces `{out}/threats.md` (`os.replace`). On any other code the canonical file isn't written.
+- Heading order and the headers are constants, so the joiner doesn't check them at run time. A drift test pins them against the template once T119 has aligned it.
+
+**Sizes (ADR-050 D6).** Each size is ⌊8,000 × 2.598 ÷ p90⌋. The p90 is the item's bytes at two-space indentation, the higher of the shipped examples' and the fixture baseline's: 1,225 for the category tables, 506 for Section 7, 761 for Section 4a, and 349 for the heaviest of the others. 2.598 is W1's lower measured r, the scorer's. T130's fixture run confirms the sizes from the live parts.

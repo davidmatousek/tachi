@@ -1,6 +1,6 @@
 # Contract: dispatch records, briefs, the ID map and chain files (PR 2)
 
-> Normative for F-374. ADR-050 decision D11 to D14, with D6's item O-α for Phase 2's dispatches, owns this contract; where this file and the ADR disagree, the ADR governs. Pointers are to `b040fa1`.
+> Normative for F-374. ADR-050 decision D11 to D14, with D6's items O-α for Phase 2's dispatches and O-β for the section manifest, owns this contract; where this file and the ADR disagree, the ADR governs. Pointers are to `b040fa1`.
 
 ## Record, brief and chain schemas (PR 2)
 
@@ -45,6 +45,23 @@ inventory: schema "tachi.phase1-inventory/1"
   trust_zones [{"name": NAME, "components": [NAME]}] 0-200     (every NAME is a component)
 dispatch:  schema "tachi.phase1-dispatch/1"
   rows [{"component": NAME, "stride": [S|T|R|I|D|E], "ai": [AG|LLM]}]  one row per component, lists unique
+```
+**Section manifest** (item O-β): `sections.json`, at most 256 KiB.
+```
+schema "tachi.sections/1"
+frontmatter {"date": DATE, "input_format": "ascii"|"free-text"|"mermaid"|"plantuml"|"c4",
+             "classification": TOKEN, "run_id": RUN,
+             "baseline": {"source": TEXT|null, "date": TEXT|null, "finding_count": int >= 0|null, "run_id": TEXT|null},
+             "coverage_gate": {"status": "pass"|"warn",
+                               "gaps": [{"component": TEXT, "missing_category": TOKEN,
+                                         "resolution": "findings_produced"|"analyzed_clean"|"dispatch_failure"}]}}
+open [ID] at least 1, unique by canonical ID          Section 7's set
+resolved [ID] unique, disjoint from open | null       null <=> frontmatter.baseline.source is null
+rows {"components", "data_flows", "technologies", "trust_zones", "boundary_crossings", "correlated", "patterns",
+      "coverage", "gate_requirements", "gate_gaps", "risk_by_layer", "risk_levels", "lifecycle",
+      "baseline_reference": int 0-5000}
+DATE := YYYY-MM-DD   RUN := YYYY-MM-DDTHH-MM-SS   TOKEN := [a-z][a-z0-9-]{0,39}
+TEXT := 1-1000 characters, with no '"', '\' or control character
 ```
 **The outcome record** in `threats.md`. Exactly one line in the file matches `^\*\*Attack chain outcome\*\*: `.
 ```
@@ -139,3 +156,19 @@ An `unrecovered` coverage-gap record is a warning, `coverage-gap:unrecovered:<re
 - `done`, `split` and `exhausted`: the lineages' `complete`, `superseded` and `unrecovered` records.
 
 Coverage-gap records stay out of `batches`. The records keep each event's detail: which record was truncated, why, and what replaced it (US-1b #6).
+
+## The section manifest (item O-β; ADR-050 D6, rev. 3)
+
+The orchestrator writes `{out}/.tachi-build/sections.json` once, in one Write, after Phase 4 and before any `threats-md` part. It is the planner's only source of the parts' units, because the compiled findings live only in the orchestrator's context (C-7). `part-files.md`, "Stage payload: `threats-md`", holds the parts it plans.
+
+- **What it holds:**
+  - the frontmatter's values, which the joiner writes;
+  - `open`, the open finding IDs, which is Section 7's set;
+  - `resolved`, Section 4c's IDs, or null when the run has no baseline;
+  - the row count of each of the 14 tables that aren't keyed by finding.
+- **What the planner derives.** Each category table's IDs are the open IDs with its prefixes: `S`, `T`, `R`, `I`, `D` and `E` for 3.1–3.6; `AG`, `AGP` and `TE` for 4.1; `LLM`, `OI` and `MI` for 4.2. Section 7 holds every open ID, and Section 4c every RESOLVED one. So "one Section 7 row per ID" and Section 4c's set hold by construction.
+- **No empty run.** `open` holds at least one ID, because every later reader of the reference set refuses an empty one (KB 22).
+- **Spelling.** IDs compare in canonical form (ADR-050 D3), so two spellings of one ID, within a list or across the two lists, are a duplicate. The joiner writes each ID as the manifest spells it.
+- **Refusal.** `tachi-stage.py plan --stage threats-md` strict-loads the manifest from its fixed path, and exits 2 when any rule above fails. The orchestrator then stops with ADR-050 D4's error, and the command runs `fail`.
+- **One version.** The plan records the manifest's digest in `inputs`. The joiner reads the manifest at the same fixed path, and exits 2 unless its digest matches.
+- **Size.** At fixture scale the manifest is about 7 KB. It stays within S-1's single-write budget up to about 1,400 open findings, at two-space indentation.
