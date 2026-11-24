@@ -1557,6 +1557,13 @@ def test_the_reserved_slots_are_not_accepted_and_the_slots_in_use_are_accepted_i
 PLAN_ID = "20261122T120000Z-0123456789ab"
 BATCH_ID = "B001"
 CONTROLS_ROOTS = ("evidence", "matrix_row", "recommendation_body")
+# ADR-050 D2: a row has 11 cells and opens with the item's own ID, and a body holds the four keys of the section 4 block once
+# each and in order, with an Effort Estimate that starts at a level. So neither can be any text. Each head ends where the
+# last cell or the last key's text begins, which is the place to pad.
+MATRIX_ROW_HEAD = ("| S-1 | \u2014 | Gateway | L1 | A threat | {{score:inherent}} | {{band:inherent}} | Partial Control | "
+                   "authentication | {{score:residual}} | ")
+BODY_HEAD = ("**What to Implement**: A plain sentence.\n**Where to Implement**: A plain sentence.\n"
+             "**Reference Patterns**: A plain sentence.\n**Effort Estimate**: Low \u2014 ")
 
 
 def base_item(stage: str) -> Dict[str, Any]:
@@ -1583,8 +1590,8 @@ def base_item(stage: str) -> Dict[str, Any]:
             "file": "src/app.py", "line": 1, "language": "python", "snippet": "x = 1", "summary": "A plain sentence.",
             "assessment": {d: {"rating": "High", "rationale": "A plain sentence."} for d in tachi_parts.ASSESSMENT_DIMENSIONS},
         }],
-        "matrix_row": "A plain sentence.",
-        "recommendation_body": "A plain sentence.",
+        "matrix_row": MATRIX_ROW_HEAD + "{{band:residual}} |",
+        "recommendation_body": BODY_HEAD + "A plain sentence.",
     }
 
 
@@ -1618,6 +1625,13 @@ def set_at(item: Any, steps: Sequence[Any], value: Any) -> None:
     get_at(item, steps[:-1])[steps[-1]] = value
 
 
+def over_the_limit(field: str, limit: int) -> str:
+    """``limit + 25`` characters for ``field``. A ``matrix_row`` and a ``recommendation_body`` have to keep their form to be
+    accepted, so their padding goes in the last cell and in the last key's text."""
+    head = {"matrix_row": MATRIX_ROW_HEAD, "recommendation_body": BODY_HEAD}.get(field, "")
+    return head + "x" * (limit + 25 - len(head))
+
+
 def stage_of(field: str) -> str:
     return "compensating-controls" if field.split(".")[0] in CONTROLS_ROOTS else "risk-score"
 
@@ -1638,7 +1652,7 @@ def test_each_field_is_cut_where_the_truncation_table_says(field):
     stage = stage_of(field)
     item = base_item(stage)
     steps = steps_of(part_path)
-    set_at(item, steps, "x" * (limit + 25))
+    set_at(item, steps, over_the_limit(field, limit))
     result = classify(stage, item)
     assert result.state == "done", result.detail
     assert "input:%s:truncated" % field in result.flags["S-1"]
