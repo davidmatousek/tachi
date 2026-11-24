@@ -215,6 +215,10 @@ PATHS_REFUSED = [
     ("a`b", "backtick"), ("`cmd`", "backtick"),
     ("a\x00b", "control-char"), ("a\nb", "control-char"), ("a\tb", "control-char"), ("a\rb", "control-char"),
     ("a\x7fb", "control-char"), ("a\x85b", "control-char"), ("a\x9fb", "control-char"), ("a\x1bb", "control-char"),
+    # a character that step 10 forbids and Cc does not cover (SA-8): the separators, the bidi controls, a tag character
+    ("a" + chr(0x2028) + "b", "control-char"), ("a" + chr(0x2029) + "b", "control-char"),
+    ("a" + chr(0x200E) + "b", "control-char"), ("a" + chr(0x061C) + "b", "control-char"),
+    ("a" + chr(0x202E) + "b", "control-char"), ("a" + chr(0xE0041) + "b", "control-char"),
     ("../x", "parent-reference"), ("a/../b", "parent-reference"), ("a/..", "parent-reference"),
     ("a/b/../../..", "parent-reference"), ("./../x", "parent-reference"),
     ("a/" + "b" * 4095, "too-long"), ("\u00e9" * 2100, "too-long"),
@@ -258,6 +262,41 @@ def test_an_absolute_candidate_passes_only_when_the_caller_allows_it(value):
 ])
 def test_allowing_an_absolute_path_relaxes_only_the_leading_slash(value, problem):
     assert tachi_parts.path_problem(value, allow_absolute=True) == problem
+
+
+# --- SA-8: `path_problem` refused Cc only, so a path with a line separator or a bidi control passed it and failed
+# `forbidden_character`, and each sink that took the path after `path_problem` alone (the architecture source line, the typed
+# `--out`, `--threats`, `--risk-scores` and `--target`, the run-file checks and the resolver) let the character through.
+
+@pytest.mark.parametrize("code", [0x2028, 0x2029, 0x200E, 0x061C, 0x202E], ids=lambda code: "U+%04X" % code)
+def test_a_path_with_a_separator_or_a_bidi_control_is_refused_as_a_control_character(code):
+    char = chr(code)
+    for value in ("a" + char + "b.md", "src/a" + char + "/b.md", char + "a.md", "a.md" + char, "docs/" + char):
+        assert tachi_parts.path_problem(value) == "control-char", ascii(value)
+        assert tachi_parts.path_problem(value, allow_absolute=True) == "control-char", ascii(value)
+    for value in ("/work/a" + char + "b.md", "/work/" + char):
+        assert tachi_parts.path_problem(value, allow_absolute=True) == "control-char", ascii(value)
+    with pytest.raises(ValueError) as excinfo:
+        tachi_parts.path_parts("src/a" + char + "/b.md")
+    assert str(excinfo.value) == "control-char"
+
+
+def test_path_problem_refuses_exactly_the_cc_characters_and_the_ones_step_10_forbids():
+    """Worked out from Unicode and the contract, not from either function: every Cc character (a tab and a newline too, which
+    prose may hold and a path may not) and the contract's separators, bidi controls and tag characters. A lone surrogate is
+    refused first, as an encoding problem, and any other character is no control-char problem."""
+    contract = {code for code in range(0x10000) if unicodedata.category(chr(code)) == "Cc"}
+    contract |= {0x2028, 0x2029, 0x200E, 0x200F, 0x061C} | set(range(0x202A, 0x202F)) | set(range(0x2066, 0x206A))
+    contract |= set(range(0xE0000, 0xE0080))
+    assert {0x09, 0x0A} <= contract, "the path rule is wider than step 10 by the tab and the newline"
+    disagree = []
+    for code in list(range(0xD800)) + list(range(0xE000, 0x10000)) + list(range(0xE0000, 0xE0080)):
+        if (tachi_parts.path_problem("a" + chr(code) + "b") == "control-char") != (code in contract):
+            disagree.append("U+%04X" % code)
+    assert disagree == []
+    assert tachi_parts.path_problem("a" + chr(0xD800) + "b") == "encoding"
+    assert tachi_parts.path_problem("a" + chr(0x1F600) + "b") is None, "a valid astral character is a fine file name"
+    assert tachi_parts.path_problem("a" + chr(0xFE0F) + "b") is None, "and so is a variation selector"
 
 
 def test_path_parts_drops_dot_and_empty_components():
@@ -322,6 +361,21 @@ def test_tachi_parts_parses_at_the_python_39_floor_and_defers_annotations():
     source = TACHI_PARTS_PATH.read_text(encoding="utf-8")
     ast.parse(source, feature_version=(3, 9))
     assert "from __future__ import annotations" in source
+
+
+def test_no_source_holds_an_invisible_format_or_separator_character():
+    """A bidi control or a line separator typed into source reorders or splits what a reviewer reads (Trojan Source,
+    CVE-2021-42574), GitHub warns on the file, and `install.sh` copies each script into an adopter's repository, where a
+    hidden-Unicode linter flags it. So no script, and not this file, holds a character of category Cf (format: the bidi
+    controls, the joiners, the zero-width space and the tag characters), Zl or Zp. A character that a test needs is built
+    with `chr()`, or written as an escape. Lines are split on a newline alone, so a separator inside one can't move the
+    count, and a failure names the file, the line and the code point, never the text."""
+    found = []
+    for path in sorted(SCRIPTS_DIR.glob("*.py")) + [Path(__file__).resolve()]:
+        for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+            found.extend("%s:%d U+%04X" % (path.name, number, ord(char)) for char in line
+                         if unicodedata.category(char) in ("Cf", "Zl", "Zp"))
+    assert found == []
 
 
 def test_importing_tachi_parts_turns_bytecode_writing_off(tmp_path):
@@ -744,7 +798,7 @@ def test_two_spellings_of_one_canonical_id_are_a_duplicate(pair):
     assert classify(part, ids=(pair[0], "R-9")).state == "invalid"
 
 
-@pytest.mark.parametrize("bad", ["S-١", "S-１", "S-1\n", "S-1 ", "s-1", "S-", "S-1234567", "X-1", "S-1​"])
+@pytest.mark.parametrize("bad", ["S-١", "S-１", "S-1\n", "S-1 ", "s-1", "S-", "S-1234567", "X-1", "S-1" + chr(0x200B)])
 def test_a_hostile_id_is_invalid_wherever_it_appears(bad):
     assert classify(make_part(ids=(bad, "T-2")), ids=("S-1", "T-2")).state == "invalid"
     part = make_part()
@@ -767,9 +821,11 @@ def test_a_planned_spelling_and_a_canonical_equal_spelling_in_the_part_agree():
 HOSTILE_CHARS = [
     "\x00", "\x01", "\x07", "\x08", "\x0b", "\x0c", "\r", "\x1b", "\x1f", "\x7f",
     "\x80", "\x85", "\x9b", "\x9f",
-    " ", " ",
-    "‎", "‏", "؜", "‪", "‫", "‬", "‭", "‮",
-    "⁦", "⁧", "⁨", "⁩",
+    chr(0x2028), chr(0x2029),
+    chr(0x200E), chr(0x200F), chr(0x061C), chr(0x202A), chr(0x202B), chr(0x202C), chr(0x202D), chr(0x202E),
+    chr(0x2066), chr(0x2067), chr(0x2068), chr(0x2069),
+    # the Unicode tag block (SA-7): the first, the language tag, a tag space, a tag letter and the cancel tag
+    chr(0xE0000), chr(0xE0001), chr(0xE0020), chr(0xE0041), chr(0xE007F),
 ]
 
 
@@ -798,8 +854,9 @@ def test_a_closed_value_over_sixteen_thousand_characters_is_invalid():
 # --- P0-4: step 10's character set is published as `forbidden_character`, so a renderer that takes a value from an input
 # that isn't a part (`threats.md`, a baseline file, `threats.sarif`) asks the same question a part's strings are asked.
 
-# The separators, the bidi controls and the lone surrogates are written with chr(), so that no invisible character sits in
-# this file's source.
+# The separators, the bidi controls, the lone surrogates and the tag characters are written with chr(), so that no
+# invisible character sits in this file's source (`test_no_source_holds_an_invisible_format_or_separator_character`
+# holds it to that).
 LINE_SEPARATOR, PARAGRAPH_SEPARATOR = chr(0x2028), chr(0x2029)
 RIGHT_TO_LEFT_MARK, RIGHT_TO_LEFT_OVERRIDE = chr(0x200F), chr(0x202E)
 FORBIDDEN_CLASSES = {
@@ -811,6 +868,9 @@ FORBIDDEN_CLASSES = {
     # a lone surrogate (ADR-050 D3, ruled at W3), which only a JSON escape can spell. The first and last of the range, the
     # last high half and first low half either side of its middle, and one half of the pair that spells U+1F600.
     "lone surrogates": [chr(code) for code in (0xD800, 0xD83D, 0xDBFF, 0xDC00, 0xDE00, 0xDFFF)],
+    # the Unicode tag block (SA-7), which shows as nothing and stands for ASCII. The first and last of the block, the
+    # language tag, a tag space, and a tag capital and small letter, which carry "A" and "a".
+    "tag characters": [chr(code) for code in (0xE0000, 0xE0001, 0xE0020, 0xE0041, 0xE0061, 0xE007F)],
 }
 
 
@@ -838,9 +898,12 @@ def test_forbidden_character_returns_the_first_one_of_several():
     # the neighbours of each forbidden range, which are allowed: below DEL, the no-break space above C1, the characters just
     # before U+2028 and U+2066 and after U+202E and U+2069, the two around U+061C, the zero-width joiner before U+200E, and the
     # two either side of the surrogate range, U+D7FF and U+E000, and the first, an emoji and the last of the astral characters
-    # (a valid surrogate pair spells one, and arrives from JSON as one character)
+    # (a valid surrogate pair spells one, and arrives from JSON as one character). Beside the tag block (SA-7): the characters
+    # either side of it, U+DFFFF and U+E0080, and the variation selectors, which stay out of the set (U+FE0F is in ordinary
+    # emoji text, and U+E0100 is the first of the supplement)
     "\x7e", chr(0xA0), chr(0x2027), chr(0x202F), chr(0x2065), chr(0x206A), chr(0x061B) + chr(0x061D), chr(0x200D),
     chr(0xD7FF), chr(0xE000), chr(0x10000), chr(0x1F600), chr(0x10FFFF),
+    chr(0xDFFFF), chr(0xE0080), chr(0xFE0F), chr(0xE0100), "emoji " + chr(0x1F600) + chr(0xFE0F),
 ])
 def test_forbidden_character_is_none_for_clean_text_a_tab_and_a_newline(text):
     assert _api("forbidden_character")(text) is None
@@ -848,14 +911,65 @@ def test_forbidden_character_is_none_for_clean_text_a_tab_and_a_newline(text):
 
 def test_forbidden_character_is_exactly_the_contracts_set_over_the_whole_basic_multilingual_plane():
     """Worked out from Unicode, not from the regex: Cc other than tab and newline, the separators, the bidi controls and the
-    surrogates (Cs, ADR-050 D3 as ruled at W3)."""
+    surrogates (Cs, ADR-050 D3 as ruled at W3). The Unicode tag block (SA-7) is not in this plane, so the next test counts it."""
     expected = {code for code in range(0x10000) if unicodedata.category(chr(code)) == "Cc" and code not in (0x09, 0x0A)}
     expected |= {code for code in range(0x10000) if unicodedata.category(chr(code)) == "Cs"}
     expected |= {0x2028, 0x2029} | {0x200E, 0x200F, 0x061C} | set(range(0x202A, 0x202F)) | set(range(0x2066, 0x206A))
     found = {code for code in range(0x10000) if _api("forbidden_character")(chr(code)) is not None}
     assert found == expected
-    assert len(expected) == 63 + 2 + 12 + 2048, "63 controls, 2 separators, 12 bidi controls and 2,048 surrogates: 2,125"
-    assert _api("forbidden_character")("\U000e0001\U0001f600") is None
+    assert len(expected) == 63 + 2 + 12 + 2048, "63 controls, 2 separators, 12 bidi controls and 2,048 surrogates: 2,125 in the plane"
+
+
+def test_forbidden_character_over_the_astral_planes_is_exactly_the_unicode_tag_block():
+    """SA-7: U+E0000 to U+E007F is the contract's one range beyond the basic multilingual plane. Each of its 128 characters
+    is returned. No other astral character is: the 1,048,448 others are joined into one text and scanned at once. With the
+    2,125 of the plane, 2,253 characters are forbidden in all."""
+    forbidden = _api("forbidden_character")
+    tags = range(0xE0000, 0xE0080)
+    assert len(tags) == 128
+    assert [code for code in tags if forbidden(chr(code)) != chr(code)] == []
+    outside = "".join(chr(code) for code in range(0x10000, 0x110000) if code not in tags)
+    assert len(outside) == 0x100000 - 128
+    assert forbidden(outside) is None
+
+
+def test_forbidden_character_returns_a_tag_character_and_not_the_valid_astral_characters_beside_it():
+    forbidden = _api("forbidden_character")
+    tag_a = chr(0xE0041)  # TAG LATIN CAPITAL LETTER A: invisible, and it stands for "A"
+    assert forbidden("Public" + tag_a + " tooling") == tag_a
+    assert forbidden(chr(0xE0001) + tag_a) == chr(0xE0001), "the first one wins"
+    assert forbidden("emoji " + chr(0x1F600) + " and " + chr(0x1F468) + chr(0x200D) + chr(0x1F4BB)) is None, "a ZWJ sequence is clean"
+    assert forbidden(chr(0xDFFFF)) is None and forbidden(chr(0xE0080)) is None, "the characters either side of the block"
+    assert forbidden(chr(0xFE0F)) is None and forbidden(chr(0xE0100)) is None, "the variation selectors stay out of the set"
+    assert forbidden("a" + chr(0x1F600) + tag_a) == tag_a, "a valid astral character before a tag character"
+    # The one legitimate use of tag characters is the emoji flag of England, Scotland or Wales: a black flag, the letters of
+    # the subdivision code as tag characters, and the cancel tag. SA-7 takes the whole block, with no exception for them.
+    england = chr(0x1F3F4) + "".join(chr(0xE0000 + ord(letter)) for letter in "gbeng") + chr(0xE007F)
+    assert forbidden(england) == chr(0xE0067), "the subdivision flags are refused with the rest of the block"
+    assert forbidden(chr(0x1F3F4)) is None, "the black flag itself is clean"
+
+
+def test_a_tag_character_is_forbidden_as_the_escaped_pair_that_spells_it_too():
+    """Unlike a lone surrogate, a tag character is a valid scalar value, so JSON spells it as UTF-8 or as the escaped pair
+    that `json.loads` joins into it, and the one character reaches step 10 either way."""
+    forbidden = _api("forbidden_character")
+    spelled = json.loads('"a\\udb40\\udc41b"')
+    assert spelled == "a" + chr(0xE0041) + "b" and len(spelled) == 3, "the pair arrives as the one astral character"
+    assert forbidden(spelled) == chr(0xE0041)
+    assert forbidden(json.loads('"\\udb40\\udc01"')) == chr(0xE0001)
+    assert forbidden(json.loads('"\\udb40\\udc7f"')) == chr(0xE007F)
+    assert forbidden(json.loads('"\\udb40\\udc80"')) is None, "U+E0080 is beside the block, not in it"
+
+
+@pytest.mark.parametrize("ensure_ascii", [True, False], ids=["escaped pair", "raw UTF-8"])
+def test_a_part_file_with_a_tag_character_is_invalid_however_the_file_spells_it(tmp_path, ensure_ascii):
+    part = put(make_part(), ("items", 0, "rationale", "exploitability"), "Public tooling" + chr(0xE0041) + " exists.")
+    text = json.dumps(part, ensure_ascii=ensure_ascii)
+    assert ("\\udb40\\udc41" in text) == ensure_ascii, "the file holds the escaped pair, or the character itself"
+    result = read(tmp_path, text)
+    assert result.state == "invalid", result.detail
+    assert result.part is None
+    assert read(tmp_path / "clean", json.dumps(make_part(), ensure_ascii=ensure_ascii)).state == "done"
 
 
 def test_forbidden_character_returns_a_lone_surrogate_and_not_the_astral_character_that_a_pair_spells():
@@ -1391,6 +1505,8 @@ def test_a_literal_double_brace_in_an_evidence_field_is_kept_as_text_for_the_ren
 EVIDENCE_FILES_REFUSED = [
     "https://example.test/x", "file:///etc/passwd", "javascript:alert", "/etc/passwd", "//host/x", "a\\b.py",
     "C:/Windows/x", "c:rel", "C:\\Windows\\x", "../x", "a/../b", "a/b/..", "a`b`", "a\x00b", "a\nb", "", ".",
+    # a separator, a bidi control and a tag character (SA-8): the path rule and step 10 now refuse the same characters
+    "src/a" + chr(0x2028) + ".py", "src/a" + chr(0x202E) + ".py", "src/a" + chr(0xE0041) + ".py",
 ]
 EVIDENCE_FILES_ACCEPTED = ["src/a.py", "./src//a.py", "src/a:b.py", "docs/security/architecture.md", "src/\u00fcn\u00ef.py"]
 
@@ -1758,6 +1874,26 @@ def test_atomic_write_fails_when_the_directory_is_missing_and_creates_nothing(tm
     assert list(tmp_path.iterdir()) == []
 
 
+@pytest.mark.parametrize("data", [None, 5, 1.5, ["x"], {"a": 1}])
+def test_atomic_write_takes_text_or_bytes_and_creates_nothing_for_anything_else(tmp_path, data):
+    with pytest.raises(TypeError):
+        _api("atomic_write")(tmp_path / "f.md", data)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_failed_write_raises_its_own_error_even_when_the_temp_file_cannot_be_removed(tmp_path, monkeypatch):
+    def failing_replace(src, dst):
+        raise OSError("disk full")
+
+    def failing_unlink(path):
+        raise OSError("busy")
+
+    monkeypatch.setattr(os, "replace", failing_replace)
+    monkeypatch.setattr(os, "unlink", failing_unlink)
+    with pytest.raises(OSError, match="disk full"):
+        _api("atomic_write")(tmp_path / "f.md", "data")
+
+
 def test_atomic_write_replaces_a_symlink_at_the_destination_without_following_it(tmp_path):
     victim = tmp_path / "victim.txt"
     victim.write_text("keep", encoding="utf-8")
@@ -1769,13 +1905,129 @@ def test_atomic_write_replaces_a_symlink_at_the_destination_without_following_it
 
 
 @pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
-def test_a_written_file_gets_the_modes_an_ordinary_write_would(tmp_path):
-    previous = os.umask(0o022)
+@pytest.mark.parametrize("umask,mode", [(0o022, 0o644), (0o077, 0o600), (0o002, 0o664), (0o000, 0o666)])
+def test_a_new_file_gets_the_mode_an_ordinary_write_would_under_the_umask_the_module_was_imported_with(
+        tmp_path, umask, mode):
+    """The umask is read once, at import (S7-3), so only a process shows it: set it, import, set another, then write. The new
+    file follows the first, and the write leaves the second as it found it, where it used to set the umask to 0 and back."""
+    code = ("import os, sys\nos.umask(%d)\nsys.path.insert(0, %r)\nimport tachi_parts\nos.umask(0o027)\n"
+            "tachi_parts.atomic_write(sys.argv[1], 'x')\nprint(oct(os.umask(0o027)))\n" % (umask, str(SCRIPTS_DIR)))
+    proc = subprocess.run(
+        [sys.executable, "-I", "-X", "pycache_prefix=%s" % (tmp_path / "pyc"), "-c", code, str(tmp_path / "f.md")],
+        capture_output=True, encoding="utf-8", timeout=60)
+    assert proc.returncode == 0, proc.stderr
+    assert (tmp_path / "f.md").stat().st_mode & 0o777 == mode
+    assert proc.stdout.strip() == oct(0o027), "atomic_write left the process's umask as it was"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+@pytest.mark.parametrize("mode", [0o600, 0o640, 0o664, 0o666, 0o755, 0o400])
+def test_atomic_write_keeps_the_permission_bits_of_the_regular_file_it_replaces(tmp_path, mode):
+    """SA-4: a replace gives the file the temp file's mode, so an adopter's `chmod 600` on `risk-scores.md` was undone by the
+    next run. The file that replaces another now has the other's bits, and keeps them run after run."""
+    target = tmp_path / "risk-scores.md"
+    target.write_text("old", encoding="utf-8")
+    os.chmod(str(target), mode)
+    for run in ("first", "second"):
+        _api("atomic_write")(target, "new " + run)
+        assert target.stat().st_mode & 0o777 == mode, run
+    assert target.read_text(encoding="utf-8") == "new second"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["risk-scores.md"]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+@pytest.mark.parametrize("umask,mode", [(0o000, 0o600), (0o077, 0o644), (0o022, 0o664)])
+def test_the_mode_a_replaced_file_keeps_does_not_depend_on_the_umask(tmp_path, umask, mode):
+    """The old code gave a replacement `0666 & ~umask`, so a umask of 0 made a `0600` file world-writable and a umask of 077
+    made a `0644` file private. The replaced file's own bits decide now."""
+    target = tmp_path / "f.md"
+    target.write_text("old", encoding="utf-8")
+    os.chmod(str(target), mode)
+    previous = os.umask(umask)
     try:
-        _api("atomic_write")(tmp_path / "f.md", "x")
+        _api("atomic_write")(target, "new")
     finally:
         os.umask(previous)
-    assert (tmp_path / "f.md").stat().st_mode & 0o777 == 0o644
+    assert target.stat().st_mode & 0o777 == mode
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_atomic_write_does_not_carry_a_setuid_bit_to_the_file_that_replaces_another(tmp_path):
+    """Only the `rwx` bits for user, group and other are kept: the file that is written is data, never a program."""
+    target = tmp_path / "f.md"
+    target.write_text("old", encoding="utf-8")
+    os.chmod(str(target), 0o4755)
+    if target.stat().st_mode & 0o7777 != 0o4755:
+        pytest.skip("this file system does not keep a setuid bit")
+    _api("atomic_write")(target, "new")
+    assert target.stat().st_mode & 0o7777 == 0o755
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_a_file_that_replaces_a_symlink_gets_the_ordinary_mode_and_the_links_target_is_left_alone(tmp_path):
+    """A symlink at the destination is replaced and never followed, so neither the link's own mode nor its target's mode is
+    the new file's: it gets what an ordinary write gives, which a file written the ordinary way beside it shows."""
+    ordinary = tmp_path / "ordinary.txt"
+    ordinary.write_text("x", encoding="utf-8")
+    victim = tmp_path / "victim.txt"
+    victim.write_text("keep", encoding="utf-8")
+    os.chmod(str(victim), 0o620)  # a mode that no umask gives a new file
+    target = tmp_path / "out.md"
+    target.symlink_to(victim)
+    _api("atomic_write")(target, "new")
+    assert not target.is_symlink() and target.read_text(encoding="utf-8") == "new"
+    assert target.stat().st_mode & 0o777 == ordinary.stat().st_mode & 0o777 != 0o620
+    assert victim.stat().st_mode & 0o777 == 0o620 and victim.read_text(encoding="utf-8") == "keep"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_atomic_write_sets_the_mode_on_the_descriptor_and_never_chmods_a_path_or_reads_the_umask(tmp_path, monkeypatch):
+    """S7-3: a chmod of the temp file's path after its descriptor closed would follow a link swapped in at that name, and a
+    umask read sets it to 0 for a moment, which a thread or a signal handler could see. Neither call may be made."""
+    kept = tmp_path / "kept.md"
+    kept.write_text("old", encoding="utf-8")
+    os.chmod(str(kept), 0o640)
+    ordinary = tmp_path / "ordinary.txt"
+    ordinary.write_text("x", encoding="utf-8")
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("atomic_write used os.umask or os.chmod")
+
+    monkeypatch.setattr(os, "umask", refuse)
+    monkeypatch.setattr(os, "chmod", refuse)
+    _api("atomic_write")(kept, "new")
+    _api("atomic_write")(tmp_path / "fresh.md", "new")
+    assert kept.stat().st_mode & 0o777 == 0o640
+    assert (tmp_path / "fresh.md").stat().st_mode & 0o777 == ordinary.stat().st_mode & 0o777
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_a_write_that_cannot_set_the_mode_fails_whole_and_leaves_the_old_file_and_no_temp_file(tmp_path, monkeypatch):
+    target = tmp_path / "f.md"
+    target.write_text("old", encoding="utf-8")
+    os.chmod(str(target), 0o600)
+
+    def refuse(descriptor, mode):
+        raise PermissionError("not permitted")
+
+    monkeypatch.setattr(os, "fchmod", refuse)
+    with pytest.raises(PermissionError):
+        _api("atomic_write")(target, "new")
+    assert target.read_text(encoding="utf-8") == "old" and target.stat().st_mode & 0o777 == 0o600
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["f.md"]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_where_there_is_no_fchmod_the_mode_is_set_by_path_as_it_was_before(tmp_path, monkeypatch):
+    """Python before 3.13 has no `os.fchmod` on Windows, where a mode is the read-only flag and a swapped link is no hazard.
+    The guard falls back to the path there, and the file still keeps the mode of the one it replaces."""
+    target = tmp_path / "f.md"
+    target.write_text("old", encoding="utf-8")
+    os.chmod(str(target), 0o640)
+    monkeypatch.delattr(os, "fchmod")
+    _api("atomic_write")(target, "new")
+    assert target.read_text(encoding="utf-8") == "new" and target.stat().st_mode & 0o777 == 0o640
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["f.md"]
 
 
 def test_digests_are_lowercase_sha256_hex(tmp_path):
@@ -2244,7 +2496,7 @@ STAGE_RECORD_VIOLATIONS = {
     "error missing key": setter(("error",), {"code": "x", "message": "m", "batch_id": None, "finding_ids": []}),
     "error batch id bad": setter(("error",), {"code": "x", "message": "m", "batch_id": "B1", "finding_ids": [], "remedy": "r"}),
     "error id hostile": setter(("error",), {"code": "x", "message": "m", "batch_id": None, "finding_ids": ["S-١"], "remedy": "r"}),
-    "error message with a bidi control": setter(("error",), {"code": "x", "message": "a‮b", "batch_id": None, "finding_ids": [], "remedy": "r"}),
+    "error message with a bidi control": setter(("error",), {"code": "x", "message": "a" + RIGHT_TO_LEFT_OVERRIDE + "b", "batch_id": None, "finding_ids": [], "remedy": "r"}),
 }
 
 
@@ -2364,11 +2616,11 @@ def test_step_10_judges_the_text_that_is_left_after_step_9s_cut():
     the kept text rejects the part. Run in the other order, the first would reject a part that RR2 says
     to cut.
     """
-    beyond = "a" * 400 + "‮" + "b" * 50
+    beyond = "a" * 400 + RIGHT_TO_LEFT_OVERRIDE + "b" * 50
     result = classify(with_text(SCORER, ("rationale", "cvss"), beyond), ids=("S-1",))
     assert result.state == "done"
     assert result.part["items"][0]["rationale"]["cvss"] == "a" * 400
-    inside = "a" * 399 + "‮" + "b" * 50
+    inside = "a" * 399 + RIGHT_TO_LEFT_OVERRIDE + "b" * 50
     assert classify(with_text(SCORER, ("rationale", "cvss"), inside), ids=("S-1",)).state == "invalid"
 
 
@@ -2800,15 +3052,16 @@ def test_closed_string_is_the_published_name_and_the_old_private_name_still_work
 @pytest.mark.parametrize("value,low,high", [
     (None, 0, 500), (7, 0, 500), (b"x", 0, 500), (["x"], 0, 500), ("x" * 501, 0, 500), ("", 1, 500), ("a", 2, 500),
     ("x" * 16385, 0, None), ("a\x00b", 0, 500), ("a\x1fb", 0, 500), ("a\rb", 0, 500), ("a\x7fb", 0, 500), ("a\x85b", 0, 500),
-    ("a b", 0, 500), ("a b", 0, 500), ("a‎b", 0, 500), ("a‏b", 0, 500), ("a؜b", 0, 500),
-    ("a‮b", 0, 500), ("a⁦b", 0, 500), ("a⁩b", 0, 500),
-])
+] + [("a" + chr(code) + "b", 0, 500) for code in (
+    0x2028, 0x2029, 0x200E, 0x200F, 0x061C, 0x202E, 0x2066, 0x2069,  # a separator or a bidi control
+    0xE0001, 0xE0041, 0xE007F,  # a tag character (SA-7): the language tag, a tag letter and the cancel tag
+)])
 def test_closed_string_rejects_what_the_contract_forbids_and_never_echoes_the_value(value, low, high):
     with pytest.raises(_api("PartError")) as excinfo:
         _api("closed_string")(value, "--detail", low, high)
     assert excinfo.value.kind == "invalid"
     assert "--detail" in excinfo.value.detail
-    assert "‮" not in excinfo.value.detail and "x" * 20 not in excinfo.value.detail
+    assert RIGHT_TO_LEFT_OVERRIDE not in excinfo.value.detail and "x" * 20 not in excinfo.value.detail
 
 
 DECLARED_PATHS = [

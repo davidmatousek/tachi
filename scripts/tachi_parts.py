@@ -44,8 +44,9 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
 
 **I/O helpers and D3's layout (T013, slice 1):**
 
-* ``atomic_write(path, data)``: a temp file in the target's directory, then ``os.replace``. The file gets the
-  mode an ordinary write would (``0666 & ~umask``), and ``str`` is written as UTF-8 with no newline translation.
+* ``atomic_write(path, data)``: a temp file in the target's directory, then ``os.replace``. A regular file that it
+  replaces keeps its permission bits (SA-4); a new file gets the mode an ordinary write would (``0666 & ~umask``,
+  the umask read once at import). ``str`` is written as UTF-8 with no newline translation.
 * ``sha256_hex(data)``; ``file_digest(path)``, lowercase hex with no prefix, the form of ``plan_digest`` and of
   the plan's ``sha256`` fields; ``input_digest(obj)``, ``sha256:`` and the hex digest of ``obj``'s canonical JSON
   (sorted keys, no spaces, ASCII), the form of the stamp's and the stage record's ``input_digest``.
@@ -190,7 +191,8 @@ def path_problem(value: object, allow_absolute: bool = False) -> Optional[str]:
 
     The checks run in this order, and the first failure names the problem:
     ``type``, ``empty``, ``encoding``, ``too-long`` (over ``PATH_MAX_BYTES`` bytes of UTF-8),
-    ``control-char`` (any Cc character), ``backslash``, ``backtick``, ``leading-slash``
+    ``control-char`` (any Cc character, and any character that ``forbidden_character`` refuses: a line or paragraph
+    separator, a bidi control or a tag character, SA-8), ``backslash``, ``backtick``, ``leading-slash``
     (unless ``allow_absolute``), ``drive-letter``, ``scheme``, ``parent-reference`` (a ``..``
     component) and ``empty`` again when no component is left after dropping ``.`` and empty ones.
 
@@ -209,7 +211,10 @@ def path_problem(value: object, allow_absolute: bool = False) -> Optional[str]:
         return "encoding"
     if size > PATH_MAX_BYTES:
         return "too-long"
-    if any(unicodedata.category(ch) == "Cc" for ch in value):
+    # Two definitions of an unsafe character agree here: a path is refused for any Cc character (a tab and a newline
+    # included, which prose may hold) and for each one step 10 forbids, so no path holds a character that a part's text
+    # may not (SA-8). A lone surrogate was refused above as "encoding".
+    if any(unicodedata.category(ch) == "Cc" for ch in value) or forbidden_character(value) is not None:
         return "control-char"
     if "\\" in value:
         return "backslash"
@@ -874,22 +879,37 @@ class _ItemState(object):
 
 
 _CVSS_VECTOR = re.compile(r"CVSS:3\.1/AV:[NALP]/AC:[LH]/PR:[NLH]/UI:[NR]/S:[UC]/C:[NLH]/I:[NLH]/A:[NLH]", re.ASCII)
-# Cc other than tab and newline, then U+2028, U+2029, U+200E, U+200F, U+061C, U+202A-U+202E and U+2066-U+2069, then a
-# lone surrogate, U+D800-U+DFFF, written as an escape here (step 10; the surrogate is ADR-050 D3's, ruled at W3).
-_FORBIDDEN_CHARACTERS = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f  ‎‏؜‪-‮⁦-⁩\ud800-\udfff]")
+# Step 10's set: Cc other than tab and newline, the separators U+2028 and U+2029, the bidi controls U+200E, U+200F,
+# U+061C, U+202A-U+202E and U+2066-U+2069, a lone surrogate (U+D800-U+DFFF, ADR-050 D3 as ruled at W3) and the Unicode
+# tag block (U+E0000-U+E007F, SA-7). Each is written as an escape: a bidi control or a separator typed into this line
+# would reorder or split what a reviewer reads (Trojan Source, CVE-2021-42574), and the line defines the very set.
+_FORBIDDEN_CHARACTERS = re.compile(
+    "[\x00-\x08\x0b-\x1f\x7f-\x9f"  # C0, DEL and C1 but not tab and newline
+    "\u2028\u2029"  # the line and paragraph separators
+    "\u200e\u200f\u061c\u202a-\u202e\u2066-\u2069"  # the bidi controls
+    "\ud800-\udfff"  # a lone surrogate
+    "\U000e0000-\U000e007f]"  # the Unicode tag block
+)
 
 
 def forbidden_character(text: str) -> Optional[str]:
     """The first character of ``text`` that D3's step 10 forbids, or ``None`` (P0-4). ``text`` must be a ``str``.
 
     The set is the contract's: a control character other than tab and newline (C0, DEL and C1), the separators
-    U+2028 and U+2029, the bidi controls U+200E, U+200F, U+061C, U+202A to U+202E and U+2066 to U+2069, and a lone
-    surrogate, U+D800 to U+DFFF (ADR-050 D3, ruled at W3). Only a JSON escape can spell a surrogate, and no
-    UTF-8 file can carry one, so a part never reaches step 10 with one: ``load_json`` refuses it first, as
-    ``unparseable``. Step 10 uses this on every string of a part. A renderer calls it where it takes a value from an
-    input that isn't a part (``threats.md``, a baseline file, ``threats.sarif``), so the character set has one
-    definition, and a surrogate that such an input's JSON escape spells is refused where it is taken, before a write
-    can fail on it. The length limit is step 10's too, but it isn't part of this predicate.
+    U+2028 and U+2029, the bidi controls U+200E, U+200F, U+061C, U+202A to U+202E and U+2066 to U+2069, a lone
+    surrogate, U+D800 to U+DFFF (ADR-050 D3, ruled at W3), and a Unicode tag character, U+E0000 to U+E007F
+    (SA-7: a tag shows as nothing, yet each one stands for an ASCII character, so it can carry text past a reader
+    to a later agent). The variation selectors and the joiners are not in it.
+
+    Only a JSON escape can spell a lone surrogate, and no UTF-8 file can carry one, so a part never reaches step 10
+    with one: ``load_json`` refuses it first, as ``unparseable``. A tag character is another matter: it is a valid
+    scalar value, so a part can hold it as UTF-8 or as an escaped surrogate pair, and step 10 refuses it either way.
+
+    Step 10 uses this on every string of a part. A renderer calls it where it takes a value from an input that
+    isn't a part (``threats.md``, a baseline file, ``threats.sarif``), so the character set has one definition,
+    and a surrogate that such an input's JSON escape spells is refused where it is taken, before a write can fail
+    on it. ``path_problem`` asks it too, so a path holds no character that a part's text may not. The length limit
+    is step 10's too, but it isn't part of this predicate.
     """
     found = _FORBIDDEN_CHARACTERS.search(text)
     return found.group(0) if found is not None else None
@@ -912,7 +932,7 @@ def _int(value: Any, low: int, high: Optional[int], what: str) -> int:
 
 
 def _check_characters(text: str, what: str) -> None:
-    """Step 10: at most 16,384 characters, and none of the forbidden control, bidi or separator characters."""
+    """Step 10: at most 16,384 characters, and none of the characters ``forbidden_character`` names."""
     if len(text) > MAX_STRING_CHARS or forbidden_character(text) is not None:
         _fail("%s is over %d characters or holds a character the contract forbids" % (what, MAX_STRING_CHARS))
 
@@ -921,8 +941,9 @@ def closed_string(value: Any, what: str, low: int = 1, high: Optional[int] = Non
     """The one check for a closed-value string (ADR-050 D3 steps 6 and 10). Returns ``value``, or raises.
 
     ``value`` must be text of ``low`` to ``high`` characters (no upper limit but the 16,384 of step 10 when ``high``
-    is ``None``), with no control character other than tab and newline and none of the bidi or separator characters
-    that D3 forbids. A closed value is checked and never cut, so a string over its range is rejected, not shortened.
+    is ``None``), with no control character other than tab and newline and none of the bidi, separator, surrogate
+    or tag characters that D3 forbids. A closed value is checked and never cut, so a string over its range is
+    rejected, not shortened.
     Raises ``PartError("invalid")`` whose detail names ``what`` and never echoes ``value``.
     """
     if not isinstance(value, str) or len(value) < low or (high is not None and len(value) > high):
@@ -1537,13 +1558,47 @@ def input_digest(obj: Any) -> str:
     return "sha256:" + sha256_hex(text.encode("utf-8"))
 
 
+def _read_umask() -> int:
+    """The process umask. Python reads it only by setting it to 0 and putting it back, so this runs once (below)."""
+    mask = os.umask(0)
+    os.umask(mask)
+    return mask
+
+
+# A new file's mode needs the umask, and reading it leaves the process's umask at 0 for the moment between the two
+# calls in ``_read_umask``, which a thread or a signal handler could observe. So it is read once, here at import,
+# while the process is still starting up, and never in ``atomic_write`` (S7-3).
+_UMASK = _read_umask()
+
+
+def _mode_for(target: str) -> int:
+    """The permission bits a file written in place of ``target`` gets (SA-4).
+
+    A regular file at ``target`` hands over its own ``rwx`` bits for user, group and other, so a replace does not undo
+    an adopter's ``chmod 600``. Anything else, such as nothing at all, a symlink (the replace removes the link and its
+    own mode says nothing about the new file) or a device, gets what an ordinary write would give: ``0666 & ~umask``.
+    """
+    try:
+        old = os.lstat(target)
+    except OSError:
+        old = None  # nothing is there yet, or nothing can be read: the replace itself says which
+    if old is not None and stat.S_ISREG(old.st_mode):
+        return stat.S_IMODE(old.st_mode) & 0o777
+    return 0o666 & ~_UMASK
+
+
 def atomic_write(path: object, data: Any) -> None:
     """Write ``data`` to ``path`` all at once: a temp file in the same directory, then ``os.replace``.
 
-    ``str`` is written as UTF-8 with no newline translation, ``bytes`` as they are. The file gets the mode an
-    ordinary write would (``0666 & ~umask``), not the temp file's ``0600``. A symlink at ``path`` is replaced,
-    never followed. If anything fails, the temp file is removed and the error propagates, so a failed write
-    leaves the old file and no stray file behind.
+    ``str`` is written as UTF-8 with no newline translation, ``bytes`` as they are. A regular file that is replaced
+    keeps its permission bits, so an adopter's ``chmod 600`` survives the next run (SA-4). A file that is new, a
+    symlink or anything else that is not a regular file gets the mode an ordinary write would (``0666 & ~umask``,
+    the umask as it was when this module was imported), not the temp file's ``0600``. The mode is set on the open
+    descriptor, never on the temp file's path (S7-3). Ownership is not kept, because keeping it takes privilege: the
+    new file belongs to the user who writes it. The old file's setuid, setgid and sticky bits, ACLs, extended
+    attributes and hard links are not kept either. A symlink at ``path`` is replaced, never followed. If anything
+    fails, the temp file is removed and the error propagates, so a failed write leaves the old file and no stray
+    file behind.
     """
     if isinstance(data, str):
         payload = data.encode("utf-8")
@@ -1557,10 +1612,12 @@ def atomic_write(path: object, data: Any) -> None:
         with os.fdopen(descriptor, "wb") as handle:
             handle.write(payload)
             handle.flush()
+            mode = _mode_for(target)
+            if hasattr(os, "fchmod"):
+                os.fchmod(handle.fileno(), mode)
+            else:  # Windows before Python 3.13: a mode there is the read-only flag, and a symlink swap is no hazard
+                os.chmod(temporary, mode)
             os.fsync(handle.fileno())
-        mask = os.umask(0)
-        os.umask(mask)
-        os.chmod(temporary, 0o666 & ~mask)
         os.replace(temporary, target)
     except BaseException:
         try:
