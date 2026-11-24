@@ -72,7 +72,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `tachi_version` | `X.Y.Z` |
 | `started_utc`, `finished_utc` | ISO 8601 |
 | `input_digest` | `sha256:<hex>` |
-| `counts` | non-negative integers, under the stage's closed keys: `units`, `open`, `resolved`, `rendered`, `parse_errors`, `narrative_fallbacks`, `truncations`, plus D2's and D9's flag counts by kind, `retagged` and `reused-id` included |
+| `counts` | non-negative integers, under the stage's closed keys: `units`, `open`, `resolved`, `rendered`, `parse_errors`, `narrative_fallbacks`, `truncations`, `cell_overwrites` (controls only, ruled at W3), plus D2's and D9's flag counts by kind, `retagged` and `reused-id` included |
 | `batches` | `{planned, dispatched, done, retried, split, exhausted}` |
 | `overflow_events` | `[{batch_id, attempt, kind: missing \| overflow-reported \| unparseable \| invalid}]` |
 | `retries` | `[{batch_id, attempt, cause, children}]` |
@@ -149,6 +149,11 @@ Each reading is one the sources left open. `tachi_parts` (T012, T013), `tachi-st
 **Values.**
 - **`evidence[].file` and `line` are closed values.** Each is checked against its pattern and range: the 1–300 range and the relative-path rule for `file`, and an integer of at least 1 for `line`. A closed value is never cut, so a `file` over 300 characters rejects the part.
 - **A `file` is checked, never rewritten.** `./a//b.py` is kept as written in the validated part. The resolver canonicalizes it at render time (ADR-050 D7), and both rendered files use that canonical spelling, so `.md` and `.sarif` agree. Like all agent text, it is escaped on output.
+- **A `file` that the resolver refuses at render time (ruled at W3, 2026-11-23, from T052 and T056)** is flagged, never refused. The resolver refuses a `file` that is missing, a link or not a regular file.
+  - **Why.** A carried UNCHANGED result's evidence is copied verbatim, so after a file moves a refusal would fail every later run, and no re-run could clear it.
+  - **Where the entry goes.** It stays in §3, in `control-evidence` and in §7 with its `file` as written, escaped, because it has no canonical spelling. `relatedLocations` leaves it out, and a result left with none has no `relatedLocations` key.
+  - **The record.** The finding carries `input:evidence.file:unresolved` once, and §7 names each failed entry with the resolver's check. The stage record warns `evidence-file-unresolved`, with up to 10 IDs, so the run exits 5.
+  - **The judgment.** The control status and every computed value follow the part.
 - **The validated part carries canonical finding IDs** (ADR-050 D3). `findingId/v1`, and any other place that prints Section 7's spelling, takes it from the reference set.
 - **The total order on finding IDs (S-2)** is defined once in code, `tachi_parts`, and once in a shared reference, `part-file-contract-shared.md`'s "Identifiers". Every other file cites one of the two.
 - **`atomic_write`** gives the replaced file the mode an ordinary write would, `0666 & ~umask`, never the temporary file's `0600`.
@@ -175,7 +180,11 @@ Each reading is one the sources left open. `tachi_parts` (T012, T013), `tachi-st
 - **`preimage`** has exactly one key per canonical output in the stage's closed set (D4), each mapped to a SHA-256 or `null`.
 - **`STAGE_AGENTS`** holds only PR 1's two stages, `risk-score` and `compensating-controls`, and PR 1 rejects every other stage. PR 2 adds its stages with the code that handles them.
 - **A batch's `parent`** is the batch its ID derives from (`B003-1` → `B003`), and `null` for a planned batch.
-- **The stage record's `counts` keys** are the seven base counts plus one per D9 flag kind: `corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `resolved`, `retagged`, `reused-id` and `input`. `resolved` is both the base count and the flag kind, because the flag marks exactly the RESOLVED rows.
+- **The stage record's `counts` keys** are the base counts plus one per D9 flag kind: `corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `resolved`, `retagged`, `reused-id` and `input`. `resolved` is both the base count and the flag kind, because the flag marks exactly the RESOLVED rows.
+  - **`cell_overwrites` (ruled at W3, 2026-11-23, from T056 and T059)** is the eighth base count: the computed controls §2 cells, over every row, that held anything but their own slot token (ADR-050 D2). `CF` isn't counted.
+    - The controls renderer always writes it, `0` included. The scorer never does, because its agent writes no table cell.
+    - It raises no flag, because a computed cell is right by construction. It isn't added to `corrected`, which counts `corrected` flags, and the controls file raises none.
+    - One commit lands it: `tachi_parts.COUNT_KEYS`, `test_tachi_parts.py`'s key set, the shared reference's §5 `counts` row and `test_contract_text_374.py`'s key count.
 - **The layout path builders** live in `tachi_parts`, as the one copy that `tachi-stage.py` and both renderers call. They build every D3 path only from `--out`, the stage and pattern-checked IDs, and they never take a path read from a file, except the plan's digest-checked `inputs`.
 
 **The batch plan (§4), as T017's tests pin it for T018.**

@@ -42,6 +42,8 @@
     - On a primary with more peers, the first 10 are named, then ` and N more` follows, where N counts the unnamed peers: `…, T-11, I-12 and 3 more.`
     - Only the file's members are named, so no RESOLVED ID appears.
 - **`relatedLocations`:** controls file only, code evidence, omitted when empty.
+  - A resolved evidence `file` takes the resolver's canonical spelling, in `relatedLocations`, `control-evidence` and §3 alike.
+  - An entry whose `file` the resolver refuses at render time is left out of `relatedLocations`, flagged `input:evidence.file:unresolved`. `control-evidence` keeps it with the `file` as written (`part-files.md`; ruled at W3, 2026-11-23).
 - **Properties:**
   - the correlation keys appear on group members only;
   - `threats.sarif` adds `baseline-run-id`, moved from `partialFingerprints` with its value unchanged;
@@ -51,6 +53,8 @@
     - **Without that file:** under D8's fallback, the member's `details.layer` (P0-3), else `Unclassified`. With no readable `threats.md`, it is `Unclassified`, under the stage record's reason for that file.
     - **Its place** is after `residual-risk`, as Phase 6c lists it. The 1.1 controls template (T060) fixes the full order and shows the key. §2's MAESTRO Layer cell is checked against it (`module-signatures.md`, the controls `matrix_row`);
   - no value names a RESOLVED finding.
+    - **The self-check reads** `findingId/v1` and every property, except copied text: `message.text` and `message.markdown`, the scorer's `risk-owner`, and the controls file's `control-evidence`, `recommendation` and `relatedLocations` messages.
+    - An ID in copied text, such as a snippet's `# mitigates T-3`, is a mention, not a reference (ADR-050 D8; ruled at W3, 2026-11-23, from T053, which settles P0-10).
 - **Key order:** as shown, in two-space JSON (`risk-scorer.md:544`).
 - **Readings ruled at W1 (2026-11-22, T023), from T015 and T016:**
   - **The rule map.**

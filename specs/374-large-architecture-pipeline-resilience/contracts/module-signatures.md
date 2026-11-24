@@ -235,6 +235,20 @@ def check_carried_vector(row: BaselineRow, *, tags: Sequence[str]) -> VectorChec
     - `input:<field>:not-in-form`, with `component`, `threat`, `delta_status` or `risk_level` (added at W2, from T032: `tachi_parsers.FORM_LACKS_FLAG` and `FORM_LACKS_CAUSE`). Section 7's form, or D8's SARIF fallback for `delta_status`, has no place for the value. The flag stays whether or not the baseline supplied the value (R-31, below);
     - `resolved`, alone, with no field or cause.
   - **No open string is left.** A new string needs an amendment here. The controls renderer (W3) uses the same `input:<field>:not-in-form` strings for its reference-set values.
+- **The controls renderer's flag vocabulary, closed** (ruled at W3, 2026-11-23, from T056 and T059). The renderer (T035, T053, T059) and the goldens (T034, T056) use exactly these strings, in `integrity-flags` and §7:
+  - **The row checks** (ADR-050 D2): `input:control_status:sources-disagree`, `input:control_category:sources-disagree`, `input:component:sources-disagree` and `input:maestro_layer:sources-disagree`. The field is the value's schema name (`schemas/compensating-controls.yaml` for the first two, `schemas/finding.yaml` for the others). The cause is the scorer's for two sources of one value that disagree, where the structured one is used. §2 keeps the agent's cell (the controls `matrix_row`, below);
+  - **an evidence `file` that the resolver refuses at render time:** `input:evidence.file:unresolved`, once per finding (`part-files.md`);
+  - `input:<field>:narrative-fallback` over the controls narrative fields (`evidence.assessment.<dimension>`), and `input:<field>:truncated` over those and the four evidence-class fields (`part-files.md`);
+  - `input:<field>:not-in-form`, with `component`, `threat`, `delta_status` or `risk_level`, as above;
+  - `reused-id:finding_id:baseline`, carried from the scored input (ruling B).
+
+  A finding carries each string at most once. `input:component:not-in-form` and `input:component:sources-disagree` can stand together: the first says that the threat model's form had no Component, and the second that the part's cell disagreed with the value used.
+
+  Two outcomes raise no flag:
+  - A cleared `carried_forward` claim. An Input Issue line and the stage record's warning `carried-forward-cleared` record it, which is D2's "cleared with the reason recorded".
+  - An overwritten computed cell. It is `counts.cell_overwrites` (`part-files.md`).
+
+  A new string needs an amendment here.
 
 ### R-31: routing, peers, dates and governance (T043, T044)
 
@@ -355,11 +369,14 @@ def match_heading(pattern: str, text: str, *, outside_fences: bool = False) -> O
   - `groups` take the shape `parse_correlation_groups` returns. `group_id` comes from the `correlation-group` property, and is `None` where the file names none.
   - `scores` is filled only with `with_scores=True`, for `risk-scores.sarif`: `{id: {"composite": Decimal or None, "band": str or None}}`, read across the property names the shipped files use.
   - **`details` (ruled at the P0 checkpoint, 2026-11-23, P0-3; amended at W3 from FX0's reader)** is present only with `with_details=True`. The default return has no `details` key, so its dict is what it was, and a caller that forgets the flag gets a `KeyError`, never a silent blank. It is `{id: {...}}`, one entry per member that has its own result, in either ID form. The first kept result of an ID wins, and a member that only a legacy peer reference names has no entry, so a caller iterates `members` and looks each one up with `details.get(id, {})`.
-    - Each entry holds D8's reading of that result: `component` (`logicalLocations[0].name`, else `properties.component`), `threat` (`message.text`), `mitigation` (`message.markdown`), `risk_level` (`properties.risk_level`, else `security-severity`), `layer` (`maestro-layer`) and `kind` (`logicalLocations[0].kind`, the logical location's kind as written, such as `process` or `data-store`).
+    - Each entry holds D8's reading of that result: `component` (the logical location's `name`, else `properties.component`), `threat` (`message.text`), `mitigation` (`message.markdown`), `risk_level` (`properties.risk_level`, else `properties.severity`, else `security-severity`), `layer` (`maestro-layer`) and `kind` (the logical location's `kind` as written, such as `process` or `data-store`).
+      - **The logical location** is `locations[0].logicalLocations[0]`, else `locations[0].logicalLocation`, the form that tachi's older scorer and controls SARIF write.
+      - **Why both amendments (W3, 2026-11-23, from FX0-3 and R3a).** `generate-threats-sarif.py` writes Section 7's risk level as `severity`, and `agentic-app`'s modern `threats.sarif` carries no other level. `agentic-app`'s and `mobile-banking-app`'s shipped `risk-scores.sarif`, the controls fallback's input, carry only the singular location. Without them, those members' units and rows lost the level or the component.
+    - **The kind, read back (confirmed at W3).** A renderer reads `kind` through the closed spellings `external-entity`, `process`, `data` and `data-store`, where the last two both name a Data Store. It writes its own map's kind, so a data store is `data` from either input form. Any other value is `process`, the default for a component with no §1 type. No key holds the kind (ADR-050 D7).
     - A value is the string as written: unstripped, unescaped and unchecked, so the renderer's P0-4 intake sees it. It is `None` when the result holds none, and a blank string or a non-string counts as none.
     - An absent mitigation is `None`. The renderer writes `""` for it as `message.markdown`, which is always written (P0-8).
-    - The planner's fallback units (R1b, R3a) and the renderer's fallback reference set (R1) both read it, so neither reads a result a second way. A unit row takes `component`, `threat`, `risk_level` and `mitigation`, and leaves out one that is `None`, as `_unit_row` leaves out what a finding lacks.
-    - **The risk label (confirmed at W3).** Every reader of `details` turns `risk_level` into the finding's label the same way, so a planner's unit and the renderer's row agree. A string that `tachi_parsers.parse_score` doesn't read as a finite number is kept as written, such as the band word `High` or `Note`. A score is clamped to 0.0–10.0, rounded with `tachi_scoring.q1` and banded with `tachi_scoring.band`, as the renderer's `_risk_level` and `_grid` do. `None` gives no label: the unit leaves the key out, and the renderer writes `—`. `tachi-stage.py` keeps one local copy for both stages' fallbacks, and a test runs the planner's and the renderer's labels over the shipped samples and the edges `8.95`, `6.95`, `-1`, `10.5`, `NaN` and `High`.
+    - The planner's fallback units (R1b, R3a) and the renderer's fallback reference set (R1) both read it, so neither reads a result a second way. So does the controls renderer (R2, ruled at W3). It reads itself only what an entry lacks: the zone, from the same logical location's `fullyQualifiedName`, and `reused-id`, from `score-flags`. A unit row takes `component`, `threat`, `risk_level` and `mitigation`, and leaves out one that is `None`, as `_unit_row` leaves out what a finding lacks.
+    - **The risk label (confirmed at W3).** Every reader of `details` turns `risk_level` into the finding's label the same way, so a planner's unit and the renderer's row agree. A string that `tachi_parsers.parse_score` doesn't read as a finite number is kept as written, such as the band word `High` or `Note`. A score is clamped to 0.0–10.0, rounded with `tachi_scoring.q1` and banded with `tachi_scoring.band`, as the renderer's `_risk_level` and `_grid` do. Its four bands make a score under 1.0 `Low`, never `Note`, while a `Note` word is kept as written (confirmed at W3, FX0-3's decision 1). `None` gives no label: the unit leaves the key out, and the renderer writes `—`. `tachi-stage.py` keeps one local copy for both stages' fallbacks, and a test runs the planner's and the renderer's labels over the shipped samples and the edges `8.95`, `6.95`, `-1`, `10.5`, `NaN` and `High`.
   - **A group whose `group_id` is `None` (ruled at the P0 checkpoint, P0-3)** still routes its peers (D9), but carries no `correlation-*` property and no ruling-C sentence: the renderer passes only named groups to `sarif_common.correlation_assignments`, and its stage record warns `correlation-group-unnamed`, with the count (ADR-050 D8).
   - Results whose `baselineState` or `baseline-state` property is `absent` are dropped, and no hash is ever read.
   - It raises `ValueError` on JSON that doesn't parse and on an empty extraction, so the stage stops before dispatch (KB 22).
@@ -393,7 +410,7 @@ def resolve_explicit(candidate: object, *, root: Optional[str] = None, fs: Any =
 - **The planner** records the warning as the plan's `architecture_warning` (`part-files.md` §4). The renderer lists it ahead of its own resolver's warnings.
 - **Order.** It lands before R1b's planner change that calls it.
 
-## `scripts/tachi_parts.py`: one W3 addition (lane FX0, ruled at the P0 checkpoint, 2026-11-23)
+## `scripts/tachi_parts.py`: W3 additions (lane FX0; the first ruled at the P0 checkpoint, the others at W3's rulings, 2026-11-23)
 
 ```python
 def forbidden_character(text: str) -> Optional[str]: ...
@@ -401,6 +418,11 @@ def forbidden_character(text: str) -> Optional[str]: ...
 
 - **Published** by FX0's first slice, with this signature, and `tachi_parts`' step 10 now calls it.
 - **What it is.** The first character of `text` in D3's step-10 set, or `None`: a control character other than tab and newline (C0, DEL and C1), U+2028, U+2029, and the bidi controls U+200E, U+200F, U+061C, U+202A–U+202E and U+2066–U+2069. Step 10's length limit isn't part of it.
+- **A lone surrogate (amended at W3, 2026-11-23, from R3a's planner).** It also returns a surrogate code point, U+D800–U+DFFF (Unicode category `Cs`), which only a JSON escape can spell and no UTF-8 file can carry.
+  - A part never reaches step 10 with one, because `load_json` refuses it first ("a string holds a surrogate code point"), so no part's outcome changes. The renderers' intake and backstop refuse it with their usual exits, 2 and 4 (ADR-050 D3).
+  - The test that checks the set over the whole Basic Multilingual Plane adds category `Cs`, which is 2,048 code points.
+  - `tachi-stage.py plan` keeps its own codec test, for the values it copies from a JSON input.
+- **`COUNT_KEYS` gains `cell_overwrites`** (ruled at W3, 2026-11-23, from T056 and T059), the eighth base count (`part-files.md`). One commit adds it in four places: here, in `test_tachi_parts.py`'s key set, in the shared reference's §5 `counts` row and in `test_contract_text_374.py`'s key count (15 to 16).
 - **Who calls it (P0-4, ADR-050 D3).** Step 10 itself, on every string of a part. A renderer, at the point it takes a value from an input that isn't a part, refusing the value with exit 2. `_check_staged`'s whole-file backstop, on the staged markdown and every decoded SARIF string, with exit 4. The controls renderer and PR 2's writers call it too, so the set has one definition.
 
 ## The persisted-inputs format: `risk-scores.md` §6 and `compensating-controls.md` §7
@@ -441,5 +463,8 @@ Both sections use one table, so the writers (R1, R2), the readers (R1b, P) and t
   - **Control Category:** the display name of `control_category`, as `control-categories.md` heads it: `Authentication`, `Input Validation`, `Rate Limiting`, `Encryption`, `Logging/Audit`, `CSRF Protection`, `CSP/Security Headers` or `Access Control`. The slug itself, such as `input-validation`, names the same value, so it isn't flagged.
   - **The four computed cells:** exactly `{{score:inherent}}`, `{{band:inherent}}`, `{{score:residual}}` and `{{band:residual}}`.
   - A mismatch in Component, MAESTRO Layer, Control Status or Control Category is flagged, never rejected, and the SARIF and every total follow the structured value (D2).
-- **`CF` is the renderer's cell, and it isn't counted.** The renderer fills it by column position from the accepted `carried_forward` (`CF` or `—`), and never counts it as an overwrite. The judgment is `carried_forward` itself, and the renderer already records a cleared one with its reason (D2). So a row copied from a run in which the finding was fresh holds `—` and shows `CF`, with no overwrite. The overwrite count covers only the four computed cells.
+    - **Ruled at W3 (2026-11-23, from T056 and T059).** The flag is `input:<field>:sources-disagree` (the controls vocabulary, above).
+    - §2 shows the cell as the agent wrote it, escaped, because R-34 keeps §2 model-authored in PR 1 and FR-K8.1's follow-up turns the check into a fill.
+    - §3 to §6 and the from-disk checks follow the structured value, as the SARIF does.
+- **`CF` is the renderer's cell, and it isn't counted.** The renderer fills it by column position from the accepted `carried_forward` (`CF` or `—`), and never counts it as an overwrite. The judgment is `carried_forward` itself, and the renderer already records a cleared one with its reason (D2). So a row copied from a run in which the finding was fresh holds `—` and shows `CF`, with no overwrite. The overwrite count covers only the four computed cells. It is the stage record's `counts.cell_overwrites`, ruled at W3 (`part-files.md`).
 - **What §7 persists:** the row in this form, rebuilt from its 11 cells. The four computed cells hold their slot tokens, never the numbers §2 shows, and `CF` holds the value §2 shows. Every other cell is kept as the part wrote it. So a carried row is copied, read and checked with no overwrite (T056), whatever its first run put in those cells.
