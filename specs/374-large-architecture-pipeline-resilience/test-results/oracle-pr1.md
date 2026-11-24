@@ -1,6 +1,6 @@
 # T066: the small-run oracle over the shipped examples (NFR-1), PR 1's W4
 
-> **Two runs are recorded here.** The first run is dated 2026-11-23, at commit `f43440b`: everything from the first heading to section 10 below. The **W4 re-run** is dated 2026-11-24, at commit `d8cf928`, after T146's fixes and the PM's W4 rulings: the last section, W4-1 to W4-10 (W4-10, the same day, applies the PM's re-run rulings R-H, R-I and R-J to the same renders). The first run's sections are kept unchanged as the dated record.
+> **Two runs and a confirmation are recorded here.** The first run is dated 2026-11-23, at commit `f43440b`: everything from the first heading to section 10 below. The **W4 re-run** is dated 2026-11-24, at commit `d8cf928`, after T146's fixes and the PM's W4 rulings: the section after it, W4-1 to W4-10 (W4-10, the same day, applies the PM's re-run rulings R-H, R-I and R-J to the same renders). The **W6 merge-candidate confirmation** is dated 2026-11-24, at commit `ad64a72`: the last section, W6-1 to W6-7. The first run's sections are kept unchanged as the dated record.
 
 **Date:** 2026-11-23. **Commit under test:** `f43440b`, PR 1's pushed W3 tip, so `tachi_parts.VERSION` is `4.48.4`. **Python:** 3.11.13. **Where it ran:** scratch clones and scratch work trees only, never a tracked tree (H1). **Method:** T058's, reused: the code ran from a clone of the committed tip, and every render went to a separate work tree that mirrors the examples' relative paths, so `examples/**` was never written. **Contract reading:** PM W3 rulings 2, 2b and 2c, and spec NFR-1's W3 errata (six value classes, the contract reading of "every field").
 
@@ -455,3 +455,152 @@ For all ten, the denial-of-service range (6.5 to 8.5) is the only one of the eig
 **Where the oracle isn't independent, for these tests.** R-H: nowhere; the cells, the part files and Section 7's status come from the oracle's own readers. R-I: the CVSS chain, the composite and band formulas, the `level` map and the fresh-governance rule are the shipped modules' own, as the signed class 5's follow rules use them (each is pinned by its own tests). The ranges, the prefix map and Section 7's status come from the oracle's own readers. R-J: no shared piece beyond the detection layer that reads §3's copies for every class; the rows, the weights (0.35, 0.30, 0.15, 0.20), the half-up rounding and the bands are the oracle's own.
 
 **Re-running.** After W4-9's step 3, apply the amended tests (R-H, R-I and R-J) and re-run the harness's attribution and its report scripts over the same renders. No render is needed.
+
+
+---
+
+## W6 merge-candidate confirmation (2026-11-24, ad64a72)
+
+**Result: clean. On the merge candidate, Run A leaves 0 diffs unattributed, and Run B returns 0 value diffs and 0 aggregated entries to the PM. No value moved since the W4 re-run at `d8cf928`: all 28 rendered files are byte-identical to the re-run's, and so is every attribution record. P1-6: the eighth class's accepted set, derived with D2's held condition by the oracle's own readers, is 81 (R-H: 81), and it equals the harness's claims.**
+
+**Commit under test:** `ad64a72`, the merge candidate: PR 1 after W6's P1 batch (`843ea01`) and the PM's W6 erratum on R-H, so `tachi_parts.VERSION` is still `4.48.4`. **Python:** 3.11.13, the interpreter that the harness's `env.sh` names. **Where it ran:** two fresh scratch clones of the commit (one for the renders and the attribution, one for the taxa pin) and scratch work trees for every render, never a tracked tree (H1). **Contract reading:** the W4 re-run's (the eleven classes with R-A to R-J, the example-defect table closed at five groups, and the gating rule: Run A gates, Run B gates the fifth class, and each other Run B diff takes the disposition of the identical Run A diff), plus the PM's W6 erratum under R-H (P1-6) and ruling Q3(a). **Why this run:** plan.md's Verification 7 holds the gate on the commit that PR 1 merges, so before W6 merges the oracle runs on the merge candidate, or its record shows that nothing its renders read or run has changed in a way that reaches the shipped examples. This record does both: the oracle ran on the candidate (W6-1 and W6-2), and W6-3 shows what each change since the re-run did.
+
+| Question | Result |
+|---|---|
+| Examples and runs | 5 examples, 20 files, as at W4. **Run A** (the gate) over all five. **Run B** (no baseline) over the four whose shipped files can carry the judgment. The ten Run A renders finished with the re-run's exit codes: 0 for agentic-app's two stages, 5 for the other eight. Run B's four scorer renders exit 5 |
+| Run A | **3,834** diffs in the eleven classes and the example table: the re-run's counts, cell for cell, with R-H's 81 read as class 8 (W6-2). **Unattributed: 0** |
+| Run B | 1,930 value diffs: class 5 takes 118 (114 alone, 4 joint with class 7), identity with a Run A diff 1,635, Run B's own groups 161, a rule's score through its results 16. **To the PM: 0 value diffs, 0 aggregated entries** |
+| A value that moved | **None.** Raw detection: the nine scenarios give 6,890 diffs, the same set as at `d8cf928` on file, scope, finding, field, shipped value and rendered value. Rendered files: 28 of 28 byte-identical, with the same permission bits. Stage records: 14 of 14 equal. All four attribution records are byte-identical. The one difference in the renderers' output is five lines of the scorer's stdout (P1-5's wording, W6-3) |
+| P1-6 | Derived with D2's held condition from the oracle's own §2 and §7 readers: **81**, equal to the harness's claims (W6-4) |
+| Uncontracted keys | No change: 53 (file kind, key) pairs, 38 distinct result-property names and the 2 rule keys (W6-5) |
+| S-12 (a) to (d) | Re-asserted on the three drift-form examples: all four hold, with the re-run's results |
+| Taxa pin | `tests/scripts/test_sarif_identity.py`, run in a scratch clone of `ad64a72`: **709 passed** (class 6's test, as at the re-run) |
+| H1 and H2 | No pytest, extractor or renderer ran in a tracked tree. Both scratch clones and the lane worktree show nothing under `examples/`; no PDF baseline or PNG moved; neither clone holds a `__pycache__` or a cache directory |
+
+### W6-1. What ran
+
+1. **Two fresh scratch clones** (`git clone --shared --no-checkout`, then a detached checkout of `ad64a72`): the first for the renders and the attribution, the second for the taxa pin, so that the first stays clean (W4-9).
+2. **The W4 re-run's harness with its three fixes**, copied into a new scratch directory and re-pointed at the new clone. The re-run's copy was not edited. The copy gained one opt-in switch in its controls driver, which adds extra `carried_forward` claims. It is unset in every gated run, and only P1-6's negative control uses it (W6-4).
+3. **Run A and Run B** as W4-9's steps 2 and 3 describe: the scorer with each example's own shipped scorer files as its baseline and then the controls stage over the rendered `risk-scores.md` (agentic-app's controls stage reads its shipped controls file as the baseline, the other four run fresh), and the scorer with no baseline.
+4. **The re-run's attribution and report steps, unchanged:** the class tests (W4-3), U-1's residual, the example-defect table, Run B's dispositions (W4-6), the R-H, R-I and R-J tests with their negative controls (W4-10), S-12 (a) to (d), and the taxa pin.
+5. **Checks written for this run** (scratch only): the raw detection diffs, the rendered files, their permission bits, the stage records and the renderers' output streams, each compared with the re-run's; P1-6's derivation and its negative control; the census behind Q3(a).
+
+### W6-2. Counts against W4-2
+
+Run A's table (21 rows: each example and file, and the total, by classes 1 to 11, E, D, J and U) equals W4-2's in every cell. One reading is applied: W4-2 was recorded before R-H, and the 81 `CF` cells that it lists as unattributed in agentic-app's `compensating-controls.md` are class 8's since W4-10. The totals:
+
+| | W4-2, as first recorded | W4-10 (R-H applied) | `ad64a72` |
+|---|---|---|---|
+| Class 1, a flagged value | 844 | 844 | 844 |
+| Class 2, D-5 | 773 | 773 | 773 |
+| Class 3, S-2's tie order | 10 | 10 | 10 |
+| Class 4, the reference set and R-A's sources | 1,438 | 1,438 | 1,438 |
+| Class 5, P0-9's bound | 0 | 0 | 0 |
+| Class 6, fixed SARIF values | 265 | 265 | 265 |
+| Class 7, D9's rounding normalization | 112 | 112 | 112 |
+| Class 8, markdown frame values | 21 | 102 | **102** (21, and the 81 `CF` cells) |
+| Class 9, a drift-form finding that S-12(b) can't supply | 2 | 2 | 2 |
+| Class 10, D8's group rules | 2 | 2 | 2 |
+| Class 11, controls text from its own §4 block | 80 | 80 | 80 |
+| Example-defect table (U-4 178, U-12 6, U-15 1, U-17 10) | 195 | 195 | 195 |
+| Dropped by a named decision (D8's placement) | 6 | 6 | 6 |
+| Joint row-order entries | 5 | 5 | 5 |
+| **Unattributed** | 81 | 0 | **0** |
+| **All** | 3,834 | 3,834 | 3,834 |
+
+The 3,834 are 3,784 value diffs and 50 row-order and §1 entries. The rest of W4-3 to W4-5 repeats:
+- **U-1's residual** is 83 (scorer SARIF 20, scorer markdown 2, controls SARIF 61), with the predicted distribution. The empty-chain values are the PM's 26 and none other: agentic-app's AGP-01 (3 values), maestro-reference's AGP-01 to AGP-03 (7) and consumer-agent-app's 16.
+- **The example-defect table** holds the same entries: U-4 178, U-12 6, U-15 1, U-17 10, and the fifth group's 7 findings (agentic-app T-6, I-6 and D-6; maestro-reference S-1, S-2, R-1 and R-2), which Run B shows. No group rises, and each entry passes both tests.
+- **The own readers** agree with the renderers on every rendered result: the MAESTRO layer on all 566 results of the ten SARIF files, and the kind and the zone on every result whose component has a source (0 disagreements). All 566 results carry the region `{"startLine": 1}`, all 44 evidence messages equal `sarif_common.EVIDENCE_MESSAGE` filled from the entry, and D8's rules applied to Section 4a match all ten SARIF files (AG-7 in maestro-reference is the one ID that Section 4a lists twice, and both renderers still report it).
+- **Every rendered file holds exactly its input's open set** (D8's N/N rule), in all 20 files.
+
+**Run B**, with no baseline:
+
+| Example | Value diffs | Class 5 | By identity | Own groups | A rule's score through its results | To the PM |
+|---|---|---|---|---|---|---|
+| agentic-app | 817 | 84 | 710 | 21 (Reachability) | 2 | 0 |
+| consumer-agent-app | 322 | 34 (30 alone, 4 joint with class 7) | 163 | 122 (class 9) | 3 | 0 |
+| mobile-banking-app | 300 | 0 | 295 | 0 | 5 | 0 |
+| maestro-reference | 491 | 0 | 467 | 18 (Reachability) | 6 | 0 |
+| **All** | **1,930** | **118** (114 alone, 4 joint) | **1,635** | **161** | **16** | **0** |
+
+Run B's 49 aggregated entries (row order and §1 counts) all take a disposition: 4 in class 5 alone, and 6 joint with another class. The ten findings of W4-10's added-case table (agentic-app T-8, R-7, R-9, AG-7, LLM-3, LLM-9, LLM-11 and LLM-12; consumer-agent-app TE-3 and TE-4) pass again with the same shipped, Run A and Run B values. R-I's follow test takes the 38 signed-text diffs and rejects 76 of 76 variants with a score nudged by 1.0. R-J's twelve controls behave as expected, and TE-4's four composite copies are joint (5 and 7).
+
+### W6-3. What changed since `d8cf928`, and what it did to the run
+
+Between `d8cf928` and `ad64a72` no file under `examples/` changed, and `scripts/` changed in three commits only (`977a622`, `9bd337e` and `843ea01`). The renders themselves read nothing from the repository but their inputs and the scripts that run them (the oracle's own tests also read the 1.1 templates, the CVSS reference and the taxa catalogs). `843ea01` is W6's P1 batch: P1-2, P1-3, P1-4, P1-5 and EC-2. Each change, by what it can reach and what it did here:
+
+| Change | What it can reach | What it did in this run |
+|---|---|---|
+| `977a622` (T146: R-F's report names no non-member for a group that falls away) | the repeated-member report, for an ID that isn't one of the run's open findings | Nothing. AG-7 in maestro-reference, the only repeated ID in the five examples, is an open finding, so the branch isn't taken: both renderers' Input Issues line and the `correlation-member-repeated` warning are unchanged |
+| `9bd337e` (T146: the controls renderer accepts a carry claim only where the baseline holds it) | the controls renderer's acceptance of `carried_forward`, and `control-analyzer.md`'s and the shared contract's sentence | Nothing: all 81 claims of Run A are held by the shipped controls file, so none is cleared. 81 `CF` cells, `carry_forward_count` 81, no `carried-forward-cleared` warning (W6-4). The other four examples claim nothing |
+| T147 (`1e3614a`) | agent and command text only (`risk-scorer.md`, `control-analyzer.md` and the two commands), no script | Nothing: the oracle's synthetic agent reads none of it, and no renderer does |
+| P1-2 (`843ea01`): file modes | the permission bits of staged files and of `fail`'s restored pre-images | Nothing: a work tree holds no canonical file to inherit from, and all 28 rendered files have the re-run's bits (0644) |
+| P1-3 (`843ea01`): GFM's escaped pipe in Section 7 | `parse_reference_set` and the layer chain's Section 7 cell | Nothing: none of the five threat models has an escaped pipe in its Section 7. The one in the five is in agentic-app's §4.2, a per-finding table that P1-3 leaves alone |
+| P1-4 (`843ea01`): the effort check | the controls renderer's from-disk check of `effort-estimate`, which now reads the part's body | Nothing: a check, not a value. All five controls renders finish with the re-run's exit code and bytes |
+| P1-5 (`843ea01`): template text and summary wording | the 1.1 risk-scores template's Source row, `output-formatting.md`, and the scorer renderer's summary line | **Five stdout lines**: "N findings carried from the baseline" is now "N findings scored from baseline inputs" (82, 19, 110, 31 and 30). No rendered file changes, and the markdown templates' headings, which class 8 reads, are unchanged |
+| EC-2 (`843ea01`): the undeclared-paths key | both renderers' declared-paths check, for a file name that no plan could hold | Nothing: no work tree holds such a name, and none of the 14 stage records has an `undeclared-paths-*` warning |
+| `bfe3e85` (docs: the controls template's `schema_version` row, D15) | one table cell's text in the 1.1 controls template | Nothing: a field definition, no heading. Class 6 reads the SARIF templates' rules, and class 8 the markdown templates' headings |
+
+**New diffs: none.** Every diff of this run is a diff of the re-run, with the same finding, field, shipped value, rendered value and disposition, so no value needs a commit to explain it. The 14 stage records equal the re-run's, and the 14 renders' output streams differ from it only in P1-5's five lines.
+
+### W6-4. P1-6: the eighth class's accepted set
+
+**Method: derived**, and checked for equivalence with the harness's claims. The PM's W6 erratum under R-H (spec NFR-1; the architect's P1 checkpoint, P1-6) adds D2's held condition, as amended at W4 ("A claim needs a result to carry"), to the oracle's accepted set. The accepted set is the findings that are claimed, UNCHANGED in Section 7 and held by the resolved baseline controls file. The held set is read by the oracle's own pipe-table reader, split by `schema_version` as D2 splits it:
+- **A 1.0 baseline** holds a result as a §2 row under one of the four `### <band> Residual Severity` headings. The shipped agentic-app controls file is 1.0, so this is the reading used: 85 findings (High 10, Medium 70, Low 5; it has no Critical heading). Its §7 has no Assessment Inputs, because a 1.0 file persists none.
+- **A 1.1 baseline** holds a result as a `control_status` row in §7's `### Assessment Inputs`. No shipped file is 1.1, so the reader was tested on the rendered controls file: 86 findings, equal to its 86 §2 rows.
+
+| Step | Count |
+|---|---|
+| Section 7 of the input threat model | 86 findings: 82 UNCHANGED, 4 NEW (D-10, D-11, LLM-15, LLM-16) |
+| Held by the shipped controls file | 85 |
+| UNCHANGED and held | 81 (T-1 is UNCHANGED, and the shipped file has no row for it; the four NEW findings are held but not UNCHANGED) |
+| Claims in the eight accepted part files | 81, all UNCHANGED and all held |
+| **Accepted: a baseline resolved, claimed, UNCHANGED, held** | **81** |
+| R-H's two-condition set (claimed and UNCHANGED) | 81 |
+| The most that D2 could accept if all 86 findings were claimed (UNCHANGED and held) | 81 |
+| The rendered §2 | 86 rows: `CF` on the 81, the dash on the other 5 (T-1 and the four NEW findings) |
+| `carry_forward_count` and `rescan_scope` | 81 (the number of `CF` cells) and `incremental` |
+| The 81 `CF` diffs | each rendered cell equals its source (`CF` for an accepted finding, the dash for every other row): 81 of 81 pass, as class 8 |
+| The controls stage record's warnings | none: no `carried-forward-cleared` |
+| The other four examples | no baseline controls file resolved, so 0 claims and 0 accepted: every §2 cell reads the dash (19, 110, 31 and 37 rows), `carry_forward_count` is `null` and `rescan_scope` is `full` |
+
+**Equivalence.** The held condition removes nothing from R-H's two-condition set, because the harness claims only findings that the shipped file holds (81 of 81). The two derivations agree here by the harness's choice, as the erratum says, and the set is 81 either way. R-H's accepted set doesn't change.
+
+**A negative control, outside the gate.** A second controls run in a new scratch work tree claims two extra findings: T-1 (UNCHANGED, but the shipped file holds no result for it) and D-10 (NEW, held). The renderer clears both: the stage record warns `carried-forward-cleared`, the run exits 5, and the rendered `CF` cells stay at 81. That set equals the three-condition set (81) and not the two-condition one (82, which would accept T-1). So the held condition is live at `ad64a72`, and the oracle's derivation predicts what the renderer does. (The warning's parenthetical gives the first cleared finding's reason for the whole group, and the Input Issues line gives the rule.)
+
+**Cross-check only, never a source.** `_baseline_held`, the renderer's reader, returns the same 85 findings as the oracle's reader on the shipped file. `parse_controls_assessment_inputs`, the planner's reader, returns the same 86 as the oracle's §7 reader on the rendered file.
+
+**Where the oracle isn't independent, for this test:** nowhere. The held set, the claims, Section 7's statuses and the cells all come from the oracle's own readers.
+
+### W6-5. Uncontracted keys (PM W3 ruling 2, condition 2)
+
+**No change.** The key tables of all nine scenarios equal the re-run's, key for key and count for count: 53 (file kind, key) pairs (18 for the scorer SARIF, 35 for the controls SARIF), 38 distinct result-property names, and the 2 rule keys (`name` and `help`). Per example and file:
+
+| Example | Scorer SARIF result keys | Controls SARIF result keys | Rule keys |
+|---|---|---|---|
+| agentic-app | 12 (627 occurrences) | 29 (2,084) | `name` (8, in each file) |
+| consumer-agent-app | 1 (19): `tags` | none | `help` (7, scorer) |
+| maestro-reference | 1 (35): `tags` | 1 (8): `maestro-pattern` | `name` (8, scorer) |
+| mobile-banking-app | 1 (31): the singular `logicalLocation` | none | `name` (6, scorer) |
+| predictive-ml-app | 7 (69): `id`, `cvss_base`, `composite`, `severity`, `sla_days`, `disposition`, `owasp_references` | 6 (54): `id`, `control_status`, `inherent_composite`, `residual_composite`, `severity`, `owasp_references` | none |
+
+agentic-app's keys, with where their information is in the rendered run, are the first run's section 7 tables. The counts are over the results that match a rendered finding, as at the re-run. The first run's section 7 counted every shipped result, so it reads 12 and 10 for predictive-ml-app's six scorer keys and five controls keys, where the matched counts are 10 and 9 (the 2 and 1 results that carry IDs the input doesn't hold are U-4's). The key names are the same, and no other count differs. No new key appears and none drops out, so the PM's W3 disposition of the 42 keys stands.
+
+### W6-6. Q3(a), and Q3(b)'s note
+
+**Q3(a), the reading (PM W6 ruling).** A sub-section that no shipped file and no run writes is template reference text, not written. It counts as neither a value diff nor a drop: NFR-1 keeps only what a shipped file carries (PM W3 ruling 2, condition 1), so the renderer can't drop what no file holds. The four are the 1.1 scorer template's `Column Definitions`, `Field Definitions` and `Override Guidance`, and the 1.1 controls template's `Column Definitions`.
+- **The census at `ad64a72`.** Each of the four headings was searched in all ten shipped scorer and controls files and in all fourteen rendered markdown files (Run A's ten and Run B's four scorer files), at any heading level and in any other line form. None holds any of the four. So each is "template reference text, not written": no diff, no drop, and no additive key.
+- **The one reference sub-section that a shipped file carries**, the controls template's `Recommendation Field Definitions`, is in one shipped file (consumer-agent-app's). The renderer writes it in all five rendered controls files, so condition 1 holds for it: no drop, and additive in the other four.
+- **A check outside the gate** (the oracle compares no sub-heading): of the 40 fixed sub-headings in the two 1.1 templates (17 scorer, 23 controls), none that a shipped file carries is missing from its render, except three band group headings in controls files: `Low Risk Gaps` (mobile-banking-app) and `Critical Residual Severity` and `Low Residual Severity` (predictive-ml-app). A band group appears only when a row falls in it, so these are instance structure: their rows sit under other bands in the render, or are U-4's IDs that the input doesn't hold.
+
+**Q3(b)'s note.** Nothing to attribute: no shipped controls file lists a control that maps to no finding (the PM's check; the oracle's own count finds ten per-control blocks in three shipped files, each with at least one mapped finding, and the other two files' §3 list no control), so the oracle sees nothing and condition 1 doesn't fire. The change is ADR-050's Known-limitations line, "The controls file's §3 lists only mapped controls".
+
+### W6-7. Hygiene, and what this result depends on
+
+- **H1.** The renders, the attribution and every check ran from the first scratch clone and scratch work trees; the taxa pin ran in the second clone. `git status` shows nothing in either clone, even with ignored files, and the lane worktree shows this record and nothing else.
+- **H2.** No PDF baseline was regenerated, no tracked PNG changed, and nothing under `examples/` changed anywhere (the renders went to work trees that mirror the examples' relative paths).
+- **H8.** This section holds no local path, real target name or finding content, and no literal placeholder token.
+- **The reach of this result.** It stands for any later commit that changes none of `scripts/` (the stage, the two renderers and the modules they import), `templates/tachi/output-schemas/`, `schemas/taxonomy/`, the CVSS reference that R-I's test reads (`.claude/skills/tachi-risk-scoring/references/cvss-vectors.md`), `tests/scripts/test_sarif_identity.py` and `examples/`. A commit that touches agent or command text, the ADR, the spec or the other records doesn't reach it: the oracle's synthetic agent reads none of them.
+- **What the oracle can't see** is unchanged (section 9): narrative prose and frame text, a fresh finding's sub-scores, the controls stage in Run B, the PDF and the infographics, Python 3.9 (every run here used 3.11.13) and a real target codebase.
+- **Re-running.** As W4-9's steps, from a fresh clone of the commit under test. The W4 copy of the harness is the starting point, and every directory name is new, because `rm -rf` is blocked.
