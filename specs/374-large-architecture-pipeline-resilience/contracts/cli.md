@@ -41,11 +41,11 @@ Orchestrator fences pass literal arguments only (C6). `PLAN` below stands for `-
 |---|---|---|
 | `python3 scripts/tachi-stage.py architecture-source --threats FILE --architecture PATH`: upserts the FR-E.18 body line, or removes a stale one (D7) | R | 0, 1, 2; 5 with a carrier warning |
 | `python3 scripts/tachi-stage.py id-mark --threats FILE (--baseline FILE \| --no-baseline)`: upserts the ID high-water mark line at Step 2.7 (D7, ruling B) | O | 0, 1, 2 |
-| `python3 scripts/tachi-stage.py close --stage threat-model --out DIR PLAN`: folds in the checks' hand-off files, runs the declared-paths check, then writes the stage record (D4) | O | 0, 2, 5 |
-| `python3 scripts/join-threats-md.py --out DIR PLAN`: joins the `threats-md` parts (FR-O.1; the payload is item O-β, D6) | O | 0, 1, 2, 4 |
-| `python3 scripts/attack-chains.py plan\|render\|check --run-dir DIR`. `check` also takes `--plan ID`, the run-level plan, for its hand-off file (D13) | O | `plan` and `render`: 0, 1, 2, which the orchestrator ignores (R-24); `check`: 0, 2 (argparse's usage error), 5 |
-| `python3 scripts/check-threat-model.py --run-dir DIR --plan ID (--baseline FILE \| --no-baseline)`: FR-N4.5, FR-N4.6, P-11, FR-E.10 and FR-E.19's reissue check, with a hand-off file (D12) | O | 0, 2, 4, 5 |
-| `python3 scripts/assemble-report.py trees\|report --run-dir DIR`: `trees` runs once the `trees` stage reconciles to 0, and copies and merges the trees; `report` assembles the report and runs FR-K5.3, FR-K5.5 and FR-K5.7 (D14) | O | 0, 2, 4 |
+| `python3 scripts/tachi-stage.py close --stage threat-model --out DIR PLAN`: folds in the checks' hand-off files, runs the declared-paths check, then writes the stage record (D4). The fold and its exit 2 cases are `part-files.md` §6's | O | 0, 2, 5 |
+| `python3 scripts/join-threats-md.py --out DIR PLAN`: joins the `threats-md` parts (FR-O.1; the payload is item O-β, D6), and writes the `threats-md` stage record on 0 (RR3) | O | 0, 1, 2, 4 |
+| `python3 scripts/attack-chains.py plan\|render\|check --run-dir DIR`. `check` also takes `--plan ID`, the run-level plan, for its hand-off file, `threat-model/<plan_id>/checks/attack-chains.json` (D13; `part-files.md` §6) | O | `plan` and `render`: 0, 1, 2, which the orchestrator ignores (R-24); `check`: 0, 2 (argparse's usage error), 5 |
+| `python3 scripts/check-threat-model.py --run-dir DIR --plan ID (--baseline FILE \| --no-baseline)`: FR-N4.5, FR-N4.6, P-11, FR-E.10 and FR-E.19's reissue check, with its hand-off file, `threat-model/<plan_id>/checks/provenance.json` (D12; `part-files.md` §6) | O | 0, 2, 4, 5 |
+| `python3 scripts/assemble-report.py trees\|report --run-dir DIR PLAN`: `trees` takes the `trees` plan, runs once that stage reconciles to 0, and copies and merges the trees; `report` takes the `report` plan, which pins the trees plan, assembles the report and runs FR-K5.3, FR-K5.5 and FR-K5.7 (D14). Each writes its stage's record on 0 (RR3, ruled at rev. 3) | O | 0, 1, 2, 4 |
 | `python3 scripts/generate-threats-sarif.py --threats FILE --out DIR --architecture PATH`: the shipped generator on the shared emitter; the path is the command's own, resolved in code (D1, D7, D8) | O | 0, 1, 2, 4 |
 
 **Helpers** (imported, never run directly; each is installed and listed under F-373's S-13 import gate):
@@ -77,3 +77,20 @@ T017's tests pin these readings for T018. The plan's halving and retry readings 
   - It keeps one line, between the frontmatter and the first `## ` heading, outside code fences.
   - A forged copy inside a fence is neither read nor changed.
 - **`--version`** prints `tachi_parts.VERSION` and the interpreter's version on stdout, and exits 0. The refusal below 3.9 goes to stderr, with exit 2. Tests may accept either stream.
+
+### Readings ruled at rev. 3 (2026-11-23, T087 and T088)
+
+ADR-050 D6's items O-β and O-γ and its RR3 ruling set these. T092, T097, T106, T108, T109 and T112 follow them.
+
+- **PR 2's batch-stage plans.** Each prints PR 1's `{plan_id, plan_digest, waves}`.
+  - `plan --stage threats-md --out DIR --date YYYY-MM-DD` takes no `--threats`. It reads the section manifest at its fixed path (item O-β).
+  - `plan --stage trees --out DIR --date YYYY-MM-DD --threats FILE [--baseline-dir DIR]` reads the joined `threats.md` and the baseline's `attack-trees/` listing (D14).
+  - `plan --stage report --out DIR --date YYYY-MM-DD --threats FILE --trees-plan ID --trees-plan-digest HEX` runs after `assemble-report.py trees`. It refuses a trees plan whose digest or pointer differs, or that has a batch that isn't `done` (exit 2). It records in its `inputs` the trees plan file, `{out}/attack-trees/.manifest.json`, `threats.md` and, for `chains written`, `attack-chains.md`.
+  - The `trees` and `report` plans record `params.reference_digest`, the SHA-256 of the reference set's canonical JSON, through one shared helper. The `report` plan's `refs` is `{}`, as `threats-md`'s is. A batch stage's plan records `out_snapshot` `null`, and a plan with per-section sizes records `batch_size` `null` (`part-files.md` §4 and §5).
+- **What `plan` and `reconcile` print for `threats-md`.** Each wave entry is `{batch_id, input_path, part_path, section, finding_ids, rows, problem}` (item O-β; `part-files.md`, "Stage payload: `threats-md`"). The `trees` and `report` stages print PR 1's `{batch_id, input_path}`, because their agents read their batch inputs.
+- **The orchestrator's return.** On success it ends with one line, `TACHI PLAN report <plan_id> <plan_digest>`: the report plan as its last `reconcile` printed it. The command passes the two values, as PLAN, to Step 2.9's `assemble-report.py report`, and to Step F's `fail --stage report` if Step 2.9 fails. On failure the orchestrator returns ADR-050 D4's error instead.
+- **`fail` for a batch stage.** `fail --stage threats-md|trees|report` writes that stage's failed record and moves nothing. Only `fail --stage threat-model` moves and restores the four canonical files (`part-files.md` §5). The layer that ran the failing step runs it:
+  - the orchestrator, when a batch stage's `reconcile` exits 4, an agent it dispatches can't be spawned, or the joiner or `assemble-report.py trees` exits with anything but 0. It then returns D4's error;
+  - the command's Step F, with the returned report PLAN, when `assemble-report.py report` exits with anything but 0.
+- **Step F's order.** On every failure path, Step F runs `fail --stage threat-model` with the run-level PLAN last, whatever an earlier `fail` returned. Only that `fail`'s 2 means stop with the error. A report plan whose digest was copied wrong still gets its record, with `fail`'s `plan-digest-mismatch` warning.
+- **`assemble-report.py report` at Step 2.9** checks every input's digest except `threats.md`'s and `attack-chains.md`'s, which Steps 2.5–2.8 change by design. For `threats.md` it compares `params.reference_digest`, and for the chain file it follows the final outcome record (`part-files.md`, "Stage payload: `report`").

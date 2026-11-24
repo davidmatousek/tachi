@@ -149,7 +149,7 @@ Phase 2 has no plan. The orchestrator dispatches by these rules, writing a brief
 
 An `unrecovered` coverage-gap record is a warning, `coverage-gap:unrecovered:<reason>`, with exit 5.
 
-**The stage record.** Phase 2 writes none of its own. When the check runs, its hand-off (`part-files.md` §6, whose keys T088 fixes) carries Phase 2's counts, and `close` or `fail` folds them into the run-level `threat-model` stage record's `batches`, with PR 1's meanings:
+**The stage record.** Phase 2 writes none of its own. When the check runs, its hand-off (`part-files.md` §6, `checks/provenance.json`) carries Phase 2's counts, and `close` or `fail` folds them into the run-level `threat-model` stage record's `batches`, with PR 1's meanings:
 - `planned`: the planned records;
 - `retried`: the replacement records, so a split of k counts k, as a halving counts 2;
 - `dispatched`: `planned` plus `retried`;

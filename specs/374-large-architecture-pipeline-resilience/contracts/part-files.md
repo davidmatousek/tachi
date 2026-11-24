@@ -1,6 +1,6 @@
 # Contract: part files, batch plans and stage records
 
-> Normative for F-374. ADR-050 decision D3 (envelope), D6 (plan, overflow, stage record, and item O-β for the `threats-md` payload) and D2 (payloads) owns this contract; where this file and the ADR disagree, the ADR governs. Pointers are to `b040fa1`.
+> Normative for F-374. ADR-050 decision D3 (envelope), D6 (plan, overflow, stage record, item O-β for the `threats-md` payload, item O-γ for the `report` payload, and RR3 for PR 2's stage records and the check hand-off) and D2 (payloads) owns this contract; where this file and the ADR disagree, the ADR governs. Pointers are to `b040fa1`.
 
 ## Envelope, plan and record schemas
 
@@ -21,8 +21,8 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `stage` | `risk-score` \| `compensating-controls` (PR 1); `trees` \| `report` \| `threats-md` (PR 2; `threats-md`'s payload is item O-β, ruled at ADR-050 rev. 3: "Stage payload: `threats-md`", below). Phase 2 has no stage here: it writes records, not parts, and has no plan (item O-α, ruled at ADR-050 rev. 3, D6; `threat-model-records.md`, "Phase 2 dispatches") |
 | `agent_type` | the stage's agent: `tachi-risk-scorer`, `tachi-control-analyzer`, `tachi-attack-tree-delta`, `tachi-threat-report` or `tachi-orchestrator` |
 | `finding_ids` | 1–500 unique IDs, equal to the planned set; `[]` only in a `report` section part or a `threats-md` row-section part (item O-β) |
-| `items` | an array of objects, one per ID, each `{finding_id, …the stage's closed payload}`. In a `threats-md` row-section part, one per planned row, in order, with no `finding_id` (item O-β) |
-| `fragments` | an array of 0–50 `{slot_key, text}`. PR 1's stages and `threats-md` carry none (`[]`). In a `report` section part, `slot_key` is one of the template's paragraph keys for that section (ADR-050 D6), and `text` is narrative prose of at most 4,000 characters, cut at 4,000 (ADR-050 D3, step 9) |
+| `items` | an array of objects, one per ID, each `{finding_id, …the stage's closed payload}`. In a `threats-md` row-section part, one per planned row, in order, with no `finding_id` (item O-β). A `report` section part carries none (`[]`) (item O-γ) |
+| `fragments` | an array of 0–50 `{slot_key, text}`. PR 1's stages, `threats-md` and a `report` findings part carry none (`[]`). In a `report` section part, `slot_key` is one of that section's closed keys, and `text` is narrative prose, cut at that key's limit, which is at most 4,000 characters (ADR-050 D3, step 9; item O-γ: "Stage payload: `report`", below) |
 
 **§2 Overflow error, `tachi.overflow/1`** (advisory). Six keys:
 - `schema`, `plan_id`, `batch_id`, `stage` and `agent_type`, as in §1;
@@ -38,7 +38,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `attempt` | an integer, 1–3 |
 | `part_path` | an absolute path under `<plan_id>/parts/` |
 | `tree_paths` | in `trees`, `{finding_id: absolute path under <plan_id>/trees/}`, one per ID; `{}` elsewhere |
-| `units` | the batch's unit rows, as verbatim data. In `compensating-controls`, an UNCHANGED unit's row also holds its baseline's persisted narrative text and its evidence-class values (`evidence[]`, `matrix_row`, `recommendation_body`), all decoded, for the agent to copy. So a carried string is escaped once per render (ADR-050 D2, RR1). In `threats-md`, each unit is `{section, finding_id}` or `{section, row}` (item O-β) |
+| `units` | the batch's unit rows, as verbatim data. In `compensating-controls`, an UNCHANGED unit's row also holds its baseline's persisted narrative text and its evidence-class values (`evidence[]`, `matrix_row`, `recommendation_body`), all decoded, for the agent to copy. So a carried string is escaped once per render (ADR-050 D2, RR1). In `threats-md`, each unit is `{section, finding_id}` or `{section, row}` (item O-β). In `report`, a section part's unit is `{section, key, …}` and a findings part's is `{section, finding_id, …}` (item O-γ) |
 | `refs` | an object mapping the stage's closed pointer names (architecture, threats, baseline files, target) to absolute paths that the command validated |
 | `params` | an object of the stage's closed parameters, for example `scoring_date` as `YYYY-MM-DD` |
 
@@ -51,12 +51,12 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `tachi_version` | `X.Y.Z` |
 | `inputs` | `{logical name: {path, sha256, bytes}}` |
 | `params` | as in §3 |
-| `batch_size` | an integer, 1–500, or `null` for a plan with no units (the run-level `threat-model` plan) |
+| `batch_size` | an integer, 1–500, or `null` for a plan with no units (the run-level `threat-model` plan) and for a stage whose sizes are per section, `threats-md` and `report`, whose sizes are `tachi-stage.py` constants (items O-β and O-γ) |
 | `unit_count` | an integer, 0 or more |
 | `preimage` | `{canonical name: sha256 \| null}`. `plan` copies each existing file to `<plan_id>/preimage/<canonical name>`, and `fail` restores a copy whose digest matches (ADR-050 D4) |
 | `out_snapshot` | `{relpath: [size, mtime_ns]}`, at most 20,000 entries, or `null` |
 | `retry_budget` | `{limit, used}`, both integers. `limit` is 2 × the planned batch count, and `used` counts retry dispatches, so a halving counts 2 |
-| `batches` | an array of `{batch_id, parent: id \| null, attempt: 1–3, finding_ids, input_sha256, state: pending \| done \| failed \| split}`. Input and part paths are recomputed from the IDs, never stored. In `threats-md`, a row section's batches have `finding_ids` `[]`, and their batch inputs' `units` name the rows (item O-β) |
+| `batches` | an array of `{batch_id, parent: id \| null, attempt: 1–3, finding_ids, input_sha256, state: pending \| done \| failed \| split}`. Input and part paths are recomputed from the IDs, never stored. In `threats-md`, a row section's batches have `finding_ids` `[]`, and their batch inputs' `units` name the rows (item O-β). In `report`, a section's batches have `finding_ids` `[]`, and their batch inputs' `units` name the fragment keys (item O-γ) |
 
 - **The digest.** `plan` and `reconcile` print `plan_digest`, the SHA-256 of this file. `reconcile`, the renderers, `fail` and `close` take it back as `--plan-digest` and exit 2 on a mismatch, or on a batch input whose digest differs from `input_sha256`.
 - **The pointer,** `tachi.plan-pointer/1`, has two keys: `{schema, plan_id}`. `--plan` overrides it, and a disagreement between the two exits 2.
@@ -79,7 +79,44 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `outputs` | `[{path, sha256}]` |
 | `error` | `null`, or `{code, message, batch_id, finding_ids, remedy}` |
 
-**§6 Check hand-off, `tachi.check-handoff/1`** (PR 2; Architect re-review RR5). One file per main-session check, under the run-level plan's `threat-model/<plan_id>/checks/`, written by `attack-chains.py check` and `check-threat-model.py`. `close` and `fail` read it with the strict loader (closed keys, a size cap, no NaN, Infinity or duplicate keys) and fold its events into the stage record (ADR-050 D4, D15). Its keys are fixed with PR 2's checks, in lane OC.
+**PR 2's stage records** (RR3, ruled at ADR-050 rev. 3, D6). The shape above doesn't change. Each PR 2 stage has its own closed `counts` keys, and PR 1's two stages keep theirs. ADR-050 D6's RR3 table names each record's writer.
+
+| Stage | `counts` keys | `batches`, `overflow_events`, `retries` | `undeclared_paths` |
+|---|---|---|---|
+| `threat-model`, the run | `open`, `resolved`, `recorded`, `carried`, `rule`, `renumbered`, `folded` and `reused-id`, taken from the provenance hand-off (§6) | `batches`: Phase 2's six counts, from the provenance hand-off. The two event lists are `[]`: Phase 2's events stay in its records (item O-α) | `close`'s declared-paths check over the whole run, against Step 1.5's snapshot, with D4's PR 2 grammar |
+| `threats-md` | `units`, `open`, `resolved`, and `rendered` (the rows joined) | the plan's, as in PR 1 | `[]`, with no check |
+| `trees` | `units` (the trees generated), `carried` (the trees copied from the baseline), and `rendered` (the merged manifest's trees) | the plan's | `[]`, with no check |
+| `report` | `units`, `rendered` (the units the file holds), `narrative_fallbacks` and `truncations` | the plan's | `[]`, with no check |
+
+- A batch stage's plan records `out_snapshot` `null`, and its record carries no `declared-paths-skipped` warning, because `close` checks the run.
+- A batch stage's `fail` writes its failed record and moves nothing. Only `fail --stage threat-model` moves and restores the four canonical files (ADR-050 D4).
+- The `threat-model` record's `outputs` are the four canonical files that are present in `{out}`, with their digests. With no hand-off, `fail` writes its `counts` as `{}` and its `batches` as zeros.
+- `STAGE_AGENTS` gains `threat-model` and `threats-md`, both `tachi-orchestrator`, `trees` (`tachi-attack-tree-delta`) and `report` (`tachi-threat-report`).
+
+**§6 Check hand-off, `tachi.check-handoff/1`** (PR 2; Architect re-review RR5; its key set ruled at ADR-050 rev. 3, by T088). One file per main-session check, written by that check at a fixed name under the run-level plan's `threat-model/<plan_id>/checks/`:
+- `attack-chains.json`, by `attack-chains.py check` (D13);
+- `provenance.json`, by `check-threat-model.py` (D12).
+
+`close` and `fail` read it with the strict loader (closed keys, at most 1 MiB, no NaN, Infinity or duplicate keys) and fold it into the run-level stage record (ADR-050 D4, D15). Every key is required:
+
+| Key | Type and rule |
+|---|---|
+| `schema` | `"tachi.check-handoff/1"` |
+| `check` | `attack-chains` or `provenance`, equal to the file's stem |
+| `plan_id` | the run-level plan's ID, equal to its directory's |
+| `status` | `fail` when `error` isn't `null`; otherwise `warn` when `warnings` isn't empty; otherwise `pass`. It matches the check's exit code: 4, 5 or 0. `attack-chains` is never `fail` |
+| `counts` | `null` in `attack-chains`. In `provenance`, exactly these keys, each an integer 0–1,000,000: `open` and `resolved`, the reference set's counts; `recorded`, `carried` and `rule`, the findings that each of FR-N4.5's three provenance classes accounts for (a dispatch record, a baseline carry-forward and Phase 3.6's rule); `renumbered`, the kept dispositions whose final ID differs from the provisional ID, folds excluded; `folded`, those that #356's fold table re-prefixed; and `reused-id`, FR-E.19's reissued IDs |
+| `batches` | `null` in `attack-chains`. In `provenance`, Phase 2's six counts, `{planned, dispatched, done, retried, split, exhausted}`, each an integer 0–1,000,000, with the meanings in `threat-model-records.md`, "Phase 2 dispatches": the lineages' records, with coverage-gap records left out (item O-α) |
+| `warnings` | `[{code, detail}]`, at most 1,000, under §5's warning rules. The codes are closed: `chain-outcome:rewritten`, when the check rewrote the record as `skipped (<reason>)`, with the new line and whether `attack-chains.md` was quarantined in the detail (D13); `section6:mismatch`, one per cell, with the cell and both values in the detail (FR-E.10); `id:reissued`, with the first 20 IDs in the detail (FR-E.19); and `coverage-gap:unrecovered:<reason>`, where `<reason>` is `no_end_marker` or `overflow_error`, with the record and its component in the detail (item O-α) |
+| `error` | `null` in `attack-chains`. In `provenance`, `null`, or, when the check fails (exit 4), `{code, message, finding_ids, remedy}`: `code` is the failed rule, one of `no-records`, `envelope`, `lineage`, `provenance` and `completeness`; `message` is at most 2,000 characters and states how many IDs are involved; `finding_ids` holds the first 20, in S-2 order; and `remedy` is D12's |
+
+- **Writing.** A check writes its file once, with `tachi_parts`' atomic write, before it exits 0, 4 or 5. A check that exits 2 writes none. The provenance check counts before it applies any rule, so its `counts` and `batches` are complete in every file it writes.
+- **`close`, on the success path (Step 2.10).**
+  - It strict-loads both files. `provenance.json` is required. Its absence, a file that fails to load, a `plan_id` that differs, or a `fail` status in either file exits 2, so a run whose check failed can't be closed.
+  - A missing `attack-chains.json` is the warning `handoff-missing:attack-chains`, never a stop. The chain check's 2 prints and continues (R-24), and writes no file.
+  - The run-level record takes its `counts` and `batches` from `provenance.json`. Its `warnings` are `attack-chains.json`'s, then `provenance.json`'s, then `close`'s own: `handoff-missing:attack-chains`, then the declared-paths warnings. Any warning makes the status `success-with-warnings`, and `close` exits 5.
+- **`fail` (Step F)** folds whichever hand-off files exist and load, in the same order. It warns about no missing file, because a run can fail before Step 2.8. When `provenance.json`'s status is `fail`, the record's `error.message`, `finding_ids` and `remedy` come from its `error`, and `error.code` is `--reason`, as ruled at W1.
+- **The record's cap.** Folded warnings that would pass §5's 1,000 keep the first 999 in the order above, then `warnings-truncated`, whose detail gives the full count, as `undeclared-paths-truncated` does for paths.
 
 ## Stage payloads: the scorer and controls items (ADR-050 D2, D9, D10)
 
@@ -271,3 +308,100 @@ So the orchestrator writes each part without reading its batch input. The batch 
 - Heading order and the headers are constants, so the joiner doesn't check them at run time. A drift test pins them against the template once T119 has aligned it.
 
 **Sizes (ADR-050 D6).** Each size is ⌊8,000 × 2.598 ÷ p90⌋. The p90 is the item's bytes at two-space indentation, the higher of the shipped examples' and the fixture baseline's: 1,225 for the category tables, 506 for Section 7, 761 for Section 4a, and 349 for the heaviest of the others. 2.598 is W1's lower measured r, the scorer's. T130's fixture run confirms the sizes from the live parts.
+
+## Stage payload: `report` (item O-γ; ADR-050 D6, rev. 3)
+
+Typed `tachi-threat-report` agents write these parts. The orchestrator plans and reconciles them in Phase 5, and `assemble-report.py report` assembles `threat-report.md` from them at Step 2.9 (ADR-050 D4, D14). A part holds the units of one section, and nothing in a part is markdown structure: code writes every heading, table, list and fixed sentence. `tachi_parts` holds the parts table and the item table below as constants, which the planner, the validator and the assembler import. A drift test pins the headings against `templates/tachi/output-schemas/threat-report.md` once T113 has aligned the template.
+
+**The parts**, in template order. Section 5, the appendix and the frontmatter have no part.
+
+| Template section | Part kind and key | Planned | Units: fragment keys, or items | Limit per fragment (characters) |
+|---|---|---|---|---|
+| 1. Executive Summary | section, `exec_summary` | always | `risk_posture`, `top_threats` and `key_recommendations`; `compliance`, optional | 1,500; 4,000; 2,500; 2,000 |
+| 2. Architecture Overview | section, `architecture_overview` | always | `system_context`, `trust_boundaries` | 4,000 each |
+| 3. Threat Analysis | section, `threat_categories` | always | `overview`, optional; `category.<key>` for each category with an open finding; `summary.<key>` for each category with a summarized finding | 1,500; 600 each; 1,200 each |
+| 3. Threat Analysis | findings, `threat_analysis` | when it has a unit | one per finding narrated one by one | — |
+| 4. Cross-Cutting Themes | section, `cross_cutting_themes` | always | one unit, `themes`, which allows `theme.<n>.title` and `theme.<n>.body` for n from 1 to 6, all optional | 120; 2,000 |
+| 6. Cross-Layer Attack Chains | section, `attack_chains` | for `chains written` | `chain.<chain ID>` for each surfaced chain | 2,000 each |
+| Agentic Pattern Analysis | section, `agentic_patterns` | when an open finding has a pattern | `pattern.<value>` for each of the six pattern values that Section 7 holds; `multi` when it holds `multiple` | 1,500 each; 3,000 |
+| 7. Remediation Roadmap | findings, `remediation_roadmap` | always | one per roadmap row | — |
+| 9. Delta Summary | section, `delta_summary` | when the run has a baseline | `progress` | 3,000 |
+
+- **Keys.** The category keys are item O-β's: `spoofing`, `tampering`, `repudiation`, `information_disclosure`, `denial_of_service` and `elevation_of_privilege`; `agentic` for `AG`, `AGP` and `TE`; and `llm` for `LLM`, `OI` and `MI`. The pattern values are Section 7's six.
+- **Narrated or summarized.** A finding is summarized when the run has more than 30 open findings and its risk level is Medium, Low or Note. Every other open finding is narrated one by one.
+- **A roadmap row** is an open finding that isn't a correlation group's non-primary member. A group's primary is its first member in Section 4a, read through `parse_correlation_groups`, and its row stands for the group.
+- **The budget.** Each section's limits sum to at most 16,000 characters, so a section part stays within S-1's 8,000 tokens at W1's r of 2.598.
+
+**The findings items.**
+
+| Section | Item keys | Rules |
+|---|---|---|
+| `threat_analysis` | `finding_id`, `narrative`, `tree_summary` | `narrative`: 1–2,000 characters, cut at 2,000. `tree_summary`: 1–300, cut at 300, for a Critical or High finding, and `null` for any other |
+| `remediation_roadmap` | `finding_id`, `effort`, `dependencies` | `effort`: `Low`, `Medium` or `High`. `dependencies`: 1–400, cut at 400, or `null`, which the assembler writes as `None` |
+
+**The envelope (§1) in `report`.**
+- `agent_type` is `tachi-threat-report`.
+- **A section part:** `finding_ids` and `items` are `[]`. `fragments` holds one fragment for each required unit of its batch, at most one for each optional unit, and nothing else, with no key twice. The `themes` unit allows its theme keys in pairs, numbered from 1 with no gap.
+- **A findings part:** `finding_ids` is its batch's planned set, with one item per ID under the section's keys, and `fragments` is `[]` (step 8, unchanged).
+
+**String classes (ADR-050 D3).**
+- **Closed values** reject the part when wrong: `finding_id`, `effort`, each fragment's `slot_key`, and whether `tree_summary` and `dependencies` are `null`.
+- **Narrative:** every fragment's `text`, and `narrative`, `tree_summary` and `dependencies`. Each takes the slot grammar, the numeral ban, the per-field fallback and the cut at its limit (step 9, RR2).
+- No `report` value is evidence.
+
+**Slots.** These are the `report` rows of ADR-050 D3's table, as item O-γ rules them:
+
+| Kind | Argument | Resolves to |
+|---|---|---|
+| `count` | `open`, `resolved`, `new`, `unchanged` or `updated`; a band, `critical`, `high`, `medium`, `low` or `note`; a category key; or `<category key>.<band>` | the reference set's count of open findings with that status, band or category; for `resolved`, of its RESOLVED findings |
+| `pct` | a band | that band's share of the open findings, by largest remainder (D5) |
+| `band` | `risk:<finding ID>` | that open finding's risk level |
+| `finding` | a finding ID | the canonical ID. It must be in the reference set |
+| `ref` | a taxonomy ID | the ID as written. In a findings part, it must be one of the item's own finding's taxonomy IDs (D3). In a section fragment, it must be one of any open finding's |
+| `name` | `component:<finding ID>` | that finding's component |
+
+**Fixed fallback sentences.** This table is the wording's authority until T113 copies it into the shared part-file reference. `tachi_parts` embeds it verbatim, and a drift test pins the copies.
+
+| Field | Sentence |
+|---|---|
+| `narrative` | No narrative is shown for this finding because the text the agent wrote broke the narrative rules. |
+| `tree_summary` | No summary is shown for this attack tree because the text the agent wrote broke the narrative rules. |
+| `dependencies` | No dependency note is shown because the text the agent wrote broke the narrative rules. |
+| `theme.<n>.title` | Untitled theme |
+| every other fragment | This passage is not shown because the text the agent wrote broke the narrative rules. |
+
+A field that falls back or is cut is counted in the report stage's record (`narrative_fallbacks`, `truncations`), and the report prints no flag.
+
+**Batch inputs, units, halving and retries.**
+- **A section's batch input** has one unit per planned key, `{section, key, …}`, holding the rows that key is about. `exec_summary`, `threat_categories`, `cross_cutting_themes` and `agentic_patterns` get the Section 7 rows of their findings, and the themes also get Section 4a's groups. `architecture_overview` gets Sections 1 and 2's tables, `attack_chains` the surfaced chains' rows, and `delta_summary` Section 4c's rows and the lifecycle counts. A category's unit lists its narrated and summarized IDs. `themes` is the one unit of `cross_cutting_themes`.
+- **A findings batch input** has one unit per finding, in S-2 order: `{section, finding_id, …}`, holding the finding's Section 7 row and its category-table row, decoded. In `threat_analysis` it adds `tree`, whether the finding is Critical or High. In `remediation_roadmap`, a group primary's unit adds its group's ID and its members' Section 7 rows.
+- **`refs` is `{}`.** No report agent reads `threats.md` (ADR-050 D6), and each batch input stays within its 4 MiB cap.
+- **§4's readings apply,** with a batch's units in place of its IDs, as for `threats-md`. A batch of two or more units that is `missing` or `unparseable` is halved, and an `invalid` or one-unit batch is retried with the same units.
+
+**The assembler's layout** (`assemble-report.py report`). It numbers the sections present in template order (ADR-050 D14), as `## <n>. <title>`. It takes each finding's lead and roadmap cells from the batch inputs, whose digests the plan pins, and the reference set from `threats.md` as Step 2.9 finds it. Every cell takes D3's cell sink, every fragment D3's prose sink, and each slot resolves against that reference set.
+- **The frontmatter,** in the template's YAML shape, from the reference set, the merged manifest and `threats.md`'s frontmatter, with the plan's `date`.
+- **Section 1:** `### Risk Posture`, `### Top 5 Threats by Business Impact`, `### Key Recommendations`, `### Compliance Relevance` (only with its fragment) and `### Remediation Timeline`, the names that `extract-report-data.py` reads. The timeline's lines are code's, in that reader's form, `- **<tier>** (<count> <band> findings)`, one per band with open findings: Immediate for Critical, Short-term for High, Medium-term for Medium, and Backlog for Low and for Note.
+- **Section 2:** `### System Context` and `### Trust Boundary Summary`, each with its fragment.
+- **Section 3:** the optional overview, then the eight subsections 3.1 to 3.8, on every run. A non-empty subsection holds its category fragment, then each narrated finding in S-2 order, then its summary fragment. Each narrated finding has a lead (its ID, component, MAESTRO layer, likelihood, impact and risk level, and its status in a baseline run, with `—` for a value its category table lacks), followed by its narrative. An empty subsection prints `No <category> threats were identified in this threat model.`
+- **Section 4:** `### Theme <n>: <title>` and its body for each theme, or the template's note when there is none.
+- **Section 5:** ADR-050 D14's, with each tree's `tree_summary` as its one-sentence summary.
+- **Section 6,** on every run. For `chains written`, each surfaced chain, in rank order, has a heading with its ID and title, then a line with its layers, highest severity, member count and converging count, then its narrative. After the narrative come its chain-breaking control (the target's ID, layer and mitigation, verbatim), the template's disclaimer, and its members with their layers and roles, all from `attack-chains.md`. For any other outcome, the section holds D13's outcome line.
+- **Agentic Pattern Analysis,** when planned. It opens with the template's boilerplate, then `### Multi-Pattern Findings` with the `multi` fragment, when Section 7 holds `multiple`. Each pattern's subsection follows, ordered by highest risk level, then finding count, then pattern order. Each has its heading, its definition copied from `maestro-agentic-patterns-shared.md` (drift-tested), a counts line in the template's `Critical: N | High: N | Medium: N | Low: N` form, and an impacted-findings line in Sections 3 and 4's order, both from Section 7's pattern column, then its fragment. A `multiple` finding is listed under Multi-Pattern Findings only.
+- **Section 7:**
+  - an intro with the row count, the rows per tier and the most impacted component, which is the one with the most open findings, with ties broken by name;
+  - the table, ordered by risk level, then component, then S-2 order. Finding ID, Component and Mitigation come from Section 7, and Effort and Dependencies from the item. A group's row takes the primary's component and the group's highest risk level. Its Mitigation is each member's, verbatim, in member order, each led by the member's ID, and its Dependencies begin `Correlated: <IDs> (<group>).`;
+  - the template's priority-tier and effort-scale tables.
+- **The appendix:** one row for each place the report puts a finding, with that heading's text. The places are its Section 3 subsection, each theme whose body cites it through a `finding` slot, its tree, each surfaced chain it belongs to, its pattern subsection, and its roadmap row, or for a peer, its group's row. So every open finding has at least its Section 3 and roadmap rows, by construction.
+- **Section 9,** when planned: `### Finding Lifecycle Breakdown`, from Section 7's statuses and Section 4c; `### Remediation Progress`, with its fragment; and `### Baseline Reference`, from the frontmatter.
+
+**The assembler's checks and exit codes.** RR3 sets what it checks before it reads a part (ADR-050 D6).
+- **Exit 1:** the plan, an input, a batch input or a part is missing or unreadable.
+- **Exit 2:**
+  - a plan's digest or pointer differs, a batch isn't `done`, or a part fails re-validation, for the report plan or the trees plan it pins;
+  - an input's digest differs, except `threats.md`'s and `attack-chains.md`'s;
+  - the reference set's digest differs from `params.reference_digest`;
+  - for `chains written`, `attack-chains.md` doesn't hold exactly the planned surfaced chains.
+- **Exit 4:** FR-K5.3, FR-K5.5 or FR-K5.7 fails (ADR-050 D14), or the staged file holds a character in step 10's set (P0-4's backstop, through `tachi_parts.forbidden_character`, as the joiner checks).
+- **Exit 0:** the stamped file, staged under `report/<plan_id>/staged/`, replaces `{out}/threat-report.md` (`os.replace`), overwriting any file an agent wrote, and the report stage's record is written. On any other code the canonical file isn't written.
+
+**Sizes (ADR-050 D6).** Each size is ⌊8,000 × 2.598 ÷ p90⌋ items: 22 for `threat_analysis` (p90 931 bytes) and 144 for `remediation_roadmap` (p90 144 bytes). The p90 is an item's bytes at two-space indentation, measured on the seven shipped example reports (115 analysis items and 160 roadmap rows), with each digit-bearing word written as a slot. The analysis items still held today's risk wording, which moves to the lead, so the size is conservative. A section part is one batch at planning. T130's fixture run confirms the sizes from the live parts.
