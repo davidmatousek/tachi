@@ -475,8 +475,10 @@ def test_parse_resolved_findings_absent_returns_empty_list():
 # pre-existing caller unaffected. For a match on a non-heading line (the
 # three bare-substring callers below), the rule is byte-for-byte the old
 # one. For a match on a level-2 heading (the representative "##" caller
-# and scripts/generate-risk-scores-sarif.py's two callers, named explicitly
-# by FR-K9.2), "stop at the next heading of level <= max(matched_level, 2)"
+# and the two callers that FR-K9.2 named explicitly in the retired
+# scripts/generate-risk-scores-sarif.py, which F-374 (T054, #357) replaced:
+# scripts/render-risk-scores.py's read-back took them over), "stop at the
+# next heading of level <= max(matched_level, 2)"
 # reduces to "stop at the next '##'/'#' line" — the old hardcoded rule —
 # so these are unaffected by construction, proven here even across an
 # intervening deeper heading. A level-1 match (a document title) is NOT
@@ -627,19 +629,29 @@ More such prose.
 """
 
 
-def test_pin_generate_risk_scores_sarif_scored_threat_table_unaffected():
-    # scripts/generate-risk-scores-sarif.py:53 — the fourth consumer of
-    # parse_markdown_table named explicitly by FR-K9.2. Not imported here
-    # (a hyphenated filename, and it adds no logic of its own beyond this
-    # call); the shared function this fix touches is exercised directly,
-    # with the exact header string that call site uses.
-    rows = parse_markdown_table(_SARIF_RISK_SCORES_SNIPPET, "## 2. Scored Threat Table")
+# Each pin runs in both call forms: the default one, which the retired generator used and
+# parse_risk_scores_findings still uses for Section 2, and keep_bold=True, which the renderer's read-back uses.
+_KEEP_BOLD_FORMS = pytest.mark.parametrize("keep_bold", [False, True], ids=["default", "keep-bold"])
+
+
+@_KEEP_BOLD_FORMS
+def test_pin_render_risk_scores_scored_threat_table_unaffected(keep_bold):
+    # scripts/render-risk-scores.py, _check_staged — the read-back of Section 2
+    # that took over the retired generate-risk-scores-sarif.py's first call
+    # (the fourth consumer of parse_markdown_table that FR-K9.2 named, F-374
+    # T054 and ADR-050 D16). Not imported here (a hyphenated filename, and it
+    # adds no logic of its own beyond this call); the shared function this fix
+    # touches is exercised directly, with the exact header string that the
+    # call sites use.
+    rows = parse_markdown_table(_SARIF_RISK_SCORES_SNIPPET, "## 2. Scored Threat Table", keep_bold=keep_bold)
     assert [r["ID"] for r in rows] == ["T-1", "T-2"]
 
 
-def test_pin_generate_risk_scores_sarif_governance_fields_unaffected():
-    # scripts/generate-risk-scores-sarif.py:139, same rationale.
-    rows = parse_markdown_table(_SARIF_RISK_SCORES_SNIPPET, "## 4. Governance Fields")
+@_KEEP_BOLD_FORMS
+def test_pin_render_risk_scores_governance_fields_unaffected(keep_bold):
+    # scripts/render-risk-scores.py, _check_staged — the read-back of Section 4
+    # that took over the retired generator's second call, same rationale.
+    rows = parse_markdown_table(_SARIF_RISK_SCORES_SNIPPET, "## 4. Governance Fields", keep_bold=keep_bold)
     assert [r["ID"] for r in rows] == ["F-1"]
 
 

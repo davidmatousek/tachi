@@ -3,12 +3,14 @@
 This module has two layers.
 
 **The legacy helpers.** The canonical `PREFIX_TO_RULE` mapping (rule URIs for
-`generate-threats-sarif.py` and `generate-risk-scores-sarif.py`), the severity-to-SARIF-level
-mapping, finding-ID prefix extraction, a threats.md -> component metadata parser and the SARIF
-envelope. Per-script emit shape (logicalLocations array vs logicalLocation object, kind label
-vocabulary) remains in each generator to preserve byte-identity (ADR-021). They keep their
-names, values and behavior while those generators exist. `PREFIX_TO_RULE`'s AI values are the
-short forms those generators emit (`tachi/ai/agentic`); the shared emitter below never emits them.
+`generate-threats-sarif.py`), the severity-to-SARIF-level mapping, finding-ID prefix extraction,
+a threats.md -> component metadata parser and the SARIF envelope. The other user of these,
+`generate-risk-scores-sarif.py`, was retired at PR 1 (ADR-050 D1, #357): `render-risk-scores.py`
+writes `risk-scores.sarif` through the shared emitter below. The emit shape of the generator
+that remains (logicalLocations array vs logicalLocation object, kind label vocabulary) stays in
+it to preserve byte-identity (ADR-021). The helpers keep their names, values and behavior while
+it exists, and PR 2 rewrites it onto the shared emitter. `PREFIX_TO_RULE`'s AI values are the
+short forms it emits (`tachi/ai/agentic`); the shared emitter below never emits them.
 
 **The shared emitter** (ADR-050 D7 and D8). It implements the rules in
 `.claude/skills/tachi-shared/references/sarif-identity-shared.md`, and a drift test keeps the two
@@ -104,8 +106,9 @@ def parse_component_metadata(threats_md: str) -> dict[str, dict[str, str]]:
     (Trust Zones) via `tachi_parsers.parse_scope_data`. Replaces the
     hardcoded `COMPONENT_ZONE` dict in `generate-threats-sarif.py` (which
     silently desynced from threats.md when components changed) and the
-    bespoke regex parsers `parse_trust_zones` + `parse_component_kinds` in
-    `generate-risk-scores-sarif.py`. Caller is responsible for translating
+    bespoke regex parsers `parse_trust_zones` + `parse_component_kinds` that
+    `generate-risk-scores-sarif.py` carried (retired at PR 1, #357). Caller is
+    responsible for translating
     `dfd_type` (e.g. "Data Store") into its emit-specific kind label
     ("data" vs "data-store") to preserve per-script SARIF byte-identity.
     """
@@ -147,9 +150,9 @@ def parse_affected_assets(threats_content: str) -> dict[str, list[str]]:
     `{finding_id: [tags]}`, the exact round-trip of the block the populator
     emits (`| S-1 | [phi, pii] |` → `{"S-1": ["phi", "pii"]}`; `| T-2 | [] |`
     → `{"T-2": []}`). This is the single canonical extractor the SARIF
-    regeneration scripts (`generate-threats-sarif.py`,
-    `generate-risk-scores-sarif.py`) and the cross-format test consume, so the
-    verification tier reads one value source instead of independently
+    regeneration script (`generate-threats-sarif.py`), `render-risk-scores.py`
+    and the cross-format test consume, so the verification tier reads one
+    value source instead of independently
     re-deriving from `component_asset_map` (mirrors the `parse_component_metadata`
     desync-fix precedent above). Order is preserved verbatim from the block
     (already sorted ascending by the populator — this does NOT re-sort or dedup).

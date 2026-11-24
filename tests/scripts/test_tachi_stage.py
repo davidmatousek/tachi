@@ -213,6 +213,26 @@ def scorer_item(finding_id):
     }
 
 
+def matrix_cells(finding_id):
+    """The 11 cells of K8's section 2 row for a missing control, in the order ``contracts/module-signatures.md`` pins."""
+    return [finding_id, _DASH, "Gateway", "L1", "A threat", "{{score:inherent}}", "{{band:inherent}}", "No Control Found",
+            "authentication", "{{score:residual}}", "{{band:residual}}"]
+
+
+def matrix_row_of(cells):
+    """``cells`` as the GFM table line that the row is, with its outer pipes."""
+    return "| " + " | ".join(cells) + " |"
+
+
+# The four keys of the 1.1 template's section 4 block, each once and in order, with the Effort Estimate starting at a level.
+CONTROLS_BODY = "\n".join([
+    "**What to Implement**: Add the missing control at the trust boundary.",
+    "**Where to Implement**: `gateway/`, beside the existing request handlers.",
+    "**Reference Patterns**: The framework's own middleware.",
+    "**Effort Estimate**: Medium",
+])
+
+
 def controls_item(finding_id):
     """One valid compensating-controls item for a missing control (``contracts/part-files.md`` §1)."""
     return {
@@ -222,8 +242,8 @@ def controls_item(finding_id):
         "confidence": None,
         "carried_forward": False,
         "evidence": [],
-        "matrix_row": " | ".join("cell %d" % n for n in range(1, 12)),
-        "recommendation_body": "Add the missing control at the trust boundary.",
+        "matrix_row": matrix_row_of(matrix_cells(finding_id)),
+        "recommendation_body": CONTROLS_BODY,
     }
 
 
@@ -1412,6 +1432,40 @@ def test_an_invalid_part_is_retried_with_the_same_members(stage, cli, tmp_path, 
     assert (bi["attempt"], bi["finding_ids"]) == (2, before)
     assert Path(bi["part_path"]).name == "B001.a2.json"
     assert sha256_of(h.plan_dir / "inputs" / "B001.json") == entry["input_sha256"]
+
+
+CONTROLS_BREAKS = {
+    "row-with-ten-cells": lambda item: item.update(matrix_row=matrix_row_of(matrix_cells(item["finding_id"])[:10])),
+    "row-with-twelve-cells": lambda item: item.update(matrix_row=matrix_row_of(matrix_cells(item["finding_id"]) + ["an extra cell"])),
+    "row-for-another-finding": lambda item: item.update(matrix_row=matrix_row_of(["S-9999"] + matrix_cells(item["finding_id"])[1:])),
+    "body-without-its-effort-estimate": lambda item: item.update(recommendation_body="\n".join(CONTROLS_BODY.split("\n")[:3])),
+    "body-with-a-heading": lambda item: item.update(recommendation_body="# The plan\n" + CONTROLS_BODY),
+    "effort-that-is-no-level": lambda item: item.update(recommendation_body=CONTROLS_BODY.replace("Medium", "Soon")),
+}
+
+
+@pytest.mark.parametrize("kind", sorted(CONTROLS_BREAKS))
+def test_a_controls_part_that_breaks_the_row_or_the_body_structure_is_invalid_and_its_batch_re_dispatched(stage, cli, tmp_path, kind):
+    """ADR-050 D2 and D3 step 9: the row's cell count (11) and Threat ID, and the body's four keys, Effort level and lack of a
+    heading or table line, are structural. The part reads as invalid, so ``reconcile`` retries the batch as it was (exit 3),
+    where the renderer would otherwise fail on it at render time."""
+    h = Harness(stage, cli, tmp_path, "compensating-controls")
+    h.plan(batch_size=8)  # 16 units: B001 and B002
+
+    h.write_part("B001", mutate=lambda part: CONTROLS_BREAKS[kind](part["items"][0]))
+    h.write_part("B002")
+    res = h.reconcile()
+    assert res.code == 3, res.describe()
+    assert h.pending(res.json) == ["B001"] and res.json["done"] == ["B002"]
+    entry = h.batches()["B001"]
+    assert (entry["state"], entry["attempt"]) == ("pending", 2), "retried as it was: the same members, one attempt higher"
+    assert not [b for b in h.plan_json()["batches"] if b["parent"] == "B001"], "not halved"
+    assert h.plan_json()["retry_budget"] == {"limit": 4, "used": 1}
+
+    h.write_part("B001")  # attempt 2 holds a valid row and body
+    res = h.reconcile()
+    assert res.code == 0, res.describe()
+    assert res.json["done"] == ["B001", "B002"]
 
 
 def test_invalid_retries_stop_after_two(stage, cli, tmp_path):
