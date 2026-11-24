@@ -163,7 +163,9 @@ def parse_affected_assets(threats_content: str) -> dict[str, list[str]]:
     if not match:
         return {}
     out: dict[str, list[str]] = {}
-    for line in match.group("body").splitlines():
+    # Rows split on "\n" only (SA-13, T064): str.splitlines() also breaks at U+2028, NEL and the other separators, so one
+    # cell that holds one would forge a second, phantom row. The row pattern runs on line.strip(), so a CRLF file reads the same.
+    for line in match.group("body").split("\n"):
         row = _AFFECTED_ASSETS_ROW_PATTERN.match(line.strip())
         if not row:
             continue

@@ -3935,3 +3935,12 @@ def test_a_composed_value_that_names_a_resolved_finding_still_fails_the_scorers_
     with rrs.tampering_with_staged(rrs.SARIF, rrs.json_edit(poison)):
         res = project.render()
     rrs.assert_failed_closed(project, res, "the RESOLVED finding T-3 appears in " + where)
+
+
+def test_an_affected_assets_cell_holding_a_line_separator_forges_no_second_row():
+    """SA-13 (T064): the Affected Assets block splits rows on a newline only. ``str.splitlines()`` also broke a row at U+2028,
+    so a cell that held one read as a second, phantom row (here T-9's)."""
+    block = "## Affected Assets\n\n| Finding ID | Affected Assets |\n|---|---|\n| S-1 | [phi]" + chr(0x2028) + "| T-9 | [pci] |\n"
+    assets = sc.parse_affected_assets(block)
+    assert "T-9" not in assets, "a line separator inside a cell must not start a row"
+    assert assets.get("S-1") is not None, "the real row still reads"
