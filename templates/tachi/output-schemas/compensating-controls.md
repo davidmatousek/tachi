@@ -49,7 +49,7 @@ carry_forward_count: "{number of carried-forward control results or null}"
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Compensating controls schema version. Always `"1.1"` for this release. 1.1 is additive to 1.0: the MAESTRO Layer and Control Category columns, `CF` in every Section 2 band table, one Section 4 block for each finding that has a recommendation, and Section 7. |
+| `schema_version` | string | Compensating controls schema version. Always `"1.1"` for this release. 1.1 is additive to 1.0: the MAESTRO Layer and Control Category columns, the `CF` column's rule (the column is 1.0's; the renderer now fills it), one Section 4 block for each finding that has a recommendation, and Section 7. |
 | `date` | string | ISO 8601 date when the analysis was performed, as the command passed it to the renderer. The clock never enters this file. Format: `YYYY-MM-DD`. |
 | `source_file` | string | Path to the input risk score file that was analyzed, relative to the working directory. |
 | `target_path` | string | Path to the target codebase scanned for controls (`--target` flag value), relative to the working directory. |
