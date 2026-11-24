@@ -96,6 +96,23 @@ python3 scripts/tachi-stage.py plan --stage compensating-controls --out '<run>' 
 - **Finding 3 (D-L7): 3.14 is checked offline first.** Before T073's first dispatch, T065's driver re-runs on the clean environment's 3.14.4, so a 3.14 incompatibility can't cost a live attempt.
 - **Finding 4 (D-L8): the shells.** T073 to T075 keep T021's `SHELL=/bin/zsh`. T076 launches as the runbook's section 3 does: `SHELL=/bin/bash`, `TMPDIR` as section 3 sets it, `--settings <session profile>` and `--effort medium`. Section 3's user-scope additions (the `deniedMcpServers` entry and the credential Read deny) change the maintainer's own settings, so they are the maintainer's call. T076's record states whether they were applied.
 
+## 9. Re-install on T147's fix (1e3614a)
+
+T147 changed two agent files and two commands, so the second attempts, T075 and T076 run on a new build. `<install clone b>` is detached at `1e3614a` (`git describe` = `v4.48.4-162-g1e3614a`) and clean. Four new templates are arranged as section 2's: the same inputs and digests, the additive `baseline/threats.md` and the same targets. The `w5-*` templates and the first attempts' clones are untouched, as evidence.
+
+| Template | For | Restore point |
+|---|---|---|
+| `<adopter w5b-fixture-score>` | T073 | `a760439` |
+| `<adopter w5b-fixture-controls>` | T074 | `c3d0832` |
+| `<adopter w5b-sc8>` | T075 | `4cacfea` |
+| `<adopter w5b-r27>` | T076 | `4533c72` |
+
+- **Install**, as section 1: exit 0, `Version:  v4.48.4-162-g1e3614a`, `Copied:   45 item(s)` and stderr 0 bytes in all four. All 177 installed files equal `1e3614a`'s blobs and modes (177 and 177). The seven top-level directories were untracked and nothing ignored before the install commit, and nothing after it. The seven subtrees have identical tree ids in the four templates.
+- **The four changed files reached every template.** Each holds `1e3614a`'s blob of `control-analyzer.md`, `risk-scorer.md`, `tachi.compensating-controls.md` and `tachi.risk-score.md`. Against its `w5-*` counterpart each has the same file set (180, 197, 195 and 194 tracked) and differs in exactly those four paths.
+- **Inputs:** each digest equals section 2's, checked as the file was written, and the three target directories have tree `fb3cfb11...`. The runbook's profile block is unchanged: SHA-256 `36df2a9a...`, equal to the staged `<session profile>`.
+- **`plan`** in throwaway clones, as section 3 (the commands' `plan` calls are unchanged), exit 0 and fresh: the scorer 326 units in 26 batches (16 + 10), the controls stage 408 in 38 (16 + 16 + 6) with threat text in each unit, SC-8's scorer 11 in 1. P1's counts hold, with the same no-baseline warning. The populator again left the fixture's `threats.md` unchanged and grew SC-8's to 16,540 B. Both renderers print usage on 3.14.4.
+- **Use `w5b-*`** for the second attempts, T075 and T076. Section 6's launch rule and section 8's decisions apply as before.
+
 ## Part 2: the runbook header (after T076)
 
 Pending. T076 decides it: update the line with the run's date, versions and build, or mark the header as predating this release if the run fails (R-27).
