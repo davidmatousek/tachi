@@ -45,9 +45,20 @@ value that the scorer's file holds for the finding. The result's properties are 
 (``contracts/sarif-result.md``). Both files are written to ``staged/`` and checked on disk, against each other as well as
 against the rows, before either replaces a canonical name.
 
-**Slotted in later (the module is built for it).** R-34's cell-by-cell fill and checks of Sections 2 and 4 (T059) replace
-``_section_2_cells`` and ``_md_section_4``'s body, which here are built from the structured values and the agent's body as
-it stands.
+**Sections 2 and 4 under R-34 (T059; ADR-050 D2).** The agent writes its own Section 2 row (``matrix_row``, 11 cells in K8's
+order) and the body of each Section 4 block, and the renderer fills what is computed and checks what is not.
+- Section 2. The band tables (by residual band, an empty band left out), the K8 header and the row order are the renderer's. The four
+  computed cells are overwritten by column position, and each one that held anything but its own slot token is counted once, in the
+  stage record's ``corrected`` count. ``CF`` is filled from the accepted ``carried_forward`` and is never counted. The Control Status,
+  Control Category, Component and MAESTRO Layer cells are the agent's text: each is checked against the structured value, and a cell
+  that disagrees is flagged ``input:<field>:sources-disagree`` and never rejected, because the SARIF and every total follow the
+  structured value. The Threat cell is model text, escaped and nothing more.
+- Section 4. The group (the band of the inherent score), the block order, the numbers, the heading and the ``Current Status`` line are
+  the renderer's. The body is the agent's text and is written as it is.
+- The structure is the part validator's (D3 step 9, ``tachi_parts.read_part``): a row that isn't 11 cells or whose Threat ID isn't the
+  finding's, and a body that lacks one of its four keys or has them out of order, an Effort that doesn't start with ``Low``, ``Medium``
+  or ``High``, or a heading or table line, reject the item, and ``reconcile`` re-dispatches the batch. This script runs ``read_part``
+  again on every part it reads, so a part that fails it never reaches a row: the render stops with exit 2 and writes nothing.
 
 Exit codes are ``contracts/cli.md``'s: 0 done, 1 an input is missing or unreadable, 2 a validation, usage or guard
 failure (a digest or pointer mismatch, a part that fails re-validation, a forbidden character in an input), 4 a
@@ -97,9 +108,9 @@ SCHEMA_VERSION = "1.1"
 DASH = "—"
 RETRY_REMEDY = "re-run the command; the earlier outputs were left or put back as they were"
 
-# Section 2's and Section 3's Threat cell is cut here before it is escaped: the agent's own row cuts it at 80 (control-analyzer.md).
+# Section 3's Threat cell is cut here before it is escaped. Section 2's is the agent's own, which cuts it at 80 (control-analyzer.md).
 THREAT_WIDTH = 80
-# The finding IDs one band-shift row names before "and N more".
+# The finding IDs that one row of Section 5's shift table, or one warning line of Section 1, names before "and N more".
 EXAMPLE_CAP = 5
 
 # Section 2's header: K8's order, which the part's ``matrix_row`` follows cell by cell (contracts/module-signatures.md).
@@ -107,8 +118,19 @@ K8_HEADER = ("Threat ID", "CF", "Component", "MAESTRO Layer", "Threat", "Inheren
              "Control Category", "Residual Score", "Residual Severity")
 CELL_COUNT = len(K8_HEADER)
 CF_CELL = 1
-# The four computed cells, by position, and the one slot token each holds in a ``matrix_row`` (ADR-050 D2, R-34).
+# The four computed cells, by position, and the one slot token each holds in a ``matrix_row`` (ADR-050 D2, R-34). The renderer fills
+# them, and counts each one that holds anything else as an overwrite.
 COMPUTED_CELLS = {5: "{{score:inherent}}", 6: "{{band:inherent}}", 9: "{{score:residual}}", 10: "{{band:residual}}"}
+# The four cells that are checked, never filled, in PR 1 (R-34): the agent's cell stays in Section 2 as it wrote it, a cell that
+# disagrees with the structured result or the input is flagged ``input:<field>:sources-disagree`` (the scorer's cause for two sources
+# that differ), and the SARIF and every total follow the structured value. FR-K8.1's follow-up turns each check into a fill.
+SOURCES_DISAGREE = "sources-disagree"
+CHECKED_CELLS = {"control_status": 7, "control_category": 8, "component": 2, "maestro_layer": 3}   # the flag's field -> its column of K8's header
+
+# The Effort line of a Section 4 body, and its word. The body is the agent's text, which the part validator has checked and the
+# renderer never rewrites (R-34): the four keys once each and in order, an Effort that starts with a level, no heading or table line.
+EFFORT_MARKER = "**%s**:" % tp.RECOMMENDATION_KEYS[-1]
+EFFORT_WORD = re.compile(r"(%s)(?!\w)" % "|".join(tp.EFFORT_LEVELS))
 
 # Section 3's order of categories (the template's): (enum value, display name, the token of a control's ID).
 CATEGORIES = (
@@ -130,6 +152,8 @@ BANDS = tuple(ts.SEVERITY_BANDS)
 SHIFTS = (("Critical", "High"), ("Critical", "Medium"), ("Critical", "Low"), ("High", "Medium"), ("High", "Low"), ("Medium", "Low"))
 # Section 4's groups, by the finding's inherent band: (heading, the bands it holds).
 GAP_GROUPS = (("### Critical / High Risk Gaps", ("Critical", "High")), ("### Medium Risk Gaps", ("Medium",)), ("### Low Risk Gaps", ("Low",)))
+GROUP_OF_BAND = {band: heading for heading, bands in GAP_GROUPS for band in bands}
+GROUP_HEADINGS = tuple(heading for heading, _bands in GAP_GROUPS)
 
 # The kinds of a flag, in the fixed order that Section 7 lists them (the scorer's closed vocabulary, ADR-050 D9).
 FLAG_KINDS = ("corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input")
@@ -149,47 +173,10 @@ REUSED_FLAG = "reused-id:finding_id:baseline"   # ruling B (D7): the scored inpu
 _CORRELATION_TAIL = re.compile(r" Correlated in CG-[0-9]{1,6}; (?:primary [A-Za-z]+-[0-9]+"
                                r"|peers [A-Za-z]+-[0-9]+(?:, [A-Za-z]+-[0-9]+)*(?: and [0-9]+ more)?)\.\Z")
 
-# What each rule says in compensating-controls.sarif, in the template's order (templates/tachi/output-schemas/compensating-controls.sarif):
-# (category, short description, full description, tags, taxonomy IDs the rule relates to). The IDs are what a ``{{ref:...}}`` slot
-# may cite for a finding of that category (ADR-050 D3's table), and each rule writes them as its ``relationships`` (PM W3 ruling 2,
-# gap A). render-risk-scores.py holds the same table for its file, and the 1.1 templates of the two files agree rule for rule.
-# AOD-SIMPLIFICATION: a local copy of the scorer's table — upgrade: both renderers import one table and rule builder from
-# sarif_common (R3a moves it there), and this copy and its drift test go.
-RULES = (
-    ("spoofing", "Identity spoofing threats",
-     "Threats where an attacker pretends to be something or someone else, such as forging authentication credentials, "
-     "replaying tokens, or impersonating trusted components to gain unauthorized access.",
-     ("security", "stride", "spoofing", "authentication", "owasp", "cwe"), ("A07", "CWE-287")),
-    ("tampering", "Data tampering threats",
-     "Threats where an attacker modifies data, code, or configuration without authorization, violating integrity "
-     "guarantees and causing systems to operate on corrupted inputs or persist falsified records.",
-     ("security", "stride", "tampering", "data-integrity", "owasp", "cwe"), ("A08", "CWE-345")),
-    ("repudiation", "Repudiation threats",
-     "Threats where a user or system can deny having performed an action, and the system lacks sufficient evidence to "
-     "prove otherwise, undermining accountability and forensic investigation.",
-     ("security", "stride", "repudiation", "logging", "accountability", "owasp", "cwe"), ("A09", "CWE-778")),
-    ("info-disclosure", "Information disclosure threats",
-     "Threats where sensitive information is exposed to unauthorized parties through direct data leaks, verbose error "
-     "messages, side-channel observations, or insufficient access controls on stored data.",
-     ("security", "stride", "information-disclosure", "data-exposure", "owasp", "cwe"), ("A01", "CWE-200")),
-    ("denial-of-service", "Denial of service threats",
-     "Threats where an attacker degrades or eliminates system availability through resource exhaustion, flooding, "
-     "algorithmic complexity exploitation, or cascading dependency failures.",
-     ("security", "stride", "denial-of-service", "availability", "owasp", "cwe"), ("A05", "CWE-400")),
-    ("privilege-escalation", "Privilege escalation threats",
-     "Threats where an attacker gains higher privileges than authorized, performing actions reserved for "
-     "administrators, accessing other users' resources, or bypassing access control boundaries.",
-     ("security", "stride", "elevation-of-privilege", "access-control", "owasp", "cwe"), ("A01", "CWE-269")),
-    ("agentic", "AI agent autonomy and misuse threats",
-     "Threats arising from autonomous agent behavior, including uncontrolled tool use, excessive autonomy, "
-     "agent-to-agent trust violations, and lack of human oversight in high-impact operations.",
-     ("security", "ai", "agentic", "autonomy", "tool-use", "mcp"), ("CWE-693",)),
-    ("llm", "LLM-specific threats",
-     "Threats from prompt injection vulnerabilities, data poisoning risks, and model theft in LLM-integrated "
-     "components, covering direct and indirect injection, RAG pipeline manipulation, and model extraction.",
-     ("security", "ai", "llm", "prompt-injection", "data-poisoning", "model-theft"), ("CWE-74",)),
-)
-RULE_BY_CATEGORY = {entry[0]: entry for entry in RULES}
+# The rules of compensating-controls.sarif are ``sarif_common.RULES``, the one table that both renderers write from, and
+# ``sarif_common.build_rules`` writes them, ``relationships`` included (PM W3 ruling 2, gap A). A ``{{ref:...}}`` slot may cite the
+# taxonomy IDs of the finding's rule (ADR-050 D3's table), which is entry 4 of its row.
+RULE_BY_CATEGORY = {entry[0]: entry for entry in sc.RULES}
 
 
 # =============================================================================
@@ -246,6 +233,11 @@ def _signed(number: int) -> str:
 
 def _listed(names: Sequence[str], cap: int = 5) -> str:
     return ", ".join(names[:cap]) + (", and more" if len(names) > cap else "")
+
+
+def _named(names: Sequence[str]) -> str:
+    """The first ``EXAMPLE_CAP`` names and then ``and N more``: the form of Section 5's Examples cell and Section 1's warning lines."""
+    return ", ".join(names[:EXAMPLE_CAP]) + (" and %d more" % (len(names) - EXAMPLE_CAP) if len(names) > EXAMPLE_CAP else "")
 
 
 # =============================================================================
@@ -387,6 +379,7 @@ class Row(object):
         self.carried = False                               # the agent's carried_forward, once the renderer has accepted it
         self.paths: List[str] = []                         # each evidence entry's canonical path, under the target
         self.agent_cells: List[str] = []                   # the agent's matrix_row, split into its 11 cells
+        self.overwritten = 0                               # how many of its four computed cells held anything but their slot token
         self.persisted: Dict[str, str] = {}                # narrative address -> the validated, slotted text that Section 7 carries
         self.cell_text: Dict[str, str] = {}                # narrative address -> the text resolved for a table cell
         self.flags: List[Flag] = []
@@ -456,6 +449,7 @@ class Run(object):
         self.baseline_resolved = False
         self.carry_forward_count: Optional[int] = None
         self.rescan_scope = "full"
+        self.overwritten = 0                                # the computed cells of Section 2 that the renderer overwrote, over every row (R-34)
         self.inherent_total = self.residual_total = Decimal("0.0")
         self.evidence_cache: Dict[str, Any] = {}            # an evidence entry's ``file`` as written -> ``sc.resolve_file``'s answer (path and URI)
 
@@ -608,10 +602,10 @@ def _delta_status(finding: Mapping[str, Any]) -> str:
 def _reused_ids(text: str) -> set:
     """The canonical IDs that the input ``risk-scores.md``'s Score Flags table marks ``reused-id`` (ruling B, D7).
 
-    The controls renderer carries the flag over for the same finding. The heading is found as an exact line, so a
-    threat or a rationale that quotes ``### Score Flags`` can't take the reader's place.
+    The controls renderer carries the flag over for the same finding. The heading is found as an exact line outside every code
+    fence, so a threat or a rationale that quotes ``### Score Flags`` can't take the reader's place.
     """
-    start = tachi_parsers.match_heading(r"^###[ \t]+Score Flags[ \t]*$", text)
+    start = tachi_parsers.match_heading(r"^###[ \t]+Score Flags[ \t]*$", text, outside_fences=True)
     found: set = set()
     for row in tachi_parsers.parse_markdown_table(text, start_line=start, keep_bold=True) if start is not None else []:
         if (row.get("Flag"), row.get("Field"), row.get("Cause")) == ("reused-id", "finding_id", "baseline") and tp.id_matches("finding", row.get("ID", "")):
@@ -980,27 +974,35 @@ def _evidence_path(run: Run, row: Row, index: int, file: str, kept: str) -> str:
     return run.evidence_cache[file].path
 
 
-def _agent_cells(row: Row, kept: str) -> List[str]:
-    """The agent's ``matrix_row`` as its 11 cells (contracts/module-signatures.md, "The controls matrix_row").
+def _layer_code(text: str) -> Optional[str]:
+    """``L1`` to ``L7`` when ``text`` starts with a MAESTRO layer code, else ``None``."""
+    found = _LAYER.match(text)
+    return found.group(0) if found else None
 
-    The renderer strips the line's edge whitespace, drops one leading and one trailing ``|`` where present, and splits
-    on raw ``|``. A count other than 11, or a Threat ID that isn't this finding's, rejects the item (D2). The part
-    validator only reads the row as prose, so a row that gets here malformed fails the render, loudly, instead of being
-    persisted for the next run to copy.
+
+def _check_cells(run: Run, row: Row) -> None:
+    """R-34's two row checks (ADR-050 D2, ``contracts/module-signatures.md``). They never reject the item: the part validator does
+    that, for the cell count and the Threat ID.
+
+    **Fill.** The four computed cells are the renderer's, by column position. A cell that holds anything but its own slot token
+    (a wrong number, the right number, prose, an empty cell, another cell's token) is overwritten when Section 2 is written, and
+    counted once here. ``CF`` is filled from the accepted ``carried_forward`` and is never counted.
+
+    **Check.** Control Status, Control Category, Component and MAESTRO Layer are the agent's text, and each is compared with the
+    structured value that the SARIF and every total follow: the status through ``classify_control_status`` (so ``Partial`` and
+    ``partial`` agree), the category by its display name or its slug, the component exactly, and the layer by its code (``L1`` to
+    ``L7``, where a layer with no code, such as ``Unclassified``, matches only itself). A cell that disagrees is flagged, once.
     """
-    text = row.item["matrix_row"].strip()
-    if text.startswith("|"):
-        text = text[1:]
-    if text.endswith("|"):
-        text = text[:-1]
-    cells = [cell.strip() for cell in text.split("|")]
-    if len(cells) != CELL_COUNT:
-        raise RenderError(2, "the matrix_row of %s has %d cells, not %d" % (row.finding_id, len(cells), CELL_COUNT),
-                          "re-run the command: the control analyzer writes one cell for each column of Section 2", kept=kept)
-    if not tp.id_matches("finding", cells[0]) or tp.canonical_finding_id(cells[0]) != row.canon:
-        raise RenderError(2, "the matrix_row of %s names another finding in its Threat ID cell" % row.finding_id,
-                          "re-run the command: the control analyzer writes the finding's own ID in the first cell", kept=kept)
-    return cells
+    cells = row.agent_cells
+    row.overwritten = sum(1 for position, token in COMPUTED_CELLS.items() if cells[position] != token)
+    run.overwritten += row.overwritten
+    status, category, component, layer = (cells[position] for position in CHECKED_CELLS.values())
+    code = _layer_code(row.layer)
+    agree = {"control_status": STATUS_OF_CLASS[tachi_parsers.classify_control_status(status)[0]] == row.control,
+             "control_category": category.casefold() in (row.control_category, CATEGORY_NAME[row.control_category].casefold()),
+             "component": component == row.component,
+             "maestro_layer": layer == row.layer if code is None else _layer_code(layer) == code}
+    row.flags += [Flag("input", field, SOURCES_DISAGREE) for field in CHECKED_CELLS if not agree[field]]
 
 
 def _lookup_for(run: Run, row: Row) -> Any:
@@ -1063,7 +1065,8 @@ def _score(run: Run, members: Sequence[Mapping[str, Any]], items: Mapping[str, M
                   member.get("attribution", ()))
         row.kind, row.zone, row.mitigation = member["kind"], member["zone"], member["mitigation"]
         run.rows.append(row)
-        row.agent_cells = _agent_cells(row, kept)
+        row.agent_cells = tp.matrix_row_cells(item["matrix_row"])   # 11 cells, the first this finding's ID: ``read_part`` has checked it (D3 step 9)
+        _check_cells(run, row)
         row.paths = [_evidence_path(run, row, index, entry["file"], kept) for index, entry in enumerate(item["evidence"])]
         if item["carried_forward"]:   # accepted only for an UNCHANGED finding with a resolved baseline controls file (D2); else cleared
             if not run.baseline_resolved:
@@ -1123,14 +1126,19 @@ def _group_controls(run: Run) -> None:
 # =============================================================================
 
 def _section_2_cells(row: Row) -> List[str]:
-    """Section 2's row of a finding, as 11 raw cells in K8's order (the writer escapes each).
+    """Section 2's row of a finding, as 11 raw cells in K8's order (the writer escapes each): the agent's own row with the
+    renderer's cells filled in by column position (ADR-050 D2, R-34).
 
-    AOD-SIMPLIFICATION: built from the structured values alone — upgrade: T059 fills the four computed cells of the
-    agent's own row by position, counts what it overwrites, and flags a Component, Layer, Status or Category cell that
-    disagrees with the structure (ADR-050 D2, R-34).
+    The Threat ID is the finding's ID as Section 7 of ``threats.md`` spells it, ``CF`` is ``CF`` or a dash from the accepted
+    ``carried_forward``, and the four computed cells are this run's inherent and residual score and band. Every other cell is the
+    agent's text as written: the Threat is model text (NFR-10's escaping is all that is asked of it), and the other four are checked
+    at ``_check_cells`` (flagged where they disagree) and never filled, as D2 says for PR 1.
     """
-    return [row.finding_id, row.cf, row.component, row.layer, _shorten(row.threat, THREAT_WIDTH), _one(row.inherent), row.inherent_band,
-            STATUS_CELL[row.control], CATEGORY_NAME[row.control_category], _one(row.residual), row.residual_band]
+    cells = list(row.agent_cells)
+    cells[0], cells[CF_CELL] = row.finding_id, row.cf
+    for position, value in zip(COMPUTED_CELLS, (_one(row.inherent), row.inherent_band, _one(row.residual), row.residual_band)):
+        cells[position] = value
+    return cells
 
 
 def _frontmatter(run: Run, scoring: str) -> List[str]:
@@ -1169,6 +1177,11 @@ def _md_section_1(run: Run, out: List[str], scoring: str) -> None:
     flagged = sum(1 for row in run.rows if row.flags)
     if flagged:
         out += ["> %d finding(s) carry integrity flags. Section 7 lists each one." % flagged, ""]
+    disagree = [row.finding_id for row in run.rows if any(flag.field in CHECKED_CELLS and flag.cause == SOURCES_DISAGREE for flag in row.flags)]
+    if disagree:
+        out += ["> For %d finding(s), the control analyzer's own Control Status, Control Category, Component or MAESTRO Layer cell in Section 2 "
+                "disagrees with its structured result or the scored input: %s. Section 2 shows the cell as the analyzer wrote it, and the SARIF "
+                "and every total follow the structured value." % (len(disagree), _named(disagree)), ""]
     if run.issues:
         out += ["> %d input issue(s) are listed in Section 7." % len(run.issues), ""]
 
@@ -1230,7 +1243,17 @@ def _md_section_3(run: Run, out: List[str]) -> None:
                 _md_control(run, control, out)
 
 
+def _block_head(number: int, row: Row) -> List[str]:
+    """The renderer's own lines of one Section 4 block, ahead of the agent's body (ADR-050 D2, R-34): the numbered heading with the
+    component and the inherent score and band, a blank line, and the ``Current Status`` line in the structured status's display form."""
+    heading = "#### %d. %s %s %s (Composite: %s, %s)" % (number, row.finding_id, DASH, tp.escape_prose(row.component), _one(row.inherent), row.inherent_band)
+    return [heading, "", "**Current Status**: %s" % STATUS_CELL[row.control]]
+
+
 def _md_section_4(run: Run, out: List[str]) -> None:
+    """Section 4 under R-34. The renderer writes the group each block sits under (the band of its inherent score), the block order
+    (inherent score descending, then S-2 order), the numbers, which run on through the groups, the heading and the ``Current Status``
+    line. The agent's body follows, line for line as escaped prose: the part validator has checked its structure."""
     out += ["---", "", "## 4. Recommendations", "",
             "Actionable recommendations for threats classified as \"No Control Found\" or \"Partial Control\", grouped by inherent severity and "
             "sorted by inherent score descending (highest risk gaps first).", ""]
@@ -1245,10 +1268,7 @@ def _md_section_4(run: Run, out: List[str]) -> None:
         out += [heading, ""]
         for row in mine:
             number += 1
-            # AOD-SIMPLIFICATION: the agent's body as it stands, escaped as prose — upgrade: T059 checks each key once, in
-            # order, the Effort word and the absence of a heading or table line, and rejects the item that fails (R-34).
-            out += ["#### %d. %s %s %s (Composite: %s, %s)" % (number, row.finding_id, DASH, tp.escape_prose(row.component), _one(row.inherent), row.inherent_band),
-                    "", "**Current Status**: %s" % STATUS_CELL[row.control], "", tp.escape_prose(row.item["recommendation_body"]), "", "---", ""]
+            out += _block_head(number, row) + ["", tp.escape_prose(row.item["recommendation_body"]), "", "---", ""]
     out += ["### Recommendation Field Definitions", "", "| Field | Description |", "|-------|-------------|",
             "| **What to Implement** | Specific control to add or harden. For \"No Control Found\": full implementation guidance. For \"Partial Control\": "
             "targeted hardening of the existing control. |",
@@ -1278,8 +1298,7 @@ def _md_section_5(run: Run, out: List[str]) -> None:
     def examples(rows: Sequence[Row]) -> str:
         if not rows:
             return DASH
-        names = [row.finding_id for row in rows]
-        return ", ".join(names[:EXAMPLE_CAP]) + (" and %d more" % (len(names) - EXAMPLE_CAP) if len(names) > EXAMPLE_CAP else "")
+        return _named([row.finding_id for row in rows])
 
     for inherent, residual in SHIFTS:
         mine = [row for row in run.rows if (row.inherent_band, row.residual_band) == (inherent, residual)]
@@ -1443,29 +1462,7 @@ def _render_md(run: Run, scoring: str, digest: str) -> str:
 # compensating-controls.sarif (T053; ADR-050 D7, D8; contracts/sarif-result.md)
 # =============================================================================
 
-EFFORT_MARKER = "**Effort Estimate**:"
-_TAXON_ID = re.compile(r"CWE-[0-9]+|A(?:0[1-9]|10)", re.ASCII)
 CATEGORY_OF_RULE = {rule_id: category for category, rule_id in sc.RULE_ID_BY_CATEGORY.items()}
-
-
-def _relationship(taxon: str) -> Dict[str, Any]:
-    """One rule ``relationships`` entry in the templates' form, naming its taxonomy only (PM W3 ruling 2, gap A).
-
-    The map from an ID to its taxonomy is closed: ``CWE-<n>`` names ``CWE`` and ``A01`` to ``A10`` name ``OWASP``. Any other ID in the
-    rule table is a defect in this script, so it raises.
-    """
-    if _TAXON_ID.fullmatch(taxon) is None:
-        raise ValueError("the rule table names %s, which is neither a CWE ID nor an OWASP Top 10 ID" % ascii(taxon))
-    return {"target": {"id": taxon, "toolComponent": {"name": "CWE" if taxon.startswith("CWE-") else "OWASP"}}, "kinds": ["relevant"]}
-
-
-def _rules(highest: Mapping[str, Decimal]) -> List[Dict[str, Any]]:
-    """The driver's rules: one for each category that has a result, in the table's order, each with the highest residual score of
-    its results as its ``security-severity`` (Phase 6c)."""
-    return [{"id": sc.RULE_ID_BY_CATEGORY[category], "shortDescription": {"text": short}, "fullDescription": {"text": full},
-             "properties": {"tags": list(tags), "security-severity": _one(highest[category])},
-             "relationships": [_relationship(taxon) for taxon in taxa]}
-            for category, short, full, tags, taxa in RULES if category in highest]
 
 
 def _section_4_efforts(md_text: str) -> Dict[str, str]:
@@ -1481,7 +1478,7 @@ def _section_4_efforts(md_text: str) -> Dict[str, str]:
         if heading is not None:
             current = tp.canonical_finding_id(heading.group(1)) if tp.id_matches("finding", heading.group(1)) else None
         elif current is not None and current not in found and line.strip().startswith(EFFORT_MARKER):
-            word = re.match(r"(Low|Medium|High)\b", line.strip()[len(EFFORT_MARKER):].strip())
+            word = EFFORT_WORD.match(line.strip()[len(EFFORT_MARKER):].strip())
             if word is not None:
                 found[current] = word.group(1)
     return found
@@ -1534,10 +1531,8 @@ def _render_sarif(run: Run, digest: str, md_text: str) -> str:
     highest: Dict[str, Decimal] = {}
     for row in run.rows:
         highest[row.threat_category] = max(highest.get(row.threat_category, row.residual), row.residual)
-    driver = sc.build_driver(SARIF, semantic_version=tp.VERSION, rules=_rules(highest), supported=sc.supported_taxonomies())
-    # AOD-SIMPLIFICATION: the driver's ``version`` is put in place here — upgrade: pass ``version=tp.VERSION`` to ``build_driver`` once
-    # R3a adds that argument (PM ruling 2c, gap C).
-    driver = dict([("name", driver["name"]), ("version", tp.VERSION)] + [(key, value) for key, value in driver.items() if key != "name"])
+    driver = sc.build_driver(SARIF, semantic_version=tp.VERSION, version=tp.VERSION, rules=sc.build_rules(highest),
+                             supported=sc.supported_taxonomies())
     return sc.to_json(sc.build_document(driver, sc.TAXONOMIES, results, sc.provenance_stamp(RENDERER, tp.VERSION, digest)))
 
 
@@ -1552,19 +1547,42 @@ def _outputs(run: Run, scoring: str, digest: str) -> Dict[str, str]:
 # The staged write and its checks (ADR-050 D4 steps 5 and 6; KB 22)
 # =============================================================================
 
-def _lines_of(text: str, start: str, stop: Optional[str]) -> List[str]:
-    """The lines of ``text`` from the heading line that starts ``start`` to the one that starts ``stop`` (or the end)."""
+def _lines_matching(text: str, pattern: str) -> List[int]:
+    """The 0-based number of every line of ``text`` that ``pattern`` matches outside a code fence, through the one shared fence rule.
+
+    A code snippet is the one raw text in the file, and a line of it that looks like a heading, a control title or a table is not
+    one (ADR-050 D3, "Finding a section"). ``match_heading`` finds the first such line, so this looks again after each one.
+    """
+    found: List[int] = []
     lines = text.split("\n")
-    begin = next((n for n, line in enumerate(lines) if line.startswith(start)), None)
+    while True:
+        offset = found[-1] + 1 if found else 0
+        at = tachi_parsers.match_heading(pattern, "\n".join(lines[offset:]), outside_fences=True)
+        if at is None:
+            return found
+        found.append(offset + at)
+
+
+def _heading_pattern(title: str) -> str:
+    """A pattern for the line that is exactly ``title`` (trailing spaces and tabs aside), never one that only starts with it."""
+    return r"^%s[ \t]*$" % re.escape(title)
+
+
+def _lines_of(text: str, start: str, stop: Optional[str]) -> List[str]:
+    """The lines of ``text`` from the heading line ``start`` to the heading line ``stop`` (or the end), both found as exact lines
+    outside every code fence, so a snippet that quotes a later heading can't end the section early (P0-1, ADR-050 D3)."""
+    lines = text.split("\n")
+    begin = tachi_parsers.match_heading(_heading_pattern(start), text, outside_fences=True)
     if begin is None:
         return []
-    end = next((n for n in range(begin + 1, len(lines)) if stop is not None and lines[n].startswith(stop)), len(lines))
-    return lines[begin:end]
+    end = tachi_parsers.match_heading(_heading_pattern(stop), "\n".join(lines[begin + 1:]), outside_fences=True) if stop is not None else None
+    return lines[begin:len(lines) if end is None else begin + 1 + end]
 
 
 def _rows_under(text: str, pattern: str) -> Tuple[List[Dict[str, str]], bool]:
-    """The first table after the line that ``pattern`` matches in full (an exact heading, never a substring), and whether it was found."""
-    start = tachi_parsers.match_heading(pattern, text)
+    """The first table after the line that ``pattern`` matches in full (an exact heading outside every code fence, never a
+    substring), and whether it was found."""
+    start = tachi_parsers.match_heading(pattern, text, outside_fences=True)
     if start is None:
         return [], False
     return tachi_parsers.parse_markdown_table(text, start_line=start, keep_bold=True), True
@@ -1573,11 +1591,15 @@ def _rows_under(text: str, pattern: str) -> Tuple[List[Dict[str, str]], bool]:
 def _check_matrix(run: Run, md_text: str) -> Tuple[List[str], List[Tuple[str, List[str]]]]:
     """Section 2 as it sits on disk: every row once, under its residual band, in order, with the cells it should have.
 
-    Returns ``(problems, [(canonical ID, cells)] in file order)``. Each row's arithmetic is also re-derived from its own
-    cells, so a wrong residual, band or status is found whichever way it got there.
+    Returns ``(problems, [(canonical ID, cells)] in file order)``. Each row is compared cell by cell with ``_section_2_cells``, which
+    holds the agent's own text in the cells that PR 1 checks and never fills (R-34). The arithmetic is also re-derived from the row's
+    own score cells and the finding's structured status, so a wrong residual or band is found whichever way it got there. The
+    status is the structured one because Section 2's Control Status cell is the agent's text, and a flagged mismatch there is not
+    an error of this file.
     """
     problems: List[str] = []
-    expected = {row.canon: _section_2_cells(row) for row in run.rows}
+    structured = {row.canon: row for row in run.rows}
+    expected = {canonical: _section_2_cells(row) for canonical, row in structured.items()}
     read: List[Tuple[str, List[str]]] = []
     for band in BANDS:
         rows, found = _rows_under(md_text, r"^### %s Residual Severity[ \t]*$" % band)
@@ -1593,16 +1615,18 @@ def _check_matrix(run: Run, md_text: str) -> Tuple[List[str], List[Tuple[str, Li
             read.append((canonical, cells))
             if cells[K8_HEADER.index("Residual Severity")] != band:
                 problems.append("%s: its Residual Severity is not the band of the table it sits in" % canonical)
-            if canonical in expected and cells != expected[canonical]:
+            if canonical not in structured:
+                continue   # reported below as an unexpected row
+            if cells != expected[canonical]:
                 differs = [name for name, got, want in zip(K8_HEADER, cells, expected[canonical]) if got != want]
                 problems.append("%s: Section 2 differs from the computed row in %s" % (canonical, ", ".join(differs)))
             inherent, residual = tachi_parsers.parse_score(cells[5]), tachi_parsers.parse_score(cells[9])
-            status = STATUS_OF_CLASS[tachi_parsers.classify_control_status(cells[7])[0]]
             try:
                 if inherent is None or residual is None:
                     raise ValueError("not a score")
-                if ts.residual_score(inherent, ts.REDUCTION_FACTOR_P0[status]) != residual or ts.band(inherent) != cells[6] or ts.band(residual) != cells[10]:
-                    problems.append("%s: Section 2's residual or band does not follow from its inherent score and status" % canonical)
+                if ts.residual_score(inherent, ts.REDUCTION_FACTOR_P0[structured[canonical].control]) != residual \
+                        or ts.band(inherent) != cells[6] or ts.band(residual) != cells[10]:
+                    problems.append("%s: Section 2's residual or band does not follow from its inherent score and the finding's status" % canonical)
             except (ValueError, TypeError):
                 problems.append("%s: a score in Section 2 is not a one-decimal score from 0.0 to 10.0" % canonical)
     got = [canonical for canonical, _cells in read]
@@ -1617,17 +1641,16 @@ def _check_matrix(run: Run, md_text: str) -> Tuple[List[str], List[Tuple[str, Li
 
 
 def _check_totals(run: Run, md_text: str, read: Sequence[Tuple[str, List[str]]]) -> List[str]:
-    """Section 1's and Section 5's numbers against the sums and counts of the rows that Section 2 holds on disk (KB 22)."""
+    """Section 1's and Section 5's numbers against the sums of the scores that Section 2 holds on disk, and the counts of the
+    structured statuses (KB 22). Every total follows the structured status, never Section 2's own Control Status cell (R-34)."""
     problems: List[str] = []
-    scores = [(tachi_parsers.parse_score(cells[5]), tachi_parsers.parse_score(cells[9]), cells[7]) for _canonical, cells in read]
-    if any(inherent is None or residual is None for inherent, residual, _status in scores):
+    scores = [(tachi_parsers.parse_score(cells[5]), tachi_parsers.parse_score(cells[9])) for _canonical, cells in read]
+    if any(inherent is None or residual is None for inherent, residual in scores):
         return ["a score in Section 2 is not a number, so its totals can't be checked"]
-    inherent_total = sum((inherent for inherent, _r, _s in scores), Decimal("0.0"))
-    residual_total = sum((residual for _i, residual, _s in scores), Decimal("0.0"))
+    inherent_total = sum((inherent for inherent, _r in scores), Decimal("0.0"))
+    residual_total = sum((residual for _i, residual in scores), Decimal("0.0"))
     reduction = ts.reduction_percentage(inherent_total, residual_total)
-    counts = {status: 0 for status in STATUS_CELL}
-    for _i, _r, status in scores:
-        counts[STATUS_OF_CLASS[tachi_parsers.classify_control_status(status)[0]]] += 1
+    counts = _status_counts(run)
     section_1 = "\n".join(_lines_of(md_text, SECTION_TITLES[0], SECTION_TITLES[1]))
     summary = re.search(r"(?m)^\*\*([0-9]+)\*\* threats analyzed \| \*\*([0-9]+)\*\* Control Found \| \*\*([0-9]+)\*\* Partial Control \| \*\*([0-9]+)\*\* No Control Found$", section_1)
     if summary is None or [int(each) for each in summary.groups()] != [len(read), counts["found"], counts["partial"], counts["missing"]]:
@@ -1652,21 +1675,31 @@ def _check_totals(run: Run, md_text: str, read: Sequence[Tuple[str, List[str]]])
 
 
 def _check_controls_and_recommendations(run: Run, md_text: str) -> List[str]:
-    """Section 3 holds one control for each distinct triple, and Section 4 one block for each partial or missing finding, in order."""
+    """Section 3 holds one control for each distinct triple. Section 4 holds one block for each partial or missing finding, in order
+    and numbered, each under the group of its inherent band, and each with the renderer's own heading and ``Current Status`` line
+    (ADR-050 D2, R-34: the cells that the renderer fills). Section 3's lines are found outside the code fences, because a snippet is raw."""
     problems: List[str] = []
-    section_3 = _lines_of(md_text, SECTION_TITLES[2], SECTION_TITLES[3])
-    titles = [line for line in section_3 if line.startswith("#### ")]
+    section_3 = "\n".join(_lines_of(md_text, SECTION_TITLES[2], SECTION_TITLES[3]))
+    lines_3 = section_3.split("\n")
+    titles = [lines_3[number] for number in _lines_matching(section_3, r"^#### ")]
     expected = ["#### %s %s %s" % (control.control_id, DASH, tp.escape_cell(control.row.item["evidence"][control.index]["summary"])) for control in run.controls]
     if sorted(titles) != sorted(expected):
         problems.append("Section 3 has %d control blocks for %d detected controls" % (len(titles), len(expected)))
-    detected = sorted(tachi_parsers.decode_references(match.group(1)) for match in (re.match(r"\*\*Detected in\*\*: `([^`]*)`$", line) for line in section_3) if match)
+    found_in = (re.match(r"\*\*Detected in\*\*: `([^`]*)`$", lines_3[number]) for number in _lines_matching(section_3, r"^\*\*Detected in\*\*: "))
+    detected = sorted(tachi_parsers.decode_references(match.group(1)) for match in found_in if match)
     if detected != sorted("%s:%d" % (control.path, control.line) for control in run.controls):
         problems.append("Section 3's 'Detected in' lines are not the detected controls")
-    blocks = [re.match(r"#### ([0-9]+)\. (\S+) %s " % DASH, line) for line in _lines_of(md_text, SECTION_TITLES[3], SECTION_TITLES[4]) if line.startswith("#### ")]
-    wanted = [row.canon for row in run.recommended]
-    got = [tp.canonical_finding_id(found.group(2)) if found and tp.id_matches("finding", found.group(2)) else "?" for found in blocks]
-    if got != wanted or [int(found.group(1)) for found in blocks if found] != list(range(1, len(wanted) + 1)):
-        problems.append("Section 4 does not hold exactly one numbered block for each partial or missing finding, in inherent-descending order")
+    section_4 = _lines_of(md_text, SECTION_TITLES[3], SECTION_TITLES[4])   # no raw text here, so no fence can hide a line
+    group, shown = None, []
+    for at, line in enumerate(section_4):
+        if line in GROUP_HEADINGS:
+            group = line
+        elif line.startswith("#### "):
+            shown.append((group, section_4[at:at + 3]))
+    wanted = [(GROUP_OF_BAND[row.inherent_band], _block_head(number, row)) for number, row in enumerate(run.recommended, 1)]
+    if shown != wanted:
+        problems.append("Section 4 does not hold exactly one block for each partial or missing finding, in inherent-descending order, numbered "
+                        "without a break, under the group of its inherent band, with the renderer's heading and status line")
     return problems
 
 
@@ -1711,8 +1744,9 @@ def _check_sarif(run: Run, rendered: str, text: str, md_text: str, matrix: Seque
     string holds a character that D3's step 10 forbids (the file is ASCII, so only the decoded strings show it: P0-4). The
     shared self-check passes (N/N, the shape and key order, the hashes, the one URI, no RESOLVED finding, correlation). The
     results are in Section 2's order. Each rule is the rule table's, with the highest residual score of its results. Each
-    result agrees with the row that Section 2 holds on disk (the scores, the status, the level, ``CF``) and with the staged
-    Section 4 (the recommendation and the effort), and carries the evidence, the layer and the flags of its finding.
+    result agrees with the row that Section 2 holds on disk (the scores, the level, ``CF``) and with the staged Section 4 (the
+    recommendation and the effort). Its status is the structured one, which a Control Status cell of the agent's own may
+    disagree with (R-34, flagged). It carries the evidence, the layer and the flags of its finding.
     """
     problems: List[str] = []
     if text != rendered:
@@ -1759,7 +1793,7 @@ def _check_sarif(run: Run, rendered: str, text: str, md_text: str, matrix: Seque
         score = tachi_parsers.parse_score(result["properties"].get("security-severity")) if category is not None else None
         if score is not None:
             highest[category] = max(highest.get(category, score), score)
-    if driver.get("rules") != _rules(highest):
+    if driver.get("rules") != sc.build_rules(highest):
         problems.append("the SARIF's rules are not the rule table's, one for each category with a result, each with the highest residual of its results")
 
     cells = dict(matrix)
@@ -1774,7 +1808,7 @@ def _check_sarif(run: Run, rendered: str, text: str, md_text: str, matrix: Seque
         wanted_related = [(run.evidence_cache[entry["file"]].uri, entry["line"]) for entry in row.item["evidence"]]
         pairs = (("security-severity", properties.get("security-severity"), cell[9]), ("residual-risk", properties.get("residual-risk"), cell[9]),
                  ("inherent-risk", properties.get("inherent-risk"), cell[5]),
-                 ("control-status", properties.get("control-status"), STATUS_OF_CLASS[tachi_parsers.classify_control_status(cell[7])[0]]),
+                 ("control-status", properties.get("control-status"), row.control),
                  ("level", result.get("level"), sc.level_for_band(cell[10])),
                  ("control-carry-forward", properties.get("control-carry-forward"), cell[CF_CELL] == "CF"),
                  ("recommendation", properties.get("recommendation"), recommendation), ("effort-estimate", properties.get("effort-estimate"), effort),
@@ -1803,10 +1837,9 @@ def _check_staged(run: Run, rendered: Mapping[str, str], staged: Mapping[str, st
     if forbidden is not None:
         problems.append("the staged %s holds the character U+%04X, which the part contract forbids, at line %d"
                         % (MD, ord(forbidden), md_text.count("\n", 0, md_text.find(forbidden)) + 1))
-    lines = md_text.split("\n")
     positions = []
     for title in SECTION_TITLES:
-        found = [number for number, line in enumerate(lines) if line.startswith(title)]
+        found = _lines_matching(md_text, _heading_pattern(title))   # outside the code fences: a snippet can quote a heading
         if len(found) != 1:
             problems.append("%s has %d headings" % (title, len(found)))
         else:
@@ -1900,6 +1933,10 @@ def _write_record(run: Run, out: str, plan: Mapping[str, Any], digest: str, file
     for row in run.rows:
         for flag in row.flags:
             counts[flag.kind] = counts.get(flag.kind, 0) + 1
+    if run.overwritten:   # D2: "overwritten and counted in the stage record"; each overwritten cell is one correction of the agent's value
+        # AOD-SIMPLIFICATION: the overwrite count is added to the ``corrected`` count — upgrade: a dedicated key in ``tachi_parts.COUNT_KEYS``
+        # (and ``part-files.md`` section 5) once the architect rules one, because the closed set has none.
+        counts["corrected"] = counts.get("corrected", 0) + run.overwritten
     events, retries = tp.retry_history(STAGE, out, dict(plan))
     batches = plan["batches"]
     record = {
@@ -1938,6 +1975,8 @@ def _summary(run: Run, files: Iterable[str], record: Mapping[str, Any]) -> List[
     flagged = sum(1 for row in run.rows if row.flags)
     if flagged:
         lines.append("%d findings carry integrity flags (Section 7 lists them)" % flagged)
+    if run.overwritten:
+        lines.append("%d computed cell(s) of Section 2 held something other than their slot token, and were overwritten" % run.overwritten)
     lines += ["Warning: %s: %s" % (warning["code"], warning["detail"]) for warning in record["warnings"]]
     if record["undeclared_paths"]:
         lines.append("Warning: %d paths under --out are not declared by the stage: %s" % (
