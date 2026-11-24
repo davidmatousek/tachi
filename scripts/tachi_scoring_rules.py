@@ -20,7 +20,8 @@ pure over its arguments and reads only the paths its caller passes (D5). It impo
 **Part 2 (T043)** is what the renderer's recompute-and-flag step (T045, T046) and the scorer's planner (T044) share:
 
 * ``asset_outcome`` and ``cvss_chain`` (R-25, D10): the CVSS chain of a fresh finding, with the asset modifier.
-* ``check_carried_vector`` (D10): the vector check on a carried finding, whose legacy list tests this run's tags first.
+* ``check_carried_vector`` (D10): the vector check on a carried finding, whose legacy list tests this run's tags first
+  and then, as step 3a, the tags that a legacy row recorded when an earlier run carried it (P0-2).
 * ``route_scorer_units``, ``peer_divergence`` (R-31, D2, D9): who goes to the scorer agent, who is carried, and who
   copies a primary. The groups are the result of ``tachi_parsers.parse_correlation_groups``, the one authority for
   D8's rules, and none of those rules is restated here.
@@ -239,8 +240,8 @@ class BaselineRow:
     trust_level: Optional[str]
     auth_barriers: Optional[int]
     network_boundaries: Optional[int]
-    tags_used: Optional[Tuple[str, ...]]             # renderer form only; None means no tags were recorded
-    scored_on: Optional[date]                        # renderer form only
+    tags_used: Optional[Tuple[str, ...]]             # whenever §6 records them (P0-2); None means no tags were recorded
+    scored_on: Optional[date]                        # whenever §6 records it (P0-2)
     stored: Mapping[str, Optional[Decimal]]          # cvss_base, exploitability, scalability, reachability, composite
     band: Optional[str]
     owner: Optional[str]
@@ -314,6 +315,9 @@ _VECTOR_LABEL = re.compile(r"\*\*(?:CVSS[ \t]+)?Vector(?::\*\*|\*\*[ \t]*:)[ \t]
 _TRUST_ZONE_LINE = re.compile(r"\*\*Trust Zone(?::\*\*|\*\*[ \t]*:)[ \t]*(.+?)[ \t]*\(([^()]*)\)[ \t]*$")
 _RATIONALE_BULLET = re.compile(r"^[-*][ \t]+\*\*(CVSS|Exploitability|Scalability|Reachability)\*\*[ \t]*:[ \t]*(.+)$")
 _METRIC_CELL = re.compile(r"\(([A-Z]{1,2})\)$")
+# The four §3 dimension headings (`#### CVSS 3.1 Base` and its kin), each with the rationale field that its paragraph fills (P0-2).
+_DIMENSION_HEADINGS = {"cvss 3.1 base": "rationale.cvss", "exploitability": "rationale.exploitability",
+                       "scalability": "rationale.scalability", "reachability": "rationale.reachability"}
 # §3's identity values, for S-12(b)'s supply (D9): the `**Threat**:` line, the value of `**Original Risk Level**:` (it ends at the
 # next raw `|`, because the renderer escapes a `|` in text as `&#124;`), and the component after a heading's dash.
 _THREAT_LINE = re.compile(r"\*\*Threat(?::\*\*|\*\*[ \t]*:)[ \t]*(.*)$")
@@ -711,17 +715,35 @@ def _heading_finding_id(text: str) -> Optional[str]:
     return tachi_parts.canonical_finding_id(token) if tachi_parts.id_matches("finding", token) else None
 
 
+def _heading_paragraph(body: List[str], start: int) -> str:
+    """The first paragraph of prose after a heading, read from ``body[start]``, or ``""`` when there is none.
+
+    It skips blank lines, a line led by ``**`` (the ``**Score**`` line) and a table, and ends at a blank line, a heading
+    or a rule. The paragraph's lines are joined by single spaces.
+    """
+    paragraph: List[str] = []
+    for raw in body[start:]:
+        text = raw.strip()
+        if (not text and paragraph) or text.startswith(("#", "---")) or (paragraph and text.startswith("|")):
+            break
+        if text and not text.startswith(("**", "|")):
+            paragraph.append(text)
+    return " ".join(paragraph)
+
+
 def _read_subsection(body: List[str]) -> Dict[str, Any]:
     """What one §3 subsection holds: the first valid vector (and whether an invalid one was seen), the trust
     zone line, the threat line, the original risk level and the legacy prose by field name. Prose, the threat
     and the risk level are returned as written, not decoded.
 
-    Legacy prose has two shipped forms. The older one is a ``**Scoring Rationale**:`` list with a bullet for each
+    Legacy prose has three shipped forms. The older one is a ``**Scoring Rationale**:`` list with a bullet for each
     of CVSS, Exploitability, Scalability and Reachability. The v4.48.4 one is the rationale column of each metric
-    and sub-score row, and the paragraph under the Reachability heading. Each fills the same field names that the
+    and sub-score row, and the paragraph under the Reachability heading. The 1.1 one, which a renderer run writes for
+    a legacy finding that it carried, also has a paragraph under each of the CVSS, Exploitability and Scalability
+    headings, so none of the four rationales is lost on the next read (P0-2). Each fills the same field names that the
     renderer's narrative uses, and the first text for a field wins.
     """
-    # AOD-SIMPLIFICATION: the two shipped prose forms only — upgrade: add a form here when a baseline needs one
+    # AOD-SIMPLIFICATION: the three shipped prose forms only — upgrade: add a form here when a baseline needs one
     # AOD-SIMPLIFICATION: a threat is the one `**Threat**:` line, so a threat that spans lines loses the rest — upgrade: read to the next blank line
     found: Dict[str, Any] = {"vector": None, "invalid_vector": False, "zone": None, "trust": None, "prose": {},
                              "threat": None, "risk_level": None}
@@ -757,18 +779,11 @@ def _read_subsection(body: List[str]) -> Dict[str, Any]:
                     prose.setdefault("subscore_rationale." + label.lower().replace(" ", "_"), cells[2])
         else:
             heading = _HEADING.match(line)
-            if heading and heading.group(2).strip().lower() == "reachability" and "rationale.reachability" not in prose:
-                paragraph: List[str] = []
-                later = number + 1
-                while later < len(body):
-                    text = body[later].strip()
-                    later += 1
-                    if (not text and paragraph) or text.startswith(("#", "|", "---")):
-                        break
-                    if text and not text.startswith("**"):
-                        paragraph.append(text)
+            field = _DIMENSION_HEADINGS.get(heading.group(2).strip().lower()) if heading else None
+            if field is not None and field not in prose:
+                paragraph = _heading_paragraph(body, number + 1)
                 if paragraph:
-                    prose["rationale.reachability"] = " ".join(paragraph)
+                    prose[field] = paragraph
     return found
 
 
@@ -847,6 +862,10 @@ def _build_row(finding_id: str, scored: Dict[str, Any], governance: Dict[str, An
     CVSS base score or a vector to check it against. It is renderer form when its Scoring Inputs hold a valid
     vector and all eight sub-scores, and legacy form otherwise. Inputs that hold some sub-scores but not all are
     an issue; a vector alone is not, because a carried legacy finding has no sub-scores to persist.
+
+    The tags used and the scored-on date are read whenever §6 records them, whatever the row's form (P0-2). A legacy
+    finding that a renderer run carried records both with no sub-scores, so the next run can tell a tag change from
+    a correction and keeps the finding's original scoring date.
     """
     stored = scored["stored"]
     markdown_vector = None
@@ -872,6 +891,7 @@ def _build_row(finding_id: str, scored: Dict[str, Any], governance: Dict[str, An
         # Some sub-scores but not all: a renderer-form row that lost values. A carried legacy finding has none, so it is not this.
         issues.append(InputIssue(finding_id, "scoring_inputs", "incomplete-inputs", "Scoring Inputs lacks %s, so the row is read as a legacy row" % ", ".join(inputs.missing()[:3])))
     values = inputs.values if renderer and inputs is not None else {}
+    recorded = inputs.values if inputs is not None else {}   # P0-2: §6's tags used and scored-on date, whatever the row's form
     section = subsection or {}  # S-12(b)'s identity values (D9): §3's heading, `**Threat**:` line and `**Original Risk Level**:` value, else §2's cells
     trust = subsection["trust"] if subsection is not None and not renderer else values.get("reachability.trust_level")
     zone = subsection["zone"] if subsection is not None and not renderer else values.get("reachability.zone")
@@ -886,8 +906,8 @@ def _build_row(finding_id: str, scored: Dict[str, Any], governance: Dict[str, An
         trust_level=trust,
         auth_barriers=values.get("reachability.auth_barriers"),
         network_boundaries=values.get("reachability.network_boundaries"),
-        tags_used=values.get("tags"),
-        scored_on=values.get("scored_on"),
+        tags_used=recorded.get("tags"),
+        scored_on=recorded.get("scored_on"),
         stored=dict(stored),
         band=scored["band"] or governance.get("band"),
         owner=governance.get("owner") or scored["owner"],
@@ -1155,7 +1175,7 @@ def cvss_chain(vector: str, *, tags: Sequence[str], score_bounds: Optional[Tuple
 class VectorCheck:
     cvss_base: Optional[Decimal]   # the value to render: the stored one kept, or the corrected or retagged one
     flag: Optional[str]            # one kind:field:cause, or None when the carried value passes
-    step: str                      # "renderer", or "1" to "6": D10's legacy step that decided
+    step: str                      # "renderer", or "1" to "6" or "3a" (P0-2): D10's legacy step that decided
 
 
 # Each category's ±1.0 bounds around its default score, for the N17c test of another category's clamp.
@@ -1183,6 +1203,11 @@ def check_carried_vector(row: BaselineRow, *, tags: Sequence[str]) -> VectorChec
     1. no vector: ``unverifiable:cvss_base:no-vector``, ``s`` kept;
     2. a tag, ``v`` already carries its forced bits, and 9.2 < ``s`` <= ``base(v)``: ``unchecked:cvss_base:assessed-unrecorded``;
     3. ``s`` = ``t(a)`` for either ``a``, or a tag with ``s`` = 9.2 and ``base(elevate(v))`` above 9.2: passes;
+    3a. only for a row that records the tags it was scored with (``row.tags_used``, which a legacy finding that a renderer
+        run carried does), and ``t'(a)`` R-25's outcome under those tags: ``s`` = ``t'(a)`` for either ``a``, or a
+        recorded tag with ``s`` = 9.2 and ``base(elevate(v))`` under the recorded tags above 9.2. The tags alone moved
+        the score, so it is ``retagged:cvss_base:asset-tags``, to ``t(a)`` under this run's tags for that same ``a``.
+        The candidates are tried in step 3's order, ``base(v)`` first, and the ceiling case takes ``base(v)``;
     4. a tag, and ``s`` = ``a`` < ``t(a)``: ``retagged:cvss_base:asset-tags``, to ``t(a)``;
     5. ``s`` equals another category's bound clamp of ``base(v)`` (``unchecked:cvss_base:bound-n17c``), or a tag
        with 9.2 < ``s`` < ``base(elevate(v))`` (``unchecked:cvss_base:assessed-unrecorded``), ``s`` kept;
@@ -1229,6 +1254,13 @@ def _check_legacy_vector(row: BaselineRow, vector: str, stored: Optional[Decimal
         return VectorCheck(stored, "unchecked:cvss_base:assessed-unrecorded", "2")
     if stored in outcomes or (tags and stored == ceiling and elevated_base > ceiling):   # step 3
         return VectorCheck(stored, None, "3")
+    if row.tags_used is not None:                                  # step 3a: the tags the row was scored with moved it (P0-2)
+        was = tuple(row.tags_used)
+        for candidate, outcome in zip(candidates, outcomes):       # base(v) first, then its clamp
+            if stored == asset_outcome(candidate, vector, was):
+                return VectorCheck(outcome, "retagged:cvss_base:asset-tags", "3a")
+        if was and stored == ceiling and tachi_scoring.base_score(tachi_scoring.elevate(vector, was)) > ceiling:
+            return VectorCheck(outcomes[0], "retagged:cvss_base:asset-tags", "3a")   # a is unrecorded: the ceiling case takes base(v)
     if tags:                                                       # step 4: the stored score lacks the elevation
         for candidate, outcome in zip(candidates, outcomes):
             if stored == candidate < outcome:
@@ -1355,8 +1387,9 @@ def _known_original(row: BaselineRow) -> Optional[date]:
 
 
 def original_scoring_date(row: BaselineRow, *, baseline_date: Optional[date]) -> ScoringDate:
-    """The date a carried finding's SLA clock started (R-5): its stored scored-on date, else its stored review date
-    less its stored SLA (a legacy row). If neither can be had, D9's fallbacks apply in order:
+    """The date a carried finding's SLA clock started (R-5): its stored scored-on date (whenever §6 records one, P0-2),
+    else its stored review date less its stored SLA (a legacy row that records none). If neither can be had, D9's
+    fallbacks apply in order:
 
     1. the baseline file's frontmatter date, flagged ``corrected:review_date:baseline-date``;
     2. ``None``, flagged ``unchecked:review_date:scoring-date-unknown``, which tells ``governance_for`` to keep the
@@ -1380,8 +1413,9 @@ def classify_band_change(*, stored_band: Optional[str], rendered_band: str, band
     """``none``, ``corrected``, ``retagged-up`` or ``retagged-down`` (ruling A).
 
     The band changed only when ``stored_band`` is a band and differs from ``rendered_band``. The tags alone explain
-    it when recomputing with the baseline's recorded tags (``band_with_baseline_tags``; no tags for a legacy row)
-    gives the stored band: then it is a retag, up or down by band order. Any other change is a correction.
+    it when recomputing with the baseline's recorded tags (``band_with_baseline_tags``; no tags for a row that records
+    none, as a pre-1.1 legacy row does) gives the stored band: then it is a retag, up or down by band order. Any other
+    change is a correction.
     """
     if rendered_band not in _BAND_RANK:
         raise ValueError("not a severity band: %r" % (rendered_band,))

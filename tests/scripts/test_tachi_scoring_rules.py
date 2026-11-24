@@ -591,6 +591,142 @@ def test_the_legacy_prose_comes_back_as_text_by_field_name(tmp_path):
     assert all(name in tachi_parts.NARRATIVE_FIELDS for name in prose), "the renderer's own field names"
 
 
+# The 1.1 form of a legacy finding that a renderer run carried (P0-2): §6 records its vector, tags and scored-on date and no
+# sub-scores, and §3 has a paragraph of prose under each of the four dimension headings, after the heading's Score line and table.
+CARRIED_11 = """---
+schema_version: "1.1"
+date: "2026-11-29"
+---
+
+# Risk Scores Report
+
+## 2. Scored Threat Table
+
+| ID | Source | Component | Threat | CVSS | Exploit. | Scale. | Reach. | Composite | Severity | SLA | Disposition | Flags |
+|----|--------|-----------|--------|------|----------|--------|--------|-----------|----------|-----|-------------|-------|
+| E-1 | inherited | gateway | Identifiers are trusted | 9.1 | 7.0 | 8.5 | 7.0 | 8.0 | High | 7d | Mitigate | — |
+
+## 3. Dimensional Breakdown
+
+### E-1 — gateway
+
+**Threat**: Identifiers are trusted without an ownership check.
+
+#### CVSS 3.1 Base
+
+**Score**: 9.1 | **Vector**: `%(v1)s`
+
+| Metric | Value | Rationale |
+|--------|-------|-----------|
+| Attack Vector (AV) | Network | Reachable over the network |
+
+The base score follows from a network vector.
+It wraps onto a second line.
+
+A second paragraph is not read.
+
+#### Exploitability
+
+**Score**: 7.0 (average of sub-dimensions)
+
+Techniques are documented.
+
+#### Scalability
+
+**Score**: 8.5 (average of sub-dimensions)
+
+Fully automatable.
+
+#### Reachability
+
+**Score**: 7.0 | **Trust Zone**: Edge DMZ (Semi-Trusted)
+
+The gateway sits in the Edge DMZ.
+
+---
+
+## 4. Governance Fields
+
+| ID | Severity | Owner | SLA | Disposition | Review Date |
+|----|----------|-------|-----|-------------|-------------|
+| E-1 | High | alice | 7d | Mitigate | 2026-12-06 |
+
+## 6. Score Integrity
+
+### Scoring Inputs
+
+| ID | Field | Value |
+|----|-------|-------|
+| E-1 | cvss_vector | %(v1)s |
+| E-1 | tags | pii |
+| E-1 | scored_on | 2026-11-29 |
+""" % {"v1": V1}
+
+
+def test_the_four_paragraphs_of_a_carried_legacy_finding_are_read_back_as_legacy_prose(tmp_path):
+    """P0-2: v4.48.4's reader took only the Reachability paragraph, so the CVSS, Exploitability and Scalability rationales were lost on the next read."""
+    scores = _read(tmp_path, CARRIED_11)
+    row = scores.rows["E-1"]
+    assert scores.issues == () and row.form == "legacy" and row.narrative == {}
+    assert (row.tags_used, row.scored_on) == (("pii",), date(2026, 11, 29))
+    assert row.legacy_prose == {
+        "metric_rationale.AV": "Reachable over the network",
+        "rationale.cvss": "The base score follows from a network vector. It wraps onto a second line.",
+        "rationale.exploitability": "Techniques are documented.",
+        "rationale.scalability": "Fully automatable.",
+        "rationale.reachability": "The gateway sits in the Edge DMZ.",
+    }
+    assert all(name in tachi_parts.NARRATIVE_FIELDS for name in row.legacy_prose), "the renderer's own field names"
+
+
+def _legacy_with_section_3(subsection):
+    """A pre-1.1 file with one open row, E-1, whose §3 subsection (below its heading) is ``subsection``."""
+    return ('---\nschema_version: "1.0"\ndate: "2026-10-20"\n---\n\n# Risk Scores Report\n\n## 2. Scored Threat Table\n\n'
+            "| ID | Component | Threat | CVSS | Exploit. | Scale. | Reach. | Composite | Severity | SLA | Disposition |\n"
+            "|----|-----------|--------|------|----------|--------|--------|-----------|----------|-----|-------------|\n"
+            "| E-1 | gateway | A threat | 9.1 | 7.0 | 8.5 | 7.0 | 8.0 | High | 7d | Mitigate |\n\n"
+            "## 3. Dimensional Breakdown\n\n### E-1 — gateway\n\n" + subsection + "\n\n## 4. Governance Fields\n\n"
+            "| ID | Severity | Owner | SLA | Disposition | Review Date |\n|----|----------|-------|-----|-------------|-------------|\n"
+            "| E-1 | High | alice | 7d | Mitigate | 2026-11-03 |\n")
+
+
+def _rationales(tmp_path, subsection):
+    return {name: text for name, text in _read(tmp_path, _legacy_with_section_3(subsection)).rows["E-1"].legacy_prose.items()
+            if name.startswith("rationale.")}
+
+
+TABLE = "| Sub-Dimension | Score | Rationale |\n|---|---|---|\n| Known Techniques | 9 | A cell |\n"
+
+
+@pytest.mark.parametrize("subsection,expected", [
+    ("#### Exploitability\n\n**Score**: 7.0\n\nOne.", {"rationale.exploitability": "One."}),
+    ("#### Exploitability\n\n**Score**: 7.0\n\n" + TABLE + "\nAfter the table.", {"rationale.exploitability": "After the table."}),
+    ("#### Exploitability\n\n**Score**: 7.0\n\n" + TABLE + "After the table, with no blank line.", {"rationale.exploitability": "After the table, with no blank line."}),
+    ("#### Scalability\n\nOne\ntwo\n  three", {"rationale.scalability": "One two three"}),
+    ("#### Scalability\n\nFirst.\n\nSecond.", {"rationale.scalability": "First."}),
+    ("#### Scalability\n\nFirst.\n| a | b | c |\nNot read.", {"rationale.scalability": "First."}),
+    ("#### Scalability\n\nFirst.\n---\nNot read.", {"rationale.scalability": "First."}),
+    ("#### Scalability\n\nFirst.\n#### Reachability\n\nSecond.", {"rationale.scalability": "First.", "rationale.reachability": "Second."}),
+    ("#### Scalability\n\n" + TABLE + "\n#### Reachability\n\n**Score**: 2.5", {}),
+    ("#### Scalability\n\n**Score**: 8.5\n**Note**: a bold-led line is not prose\n\nReal prose.", {"rationale.scalability": "Real prose."}),
+    ("#### Reachability\n\n" + TABLE + "\nAfter a table.", {"rationale.reachability": "After a table."}),
+    ("##### cvss 3.1 BASE\n\nAny level below the finding's, and any case.", {"rationale.cvss": "Any level below the finding's, and any case."}),
+    ("#### CVSS Base\n\nNot one of the four headings.\n\n#### Likelihood\n\nNor this.", {}),
+], ids=["no-table", "table", "table-no-blank", "wrapped", "second-paragraph", "table-row-ends-it", "rule-ends-it", "heading-ends-it",
+        "table-then-heading", "bold-line", "reachability-after-table", "heading-level-and-case", "other-headings"])
+def test_a_dimension_paragraph_follows_its_score_line_and_table_and_ends_at_a_blank_line_a_rule_or_a_heading(tmp_path, subsection, expected):
+    assert _rationales(tmp_path, subsection) == expected
+
+
+def test_the_first_text_for_a_rationale_field_wins_whichever_form_it_is_in(tmp_path):
+    bullets = "**Scoring Rationale**:\n- **CVSS**: From the list.\n- **Scalability**: Also from the list.\n"
+    paragraphs = "#### CVSS 3.1 Base\n\nFrom the paragraph.\n\n#### Exploitability\n\nOnly a paragraph.\n"
+    assert _rationales(tmp_path, bullets + "\n" + paragraphs) == {
+        "rationale.cvss": "From the list.", "rationale.scalability": "Also from the list.", "rationale.exploitability": "Only a paragraph."}
+    assert _rationales(tmp_path, paragraphs + "\n" + bullets) == {
+        "rationale.cvss": "From the paragraph.", "rationale.scalability": "Also from the list.", "rationale.exploitability": "Only a paragraph."}
+
+
 def test_a_peer_with_only_a_score_line_has_its_vector_and_a_row_without_a_section_3(tmp_path):
     scores = _read(tmp_path, V4484)
     assert scores.rows["LLM-1"].cvss_vector == V2 and scores.rows["LLM-1"].legacy_prose == {}
@@ -1162,7 +1298,9 @@ def test_incomplete_inputs_make_a_legacy_row_with_an_issue_and_keep_the_vector(t
     rows = [row for row in _inputs() if row[1] != "scalability.target_scope"]
     scores = _read(tmp_path, _renderer_doc(_escaped(rows)))
     row = scores.rows["T-12"]
-    assert row.form == "legacy" and row.subscores is None and row.narrative == {} and row.tags_used is None
+    assert row.form == "legacy" and row.subscores is None and row.narrative == {}
+    assert (row.tags_used, row.scored_on) == (("auth", "pii"), date(2026, 11, 1)), "§6 records both, so a legacy row reads both (P0-2)"
+    assert (row.score_bounds, row.auth_barriers, row.network_boundaries) == (None, None, None), "and nothing else of §6's renderer form"
     assert row.cvss_vector == V2, "the vector that was there is still the best vector"
     assert [(i.finding_id, i.field, i.cause) for i in scores.issues] == [("T-12", "scoring_inputs", "incomplete-inputs")]
     assert "scalability.target_scope" in scores.issues[0].detail
@@ -1171,12 +1309,44 @@ def test_incomplete_inputs_make_a_legacy_row_with_an_issue_and_keep_the_vector(t
 
 
 def test_inputs_without_any_sub_score_are_a_carried_legacy_finding_not_an_issue(tmp_path):
-    """A legacy finding that a renderer run carried has no sub-scores to persist, so its inputs may be just a vector."""
+    """A legacy finding that a renderer run carried has no sub-scores to persist, so its inputs may be just a vector, its tags and its date.
+
+    The tags and the scored-on date are read whatever the row's form (P0-2): they are "the baseline's recorded tags" of ruling A and
+    the original scoring date of the review-date rungs, so a tag removed since the carry reads as a retag and not as a correction.
+    """
     rows = [("T-12", "cvss_vector", V2), ("T-12", "tags", "pii"), ("T-12", "scored_on", "2026-11-01")]
     scores = _read(tmp_path, _renderer_doc(_escaped(rows)))
     row = scores.rows["T-12"]
     assert scores.issues == () and scores.form == "legacy"
-    assert (row.form, row.cvss_vector, row.tags_used, row.scored_on, row.subscores) == ("legacy", V2, None, None, None)
+    assert (row.form, row.cvss_vector, row.tags_used, row.scored_on, row.subscores) == ("legacy", V2, ("pii",), date(2026, 11, 1), None)
+    assert (row.score_bounds, row.auth_barriers, row.network_boundaries, row.narrative) == (None, None, None, {})
+
+
+@pytest.mark.parametrize("rows,tags,scored_on", [
+    ([("tags", "pii, AUTH, pii"), ("scored_on", "2026-11-01")], ("auth", "pii"), date(2026, 11, 1)),
+    ([("tags", ""), ("scored_on", "2026-11-01")], (), date(2026, 11, 1)),      # an empty row means no tag was used: that is recorded too
+    ([("scored_on", "2026-11-01")], None, date(2026, 11, 1)),                  # no tags row means none were recorded
+    ([("tags", "safety")], ("safety",), None),
+    ([], None, None),
+], ids=["both", "empty-tags", "no-tags-row", "no-date-row", "neither"])
+def test_a_legacy_row_reads_the_tags_and_the_scored_on_date_that_section_6_records(tmp_path, rows, tags, scored_on):
+    inputs = [("T-12", "cvss_vector", V2)] + [("T-12", name, value) for name, value in rows]
+    scores = _read(tmp_path, _renderer_doc(_escaped(inputs)))
+    row = scores.rows["T-12"]
+    assert scores.issues == () and row.form == "legacy" and row.subscores is None
+    assert (row.tags_used, row.scored_on) == (tags, scored_on)
+    assert row.stored["cvss_base"] == D("5.4"), "the stored values are §2's, as for any legacy row"
+
+
+@pytest.mark.parametrize("name,value", [("tags", "pii,bogus"), ("tags", "PII;auth"), ("scored_on", "2026-02-30"), ("scored_on", "yesterday")])
+def test_a_tags_or_date_value_that_fails_its_class_is_an_issue_on_a_legacy_row_too(tmp_path, name, value):
+    inputs = [("T-12", "cvss_vector", V2), ("T-12", "tags", "pii"), ("T-12", "scored_on", "2026-11-01")]
+    inputs = [(i, n, value if n == name else v) for i, n, v in inputs]
+    scores = _read(tmp_path, _renderer_doc(_escaped(inputs)))
+    row = scores.rows["T-12"]
+    assert [(i.finding_id, i.field, i.cause) for i in scores.issues] == [("T-12", name, "invalid-value")]
+    assert row.form == "legacy"
+    assert (row.tags_used, row.scored_on) == ((None, date(2026, 11, 1)) if name == "tags" else (("pii",), None)), "the other value is still read"
 
 
 def test_unknown_duplicate_and_foreign_input_rows_are_issues(tmp_path):
@@ -1903,6 +2073,59 @@ def test_legacy_step_3_the_documented_outcomes_pass_under_this_runs_tags():
     assert (check.cvss_base, check.flag, check.step) == (D("9.2"), None, "3"), "an old capped score passes"
     assert _check_vector(make_row(cvss_vector=X3, cvss_base=D("9.2")), ["auth"]).flag is None
     assert _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("8.3")), ["pii"]).step == "3"
+
+
+def test_legacy_step_3a_a_score_that_the_recorded_tags_gave_is_retagged_to_the_outcome_under_this_runs_tags():
+    """P0-2: a legacy finding that a renderer run carried records the tags it was scored with. A stored score that those tags gave
+    moved because of the tags alone, so it is a retag and never a correction, and it becomes t(a) under this run's tags."""
+    removed = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("8.3"), tags_used=("pii",)), [])
+    assert removed == rules.VectorCheck(D("7.1"), "retagged:cvss_base:asset-tags", "3a")
+    changed = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("8.3"), tags_used=("pii",)), ["safety"])
+    assert changed == rules.VectorCheck(D("8.1"), "retagged:cvss_base:asset-tags", "3a"), "t(a) under this run's tags, not the stored score"
+
+
+def test_legacy_step_3a_the_own_bound_clamp_is_the_second_candidate_and_base_v_is_tried_first():
+    # E-1's bounds are (8.9, 10.0), so X1 (base 5.0) has the candidates 5.0 and 8.9. pii gives X1 7.7, so 8.9 is the clamp's outcome only.
+    clamp = _check_vector(make_row("E-1", cvss_vector=X1, cvss_base=D("8.9"), tags_used=("pii",)), ["auth"])
+    assert clamp == rules.VectorCheck(D("9.2"), "retagged:cvss_base:asset-tags", "3a"), "the clamp a gives t(8.9) under auth, the ceiling 9.2"
+    # T-1's bounds are (6.1, 8.1), so X1 has the candidates 5.0 and 6.1, and pii's 7.7 is both of their outcomes: base(v) wins.
+    both = _check_vector(make_row("T-1", cvss_vector=X1, cvss_base=D("7.7"), tags_used=("pii",)), [])
+    assert both == rules.VectorCheck(D("5.0"), "retagged:cvss_base:asset-tags", "3a"), "t(base(v)) is 5.0 and t(clamp) is 6.1"
+
+
+def test_legacy_step_3a_the_recorded_tags_ceiling_case_takes_base_v():
+    # ABOVE has base 9.4 and safety gives 9.8, so a safety-tagged score was capped at 9.2. The only candidate is 9.4, whose outcome under safety is
+    # 9.4 and not 9.2, so no candidate explains the stored 9.2 and the ceiling case does: a is unrecorded, and base(v) is taken.
+    row = make_row("E-1", cvss_vector=ABOVE, cvss_base=D("9.2"), tags_used=("safety",))
+    assert _check_vector(row, []) == rules.VectorCheck(D("9.4"), "retagged:cvss_base:asset-tags", "3a")
+    assert _check_vector(row, ["safety"]) == rules.VectorCheck(D("9.2"), None, "3"), "the same tags again: step 3's own ceiling clause passes it"
+    unforced = _check_vector(make_row("E-1", cvss_vector=ABOVE, cvss_base=D("9.2"), tags_used=()), [])
+    assert (unforced.flag, unforced.step) == ("unchecked:cvss_base:bound-n17c", "5"), "no recorded tag forces a bit, so there is no ceiling case"
+
+
+def test_legacy_step_3a_runs_for_a_row_that_records_an_empty_tag_set_and_then_gives_step_4s_answer():
+    empty = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("7.1"), tags_used=()), ["pii"])
+    assert empty == rules.VectorCheck(D("8.3"), "retagged:cvss_base:asset-tags", "3a")
+    unrecorded = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("7.1"), tags_used=None), ["pii"])
+    assert unrecorded == rules.VectorCheck(D("8.3"), "retagged:cvss_base:asset-tags", "4"), "the same value and flag, one step later"
+
+
+def test_legacy_step_3a_needs_the_recorded_tags_to_explain_the_score_and_otherwise_the_check_goes_on():
+    # 8.1 is what safety gives TAMPER. Only a row that records safety reads it as a retag.
+    retag = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("8.1"), tags_used=("safety",)), [])
+    assert (retag.cvss_base, retag.flag, retag.step) == (D("7.1"), "retagged:cvss_base:asset-tags", "3a")
+    for recorded in (None, (), ("pii",)):
+        check = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("8.1"), tags_used=recorded), [])
+        assert (check.cvss_base, check.flag, check.step) == (D("7.1"), "corrected:cvss_base:vector", "6"), recorded
+    goes_on = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("7.1"), tags_used=("safety",)), ["pii"])
+    assert (goes_on.cvss_base, goes_on.flag, goes_on.step) == (D("8.3"), "retagged:cvss_base:asset-tags", "4"), "3a found nothing, so step 4 decides"
+
+
+def test_legacy_step_3a_comes_after_steps_2_and_3():
+    same = _check_vector(make_row(cvss_vector=TAMPER, cvss_base=D("8.3"), tags_used=("pii",)), ["pii"])
+    assert same == rules.VectorCheck(D("8.3"), None, "3"), "no tag changed since the carry, so nothing is flagged"
+    legacy_case = _check_vector(make_row(cvss_vector=MAXV, cvss_base=D("10.0"), tags_used=("auth",)), ["pii"])
+    assert (legacy_case.flag, legacy_case.step) == ("unchecked:cvss_base:assessed-unrecorded", "2"), "R-25's legacy case is tested first"
 
 
 def test_legacy_step_4_a_stored_score_without_the_elevation_becomes_the_elevated_one_retagged():

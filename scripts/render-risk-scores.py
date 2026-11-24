@@ -1028,16 +1028,18 @@ def _carry(run: Run, row: Row, stored: Any, scoring_date: datetime.date) -> None
 
     **Inherited verbatim** (step 1): from a renderer-form row the vector, bounds, sub-scores, zone, trust level, barrier
     counts and tags used; from a legacy row the vector and the stored C, E, S and R; from either the owner, SLA,
-    disposition and review date. **Recomputed** (step 2): the CVSS chain through ``check_carried_vector``, then E, S and R
-    (a legacy R is only range-checked), then the composite and the band. **Compared** (steps 3 and 4): a difference that
-    is only rounding is normalized and counted when the band holds; one that the asset tags alone explain is ``retagged``
-    (ruling A: recomputing with the baseline's tags gives the stored value); anything else is ``corrected``, and a
-    missing vector is ``unverifiable``. The governance and its flags are ``governance_for``'s, unioned, never re-derived.
+    disposition, review date and, whenever §6 records them, the tags used and the scored-on date (P0-2: a legacy
+    finding that an earlier run carried records both). **Recomputed** (step 2): the CVSS chain through
+    ``check_carried_vector``, then E, S and R (a legacy R is only range-checked), then the composite and the band.
+    **Compared** (steps 3 and 4): a difference that is only rounding is normalized and counted when the band holds; one
+    that the asset tags alone explain is ``retagged`` (ruling A: recomputing with the baseline's recorded tags gives the
+    stored value); anything else is ``corrected``, and a missing vector is ``unverifiable``. The governance and its flags
+    are ``governance_for``'s, unioned, never re-derived.
     """
     row.source = "inherited"
     row.tags = tuple(run.tag_source.tags.get(row.canon, ()))
     renderer_form = stored.form == "renderer"
-    baseline_tags = tuple(stored.tags_used or ()) if renderer_form else ()   # a legacy row records no tags (ruling A)
+    baseline_tags = tuple(stored.tags_used or ())   # ruling A's recorded tags, whatever the form: a pre-1.1 row has none (P0-2)
     held = stored.stored
     row.vector, row.bounds, row.zone, row.trust = stored.cvss_vector, stored.score_bounds, stored.zone, stored.trust_level
     check = rules.check_carried_vector(stored, tags=row.tags)
@@ -1073,7 +1075,7 @@ def _carry(run: Run, row: Row, stored: Any, scoring_date: datetime.date) -> None
         row.flags.append(flag)
 
     # The composite and the band, against what the baseline stored. "The tags alone" means that recomputing with the
-    # baseline's own tags gives the stored value (ruling A); a legacy row records none.
+    # baseline's own tags gives the stored value (ruling A); a pre-1.1 legacy row records none, so baseline_tags is empty for it.
     then_cvss = _grid(rules.check_carried_vector(stored, tags=baseline_tags).cvss_base)
     then_composite = ts.composite(then_cvss, row.exploit, row.scale, row.reach)
     was = held.get("composite")

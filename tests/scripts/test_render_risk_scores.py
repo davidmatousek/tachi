@@ -63,6 +63,9 @@ The groups of tests, by the task that turns them green:
 * ``test_fallback_*``, ``test_cli_*`` and ``test_sarif_*`` (section 29, W3's P0-3, P0-7 and P0-8): D8's ``threats.sarif`` fallback on
   copies of three shipped samples (the modern form, a file whose correlation groups have no ID, and the legacy ``properties.id``
   form), the plan's own ``refs``, and ``message.markdown`` written for an empty mitigation.
+* ``test_p0_2_*`` (section 30, W3's P0-2): a legacy finding that a run carries and a second run reads back. Run 1 over a v4.48.x
+  baseline records the finding's tags and scored-on date in Section 6, and run 2, with the tag removed, reads them: a retag and
+  never a correction, ruling A's down-rule date, and all four rationales.
 
 Standard library and pytest only, and Python 3.9 syntax.
 """
@@ -3065,10 +3068,10 @@ def edit_section_2_cell(md, finding_id, column, value):
     return edit_table_cell(md, "## 2. Scored Threat Table", finding_id, column, value)
 
 
-def second_run(stage_module, renderer_module, root, first, edit_baseline=None, architecture_text=None, specs=None):
+def second_run(stage_module, renderer_module, root, first, edit_baseline=None, architecture_text=None, specs=None, resolved=None):
     """The nine findings again (or ``specs``), every one UNCHANGED, with the first run's own ``threats.md``, ``risk-scores.md`` and SARIF as the baseline."""
     project = Project(stage_module, renderer_module, root, specs=[dict(item, status="UNCHANGED") for item in (SPECS if specs is None else specs)],
-                      baseline_source="baseline/threats.md")
+                      resolved=resolved, baseline_source="baseline/threats.md")
     baseline = Path(root) / "baseline"
     baseline.mkdir()
     for name in ("threats.md", MD, SARIF):
@@ -3988,3 +3991,151 @@ def test_sarif_an_empty_mitigation_still_writes_message_markdown_as_the_empty_st
     assert [finding_id for finding_id, result in results.items() if "markdown" not in result["message"]] == [], "every result carries the key"
     assert results["T-1"]["message"]["markdown"] == mitigation_of(by_id("T-1")), "and a mitigation that is there is written as it was"
     sc.self_check(project.sarif["runs"][0]["results"], tool=TOOL, member_ids=OPEN_IDS, assignments={}, resolved_ids=RESOLVED_IDS, uri=URI)
+
+
+# =============================================================================
+# 30. P0-2: a legacy finding that a run carries keeps its tags, its scored-on date and its prose for the run after (W3, lane FX0)
+# =============================================================================
+#
+# An upgrading adopter's v4.48.x findings have no sub-scores, so a renderer run carries each one as a legacy row and records its vector,
+# its tags and its scored-on date in Section 6. The next run reads those back whatever the row's form. Before P0-2 it did not: a tag
+# that was removed since the carry read as ``corrected:cvss_base:vector`` against the PM's ruling A, the band that it lowered took R-5's
+# date and not ruling A's down-rule date, and Section 3's CVSS, Exploitability and Scalability paragraphs were lost.
+#
+# The case is three files and two runs: a v4.48.x baseline (no Section 6, the ``**Scoring Rationale**:`` list), run 1 on 2026-11-27 with
+# the asset tag ``pii`` on the broker, and run 2 on 2026-12-10 with no tag, whose baseline is run 1's own file.
+
+LEGACY_RUN_1, LEGACY_RUN_2 = "2026-11-27", "2026-12-10"
+LEGACY_SCORED, LEGACY_REVIEW = "2026-11-01", "2026-12-01"   # the baseline's scoring date, and its Medium review date 30 days later
+PII_ARCHITECTURE = '```mermaid\nflowchart LR\n    auth_broker["auth-broker<br/>[asset:pii]"]\n```\n'
+CARRIED = ("T-1", "S-10", "S-2")   # T-1's score and band move with pii; S-10's vector already holds pii's bit; S-2's component has no tag
+LEGACY_NUMBERS = {   # CVSS, exploitability, scalability and reachability as the baseline stored them, reachability inside Semi-Trusted's range
+    "T-1": ("7.1", "8.0", "7.0", "4.5"), "S-10": ("6.5", "6.0", "4.0", "6.0"), "S-2": ("8.2", "5.0", "4.0", "4.5")}
+LEGACY_PROSE = {   # the older form's bullet for each of the four dimensions
+    "cvss": "needs a network path and a low privilege.", "exploitability": "needs access that operators already hold.",
+    "scalability": "repeats in the same way on every backup set.", "reachability": "sits in the edge zone behind one gateway.",
+}
+
+
+LEGACY_LABELS = {"cvss": "CVSS", "exploitability": "Exploitability", "scalability": "Scalability", "reachability": "Reachability"}
+
+
+def legacy_prose(finding_id, field):
+    return "%s %s" % (finding_id, LEGACY_PROSE[field])
+
+
+def legacy_risk_scores(specs):
+    """A v4.48.x ``risk-scores.md`` for ``specs``: ``## N.`` headings, §3's ``**Scoring Rationale**:`` list, no Section 6."""
+    rows, subsections, governance = [], [], []
+    for item in specs:
+        cvss, exploit, scale, reach = LEGACY_NUMBERS[item["id"]]
+        composite = ts.composite(Decimal(cvss), Decimal(exploit), Decimal(scale), Decimal(reach))
+        band = ts.band(composite)
+        rule = ts.SEVERITY_BANDS[band]
+        rows.append("| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
+            item["id"], item["component"], item["threat"], cvss, exploit, scale, reach, composite, band, rule["sla"], rule["disposition"]))
+        subsections += ["### %s: %s" % (item["id"], item["threat"]), "", "**Component**: %s" % item["component"],
+                        "**Composite Score**: %s (%s)" % (composite, band), "", "**CVSS Vector**: `%s`" % item["vector"], "",
+                        "**Scoring Rationale**:"]
+        subsections += ["- **%s**: %s" % (LEGACY_LABELS[name], legacy_prose(item["id"], name)) for name in LEGACY_PROSE]
+        subsections += ["", "---", ""]
+        governance.append("| %s | %s | Unassigned | %s | %s | %s |" % (item["id"], band, rule["sla"], rule["disposition"], LEGACY_REVIEW))
+    return "\n".join([
+        "---", 'schema_version: "1.0"', 'date: "%s"' % LEGACY_SCORED, 'source_file: "threats.md"', "---", "", "# Risk Scores Report", "",
+        "## 1. Executive Summary", "", "%d threats scored." % len(specs), "", "---", "", "## 2. Scored Threat Table", "",
+        "| ID | Component | Threat | CVSS | Exploitability | Scalability | Reachability | Composite | Severity | SLA | Disposition |",
+        "|----|-----------|--------|-----:|---------------:|------------:|-------------:|----------:|----------|-----|-------------|",
+    ] + rows + ["", "---", "", "## 3. Dimensional Breakdown", ""] + subsections + [
+        "## 4. Governance Fields", "", "| ID | Severity | Owner | SLA | Disposition | Review Date |",
+        "|----|----------|-------|-----|-------------|-------------|"] + governance + ["", "---", "", "## 5. Scoring Methodology", "", "Text.", ""])
+
+
+@pytest.fixture(scope="module")
+def legacy_carried(stage, renderer, tmp_path_factory):
+    """``(run 1, run 2)``: a legacy baseline, then run 1 with pii on the broker, then run 2 with no tag over run 1's own files."""
+    root = Path(tmp_path_factory.mktemp("legacy-carried"))
+    specs = [dict(by_id(finding_id), status="UNCHANGED") for finding_id in CARRIED]
+    first = Project(stage, renderer, root / "first", specs=specs, resolved=[], baseline_source="baseline/threats.md")
+    baseline = first.root / "baseline"
+    baseline.mkdir()
+    (baseline / "threats.md").write_text(make_threats_md(specs, []), encoding="utf-8")
+    (baseline / MD).write_text(legacy_risk_scores(specs), encoding="utf-8")
+    first.architecture.write_text(make_architecture_md() + "\n" + PII_ARCHITECTURE, encoding="utf-8")
+    res = first.run(date=LEGACY_RUN_1)
+    assert res.code in (0, 5), "run 1 must finish for run 2 to read it:\n" + res.describe()   # reading: the input block names no tag, so S-13 recomputes it and warns
+    second = second_run(stage, renderer, root / "second", first, specs=specs, resolved=[])
+    res = second.run(date=LEGACY_RUN_2)
+    assert res.code in (0, 5), res.describe()
+    return first, second
+
+
+def flags_of(project, finding_id):
+    return results_by_id(project.sarif)[finding_id]["properties"]["score-flags"]
+
+
+def test_p0_2_the_premises_of_the_three_run_case_hold():
+    raised = rules.cvss_chain(by_id("T-1")["vector"], tags=("pii",), score_bounds=None).cvss_base
+    cvss, exploit, scale, reach = (Decimal(number) for number in LEGACY_NUMBERS["T-1"])
+    assert raised > cvss and ts.band(ts.composite(cvss, exploit, scale, reach)) == "Medium" and ts.band(ts.composite(raised, exploit, scale, reach)) == "High", (
+        "pii raises T-1's score across a band, so run 1 retags it up and run 2 retags it down")
+    assert [rules.cvss_chain(by_id(finding_id)["vector"], tags=("pii",), score_bounds=None).cvss_base for finding_id in ("S-10", "S-2")] == [
+        Decimal(LEGACY_NUMBERS[finding_id][0]) for finding_id in ("S-10", "S-2")], "pii leaves the other two scores as they are"
+    assert ts.review_date(LEGACY_RUN_1, "7d") > LEGACY_REVIEW, "run 1's date plus the High SLA is later than the stored review date, so run 1 keeps the stored one"
+    assert ts.review_date(LEGACY_SCORED, "30d") == LEGACY_REVIEW < LEGACY_RUN_2, "and by run 2 the original deadline has passed"
+    counted_back = datetime.date.fromisoformat(LEGACY_REVIEW) - datetime.timedelta(days=ts.sla_days("7d"))
+    assert counted_back.isoformat() != LEGACY_SCORED, "so the stored review date less the High SLA is not the original scoring date"
+
+
+def test_p0_2_run_1_retags_the_pii_finding_and_records_the_tags_and_the_original_scoring_date_for_every_finding(legacy_carried):
+    first, _second = legacy_carried
+    assert first.plan_json()["unit_count"] == 0, "every finding is carried, so nothing goes to the agent"
+    flags = flags_of(first, "T-1")
+    assert {"retagged:cvss_base:asset-tags", "retagged:severity_band:asset-tags"} <= set(flags) and not [f for f in flags if f.startswith("corrected:")], flags
+    assert flags_of(first, "S-10") == flags_of(first, "S-2") == []
+    inputs = persisted_inputs(first)
+    assert {key: value for key, value in inputs.items() if key[1] in ("tags", "scored_on")} == {
+        ("T-1", "tags"): "pii", ("S-10", "tags"): "pii", ("S-2", "tags"): "",
+        ("T-1", "scored_on"): LEGACY_SCORED, ("S-10", "scored_on"): LEGACY_SCORED, ("S-2", "scored_on"): LEGACY_SCORED}
+    assert sorted({field for _finding, field in inputs}) == ["cvss_vector", "scored_on", "tags"], "a legacy finding has no sub-scores to record"
+    assert MdView(first.md).values("T-1")["review_date"] == LEGACY_REVIEW, "tagging never gives a higher band more time"
+
+
+def test_p0_2_run_2_reads_the_removed_tag_as_a_retag_and_never_as_a_correction(legacy_carried):
+    _first, second = legacy_carried
+    flags = {finding_id: flags_of(second, finding_id) for finding_id in CARRIED}
+    assert not [flag for found in flags.values() for flag in found if flag.startswith("corrected:")], flags
+    assert set(flags["T-1"]) == {"retagged:cvss_base:asset-tags", "retagged:composite_score:asset-tags", "retagged:severity_band:asset-tags",
+                                 "retagged:remediation_sla:asset-tags", "retagged:risk_disposition:asset-tags"}, flags["T-1"]
+    assert flags["S-10"] == flags["S-2"] == [], "a no-op tag, and a component that never had one, change nothing"
+    view = MdView(second.md)
+    cvss, exploit, scale, reach = (Decimal(number) for number in LEGACY_NUMBERS["T-1"])
+    composite = ts.composite(cvss, exploit, scale, reach)
+    assert {field: view.values("T-1")[field] for field in ("cvss_base", "composite_score", "severity_band")} == {
+        "cvss_base": str(cvss), "composite_score": str(composite), "severity_band": ts.band(composite)}, "the score is back to the baseline's"
+    assert results_by_id(second.sarif)["T-1"]["properties"]["cvss-vector"] == by_id("T-1")["vector"]
+
+
+def test_p0_2_run_2_keeps_the_original_scoring_date_when_the_removed_tag_lowers_the_band(legacy_carried):
+    """Ruling A, Down: the original scoring date is kept, so a deadline that was already missed under the lower band's SLA stays missed.
+    The date is the one that run 1 recorded in Section 6, and it is not the stored review date less the SLA that run 1 wrote."""
+    _first, second = legacy_carried
+    got = MdView(second.md).values("T-1")
+    assert got["remediation_sla"] == "30d"
+    assert got["review_date"] == ts.review_date(LEGACY_SCORED, got["remediation_sla"]) == LEGACY_REVIEW
+    assert got["review_date"] < LEGACY_RUN_2, "and it is overdue on run 2's date: nothing cleared it"
+    assert persisted_inputs(second)[("T-1", "scored_on")] == LEGACY_SCORED, "run 3 starts from the same original date"
+    for finding_id in ("S-10", "S-2"):
+        assert MdView(second.md).values(finding_id)["review_date"] == LEGACY_REVIEW
+
+
+def test_p0_2_all_four_rationales_of_a_carried_legacy_finding_survive_both_runs(legacy_carried):
+    for run in legacy_carried:
+        for finding_id in CARRIED:
+            body = subsection_for(run.md, finding_id)
+            for field in LEGACY_PROSE:
+                assert body.count(legacy_prose(finding_id, field)) == 1, (run.out.parent.name, finding_id, field)
+    read = rules.read_baseline_scores(legacy_carried[1].out / MD)   # what a third run would read from run 2's file
+    assert {finding_id: (row.form, row.tags_used, row.scored_on) for finding_id, row in read.rows.items()} == {
+        finding_id: ("legacy", (), datetime.date.fromisoformat(LEGACY_SCORED)) for finding_id in CARRIED}, "still legacy, with run 2's own tags (none)"
+    assert {finding_id: {name: text for name, text in read.rows[finding_id].legacy_prose.items() if name.startswith("rationale.")} for finding_id in CARRIED} == {
+        finding_id: {"rationale." + field: legacy_prose(finding_id, field) for field in LEGACY_PROSE} for finding_id in CARRIED}
