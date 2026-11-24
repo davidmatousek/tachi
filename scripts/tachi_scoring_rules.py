@@ -44,7 +44,6 @@ Rules this module holds:
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 import stat
@@ -818,13 +817,16 @@ def _finding_sections(lines: List[str], outline: List[Tuple[int, int, str, int]]
 def _sarif_vectors(path: Any, issues: List[InputIssue]) -> Dict[str, str]:
     """Each valid ``cvss-vector`` of the baseline SARIF by canonical ``findingId/v1`` (the first of a repeat wins).
 
-    A SARIF that can't be read is one issue, and its vectors are simply missing: it is a fallback source only.
+    A SARIF that can't be read is one issue, and its vectors are simply missing: it is a fallback source only. The
+    baseline is untrusted input (NFR-10), so it is parsed by ``tachi_parsers``' loader, which applies D3 step 4's
+    hooks: an integer literal of more than 20 digits, ``NaN`` and ``Infinity`` are refused. So a planted file can't
+    stall this reader, which the planner and the renderer both call, on a Python with no digit cap (before 3.9.14).
     """
     raw, reason = _read_bytes(path)
     data: Any = None
     if raw is not None:
         try:
-            data = json.loads(raw.decode("utf-8"))
+            data = tachi_parsers._load_sarif(raw.decode("utf-8"))
         except (UnicodeDecodeError, ValueError, RecursionError):
             reason = "not-json"
     if raw is None or reason == "not-json":

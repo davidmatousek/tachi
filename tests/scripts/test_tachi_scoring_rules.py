@@ -40,6 +40,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -77,8 +78,10 @@ def _symlink(target, link):
 # 1. Module hygiene and the frozen signatures
 # =============================================================================
 
+# ``json`` is not on the list on purpose (T146, T067a M3): the module reads a baseline SARIF through
+# ``tachi_parsers``' bounded loader and holds no JSON parser of its own, so a plain ``json.loads`` can't come back.
 ALLOWED_IMPORTS = {
-    "__future__", "json", "os", "re", "stat", "sys", "dataclasses", "datetime", "decimal", "pathlib", "typing",
+    "__future__", "os", "re", "stat", "sys", "dataclasses", "datetime", "decimal", "pathlib", "typing",
     "tachi_parsers", "tachi_parts", "tachi_scoring",
 }
 
@@ -1571,7 +1574,10 @@ def test_the_first_sarif_result_for_an_id_wins_and_odd_shapes_are_skipped(tmp_pa
         assert _read(tmp_path, V4484, sarif_path=sarif).rows["AGP-1"].cvss_vector is None
 
 
-@pytest.mark.parametrize("content", [b"{not json", b"\xff\xfe\x00", b"[" * 100000])
+@pytest.mark.parametrize("content", [
+    b"{not json", b"\xff\xfe\x00", b"[" * 100000,
+    b'{"runs": [], "x": NaN}', b'{"runs": [], "x": Infinity}', b'{"runs": [], "x": -Infinity}',   # D3 step 4's constants
+], ids=["not-json", "not-utf8", "recursion-bomb", "NaN", "Infinity", "-Infinity"])
 def test_an_unreadable_sarif_is_one_issue_and_the_rows_are_still_read(tmp_path, content):
     sarif = _write(tmp_path, content, "risk-scores.sarif")
     scores = _read(tmp_path, V4484, sarif_path=sarif)
@@ -1582,6 +1588,61 @@ def test_an_unreadable_sarif_is_one_issue_and_the_rows_are_still_read(tmp_path, 
 def test_a_sarif_path_that_does_not_exist_is_one_issue(tmp_path):
     scores = _read(tmp_path, V4484, sarif_path=tmp_path / "absent.sarif")
     assert [(i.field, i.cause) for i in scores.issues] == [("cvss_vector", "unreadable-sarif")]
+
+
+# --- The baseline SARIF is untrusted input: D3 step 4's bounded integers (T146, T067a M3) ----------------------------
+
+def _sarif_holding(literal):
+    """A baseline SARIF with one vector and one JSON number written as ``literal``. It is built as text, because
+    ``json.dumps`` can't write a long integer and Python 3.11 can't make one of over 4,300 digits."""
+    return ('{"runs": [{"results": [{"partialFingerprints": {"findingId/v1": "AGP-01"}, '
+            '"properties": {"cvss-vector": "%s", "rank": %s}}]}]}' % (V3, literal))
+
+
+@pytest.mark.parametrize("sign", ["", "-"], ids=["positive", "negative"])
+def test_an_integer_literal_of_exactly_the_bounds_digits_is_read_and_the_vector_beside_it_is_used(tmp_path, sign):
+    """The bound is D3's, ``tachi_parts.MAX_INT_DIGITS``: that many digits read as before, and one more is refused."""
+    sarif = _write(tmp_path, _sarif_holding(sign + "1" * tachi_parts.MAX_INT_DIGITS), "risk-scores.sarif")
+    scores = _read(tmp_path, V4484, sarif_path=sarif)
+    assert scores.issues == () and scores.rows["AGP-1"].cvss_vector == V3
+
+
+@pytest.mark.parametrize("digits", [tachi_parts.MAX_INT_DIGITS + 1, 4000, 1000000])
+@pytest.mark.parametrize("sign", ["", "-"], ids=["positive", "negative"])
+def test_an_oversized_integer_literal_makes_the_baseline_sarif_unreadable_at_once(tmp_path, digits, sign):
+    """One literal past the bound is one ``unreadable-sarif`` issue, the vectors are not used, and the rows are read.
+
+    The sizes cover both kinds of interpreter. 21 and 4,000 digits are under the 4,300-digit cap that 3.11 and 3.9.14
+    and later apply on their own, so a plain ``json.loads`` reads them there and the case fails without the bound.
+    A million digits is the stall where there is no cap: ``int()`` is quadratic before 3.9.14 (T067a measured 1.4 s
+    for 400,000 digits on 3.9.6, the macOS ``python3``, so a million takes about 9 s), and the reader must refuse
+    the literal without converting it, which the time limit checks. A capped interpreter refuses it either way.
+    """
+    sarif = _write(tmp_path, _sarif_holding(sign + "1" * digits), "risk-scores.sarif")
+    started = time.perf_counter()
+    scores = _read(tmp_path, V4484, sarif_path=sarif)
+    elapsed = time.perf_counter() - started
+    assert [(i.field, i.cause) for i in scores.issues] == [("cvss_vector", "unreadable-sarif")]
+    assert "(not-json)" in scores.issues[0].detail
+    assert list(scores.rows) == ["E-1", "AGP-1", "LLM-1"] and scores.rows["AGP-1"].cvss_vector is None
+    assert elapsed < 5.0, "the reader converted the literal instead of refusing it (%.1f s)" % elapsed
+
+
+def test_the_baseline_sarif_is_read_through_the_shared_bounded_loader_and_not_one_of_its_own(tmp_path, monkeypatch):
+    """T067a M3 and L3: one loader applies D3's hooks. A refusal there is a refusal here, and what it returns is read."""
+    sarif = _write(tmp_path, _sarif(("AGP-01", {"cvss-vector": V3})), "risk-scores.sarif")
+    seen = []
+
+    def refuse(text):
+        seen.append(text)
+        raise ValueError("refused by the shared loader")
+
+    monkeypatch.setattr(tachi_parsers, "_load_sarif", refuse)
+    scores = _read(tmp_path, V4484, sarif_path=sarif)
+    assert [(i.field, i.cause) for i in scores.issues] == [("cvss_vector", "unreadable-sarif")] and len(seen) == 1
+    monkeypatch.setattr(tachi_parsers, "_load_sarif", lambda text: {"runs": [{"results": [
+        {"partialFingerprints": {"findingId/v1": "AGP-1"}, "properties": {"cvss-vector": V2}}]}]})
+    assert _read(tmp_path, V4484, sarif_path=sarif).rows["AGP-1"].cvss_vector == V2
 
 
 def _unreadable(scores, reason):

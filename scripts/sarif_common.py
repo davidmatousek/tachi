@@ -45,6 +45,7 @@ import sys
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple
+from urllib.parse import unquote
 
 # Turn bytecode writing off before any local module loads (feature 391, FR-007; ADR-049 D8).
 # The guarantee lives in the module, so it holds for a paraphrased command and for a person
@@ -1076,6 +1077,36 @@ def _is_text(value: object) -> bool:
     return isinstance(value, str) and value != ""
 
 
+def _uri_problem(uri: str) -> Optional[str]:
+    """The first ``tachi_parts.path_problem`` check that an ``artifactLocation.uri`` fails, or ``None`` (D7, SA-11).
+
+    A result's URI is relative: to the working directory (the primary) or to the target directory (evidence). It
+    passes the resolver's own relative-path rule, called here and never restated, as written and as decoded,
+    because a consumer that decodes it reads ``%2e%2e`` as ``..`` and ``%2F`` as ``/``. The decode is strict, so an
+    escape that isn't UTF-8 fails as ``encoding``, and it runs once: ``%252e``, how the emitter writes a file named
+    ``%2e``, stays text.
+
+    A colon is the one thing the decode may add. RFC 3986 section 4.2 has a relative path write a colon in its first
+    segment encoded, and ``percent_encode`` does: ``a%3Ab/x.md`` is a directory named ``a:b``, which the resolver
+    reaches through an absolute path. The written form was checked first, so a colon in the decoded first segment
+    was encoded. That path is led by ``./``, the RFC's other remedy, and the rule's scheme and drive-letter checks
+    look past it. A segment that also holds an encoded ``/`` (``https%3A%2F%2Fx``) gets no lead and fails as
+    ``scheme``.
+    """
+    failed = tachi_parts.path_problem(uri)
+    if failed is not None:
+        return failed
+    try:
+        decoded = unquote(uri, errors="strict")
+    except UnicodeDecodeError:
+        return "encoding"
+    if decoded == uri:
+        return None
+    first = unquote(uri.split("/", 1)[0], errors="strict")  # the first segment alone, decoded
+    lead = "./" if ":" in first and "/" not in first else ""
+    return tachi_parts.path_problem(lead + decoded)
+
+
 def _shape_problems(result: object) -> List[str]:
     """What is wrong with a result's shape, key order or forbidden keys (D7's result shape)."""
     if not isinstance(result, dict):
@@ -1215,7 +1246,9 @@ def self_check(
     * the result count equals the number of distinct finding IDs, which equals the member set;
     * every ``primaryLocationLineHash`` is tachi's own for ``tool`` and the ID, and no two
       present results share one (the error names both IDs); every ``ruleId`` is the ID's rule;
-    * every result has the one ``uri`` (``uri``, when given);
+    * every result has the one ``uri`` (``uri``, when given), and that URI passes ``tachi_parts.path_problem``, the
+      resolver's own relative-path rule, as written and as percent-decoded (``_uri_problem``; SA-11). The error names
+      the URI and the failed check, once for the run and not once per result;
     * no RESOLVED ID (``resolved_ids`` less the member set) appears in a string that a renderer
       composes or takes as a closed value: ``findingId/v1`` and every property, except copied
       text. An ID in copied text is a mention, not a reference (ruled at W3, settling P0-10), so
@@ -1224,8 +1257,8 @@ def self_check(
       ``COPIED_TEXT_PROPERTIES`` lists for ``tool``: the scorer's ``risk-owner``, and the
       controls file's ``control-evidence`` and ``recommendation``;
     * no ``relatedLocations`` entry names a finding or sits outside the controls file, and every
-      ``relatedLocations`` uri passes ``tachi_parts.path_problem``, the resolver's own
-      relative-path rule (the error names the finding and the failed check);
+      ``relatedLocations`` uri passes the same rule, as written and as percent-decoded (the error
+      names the finding and the failed check);
     * every ``correlation-primary`` and every group member is a result, with one primary per
       group, every correlated result's message ends with ruling C's sentence, and an
       uncorrelated result carries neither the keys nor the sentence.
@@ -1284,6 +1317,10 @@ def self_check(
         problems.append(
             "artifactLocation.uri is %s, not the run's %s" % (_short(next(iter(uris))), _short(uri))
         )
+    for written in sorted(uris):  # the primary URI is relative too (D7, SA-11); the run's one URI is named once, not per result
+        failed = _uri_problem(written)
+        if failed is not None:
+            problems.append("artifactLocation.uri %s fails the resolver's %s check" % (_short(written), failed))
 
     ordered = tachi_parts.finding_sort_key
     missing = sorted(members - set(by_id), key=ordered)
@@ -1316,10 +1353,9 @@ def self_check(
                 )
             # D7: an evidence URI is relative to the target. The test is the resolver's own syntactic
             # rule, `tachi_parts.path_problem` (a leading slash, scheme, drive letter, backslash and
-            # `..` among its checks), called here and never restated.
-            # AOD-SIMPLIFICATION: checks the URI as written, not percent-decoded (the emitter encodes "%", so it never writes %2E) — upgrade: unquote first
+            # `..` among its checks), called here and never restated, on the URI as written and decoded.
             evidence_uri = entry["physicalLocation"]["artifactLocation"]["uri"]
-            failed = tachi_parts.path_problem(evidence_uri)
+            failed = _uri_problem(evidence_uri)
             if failed is not None:
                 problems.append(
                     "%s: a relatedLocations uri %s fails the resolver's %s check"

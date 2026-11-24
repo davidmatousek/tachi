@@ -34,7 +34,8 @@ PM W3 ruling 2, gaps A and C, and T052's evidence-URI finding: what both rendere
 The architect's W3 ruling d, question 9 (P0-10): what the RESOLVED scan reads
 21. The scan reads what a renderer composes, and not text it copies (the scorer's renderer drives the last cases)
 
-Section 11 also holds the guard that an evidence URI is relative, and section 12 the driver's ``version``.
+Section 11 also holds the guard that a result's URI and an evidence URI are relative, as written and as decoded (SA-11),
+and section 12 the driver's ``version``.
 
 The fake filesystem is the offline stand-in for a case-insensitive volume (KB 24): it keeps each
 entry's own spelling and finds an entry by its case-folded name, as macOS's default volume does,
@@ -1591,6 +1592,139 @@ def test_the_evidence_uri_guard_has_no_rule_of_its_own_it_calls_the_resolvers(mo
     assert len(named) == 1 and "a-check-from-tachi-parts" in named[0] and named[0].startswith("S-1: ")
 
 
+# --- SA-11 (T064, T146): the run's own URI is relative too, and each URI is read as a decoder would read it ------------
+
+
+def run_at(uri, tool=SCORER):
+    """A correct run whose every result has this one URI, so the URI guard is all the self-check has to say."""
+    assignments = sc.correlation_assignments(GROUPS, MEMBERS)
+    return [make_result(m, tool=tool, uri=uri, correlation=assignments.get(m)) for m in MEMBERS], assignments
+
+
+def check_uri(uri, tool=SCORER):
+    results, assignments = run_at(uri, tool)
+    sc.self_check(results, tool=tool, member_ids=MEMBERS, assignments=assignments, resolved_ids=["R-9"], uri=uri)
+
+
+def uri_problems(uri, tool=SCORER):
+    with pytest.raises(sc.SelfCheckError) as excinfo:
+        check_uri(uri, tool)
+    return excinfo.value.problems
+
+
+def primary_problem(uri, failed):
+    return "artifactLocation.uri %s fails the resolver's %s check" % (sc._short(uri), failed)
+
+
+PRIMARY_VIOLATIONS = RELATIVITY_VIOLATIONS + [("https://evil.invalid/x", "scheme"), ("../x", "parent-reference")]  # the advisory's probes
+
+
+@pytest.mark.parametrize("uri,failed", PRIMARY_VIOLATIONS, ids=["%s:%s" % (failed, uri) for uri, failed in PRIMARY_VIOLATIONS])
+def test_a_primary_uri_that_is_not_relative_is_refused_once_naming_the_uri_and_the_check(uri, failed):
+    """SA-11: all five results carry the one bad URI, so the equality check has nothing to say, and nothing else did either."""
+    assert tachi_parts.path_problem(uri) == failed
+    assert uri_problems(uri) == [primary_problem(uri, failed)], "one problem for the run, not one per result"
+
+
+@pytest.mark.parametrize("tool", [SCORER, CONTROLS, THREATS], ids=["risk-scores", "compensating-controls", "threats"])
+def test_the_primary_uri_guard_covers_each_of_the_three_files(tool):
+    """The scorer's file has no other URI to check, so for it this guard is the only one."""
+    assert uri_problems("/etc/passwd", tool) == [primary_problem("/etc/passwd", "leading-slash")]
+
+
+DECODED_VIOLATIONS = [  # the URI as written, which the rule passes, then the check it fails once decoded
+    ("%2e%2e/secrets.py", "parent-reference"), ("%2E%2E/secrets.py", "parent-reference"),
+    ("docs/%2e%2e/%2e%2e/secrets.py", "parent-reference"), ("..%2Fsecrets.py", "parent-reference"),
+    ("docs%2F..%2F..%2Fsecrets.py", "parent-reference"), ("%2Fetc%2Fpasswd", "leading-slash"),
+    ("docs%5Carchitecture.md", "backslash"), ("docs/%60x%60.md", "backtick"),
+    ("docs/a%0Ab.md", "control-char"), ("docs/a%00b.md", "control-char"), ("docs/a%7Fb.md", "control-char"),
+    ("%2e", "empty"), ("https%3A%2F%2Fevil.invalid%2Fx", "scheme"), ("C%3A%2Fx.md", "drive-letter"),
+    ("docs/%C0%AE%C0%AE/x.md", "encoding"), ("docs/%FF.md", "encoding"), ("docs/%E2%82.md", "encoding"),
+]
+
+
+@pytest.mark.parametrize("uri,failed", DECODED_VIOLATIONS, ids=["%s:%s" % (failed, uri) for uri, failed in DECODED_VIOLATIONS])
+def test_a_uri_that_fails_only_once_decoded_is_refused_as_the_primary_and_as_evidence(uri, failed):
+    """SA-11: ``%2e%2e`` passed, because the guard read the URI as written. A consumer that decodes reads ``..``.
+
+    ``%C0%AE`` is an overlong ``.`` and ``%E2%82`` a cut-off character: the decode is strict, so a lenient decoder's
+    U+FFFD (or a legacy one's ``.``) is never what the guard reads.
+    """
+    assert tachi_parts.path_problem(uri) is None, "the written form passes the rule, so only the decode can refuse it"
+    assert uri_problems(uri) == [primary_problem(uri, failed)]
+    results, assignments = build_run(tool=CONTROLS)
+    add_related(results[0], [evidence_at("src/auth/login.py"), evidence_at(uri)])
+    named = [p for p in problems_of(results, assignments, tool=CONTROLS) if "relatedLocations uri" in p]
+    assert named == ["S-1: a relatedLocations uri %s fails the resolver's %s check" % (sc._short(uri), failed)]
+
+
+EMITTER_URIS = [  # what ``percent_encode`` writes component by component: escapes, a colon, and a "%" that decoding must not read twice
+    "docs/security/architecture.md", "docs/My%20Design/architecture.md", "docs/%C3%A9tude/arch%231%2B%25.md",
+    "%E6%97%A5%E6%9C%AC/%E6%96%87.md", ".hidden/~x_y-z.md",
+    "a%3Ab/architecture.md", "docs/a%3Ab/architecture.md", "C%3A/architecture.md", "%3A",
+    "%252e%252e/architecture.md", "docs/%2520%252F.md",
+]
+
+
+@pytest.mark.parametrize("uri", EMITTER_URIS)
+def test_a_uri_in_the_form_the_emitter_writes_passes_as_the_runs_one_uri_and_as_evidence(uri):
+    for tool in (SCORER, CONTROLS, THREATS):
+        check_uri(uri, tool)
+    results, assignments = build_run(tool=CONTROLS)
+    add_related(results[0], [evidence_at(uri)])
+    check(results, assignments, tool=CONTROLS)
+
+
+def test_every_uri_the_resolver_writes_passes_the_guard_as_the_runs_uri_and_as_evidence():
+    """The guard may not refuse what the renderers write: each name goes through ``resolve_file``'s own ``percent_encode``."""
+    relative = ["docs/security/architecture.md", "docs/My Design/architecture.md", "docs/\u00e9tude/arch#1+%.md", "\u65e5\u672c/\u6587.md",
+                "docs/a:b/architecture.md", "%2e%2e/architecture.md", "%252e/%2F.md", "100%/a b.md", ".hidden/~x_y-z.md"]
+    colon_first = ["a:b/architecture.md", "C:/architecture.md", ":/architecture.md"]
+    fs = FakeFilesystem("/repo")
+    for name in relative + colon_first:
+        fs.file("/repo/" + name)
+    for name in colon_first:
+        assert refusal(name, fs) in ("scheme", "drive-letter"), "typed relative, a colon in the first segment is refused"
+    for name in relative + colon_first:
+        # An absolute path through the working directory is the one way in for a colon in the first segment.
+        absolute = sc.resolve_file("/repo/" + name, root="/repo", allow_absolute=True, fs=fs)
+        assert absolute.path == name
+        for tool in (SCORER, CONTROLS, THREATS):
+            check_uri(absolute.uri, tool)
+    for name in relative:  # evidence is typed relative to the target directory
+        results, assignments = build_run(tool=CONTROLS)
+        add_related(results[0], [sc.evidence_location(0, "rate-limiting", sc.resolve_file(name, root="/repo", fs=fs), 7)])
+        check(results, assignments, tool=CONTROLS)
+
+
+def test_the_architecture_resolvers_uri_passes_from_each_source_including_a_directory_with_a_colon():
+    fs = FakeFilesystem("/repo")
+    fs.file("/repo/a:b/architecture.md")
+    colon = sc.resolve_architecture("/repo/a:b/architecture.md", root="/repo", fs=fs)
+    assert (colon.source, colon.uri, colon.warnings) == ("explicit", "a%3Ab/architecture.md", ())
+    literal = sc.resolve_architecture(root="/repo", fs=fs)
+    assert (literal.source, literal.uri) == ("default-literal", sc.DEFAULT_ARCHITECTURE_PATH)
+    fs.file("/repo/docs/security/architecture.md")
+    default = sc.resolve_architecture(root="/repo", fs=fs)
+    assert (default.source, default.uri) == ("default", sc.DEFAULT_ARCHITECTURE_PATH)
+    for resolution in (colon, literal, default):
+        for tool in (SCORER, CONTROLS, THREATS):
+            check_uri(resolution.uri, tool)
+
+
+def test_the_primary_uri_guard_has_no_rule_of_its_own_it_calls_the_resolvers(monkeypatch):
+    """The same swap as the evidence guard's: the rule is called, never restated."""
+    uri = "https://evil.invalid/x"
+    results, assignments = run_at(uri)
+    run = dict(tool=SCORER, member_ids=MEMBERS, assignments=assignments, resolved_ids=["R-9"], uri=uri)
+    monkeypatch.setattr(tachi_parts, "path_problem", lambda value, allow_absolute=False: None)
+    sc.self_check(results, **run)  # a rule that passes everything passes a scheme too
+    monkeypatch.setattr(tachi_parts, "path_problem", lambda value, allow_absolute=False: "a-check-from-tachi-parts")
+    with pytest.raises(sc.SelfCheckError) as excinfo:
+        sc.self_check(results, **run)
+    assert excinfo.value.problems == [primary_problem(uri, "a-check-from-tachi-parts")]
+
+
 def test_a_correlated_result_whose_message_lacks_the_sentence_is_refused():
     results, assignments = build_run()
     results[1]["message"]["text"] = "Finding T-2."
@@ -2018,7 +2152,7 @@ def test_the_module_imports_the_standard_library_and_the_three_local_helpers_onl
     local = {"tachi_parsers", "tachi_parts", "tachi_scoring"}
     assert local <= imported
     standard = imported - local - {"__future__"}
-    assert standard <= {"decimal", "hashlib", "json", "os", "posixpath", "re", "stat", "sys", "typing", "pathlib"}, standard
+    assert standard <= {"decimal", "hashlib", "json", "os", "posixpath", "re", "stat", "sys", "typing", "pathlib", "urllib"}, standard  # urllib.parse: SA-11's decode
 
 
 def test_the_bytecode_guard_comes_before_every_local_import():
@@ -2670,6 +2804,28 @@ def test_a_run_always_gets_a_uri_even_when_nothing_validates(rrs, entries, tmp_p
         assert [w["code"] for w in project.record["warnings"]] == chain, "D7's chain in order, and nothing else"
     uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in project.sarif["runs"][0]["results"]}
     assert uris == {sc.DEFAULT_ARCHITECTURE_PATH}, "the constant is emitted as written, and nothing here stops a run"
+
+
+@BOTH_FILES
+def test_a_directory_named_with_a_colon_is_written_encoded_and_the_renderers_self_check_accepts_it(rrs, entries, tmp_path, sarif_file):
+    """SA-11's decoding: ``a%3Ab`` decodes to a first segment that holds a colon, and the guard must not take it for a scheme.
+
+    Typed relative, ``a:b/architecture.md`` fails the resolver as a scheme. Typed as an absolute path through the
+    working directory, it resolves, and RFC 3986 section 4.2 has the colon written encoded. Each renderer's own
+    self-check runs on the result, so a guard that refused it would fail the render here.
+    """
+    project = make_project(sarif_file, rrs, entries, tmp_path)
+    architecture = project.root / "a:b" / "architecture.md"
+    try:
+        architecture.parent.mkdir()
+        architecture.write_text("# an architecture file in a directory whose name holds a colon\n", encoding="utf-8")
+    except OSError:  # pragma: no cover  (a filesystem that cannot name a directory with a colon)
+        pytest.skip("this filesystem cannot name a directory with a colon")
+    res = project.run(architecture=str(architecture))
+    assert res.code == 0, res.describe()
+    uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in project.sarif["runs"][0]["results"]}
+    assert uris == {"a%3Ab/architecture.md"}
+    assert project.record["warnings"] == []
 
 
 def mirror(fake, root):
