@@ -720,6 +720,31 @@ def test_plan_exits_2_before_dispatch_on_an_unreadable_section_7(stage, cli, tmp
     assert "Remedy:" in res.err
 
 
+def test_plan_reads_a_gfm_escaped_pipe_in_a_section_7_cell_as_a_pipe_and_refuses_a_raw_one_with_the_remedy(stage, cli, tmp_path):
+    """P1-3 (the architect's ruling at T070; the PM moved it into PR 1 at W6, Q1). GFM, and GitHub's rendering of ``threats.md``, read ``\\|`` as a
+    pipe inside its cell, and the threat-model contract never tells its writer to avoid one. Section 7's reader reads it so, and the plan goes on
+    with the cell's text as the unit row holds it, every other value in its own column. A raw ``|`` still shifts every value after it (T067a M1), so
+    it ends the run at plan with exit 2, the remedy and no plan."""
+    threat = "Threat text for S-2"
+    piped = Harness(stage, cli, tmp_path / "escaped", "risk-score")
+    original = piped.threats.read_text(encoding="utf-8")
+    assert original.count(threat + " |") == 1, "premise: the row's Threat cell"
+    piped.threats.write_text(original.replace(threat, "Output piped through cat \\| sh"), encoding="utf-8")
+    res = piped.plan_cli()
+    assert res.code == 0, res.describe()
+    rows = unit_rows(piped)
+    assert (rows["S-2"]["threat"], rows["S-2"]["risk_level"], rows["S-2"]["mitigation"]) == ("Output piped through cat | sh", "High", "Mitigation text for S-2")
+    assert rows["T-9"]["threat"] == "Threat text for T-9" and len(rows) == len(MIXED_IDS)
+
+    raw = Harness(stage, cli, tmp_path / "raw", "risk-score")
+    raw.threats.write_text(raw.threats.read_text(encoding="utf-8").replace(threat, "Output piped through cat | sh"), encoding="utf-8")
+    refused = raw.plan_cli()
+    assert refused.code == 2, refused.describe()
+    assert re.search(r"TACHI\s+RISK[- ]SCORE\s+FAILED", refused.err, re.I) and "more cells than its header" in refused.err, refused.err
+    assert "Remedy:" in refused.err and "&#124;" in refused.err and "waves" not in refused.out
+    assert not (raw.build / "current.json").exists(), "no plan is made"
+
+
 def test_a_plan_that_fails_leaves_the_current_pointer_alone(stage, cli, tmp_path):
     h = Harness(stage, cli, tmp_path, "risk-score")
     h.plan(batch_size=4)
@@ -2020,6 +2045,47 @@ def test_a_half_applied_pair_is_restored(stage, cli, tmp_path, changed):
     assert (h.plan_dir / "failed" / name).read_bytes() == new
     assert not (h.plan_dir / "failed" / other).exists()
     h.assert_earlier_outputs_untouched()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+@pytest.mark.parametrize("name", STAGE_NAMES)
+def test_plan_copies_each_pre_image_with_the_permission_bits_of_its_canonical_file(stage, cli, tmp_path, monkeypatch, name):
+    """P1-2, the rest of SA-4: a pre-image is a copy of an earlier output that ``fail`` writes back where the output was, so the copy carries
+    the output's own bits (an adopter's ``chmod 600``) and not the ordinary mode of a new file. Each of the two files keeps its own."""
+    monkeypatch.chdir(tmp_path)  # the controls stage reaches threats.md through source_file, which is relative to the working directory
+    monkeypatch.setattr(stage.tp, "_UMASK", 0o022)  # a new file is 0644 whatever umask this test runs under, so neither mode below is the ordinary one
+    h = Harness(stage, cli, tmp_path, name)
+    h.earlier()
+    modes = {h.md: 0o600, h.sarif: 0o640}
+    for output, mode in modes.items():
+        os.chmod(str(h.out / output), mode)
+    h.plan(batch_size=4)
+    assert {output: (h.plan_dir / "preimage" / output).stat().st_mode & 0o777 for output in modes} == modes
+    h.assert_earlier_outputs_untouched()
+    assert {output: (h.out / output).stat().st_mode & 0o777 for output in modes} == modes, "the plan changes no output"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+@pytest.mark.parametrize("name", STAGE_NAMES)
+def test_fail_puts_a_pre_image_back_with_the_permission_bits_of_the_file_it_replaces(stage, cli, tmp_path, monkeypatch, name):
+    """P1-2, the rest of SA-4: ``fail`` moves a changed output into ``failed/`` and writes the pre-image where the output was, onto a name that
+    is no longer there, so the restored file took the ordinary mode and an adopter's ``chmod 600`` was undone by the first failed run. The
+    restored file has the earlier output's bits, through the pre-image copy that holds them."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(stage.tp, "_UMASK", 0o022)
+    h = Harness(stage, cli, tmp_path, name)
+    h.earlier()
+    modes = {h.md: 0o600, h.sarif: 0o640}
+    for output, mode in modes.items():
+        os.chmod(str(h.out / output), mode)
+    h.plan(batch_size=4)
+    h.render()  # a render got part way: both outputs were replaced
+    res = h.fail("render-failed")
+    assert res.code == 0, res.describe()
+    assert sorted(res.json["moved"]) == sorted(res.json["restored"]) == sorted(modes)
+    h.assert_earlier_outputs_untouched()
+    assert {output: (h.out / output).stat().st_mode & 0o777 for output in modes} == modes
+    assert (h.plan_dir / "failed" / h.md).read_bytes() == NEW_MD, "the failed render is kept for diagnosis"
 
 
 def test_new_outputs_with_no_earlier_run_are_moved_and_nothing_is_restored(stage, cli, tmp_path):

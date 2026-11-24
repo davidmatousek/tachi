@@ -19,7 +19,7 @@ The scored threat table (Section 2 of risk-scores.md) contains all scored findin
 | Column | Source Field | Format |
 |--------|-------------|--------|
 | ID | `id` | Finding ID as-is (e.g., `S-1`, `AG-3`) |
-| Source | `score_source` | `inherited` (a carried finding) or `fresh` (assessed this run) |
+| Source | `score_source` | `inherited` (a carried finding) or `fresh` (assessed this run). A copied peer takes its primary's source |
 | Component | `component` | Component name, truncated to 30 characters with `...` suffix if longer |
 | Threat | `threat` | Threat description, truncated to 60 characters with `...` suffix if longer |
 | CVSS | `cvss_base` | Decimal with one digit (e.g., `7.2`) |

@@ -3355,9 +3355,10 @@ def test_a_heading_that_only_a_fenced_snippet_shows_is_no_section_and_so_is_one_
 # =============================================================================
 # Feature 374 (W4, T146, FX-1): three fixes in the Section 7 reader and the controls reader
 #
-#   M1   (T067a)  parse_reference_set refuses a Section 7 row that has more cells than its header. A `|` (or GFM's `\|`, which tachi
-#                 doesn't decode) splits the row and moves every value after it one column, and parse_markdown_table dropped the extra
-#                 cell without a word, so an UNCHANGED finding read as NEW, with its risk level a word of its threat.
+#   M1   (T067a)  parse_reference_set refuses a Section 7 row that has more cells than its header. A raw `|` splits the row and moves
+#                 every value after it one column, and parse_markdown_table dropped the extra cell without a word, so an UNCHANGED
+#                 finding read as NEW, with its risk level a word of its threat. (P1-3, W6: GFM's `\|` is no longer one of them. The
+#                 reference set reads it as a pipe in its cell, through parse_markdown_table's `escaped_pipes`, and only it does.)
 #   S7-1 (T068)   the Section 7 reader is linear in a whitespace run, so a line that the scanned repository writes can't stall a stage.
 #   H1   (T067b)  recommendation_text is the What to Implement rule of one Section 4 block, factored out of the controls reader, so a
 #                 renderer's from-disk check can derive the same text by its own route, not by the reader it checks.
@@ -3385,10 +3386,13 @@ def test_a_header_cell_with_no_name_still_counts_toward_the_width_of_a_row():
     assert overlong == [6], "the header has three cells, though one has no name"
 
 
-@pytest.mark.parametrize("threat", ["Header smuggling via a | b split", "Output piped through cat \\| sh"], ids=["raw-pipe", "gfm-escaped-pipe"])
+@pytest.mark.parametrize("threat", ["Header smuggling via a | b split", "Output piped through cat \\\\| sh"],
+                         ids=["raw-pipe", "raw-pipe-after-an-escaped-backslash"])
 def test_reference_set_refuses_a_row_with_a_pipe_in_a_cell_instead_of_shifting_its_values(threat):
     """M1 (T067a). The row has a cell too many, so every value after the pipe moved one column: an UNCHANGED finding read as NEW, with
-    part of its threat as its risk level. The run ends before any agent is dispatched, and the remedy says what works."""
+    part of its threat as its risk level. The run ends before any agent is dispatched, and the remedy says what works. A pipe is raw
+    when no backslash escapes it, and an even run of backslashes (here, one escaped backslash) escapes nothing (P1-3 narrowed the stop to
+    these: GFM's ``\\|`` is a pipe in its cell now, and has a test of its own below)."""
     row = _ref_row("T-1", "UNCHANGED", threat=threat)
     content = _ref_md([_ref_row("S-1"), row, _ref_row("T-2")])
     line = content.split("\n").index(row) + 1
@@ -3396,8 +3400,9 @@ def test_reference_set_refuses_a_row_with_a_pipe_in_a_cell_instead_of_shifting_i
         parse_reference_set(content, source="run/threats.md")
     error = raised.value
     assert error.reason == ("run/threats.md: Section 7 (Recommended Actions) has a row with more cells than its header (line %d): "
-                            "a '|' or GFM's '\\|' in a cell splits it, and every value after the split would shift" % line)
+                            "a '|' in a cell splits it, and every value after the split would shift" % line)
     assert "&#124;" in error.remedy and "/tachi.threat-model" in error.remedy and "table form" not in error.remedy
+    assert "still splits" not in error.remedy, "the remedy no longer says that GFM's escaped pipe splits the row"
     assert threat not in str(error), "the error never echoes the cell"
     assert str(error) == "%s. Expected %s. Remedy: %s" % (error.reason, error.expected, error.remedy)
 
@@ -3407,6 +3412,108 @@ def test_the_remedys_spelling_of_a_pipe_reads_back_as_a_pipe_and_shifts_nothing(
     found = {finding["id"]: finding for finding in reference["open"]}["T-1"]
     assert (found["threat"], found["risk_level"], found["delta_status"], found["mitigation"]) == \
         ("Output piped through cat | sh", "High", "UNCHANGED", "A fix")
+
+
+# ---- P1-3: GFM's escaped pipe in a Section 7 cell (the architect's ruling at T070; the PM moved it into PR 1, W6 Q1) -------------
+
+_ESCAPED_PIPE_TABLE = (
+    "## 7. Recommended Actions\n\n| A | B | C |\n|---|---|---|\n"
+    "| 1 | a \\| b | 3 |\n"                # line 5: GFM's escaped pipe, a pipe inside the cell
+    "| 4 | c \\\\| d | 6 |\n"               # line 6: an escaped backslash, then a raw pipe, so four cells
+    "| 7 | e \\\\\\| f | 9 |\n"             # line 7: an escaped backslash, then an escaped pipe: one cell, two backslashes kept
+    "| 10 | g \\* h | 12 |\n"               # line 8: another escape, no pipe in it
+    "| 13 | i \\|\\| j | 15 |\n"            # line 9: two escaped pipes in a row
+    "| 16 | k \\\\\\\\\\| l | 18 |\n")       # line 10: five backslashes and a pipe, an odd run, so the pipe is escaped and four backslashes stay
+
+
+def test_markdown_table_reads_a_gfm_escaped_pipe_as_a_pipe_in_its_cell_only_when_asked():
+    """P1-3: ``escaped_pipes`` reads a ``|`` that an odd run of backslashes ends as a pipe inside its cell, the one backslash that escapes it gone,
+    as GFM renders it (cmark-gfm's ``unescape_pipes``). A pipe after an even run, none included, is raw and splits the row. The default is as it
+    always was: it splits at every ``|`` (NFR-1), and the reference set's Section 7 reader alone asks for the other reading."""
+    overlong = []
+    rows = parse_markdown_table(_ESCAPED_PIPE_TABLE, "## 7. Recommended Actions", overlong=overlong, escaped_pipes=True)
+    assert [row["B"] for row in rows] == ["a | b", "c \\\\", "e \\\\| f", "g \\* h", "i || j", "k \\\\\\\\| l"]
+    assert [row["C"] for row in rows] == ["3", "d", "9", "12", "15", "18"], "no value moved, whichever escape the row holds"
+    assert overlong == [6], "only the raw pipe after an even run is a cell too many (line 6)"
+    shifted = []
+    legacy = parse_markdown_table(_ESCAPED_PIPE_TABLE, "## 7. Recommended Actions", overlong=shifted)
+    assert shifted == [5, 6, 7, 9, 10] and legacy[0] == {"A": "1", "B": "a \\", "C": "b"}, "the default splits at the pipe of an escape, as it always has"
+
+
+def test_without_a_backslash_pipe_the_two_readings_are_one_reading(capsys):
+    content = ("## 7. X\n\n| ID | Threat &amp; More | Mitigation |\n|---|---|---|\n| S-1 | one &#124; two | **bold** |\n"
+               "| S-2 | a\\b | a path C:\\x\\ |\n| S-3 | only two |\n| S-4 | no closing pipe | tail\n| S-5 | extra | cells | here |\n")
+    readings = []
+    for asked in (False, True):
+        skipped, overlong, at = [], [], []
+        rows = parse_markdown_table(content, "## 7. X", skipped=skipped, overlong=overlong, row_lines=at, escaped_pipes=asked)
+        readings.append((rows, skipped, overlong, at))
+    assert readings[0] == readings[1]
+    assert readings[0][0][0] == {"ID": "S-1", "Threat & More": "one | two", "Mitigation": "bold"}
+    assert readings[0][1:] == ([7, 8], [9], [5, 6, 9]), "short rows are skipped, a wide row is listed, and the rows kept are in step with their lines"
+
+
+def test_a_pipe_that_ends_a_row_after_an_escaped_one_ends_it_as_it_always_did():
+    content = "## 7. X\n\n| ID | Note |\n|---|---|\n| S-1 | ends in a pipe \\| |\n| S-2 | closing pipe is escaped \\|\n"
+    rows = parse_markdown_table(content, "## 7. X", escaped_pipes=True)
+    assert rows == [{"ID": "S-1", "Note": "ends in a pipe |"}], "a row whose last pipe is escaped has no closing pipe, so it has one cell too few, as the default says of such a row"
+
+
+def test_the_header_row_is_read_by_the_rule_of_the_rows_under_it():
+    content = "## X\n\n| A \\| 1 | B |\n|---|---|\n| x | y |\n"
+    assert parse_markdown_table(content, "## X", escaped_pipes=True) == [{"A | 1": "x", "B": "y"}]
+    skipped = []
+    assert parse_markdown_table(content, "## X", skipped=skipped) == [] and skipped == [5], "the default has three header cells, so the two-cell row is short"
+
+
+def test_a_line_that_is_one_long_run_of_backslashes_or_of_escaped_pipes_is_read_in_linear_time():
+    """The row reader walks the pipes of a line that holds a ``\\|`` and counts the backslashes before each, so a hostile row (the planner reads a
+    file that the scanned repository writes) costs a pass over its text. The bound only turns a slow pass into a failure."""
+    started = time.perf_counter()
+    for tail in ("|", "\\|", "x", "\\|" * 100000, "|" * 100000):
+        line = "| " + "\\" * 400000 + tail + " |"
+        assert parse_markdown_table("## X\n\n| A |\n|---|\n%s\n" % line, "## X", escaped_pipes=True) is not None
+    assert time.perf_counter() - started < 5
+
+
+@pytest.mark.parametrize("cell", ["component", "threat", "mitigation"])
+def test_reference_set_reads_a_gfm_escaped_pipe_in_a_cell_as_a_pipe_and_shifts_no_value(cell):
+    """P1-3. GFM, and GitHub's rendering of ``threats.md``, read ``\\|`` as a pipe inside its cell, and the threat-model contract never tells its
+    writer to avoid one: a threat that quotes a shell pipeline is a plausible thing for it to write. Section 7's reader reads it so now. Every
+    value after the pipe stays in its own column (the component's cell comes before the layer's, the threat's and the mitigation's after it)."""
+    row = _ref_row("T-1", "UNCHANGED").replace({"component": "Gateway", "threat": "A threat", "mitigation": "A fix"}[cell], "Output piped through cat \\| sh", 1)
+    reference = parse_reference_set(_ref_md([_ref_row("S-1"), row, _ref_row("T-2")]))
+    found = {finding["id"]: finding for finding in reference["open"]}["T-1"]
+    expected = {"component": "Gateway", "threat": "A threat", "risk_level": "High", "mitigation": "A fix", "delta_status": "UNCHANGED"}
+    expected[cell] = "Output piped through cat | sh"
+    assert {key: found[key] for key in expected} == expected
+    assert [finding["id"] for finding in reference["open"]] == ["S-1", "T-1", "T-2"]
+    assert parse_finding_layers(_ref_md([row])) == {"T-1": "L4"}, "the layer cell, which a pipe before it would have moved, is where it was"
+
+
+def test_reference_set_still_refuses_a_raw_pipe_in_a_row_that_also_has_an_escaped_one():
+    content = _ref_md([_ref_row("S-1"), _ref_row("T-1", "UNCHANGED", threat="cat \\| sh | tee x")])
+    with pytest.raises(ReferenceSetError, match="more cells than its header"):
+        parse_reference_set(content)
+
+
+def test_the_extractors_reader_keeps_the_gfm_pipe_as_it_always_read_it():
+    """NFR-1, ADR-050 D3: the row that the reference set reads right is, for ``parse_threats_findings`` (the report and infographic extractors and the
+    populator), the row that splits at the pipe, as it always was. The option is the reference set's alone."""
+    content = _ref_md([_ref_row("T-1", "UNCHANGED", threat="Output piped through cat \\| sh")])
+    legacy = {finding["id"]: finding for finding in parse_threats_findings(content)}["T-1"]
+    assert (legacy["threat"], legacy["risk_level"]) == ("Output piped through cat \\", "sh"), "split at the pipe: the risk level is a word of the threat"
+    assert parse_reference_set(content)["open"][0]["threat"] == "Output piped through cat | sh"
+
+
+def test_a_per_finding_table_keeps_its_rule_where_section_7_reads_a_gfm_pipe():
+    """The per-finding tables (§3 and §4) are read as the extractors read them (NFR-1), so the same row in one of them still splits at the pipe
+    and is read by the header's positions, as ``examples/agentic-app``'s §4.2 rows are, and Section 7's own row reads its layer where it is."""
+    row = ["S-1", "[NEW]", "Gate \\| way", _DATA_OPS, "A threat.", "High"]
+    assert parse_finding_layers(_layers_doc(_gfm(_PER_FINDING_HEADER, [row]))) == {"S-1": "way"}, "the pipe split the component cell, so the layer is the next one"
+    section_7 = _section_7_table([("S-1", _DATA_OPS)]).replace("| NEW | Gateway |", "| NEW | Gate \\| way |", 1)
+    assert parse_finding_layers(section_7) == {"S-1": _DATA_OPS}
+    assert parse_reference_set(section_7)["open"][0]["component"] == "Gate | way"
 
 
 def test_reference_set_names_the_first_five_wide_rows_and_still_refuses_a_short_row_first():
@@ -3838,8 +3945,9 @@ def test_a_long_row_is_read_by_the_headers_positions_and_a_short_row_is_skipped_
 
 
 def test_a_row_with_an_extra_pipe_is_read_by_position_where_the_reference_set_refuses_it():
-    """T067a's M1 belongs to ``parse_reference_set``. Here the same row, in Section 7, reads by position, and so does one in a per-finding table."""
-    wide = _section_7_table([("S-1", _DATA_OPS), ("T-2", _FOUNDATION)]).replace("| A threat. | High | A fix. |", "| Pipes \\| in a threat | High | A fix. |", 1)
+    """T067a's M1 belongs to ``parse_reference_set``, and P1-3 narrowed it to a raw pipe. Here the same row, in Section 7, reads by position, and
+    so does a row with GFM's pipe in a per-finding table."""
+    wide = _section_7_table([("S-1", _DATA_OPS), ("T-2", _FOUNDATION)]).replace("| A threat. | High | A fix. |", "| Pipes | in a threat | High | A fix. |", 1)
     with pytest.raises(ReferenceSetError, match="more cells than its header"):
         parse_reference_set(wide)
     assert parse_finding_layers(wide) == {"S-1": _DATA_OPS, "T-2": _FOUNDATION}

@@ -1763,8 +1763,9 @@ def _stage_and_move(run: Run, out: str, plan_id: str, md_text: str, sarif_text: 
         if os.path.islink(staged_dir) or (os.path.lexists(staged_dir) and not os.path.isdir(staged_dir)):
             raise RenderError(2, "staged is a symbolic link or not a directory", "remove it and re-run", kept=kept)
         os.makedirs(staged_dir, exist_ok=True)
-        tp.atomic_write(tp.staged_path(out, STAGE, plan_id, MD), md_text)
-        tp.atomic_write(tp.staged_path(out, STAGE, plan_id, SARIF), sarif_text)
+        # Each staged file takes the permission bits of the canonical file it will replace, so the move keeps an adopter's chmod (P1-2).
+        tp.atomic_write(tp.staged_path(out, STAGE, plan_id, MD), md_text, mode_of=os.path.join(out, MD))
+        tp.atomic_write(tp.staged_path(out, STAGE, plan_id, SARIF), sarif_text, mode_of=os.path.join(out, SARIF))
     except OSError as exc:
         raise RenderError(4, "the staged files could not be written (%s)" % (exc.strerror or "error"), RETRY_REMEDY, kept=kept) from None
     texts = []
@@ -1809,8 +1810,8 @@ def _undeclared(out: str, plan: Mapping[str, Any]) -> Tuple[List[str], List[Dict
     snapshot = plan["out_snapshot"]
     if snapshot is None:
         return [], [_warning("declared-paths-skipped", "the plan took no snapshot of the output directory")]
-    found = sorted(relpath for relpath, size, mtime in _walk(out)
-                   if snapshot.get(relpath) != [size, mtime] and not tp.is_declared_path(relpath, STAGE, plan["plan_id"]))
+    found = sorted(relpath for relpath, size, mtime in _walk(out)   # a file is looked up by the planner's key for it, so a name that no plan holds is found (EC-2)
+                   if snapshot.get(tp.snapshot_key(relpath)) != [size, mtime] and not tp.is_declared_path(relpath, STAGE, plan["plan_id"]))
     recordable = [relpath for relpath in found if tp.path_problem(relpath) is None]
     warnings = []
     if len(recordable) != len(found):
@@ -1863,7 +1864,8 @@ def _summary(run: Run, record: Mapping[str, Any]) -> List[str]:
              "%d resolved findings listed in Section 2a" % len(run.resolved)]
     if run.baseline is not None:
         inherited = sum(1 for row in run.rows if row.source == "inherited")
-        lines.append("%d findings carried from the baseline, %d scored fresh" % (inherited, len(run.rows) - inherited))
+        # ``inherited`` is where a finding's inputs came from, so a copied peer of a carried primary counts too (P1-5): "carried" would be false of it.
+        lines.append("%d findings scored from baseline inputs, %d scored fresh" % (inherited, len(run.rows) - inherited))
     flagged = sum(1 for row in run.rows if row.flags)
     if flagged:
         lines.append("%d findings carry integrity flags (Section 6 lists them)" % flagged)

@@ -1449,8 +1449,9 @@ def test_sarif_each_result_carries_its_goldens(base):
 def test_sarifs_recommendation_and_effort_estimate_are_read_from_each_section_4_body(base):
     """ADR-050 D2: "read from each §4 body by ``parse_compensating_controls_md``'s rule", so a consumer reads one text in either file.
     The text is what the shipped reader returns from the rendered file, and also the agent's own What and Effort. The from-disk check does not
-    take it from the file by the function that built the SARIF: it derives it again from the validated body (T067b H1; see the seeded readers
-    in ``test_capture_a_defect_in_the_reader_that_builds_the_sarifs_recommendations_fails_the_from_disk_check``)."""
+    take it from the file by the function that built the SARIF: it derives it again from the validated body (T067b H1 for the recommendation, P1-4
+    for the effort; see the seeded readers in ``test_capture_a_defect_in_the_reader_that_builds_the_sarifs_recommendations_fails_the_from_disk_check``
+    and ``test_capture_a_defect_in_the_reader_that_builds_the_sarifs_effort_estimates_fails_the_from_disk_check``)."""
     read = read_findings(base.md)
     results = results_by_id(base.sarif)
     for item in FINDINGS:
@@ -1714,6 +1715,30 @@ def test_failure_render_failed_on_a_first_run_moves_the_half_written_file_aside(
     assert (project.plan_dir / "failed" / MD).is_file(), "kept for diagnosis, and under no name any auto-detect site would take"
 
 
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_staged_a_render_keeps_the_permission_bits_of_each_canonical_file_it_replaces(project, monkeypatch):
+    """P1-2, the rest of SA-4 (the architect's probe E at T070): both files are written to ``staged/`` as new files and moved onto the canonical
+    names, so a ``compensating-controls.md`` at 0600 came out of a render at the ordinary 0644. Each staged file takes the bits of the canonical
+    file that it replaces (``atomic_write``'s ``mode_of``), so each output keeps its own."""
+    monkeypatch.setattr(tp, "_UMASK", 0o022)  # a new file is 0644 whatever umask this test runs under, so neither mode below is the ordinary one
+    project.earlier()
+    modes = {MD: 0o600, SARIF: 0o640}
+    for name, mode in modes.items():
+        os.chmod(str(project.out / name), mode)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert project.outputs() != {MD: EARLIER_MD, SARIF: EARLIER_SARIF}, "both files were replaced"
+    assert {name: (project.out / name).stat().st_mode & 0o777 for name in modes} == modes
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_staged_a_first_render_gives_each_new_file_the_ordinary_mode(project, monkeypatch):
+    monkeypatch.setattr(tp, "_UMASK", 0o027)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert {name: (project.out / name).stat().st_mode & 0o777 for name in (MD, SARIF)} == {MD: 0o640, SARIF: 0o640}
+
+
 @pytest.mark.parametrize("damage", ["missing", "invalid", "stale"])
 def test_failure_a_batch_without_a_valid_part_is_never_rendered(project, damage):
     project.earlier()
@@ -1790,6 +1815,40 @@ def test_record_a_path_the_run_changed_but_declared_is_not_reported(project):
     res = project.render()
     assert res.code == 0, res.describe()
     assert project.record["undeclared_paths"] == []
+
+
+# EC-2 (the Step 8 economy gate; SA-5's other half): the planner keys its ``out_snapshot`` through ``tachi_parts.snapshot_key``, which stands in for a
+# name that D7's rule refuses (macOS's ``Icon`` and a carriage return, a colon in the first component, a backslash), because no plan could hold the name.
+# The renderer has to look a file up by the same key. By its raw path, a file like that, there at plan time and never changed, counted as new and then as a
+# name that no record can hold, so a clean run warned ``undeclared-paths-unrecordable`` and exited 5.
+ODD_OUT_NAMES = ["Icon\r", "note:final.txt", "back\\slash.txt"]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="these file names are POSIX names")
+@pytest.mark.parametrize("name", ODD_OUT_NAMES, ids=["carriage-return", "colon", "backslash"])
+def test_record_a_file_with_a_name_no_record_can_hold_that_sat_in_out_since_the_plan_is_not_reported(project, name):
+    (project.out / name).write_bytes(b"left by the system, not by the run")
+    res = project.run()
+    assert res.code == 0, res.describe()
+    record = project.record
+    assert (record["status"], record["warnings"], record["undeclared_paths"]) == ("success", [], [])
+    assert tp.snapshot_key(name) in project.plan_json()["out_snapshot"] and name not in project.plan_json()["out_snapshot"], "premise: the plan keys it by its stand-in"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="these file names are POSIX names")
+@pytest.mark.parametrize("change", ["planted", "changed"])
+def test_record_a_file_with_such_a_name_that_arrived_or_changed_since_the_plan_is_still_counted(project, change):
+    """The fix looks a file up by its stand-in, and does not stop counting it: a name that no record can hold is counted and never listed."""
+    name = ODD_OUT_NAMES[0]
+    if change == "changed":
+        (project.out / name).write_bytes(b"x")
+    project.prepare()
+    (project.out / name).write_bytes(b"xx")   # new since the plan, or a different size
+    res = project.render()
+    assert res.code == 5, res.describe()
+    record = project.record
+    assert record["undeclared_paths"] == [] and record["warnings"] == [{"code": "undeclared-paths-unrecordable", "detail": "1 undeclared paths have names a record can't hold"}]
+    assert record["status"] == "success-with-warnings"
 
 
 def test_record_every_file_the_run_wrote_is_a_declared_path(base):
@@ -2441,8 +2500,9 @@ def assert_all_fresh(project, counts=("null",)):
 
 
 def test_r34_cf_a_claim_with_no_baseline_is_cleared_and_recorded(stage, renderer, base, tmp_path):
-    """D2: ``carried_forward`` is "accepted only for an UNCHANGED finding with a resolved baseline controls file, otherwise cleared with the
-    reason recorded". Here every finding is UNCHANGED and every agent claims it, but the run has no baseline."""
+    """D2, as amended at W4: ``carried_forward`` is "accepted only for an UNCHANGED finding whose result the resolved baseline controls file holds,
+    otherwise cleared with the reason recorded", so a claim needs a result that the baseline holds to carry. Here every finding is UNCHANGED and
+    every agent claims it, but the run has no baseline, so no file holds a result for any of them."""
     project = Project(stage, renderer, tmp_path, findings=[dict(item, status="UNCHANGED") for item in FINDINGS])
     res = project.run(mutate=claim_carried())
     assert res.code in (0, 5), res.describe()
@@ -3535,6 +3595,38 @@ def test_capture_a_defect_in_the_reader_that_builds_the_sarifs_recommendations_f
     assert_failure_message(res, project.plan_id)
     first = "T-4"  # the first finding in S-2 order that has a Section 4 block, and so a recommendation (the message cuts a long value at 60 characters)
     assert re.search(r"%s: the recommendation is '' in the SARIF and %s" % (id_pattern(first), re.escape("'" + by_id(first)["rec"]["what"][:20])), res.err), res.describe()
+    project.assert_earlier_outputs_untouched()
+
+
+def always_high(real):
+    """A reader that finds each block and gives it the wrong word, ``High``, which is right for two findings of the project and wrong for the rest."""
+    return lambda md_text: {canonical: "High" for canonical in real(md_text)}
+
+
+SEEDED_EFFORT_READERS = [  # (name, a factory: the renderer's own reader -> the reader that replaces it)
+    ("a-reader-that-finds-no-block", lambda real: (lambda md_text: {})),
+    ("a-reader-that-gives-every-block-the-wrong-word", always_high),
+]
+
+
+@pytest.mark.parametrize("name,make_reader", SEEDED_EFFORT_READERS, ids=[case[0] for case in SEEDED_EFFORT_READERS])
+def test_capture_a_defect_in_the_reader_that_builds_the_sarifs_effort_estimates_fails_the_from_disk_check(stage, renderer, tmp_path, monkeypatch, name, make_reader):
+    """P1-4, the architect's ruling at T070 (FX-5's other half, the standing rule for D4's step 5): a from-disk check compares each written value with
+    its source, the validated part or the computed row, and never with a second read of the file by the reader that produced the value (KB 22).
+    ``effort-estimate`` was built from the rendered Section 4 by ``_section_4_efforts`` and checked against the same function, so a defect in it agreed
+    with itself. The check now takes the Effort word from each validated body, by the same rule over the escaped body's lines, so a reader that loses
+    a word or gives the wrong one ends the render with exit 4, and no canonical file is replaced. (Without the seed the same project renders with exit 0.)"""
+    project = Project(stage, renderer, tmp_path)
+    project.earlier()
+    project.prepare()
+    monkeypatch.setattr(renderer, "_section_4_efforts", make_reader(renderer._section_4_efforts))
+    res = project.render()
+    assert res.code == 4, "a completeness or parity check that fails is exit 4 (cli.md): %s" % res.describe()
+    assert_failure_message(res, project.plan_id)
+    first = "T-4"  # the first finding in S-2 order that has a Section 4 block: its Effort is Medium, which neither seeded reader gives
+    seen = "''" if name == "a-reader-that-finds-no-block" else "'High'"
+    assert re.search(r"%s: the effort-estimate is %s in the SARIF and %s in the markdown or the rows" % (
+        id_pattern(first), seen, re.escape("'" + by_id(first)["rec"]["effort"] + "'")), res.err), res.describe()
     project.assert_earlier_outputs_untouched()
 
 

@@ -44,9 +44,11 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
 
 **I/O helpers and D3's layout (T013, slice 1):**
 
-* ``atomic_write(path, data)``: a temp file in the target's directory, then ``os.replace``. A regular file that it
-  replaces keeps its permission bits (SA-4); a new file gets the mode an ordinary write would (``0666 & ~umask``,
-  the umask read once at import). ``str`` is written as UTF-8 with no newline translation.
+* ``atomic_write(path, data, mode_of=None)``: a temp file in the target's directory, then ``os.replace``. A regular
+  file that it replaces keeps its permission bits (SA-4); a new file gets the mode an ordinary write would (``0666 &
+  ~umask``, the umask read once at import). ``mode_of``, a path, takes the bits from that file instead, by the same
+  rule: a renderer's staged write names its canonical file, and ``fail``'s restore names the pre-image (P1-2).
+  ``str`` is written as UTF-8 with no newline translation.
 * ``sha256_hex(data)``; ``file_digest(path)``, lowercase hex with no prefix, the form of ``plan_digest`` and of
   the plan's ``sha256`` fields; ``input_digest(obj)``, ``sha256:`` and the hex digest of ``obj``'s canonical JSON
   (sorted keys, no spaces, ASCII), the form of the stamp's and the stage record's ``input_digest``.
@@ -88,6 +90,8 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
 * ``closed_string(value, what, low=1, high=None)``: the one closed-value string check (D3 step 10), once private as
   ``_closed``, which stays as an alias.
 * ``is_declared_path(relpath, stage, plan_id)``: D4's declared-paths grammar.
+* ``snapshot_key(relpath)``: a file's key in the plan's ``out_snapshot``, which the planner and both renderers look a file up
+  by (EC-2): its path, or a digest stand-in for a name that no plan can hold (SA-5).
 * ``retry_history(stage, out, plan)``: a plan's ``(overflow_events, retries)``, read back from its parts on disk.
 
 **Added at W3 (P0-4):**
@@ -1587,7 +1591,7 @@ def _mode_for(target: str) -> int:
     return 0o666 & ~_UMASK
 
 
-def atomic_write(path: object, data: Any) -> None:
+def atomic_write(path: object, data: Any, mode_of: Optional[object] = None) -> None:
     """Write ``data`` to ``path`` all at once: a temp file in the same directory, then ``os.replace``.
 
     ``str`` is written as UTF-8 with no newline translation, ``bytes`` as they are. A regular file that is replaced
@@ -1599,6 +1603,13 @@ def atomic_write(path: object, data: Any) -> None:
     attributes and hard links are not kept either. A symlink at ``path`` is replaced, never followed. If anything
     fails, the temp file is removed and the error propagates, so a failed write leaves the old file and no stray
     file behind.
+
+    ``mode_of``, when given, is a path whose permission bits the new file takes in place of ``path``'s own, through
+    the same rule (``_mode_for``): a regular file hands over its ``rwx`` bits, and anything else, nothing at all
+    included, gives the ordinary mode. It is for a file that is written under one name and moved onto another. A
+    renderer stages its output beside the canonical name and passes that name, and ``fail`` writes a pre-image back
+    onto a name that no longer exists and passes the pre-image's path (P1-2, the rest of SA-4). ``None`` is the
+    default, and then ``path`` names the file whose bits are kept.
     """
     if isinstance(data, str):
         payload = data.encode("utf-8")
@@ -1612,7 +1623,7 @@ def atomic_write(path: object, data: Any) -> None:
         with os.fdopen(descriptor, "wb") as handle:
             handle.write(payload)
             handle.flush()
-            mode = _mode_for(target)
+            mode = _mode_for(target if mode_of is None else os.fspath(mode_of))
             if hasattr(os, "fchmod"):
                 os.fchmod(handle.fileno(), mode)
             else:  # Windows before Python 3.13: a mode there is the read-only flag, and a symlink swap is no hazard
@@ -1760,6 +1771,24 @@ def failed_path(out: object, stage: str, plan_id: str, name: str) -> str:
 # =============================================================================
 # Shared by the stage entry and the renderers (W1 addendum: moved from `tachi-stage.py`, byte for byte)
 # =============================================================================
+
+def snapshot_key(relpath: str) -> str:
+    """A file's key in the plan's ``out_snapshot``: its path, or, for a name that D7's rule refuses and so no plan could hold, a stand-in (SA-5; EC-2).
+
+    The test is ``path_problem`` itself, the rule that the plan's own validator applies to each key, so the stand-in is for any name that the
+    rule refuses, whatever it comes to refuse (SA-8 widened it to the separators, bidi controls and tag characters), and no list of cases is
+    kept here. The stand-in is ``./unrecordable:`` and the SHA-256 of the name's bytes. It passes the plan's own path check, because the ``./``
+    keeps the colon out of the first component, and no path that a walk of ``--out`` yields can equal it, because those never start with
+    ``./``. So an odd name that was there when the plan was made is found again unchanged and is not reported, while a file planted beside it is.
+
+    The planner keys the snapshot by it and looks each file up by it at ``fail``, and both renderers look each file up by it before the declared-paths
+    check, so the three are one key (before EC-2 the renderers looked up the raw path, and a clean run that left such a name in place warned
+    ``undeclared-paths-unrecordable`` and exited 5). Before SA-5, one such name skipped the whole check, which a repository could use to hide a file.
+    """
+    if path_problem(relpath) is None:
+        return relpath
+    return "./unrecordable:" + sha256_hex(os.fsencode(relpath))
+
 
 def is_declared_path(relpath: str, stage: str, plan_id: str) -> bool:
     """D4's declared-paths grammar for a stage: its canonical files and D3's exact layout, nothing else.

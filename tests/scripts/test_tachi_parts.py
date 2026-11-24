@@ -28,6 +28,7 @@ Sections
 from __future__ import annotations
 
 import ast
+import inspect
 import json
 import os
 import re
@@ -1980,6 +1981,92 @@ def test_a_file_that_replaces_a_symlink_gets_the_ordinary_mode_and_the_links_tar
     assert victim.stat().st_mode & 0o777 == 0o620 and victim.read_text(encoding="utf-8") == "keep"
 
 
+def test_atomic_write_has_the_additive_mode_of_keyword_last_and_defaulting_to_none():
+    """``contracts/module-signatures.md`` lists P1-2's keyword: a new parameter with a default, added after the two it had, so no caller changes."""
+    parameters = list(inspect.signature(_api("atomic_write")).parameters.values())
+    assert [parameter.name for parameter in parameters] == ["path", "data", "mode_of"]
+    assert parameters[2].default is None and all(parameter.default is parameter.empty for parameter in parameters[:2])
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+@pytest.mark.parametrize("mode", [0o600, 0o640, 0o755, 0o400])
+def test_atomic_write_takes_the_permission_bits_of_the_file_that_mode_of_names(tmp_path, mode):
+    """P1-2, the rest of SA-4: a renderer writes each output beside its canonical name, in ``staged/``, and moves it onto that name, so the
+    file it writes has to carry the canonical file's bits and not the ordinary mode of a new file. ``mode_of`` names that file, and its bits
+    come through the rule a replaced file's own bits follow, whether the target is new or holds other bits (a path or a string both name it)."""
+    canonical = tmp_path / "risk-scores.md"
+    canonical.write_text("old", encoding="utf-8")
+    os.chmod(str(canonical), mode)
+    write = _api("atomic_write")
+    fresh = tmp_path / "fresh.md"
+    write(fresh, "new", mode_of=canonical)
+    assert fresh.read_text(encoding="utf-8") == "new" and fresh.stat().st_mode & 0o777 == mode
+    held = tmp_path / "held.md"
+    held.write_text("old", encoding="utf-8")
+    os.chmod(str(held), 0o666)
+    write(held, b"newer", mode_of=str(canonical))
+    assert held.read_bytes() == b"newer" and held.stat().st_mode & 0o777 == mode, "the bits of mode_of's file, not the replaced file's own"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["fresh.md", "held.md", "risk-scores.md"]
+    assert "mode_of" in tachi_parts.__doc__ and "mode_of" in tachi_parts.atomic_write.__doc__
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_atomic_write_without_a_mode_of_keeps_its_targets_own_bits_and_one_that_is_no_regular_file_gives_the_ordinary_mode(tmp_path, monkeypatch):
+    """No ``mode_of`` and ``mode_of=None`` are one call: the replaced file's own bits, as before. A ``mode_of`` with nothing at that path, a
+    symlink (never followed) or a directory is no regular file, so the write gets what an ordinary write gives, ``0666 & ~umask``."""
+    monkeypatch.setattr(tachi_parts, "_UMASK", 0o022)
+    write = _api("atomic_write")
+    held = tmp_path / "held.md"
+    held.write_text("old", encoding="utf-8")
+    os.chmod(str(held), 0o640)
+    write(held, "a")
+    assert held.stat().st_mode & 0o777 == 0o640
+    write(held, "b", mode_of=None)
+    assert held.stat().st_mode & 0o777 == 0o640
+    private = tmp_path / "private.md"
+    private.write_text("x", encoding="utf-8")
+    os.chmod(str(private), 0o600)
+    link = tmp_path / "link.md"
+    link.symlink_to(private)
+    directory = tmp_path / "directory"
+    directory.mkdir()
+    os.chmod(str(directory), 0o700)
+    for name, named in (("absent", tmp_path / "absent.md"), ("a symlink", link), ("a directory", directory)):
+        os.chmod(str(held), 0o640)
+        write(held, "c", mode_of=named)
+        assert held.stat().st_mode & 0o777 == 0o644, name
+    assert private.read_text(encoding="utf-8") == "x" and private.stat().st_mode & 0o777 == 0o600, "the link's target is left alone"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_atomic_write_with_a_mode_of_still_sets_the_mode_on_the_descriptor_and_a_failed_write_leaves_the_old_file(tmp_path, monkeypatch):
+    """S7-3 holds for ``mode_of`` too: no chmod of a path and no read of the umask, and a write that fails leaves the old file and no temp file."""
+    canonical = tmp_path / "canonical.md"
+    canonical.write_text("old", encoding="utf-8")
+    os.chmod(str(canonical), 0o600)
+    target = tmp_path / "target.md"
+    target.write_text("keep", encoding="utf-8")
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("atomic_write used os.umask or os.chmod")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "umask", refuse)
+        patch.setattr(os, "chmod", refuse)
+        _api("atomic_write")(tmp_path / "fresh.md", "new", mode_of=canonical)
+    assert (tmp_path / "fresh.md").stat().st_mode & 0o777 == 0o600
+
+    def failing_replace(src, dst):
+        raise OSError("disk full")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "replace", failing_replace)
+        with pytest.raises(OSError):
+            _api("atomic_write")(target, "new", mode_of=canonical)
+    assert target.read_text(encoding="utf-8") == "keep"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["canonical.md", "fresh.md", "target.md"]
+
+
 @pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
 def test_atomic_write_sets_the_mode_on_the_descriptor_and_never_chmods_a_path_or_reads_the_umask(tmp_path, monkeypatch):
     """S7-3: a chmod of the temp file's path after its descriptor closed would follow a link swapped in at that name, and a
@@ -3126,6 +3213,22 @@ def test_every_path_the_layout_builders_make_is_declared_by_the_grammar(tmp_path
         built += [_api(builder)(out, "risk-score", PLAN, name) for builder in ("preimage_path", "staged_path", "failed_path")]
     for path in built:
         assert _api("is_declared_path")(os.path.relpath(path, out).replace(os.sep, "/"), "risk-score", PLAN) is True, path
+
+
+def test_snapshot_key_is_a_files_path_and_for_a_name_no_record_can_hold_a_stand_in_that_the_planner_and_both_renderers_look_up():
+    """EC-2: the planner keys ``out_snapshot`` through this function (SA-5), and each renderer's declared-paths check has to look a file up through the
+    same one. A name that ``path_problem`` refuses and so no plan could hold takes ``./unrecordable:`` and the SHA-256 of its bytes: stable, unique,
+    valid in a plan (the ``./`` keeps a colon out of the first component) and never equal to a path that a walk of ``--out`` yields."""
+    key = _api("snapshot_key")
+    ordinary = ["threats.md", "a/b.txt", ".tachi-build/risk-score/current.json", "a b/c d.txt"]
+    assert [key(name) for name in ordinary] == ordinary
+    odd = ["Icon\r", "note:final.txt", "back\\slash.txt", "tick`name.txt", "tab\tname", "bad" + chr(0xDCFF) + ".txt", "bidi" + chr(0x202E) + "name.txt"]
+    keys = [key(name) for name in odd]
+    assert keys == [key(name) for name in odd] and len(set(keys)) == len(odd)
+    for name, each in zip(odd, keys):
+        assert re.fullmatch(r"\./unrecordable:[0-9a-f]{64}", each) and _api("path_problem")(name) is not None
+        assert _api("path_problem")(each) is None and each == "./unrecordable:" + _api("sha256_hex")(os.fsencode(name))
+    assert "snapshot_key" in tachi_parts.__doc__, "the module docstring lists it"
 
 
 def history_entry(batch_id, attempt, state, parent=None, ids=("S-1", "T-2")):

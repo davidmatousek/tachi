@@ -450,20 +450,9 @@ def _walk(out: str):
             yield os.path.relpath(path, out).replace(os.sep, "/"), status.st_size, max(0, status.st_mtime_ns)
 
 
-def _snapshot_key(relpath: str) -> str:
-    """A file's key in the plan's ``out_snapshot``: its path, or, for a name that D7's rule refuses and so no plan could hold, a stand-in (SA-5).
-
-    The test is ``tachi_parts.path_problem`` itself, the rule that the plan's own validator applies to each key, so the stand-in is for any
-    name that the rule refuses, whatever it comes to refuse (SA-8 widened it to the separators, bidi controls and tag characters), and no
-    list of cases is kept here. The stand-in is ``./unrecordable:`` and the SHA-256 of the name's bytes. It passes the plan's own path
-    check, because the ``./`` keeps the colon out of the first component, and no path that ``_walk`` yields can equal it, because those
-    never start with ``./``. So an odd name that was there when the plan was made is found again unchanged and is not reported, while a
-    file planted beside it is. Before this, one such name (a colon in the first component, a backslash) skipped the whole check, which a
-    repository could use to hide a file.
-    """
-    if tp.path_problem(relpath) is None:
-        return relpath
-    return "./unrecordable:" + tp.sha256_hex(os.fsencode(relpath))
+# A file's key in the plan's ``out_snapshot`` is ``tachi_parts.snapshot_key`` (SA-5), which both renderers look a file up by too (EC-2). This name is
+# the planner's own, as its tests call it.
+_snapshot_key = tp.snapshot_key
 
 
 def _snapshot(out: str) -> Optional[Dict[str, List[int]]]:
@@ -496,7 +485,7 @@ def _take_preimages(stage: str, out: str, plan_id: str) -> Dict[str, Optional[st
             continue
         with open(path, "rb") as handle:
             data = handle.read()
-        tp.atomic_write(tp.preimage_path(out, stage, plan_id, name), data)
+        tp.atomic_write(tp.preimage_path(out, stage, plan_id, name), data, mode_of=path)  # the copy keeps the output's bits, for ``fail`` to put back (P1-2)
         preimage[name] = tp.sha256_hex(data)
     return preimage
 
@@ -1162,7 +1151,7 @@ def _move_and_restore(stage: str, out: str, plan: Dict[str, Any]) -> tuple:
             refusals.append("the pre-image of %s is missing or no longer matches its recorded digest, so it was not put back" % name)
             continue
         with open(copy, "rb") as handle:
-            tp.atomic_write(path, handle.read())
+            tp.atomic_write(path, handle.read(), mode_of=copy)  # the name is empty now (the changed file moved aside), so the pre-image's bits are the ones to keep (P1-2)
         restored.append(name)
     return moved, restored, refusals
 

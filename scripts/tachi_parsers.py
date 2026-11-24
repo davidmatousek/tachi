@@ -448,8 +448,38 @@ def classify_maestro_coverage_state(finding_count: int, highest_severity: str) -
 # Generic Table Parsers
 # =============================================================================
 
+def _escaped_pipe_cells(line: str) -> list:
+    """The cells of a table ``line`` between its first and last ``|``, each as the line writes it (not stripped, not decoded), with GFM's
+    escaped pipe read as GFM reads it: a ``|`` that an odd run of backslashes ends is a pipe inside its cell, and the backslash that
+    escapes it is dropped (cmark-gfm's ``unescape_pipes``). A ``|`` that an even run ends, none included, still ends the cell, because a
+    backslash that another backslash escapes escapes nothing.
+
+    This is ``line.split("|")[1:-1]`` for a line with no ``\\|`` in it, so the two readings differ only where a cell holds one
+    (``parse_markdown_table``'s ``escaped_pipes`` chooses between them, and its callers decode each cell, D3).
+
+    The pipes are walked with ``str.find`` and each is checked by counting the backslashes before it, so the cost is one pass over the
+    line and never a pattern that backtracks over a run of backslashes (a hostile row can be as long as the file allows).
+    """
+    cells = []
+    start = at = 0
+    while True:
+        pipe = line.find("|", at)
+        if pipe < 0:
+            cells.append(line[start:])
+            break
+        run = 0
+        while pipe - run > start and line[pipe - run - 1] == "\\":
+            run += 1
+        if run % 2:   # escaped: the pipe stays in its cell
+            at = pipe + 1
+            continue
+        cells.append(line[start:pipe])
+        start = at = pipe + 1
+    return [cell.replace("\\|", "|") for cell in cells[1:-1]]
+
+
 def parse_markdown_table(content: str, section_header: str = None, start_line: int = None, skipped: list = None,
-                         row_lines: list = None, keep_bold: bool = False, overlong: list = None) -> list:
+                         row_lines: list = None, keep_bold: bool = False, overlong: list = None, escaped_pipes: bool = False) -> list:
     """Parse a markdown table found after a section header.
 
     Args:
@@ -474,9 +504,14 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
             tables asks for them kept. The default strips them, as it always has.
         overlong: An optional list. When given, the 1-based line number of each *returned* row that has more cells than
             the header row is appended to it. Such a row keeps its first cells and loses the rest, as it always has,
-            and a stray ``|`` (or GFM's ``\\|``, which is not decoded) has already shifted every value after it. A
+            and a stray ``|`` (or GFM's ``\\|``, unless ``escaped_pipes``) has already shifted every value after it. A
             caller that can't afford a shifted value (the F-374 reference set) reads the list and refuses the file.
             The default leaves every caller unchanged.
+        escaped_pipes: When true, a ``|`` that GFM escapes (``\\|``) is a pipe inside its cell and not the end of it, and the
+            cell holds the pipe without the backslash, as GFM renders it. A ``|`` after an even run of backslashes still ends the
+            cell. The header row is read by the same rule as the rows under it, so both count their cells alike. The default splits
+            at every ``|``, as it always has (NFR-1), and the F-374 reference set's Section 7 reader alone asks for the other reading
+            (P1-3, ADR-050 D3): the per-finding tables and every extractor keep the default.
 
     Returns:
         List of dicts, one per row, with keys from the header row.
@@ -485,8 +520,8 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
     Each header and data cell is stripped, loses its ``**`` markers (unless ``keep_bold``) and is then decoded with
     :func:`decode_references` (ADR-050 D3), after the row is split on raw ``|``. So the renderers' references
     (``&#124;`` for a ``|`` in a cell, ``&lt;``, ``&#10;`` and the rest) read back as the text they stand for, and
-    decoding never changes a row's cell count. GFM's ``\\|`` is not decoded: a row that holds one splits there, as
-    it always has (NFR-1). A caller must not decode the returned values again.
+    decoding never changes a row's cell count. GFM's ``\\|`` is not decoded unless ``escaped_pipes`` asks for it: a row that
+    holds one splits there, as it always has (NFR-1). A caller must not decode the returned values again.
 
     Stop rule (FR-K9.2; amended at P0, 2026-09-28, RC-3/architect finding
     F-1): scanning for the table stops at the next heading whose level
@@ -548,7 +583,8 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
 
     # Parse header row for column names
     header_line = lines[table_header_idx].strip()
-    header_cells = [decode_references(strip_bold(c.strip())) for c in header_line.split("|")[1:-1]]
+    header_cells = [decode_references(strip_bold(c.strip()))
+                    for c in (_escaped_pipe_cells(header_line) if escaped_pipes else header_line.split("|")[1:-1])]
     columns = [c for c in header_cells if c]
 
     if not columns:
@@ -567,7 +603,8 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
         line = lines[i].strip()
         if not line.startswith("|"):
             break
-        cells = [decode_references(c.strip() if keep_bold else strip_bold(c.strip())) for c in line.split("|")[1:-1]]
+        cells = [decode_references(c.strip() if keep_bold else strip_bold(c.strip()))
+                 for c in (_escaped_pipe_cells(line) if escaped_pipes else line.split("|")[1:-1])]
         if len(cells) < len(columns):
             print(f"Warning: skipping malformed row at line {i + 1}: expected {len(columns)} columns, got {len(cells)}", file=sys.stderr)
             if skipped is not None:
@@ -1386,10 +1423,12 @@ REFERENCE_SET_FORM = ("a table whose header row has a 'Finding ID' column and on
                       "or a numbered list whose items each start with a bolded finding ID")
 REFERENCE_SET_REMEDY = ("regenerate threats.md with /tachi.threat-model, or correct the section to the table form "
                         "or the numbered-list form")
-# M1 (T067a): a row with more cells than its header holds a `|` in a cell. The renderers write one as `&#124;`, which a
-# reader decodes after it splits the row, and GFM's `\|` is not read (it still splits the row).
-REFERENCE_SET_PIPE_REMEDY = ("write each '|' inside a cell as '&#124;' (a GFM '\\|' still splits the row), or regenerate "
-                             "threats.md with /tachi.threat-model")
+# M1 (T067a): a row with more cells than its header holds a raw `|` in a cell. The renderers write a pipe as `&#124;`, which a
+# reader decodes after it splits the row. GFM's `\|` is a pipe in its cell for this reader (P1-3, through `parse_markdown_table`'s
+# `escaped_pipes`), so only a pipe that no backslash escapes is refused. The extractors and the per-finding tables still split at
+# `\|` (NFR-1), so `&#124;` is the spelling that every reader of threats.md reads as a pipe.
+REFERENCE_SET_PIPE_REMEDY = ("write each '|' inside a cell as '&#124;', the spelling that every reader of threats.md reads as a pipe, "
+                             "or regenerate threats.md with /tachi.threat-model")
 # S-12(b): the flag for a value that Section 7's form lacks, in the scorer's closed `<kind>:<field>:<cause>` vocabulary
 # (contracts/module-signatures.md). `input` is the kind for what an input says, the field is the finding schema's name for
 # the value (`component`, `threat`, `delta_status` or `risk_level`), and the cause is kebab-case, like `no-vector`.
@@ -1584,11 +1623,18 @@ def parse_reference_set(content: str, source: str = "threats.md") -> dict:
 
     ``source`` names the file in error messages. It raises :class:`ReferenceSetError`, which ends a run before any
     agent is dispatched (S-12(c)), when Section 7 is missing, holds neither a table nor a numbered list, has a table
-    with no ``Finding ID`` column, loses a malformed row, has a table row with more cells than its header (a ``|`` or
-    GFM's ``\\|`` in a cell, which would shift every value after it, so its remedy says to write ``&#124;``), has a
+    with no ``Finding ID`` column, loses a malformed row, has a table row with more cells than its header (a raw ``|``
+    in a cell, which would shift every value after it, so its remedy says to write ``&#124;``), has a
     numbered item that doesn't open with a bolded finding ID, has a range that can't be read, or names an ID that
     isn't a finding ID. The error names the file, the section, the expected forms and the remedy. An empty
     extraction is an error, never a pass (KB 22).
+
+    **GFM's escaped pipe (P1-3, ADR-050 D3).** The table is read with ``escaped_pipes``: GFM, and GitHub's rendering of ``threats.md``,
+    read ``\\|`` as a pipe inside its cell, and the threat-model contract never tells its writer to avoid one, so the cell holds the pipe
+    and no value moves. Only a pipe that no backslash escapes splits a row, and a row that it makes too wide is still refused. This
+    reader alone reads the pipe so (:func:`_section_7_layers` reads Section 7's layer cells by the same rule, so a row here is a row
+    there): ``parse_threats_findings``, the extractors and the per-finding tables split at ``\\|`` as they always have (NFR-1).
+
     ``parse_threats_findings`` is unchanged, because the extractors rely on its ``[]``-with-a-warning behavior.
     """
     section = "Section 7 (Recommended Actions)"
@@ -1597,11 +1643,11 @@ def parse_reference_set(content: str, source: str = "threats.md") -> dict:
         raise ReferenceSetError(source, section, "is missing")
     skipped: list = []
     overlong: list = []
-    rows = parse_markdown_table(content, start_line=start, skipped=skipped, overlong=overlong)
+    rows = parse_markdown_table(content, start_line=start, skipped=skipped, overlong=overlong, escaped_pipes=True)
     if skipped:
         raise ReferenceSetError(source, section, "has a malformed row (line %s)" % ", ".join(str(n) for n in skipped[:5]))
     if overlong:
-        raise ReferenceSetError(source, section, "has a row with more cells than its header (line %s): a '|' or GFM's '\\|' in a cell "
+        raise ReferenceSetError(source, section, "has a row with more cells than its header (line %s): a '|' in a cell "
                                 "splits it, and every value after the split would shift" % ", ".join(str(n) for n in overlong[:5]),
                                 REFERENCE_SET_PIPE_REMEDY)
     if rows:
@@ -1649,14 +1695,15 @@ def _section_7_layers(content: str) -> Dict[str, str]:
     """Section 7's ``MAESTRO Layer`` cell of each finding's first row, by canonical ID, blank or not.
 
     Section 7 is found where :func:`parse_reference_set` finds it, under either heading, and its table is read as that function reads
-    it, so a row here is a row of the reference set. A row with more cells than its header is read by position, as
-    :func:`parse_markdown_table` reads it: the reference set's refusal of one (M1) is its own and is not applied here. A section with no
-    table (the list form), or a table with no ``Finding ID`` column, gives nothing.
+    it (GFM's ``\\|`` is a pipe in its cell, P1-3), so a row here is a row of the reference set and a pipe before the layer cell can't move
+    it. A row with more cells than its header, from a raw pipe, is read by position, as :func:`parse_markdown_table` reads it: the
+    reference set's refusal of one (M1) is its own and is not applied here. A section with no table (the list form), or a table with no
+    ``Finding ID`` column, gives nothing.
     """
     layers: Dict[str, str] = {}
     start = _reference_set_start(content)
     if start is not None:
-        for row in parse_markdown_table(content, start_line=start):
+        for row in parse_markdown_table(content, start_line=start, escaped_pipes=True):
             finding_id = row.get("Finding ID", "").strip()
             if tachi_parts.id_matches("finding", finding_id):
                 layers.setdefault(tachi_parts.canonical_finding_id(finding_id), row.get(_LAYER_COLUMN, "").strip())
@@ -1722,6 +1769,8 @@ def parse_finding_layers(content: str) -> Dict[str, str]:
 
     The reference set's refusal of a row with more cells than its header (M1) is not applied: a long row is read by the header's
     positions, as the extractors read it (NFR-1). ``examples/agentic-app`` has such rows in §4.2, each with its GFM ``\\|`` after the layer cell.
+    Section 7's own rows are read as the reference set reads them, with GFM's ``\\|`` as a pipe in its cell (P1-3). The per-finding tables keep
+    the extractors' rule: a ``\\|`` there splits the row.
 
     The scorer renderer, the controls renderer and the planner's controls unit row each take the layer from here, so the chain's three
     copies can't drift (the controls file's ``maestro-layer`` is the scorer file's, gap B).

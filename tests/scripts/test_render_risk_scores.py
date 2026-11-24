@@ -1541,6 +1541,30 @@ def test_failure_render_failed_on_a_first_run_moves_the_half_written_file_aside(
     assert (project.plan_dir / "failed" / MD).is_file(), "kept for diagnosis, and under no name any auto-detect site would take"
 
 
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_staged_a_render_keeps_the_permission_bits_of_each_canonical_file_it_replaces(project, monkeypatch):
+    """P1-2, the rest of SA-4 (the architect's probe E at T070): both files are written to ``staged/`` as new files and moved onto the canonical
+    names, so a ``risk-scores.md`` at 0600 came out of a render at the ordinary 0644. Each staged file takes the bits of the canonical file that
+    it replaces (``atomic_write``'s ``mode_of``), so each output keeps its own."""
+    monkeypatch.setattr(tp, "_UMASK", 0o022)  # a new file is 0644 whatever umask this test runs under, so neither mode below is the ordinary one
+    project.earlier()
+    modes = {MD: 0o600, SARIF: 0o640}
+    for name, mode in modes.items():
+        os.chmod(str(project.out / name), mode)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert project.outputs() != {MD: EARLIER_MD, SARIF: EARLIER_SARIF}, "both files were replaced"
+    assert {name: (project.out / name).stat().st_mode & 0o777 for name in modes} == modes
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_staged_a_first_render_gives_each_new_file_the_ordinary_mode(project, monkeypatch):
+    monkeypatch.setattr(tp, "_UMASK", 0o027)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert {name: (project.out / name).stat().st_mode & 0o777 for name in (MD, SARIF)} == {MD: 0o640, SARIF: 0o640}
+
+
 def test_failure_a_cvss_calculator_that_fails_its_self_test_stops_the_run_before_any_write(project, monkeypatch):
     project.earlier()
     project.prepare()
@@ -1629,6 +1653,40 @@ def test_record_a_path_the_run_changed_but_declared_is_not_reported(project):
     res = project.render()
     assert res.code == 0, res.describe()
     assert project.record["undeclared_paths"] == []
+
+
+# EC-2 (the Step 8 economy gate; SA-5's other half): the planner keys its ``out_snapshot`` through ``tachi_parts.snapshot_key``, which stands in for a
+# name that D7's rule refuses (macOS's ``Icon`` and a carriage return, a colon in the first component, a backslash), because no plan could hold the name.
+# The renderer has to look a file up by the same key. By its raw path, a file like that, there at plan time and never changed, counted as new and then as a
+# name that no record can hold, so a clean run warned ``undeclared-paths-unrecordable`` and exited 5.
+ODD_OUT_NAMES = ["Icon\r", "note:final.txt", "back\\slash.txt"]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="these file names are POSIX names")
+@pytest.mark.parametrize("name", ODD_OUT_NAMES, ids=["carriage-return", "colon", "backslash"])
+def test_record_a_file_with_a_name_no_record_can_hold_that_sat_in_out_since_the_plan_is_not_reported(project, name):
+    (project.out / name).write_bytes(b"left by the system, not by the run")
+    res = project.run()
+    assert res.code == 0, res.describe()
+    record = project.record
+    assert (record["status"], record["warnings"], record["undeclared_paths"]) == ("success", [], [])
+    assert tp.snapshot_key(name) in project.plan_json()["out_snapshot"] and name not in project.plan_json()["out_snapshot"], "premise: the plan keys it by its stand-in"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="these file names are POSIX names")
+@pytest.mark.parametrize("change", ["planted", "changed"])
+def test_record_a_file_with_such_a_name_that_arrived_or_changed_since_the_plan_is_still_counted(project, change):
+    """The fix looks a file up by its stand-in, and does not stop counting it: a name that no record can hold is counted and never listed."""
+    name = ODD_OUT_NAMES[0]
+    if change == "changed":
+        (project.out / name).write_bytes(b"x")
+    project.prepare()
+    (project.out / name).write_bytes(b"xx")   # new since the plan, or a different size
+    res = project.render()
+    assert res.code == 5, res.describe()
+    record = project.record
+    assert record["undeclared_paths"] == [] and record["warnings"] == [{"code": "undeclared-paths-unrecordable", "detail": "1 undeclared paths have names a record can't hold"}]
+    assert record["status"] == "success-with-warnings"
 
 
 def test_record_every_file_the_run_wrote_is_a_declared_path(base):
@@ -2574,6 +2632,8 @@ def test_variants_the_sarif_properties_carry_the_flags_the_vector_and_the_score_
         if "cvss-vector" not in props or props["cvss-vector"] != finding["rendered"]["cvss_vector"]:
             problems.append("cvss-vector %r, want %r (JSON null when unverifiable)" % (props.get("cvss-vector"), finding["rendered"]["cvss_vector"]))
         want_source = finding["rendered"].get("score_source", "inherited" if finding["treatment"] == "carried" else None)
+        if finding["treatment"] == "copy-primary":
+            want_source = source_of(r, finding_id, finding)  # P1-5: a copied peer takes its primary's source, in the SARIF as in the Source column
         if want_source is not None and props.get("score-source") != want_source:  # reading: the template's two words for the Source column
             problems.append("score-source %r, want %r" % (props.get("score-source"), want_source))
         corrections = props.get("score-corrections", [])
@@ -2588,17 +2648,54 @@ def test_variants_the_sarif_properties_carry_the_flags_the_vector_and_the_score_
     assert not wrong, brief(wrong)
 
 
+def source_of(r, finding_id, finding):
+    """The word that a finding's Source column and ``score-source`` must show: ``inherited`` for a carried finding and for a RESOLVED row,
+    ``fresh`` for one that the agent scored, and a copied peer's is its primary's (P1-5; the architect's ruling on T067b L8: ``score-source``
+    says where a finding's scoring inputs came from, and a copy of a carried primary takes them from the baseline too)."""
+    if finding["treatment"] == "copy-primary":
+        primary = r.doc["routing"]["copy_primary"][finding_id]
+        return source_of(r, primary, r.doc["findings"][primary])
+    return {"carried": "inherited", "resolved": "inherited", "agent": "fresh"}[finding["treatment"]]
+
+
 @pytest.mark.parametrize("case", CASES)
 def test_variants_the_source_column_says_inherited_for_a_carried_finding_and_fresh_for_the_agents(scenarios, case):
+    """A copied peer shows its primary's word (``source_of``), where the template was silent before P1-5."""
     r = scenarios(case)
     wrong = {}
     for finding_id, finding in r.doc["findings"].items():
         key = canon(finding_id)
-        want = {"carried": "inherited", "resolved": "inherited", "agent": "fresh"}.get(finding["treatment"])  # a copied peer: the template is silent
+        want = source_of(r, finding_id, finding)
         row = r.view.resolved[key] if finding["treatment"] == "resolved" else r.view.rows[key]
-        if want is not None and row["Source"] != want:
+        if row["Source"] != want:
             wrong[finding_id] = row["Source"]
     assert not wrong, brief(wrong)
+
+
+def test_regroup_a_new_or_updated_peer_of_a_carried_primary_takes_its_primarys_source_in_both_files_and_keeps_it_on_the_next_run(scenarios):
+    """P1-5 (T067b L8, ruled at T070): in run 2, T-1 is carried and D-1 (NEW) and E-1 (UPDATED) are copied from it. The reading of ``score-source``
+    that is stable is the inputs one: the peer's inputs are its carried primary's, so it is ``inherited`` in the Source column and in the SARIF. The
+    other reading would call it ``fresh`` now and ``inherited`` on run 3, which carries it with no input changed (P0-6's kind of noise)."""
+    second, third = scenarios("%s:run2" % REGROUP), scenarios("%s:run3" % REGROUP)
+    peers = second.doc["routing"]["copy_primary"]
+    assert sorted(second.doc["findings"][peer]["case"] for peer in peers) == ["new-peer", "updated-peer"]
+    assert {primary for primary in peers.values()} == {"T-1"} and second.doc["findings"]["T-1"]["treatment"] == "carried"
+    for peer, primary in peers.items():
+        for run in (second, third):
+            assert run.view.rows[canon(peer)]["Source"] == run.view.rows[canon(primary)]["Source"] == "inherited", (run.case, peer)
+            assert run.results[canon(peer)]["properties"]["score-source"] == run.results[canon(primary)]["properties"]["score-source"] == "inherited", (run.case, peer)
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_variants_the_summary_counts_the_findings_scored_from_baseline_inputs_not_the_ones_carried_from_the_baseline(scenarios, case):
+    """P1-5: the summary line counted every ``inherited`` finding as "carried from the baseline", which is false of a copied peer, a NEW or
+    UPDATED finding that took its primary's inputs from the baseline. It now says what is true of both: scored from baseline inputs. The count
+    is the number of ``inherited`` results, and the rest are scored fresh. Every scenario has a baseline, so the line is always there."""
+    r = scenarios(case)
+    inherited = sum(1 for result in r.results.values() if result["properties"]["score-source"] == "inherited")
+    lines = r.result.out.split("\n")
+    assert "%d findings scored from baseline inputs, %d scored fresh" % (inherited, len(r.results) - inherited) in lines, r.result.out
+    assert not [line for line in lines if "carried from the baseline" in line], r.result.out
 
 
 @pytest.mark.parametrize("case", CASES)
@@ -5260,3 +5357,27 @@ def test_the_baseline_sarif_vector_reader_is_bounded_like_the_other_readers(rend
         "partialFingerprints": {"findingId/v1": "S-1"},
         "properties": {"cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}}]}]}).encode("utf-8")
     assert renderer._sarif_vectors(well_formed) == {"S-1": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}
+
+
+# =============================================================================
+# 34. P1-3: GFM's escaped pipe in a Section 7 cell (the architect's ruling at T070; the PM moved it into PR 1, W6 Q1)
+# =============================================================================
+
+
+def test_p1_3_a_threat_with_gfms_escaped_pipe_plans_renders_and_reads_back_with_the_pipe_in_its_cell(stage, renderer, tmp_path):
+    """The threat-model contract never tells its writer to avoid a pipe, and a threat that quotes a shell pipeline is plausible. GFM, and GitHub's
+    rendering of ``threats.md``, read ``\\|`` as a pipe inside its cell, so Section 7's reader does too (it refused the row before): the run plans
+    and renders, the finding's threat holds the pipe in both files, and no value after it moved a column, which the finding's risk level and layer
+    show. The renderer writes the pipe as ``&#124;``, so the file it wrote is read as it is written, and no backslash is left behind."""
+    piped = "Output piped through cat | sh and more text."
+    specs = [dict(item, threat=piped.replace(" | ", " \\| ")) if item["id"] == "S-2" else item for item in SPECS]
+    assert "cat \\| sh" in make_threats_md(specs), "premise: Section 7 holds GFM's escaped pipe"
+    project = Project(stage, renderer, tmp_path, specs=specs)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    rows = {row["ID"]: row for row in records(*table_of(section(project.md, "## 2. Scored Threat Table"), "ID"))}
+    assert "cat &#124; sh" in project.md and "cat \\|" not in project.md and rows["S-2"]["Threat"] == piped, "the file holds the reference, and the readers decode it"
+    assert results_by_id(project.sarif)["S-2"]["message"]["text"] == piped
+    item = by_id("S-2")
+    assert category_line(project.md, "S-2").split(" | ")[1:3] == ["**MAESTRO Layer**: %s" % COMPONENTS[item["component"]][1], "**Original Risk Level**: %s" % item["risk"]]
+    assert rows["T-1"]["Threat"] == by_id("T-1")["threat"], "a neighbouring row is as it was"

@@ -42,8 +42,8 @@ there is no correlation, the stage record says why, and no key changes, because 
 ``effort-estimate`` are read from the rendered Section 4 blocks: each block is found in the Section 4 that sits outside the code
 fences, and its "What to Implement" text is read by the shared rule (``tachi_parsers.recommendation_text``, which is
 ``parse_compensating_controls_md``'s), so a consumer of either file reads one text. The from-disk check derives ``recommendation``
-again from each validated part body instead of from the file, so a defect of the reader that built the SARIF can't agree with
-itself (T067b H1). ``integrity-flags`` carries ``reused-id`` over from the input, and ``maestro-layer`` is the
+and ``effort-estimate`` again from each validated part body instead of from the file, so a defect of the reader that built the
+SARIF can't agree with itself (T067b H1; P1-4). ``integrity-flags`` carries ``reused-id`` over from the input, and ``maestro-layer`` is the
 value that the scorer's file holds for the finding. The result's properties are the contracted set and no other key
 (``contracts/sarif-result.md``). Both files are written to ``staged/`` and checked on disk, against each other as well as
 against the rows, before either replaces a canonical name.
@@ -1564,20 +1564,30 @@ def _section_4_blocks(md_text: str) -> Dict[str, List[str]]:
     return blocks
 
 
+def _effort_word(lines: Iterable[str]) -> str:
+    """The Effort word (``Low``, ``Medium`` or ``High``) that a run of Section 4 lines gives, or ``""`` for none.
+
+    The first line that starts with ``**Effort Estimate**:`` and goes on with one of the three words gives it. This is the one Effort
+    rule: ``_section_4_efforts`` applies it to each rendered block, and ``_effort_of_body`` to a validated body (P1-4).
+    """
+    for line in lines:
+        text = line.strip()
+        word = EFFORT_WORD.match(text[len(EFFORT_MARKER):].strip()) if text.startswith(EFFORT_MARKER) else None
+        if word is not None:
+            return word.group(1)
+    return ""
+
+
 def _section_4_efforts(md_text: str) -> Dict[str, str]:
     """The Effort word (``Low``, ``Medium`` or ``High``) of each Section 4 block, by canonical ID.
 
-    The first line of a block that starts with ``**Effort Estimate**:`` and goes on with one of the three words gives it. A block
-    with no such line, and a finding with no block, has none.
+    The block's first line that ``_effort_word`` reads gives it. A block with no such line, and a finding with no block, has none.
     """
     found: Dict[str, str] = {}
     for canonical, lines in _section_4_blocks(md_text).items():
-        for line in lines:
-            text = line.strip()
-            word = EFFORT_WORD.match(text[len(EFFORT_MARKER):].strip()) if text.startswith(EFFORT_MARKER) else None
-            if word is not None:
-                found[canonical] = word.group(1)
-                break
+        word = _effort_word(lines)
+        if word:
+            found[canonical] = word
     return found
 
 
@@ -1601,6 +1611,17 @@ def _recommendation_of_body(body: Optional[str]) -> str:
     function did. ``None`` is a finding whose control was found: it has no body and no block, and its recommendation is empty.
     """
     return "" if body is None else tachi_parsers.recommendation_text(tp.escape_prose(body).split("\n"))
+
+
+def _effort_of_body(body: Optional[str]) -> str:
+    """The ``effort-estimate`` that a validated part's ``recommendation_body`` gives, derived without the rendered file (P1-4).
+
+    The same Effort rule as the SARIF's (``_effort_word``), over the body's own escaped lines, which are the lines that Section 4 writes
+    for it. The SARIF is built from the file (``_section_4_efforts``), so a from-disk check that read the file by that function again would
+    pass whatever the function did: a value is compared with its source, and never with a second read by the reader that produced it
+    (KB 22; the standing rule for D4's step 5). ``None`` is a finding whose control was found: it has no body, no block and no effort.
+    """
+    return "" if body is None else _effort_word(tp.escape_prose(body).split("\n"))
 
 
 def _properties(row: Row, recommendation: str, effort: str) -> Dict[str, Any]:
@@ -1854,10 +1875,10 @@ def _check_sarif(run: Run, rendered: str, text: str, md_text: str, matrix: Seque
     string holds a character that D3's step 10 forbids (the file is ASCII, so only the decoded strings show it: P0-4). The
     shared self-check passes (N/N, the shape and key order, the hashes, the one URI, no RESOLVED finding, correlation). The
     results are in Section 2's order. Each rule is the rule table's, with the highest residual score of its results. Each
-    result agrees with the row that Section 2 holds on disk (the scores, the level, ``CF``), with the staged Section 4 (the effort) and
-    with the validated part (the recommendation). The recommendation is derived again from the part's own ``recommendation_body``
-    (``_recommendation_of_body``) and never read from the file by the function that built the SARIF, because a defect in that reader
-    would agree with itself (T067b H1). Its status is the structured one, which a Control Status cell of the agent's own may
+    result agrees with the row that Section 2 holds on disk (the scores, the level, ``CF``) and with the validated part (the recommendation
+    and the effort). Both are derived again from the part's own ``recommendation_body`` (``_recommendation_of_body``,
+    ``_effort_of_body``) and never read from the file by the function that built the SARIF, because a defect in that reader
+    would agree with itself (T067b H1; P1-4). Its status is the structured one, which a Control Status cell of the agent's own may
     disagree with (R-34, flagged). It carries the evidence, the layer and the flags of its finding.
     """
     problems: List[str] = []
@@ -1909,14 +1930,13 @@ def _check_sarif(run: Run, rendered: str, text: str, md_text: str, matrix: Seque
         problems.append("the SARIF's rules are not the rule table's, one for each category with a result, each with the highest residual of its results")
 
     cells = dict(matrix)
-    efforts = _section_4_efforts(md_text)
     for row in run.rows:
         result, cell = by_id.get(row.canon), cells.get(row.canon)
         if result is None or cell is None:
             continue   # reported above: a row or a result that is missing
         properties = result["properties"]
         recommendation = _recommendation_of_body(row.item["recommendation_body"])   # from the validated part, never from the file (T067b H1)
-        effort = efforts.get(row.canon, "")
+        effort = _effort_of_body(row.item["recommendation_body"])                   # likewise (P1-4)
         evidence = [{"file": path, "line": entry["line"], "snippet": entry["snippet"]} for path, entry in zip(row.paths, row.item["evidence"])]
         wanted_related = [(run.evidence_cache[entry["file"]].uri, entry["line"]) for _index, entry in row.located]   # none for an entry whose file was refused
         pairs = (("security-severity", properties.get("security-severity"), cell[9]), ("residual-risk", properties.get("residual-risk"), cell[9]),
@@ -1980,8 +2000,8 @@ def _stage_and_move(run: Run, out: str, plan_id: str, files: Mapping[str, str], 
         if os.path.islink(staged_dir) or (os.path.lexists(staged_dir) and not os.path.isdir(staged_dir)):
             raise RenderError(2, "staged is a symbolic link or not a directory", "remove it and re-run", kept=kept)
         os.makedirs(staged_dir, exist_ok=True)
-        for name, text in files.items():
-            tp.atomic_write(tp.staged_path(out, STAGE, plan_id, name), text)
+        for name, text in files.items():   # each staged file takes the permission bits of the canonical file it will replace (P1-2)
+            tp.atomic_write(tp.staged_path(out, STAGE, plan_id, name), text, mode_of=os.path.join(out, name))
     except OSError as exc:
         raise RenderError(4, "the staged files could not be written (%s)" % (exc.strerror or "error"), RETRY_REMEDY, kept=kept) from None
     texts: Dict[str, str] = {}
@@ -2026,8 +2046,8 @@ def _undeclared(out: str, plan: Mapping[str, Any]) -> Tuple[List[str], List[Dict
     snapshot = plan["out_snapshot"]
     if snapshot is None:
         return [], [_warning("declared-paths-skipped", "the plan took no snapshot of the output directory")]
-    found = sorted(relpath for relpath, size, mtime in _walk(out)
-                   if snapshot.get(relpath) != [size, mtime] and not tp.is_declared_path(relpath, STAGE, plan["plan_id"]))
+    found = sorted(relpath for relpath, size, mtime in _walk(out)   # a file is looked up by the planner's key for it, so a name that no plan holds is found (EC-2)
+                   if snapshot.get(tp.snapshot_key(relpath)) != [size, mtime] and not tp.is_declared_path(relpath, STAGE, plan["plan_id"]))
     recordable = [relpath for relpath in found if tp.path_problem(relpath) is None]
     warnings = []
     if len(recordable) != len(found):

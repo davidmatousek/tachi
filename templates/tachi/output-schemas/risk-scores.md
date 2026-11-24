@@ -105,7 +105,7 @@ Findings sorted by Composite score descending (highest risk first), and by findi
 | Column | Description |
 |--------|-------------|
 | **ID** | Original finding identifier from the threat model (e.g., `S-1`, `T-2`, `AG-1`, `LLM-3`). Preserves the source finding ID without modification. |
-| **Source** | Score source: `inherited` (a carried finding: its inputs come from the baseline, and the renderer recomputed its derived fields) or `fresh` (the scorer assessed it this run, as a NEW or UPDATED finding or one with no usable baseline row). When no baseline is present, all findings show `fresh`. |
+| **Source** | Score source: `inherited` (a carried finding: its inputs come from the baseline, and the renderer recomputed its derived fields) or `fresh` (the scorer assessed it this run, as a NEW or UPDATED finding or one with no usable baseline row). It says where the finding's scoring inputs came from, so a copied peer takes its primary's source: a NEW or UPDATED peer of a carried primary shows `inherited`, and a NEW or UPDATED peer of a primary that the scorer assessed shows `fresh`. When no baseline is present, all findings show `fresh`. |
 | **Component** | Target component name as identified in the threat model. |
 | **Threat** | Threat description, truncated to fit table width. Full description available in the Dimensional Breakdown (Section 3). |
 | **CVSS** | CVSS 3.1 base score (0.0-10.0). Derived from attack vector, attack complexity, privileges required, user interaction, scope, and CIA impact, then bounded and elevated by the asset-sensitivity pass where those apply. Full vector string shown in Section 3. |
