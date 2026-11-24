@@ -4,6 +4,8 @@
 
 ## Result: M5a PASSES, with one return. T078 runs on Q1 only (section 4)
 
+**T078 ruled option A for both residuals (section 5a), so every claim in section 5 stands.**
+
 | Item | Verdict |
 |---|---|
 | TW-L2 | Every cell has a final attempt that earns its claims, except two that wait on Q1: scorer at default (R1) and controls at max (R2). Attempt 1's defects were shipped text, cured once by T147. No attempt is left at default; none is needed at max. No run was interrupted by a usage limit or infrastructure (a launch closed by a wrong key at the trust dialog, before any command, is not an attempt) |
@@ -78,6 +80,13 @@
 - **R-27: claimed.**
 - **SC-8 "cheaper": claimed** for both stages, only as G-4 scopes it.
 - **Not claimed, outside the list:** tachi's overflow path at max (US-1a #4 and #5 rest on the offline half); score parity with v4.48.4 (G-10); the threat-model stage's on-contract execution (G-11); that agents read their references at default or keep to their read list at max, unless Q1 says otherwise.
+
+## 5a. T078's ruling (the PM, 2026-11-24)
+
+- **R1 and R2: option A.** Both stay classed as agents off their contract (R1: the reference reads; R2: the read list), and both cells keep their claims. Under TW-L2, "don't claim that stage's SC" withdraws only a claim that measures the departure, or one whose evidence the departure could change. No signed criterion measures reference reads or read scope, and every claimed criterion held. This reading binds T133.
+- **So section 5 resolves to:** US-1a #1 claimed; US-1a #3 claimed for both stages at max; US-1a #6 claimed in every cell, stated only as its listed items, never as "on-contract execution".
+- **Release notes (T079):** they may describe the new instruction text. They may not claim, at any effort, that agents read their references or keep to their read list. They carry one known-limitation line on the default-effort scorer's skipped reads, linked to follow-up 1. R2 goes in the PR body only.
+- **Follow-ups, which T080 files before T079:** (1) "Agents can skip the reference files their instructions require: deliver the rules in the batch input, or check the reads structurally"; (2) "Agents can read files outside their declared read list: close the list, and check read scope structurally".
 
 ## 6. Other findings
 
