@@ -23,15 +23,18 @@ FAILED``, the batch or agent, ``Remedy:``, ``Kept for diagnosis:``). The exit co
 The scorer's plan sends the agent only the findings that need judgment (ADR-050 D2): the non-peers that are NEW or
 UPDATED, or have no usable row in the baseline. The renderer inherits the rest, through the same
 ``tachi_scoring_rules.route_scorer_units``, so the planner and the renderer always agree. When ``threats.md`` is absent
-the member set is read from the ``threats.sarif`` beside it (D8's fallback).
+the member set is read from the ``threats.sarif`` beside it (D8's fallback), and each member's unit row holds the text
+of its own result (component, threat, mitigation, risk level and layer), in either ID form, from the reader that the
+renderer takes the same text from (``parse_sarif_member_set(..., with_details=True)``, P0-3).
 
 The controls plan sends the agent every scored open finding (ADR-050 D2, D8, D9), because the agent copies an UNCHANGED
 result from its batch input. The units are the open rows of ``--risk-scores``, read through the tolerant reader that the
 renderer reads that file with (``tachi_scoring_rules.read_baseline_scores``), or, when it is absent, the ``risk-scores.sarif``
 beside it. Each row holds the finding's Section 7 values from the ``threats.md`` that the input's validated ``source_file``
-names. An UNCHANGED finding's row also holds its baseline's persisted result (``evidence[]``, ``matrix_row``,
-``recommendation_body`` and the judgment values, narrative text included), decoded, from the baseline's Section 7
-``### Assessment Inputs`` through ``tachi_parsers.parse_controls_assessment_inputs``, never from the rendered file (AR-T3).
+names (a SARIF names none, so its rows hold each member's own text instead). An UNCHANGED finding's row also holds its
+baseline's persisted result (``evidence[]``, ``matrix_row``, ``recommendation_body`` and the judgment values, narrative text
+included), decoded, from the baseline's Section 7 ``### Assessment Inputs`` through
+``tachi_parsers.parse_controls_assessment_inputs``, never from the rendered file (AR-T3).
 
 The plan holds the stage's pointers as ``refs`` (the authority, so a plan with no units keeps them), and each batch input
 copies them for its agent. A ``--architecture`` candidate that the shared resolver refuses, whatever check fails, is left
@@ -60,6 +63,7 @@ import os
 import platform
 import re
 import stat
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -69,10 +73,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import sarif_common as sc  # noqa: E402
 import tachi_parts as tp  # noqa: E402
+import tachi_scoring as ts  # noqa: E402
 import tachi_scoring_rules as rules  # noqa: E402
 from tachi_parsers import (  # noqa: E402
     ReferenceSetError, parse_baseline_frontmatter, parse_controls_assessment_inputs, parse_correlation_groups, parse_reference_set,
-    parse_sarif_member_set)
+    parse_sarif_member_set, parse_score)
 
 CONTROLS = "compensating-controls"
 
@@ -222,6 +227,48 @@ def _unit_row(finding: Dict[str, Any]) -> Dict[str, Any]:
     for key in ("component", "threat", "risk_level", "mitigation", "agentic_pattern", "delta_status"):
         if key in finding:
             row[key] = finding[key]
+    return row
+
+
+# What a unit row of D8's SARIF fallback takes from its member's own result (P0-3): the keys of
+# ``parse_sarif_member_set(..., with_details=True)`` that a row has a place for, in ``_unit_row``'s order, and the layer after them.
+_SARIF_ROW_KEYS = ("component", "threat", "risk_level", "mitigation", "layer")
+_SCORE_MIN, _SCORE_MAX = Decimal("0.0"), Decimal("10.0")
+
+
+def _sarif_risk_level(level: str) -> str:
+    """A fallback member's risk level, as the renderer shows it (D8, P0-3): a word stays as the file writes it, a score becomes its band.
+
+    ``security-severity`` is a score, never a band. It is put on the 0.1 grid inside 0.0 to 10.0 that ``tachi_scoring.band`` takes
+    (the steps of ``render-risk-scores.py``'s own ``_risk_level``), so the planner's row and the renderer's "Original Risk Level" are
+    one label whatever the result carries.
+    """
+    score = parse_score(level)
+    return level if score is None else ts.band(ts.q1(max(_SCORE_MIN, min(_SCORE_MAX, score))))
+
+
+def _sarif_unit_row(finding_id: str, details: Dict[str, Optional[str]]) -> Dict[str, Any]:
+    """The unit row of a member of D8's SARIF fallback: its canonical ID, and each detail that its own result gives (P0-3).
+
+    ``details`` is the member's entry of ``parse_sarif_member_set(..., with_details=True)``, the one reader that the renderer takes the
+    same text from, so a result gives its component, threat, mitigation, risk level and layer here as it gives them there, in either
+    ID form. A detail the result lacks is left out, as ``_unit_row`` leaves out a value the finding lacks. A member that only a legacy
+    peer reference names has no result, so it has no entry (``{}``) and its row holds the ID alone. A result records no status, so
+    there is none here: the routing derives it from the baseline (S-12(b)). Each string is verbatim data, as in ``_unit_row``, with
+    one refusal: JSON can spell a lone surrogate (``\\ud800``), which no markdown input can, and ``tachi_parts.load_json`` refuses a
+    document with one, so a batch input that held it would plan and then fail its first retry. It raises ``ValueError`` instead, and
+    the caller ends the run here, as for any other SARIF it can't use.
+    """
+    row: Dict[str, Any] = {"finding_id": finding_id}
+    for key in _SARIF_ROW_KEYS:
+        value = details.get(key)
+        if value is None:
+            continue
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError:
+            raise ValueError("the %s of %s holds a lone surrogate code point, which a batch input cannot carry" % (key, finding_id)) from None
+        row[key] = _sarif_risk_level(value) if key == "risk_level" else value
     return row
 
 
@@ -394,13 +441,16 @@ def _read_member_set(stage: str, threats: Any, threats_path: str) -> tuple:
     """The open findings of the run, as ``(raw bytes, [(finding row, unit row)], threats.md text, path read, SARIF groups, lacking)``.
 
     They come from the reference set of ``threats.md`` (S-12). The scorer falls back to the ``threats.sarif`` beside it
-    when ``threats.md`` is absent, read through ``parse_sarif_member_set`` (ADR-050 D8, AR-T2): its units name the
-    finding only, and the agent reads the rest from ``refs.threats``. An empty extraction is an error, never a pass
-    (KB 22), and it ends the run here, before anything is written or dispatched.
+    when ``threats.md`` is absent, read through ``parse_sarif_member_set`` (ADR-050 D8, AR-T2): each unit row holds the
+    text of that member's own result, in either ID form (``_sarif_unit_row``, P0-3), and the agent reads the rest from
+    ``refs.threats``. An empty extraction is an error, never a pass (KB 22), and it ends the run here, before anything is
+    written or dispatched.
 
     ``lacking`` maps each canonical ID to the names of the values its form lacks (S-12(b)): the reference set's own
     map, or, for the SARIF fallback, ``{id: ["delta_status"]}`` for every member, since a SARIF result records no
     status. The routing derives each missing status from the baseline, and the renderer passes the same map (ruled at W2).
+    The SARIF's groups come back as the reader gives them, a group with no ID included: its peers route like any other
+    (D9), and the renderer routes the same groups, so the two sides cut one partition.
     """
     beside = os.path.join(os.path.dirname(threats_path), "threats.sarif")
     if not (stage == "risk-score" and os.path.basename(threats_path) == "threats.md"
@@ -416,12 +466,12 @@ def _read_member_set(stage: str, threats: Any, threats_path: str) -> tuple:
     sys.stderr.write("WARNING: %s is absent, so the findings are read from %s (the SARIF fallback)\n" % (threats_path, beside))
     raw, text = _read_threats(stage, beside)
     try:
-        member_set = parse_sarif_member_set(text)
+        member_set = parse_sarif_member_set(text, with_details=True)
+        members = sorted(member_set["members"], key=tp.finding_sort_key)
+        units = [({"id": member}, _sarif_unit_row(member, member_set["details"].get(member, {}))) for member in members]
     except ValueError as exc:
         raise StageError(2, stage, "%s: %s" % (beside, str(exc)[:200]), "restore threats.md, or regenerate it with /tachi.threat-model") from None
-    members = sorted(member_set["members"], key=tp.finding_sort_key)
-    return (raw, [({"id": member}, {"finding_id": member}) for member in members], None, beside, member_set["groups"],
-            {member: ["delta_status"] for member in members})
+    return raw, units, None, beside, member_set["groups"], {member: ["delta_status"] for member in members}
 
 
 def _scorer_routing(stage: str, members: list, text: Optional[str], sarif_groups: list, lacking: Dict[str, List[str]],
@@ -506,13 +556,15 @@ def _id_list(finding_ids: List[str]) -> str:
 
 
 def _controls_scored_input(stage: str, given: Any) -> tuple:
-    """The controls stage's input, as ``(path read, its bytes, the scored finding IDs in S-2 order, markdown text or None)``.
+    """The controls stage's input, as ``(path read, its bytes, the scored finding IDs in S-2 order, markdown text or None, unit rows)``.
 
     The members are the open rows of ``risk-scores.md``, read through ``tachi_scoring_rules.read_baseline_scores``, the tolerant
     reader (R-26) that the renderer reads the file with, so the planner and the renderer see one set. Section 2a's RESOLVED rows
     are not in it (D8). When ``risk-scores.md`` is absent and a ``risk-scores.sarif`` lies beside it, that file is read
-    instead, through ``parse_sarif_member_set`` (D8's fallback, AR-T2), and no markdown text comes back. An empty extraction,
-    or an input that can't be read, is an error and ends the run here, before anything is written or dispatched (KB 22).
+    instead, through ``parse_sarif_member_set`` (D8's fallback, AR-T2), and no markdown text comes back: the last item is then
+    each member's unit row (``_sarif_unit_row``, P0-3), and ``{}`` for the markdown input. An empty extraction, a SARIF string
+    that a document can't carry, or an input that can't be read, is an error and ends the run here, before anything is written
+    or dispatched (KB 22).
     """
     path = os.path.abspath(os.fspath(given))
     problem = tp.path_problem(path, allow_absolute=True)
@@ -524,10 +576,12 @@ def _controls_scored_input(stage: str, given: Any) -> tuple:
         sys.stderr.write("WARNING: %s is absent, so the findings are read from %s (the SARIF fallback)\n" % (path, beside))
         raw, text = _read_threats(stage, beside, remedy)
         try:
-            members = sorted(parse_sarif_member_set(text)["members"], key=tp.finding_sort_key)
+            found = parse_sarif_member_set(text, with_details=True)
+            members = sorted(found["members"], key=tp.finding_sort_key)
+            rows = {member: _sarif_unit_row(member, found["details"].get(member, {})) for member in members}
         except ValueError as exc:
             raise StageError(2, stage, "%s: %s" % (beside, str(exc)[:200]), "restore risk-scores.md, or " + remedy) from None
-        return beside, raw, members, None
+        return beside, raw, members, None, rows
     raw, text = _read_threats(stage, path, remedy)
     scores = rules.read_baseline_scores(Path(path))
     if not scores.rows:  # the reader opens through no link, so `missing` here, after the read above, means a link or a file that isn't regular
@@ -536,7 +590,7 @@ def _controls_scored_input(stage: str, given: Any) -> tuple:
     if scores.issues:
         sys.stderr.write("WARNING: %s has %d input issue(s), the first being: %s. A row that can't be read is not planned, "
                          "and the renderer lists the issues under Input Issues\n" % (path, len(scores.issues), scores.issues[0].detail[:160]))
-    return path, raw, list(scores.rows), text
+    return path, raw, list(scores.rows), text, {}
 
 
 def _controls_baseline(stage: str, resolution: "rules.BaselineResolution", inputs: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
@@ -575,9 +629,10 @@ def _controls_units(stage: str, risk_scores: Any, threats: Any, baseline_flag: O
     Section 7 values (``_unit_row``) from the ``threats.md`` that the input's validated ``source_file`` names: the path
     must pass ``check_run_file`` (a regular file called ``threats.md``, no symlink on the way, under the working
     directory), the reach that D8 gives the renderer too. A ``--threats`` that is also given must be that file, because one
-    stage must read one threat model. When the file can't be reached, or the input is
-    ``risk-scores.sarif``, a row holds the finding's ID only, and nothing is carried forward, with a warning: the agent
-    reads the rest from ``refs.risk_scores`` (this version's rows hold no more, until D8's per-member details land, P0-3).
+    stage must read one threat model. When the file can't be reached, a row holds the finding's ID only. When the input is
+    ``risk-scores.sarif``, which names no threat model, a row holds what the member's own result gives (``_sarif_unit_row``:
+    D8's details, from the reader that the renderer uses too, P0-3), and the ID alone for a member that only a legacy peer
+    reference names. In both, nothing is carried forward, with a warning: the agent reads the rest from ``refs.risk_scores``.
 
     An UNCHANGED finding's row also takes its baseline's persisted result (``CARRIED_KEYS``), decoded, from
     ``_controls_baseline``. A finding whose form has no Status gets no ``delta_status`` and no carried result: the agent
@@ -587,7 +642,7 @@ def _controls_units(stage: str, risk_scores: Any, threats: Any, baseline_flag: O
     read. Nothing here stops a run for a baseline or a threat model that can't be used (S-12(d), D7's spirit).
     """
     cwd = os.getcwd()
-    scored, scored_raw, members, scored_text = _controls_scored_input(stage, risk_scores)
+    scored, scored_raw, members, scored_text, sarif_rows = _controls_scored_input(stage, risk_scores)
     refs["risk_scores"] = scored
     inputs["risk_scores"] = _input_entry(stage, scored, scored_raw)
 
@@ -612,8 +667,9 @@ def _controls_units(stage: str, risk_scores: Any, threats: Any, baseline_flag: O
     else:
         why = ("risk-scores.sarif names no source" if scored_text is None else "source_file names no threat model" if source is None
                else "source_file %r can't be used: %s" % (source[:80], checked.reason))
-        sys.stderr.write("WARNING: threats.md is not read (%s), so each unit holds the finding ID only and nothing is carried forward%s\n"
-                         % (why, "; --threats is not used by this stage" if threats is not None else ""))
+        holds = "the finding ID only" if scored_text is not None else "only what its own result in the SARIF gives"
+        sys.stderr.write("WARNING: threats.md is not read (%s), so each unit holds %s and nothing is carried forward%s\n"
+                         % (why, holds, "; --threats is not used by this stage" if threats is not None else ""))
 
     baseline_source = parse_baseline_frontmatter(threats_text)["source"] if threats_text is not None else None
     resolution = rules.resolve_baseline(flag=baseline_flag, baseline_source=baseline_source, cwd=Path(cwd))
@@ -627,7 +683,7 @@ def _controls_units(stage: str, risk_scores: Any, threats: Any, baseline_flag: O
     units: List[Dict[str, Any]] = []
     for finding_id in members:
         found = reference.get(finding_id)
-        unit = dict(found[1]) if found is not None else {"finding_id": finding_id}
+        unit = dict(found[1]) if found is not None else sarif_rows.get(finding_id, {"finding_id": finding_id})  # a SARIF member's own row, else the ID
         if found is not None and found[0].get("delta_status") == "UNCHANGED" and finding_id in persisted:
             unit.update({key: persisted[finding_id][key] for key in CARRIED_KEYS})
         units.append(unit)
@@ -689,7 +745,7 @@ def plan_stage(stage: str, out: Any, date: str, threats: Any = None, risk_scores
     out = _out_dir(stage, out)
 
     if stage == CONTROLS:
-        # AOD-SIMPLIFICATION: refs.architecture comes from the --architecture flag alone - upgrade: with no flag, fill it in _controls_units from D7's chain (the body line of the threats.md it reads, then the default)
+        # refs.architecture is the --architecture flag alone, on both stages: with no flag the agents read the run's snapshot and the renderer resolves D7's chain (ADR-050 D7, ruled at W3)
         plan_inputs, refs, baseline_flag, architecture_warning = _pointer_refs(stage, None, baseline_dir, architecture, target)
         units = _controls_units(stage, risk_scores, threats, baseline_flag, plan_inputs, refs)
     else:

@@ -2937,6 +2937,27 @@ def test_a_refused_architecture_is_recorded_in_the_plan_for_either_stage(stage, 
     assert h.plan_json()["architecture_warning"] == stage.sc.resolve_explicit("docs/absent.md", root=os.getcwd())[1]
 
 
+@pytest.mark.parametrize("name", STAGE_NAMES)
+def test_with_no_architecture_flag_the_plan_carries_no_architecture_pointer_on_either_stage(stage, cli, tmp_path, monkeypatch, name):
+    """ADR-050 D7, ruled at W3: ``refs.architecture`` is the ``--architecture`` flag alone, on both stages. Here the threat model's body line
+    names a live file that D7's chain accepts (the run directory holds the snapshot, so the name check passes), and still the plan holds no
+    pointer and no warning. The agents read the run's snapshot, and the renderer resolves the chain itself, which is how its URI keeps the
+    body line's warnings. A planner that filled the pointer from the chain would turn that line into an explicit candidate."""
+    statuses = {"S-1": "NEW", "T-2": "NEW"}
+    h = routed(stage, cli, tmp_path, monkeypatch, statuses, name=name)
+    (tmp_path / "docs" / "security").mkdir(parents=True)
+    (tmp_path / "docs" / "security" / "architecture.md").write_text("# the live source\n", encoding="utf-8")
+    (h.out / "architecture.md").write_text("# the run's snapshot\n", encoding="utf-8")
+    text = make_threats_md(list(statuses), statuses=statuses, preamble="**Architecture source**: `docs/security/architecture.md`\n")
+    h.threats.write_text(text, encoding="utf-8")
+    chain = stage.sc.resolve_architecture(None, threats_text=text, run_dir=str(h.out), root=str(tmp_path))
+    assert chain.source == "body-line" and chain.warnings == (), "the premise: the chain would accept this body line"
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
+    assert "architecture" not in h.plan_json()["refs"] and h.plan_json()["architecture_warning"] is None
+    assert "architecture" not in h.batch_input("B001")["refs"] and "architecture" not in res.err
+
+
 def test_an_architecture_pathlike_candidate_resolves_as_its_string_does(stage, cli, tmp_path, monkeypatch):
     """The function interface takes a ``Path`` as the render tests pass one; the warning names the path as text."""
     h = routed(stage, cli, tmp_path, monkeypatch, {"S-1": "NEW"})
@@ -3056,8 +3077,9 @@ def test_plan_falls_back_to_threats_sarif_when_threats_md_is_absent(stage, cli, 
     sarif = h.out / "threats.sarif"
     assert h.batch_input("B001")["refs"]["threats"] == str(sarif)
     assert h.plan_json()["inputs"]["threats"]["sha256"] == sha256_of(sarif)
-    assert h.batch_input("B001")["units"] == [{"finding_id": "S-1"}, {"finding_id": "T-2"}, {"finding_id": "AGP-1"}], (
-        "the agent reads the rest from refs.threats")
+    assert h.batch_input("B001")["units"] == [{"finding_id": "S-1", "threat": "a finding"}, {"finding_id": "T-2", "threat": "a finding"},
+                                              {"finding_id": "AGP-1", "threat": "a finding"}], (
+        "each row holds the text of its own result and no more: the agent reads the rest from refs.threats (P0-3)")
 
 
 def test_results_the_sarif_marks_absent_are_resolved_and_are_not_planned(stage, cli, tmp_path, monkeypatch):
@@ -3113,6 +3135,339 @@ def test_no_threats_md_and_no_sarif_beside_it_is_a_missing_input(stage, cli, tmp
     assert h.plan_cli().code == 1
     elsewhere = h.cli("plan", "--stage", "risk-score", "--out", h.out, "--date", DATE, "--threats", h.out / "renamed.md")
     assert elsewhere.code == 1, "only threats.md has a SARIF to fall back to"
+
+
+# ---- the fallback's unit rows hold each member's own text, and a group with no ID still routes its peers (D8, P0-3)
+#
+# A SARIF result gives its member's component, threat, mitigation, risk level and layer, in either ID form, and the unit rows of both
+# stages' fallbacks carry them: ``risk-scorer.md`` tells the agent that its units hold the details, and a row of the ID alone left a
+# legacy-form member with nothing. The planner and the renderer take the text from one reader, ``parse_sarif_member_set(...,
+# with_details=True)``. The three shipped shapes that P0-3 names are copied into ``tmp_path`` and planned there, and nothing here
+# writes under ``examples/``. The controls stage reads any SARIF the same way, so a copy of each shape also stands in for its
+# ``risk-scores.sarif``, where every member (peers too) is a unit.
+
+SARIF_SHAPES = {
+    "modern": "agentic-app/sample-report/threats.sarif",          # findingId/v1 on every result
+    "unnamed-groups": "maestro-reference/threats.sarif",          # correlation groups that the file gives no group ID
+    "legacy": "mobile-banking-app/sample-report/threats.sarif",   # no findingId/v1: the ID is in properties.id only
+}
+ROW_KEYS = ("component", "threat", "risk_level", "mitigation", "layer")
+BAND_WORDS = ("Critical", "High", "Medium", "Low", "Note")
+
+
+def shipped_sarif(shape):
+    return (REPO_ROOT / "examples" / SARIF_SHAPES[shape]).read_text(encoding="utf-8")
+
+
+def fallback_only(stage, cli, tmp_path, monkeypatch, sarif, name="risk-score"):
+    """A project whose only scored input is a SARIF: ``threats.sarif`` for the scorer, ``risk-scores.sarif`` for the controls stage."""
+    return (sarif_only if name == "risk-score" else scores_sarif_only)(stage, cli, tmp_path, monkeypatch, sarif)
+
+
+def sarif_of(*results):
+    return json.dumps({"version": "2.1.0", "runs": [{"results": list(results)}]})
+
+
+def detail_result(finding_id, form="fingerprint", name=None, text=None, markdown=None, properties=None):
+    """One result of a synthetic SARIF: its ID in ``findingId/v1`` or, as tachi's older files have it, in ``properties.id``, and only the text given."""
+    result = {"ruleId": "tachi/stride/spoofing", "properties": dict(properties or {})}
+    if form == "fingerprint":
+        result["partialFingerprints"] = {"findingId/v1": finding_id}
+    else:
+        result["properties"]["id"] = finding_id
+    if name is not None:
+        result["locations"] = [{"logicalLocations": [{"name": name}]}]
+    message = {key: value for key, value in (("text", text), ("markdown", markdown)) if value is not None}
+    if message:
+        result["message"] = message
+    return result
+
+
+def own_text(result):
+    """D8's reading of one result, written out here and apart from the reader that the planner uses: the first usable string for each
+    detail (a missing key, a blank string and a value that isn't a string are no value)."""
+    properties = result.get("properties") or {}
+    logical = ((result.get("locations") or [{}])[0].get("logicalLocations") or [{}])[0]
+    message = result.get("message") or {}
+
+    def first(*values):
+        return next((value for value in values if isinstance(value, str) and value.strip()), None)
+
+    return {"component": first(logical.get("name"), properties.get("component")), "threat": first(message.get("text")),
+            "risk_level": first(properties.get("risk_level"), properties.get("security-severity")),
+            "mitigation": first(message.get("markdown")), "layer": first(properties.get("maestro-layer"))}
+
+
+def kept_results(sarif_text):
+    """The first kept result of each ID, by canonical ID: a result that is ``absent`` (RESOLVED) is dropped, as the reader drops it."""
+    kept = {}
+    for result in json.loads(sarif_text)["runs"][0]["results"]:
+        properties = result.get("properties") or {}
+        finding_id = (result.get("partialFingerprints") or {}).get("findingId/v1") or properties.get("id")
+        if finding_id and "absent" not in (result.get("baselineState"), properties.get("baselineState"), properties.get("baseline-state")):
+            kept.setdefault(canon(finding_id), result)
+    return kept
+
+
+def expected_rows(sarif_text):
+    """The unit row that each result of a SARIF should give, by canonical ID: the file's own values, the first result of an ID winning.
+
+    A risk level is written as the file has it, which holds for the shipped ``threats.sarif`` shapes (a band word, or none). The score table
+    below pins a score, and the agreement test checks both against the renderer."""
+    rows = {}
+    for finding_id, result in kept_results(sarif_text).items():
+        text = own_text(result)
+        rows[finding_id] = dict({"finding_id": finding_id}, **{key: text[key] for key in ROW_KEYS if text[key] is not None})
+    return rows
+
+
+def peers_of(sarif_text):
+    """The members that the file's groups make peers (each group's members but its primary), whether or not a group has an ID."""
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    import tachi_parsers
+
+    return {member for group in tachi_parsers.parse_sarif_member_set(sarif_text)["groups"] for member in group["members"][1:]}
+
+
+def test_the_shipped_shapes_still_show_the_forms_they_stand_for():
+    """The cases below rest on what each sample is, so a sample that changes fails here and can't turn them into vacuous passes."""
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    import tachi_parsers
+
+    modern = json.loads(shipped_sarif("modern"))["runs"][0]["results"]
+    assert modern and all("findingId/v1" in r["partialFingerprints"] and "id" not in r["properties"] for r in modern)
+    legacy = json.loads(shipped_sarif("legacy"))["runs"][0]["results"]
+    assert legacy and all("findingId/v1" not in r.get("partialFingerprints", {}) and r["properties"]["id"] for r in legacy)
+    groups = tachi_parsers.parse_sarif_member_set(shipped_sarif("unnamed-groups"))["groups"]
+    assert len(groups) >= 3 and all(group["group_id"] is None for group in groups)
+
+
+@pytest.mark.parametrize("name", STAGE_NAMES)
+@pytest.mark.parametrize("shape", sorted(SARIF_SHAPES))
+def test_each_fallback_row_equals_its_results_own_text_whichever_id_form_it_uses(stage, cli, tmp_path, monkeypatch, shape, name):
+    """P0-3 (b): the legacy form's rows used to hold the ID alone. Each row is the file's own values for that member. The scorer's agent
+    set is every member but the peers of the file's groups (a group with no ID included), and the controls stage plans every member."""
+    text = shipped_sarif(shape)
+    expected = expected_rows(text)
+    h = fallback_only(stage, cli, tmp_path, monkeypatch, text, name)
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
+    planned = set(expected) - (peers_of(text) if name == "risk-score" else set())
+    rows = unit_rows(h)
+    assert len(planned) > 20 and rows == {finding_id: expected[finding_id] for finding_id in planned}
+    assert all(set(row) > {"finding_id"} for row in rows.values()), "every row holds some of its result's text"
+
+
+def test_a_legacy_form_member_keeps_its_identity_text(stage, cli, tmp_path, monkeypatch):
+    """P0-3 (b), by name: a result with only ``properties.id`` gives its component, threat and risk level, and none comes back blank."""
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, shipped_sarif("legacy"))
+    assert h.plan_cli().code == 0
+    rows = unit_rows(h)
+    assert len(rows) == len(expected_rows(shipped_sarif("legacy"))) > 20
+    assert all(row["component"] and row["threat"] and row["risk_level"] in BAND_WORDS for row in rows.values())
+
+
+def test_either_id_form_gives_the_same_row(stage, cli, tmp_path, monkeypatch):
+    text = dict(name="Gateway", text="a threat", markdown="a fix", properties={"risk_level": "High", "maestro-layer": "L3"})
+    sarif = sarif_of(detail_result("AGP-01", **text), detail_result("AGP-02", form="properties", **text))
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, sarif)
+    assert h.plan_cli().code == 0
+    rows = unit_rows(h)
+    assert rows["AGP-1"] == {"finding_id": "AGP-1", "component": "Gateway", "threat": "a threat", "risk_level": "High", "mitigation": "a fix", "layer": "L3"}
+    assert dict(rows["AGP-2"], finding_id="AGP-1") == rows["AGP-1"], "the ID in properties.id is read as the canonical ID too"
+
+
+def test_groups_the_sarif_gives_no_id_still_route_their_peers_with_no_baseline(stage, cli, tmp_path, monkeypatch):
+    """P0-3 (a), the planner's half. maestro-reference's threats.sarif gives correlation groups and no group ID. They are passed to the
+    routing as the reader gives them, so a peer is never sent to the agent: its primary is, and the peer copies it."""
+    text = shipped_sarif("unnamed-groups")
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, text)
+    assert h.plan_cli().code == 0
+    members = set(expected_rows(text))
+    peers = peers_of(text)
+    assert len(peers) >= 3 and set(agent_ids(h)) == members - peers
+    assert h.plan_json()["unit_count"] == len(members) - len(peers)
+
+
+def test_groups_the_sarif_gives_no_id_split_unchanged_from_new_as_the_renderer_splits_them(stage, cli, tmp_path, monkeypatch):
+    """With a baseline, the renderer's call is ``route_scorer_units`` over the reader's groups, with no status for any member. The plan's
+    agent set is its ``to_agent``. One group has both members in the baseline (both carried), one only its peer (the peer is carried and
+    its primary is scored fresh) and one neither (the peer copies its primary, which is scored fresh)."""
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    import tachi_parsers
+    import tachi_scoring_rules as rules
+
+    text = shipped_sarif("unnamed-groups")
+    found = tachi_parsers.parse_sarif_member_set(text)
+    (both, peer_only, neither) = [group["members"] for group in found["groups"][:3]]
+    assert all(group["group_id"] is None for group in found["groups"][:3])
+    grouped = {member for group in found["groups"] for member in group["members"]}
+    loners = [member for member in found["members"] if member not in grouped][:2]
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, text)
+    write_baseline(tmp_path, both + [peer_only[1]] + loners)
+    res = h.plan_cli("--baseline-dir", "baseline-runs/prev")
+    assert res.code == 0, res.describe()
+    baseline = rules.read_baseline_scores(tmp_path / "baseline-runs" / "prev" / "risk-scores.md")
+    routing = rules.route_scorer_units([{"id": member} for member in found["members"]], groups=found["groups"], baseline=baseline,
+                                       lacking={member: ["delta_status"] for member in found["members"]})
+    assert set(agent_ids(h)) == set(routing.to_agent) and len(agent_ids(h)) == len(routing.to_agent)
+    agent = set(agent_ids(h))
+    assert not agent & set(both) and not agent & set(loners), "carried: UNCHANGED, with a usable baseline row"
+    assert peer_only[0] in agent and peer_only[1] not in agent, "the peer is carried, and its primary has no row, so it is NEW"
+    assert neither[0] in agent and neither[1] not in agent, "the peer has no row and copies its primary"
+    assert set(routing.carried) == set(both) | {peer_only[1]} | set(loners)
+    assert unit_rows(h)[neither[0]] == expected_rows(text)[neither[0]], "and the primary's row holds its own text"
+
+
+# The score table: ``security-severity`` is a score and never a band, so a row that carries only that gets the band that the renderer shows
+# (``tachi_scoring.band`` after the score is rounded half up to one decimal and held in 0.0 to 10.0). The pairs are written out, not computed.
+SCORE_LABELS = [
+    ("10", "Critical"), ("10.0", "Critical"), ("9.0", "Critical"), ("9", "Critical"), ("8.95", "Critical"), ("8.94", "High"), ("8.2", "High"),
+    ("7.0", "High"), ("6.95", "High"), ("6.94", "Medium"), ("4.0", "Medium"), ("3.95", "Medium"), ("3.94", "Low"), ("1", "Low"),
+    ("0.5", "Low"), ("0.04", "Low"), ("0", "Low"), ("-1", "Low"), ("11", "Critical"), ("1e3", "Critical"), (" 7.5 ", "High"),
+]
+
+
+@pytest.mark.parametrize("value,label", SCORE_LABELS, ids=[value.strip() or "blank" for value, _ in SCORE_LABELS])
+def test_a_score_only_result_gets_the_band_of_its_score(stage, cli, tmp_path, monkeypatch, value, label):
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, sarif_of(detail_result("S-1", properties={"security-severity": value})))
+    assert h.plan_cli().code == 0
+    assert unit_rows(h) == {"S-1": {"finding_id": "S-1", "risk_level": label}}
+
+
+@pytest.mark.parametrize("properties,level", [
+    ({"risk_level": "Critical"}, "Critical"), ({"risk_level": "high"}, "high"), ({"risk_level": "Note"}, "Note"),
+    ({"risk_level": "n/a"}, "n/a"), ({"security-severity": "NaN"}, "NaN"), ({"security-severity": "Infinity"}, "Infinity"),
+    ({"risk_level": "Medium", "security-severity": "9.5"}, "Medium"), ({"risk_level": "  ", "security-severity": "9.5"}, "Critical"),
+    ({"risk_level": "7.2"}, "High"), ({"risk_level": 7, "security-severity": "2.0"}, "Low"),
+], ids=["word", "lowercase-word", "note", "not-a-score", "nan", "infinity", "risk_level-wins", "blank-falls-through", "score-in-risk_level", "not-a-string"])
+def test_a_word_stays_as_the_file_writes_it_and_the_risk_level_property_comes_first(stage, cli, tmp_path, monkeypatch, properties, level):
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, sarif_of(detail_result("S-1", properties=properties)))
+    assert h.plan_cli().code == 0
+    assert unit_rows(h) == {"S-1": {"finding_id": "S-1", "risk_level": level}}
+
+
+# The planner and the renderer give a fallback member one risk label, each from its own copy of the steps (the planner's ``_sarif_risk_level``,
+# the renderer's ``_risk_level``): a string that ``parse_score`` doesn't read as finite stays as written, a score is held to 0.0 to 10.0, rounded
+# half up to one decimal and banded by ``tachi_scoring.band``, and no level at all is a dash in the renderer and no key in the planner's row.
+# Two copies are the most the Rule of Three allows, so this test runs the renderer's function over the same values, loaded as its own tests load it.
+# It needs the renderer that P0-3 rewrote: an older ``_risk_level`` read only a score, gave ``Note`` for a score under 1.0 and did not round.
+
+@pytest.fixture(scope="module")
+def renderer():
+    return _load_hyphenated_script("render_risk_scores_for_stage_tests", "render-risk-scores.py")
+
+
+EDGE_LEVELS = ["8.95", "6.95", "-1", "10.5", "NaN", "High"]
+EDGE_LABELS = ["Critical", "High", "Low", "Critical", "NaN", "High"]
+# the four threats.sarif samples (a band word, or none) and the shipped files that carry scores, which no threats.sarif does
+AGREEMENT_SAMPLES = (
+    "agentic-app/sample-report/threats.sarif", "maestro-reference/threats.sarif", "mobile-banking-app/sample-report/threats.sarif",
+    "predictive-ml-app/sample-report/threats.sarif",
+    "agentic-app/sample-report/risk-scores.sarif", "consumer-agent-app/sample-report/risk-scores.sarif", "maestro-reference/risk-scores.sarif",
+    "mobile-banking-app/sample-report/risk-scores.sarif", "predictive-ml-app/sample-report/risk-scores.sarif",
+)
+
+
+def test_the_planners_risk_label_equals_the_renderers_on_the_edges(stage, cli, renderer, tmp_path, monkeypatch):
+    """The six edges of the sweep, then the whole score table and more words, then a result with no level, all in one plan."""
+    values = EDGE_LEVELS + [value for value, _ in SCORE_LABELS] + ["Critical", "high", "Note", "n/a", "Infinity", "-Infinity"]
+    results = [detail_result("T-%d" % number, properties={"risk_level": value}) for number, value in enumerate(values, 1)]
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, sarif_of(detail_result("D-1"), *results))
+    assert h.plan_cli().code == 0
+    rows = unit_rows(h)
+    assert [rows["T-%d" % number]["risk_level"] for number in range(1, len(EDGE_LEVELS) + 1)] == EDGE_LABELS
+    for number, value in enumerate(values, 1):
+        assert rows["T-%d" % number]["risk_level"] == renderer._risk_level(value), value
+    assert "risk_level" not in rows["D-1"] and renderer._risk_level(None) == renderer.DASH, "no level: no key here, a dash there"
+
+
+@pytest.mark.parametrize("sample", AGREEMENT_SAMPLES)
+def test_the_planners_risk_label_equals_the_renderers_over_each_shipped_sample(stage, cli, renderer, tmp_path, monkeypatch, sample):
+    """Each member's own level, read as D8 reads it, gets the same label from the renderer's function as the controls stage's row holds (that
+    stage plans every member, peers too). The threats.sarif samples hold a band word or none, and the other five hold a score."""
+    text = (REPO_ROOT / "examples" / sample).read_text(encoding="utf-8")
+    h = scores_sarif_only(stage, cli, tmp_path, monkeypatch, text)
+    assert h.plan_cli().code == 0
+    rows = unit_rows(h)
+    levels = {finding_id: own_text(result)["risk_level"] for finding_id, result in kept_results(text).items()}
+    assert len(levels) > 5 and set(levels) <= set(rows)
+    for finding_id, level in levels.items():
+        assert rows[finding_id].get("risk_level", renderer.DASH) == renderer._risk_level(level), (finding_id, level)
+
+
+def test_a_result_with_no_usable_text_gives_a_row_of_the_id_alone(stage, cli, tmp_path, monkeypatch):
+    """A missing key, a blank string and a value of another type are no text: the row leaves the key out, as ``_unit_row`` does."""
+    sarif = sarif_of(detail_result("S-1"),
+                     detail_result("T-2", name="  ", text="", markdown=" \t", properties={"component": "", "maestro-layer": " ", "risk_level": ""}),
+                     detail_result("D-3", name=5, text=["x"], markdown=7, properties={"component": None, "maestro-layer": 3}))
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, sarif)
+    assert h.plan_cli().code == 0
+    assert unit_rows(h) == {fid: {"finding_id": fid} for fid in ("S-1", "T-2", "D-3")}
+
+
+def test_the_component_falls_back_to_the_property_when_the_location_has_no_name(stage, cli, tmp_path, monkeypatch):
+    sarif = sarif_of(detail_result("S-1", form="properties", name="", properties={"component": "Gateway"}),
+                     detail_result("T-2", name="Broker", properties={"component": "Other"}))
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, sarif)
+    assert h.plan_cli().code == 0
+    assert (unit_rows(h)["S-1"]["component"], unit_rows(h)["T-2"]["component"]) == ("Gateway", "Broker")
+
+
+def test_the_rows_hold_each_text_as_the_file_writes_it_and_the_first_result_of_an_id_wins(stage, cli, tmp_path, monkeypatch):
+    """The renderer checks each value where it takes it (P0-4), so the planner neither escapes, trims nor refuses a character: the agent
+    reads the text as data. Two results for one ID give the first one's text, as the reader says. The batch input that holds the rows
+    reads back through the document reader (a retry does that), a character outside the basic plane included: JSON spells it as a
+    surrogate pair, which is not a lone surrogate."""
+    awkward = " a < b & c | `d` {{e}} " + chr(0xE9) + chr(0x2014) + chr(0x1B) + "[0m" + chr(0x202E) + chr(0x1F600) + "\n\t "
+    sarif = sarif_of(detail_result("S-1", name=awkward, text=awkward, markdown=awkward, properties={"maestro-layer": awkward, "risk_level": awkward}),
+                     detail_result("S-1", name="second", text="second"))
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, sarif)
+    assert h.plan_cli().code == 0
+    expected = {"S-1": {"finding_id": "S-1", "component": awkward, "threat": awkward, "risk_level": awkward, "mitigation": awkward, "layer": awkward}}
+    assert unit_rows(h) == expected
+    assert h.reconcile().code == 3, "no part is there, so the batch is retried from its own input, which is read back"
+    assert unit_rows(h) == expected and h.plan_json()["batches"][0]["attempt"] == 2
+
+
+@pytest.mark.parametrize("name", STAGE_NAMES)
+@pytest.mark.parametrize("detail,result", [
+    ("component", dict(name="a" + chr(0xD800))), ("threat", dict(text="a" + chr(0xDFFF) + "b")), ("mitigation", dict(markdown=chr(0xDC00))),
+    ("layer", dict(properties={"maestro-layer": "L" + chr(0xD83D)})), ("risk_level", dict(properties={"risk_level": chr(0xDE00) + "High"})),
+], ids=["component", "threat", "mitigation", "layer", "risk_level"])
+def test_a_lone_surrogate_in_the_sarif_ends_the_run_before_anything_is_written(stage, cli, tmp_path, monkeypatch, name, detail, result):
+    """JSON can spell a lone surrogate, which no markdown input can, and the document reader refuses a document that holds one, so a batch
+    input with it would plan and then fail its first retry. The plan stops instead, with exit 2, and names the finding, the detail and the
+    file, with nothing written."""
+    sarif = sarif_of(detail_result("S-1", name="Gateway", text="a threat"), detail_result("T-2", **result))
+    h = fallback_only(stage, cli, tmp_path, monkeypatch, sarif, name)
+    res = h.plan_cli()
+    assert res.code == 2, res.describe()
+    assert "lone surrogate" in res.err and "the %s of T-2" % detail in res.err and ".sarif" in res.err and "Remedy:" in res.err
+    assert not (h.build / "current.json").exists() and not list(h.out.glob(".tachi-build/*/*/plan.json"))
+
+
+def test_a_lone_surrogate_in_a_peers_text_stops_the_scorer_too(stage, cli, tmp_path, monkeypatch):
+    """A peer copies its primary and no batch input holds its row, but the SARIF is one that a document can't carry, and the controls stage
+    would plan that peer, so the scorer's plan refuses it as well."""
+    peer = detail_result("E-1", text="a" + chr(0xD800), properties={"correlation-group": "CG-1", "correlation-role": "peer", "correlation-primary": "S-1"})
+    primary = detail_result("S-1", properties={"correlation-group": "CG-1", "correlation-role": "primary", "correlation-primary": "S-1"})
+    h = sarif_only(stage, cli, tmp_path, monkeypatch, sarif_of(primary, peer))
+    res = h.plan_cli()
+    assert res.code == 2 and "the threat of E-1" in res.err, res.describe()
+
+
+@pytest.mark.parametrize("name", STAGE_NAMES)
+def test_a_member_that_only_a_legacy_peer_reference_names_has_a_row_of_its_id_alone(stage, cli, tmp_path, monkeypatch, name):
+    """It has no result of its own, so it has no text. The scorer never plans it, because a peer copies its primary."""
+    primary = detail_result("S-1", name="Gateway", text="the primary's threat")
+    primary["relatedLocations"] = [{"message": {"text": "E-1: a legacy peer reference"}}]
+    h = fallback_only(stage, cli, tmp_path, monkeypatch, sarif_of(primary), name)
+    assert h.plan_cli().code == 0
+    expected = {"S-1": {"finding_id": "S-1", "component": "Gateway", "threat": "the primary's threat"}}
+    if name != "risk-score":
+        expected["E-1"] = {"finding_id": "E-1"}
+    assert unit_rows(h) == expected
 
 
 # =========================================================================== controls planning (T036; ADR-050 D2, D8, D9)
@@ -3629,18 +3984,19 @@ def scores_sarif_only(stage, cli, tmp_path, monkeypatch, sarif):
 
 
 def test_controls_fall_back_to_risk_scores_sarif_when_the_markdown_is_absent(stage, cli, tmp_path, monkeypatch):
-    """Every member is a unit, peers included, in S-2 order and canonical. The SARIF names no threat model, so a row holds the ID only
-    (D8's per-member details are P0-3's), and the plan's input and ref are the SARIF that was read."""
+    """Every member is a unit, peers included, in S-2 order and canonical. The SARIF names no threat model, so a row holds what the
+    member's own result gives (D8's details, P0-3), and the plan's input and ref are the SARIF that was read."""
     h = scores_sarif_only(stage, cli, tmp_path, monkeypatch, make_scores_sarif(["T-2", "S-1", "AGP-01", "I-3"], peers={"I-3": "S-1"}))
     res = h.plan_cli("--threats", h.threats)
     assert res.code == 0, res.describe()
     assert "risk-scores.sarif" in res.err and "WARNING" in res.err and "--threats is not used by this stage" in res.err
+    assert "only what its own result in the SARIF gives" in res.err and "finding ID only" not in res.err
     assert agent_ids(h) == ["S-1", "T-2", "I-3", "AGP-1"]
     sarif = h.out / "risk-scores.sarif"
     plan = h.plan_json()
     assert plan["refs"] == {"risk_scores": str(sarif), "target": str(h.target)} and set(plan["inputs"]) == {"risk_scores"}
     assert plan["inputs"]["risk_scores"]["sha256"] == sha256_of(sarif)
-    assert list(unit_rows(h).values()) == [{"finding_id": fid} for fid in ("S-1", "T-2", "I-3", "AGP-1")]
+    assert list(unit_rows(h).values()) == [{"finding_id": fid, "threat": "a finding"} for fid in ("S-1", "T-2", "I-3", "AGP-1")]
 
 
 def test_results_the_scores_sarif_marks_absent_are_resolved_and_are_not_planned(stage, cli, tmp_path, monkeypatch):
