@@ -7,7 +7,8 @@ dispatches what the plan lists, and this script works out from the files on disk
 isn't, never from an agent's reply (ADR-050 D3, D4, D6; ``contracts/cli.md``).
 
     python3 scripts/tachi-stage.py --version
-    python3 scripts/tachi-stage.py plan      --stage S --out DIR --date YYYY-MM-DD --threats FILE [...]
+    python3 scripts/tachi-stage.py plan      --stage risk-score --out DIR --date YYYY-MM-DD --threats FILE [...]
+    python3 scripts/tachi-stage.py plan      --stage compensating-controls --out DIR --date YYYY-MM-DD --risk-scores FILE --target DIR [...]
     python3 scripts/tachi-stage.py reconcile --stage S --out DIR --plan ID --plan-digest HEX
     python3 scripts/tachi-stage.py fail      --stage S --out DIR --plan ID --plan-digest HEX --reason R [--detail TEXT]
     python3 scripts/tachi-stage.py architecture-source --threats FILE --architecture PATH
@@ -23,6 +24,14 @@ The scorer's plan sends the agent only the findings that need judgment (ADR-050 
 UPDATED, or have no usable row in the baseline. The renderer inherits the rest, through the same
 ``tachi_scoring_rules.route_scorer_units``, so the planner and the renderer always agree. When ``threats.md`` is absent
 the member set is read from the ``threats.sarif`` beside it (D8's fallback).
+
+The controls plan sends the agent every scored open finding (ADR-050 D2, D8, D9), because the agent copies an UNCHANGED
+result from its batch input. The units are the open rows of ``--risk-scores``, read through the tolerant reader that the
+renderer reads that file with (``tachi_scoring_rules.read_baseline_scores``), or, when it is absent, the ``risk-scores.sarif``
+beside it. Each row holds the finding's Section 7 values from the ``threats.md`` that the input's validated ``source_file``
+names. An UNCHANGED finding's row also holds its baseline's persisted result (``evidence[]``, ``matrix_row``,
+``recommendation_body`` and the judgment values, narrative text included), decoded, from the baseline's Section 7
+``### Assessment Inputs`` through ``tachi_parsers.parse_controls_assessment_inputs``, never from the rendered file (AR-T3).
 
 The plan holds the stage's pointers as ``refs`` (the authority, so a plan with no units keeps them), and each batch input
 copies them for its agent. A ``--architecture`` candidate that the shared resolver refuses, whatever check fails, is left
@@ -62,11 +71,18 @@ import sarif_common as sc  # noqa: E402
 import tachi_parts as tp  # noqa: E402
 import tachi_scoring_rules as rules  # noqa: E402
 from tachi_parsers import (  # noqa: E402
-    ReferenceSetError, parse_baseline_frontmatter, parse_correlation_groups, parse_reference_set, parse_sarif_member_set)
+    ReferenceSetError, parse_baseline_frontmatter, parse_controls_assessment_inputs, parse_correlation_groups, parse_reference_set,
+    parse_sarif_member_set)
+
+CONTROLS = "compensating-controls"
 
 # ADR-050 D6, "Amended at W1": the output budget per stage in units per batch. A stage at or below its size
 # plans one batch, so its agent runs once (NFR-4). `trees` is PR 2's stage, listed so the sizes live in one table.
-BATCH_SIZES = {"risk-score": 13, "compensating-controls": 11, "trees": 12}
+BATCH_SIZES = {"risk-score": 13, CONTROLS: 11, "trees": 12}
+
+# What an UNCHANGED controls unit's row takes from its baseline's persisted result (ADR-050 D2, AR-T3): the controls payload's
+# keys that the agent copies as they stand. `carried_forward` is left out, because the agent sets it true when it copies.
+CARRIED_KEYS = ("control_status", "control_category", "confidence", "evidence", "matrix_row", "recommendation_body")
 
 WAVE_SIZE = 16          # S-8: at most 16 in flight per wave, which leaves margin under Claude Code's 20
 MAX_ATTEMPT = 3         # P-8: the original and at most two retries per lineage
@@ -185,19 +201,19 @@ def _waves(out: str, stage: str, plan_id: str, entries: List[Dict[str, Any]]) ->
 # plan
 # =============================================================================
 
-def _read_threats(stage: str, path: str) -> tuple:
-    """The bytes and text of ``threats.md``: at most 16 MiB (D3 step 2) and strict UTF-8."""
+def _read_threats(stage: str, path: str, remedy: str = "regenerate threats.md with /tachi.threat-model") -> tuple:
+    """The bytes and text of ``threats.md`` (or of another input, with its own ``remedy``): at most 16 MiB (D3 step 2) and strict UTF-8."""
     try:
         with open(path, "rb") as handle:
             raw = handle.read(tp.MAX_AGENT_INPUT_BYTES + 1)
     except OSError as exc:
         raise StageError(1, stage, "cannot read %s (%s)" % (path, exc.strerror or "error"), "check the path and re-run") from None
     if len(raw) > tp.MAX_AGENT_INPUT_BYTES:
-        raise StageError(2, stage, "%s is over %d bytes" % (path, tp.MAX_AGENT_INPUT_BYTES), "regenerate threats.md with /tachi.threat-model")
+        raise StageError(2, stage, "%s is over %d bytes" % (path, tp.MAX_AGENT_INPUT_BYTES), remedy)
     try:
         return raw, raw.decode("utf-8")
     except UnicodeDecodeError:
-        raise StageError(2, stage, "%s is not strict UTF-8" % path, "regenerate threats.md with /tachi.threat-model") from None
+        raise StageError(2, stage, "%s is not strict UTF-8" % path, remedy) from None
 
 
 def _unit_row(finding: Dict[str, Any]) -> Dict[str, Any]:
@@ -243,16 +259,16 @@ def _pointer_refs(stage: str, risk_scores: Any, baseline_dir: Any, architecture:
     Each becomes an absolute path under its closed ``refs`` name, and a file that the stage reads also becomes a
     digest-checked input, so a change during the run is caught. The architecture goes through the shared resolver
     (``_architecture_ref``) and needs no syntactic pre-check: a candidate it refuses is dropped with a warning, which
-    the plan records, because a stage never stops for it (ADR-050 D7). The scorer's ``--baseline-dir`` is only
-    checked here: it may name a run directory or a file in one (D9), and ``plan_stage`` resolves it. It returns
+    the plan records, because a stage never stops for it (ADR-050 D7). ``--baseline-dir`` is only checked here: it
+    may name a run directory or a file in one (D9), and each stage's routing resolves it. The controls stage passes
+    ``risk_scores=None``, because it reads that input itself (``_controls_scored_input``). It returns
     ``(inputs, refs, baseline, architecture_warning)``, where ``baseline`` is that checked path or ``None``.
     """
     inputs: Dict[str, Dict[str, Any]] = {}
     refs: Dict[str, str] = {}
     baseline: Optional[str] = None
     architecture_warning: Optional[Dict[str, str]] = None
-    for name, given, kind in (("risk_scores", risk_scores, "file"),
-                              ("baseline_dir", baseline_dir, "baseline" if stage == "risk-score" else "dir"),
+    for name, given, kind in (("risk_scores", risk_scores, "file"), ("baseline_dir", baseline_dir, "baseline"),
                               ("architecture", architecture, "candidate"), ("target", target, "dir")):
         if given is None:
             continue
@@ -444,17 +460,208 @@ def _scorer_routing(stage: str, members: list, text: Optional[str], sarif_groups
     return rules.route_scorer_units(rows, groups=groups, baseline=scores, lacking=lacking)
 
 
+# =============================================================================
+# The controls stage's units (T036; ADR-050 D2, D8, D9)
+# =============================================================================
+
+# The two frontmatter forms the other readers accept (``tachi_parsers.parse_frontmatter``): plain, and inside a ``yaml`` fence.
+_FRONTMATTER = (re.compile(r"\A---[ \t\r]*\n(.*?)\n---", re.DOTALL), re.compile(r"```yaml[ \t\r]*\n---[ \t\r]*\n(.*?)\n---[ \t\r]*\n```", re.DOTALL))
+_SOURCE_FILE_LINE = re.compile(r"^source_file[ \t]*:[ \t]*(?P<value>.*)$")
+
+
+def _scored_source_file(text: str) -> Optional[str]:
+    """The ``source_file`` of a ``risk-scores.md``'s frontmatter, or ``None``: the threat model that was scored (D7, D8).
+
+    The first top-level ``source_file`` line of the frontmatter counts. A quoted value loses its quotes, and ``null``, ``~``
+    and an empty value mean none. What comes back is a candidate only: ``tachi_scoring_rules.check_run_file`` validates it.
+    """
+    text = text.lstrip("\ufeff")
+    for pattern in _FRONTMATTER:
+        found = pattern.search(text)
+        if found is None:
+            continue
+        for line in found.group(1).split("\n"):
+            match = _SOURCE_FILE_LINE.match(line.rstrip())
+            if match is None:
+                continue
+            value = match.group("value").strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+                value = value[1:-1]
+            return None if value.strip() in ("", "null", "~") else value
+        return None
+    return None
+
+
+def _same_file(first: Any, second: Any) -> bool:
+    try:
+        return os.path.samefile(os.fspath(first), os.fspath(second))
+    except OSError:
+        return False
+
+
+def _id_list(finding_ids: List[str]) -> str:
+    """A short list of IDs for a warning: the first five, and a count of the rest."""
+    shown = ", ".join(finding_ids[:5])
+    return shown + (" and %d more" % (len(finding_ids) - 5) if len(finding_ids) > 5 else "")
+
+
+def _controls_scored_input(stage: str, given: Any) -> tuple:
+    """The controls stage's input, as ``(path read, its bytes, the scored finding IDs in S-2 order, markdown text or None)``.
+
+    The members are the open rows of ``risk-scores.md``, read through ``tachi_scoring_rules.read_baseline_scores``, the tolerant
+    reader (R-26) that the renderer reads the file with, so the planner and the renderer see one set. Section 2a's RESOLVED rows
+    are not in it (D8). When ``risk-scores.md`` is absent and a ``risk-scores.sarif`` lies beside it, that file is read
+    instead, through ``parse_sarif_member_set`` (D8's fallback, AR-T2), and no markdown text comes back. An empty extraction,
+    or an input that can't be read, is an error and ends the run here, before anything is written or dispatched (KB 22).
+    """
+    path = os.path.abspath(os.fspath(given))
+    problem = tp.path_problem(path, allow_absolute=True)
+    if problem is not None:
+        raise StageError(2, stage, "--risk-scores is not an acceptable path (%s)" % problem, "use a path with no backslash, backtick or control character")
+    remedy = "regenerate it with /tachi.risk-score"
+    beside = os.path.join(os.path.dirname(path), "risk-scores.sarif")
+    if os.path.basename(path) == "risk-scores.md" and not os.path.lexists(path) and os.path.lexists(beside):
+        sys.stderr.write("WARNING: %s is absent, so the findings are read from %s (the SARIF fallback)\n" % (path, beside))
+        raw, text = _read_threats(stage, beside, remedy)
+        try:
+            members = sorted(parse_sarif_member_set(text)["members"], key=tp.finding_sort_key)
+        except ValueError as exc:
+            raise StageError(2, stage, "%s: %s" % (beside, str(exc)[:200]), "restore risk-scores.md, or " + remedy) from None
+        return beside, raw, members, None
+    raw, text = _read_threats(stage, path, remedy)
+    scores = rules.read_baseline_scores(Path(path))
+    if not scores.rows:  # the reader opens through no link, so `missing` here, after the read above, means a link or a file that isn't regular
+        why = {"missing": "it is a symbolic link or not a regular file", "no-rows": "it has no scored row"}.get(scores.reason or "", "it lists no open finding")
+        raise StageError(2, stage, "%s can't be the scored input (%s)" % (path, why), remedy)
+    if scores.issues:
+        sys.stderr.write("WARNING: %s has %d input issue(s), the first being: %s. A row that can't be read is not planned, "
+                         "and the renderer lists the issues under Input Issues\n" % (path, len(scores.issues), scores.issues[0].detail[:160]))
+    return path, raw, list(scores.rows), text
+
+
+def _controls_baseline(stage: str, resolution: "rules.BaselineResolution", inputs: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """The baseline's persisted controls results by canonical ID (AR-T3), and its file as a digest-checked input.
+
+    The file is ``compensating-controls.md`` in the baseline run directory. A result is read from its Section 7 ``### Assessment
+    Inputs``, decoded, through ``parse_controls_assessment_inputs`` (T143): never from the rendered Sections 2, 3 or 4, whose text
+    the renderer escaped. A pre-1.1 file has no Section 7 and gives none, and the agent copies from the file itself then (D2). A row
+    the reader refuses leaves that finding without a result, so it is scanned fresh. A file that is missing or unreadable
+    counts as missing (S-12(d)): it never stops the run.
+    """
+    path = resolution.files.get("compensating-controls.md")
+    if path is None:
+        sys.stderr.write("WARNING: the baseline run directory has no usable compensating-controls.md (%s), so every finding is scanned fresh\n"
+                         % resolution.file_reasons.get("compensating-controls.md", "missing"))
+        return {}
+    try:
+        raw, text = _read_threats(stage, os.fspath(path), "regenerate it with /tachi.compensating-controls")
+    except StageError as exc:
+        sys.stderr.write("WARNING: the baseline compensating-controls.md can't be read (%s), so it counts as missing and every finding "
+                         "is scanned fresh\n" % exc.reason)
+        return {}
+    inputs["baseline_compensating_controls"] = _input_entry(stage, os.fspath(path), raw)
+    persisted = parse_controls_assessment_inputs(text)
+    if persisted["errors"]:
+        sys.stderr.write("WARNING: the baseline compensating-controls.md has %d unreadable persisted row(s), the first being: %s. "
+                         "Those findings are scanned fresh\n" % (len(persisted["errors"]), persisted["errors"][0]["reason"][:160]))
+    return persisted["inputs"]
+
+
+def _controls_units(stage: str, risk_scores: Any, threats: Any, baseline_flag: Optional[str], inputs: Dict[str, Dict[str, Any]],
+                    refs: Dict[str, str]) -> List[Dict[str, Any]]:
+    """The controls plan's units: every scored open finding of ``risk-scores.md``, in S-2 order (ADR-050 D2, D8, D9).
+
+    The agent gets every scored finding, because it copies an UNCHANGED result from its row. A row holds the finding's
+    Section 7 values (``_unit_row``) from the ``threats.md`` that the input's validated ``source_file`` names: the path
+    must pass ``check_run_file`` (a regular file called ``threats.md``, no symlink on the way, under the working
+    directory), the reach that D8 gives the renderer too. A ``--threats`` that is also given must be that file, because one
+    stage must read one threat model. When the file can't be reached, or the input is
+    ``risk-scores.sarif``, a row holds the finding's ID only, and nothing is carried forward, with a warning: the agent
+    reads the rest from ``refs.risk_scores`` (this version's rows hold no more, until D8's per-member details land, P0-3).
+
+    An UNCHANGED finding's row also takes its baseline's persisted result (``CARRIED_KEYS``), decoded, from
+    ``_controls_baseline``. A finding whose form has no Status gets no ``delta_status`` and no carried result: the agent
+    scans it fresh, whatever the baseline holds. ``--baseline-dir`` comes first, then the ``baseline.source`` of that
+    ``threats.md`` (R-6). The input, the threat model and the baseline's controls file become digest-checked ``inputs``, and
+    ``refs`` gains ``risk_scores``, ``threats`` and ``baseline_dir`` where they apply, so the renderer reads what the plan
+    read. Nothing here stops a run for a baseline or a threat model that can't be used (S-12(d), D7's spirit).
+    """
+    cwd = os.getcwd()
+    scored, scored_raw, members, scored_text = _controls_scored_input(stage, risk_scores)
+    refs["risk_scores"] = scored
+    inputs["risk_scores"] = _input_entry(stage, scored, scored_raw)
+
+    source = _scored_source_file(scored_text) if scored_text is not None else None
+    checked = rules.check_run_file(source, cwd=Path(cwd), expected_name="threats.md")
+    reference: Dict[str, tuple] = {}
+    threats_text: Optional[str] = None
+    lacking: Dict[str, List[str]] = {}
+    if checked.path is not None:
+        threats_path = os.fspath(checked.path)
+        problem = tp.path_problem(threats_path, allow_absolute=True)  # the working directory itself can hold a character a document can't carry
+        if problem is not None:
+            raise StageError(2, stage, "the threat model that source_file names resolves to a path that documents cannot carry (%s)" % problem,
+                             "run from a directory whose path has no backslash, backtick or control character")
+        if threats is not None and not _same_file(threats, threats_path):
+            raise StageError(2, stage, "--threats %s is not the threat model that risk-scores.md names as its source (%s)" % (os.fspath(threats), source),
+                             "drop --threats: this stage reaches threats.md through risk-scores.md's source_file")
+        raw, pairs, threats_text, _, _, lacking = _read_member_set(stage, threats_path, threats_path)
+        reference = {tp.canonical_finding_id(finding["id"]): (finding, unit) for finding, unit in pairs}
+        refs["threats"] = threats_path
+        inputs["threats"] = _input_entry(stage, threats_path, raw)
+    else:
+        why = ("risk-scores.sarif names no source" if scored_text is None else "source_file names no threat model" if source is None
+               else "source_file %r can't be used: %s" % (source[:80], checked.reason))
+        sys.stderr.write("WARNING: threats.md is not read (%s), so each unit holds the finding ID only and nothing is carried forward%s\n"
+                         % (why, "; --threats is not used by this stage" if threats is not None else ""))
+
+    baseline_source = parse_baseline_frontmatter(threats_text)["source"] if threats_text is not None else None
+    resolution = rules.resolve_baseline(flag=baseline_flag, baseline_source=baseline_source, cwd=Path(cwd))
+    persisted: Dict[str, Dict[str, Any]] = {}
+    if resolution.run_dir is not None:
+        refs["baseline_dir"] = os.fspath(resolution.run_dir)
+        persisted = _controls_baseline(stage, resolution, inputs)
+    elif resolution.reason != "not-named":
+        sys.stderr.write("WARNING: no baseline is used (%s: %s), so every finding is scanned fresh\n" % (resolution.origin, resolution.reason))
+
+    units: List[Dict[str, Any]] = []
+    for finding_id in members:
+        found = reference.get(finding_id)
+        unit = dict(found[1]) if found is not None else {"finding_id": finding_id}
+        if found is not None and found[0].get("delta_status") == "UNCHANGED" and finding_id in persisted:
+            unit.update({key: persisted[finding_id][key] for key in CARRIED_KEYS})
+        units.append(unit)
+
+    if threats_text is not None:
+        scored_ids = set(members)
+        strangers = [finding_id for finding_id in members if finding_id not in reference]
+        unscored = [finding_id for finding_id in reference if finding_id not in scored_ids]
+        no_status = [finding_id for finding_id in members if "delta_status" in lacking.get(finding_id, ())]
+        if strangers:
+            sys.stderr.write("WARNING: %d scored finding(s) are not open findings of %s (%s), so their rows hold the ID only\n"
+                             % (len(strangers), refs["threats"], _id_list(strangers)))
+        if unscored:
+            sys.stderr.write("WARNING: %d open finding(s) of %s are not in %s and are not planned (%s)\n"
+                             % (len(unscored), refs["threats"], refs["risk_scores"], _id_list(unscored)))
+        if no_status:
+            sys.stderr.write("WARNING: Section 7 of %s has no Status for %d scored finding(s) (%s), so each is scanned fresh and none is "
+                             "carried forward\n" % (refs["threats"], len(no_status), _id_list(no_status)))
+    return units
+
+
 def plan_stage(stage: str, out: Any, date: str, threats: Any = None, risk_scores: Any = None, baseline_dir: Any = None,
                architecture: Any = None, target: Any = None, batch_size: Optional[int] = None) -> Dict[str, Any]:
     """Plan one stage and return ``{plan_id, plan_digest, waves}``, the object ``plan`` prints.
 
     Reads the reference finding set from ``threats`` through the shared wrapper, so an unreadable Section 7 ends the
     run here, before anything is written or dispatched (S-12(c)). For the scorer it keeps only the findings that need
-    judgment (D2: ``_scorer_routing``), and reads ``threats.sarif`` instead when ``threats.md`` is absent (D8). Splits
-    those units, in S-2 order, into balanced contiguous batches of at most ``batch_size`` (the stage's constant when
-    ``None``), writes the plan, one batch input for each batch and the pre-image copies, and only then replaces the
-    current-plan pointer. A plan with no units (every finding carried or copied) has no batches and a null
-    ``batch_size``, and reconciles as complete.
+    judgment (D2: ``_scorer_routing``), and reads ``threats.sarif`` instead when ``threats.md`` is absent (D8). The
+    controls stage plans from ``risk_scores`` and ``target`` instead (``_controls_units``): every scored open finding,
+    each UNCHANGED one with its baseline's persisted result, and ``threats`` is optional there, because the
+    ``threats.md`` comes from the input's ``source_file``. Splits those units, in S-2 order, into balanced contiguous
+    batches of at most ``batch_size`` (the stage's constant when ``None``), writes the plan, one batch input for each
+    batch and the pre-image copies, and only then replaces the current-plan pointer. A plan with no units (every
+    finding carried or copied) has no batches and a null ``batch_size``, and reconciles as complete.
 
     The plan holds the stage's pointers as ``refs``, built once after the routing (which adds ``baseline_dir``), and each
     batch input copies them for its agent, so a plan with no units keeps them for the renderer's URI. It also holds
@@ -469,24 +676,35 @@ def plan_stage(stage: str, out: Any, date: str, threats: Any = None, risk_scores
         datetime.date(int(date[0:4]), int(date[5:7]), int(date[8:10]))
     except ValueError:
         raise StageError(2, stage, "--date is not a calendar date", "pass the scoring date as YYYY-MM-DD") from None
-    if threats is None:
+    if stage == CONTROLS:  # the agent scans a codebase, and the renderer resolves each evidence file under it (D7)
+        if risk_scores is None:
+            raise StageError(2, stage, "--risk-scores is required for the %s stage" % stage, "pass the risk-scores.md to plan from")
+        if target is None:
+            raise StageError(2, stage, "--target is required for the %s stage" % stage, "pass the codebase directory to scan")
+    elif threats is None:
         raise StageError(2, stage, "--threats is required for the %s stage" % stage, "pass the threats.md to plan from")
     size = BATCH_SIZES[stage] if batch_size is None else batch_size
     if type(size) is not int or not 1 <= size <= tp.MAX_IDS:
         raise StageError(2, stage, "the batch size must be an integer from 1 to %d" % tp.MAX_IDS)
     out = _out_dir(stage, out)
 
-    threats_path = os.path.abspath(os.fspath(threats))
-    problem = tp.path_problem(threats_path, allow_absolute=True)
-    if problem is not None:
-        raise StageError(2, stage, "--threats is not an acceptable path (%s)" % problem, "use a path with no backslash, backtick or control character")
-    raw, members, text, threats_path, sarif_groups, lacking = _read_member_set(stage, threats, threats_path)
-    extra_inputs, refs, baseline_flag, architecture_warning = _pointer_refs(stage, risk_scores, baseline_dir, architecture, target)
-    refs = dict(refs, threats=threats_path)
-    if stage == "risk-score":  # D2: only the findings that need judgment go to the agent
-        to_agent = set(_scorer_routing(stage, members, text, sarif_groups, lacking, baseline_flag, extra_inputs, refs).to_agent)
-        members = [pair for pair in members if tp.canonical_finding_id(pair[0]["id"]) in to_agent]
-    units = [unit for _, unit in members]
+    if stage == CONTROLS:
+        # AOD-SIMPLIFICATION: refs.architecture comes from the --architecture flag alone - upgrade: with no flag, fill it in _controls_units from D7's chain (the body line of the threats.md it reads, then the default)
+        plan_inputs, refs, baseline_flag, architecture_warning = _pointer_refs(stage, None, baseline_dir, architecture, target)
+        units = _controls_units(stage, risk_scores, threats, baseline_flag, plan_inputs, refs)
+    else:
+        threats_path = os.path.abspath(os.fspath(threats))
+        problem = tp.path_problem(threats_path, allow_absolute=True)
+        if problem is not None:
+            raise StageError(2, stage, "--threats is not an acceptable path (%s)" % problem, "use a path with no backslash, backtick or control character")
+        raw, members, text, threats_path, sarif_groups, lacking = _read_member_set(stage, threats, threats_path)
+        extra_inputs, refs, baseline_flag, architecture_warning = _pointer_refs(stage, risk_scores, baseline_dir, architecture, target)
+        refs = dict(refs, threats=threats_path)
+        if stage == "risk-score":  # D2: only the findings that need judgment go to the agent
+            to_agent = set(_scorer_routing(stage, members, text, sarif_groups, lacking, baseline_flag, extra_inputs, refs).to_agent)
+            members = [pair for pair in members if tp.canonical_finding_id(pair[0]["id"]) in to_agent]
+        units = [unit for _, unit in members]
+        plan_inputs = dict(extra_inputs, threats=_input_entry(stage, threats_path, raw))
 
     count = len(units)
     planned = -(-count // size)
@@ -502,8 +720,7 @@ def plan_stage(stage: str, out: Any, date: str, threats: Any = None, risk_scores
     plan: Dict[str, Any] = {
         "schema": tp.PLAN_SCHEMA, "plan_id": plan_id, "stage": stage, "agent_type": tp.STAGE_AGENTS[stage],
         "created_utc": _utc_now(), "tachi_version": tp.VERSION,
-        "inputs": dict(extra_inputs, threats=_input_entry(stage, threats_path, raw)),
-        "refs": refs, "architecture_warning": architecture_warning,
+        "inputs": plan_inputs, "refs": refs, "architecture_warning": architecture_warning,
         "params": {"scoring_date": date}, "batch_size": size if count else None, "unit_count": count, "preimage": preimage,
         "out_snapshot": snapshot, "retry_budget": {"limit": 2 * planned, "used": 0}, "batches": [],
     }
@@ -948,11 +1165,13 @@ def _build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--stage", required=True, choices=stages)
     plan.add_argument("--out", required=True, help="the run's output directory; everything is written under it")
     plan.add_argument("--date", required=True, help="the scoring date, YYYY-MM-DD")
-    plan.add_argument("--threats", help="the threats.md to read the reference finding set from")
-    plan.add_argument("--risk-scores", help="the risk-scores.md a later stage reads")
+    plan.add_argument("--threats", help="the threats.md to read the reference finding set from (required for risk-score; compensating-controls "
+                                        "reaches it through risk-scores.md's source_file, so there it is optional and must be that file)")
+    plan.add_argument("--risk-scores", help="the risk-scores.md that compensating-controls plans from (required there; the risk-scores.sarif "
+                                            "beside it is read when it is absent)")
     plan.add_argument("--baseline-dir", help="a baseline run directory")
     plan.add_argument("--architecture", help="a candidate path to the architecture file")
-    plan.add_argument("--target", help="the codebase directory a stage reads")
+    plan.add_argument("--target", help="the codebase directory a stage reads (required for compensating-controls)")
     plan.set_defaults(run=_run_plan)
 
     for name, run, text in (("reconcile", _run_reconcile, "work out what is done, and what to dispatch next"),

@@ -2170,8 +2170,11 @@ class ControlsProject(object):
         return res
 
     def plan(self, date=None, architecture=True, baseline_dir=None):
-        """``tachi-stage.py plan``, as the command calls it. ``architecture`` and ``baseline_dir`` are the scorer harness's."""
-        argv = ["plan", "--stage", CONTROLS_STAGE, "--out", self.out, "--date", date or self.rrs.DATE, "--threats", self.threats,
+        """``tachi-stage.py plan``, as the command calls it. ``architecture`` and ``baseline_dir`` are the scorer harness's.
+
+        The call passes no ``--threats``: the controls planner reaches ``threats.md`` through ``risk-scores.md``'s ``source_file`` (T036).
+        """
+        argv = ["plan", "--stage", CONTROLS_STAGE, "--out", self.out, "--date", date or self.rrs.DATE,
                 "--risk-scores", self.out / self.rrs.MD, "--target", self.target]
         explicit = self.architecture if architecture is True else (architecture or None)
         if explicit is not None:

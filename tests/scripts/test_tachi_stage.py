@@ -177,6 +177,25 @@ def make_threats_md(open_ids, resolved_ids=(), section7="table", preamble="", st
     return "\n".join(lines) + "\n"
 
 
+def make_scored_md(open_ids, resolved_ids=(), source_file="run/threats.md"):
+    """A synthetic ``risk-scores.md``: the controls stage's input (T036). Frontmatter names the threat model it scored, §2 lists the
+    open findings (in reverse S-2 order, as a sort by risk leaves them) and §2a the RESOLVED ones, which are never planned."""
+    head = ["---", 'schema_version: "1.1"', 'date: "2026-11-22"', "source_file: %s" % ("null" if source_file is None else '"%s"' % source_file),
+            'classification: "confidential"', "---", "", "# Risk Scores Report", "", "## 2. Scored Threat Table", "",
+            "| ID | Source | Component | Threat | CVSS | Exploit. | Scale. | Reach. | Composite | Severity | SLA | Disposition | Flags |",
+            "|----|--------|-----------|--------|------|----------|--------|--------|-----------|----------|-----|-------------|-------|"]
+    rows = ["| %s | fresh | Gateway | Threat text for %s | 7.1 | 6.0 | 6.0 | 6.0 | 6.4 | Medium | 30d | Review | \u2014 |" % (fid, fid)
+            for fid in sorted(open_ids, key=s2_key, reverse=True)]
+    tail = []
+    if resolved_ids:
+        tail = ["", "## 2a. Resolved Findings", "",
+                "| ID | Source | Component | Threat | CVSS | Exploit. | Scale. | Reach. | Composite | Severity | SLA | Disposition | Status | Owner | Review Date | Flags |",
+                "|----|--------|-----------|--------|------|----------|--------|--------|-----------|----------|-----|-------------|--------|-------|-------------|-------|"]
+        tail += ["| %s | inherited | Legacy | Old threat | \u2014 | \u2014 | \u2014 | \u2014 | \u2014 | \u2014 | \u2014 | \u2014 | RESOLVED | Unassigned | \u2014 | resolved |" % fid
+                 for fid in resolved_ids]
+    return "\n".join(head + rows + tail) + "\n"
+
+
 def scorer_item(finding_id):
     """One valid risk-score item (``contracts/part-files.md`` §1): no digits in narrative prose."""
     return {
@@ -299,6 +318,27 @@ class Harness(object):
         self.md, self.sarif = OUTPUTS_FOR[name]
         self.plan_id = None
         self.digest = None
+        if name == "compensating-controls":
+            # The controls stage plans from the scorer's risk-scores.md, which names its threat model in source_file (ADR-050 D8),
+            # and scans a codebase (T036). source_file is relative to the working directory, so a test that reads unit rows chdirs
+            # to the root first, as the command runs.
+            self.risk_scores = self.out / "risk-scores.md"
+            self.risk_scores.write_text(make_scored_md(self.ids, resolved), encoding="utf-8")
+            self.target = self.root / "app"
+            self.target.mkdir()
+
+    @property
+    def expected_inputs(self):
+        """The logical names of the plan's digest-checked inputs when no baseline is named."""
+        return {"risk_scores", "threats"} if self.name == "compensating-controls" else {"threats"}
+
+    @property
+    def expected_refs(self):
+        """The plan's ``refs`` when no optional pointer is named (``contracts/part-files.md`` §4)."""
+        refs = {"threats": str(self.threats)}
+        if self.name == "compensating-controls":
+            refs.update(risk_scores=str(self.risk_scores), target=str(self.target))
+        return refs
 
     # ---- layout
     @property
@@ -344,15 +384,19 @@ class Harness(object):
 
     # ---- plan
     def plan(self, batch_size=None, **optional):
-        """The planner through its function interface: the one way a size gets in (ADR-050 D6)."""
-        result = self.stage.plan_stage(
-            stage=self.name, out=self.out, date=DATE, threats=self.threats, batch_size=batch_size, **optional
-        )
+        """The planner through its function interface: the one way a size gets in (ADR-050 D6).
+
+        The pointers every plan of the stage needs are the default: ``threats`` for the scorer, and ``risk_scores`` and
+        ``target`` for the controls stage, which reaches ``threats.md`` through ``risk-scores.md`` (T036).
+        """
+        pointers = {"risk_scores": self.risk_scores, "target": self.target} if self.name == "compensating-controls" else {"threats": self.threats}
+        result = self.stage.plan_stage(stage=self.name, out=self.out, date=DATE, batch_size=batch_size, **dict(pointers, **optional))
         self.plan_id, self.digest = result["plan_id"], result["plan_digest"]
         return result
 
     def plan_cli(self, *extra):
-        res = self.cli("plan", "--stage", self.name, "--out", self.out, "--date", DATE, "--threats", self.threats, *extra)
+        pointers = ["--risk-scores", self.risk_scores, "--target", self.target] if self.name == "compensating-controls" else ["--threats", self.threats]
+        res = self.cli("plan", "--stage", self.name, "--out", self.out, "--date", DATE, *pointers, *extra)
         if res.code == 0:
             printed = res.json
             self.plan_id, self.digest = printed["plan_id"], printed["plan_digest"]
@@ -440,8 +484,9 @@ def check_record(rec, name, plan_id, version):
 
 
 @pytest.mark.parametrize("name", STAGE_NAMES)
-def test_plan_writes_the_layout_and_prints_the_contract_object(stage, cli, tmp_path, tachi_version, name):
+def test_plan_writes_the_layout_and_prints_the_contract_object(stage, cli, tmp_path, monkeypatch, tachi_version, name):
     """D3's layout, ``contracts/part-files.md`` §3 and §4, and the object ``plan`` prints (cli.md)."""
+    monkeypatch.chdir(tmp_path)  # the controls stage reaches threats.md through source_file, which is relative to the working directory
     h = Harness(stage, cli, tmp_path, name)
     h.earlier(sarif=False)  # an earlier .md and no .sarif: one pre-image has a digest, the other is null
     res = h.plan(batch_size=4)  # 16 units -> B001..B004
@@ -460,7 +505,8 @@ def test_plan_writes_the_layout_and_prints_the_contract_object(stage, cli, tmp_p
     assert (plan["batch_size"], plan["unit_count"]) == (4, len(MIXED_IDS))
     assert DATE in plan["params"].values(), "the scoring date is an input, and it is recorded"
     assert plan["retry_budget"] == {"limit": 2 * 4, "used": 0}, "limit is 2 x the planned batch count"
-    assert plan["refs"] == {"threats": str(h.threats)}, "the plan holds the pointers once, and is their authority (ruled at W2)"
+    assert plan["refs"] == h.expected_refs, "the plan holds the pointers once, and is their authority (ruled at W2)"
+    assert set(plan["inputs"]) == h.expected_inputs
     assert plan["architecture_warning"] is None, "no --architecture was given, so there is nothing to warn of"
 
     threats_bytes = h.threats.read_bytes()
@@ -552,8 +598,9 @@ def test_batch_sizes_are_one_module_level_mapping_of_the_amended_constants(stage
 
 @pytest.mark.parametrize("name", STAGE_NAMES)
 @pytest.mark.parametrize("size", [3, 5, 7])
-def test_every_batched_path_gets_two_or_more_balanced_contiguous_batches(stage, cli, tmp_path, name, size):
+def test_every_batched_path_gets_two_or_more_balanced_contiguous_batches(stage, cli, tmp_path, monkeypatch, name, size):
     """D3's batch granularity: contiguous runs of the units in S-2 order, balanced to within 1, each unit once."""
+    monkeypatch.chdir(tmp_path)
     h = Harness(stage, cli, tmp_path, name)
     h.plan(batch_size=size)
     batches = h.plan_json()["batches"]
@@ -599,8 +646,9 @@ def test_resolved_findings_are_never_dispatched(stage, cli, tmp_path):
 
 
 @pytest.mark.parametrize("name", STAGE_NAMES)
-def test_batch_inputs_carry_each_units_row_verbatim(stage, cli, tmp_path, name):
+def test_batch_inputs_carry_each_units_row_verbatim(stage, cli, tmp_path, monkeypatch, name):
     """Agents read their rows from the batch input, so no layer re-reads ``threats.md`` (D6)."""
+    monkeypatch.chdir(tmp_path)
     h = Harness(stage, cli, tmp_path, name)
     h.plan(batch_size=5)
     written = {canon(fid): fid for fid in MIXED_IDS}  # Section 7 spells AGP-01 with a zero, whatever the plan calls it
@@ -696,14 +744,17 @@ def test_plan_without_threats_exits_2_for_a_batched_stage(stage, cli, tmp_path):
     assert res.code == 2, res.describe()
 
 
-def test_plan_records_the_optional_pointers_as_refs_and_the_risk_scores_file_as_an_input(stage, cli, tmp_path, monkeypatch):
+@pytest.mark.parametrize("name", STAGE_NAMES)
+def test_plan_records_the_optional_pointers_as_refs_and_the_risk_scores_file_as_an_input(stage, cli, tmp_path, monkeypatch, name):
     """``contracts/cli.md``'s optional flags reach each batch input as absolute ``refs``, and a file the stage reads is
     a digest-checked input, so a change during the run is caught (D6). The architecture goes through the shared
-    resolver (T044), which takes a file below the working directory, so the project root is the working directory."""
+    resolver (T044), which takes a file below the working directory, so the project root is the working directory.
+    The scorer only records ``--risk-scores``, and the controls stage plans from it (T036), so each reads its own file."""
     monkeypatch.chdir(tmp_path)
-    h = Harness(stage, cli, tmp_path, "compensating-controls", ids=MIXED_IDS[:6])
+    h = Harness(stage, cli, tmp_path, name, ids=MIXED_IDS[:6])
     scores = h.out / "risk-scores.md"
-    scores.write_text("# the scores\n", encoding="utf-8")
+    if name == "risk-score":
+        scores.write_text("# the scores\n", encoding="utf-8")
     baseline, target = tmp_path / "baseline", tmp_path / "target"
     baseline.mkdir()
     target.mkdir()
@@ -722,15 +773,17 @@ def test_plan_records_the_optional_pointers_as_refs_and_the_risk_scores_file_as_
     assert h.reconcile().code == 2
 
 
+@pytest.mark.parametrize("name", STAGE_NAMES)
 @pytest.mark.parametrize("flag", ["--risk-scores", "--baseline-dir", "--target"])
-def test_a_pointer_that_names_nothing_exits_1(stage, cli, tmp_path, flag):
-    h = Harness(stage, cli, tmp_path, "risk-score")
+def test_a_pointer_that_names_nothing_exits_1(stage, cli, tmp_path, name, flag):
+    h = Harness(stage, cli, tmp_path, name)
     assert h.plan_cli(flag, tmp_path / "absent").code == 1
     assert not (h.build / "current.json").exists()
 
 
-def test_a_risk_scores_pointer_must_be_a_file_and_a_target_a_directory(stage, cli, tmp_path):
-    h = Harness(stage, cli, tmp_path, "risk-score")
+@pytest.mark.parametrize("name", STAGE_NAMES)
+def test_a_risk_scores_pointer_must_be_a_file_and_a_target_a_directory(stage, cli, tmp_path, name):
+    h = Harness(stage, cli, tmp_path, name)
     assert h.plan_cli("--risk-scores", tmp_path).code == 1
     assert h.plan_cli("--target", h.threats).code == 1
 
@@ -942,7 +995,8 @@ def test_every_write_lands_under_the_out_directory(stage, cli, tmp_path):
 
 
 @pytest.mark.parametrize("name", STAGE_NAMES)
-def test_valid_parts_for_every_batch_reconcile_to_complete(stage, cli, tmp_path, name):
+def test_valid_parts_for_every_batch_reconcile_to_complete(stage, cli, tmp_path, monkeypatch, name):
+    monkeypatch.chdir(tmp_path)
     h = Harness(stage, cli, tmp_path, name)
     h.plan(batch_size=4)
     h.write_valid_parts()
@@ -1831,8 +1885,9 @@ def test_new_outputs_with_no_earlier_run_are_moved_and_nothing_is_restored(stage
 
 
 @pytest.mark.parametrize("name", STAGE_NAMES)
-def test_fail_moves_only_files_in_the_stages_closed_set(stage, cli, tmp_path, name):
+def test_fail_moves_only_files_in_the_stages_closed_set(stage, cli, tmp_path, monkeypatch, name):
     """KB 21's double gate, the name half: only the stage's own canonical names move, whatever else changed."""
+    monkeypatch.chdir(tmp_path)
     h = Harness(stage, cli, tmp_path, name)
     h.plan(batch_size=4)
     other_name = OUTPUTS_FOR["compensating-controls" if name == "risk-score" else "risk-score"][0]
@@ -2688,10 +2743,10 @@ def test_a_plan_with_nothing_for_an_agent_has_no_batches_and_reconciles_as_compl
 
 
 def test_the_controls_stage_is_not_routed_by_the_scorer_rules(stage, cli, tmp_path, monkeypatch):
-    """Controls get every scored open finding (D2). T036 plans them; T044 touches only the scorer."""
+    """Controls get every scored open finding (D2), peers included, whatever a scorer baseline holds (T036 plans them)."""
     h = routed(stage, cli, tmp_path, monkeypatch, ROUTED, ROUTED_GROUPS, baseline_ids=["T-2", "D-1"], name="compensating-controls")
     assert h.plan_cli().code == 0
-    assert sorted(agent_ids(h), key=s2_key) == sorted(ROUTED, key=s2_key)
+    assert agent_ids(h) == sorted(ROUTED, key=s2_key) and h.plan_json()["unit_count"] == len(ROUTED)
 
 
 def test_a_reused_id_is_scored_fresh_never_carried(stage, cli, tmp_path, monkeypatch):
@@ -3048,6 +3103,7 @@ def test_threats_md_wins_when_both_exist_and_the_fallback_is_the_scorers_alone(s
     assert h.plan_cli().code == 0 and agent_ids(h) == ["S-1", "T-2"]
     (tmp_path / "controls").mkdir()
     controls = sarif_only(stage, cli, tmp_path / "controls", monkeypatch, make_threats_sarif(["S-1"]), name="compensating-controls")
+    controls.risk_scores.unlink()
     assert controls.plan_cli().code == 1, "controls fall back to risk-scores.sarif (T036), never to threats.sarif"
 
 
@@ -3057,3 +3113,566 @@ def test_no_threats_md_and_no_sarif_beside_it_is_a_missing_input(stage, cli, tmp
     assert h.plan_cli().code == 1
     elsewhere = h.cli("plan", "--stage", "risk-score", "--out", h.out, "--date", DATE, "--threats", h.out / "renamed.md")
     assert elsewhere.code == 1, "only threats.md has a SARIF to fall back to"
+
+
+# =========================================================================== controls planning (T036; ADR-050 D2, D8, D9)
+#
+# The controls stage plans from the scorer's risk-scores.md: its units are the open rows of that file, each with the Section 7 values
+# of the threats.md that its frontmatter names. An UNCHANGED finding's row also carries its baseline's persisted result (AR-T3).
+
+CONTROLS = "compensating-controls"
+CARRIED = ("control_status", "control_category", "confidence", "evidence", "matrix_row", "recommendation_body")
+_RATINGS = {"coverage": "High", "configuration": "Medium", "currency": "Low", "completeness": "High"}
+
+
+def _matrix_row(finding_id, display, category):
+    return ("| %s | \u2014 | Gateway | L4 | A <threat> | {{score:inherent}} | {{band:inherent}} | %s | %s | {{score:residual}} | {{band:residual}} |"
+            % (finding_id, display, category))
+
+
+# Three results of the three kinds, with the text the cell escape has to carry: `<`, `&`, `|`, a backtick, a newline, a literal `&lt;`
+# the agent wrote, a `{{` that is no slot, and the slot tokens that stay.
+CARRY_PARTIAL = {
+    "control_status": "partial", "control_category": "input-validation", "confidence": "Medium", "carried_forward": False,
+    "evidence": [
+        {"file": "src/validate.py", "line": 42, "language": "python",
+         "snippet": "if a < b && c > d:\n    run(\"x|y\")  # `tick` & {{7*7}}", "summary": "Checks a < b and a | b only",
+         "assessment": {name: {"rating": rating, "rationale": "The %s check is {{count:evidence}} deep, &lt; kept" % name}
+                        for name, rating in _RATINGS.items()}},
+        {"file": "src/forms/parse.ts", "line": 7, "language": "typescript", "snippet": "const ok = a>b;", "summary": "A second place"},
+    ],
+    "matrix_row": _matrix_row("T-2", "Partial Control", "input-validation"),
+    "recommendation_body": "**What to Implement**: Validate `a` and `b`.\nAnd escape the | character, keeping &amp; as written.\n\n**Effort Estimate**: Low",
+}
+CARRY_MISSING = {
+    "control_status": "missing", "control_category": "authentication", "confidence": None, "carried_forward": True, "evidence": [],
+    "matrix_row": _matrix_row("D-1", "No Control Found", "authentication"),
+    "recommendation_body": "**What to Implement**: Add one.\n\n**Effort Estimate**: Medium",
+}
+CARRY_FOUND = {
+    "control_status": "found", "control_category": "csp-security-headers", "confidence": "High", "carried_forward": False,
+    "evidence": [{"file": "web/headers.py", "line": 3, "language": "python", "snippet": "set_csp()", "summary": "A CSP header"}],
+    "matrix_row": _matrix_row("E-1", "Control Found", "csp-security-headers"), "recommendation_body": None,
+}
+CARRY_STATUSES = {"S-1": "NEW", "T-2": "UNCHANGED", "D-1": "UNCHANGED", "E-1": "UNCHANGED", "D-2": "UNCHANGED", "R-1": "UPDATED"}
+
+
+def persisted_values(item):
+    """``(field address, text, slots kept)`` for each value of a controls item that exists, in the payload's key order
+    (``contracts/module-signatures.md``): a null or an empty list writes no row."""
+    out = []
+    for name in ("control_status", "control_category", "confidence", "carried_forward"):
+        value = item[name]
+        if value is not None:
+            out.append((name, ("true" if value else "false") if name == "carried_forward" else value, False))
+    for index, entry in enumerate(item["evidence"]):
+        for name in ("file", "line", "language", "snippet", "summary"):
+            out.append(("evidence.%d.%s" % (index, name), str(entry[name]), False))
+        for dimension in _RATINGS if "assessment" in entry else ():
+            out.append(("evidence.%d.assessment.%s.rating" % (index, dimension), entry["assessment"][dimension]["rating"], False))
+            out.append(("evidence.%d.assessment.%s.rationale" % (index, dimension), entry["assessment"][dimension]["rationale"], True))
+    out.append(("matrix_row", item["matrix_row"], True))
+    if item["recommendation_body"] is not None:
+        out.append(("recommendation_body", item["recommendation_body"], False))
+    return out
+
+
+def persisted_table(items):
+    """What a renderer writes under ``### Assessment Inputs``: rows in S-2 order of ID, then the payload's key order, each value
+    escaped on write by D3's table-cell rule (a narrative value and ``matrix_row`` keep their slot tokens)."""
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    import tachi_parts
+
+    rows = ["| ID | Field | Value |", "|----|-------|-------|"]
+    for finding_id in sorted(items, key=s2_key):
+        for field, text, keep in persisted_values(items[finding_id]):
+            rows.append("| %s | %s | %s |" % (finding_id, field, tachi_parts.escape_cell(text, keep_slots=keep)))
+    return "\n".join(rows) + "\n"
+
+
+def controls_md(items, schema="1.1"):
+    """A ``compensating-controls.md`` as far as the planner reads one: schema 1.1 persists each result in Section 7, and an earlier file has none."""
+    head = '---\nschema_version: "%s"\ndate: "2026-11-21"\n---\n\n# Compensating Controls Report\n\n' % schema
+    if schema != "1.1":
+        return head + "## 2. Control Coverage Matrix\n\nRows that an agent wrote, with no persisted section.\n"
+    return head + "## 7. Analysis Integrity\n\n### Input Issues\n\nNone.\n\n### Assessment Inputs\n\n" + persisted_table(items) + "\n"
+
+
+def write_controls_baseline(root, items, name="prev", schema="1.1", content=None):
+    """A baseline run directory under the working directory, with a ``compensating-controls.md`` that persists ``items``
+    (or exactly ``content``). Returns the relative path of its ``threats.md``, which is what ``baseline.source`` names."""
+    run = Path(root) / "baseline-runs" / name
+    run.mkdir(parents=True)
+    (run / "threats.md").write_text("# an earlier run\n", encoding="utf-8")
+    (run / "compensating-controls.md").write_bytes(controls_md(items, schema).encode("utf-8") if content is None else content)
+    return "baseline-runs/%s/threats.md" % name
+
+
+def controls_routed(stage, cli, tmp_path, monkeypatch, statuses, items=None, groups=(), schema="1.1", content=None):
+    """The controls stage over a project whose working directory is ``tmp_path``: a threats.md of these statuses, and, when ``items``
+    or ``content`` is given, a baseline that persisted them, which the threats.md's ``baseline.source`` names."""
+    source = write_controls_baseline(tmp_path, items, schema=schema, content=content) if items is not None or content is not None else None
+    return routed(stage, cli, tmp_path, monkeypatch, statuses, groups, source=source, name=CONTROLS)
+
+
+def unit_rows(h):
+    """The unit row of every planned finding, by canonical ID, across the plan's batch inputs."""
+    return {row["finding_id"]: row for batch_id in h.batches() for row in h.batch_input(batch_id)["units"]}
+
+
+def carried_values(row):
+    return {key: row[key] for key in CARRIED if key in row}
+
+
+def test_the_controls_plan_sends_every_scored_finding_with_its_section_7_row_and_records_what_it_read(stage, cli, tmp_path, monkeypatch):
+    """D2: the controls agent gets every scored open finding, peers included, because it copies an UNCHANGED result from its row. Each
+    row holds the finding's Section 7 values from the threats.md that risk-scores.md names (D8). The plan records the input and that
+    threat model as digest-checked inputs, and as refs for the renderer to read."""
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, ROUTED, groups=ROUTED_GROUPS)
+    res = h.plan_cli()
+    assert res.code == 0 and "WARNING" not in res.err, res.describe()
+    assert agent_ids(h) == sorted(ROUTED, key=s2_key) and h.plan_json()["unit_count"] == len(ROUTED)
+    rows = unit_rows(h)
+    for finding_id, status in ROUTED.items():
+        assert rows[finding_id]["delta_status"] == status, finding_id
+        assert rows[finding_id]["threat"] == "Threat text for %s" % finding_id
+        assert rows[finding_id]["mitigation"] == "Mitigation text for %s" % finding_id
+    assert set(rows["S-1"]) == {"finding_id", "component", "threat", "risk_level", "mitigation", "agentic_pattern", "delta_status"}
+    plan = h.plan_json()
+    assert plan["refs"] == h.expected_refs and set(plan["inputs"]) == {"risk_scores", "threats"}
+    assert plan["inputs"]["risk_scores"]["sha256"] == sha256_of(h.risk_scores) and plan["inputs"]["threats"]["sha256"] == sha256_of(h.threats)
+    assert plan["params"] == {"scoring_date": DATE} and h.batch_input("B001")["refs"] == plan["refs"]
+
+
+def test_the_controls_units_are_the_open_rows_of_risk_scores_md_and_never_a_resolved_one(stage, cli, tmp_path, monkeypatch):
+    """D8: the member set of the controls files is the open rows of the input risk-scores.md, not the threat model's own set."""
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, CONTROLS, ids=["S-1", "T-2", "E-1"])
+    h.risk_scores.write_text(make_scored_md(["S-1", "T-2", "D-9"], resolved_ids=["R-1"]), encoding="utf-8")
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
+    assert agent_ids(h) == ["S-1", "T-2", "D-9"], "the scored set in S-2 order: R-1 is RESOLVED (Section 2a), and E-1 was never scored"
+    assert unit_rows(h)["D-9"] == {"finding_id": "D-9"}, "a scored finding that threats.md doesn't list has its ID only"
+    assert "D-9" in res.err and "E-1" in res.err and "not planned" in res.err, "both gaps are named, so a stale input is seen"
+
+
+def test_the_controls_units_are_the_set_the_renderers_reader_returns(stage, cli, tmp_path, monkeypatch):
+    """The planner and the renderer both read risk-scores.md through ``read_baseline_scores`` (R-26), so they see one member set."""
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    import tachi_scoring_rules as rules
+
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, ROUTED, groups=ROUTED_GROUPS)
+    assert h.plan_cli().code == 0
+    assert agent_ids(h) == list(rules.read_baseline_scores(h.risk_scores).rows) == sorted(ROUTED, key=s2_key)
+
+
+def test_a_scored_row_that_cannot_be_read_is_warned_of_and_not_planned(stage, cli, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, CONTROLS, ids=["S-1", "T-2"])
+    bogus = "| NOT-AN-ID | fresh | Gateway | x | 7.1 | 6.0 | 6.0 | 6.0 | 6.4 | Medium | 30d | Review | \u2014 |\n"
+    h.risk_scores.write_text(h.risk_scores.read_text(encoding="utf-8").replace("| T-2 |", bogus + "| T-2 |"), encoding="utf-8")
+    res = h.plan_cli()
+    assert res.code == 0 and agent_ids(h) == ["S-1", "T-2"], res.describe()
+    assert "input issue" in res.err and "Input Issues" in res.err
+
+
+@pytest.mark.parametrize("kind", ["no-table", "only-resolved", "not-utf8"])
+def test_a_scored_input_with_no_open_finding_stops_the_plan_before_dispatch(stage, cli, tmp_path, monkeypatch, kind):
+    """An empty extraction is an error, never a pass (KB 22): nothing is written, and the remedy names the scorer."""
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, CONTROLS, ids=["S-1"])
+    h.risk_scores.write_bytes({"no-table": b"# Risk Scores\n\nNothing tabular.\n", "only-resolved": make_scored_md([], resolved_ids=["R-1"]).encode("utf-8"),
+                               "not-utf8": b"\xff\xfe not utf-8"}[kind])
+    res = h.plan_cli()
+    assert res.code == 2, res.describe()
+    assert "TACHI COMPENSATING-CONTROLS FAILED" in res.err and "/tachi.risk-score" in res.err
+    assert not (h.build / "current.json").exists() and not list(h.out.glob(".tachi-build/compensating-controls/*/plan.json"))
+
+
+def test_a_symlinked_scored_input_is_refused_and_says_why(stage, cli, tmp_path, monkeypatch):
+    """NFR-10 and KB 24: the renderer's reader opens the input through no link, so the planner, which would otherwise follow one
+    when it takes the digest, refuses it too, with a message that names the cause."""
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, CONTROLS, ids=["S-1", "T-2"])
+    real = tmp_path / "real-scores.md"
+    real.write_text(h.risk_scores.read_text(encoding="utf-8"), encoding="utf-8")
+    h.risk_scores.unlink()
+    os.symlink(str(real), str(h.risk_scores))
+    res = h.plan_cli()
+    assert res.code == 2 and "symbolic link" in res.err and not (h.build / "current.json").exists(), res.describe()
+
+
+# ---- an UNCHANGED finding's row carries its baseline's persisted result (AR-T3; ADR-050 D2, RR1 rev. 2)
+
+def test_an_unchanged_units_row_carries_its_baselines_persisted_result(stage, cli, tmp_path, monkeypatch):
+    """The result comes from the baseline's Section 7 ``### Assessment Inputs`` through ``parse_controls_assessment_inputs``, and only
+    for an UNCHANGED finding: NEW and UPDATED ones are scanned, and an UNCHANGED one that the baseline holds no result for is
+    left to the agent, which then reads the baseline file itself (a pre-1.1 baseline) or scans it."""
+    items = {"T-2": CARRY_PARTIAL, "D-1": CARRY_MISSING, "E-1": CARRY_FOUND, "R-1": CARRY_MISSING}
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, CARRY_STATUSES, items)
+    res = h.plan_cli()
+    assert res.code == 0 and "WARNING" not in res.err, res.describe()
+    rows = unit_rows(h)
+    for finding_id in ("T-2", "D-1", "E-1"):
+        assert carried_values(rows[finding_id]) == {key: items[finding_id][key] for key in CARRIED}, finding_id
+        assert rows[finding_id]["delta_status"] == "UNCHANGED" and "carried_forward" not in rows[finding_id], "the agent sets it true"
+    for finding_id in ("S-1", "R-1", "D-2"):
+        assert carried_values(rows[finding_id]) == {}, finding_id
+    baseline = tmp_path / "baseline-runs" / "prev"
+    assert h.plan_json()["refs"]["baseline_dir"] == str(baseline) == h.batch_input("B001")["refs"]["baseline_dir"]
+    assert h.plan_json()["inputs"]["baseline_compensating_controls"]["sha256"] == sha256_of(baseline / "compensating-controls.md")
+    assert set(h.plan_json()["inputs"]) == {"risk_scores", "threats", "baseline_compensating_controls"}
+
+
+def test_a_carried_string_comes_back_decoded_so_a_render_escapes_it_once(stage, cli, tmp_path, monkeypatch):
+    """RR1, rev. 2: the row holds the text as the agent wrote it, never as the file shows it, so the renderer's one escape on write is
+    the only one. A `&lt;` the agent wrote literally stays one decode deep (a double decode would turn it into `<`)."""
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, {"T-2": "UNCHANGED"}, {"T-2": CARRY_PARTIAL})
+    assert h.plan_cli().code == 0
+    row = unit_rows(h)["T-2"]
+    shown = (tmp_path / "baseline-runs" / "prev" / "compensating-controls.md").read_text(encoding="utf-8")
+    assert "&lt;" in shown and "&#124;" in shown and "&#10;" in shown, "the rendered file holds the escaped text"
+    snippet = row["evidence"][0]["snippet"]
+    assert "a < b && c > d" in snippet and 'run("x|y")' in snippet and "&amp;" not in snippet and "&#124;" not in snippet
+    assert row["evidence"][0]["assessment"]["coverage"]["rationale"] == "The coverage check is {{count:evidence}} deep, &lt; kept"
+    assert row["recommendation_body"].count("&amp;") == 1 and "{{score:inherent}}" in row["matrix_row"], "the slot tokens stay"
+
+
+def agent_writes(rows, fresh):
+    """What the controls agent writes for a batch: an UNCHANGED finding's result copied from its row, anything else judged afresh."""
+    items = {}
+    for finding_id, row in rows.items():
+        if row.get("delta_status") == "UNCHANGED" and all(key in row for key in CARRIED):
+            items[finding_id] = dict({key: row[key] for key in CARRIED}, carried_forward=True)
+        else:
+            items[finding_id] = dict(fresh[finding_id], carried_forward=False)
+    return items
+
+
+def only_values(items, finding_ids):
+    """The persisted rows of the carried values alone (``carried_forward`` set the same on each), to compare runs byte for byte."""
+    return persisted_table({finding_id: dict(items[finding_id], carried_forward=True) for finding_id in finding_ids})
+
+
+def test_a_carried_result_is_persisted_the_same_bytes_run_after_run(stage, cli, tmp_path, monkeypatch):
+    """The two-run case: an UNCHANGED result that holds `<`, `&`, `|`, a backtick, a newline and a literal `&lt;` goes
+    agent -> persisted (escaped) -> next plan (decoded) -> agent copies it -> persisted again, and its rows are the same bytes in
+    every generation, so no escape compounds (AR-T3, D16). Run 1 judges, run 2 carries three of five, run 3 carries all five."""
+    fresh = {"S-1": CARRY_PARTIAL, "T-2": CARRY_MISSING, "E-1": CARRY_FOUND, "D-1": CARRY_PARTIAL, "I-3": CARRY_MISSING}
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, CONTROLS, ids=list(fresh))
+
+    def run(statuses, baseline=None):
+        h.threats.write_text(make_threats_md(list(statuses), statuses=statuses), encoding="utf-8")
+        h.risk_scores.write_text(make_scored_md(list(statuses)), encoding="utf-8")
+        res = h.plan_cli(*(["--baseline-dir", baseline] if baseline else []))
+        assert res.code == 0 and "WARNING" not in res.err, res.describe()
+        return agent_writes(unit_rows(h), fresh)
+
+    first = run({fid: "NEW" for fid in fresh})
+    assert not any(item["carried_forward"] for item in first.values())
+    write_controls_baseline(tmp_path, first, name="one")
+    second = run({"S-1": "UNCHANGED", "T-2": "UNCHANGED", "D-1": "UNCHANGED", "E-1": "UPDATED", "I-3": "NEW"}, "baseline-runs/one")
+    carried = ["S-1", "T-2", "D-1"]
+    assert [fid for fid, item in second.items() if item["carried_forward"]] == carried
+    for finding_id in carried:
+        assert {key: second[finding_id][key] for key in CARRIED} == {key: first[finding_id][key] for key in CARRIED}, finding_id
+    assert only_values(second, carried) == only_values(first, carried), "one escape per render: the carried rows are byte for byte"
+    write_controls_baseline(tmp_path, second, name="two")
+    third = run({fid: "UNCHANGED" for fid in fresh}, "baseline-runs/two")
+    assert all(item["carried_forward"] for item in third.values())
+    assert only_values(third, list(fresh)) == only_values(second, list(fresh))
+    assert only_values(third, carried) == only_values(first, carried), "and the third generation is the first one's bytes"
+
+
+def test_a_halved_batch_keeps_the_carried_results_in_its_children(stage, cli, tmp_path, monkeypatch):
+    """A retry's rows come from the plan's batch input, so a halving loses no carried result (``_retry``)."""
+    statuses = {"T-2": "UNCHANGED", "D-1": "UNCHANGED", "E-1": "UNCHANGED", "S-1": "NEW"}
+    items = {"T-2": CARRY_PARTIAL, "D-1": CARRY_MISSING, "E-1": CARRY_FOUND}
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, statuses, items)
+    h.plan(batch_size=2)   # B001 holds S-1 and T-2, and B002 holds D-1 and E-1
+    assert h.reconcile().code == 3, "no part was written, so both batches halve"
+    for child, finding_id in (("B001-2", "T-2"), ("B002-1", "D-1"), ("B002-2", "E-1")):
+        (row,) = h.batch_input(child)["units"]
+        assert row["finding_id"] == finding_id and carried_values(row) == {key: items[finding_id][key] for key in CARRIED}, child
+    assert carried_values(h.batch_input("B001-1")["units"][0]) == {}, "S-1 is NEW"
+
+
+# ---- the baseline the controls stage resolves (D9, R-6)
+
+def test_a_baseline_written_before_1_1_has_no_persisted_results_and_the_agent_reads_its_file(stage, cli, tmp_path, monkeypatch):
+    """D2: a pre-1.1 baseline has no Section 7, so the reader returns nothing and no row carries a result. ``refs.baseline_dir`` is
+    there all the same, because the agent copies the UNCHANGED result from that file, which is a digest-checked input."""
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, CARRY_STATUSES, {}, schema="1.0")
+    res = h.plan_cli()
+    assert res.code == 0 and "WARNING" not in res.err, res.describe()
+    assert all(carried_values(row) == {} for row in unit_rows(h).values())
+    assert h.batch_input("B001")["refs"]["baseline_dir"] == str(tmp_path / "baseline-runs" / "prev")
+    assert "baseline_compensating_controls" in h.plan_json()["inputs"]
+
+
+def test_a_baseline_controls_file_that_is_missing_counts_as_missing_and_says_so(stage, cli, tmp_path, monkeypatch):
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, CARRY_STATUSES, {"T-2": CARRY_PARTIAL})
+    (tmp_path / "baseline-runs" / "prev" / "compensating-controls.md").unlink()
+    res = h.plan_cli()
+    assert res.code == 0 and "no usable compensating-controls.md (missing)" in res.err and "scanned fresh" in res.err, res.describe()
+    assert h.plan_json()["refs"]["baseline_dir"] == str(tmp_path / "baseline-runs" / "prev"), "the directory resolved"
+    assert "baseline_compensating_controls" not in h.plan_json()["inputs"] and all(carried_values(row) == {} for row in unit_rows(h).values())
+
+
+def test_an_unreadable_baseline_controls_file_counts_as_missing(stage, cli, tmp_path, monkeypatch):
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, CARRY_STATUSES, content=b"\xff\xfe not utf-8")
+    res = h.plan_cli()
+    assert res.code == 0 and "can't be read" in res.err and "not strict UTF-8" in res.err and "scanned fresh" in res.err, res.describe()
+    assert "baseline_compensating_controls" not in h.plan_json()["inputs"] and all(carried_values(row) == {} for row in unit_rows(h).values())
+
+
+def test_a_persisted_row_the_reader_refuses_leaves_that_finding_scanned_fresh_and_warns(stage, cli, tmp_path, monkeypatch):
+    """The reader leaves out an item whose row fails its check, so no stage carries a result it can't trust (T143)."""
+    text = controls_md({"T-2": CARRY_PARTIAL, "D-1": CARRY_MISSING}).replace("| D-1 | control_status | missing |", "| D-1 | control_status | maybe |")
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, CARRY_STATUSES, content=text.encode("utf-8"))
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
+    assert "unreadable persisted row" in res.err and "control_status is not found, partial or missing" in res.err and "scanned fresh" in res.err
+    rows = unit_rows(h)
+    assert carried_values(rows["D-1"]) == {} and carried_values(rows["T-2"]) == {key: CARRY_PARTIAL[key] for key in CARRIED}
+
+
+def test_the_baseline_dir_flag_comes_before_baseline_source_and_a_file_counts_as_its_directory(stage, cli, tmp_path, monkeypatch):
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, CARRY_STATUSES, {"T-2": CARRY_PARTIAL})   # baseline.source names prev
+    flagged = tmp_path / "baseline-runs" / "flagged"
+    flagged.mkdir()
+    (flagged / "compensating-controls.md").write_text(controls_md({"D-1": CARRY_MISSING}), encoding="utf-8")
+    assert h.plan_cli("--baseline-dir", "baseline-runs/flagged/compensating-controls.md").code == 0
+    rows = unit_rows(h)
+    assert carried_values(rows["D-1"]) and carried_values(rows["T-2"]) == {}, "the flag's baseline holds D-1 and not T-2"
+    assert h.batch_input("B001")["refs"]["baseline_dir"] == str(flagged)
+
+
+@pytest.mark.parametrize("source,reason", [
+    ("none (first run \u2014 stateless mode)", "free-text"), ("baseline-runs/absent/threats.md", "missing"),
+    ("../elsewhere/threats.md", "outside-working-directory"),
+])
+def test_a_baseline_source_that_does_not_resolve_means_a_fresh_scan_and_a_stated_reason(stage, cli, tmp_path, monkeypatch, source, reason):
+    h = routed(stage, cli, tmp_path, monkeypatch, CARRY_STATUSES, source=source, name=CONTROLS)
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
+    assert "WARNING" in res.err and reason in res.err and "scanned fresh" in res.err
+    assert "baseline_dir" not in h.plan_json()["refs"] and all(carried_values(row) == {} for row in unit_rows(h).values())
+
+
+def test_a_baseline_flag_outside_the_working_directory_is_refused_with_its_reason_for_controls_too(stage, cli, tmp_path, monkeypatch):
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "compensating-controls.md").write_text(controls_md({"D-1": CARRY_MISSING}), encoding="utf-8")
+    project = tmp_path / "project"
+    project.mkdir()
+    h = routed(stage, cli, project, monkeypatch, CARRY_STATUSES, name=CONTROLS)
+    res = h.plan_cli("--baseline-dir", elsewhere)
+    assert res.code == 0 and "outside-working-directory" in res.err and "baseline_dir" not in h.plan_json()["refs"]
+
+
+def test_a_baseline_controls_file_that_changes_after_plan_is_caught(stage, cli, tmp_path, monkeypatch):
+    """The renderer reads the baseline file that the plan read, so an edit between the two exits 2 (D3)."""
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, CARRY_STATUSES, {"T-2": CARRY_PARTIAL})
+    assert h.plan_cli().code == 0
+    (tmp_path / "baseline-runs" / "prev" / "compensating-controls.md").write_text(controls_md({}), encoding="utf-8")
+    assert h.reconcile().code == 2
+
+
+def test_a_form_without_a_status_column_gets_no_status_so_nothing_is_carried(stage, cli, tmp_path, monkeypatch):
+    """The agent spec: a row with no ``delta_status`` has no baseline, so the agent scans it fresh. (The scorer derives UNCHANGED
+    from its baseline for such a form, S-12(b); for the controls stage that derivation is not ruled, so none is made.)"""
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, CARRY_STATUSES, {"T-2": CARRY_PARTIAL, "D-1": CARRY_MISSING})
+    h.threats.write_text(without_status_column(h.threats.read_text(encoding="utf-8")), encoding="utf-8")
+    res = h.plan_cli()
+    assert res.code == 0 and "has no Status" in res.err and "none is carried forward" in res.err, res.describe()
+    assert all("delta_status" not in row and carried_values(row) == {} for row in unit_rows(h).values())
+
+
+# ---- the threat model is reached through risk-scores.md's validated source_file (D7, D8)
+
+def _break_source(h, tmp_path, kind):
+    """Make ``risk-scores.md``'s ``source_file`` unusable, in each way ``check_run_file`` refuses, and return the reason it gives."""
+    source = {"free-text": "the scored threat model (first run)", "outside": "../elsewhere/threats.md", "missing": "run/absent/threats.md",
+              "wrong-name": "run/other.md"}.get(kind)
+    if kind == "wrong-name":
+        (h.out / "other.md").write_text(h.threats.read_text(encoding="utf-8"), encoding="utf-8")
+    if kind == "symlink":
+        real = tmp_path / "real"
+        real.mkdir()
+        (real / "threats.md").write_text(h.threats.read_text(encoding="utf-8"), encoding="utf-8")
+        h.threats.unlink()
+        os.symlink(str(real / "threats.md"), str(h.threats))
+        source = "run/threats.md"
+    h.risk_scores.write_text(make_scored_md(h.ids, source_file=source), encoding="utf-8")
+    return {"null": "names no threat model", "free-text": "free-text", "outside": "outside-working-directory", "missing": "missing",
+            "wrong-name": "wrong-name", "symlink": "symlink"}[kind]
+
+
+@pytest.mark.parametrize("kind", ["null", "free-text", "outside", "missing", "wrong-name", "symlink"])
+def test_a_source_file_that_cannot_be_used_leaves_each_unit_with_its_id_only(stage, cli, tmp_path, monkeypatch, kind):
+    """Nothing here stops a run (D7's spirit, D8): the plan warns, records no threats pointer, and sends the finding IDs. With no
+    ``delta_status`` nothing is carried, and the agent reads the rest from ``refs.risk_scores``."""
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, CONTROLS, ids=["S-1", "T-2", "D-1"])
+    reason = _break_source(h, tmp_path, kind)
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
+    assert "threats.md is not read" in res.err and reason in res.err and "finding ID only" in res.err
+    assert list(unit_rows(h).values()) == [{"finding_id": "S-1"}, {"finding_id": "T-2"}, {"finding_id": "D-1"}]
+    plan = h.plan_json()
+    assert "threats" not in plan["refs"] and "threats" not in plan["inputs"] and set(plan["inputs"]) == {"risk_scores"}
+
+
+@pytest.mark.parametrize("text,expected", [
+    ('---\nsource_file: "run/threats.md"\n---\n', "run/threats.md"),
+    ('---\r\nsource_file: "run/threats.md"\r\n---\r\n', "run/threats.md"),
+    ('\ufeff---\nsource_file: "run/threats.md"\n---\n', "run/threats.md"),
+    ("---\nsource_file: 'run/threats.md'\n---\n", "run/threats.md"),
+    ("---\nsource_file: run/threats.md\n---\n", "run/threats.md"),
+    ('```yaml\n---\nsource_file: "run/threats.md"\n---\n```\n', "run/threats.md"),
+    ('---\nsource_file: "a/threats.md"\nsource_file: "b/threats.md"\n---\n', "a/threats.md"),
+    ("---\nsource_file: null\n---\n", None), ("---\nsource_file: ~\n---\n", None), ("---\nsource_file:\n---\n", None),
+    ('---\nsource_file: ""\n---\n', None), ('---\ndate: "2026-11-22"\n---\n', None),
+    ('---\nbaseline:\n  source_file: "run/threats.md"\n---\n', None), ('# No frontmatter\nsource_file: "run/threats.md"\n', None),
+], ids=["plain", "crlf", "bom", "single-quoted", "unquoted", "fenced", "first-wins", "null", "tilde", "empty", "empty-quotes", "absent", "nested", "no-frontmatter"])
+def test_the_source_file_is_read_from_the_frontmatters_top_level_in_either_form(stage, text, expected):
+    """D8's ``source_file``, as the scorer's renderer writes it (a double-quoted scalar, or ``null``) and as the other frontmatter
+    readers accept it. What comes back is a candidate: ``check_run_file`` validates it."""
+    assert stage._scored_source_file(text) == expected
+
+
+def test_a_risk_scores_path_that_a_document_cannot_carry_exits_2(stage, cli, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, CONTROLS)
+    res = h.plan_cli("--risk-scores", tmp_path / "a`b.md")
+    assert res.code == 2 and "backtick" in res.err and not (h.build / "current.json").exists(), res.describe()
+
+
+def test_a_threat_model_path_the_working_directory_cannot_carry_exits_2(stage, cli, tmp_path, monkeypatch):
+    """The source_file is fine, and the working directory it resolves under holds a backtick, which no document can carry. That is an
+    environment fault like ``--out``, so it exits 2 before anything is written, and no warning stands in for it."""
+    h = Harness(stage, cli, tmp_path / "clean", CONTROLS, ids=["S-1"])
+    odd = tmp_path / "a`b"
+    (odd / "run").mkdir(parents=True)
+    (odd / "run" / "threats.md").write_text(h.threats.read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.chdir(odd)
+    res = h.plan_cli()
+    assert res.code == 2 and "backtick" in res.err and not (h.build / "current.json").exists(), res.describe()
+
+
+def test_a_source_file_may_be_spelled_with_dot_components_and_still_reaches_the_threat_model(stage, cli, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, CONTROLS, ids=["S-1"])
+    h.risk_scores.write_text(make_scored_md(["S-1"], source_file="./run//threats.md"), encoding="utf-8")
+    res = h.plan_cli()
+    assert res.code == 0 and "WARNING" not in res.err and h.plan_json()["refs"]["threats"] == str(h.threats), res.describe()
+
+
+def test_threats_is_optional_for_controls_and_must_be_the_file_source_file_names(stage, cli, tmp_path, monkeypatch):
+    """The command passes no ``--threats`` (the planner reaches the file through ``source_file``). One that is passed has to be that
+    file, because the renderer reads the plan's, and one stage must read one threat model (an existing harness passes both)."""
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, {"S-1": "NEW"})
+    assert h.plan_cli().code == 0
+    assert h.plan_cli("--threats", h.threats).code == 0 and h.plan_json()["refs"]["threats"] == str(h.threats)
+    assert h.plan_cli("--threats", "run/../run/threats.md").code == 0, "the same file by another spelling"
+    other = tmp_path / "other"
+    other.mkdir()
+    (other / "threats.md").write_text(h.threats.read_text(encoding="utf-8"), encoding="utf-8")
+    before = h.plan_id
+    refused = h.plan_cli("--threats", other / "threats.md")
+    assert refused.code == 2 and "--threats" in refused.err and "source" in refused.err, refused.describe()
+    assert h.read_json(h.build / "current.json")["plan_id"] == before == h.plan_id, "a refused plan leaves the pointer alone"
+    assert h.plan_cli("--threats", tmp_path / "absent.md").code == 2, "a file that doesn't exist is not the one source_file names"
+    h.risk_scores.write_text(make_scored_md(["S-1"], source_file=None), encoding="utf-8")
+    ignored = h.plan_cli("--threats", other / "threats.md")
+    assert ignored.code == 0 and "--threats is not used by this stage" in ignored.err, "with no source_file there is nothing to contradict"
+
+
+def test_an_unreadable_section_7_of_the_source_threat_model_stops_the_controls_plan(stage, cli, tmp_path, monkeypatch):
+    """S-12(c): an unreadable reference set ends the run before dispatch, for this stage as for the scorer."""
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, CONTROLS, section7="missing")
+    res = h.plan_cli()
+    assert res.code == 2 and "TACHI COMPENSATING-CONTROLS FAILED" in res.err and "Section 7" in res.err, res.describe()
+    assert not (h.build / "current.json").exists()
+
+
+@pytest.mark.parametrize("missing", ["--risk-scores", "--target"])
+def test_the_controls_stage_needs_its_scored_input_and_its_target(stage, cli, tmp_path, monkeypatch, missing):
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, CONTROLS)
+    given = [] if missing == "--risk-scores" else ["--risk-scores", h.risk_scores]
+    given += [] if missing == "--target" else ["--target", h.target]
+    res = h.cli("plan", "--stage", CONTROLS, "--out", h.out, "--date", DATE, *given)
+    assert res.code == 2 and missing in res.err and not (h.build / "current.json").exists(), res.describe()
+
+
+def test_the_scorer_still_needs_its_threats(stage, cli, tmp_path):
+    h = Harness(stage, cli, tmp_path, "risk-score")
+    res = h.cli("plan", "--stage", "risk-score", "--out", h.out, "--date", DATE)
+    assert res.code == 2 and "--threats is required" in res.err
+
+
+# ---- the SARIF fallback: risk-scores.sarif when risk-scores.md is absent (D8, AR-T2)
+
+make_scores_sarif = make_threats_sarif  # the same shape: one result for each finding, with its findingId/v1
+
+
+def scores_sarif_only(stage, cli, tmp_path, monkeypatch, sarif):
+    monkeypatch.chdir(tmp_path)
+    h = Harness(stage, cli, tmp_path, CONTROLS, ids=["S-1"])
+    h.risk_scores.unlink()
+    (h.out / "risk-scores.sarif").write_text(sarif, encoding="utf-8")
+    return h
+
+
+def test_controls_fall_back_to_risk_scores_sarif_when_the_markdown_is_absent(stage, cli, tmp_path, monkeypatch):
+    """Every member is a unit, peers included, in S-2 order and canonical. The SARIF names no threat model, so a row holds the ID only
+    (D8's per-member details are P0-3's), and the plan's input and ref are the SARIF that was read."""
+    h = scores_sarif_only(stage, cli, tmp_path, monkeypatch, make_scores_sarif(["T-2", "S-1", "AGP-01", "I-3"], peers={"I-3": "S-1"}))
+    res = h.plan_cli("--threats", h.threats)
+    assert res.code == 0, res.describe()
+    assert "risk-scores.sarif" in res.err and "WARNING" in res.err and "--threats is not used by this stage" in res.err
+    assert agent_ids(h) == ["S-1", "T-2", "I-3", "AGP-1"]
+    sarif = h.out / "risk-scores.sarif"
+    plan = h.plan_json()
+    assert plan["refs"] == {"risk_scores": str(sarif), "target": str(h.target)} and set(plan["inputs"]) == {"risk_scores"}
+    assert plan["inputs"]["risk_scores"]["sha256"] == sha256_of(sarif)
+    assert list(unit_rows(h).values()) == [{"finding_id": fid} for fid in ("S-1", "T-2", "I-3", "AGP-1")]
+
+
+def test_results_the_scores_sarif_marks_absent_are_resolved_and_are_not_planned(stage, cli, tmp_path, monkeypatch):
+    h = scores_sarif_only(stage, cli, tmp_path, monkeypatch, make_scores_sarif(["S-1", "T-2", "D-1"], absent=["T-2"]))
+    assert h.plan_cli().code == 0 and agent_ids(h) == ["S-1", "D-1"]
+
+
+@pytest.mark.parametrize("sarif", ['{"version": "2.1.0", "runs": [{"results": []}]}', '{"runs": []}', "[]",
+                                   '{"runs": [{"results": [{"partialFingerprints": {"findingId/v1": "not an id"}}]}]}'],
+                         ids=["no-results", "no-runs", "not-an-object", "no-valid-id"])
+def test_an_empty_extraction_from_the_scores_sarif_stops_before_dispatch(stage, cli, tmp_path, monkeypatch, sarif):
+    h = scores_sarif_only(stage, cli, tmp_path, monkeypatch, sarif)
+    res = h.plan_cli()
+    assert res.code == 2, res.describe()
+    assert "TACHI COMPENSATING-CONTROLS FAILED" in res.err and "risk-scores.sarif" in res.err
+    assert not (h.build / "current.json").exists() and not list(h.out.glob(".tachi-build/compensating-controls/*/plan.json"))
+
+
+@pytest.mark.parametrize("text", ["{not json", '{"runs": [{"results": [{"x": NaN}]}]}'], ids=["not-json", "nan"])
+def test_a_scores_sarif_that_is_not_strict_json_stops_before_dispatch(stage, cli, tmp_path, monkeypatch, text):
+    h = scores_sarif_only(stage, cli, tmp_path, monkeypatch, text)
+    assert h.plan_cli().code == 2 and not (h.build / "current.json").exists()
+
+
+def test_risk_scores_md_wins_when_both_exist_and_the_fallback_has_no_other_file(stage, cli, tmp_path, monkeypatch):
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, {"S-1": "NEW", "T-2": "NEW"})
+    (h.out / "risk-scores.sarif").write_text(make_scores_sarif(["D-1"]), encoding="utf-8")
+    assert h.plan_cli().code == 0 and agent_ids(h) == ["S-1", "T-2"]
+    h.risk_scores.unlink()
+    (h.out / "risk-scores.sarif").unlink()
+    assert h.plan_cli().code == 1, "neither input is there"
+    (h.out / "threats.sarif").write_text(make_threats_sarif(["S-1"]), encoding="utf-8")
+    assert h.plan_cli().code == 1, "the scorer's fallback is not the controls stage's"
+    renamed = h.cli("plan", "--stage", CONTROLS, "--out", h.out, "--date", DATE, "--risk-scores", h.out / "renamed.md", "--target", h.target)
+    assert renamed.code == 1, "only risk-scores.md has a SARIF to fall back to"
