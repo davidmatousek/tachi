@@ -1,5 +1,7 @@
 # T066: the small-run oracle over the shipped examples (NFR-1), PR 1's W4
 
+> **Two runs are recorded here.** The first run is dated 2026-11-23, at commit `f43440b`: everything from the first heading to section 10 below. The **W4 re-run** is dated 2026-11-24, at commit `d8cf928`, after T146's fixes and the PM's W4 rulings: the last section, W4-1 to W4-9. The first run's sections are kept unchanged as the dated record.
+
 **Date:** 2026-11-23. **Commit under test:** `f43440b`, PR 1's pushed W3 tip, so `tachi_parts.VERSION` is `4.48.4`. **Python:** 3.11.13. **Where it ran:** scratch clones and scratch work trees only, never a tracked tree (H1). **Method:** T058's, reused: the code ran from a clone of the committed tip, and every render went to a separate work tree that mirrors the examples' relative paths, so `examples/**` was never written. **Contract reading:** PM W3 rulings 2, 2b and 2c, and spec NFR-1's W3 errata (six value classes, the contract reading of "every field").
 
 ## Result: the oracle ran on all five examples. It is not clean: 1,090 value diffs are unattributed, and they go to the PM
@@ -200,3 +202,192 @@ The harness is scratch code, not a tracked file. Its steps:
 3. From the work tree, run `tachi-stage.py plan --stage risk-score --out <the example's directory> --date <the shipped date> --threats <its threats.md> --architecture <its architecture.md> [--baseline-dir baseline]`. Write a part for every batch input, reconcile, then run `render-risk-scores.py`. Repeat for `compensating-controls` with `--risk-scores <the rendered file> --target .`.
 4. Read the rendered and shipped SARIF as JSON and the markdown through `read_baseline_scores`, `parse_compensating_controls_md` and `parse_markdown_table`, and attribute each diff by the tests in section 3.
 5. `git status` stays empty in the clone and in the lane worktree. A render goes to the work tree, never to `examples/`, so #365's PNG re-render can't happen.
+
+
+---
+
+## W4 re-run (2026-11-24): the oracle after T146 and the PM's W4 rulings
+
+**Commit under test:** `d8cf928`, the W4 preview: PR 1's W3 tip with T146's fixes (FX-1 to FX-7), U-1's layer reader `tachi_parsers.parse_finding_layers`, R-F's repeated-member report, and the PM's W4 errata in the spec. `tachi_parts.VERSION` is `4.48.4`. **Python:** 3.11.13. **Where it ran:** scratch clones only (H1): one for the renders and one for the taxa pin, both clean afterwards. **Method:** the first run's (its sections 1 and 10), with the scratch harness copied rather than edited, so the first run's evidence stays. **Contract reading:** the spec's eleven classes (W3 errata plus W4 errata R-A to R-G), the example-defect table closed at five groups, and the gating rule: Run A gates, Run B gates the fifth class, and each other Run B diff takes the disposition of the identical Run A diff (same finding, field, shipped value and rendered value).
+
+### Result: not clean. Run A leaves 81 diffs unattributed, all of one cause, and Run B returns 80 value diffs on 10 findings
+
+| Question | Result |
+|---|---|
+| Examples and runs | 5 examples, 20 files, as before. **Run A** (the gate) and **Run B** (no baseline; agentic-app, consumer-agent-app, mobile-banking-app, maestro-reference). All ten Run A renders finished with the first run's exit codes: 0 for agentic-app's two stages, 5 for the other eight |
+| Run A value diffs | **3,834**. In the eleven classes: 3,547 (class 1: 844, 2: 773, 3: 10, 4: 1,438, 5: 0, 6: 265, 7: 112, 8: 21, 9: 2, 10: 2, 11: 80). Five row-order entries follow two attributed classes (1 and 7). Example table: 195. Dropped by a named decision: 6. **Unattributed: 81** |
+| The 81 | agentic-app's `compensating-controls.md`, section 2, the `CF` cell of 81 rows. They are the by-product of the architect's harness fix 2, which carries the UNCHANGED findings that the shipped controls file holds. Without fix 2, Run A is clean (W4-7, item 6) |
+| U-1's residual | 368 falls to **83**, with the predicted distribution (W4-4). No deviation |
+| Empty layer chain | **26** values, the PM's list exactly (W4-4). No other |
+| Example-defect table | U-4 178, U-12 6, U-15 1, U-17 10, and the fifth group's 7 findings. Nothing outside the five groups, no group rises, every entry passes both tests (W4-5) |
+| Run B | 1,930 value diffs. Class 5: 38. By identity with a Run A diff: 1,635. Own groups: 161. A rule's score through its attributed results (class 6's clause): 16. **Back to the PM: 80, on 10 findings** (W4-6) |
+| U-6 after FX-1 and FX-5 | No value moved (W4-8) |
+| Taxa pin | `tests/scripts/test_sarif_identity.py`, run in a scratch clone of `d8cf928`: **709 passed** (class 6's test) |
+| H1 and H2 | No pytest, extractor or renderer ran in a tracked tree. `git status` in the lane shows this record and nothing under `examples/`, and no PDF or PNG moved. Both scratch clones stayed clean |
+
+### W4-1. What changed in the harness
+
+**The architect's three fixes** (the triage's "three harness artifacts"):
+1. **The 700-character clip is gone.** The synthetic controls agent carries each shipped `What to Implement` text whole. The one markdown cell that differed (mobile-banking-app T-4) no longer does.
+2. **The UNCHANGED findings that the shipped controls file holds are carried.** In agentic-app that is 81 findings (82 UNCHANGED, minus T-1, which the shipped file lacks). `rescan_scope` now matches. `carry_forward_count` is still a diff, in class 8 (W4-3).
+3. **The rendered-only sections are additive**: `Score Integrity` (5 files), `Analysis Integrity` (5) and predictive-ml-app's controls `Methodology` (1). A section that only the shipped file has is a drop; none occurs.
+
+**The oracle's own readers** (never a function that a renderer calls to compute the field, PM W4 rulings R-A and R-G):
+- a pipe-table reader that honours code fences and GFM `\|`, and reads a long row by its header's positions;
+- the MAESTRO layer's chain (Section 7's cell, the finding's own row in a per-finding table, the component's Section 1 cell, `Unclassified`);
+- the component's Section 1 Type through D8's closed map, and the Section 2 zone as that table writes it;
+- S-12(b)'s supply from the baseline row (the §3 heading or line, else the §2 cell);
+- Section 4a's groups under D8's rules, and the §4 blocks of a controls file;
+- the nine-reference decoder of ADR-050 D3, one pass, and the severity bands, the residual formula and the exact composite.
+
+The readers import nothing from `tachi_parsers`, `tachi_parts` or the renderers. The attribution code still takes from them: the reference set for class 4's signed text and for "Section 7's form lacks the value" (corroborated by the renderer's `input:<field>:not-in-form` flag), `tachi_parts`' ID helpers and S-2 key, the control-status classifier (for Section 1's status counts), and the constants that class 6 names as its sources. The first run's detection layer is unchanged in what it compares. Where it differs: full text values (no 100-character cut), headings compared by section number, correlation properties compared, and each `relatedLocations` entry kept for class 6's test.
+
+**One reading of class 5.** A finding is NEW when Section 7 says so, or when its form lacks the status and no baseline row supplies one (S-12(b)). The first run read Section 7's status only, so consumer-agent-app's T-3 and I-1 were missed in Run B.
+
+### W4-2. Diff counts by class, per example and file (Run A)
+
+Columns are the classes 1 to 11, then E (the example table), D (dropped by a named decision), J (the joint order entries) and U (unattributed). A value diff is one (finding, field) difference; the row-order and Section 1 entries are counted per file and type, as in the first run.
+
+| Example · file | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | E | D | J | U | total |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| agentic-app · `risk-scores.md` | 144 | 0 | 1 | 95 | 0 | 0 | 3 | 1 | 0 | 0 | 0 | 2 | 0 | 1 | 0 | 247 |
+| agentic-app · `risk-scores.sarif` | 61 | 206 | 1 | 173 | 0 | 39 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | 483 |
+| agentic-app · `compensating-controls.md` | 52 | 0 | 0 | 85 | 0 | 0 | 2 | 3 | 0 | 0 | 0 | 2 | 0 | 0 | 81 | 225 |
+| agentic-app · `compensating-controls.sarif` | 76 | 206 | 0 | 173 | 0 | 38 | 3 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 497 |
+| consumer-agent-app · `risk-scores.md` | 48 | 0 | 1 | 18 | 0 | 0 | 7 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 76 |
+| consumer-agent-app · `risk-scores.sarif` | 20 | 38 | 1 | 60 | 0 | 21 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 143 |
+| consumer-agent-app · `compensating-controls.md` | 18 | 0 | 0 | 0 | 0 | 0 | 4 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 25 |
+| consumer-agent-app · `compensating-controls.sarif` | 27 | 38 | 0 | 25 | 0 | 10 | 6 | 0 | 0 | 0 | 19 | 0 | 0 | 0 | 0 | 125 |
+| maestro-reference · `risk-scores.md` | 70 | 0 | 1 | 131 | 0 | 0 | 4 | 1 | 0 | 0 | 0 | 4 | 0 | 1 | 0 | 212 |
+| maestro-reference · `risk-scores.sarif` | 42 | 35 | 1 | 72 | 0 | 42 | 0 | 0 | 0 | 1 | 0 | 76 | 6 | 0 | 0 | 275 |
+| maestro-reference · `compensating-controls.md` | 34 | 0 | 0 | 108 | 0 | 0 | 6 | 1 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 150 |
+| maestro-reference · `compensating-controls.sarif` | 47 | 110 | 0 | 271 | 0 | 23 | 9 | 0 | 0 | 1 | 31 | 2 | 0 | 0 | 0 | 494 |
+| mobile-banking-app · `risk-scores.md` | 81 | 0 | 1 | 31 | 0 | 0 | 13 | 1 | 0 | 0 | 0 | 2 | 0 | 1 | 0 | 130 |
+| mobile-banking-app · `risk-scores.sarif` | 37 | 31 | 1 | 70 | 0 | 35 | 5 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 180 |
+| mobile-banking-app · `compensating-controls.md` | 29 | 0 | 0 | 31 | 0 | 0 | 8 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 70 |
+| mobile-banking-app · `compensating-controls.sarif` | 41 | 31 | 0 | 60 | 0 | 49 | 12 | 0 | 0 | 0 | 30 | 1 | 0 | 0 | 0 | 224 |
+| predictive-ml-app · `risk-scores.md` | 17 | 0 | 1 | 16 | 0 | 0 | 6 | 3 | 0 | 0 | 0 | 25 | 0 | 0 | 0 | 68 |
+| predictive-ml-app · `risk-scores.sarif` | 0 | 41 | 1 | 10 | 0 | 4 | 4 | 0 | 0 | 0 | 0 | 30 | 0 | 0 | 0 | 90 |
+| predictive-ml-app · `compensating-controls.md` | 0 | 0 | 0 | 0 | 0 | 0 | 10 | 4 | 2 | 0 | 0 | 19 | 0 | 0 | 0 | 35 |
+| predictive-ml-app · `compensating-controls.sarif` | 0 | 37 | 0 | 9 | 0 | 4 | 6 | 0 | 0 | 0 | 0 | 29 | 0 | 0 | 0 | 85 |
+| **All** | **844** | **773** | **10** | **1,438** | **0** | **265** | **112** | **21** | **2** | **2** | **80** | **195** | **6** | **5** | **81** | **3,834** |
+
+No diff passed the tests of two classes. The E column adds up to 195: U-4 178, U-12 6, U-15 1, U-17 10.
+
+### W4-3. Each class: its test, and what passed it
+
+- **Class 1, a flagged value (844).** The first run's test, unchanged: 842 as before, plus two Section 1 counts (the High band in agentic-app and in maestro-reference), where the shipped count equals its own rows and the gap is exactly the class-1 band moves.
+- **Class 2, D-5 identity (773)** and **class 3, S-2's tie order (10).** Unchanged, with the same counts. Class 3's rendered order is verified as composite descending, then S-2, on each of the ten files.
+- **Class 4, the reference set and R-A's added sources (1,438).**
+  - *The signed text, 1,102* (unchanged): `message.text` 374, `message.markdown` 249, §2 Threat cells 227, §2 Component cells 28, the controls files' threat text 224.
+  - *The added sources, 336*, each tested against the oracle's own reader: **the layer** 83 (the chain's step 2 gives 57 values, and its step 4, `Unclassified`, the 26 empty-chain values of W4-4); **S-12(b)'s supply** 91 (`message.text` 57, §2 Threat cells 27, §2 Component cells 7, each equal to the baseline row's §2 cell, after the documented cut at 60 and 30 characters, in consumer-agent-app and predictive-ml-app); **the kind** 56 (the component's Section 1 Type through D8's closed map); **the zone** 106 (maestro-reference's controls `fullyQualifiedName`, `<zone>/<component>` with the zone as Section 2 writes it).
+  - *Agreement beyond the diffs:* the own readers agree with the renderers on every finding that has a source: layer 100% (the chain's step 2 on 85, 107, 31 and 37 findings of four examples; step 4 on agentic-app's AGP-01, maestro-reference's AGP-01 to AGP-03 and consumer-agent-app's 19), kind and zone 100%, and the supply on all 49 drift-form findings that a baseline row holds.
+- **Class 5 (0 in Run A, 38 in Run B).** Run A can't show it (every example has a usable baseline). Run B: agentic-app's four findings (D-10, D-11, LLM-15 and LLM-16, 28 diffs, the first run's) and consumer-agent-app's T-3 and I-1 (10 diffs, NEW under S-12(b)), each with the three tests of the class text.
+- **Class 6, the renderers' fixed SARIF values (265).** The first run's 223, plus R-B's two fields and the chain clause. `region`: 31 (mobile-banking-app's controls file; **all 566 rendered results** carry exactly `{"startLine": 1}`). The evidence message: 9 `relatedLocations` entries (consumer-agent-app 1, mobile-banking-app 8); **all 44 rendered entries** equal `sarif_common.EVIDENCE_MESSAGE` filled with the finding's control category (read from the rendered §2 cell) and the entry's file, and the template is the same in every file and v4.48.4's own template text (`<control-category>` and `<file-path>` for the two fills). The chain: consumer-agent-app's elevation-of-privilege rule, in both files (2), which follows E-1's class-7 composite.
+- **Class 7, D9's rounding normalization (112, plus 5 joint order entries).** For each of the 15 findings, the oracle computes the exact composite from the rendered row's four dimensions and the weights 0.35, 0.30, 0.15 and 0.20; the rendered value is its half-up rounding, the shipped value is the other one-decimal neighbour, the bands are equal, and the finding carries no `corrected` or `retagged` flag on `composite_score`. The number of such findings equals §6's "Normalized (rounding only)" line in every example (1, 2, 3, 4 and 5). The values that follow, each by its own rule: 105 value diffs (scorer 39: §2 rows 15, SARIF 10, §3 lines 7 and weighted rows 7; controls 66: inherent, residual, `security-severity`) and 7 row-order entries. Findings: agentic-app S-6; consumer-agent-app E-1, TE-4; maestro-reference E-5, E-6, E-10; mobile-banking-app I-3, T-4, T-5, T-6; predictive-ml-app D-6, LLM-1, LLM-2, S-5, T-7. No renderer flag, as the PM ruled.
+- **Class 8, the markdown frame values (21).** Rendered value equals its source exactly, and only `schema_version` differs from v4.48.4's own rule (D15); every other source is the 1.0 template's rule (its `source_file` and `target_path` placeholders, its `rescan_scope` and `carry_forward_count` definitions, its headings). Each diff with the shipped value's origin:
+
+  | Key | Where | Shipped, rendered | Origin of the shipped value |
+  |---|---|---|---|
+  | `schema_version` | 10 files | `1.0`, `1.1` | v4.48.4's template value |
+  | `source_file` | consumer-agent-app, scorer file | a bare file name, the plan's input path | the same file under another path |
+  | `source_file` | consumer-agent-app, controls file | a path in the original run's output location, the plan's input path | not the example's copy |
+  | `target_path` | agentic-app, consumer-agent-app, predictive-ml-app (controls) | free text, `.` | v4.48.4's agent wrote a description in place of the `--target` path |
+  | `target_path` | mobile-banking-app (controls) | the architecture file's path, `.` | a path that the agent wrote, not the `--target` path |
+  | `carry_forward_count` | agentic-app (controls) | 84, 81 | the baseline registry's size (the input threat model states "Baseline registry: 84 findings"); the shipped rows mark none with `CF`. The rendered 81 is the number of §2 rows that read `CF` |
+  | `carry_forward_count`, `rescan_scope` | predictive-ml-app (controls) | 0 and `first-run`, `null` and `full` | outside the 1.0 template's rule (null when no baseline controls file resolved; `full` or `incremental`) |
+  | heading of section 3, section 5 | predictive-ml-app (scorer) | `Dimensional Breakdowns` and `Methodology`, `Dimensional Breakdown` and `Scoring Methodology` | the agent's own titles; v4.48.4's template headings are the 1.1 template's |
+- **Class 9, a drift-form finding that S-12(b) can't supply (2).** predictive-ml-app R-1 (its controls markdown row, inherent and residual): the finding carries `input:component:not-in-form`, the own baseline reader holds no row for it (the shipped group row's ID cell reads `R-1..R-7`), the stage record's `reachability-defaulted` warning names it, the rendered reachability is 5.0, and the composite is the documented formula on the rendered dimensions. R-2 to R-7 sit in the example table (U-4) because the shipped files hold no result or row for them. **A dependency:** the placeholders `Unspecified` and `No threat description.` are named in no contract, ADR, spec, skill or template text at `d8cf928` (they appear only in the renderers, the stage script and their tests), so this class compares against the strings in the PM's ruling. The architect's contract line has to land (W4-7, item 8).
+- **Class 10, D8's group rules (2).** maestro-reference E-7 in the scorer and the controls SARIF: the shipped result carries CG-2; Section 4a lists AG-7 in CG-1 and in CG-2, CG-1 claims it, and CG-2 is left with E-7 alone and emits nothing. The oracle applied D8's rules to Section 4a for **all ten SARIF files** and the rendered `correlation-*` properties and ruling C's sentence match on every result (agentic-app 19, maestro-reference 10, predictive-ml-app 14 correlated results per file; the other two examples none). **R-F's report landed:** both renderers list AG-7 in Input Issues (the group that keeps it, the group that loses it, the group that falls away), and both stage records warn `correlation-member-repeated`. AG-7 is the only repeated ID in the five examples.
+- **Class 11, the controls SARIF's text from its own §4 block (80).** `recommendation` in consumer-agent-app 19, maestro-reference 31, mobile-banking-app 30. The rendered value equals the rendered block's What to Implement text (own reader, decoded), and that text equals the shipped markdown's §4 text. No rendered value is empty where a block holds text, and no `effort-estimate` differs.
+
+### W4-4. U-1's residual: 368 falls to 83
+
+| Example | Scorer SARIF | Scorer markdown | Controls SARIF | Predicted |
+|---|---|---|---|---|
+| agentic-app | 1 | 1 | 1 | 1 / 1 / 1 |
+| consumer-agent-app | 16 | 0 | 0 | 16 / 0 / 0 |
+| maestro-reference | 3 | 1 | 37 | 3 / 1 / 37 |
+| mobile-banking-app | 0 | 0 | 23 | 0 / 0 / 23 |
+| predictive-ml-app | additive only | additive only | additive only | additive only |
+| **Total** | 20 | 2 | 61 | **83** |
+
+All 83 are in class 4 (R-A's layer source). By cause: **26** where the own reader finds no layer in any source of the chain; **31** maestro-reference controls values in which the shipped file wrote `L3 — Agent Frameworks` against its input's `L3 — Agent Framework`; **3** where it wrote `L2` against `L4`; **23** mobile-banking-app controls values in which the shipped file wrote `Unclassified` while its own scorer file held the layer (6 `L2`, 17 `L7`).
+
+**The 26 empty-chain values, each by example, file and finding** (the shipped file held a layer, the rendered value is `Unclassified`, and the own reader finds none in Section 7, in any per-finding table or in Section 1):
+
+| Example | Scorer SARIF | Scorer markdown (§3) | Controls SARIF | Values |
+|---|---|---|---|---|
+| agentic-app | AGP-01 | AGP-01 | AGP-01 | 3 |
+| maestro-reference | AGP-01, AGP-02, AGP-03 | AGP-01 | AGP-01, AGP-02, AGP-03 | 7 |
+| consumer-agent-app | S-1, S-2, T-1, T-3, I-1, I-3, R-1, R-2, D-1, D-3, E-1, TE-1 to TE-5 | none | none | 16 |
+
+That is the PM's accepted list: agentic-app's AGP-01 (3), maestro-reference's AGP-01 to AGP-03 (7) and consumer-agent-app's 16. None other.
+
+### W4-5. The example-defect table (closed at W4 to five groups)
+
+Each entry passes both tests: the shipped file contradicts its own input or rows, shown mechanically; and the rendered side passes its own rule.
+
+| Group | W4 count | Re-run | Test 1: the shipped file contradicts its input or rows | Test 2: the rendered side passes its rule |
+|---|---|---|---|---|
+| **U-4**, membership | 179 | **178** | maestro-reference's scorer SARIF holds 35 of its input's 110 open findings, and its controls SARIF 2 duplicate results (AG-1, R-6); mobile-banking-app's controls SARIF 1 (I-1); agentic-app's controls markdown lacks T-1; predictive-ml-app's shipped files list 12 IDs that no open row of its input has (2 in the scorer SARIF, 12 in each markdown file, 1 in the controls SARIF) and omit 27 (scorer SARIF), 7 (scorer markdown), 28 (controls SARIF) and 6 (controls markdown) of the 37 that it does | **all 20 rendered files** hold exactly their input's open set, by distinct `findingId/v1` or row (D8's N/N rule; for controls, the rendered `risk-scores.md`'s open rows) |
+| **U-12**, unsorted | 6 | 6 | agentic-app (6 pairs in each file), maestro-reference (244 pairs in the markdown, 6 in the SARIF), predictive-ml-app (45 and 2): the pair's shipped order puts the lower composite first, and neither composite moved | the rendered order is composite descending, then S-2, verified on each of the six files |
+| **U-15**, controls stub | 1 | 1 | agentic-app T-1: the shipped controls result holds no status, inherent or residual (or twins), and the shipped markdown has no row for it | the rendered inherent is the scorer's composite (4.4) and the residual is inherent × (1 − 0.00) for `missing` |
+| **U-17**, Section 1 counts | 11 | **10** | the shipped count differs from its own rows' count in that band: agentic-app Medium; maestro-reference Medium and Low; mobile-banking-app High and Medium; predictive-ml-app High, Medium and Low (8 scorer entries); and, in the controls files, `total-missing` in agentic-app (55 stated, 52 rows) and maestro-reference (108 stated, 110 rows) | each rendered count equals its own rows' count, and the gap from the shipped rows is exactly the class-1 band moves plus the rows that only one file holds |
+| **Reachability** (found in Run B) | 7 findings | 7 findings | agentic-app T-6, I-6, D-6 (shipped 2.0 in a Trusted zone) and maestro-reference S-1, S-2, R-1, R-2 (shipped 9.0 in an Untrusted zone): D2's formula gives 1.0, 1.5, 2.5 and 8.0, 8.5, 9.5 for barrier counts 0 to 3 and 0 to 3, so the shipped value is outside it | the rendered values (2.5 and 9.5) are in the formula's set, and each finding's composite follows each side's own dimensions |
+
+**The counts moved inside the table, and none rose.** The first run's U-17 held 11 Section 1 counts, taken per file. This run tests each band by the architect's text, "the shipped §1 count for a band differs from its own rows' count in that band", and applies it to the controls files' coverage lines as well. So three entries leave U-17: agentic-app's and maestro-reference's High counts (the shipped count equals its rows, and the gap is the class-1 band moves: class 1) and predictive-ml-app's Critical count (it follows a row set: U-4). Two controls coverage lines leave U-4 for U-17, because the shipped count contradicts its own rows rather than following a row set. U-4 goes from 179 to 178, and U-17 from 11 to 10. The table's total falls by 2 (to class 1).
+
+### W4-6. Run B: the scorer with no baseline
+
+Run B gates class 5 and nothing else. The disposition of every other Run B diff is that of the identical Run A diff (same finding, field, shipped value and rendered value). The aggregated row-order and Section 1 entries are derived again from the dispositions that the row-level diffs took.
+
+| Example | Value diffs | Class 5 | By identity | Own groups | Class 6 rule chain | Back to the PM |
+|---|---|---|---|---|---|---|
+| agentic-app | 817 | 28 | 710 (1: 194, 2: 206, 4: 268, 6: 37, 7: 4, 8: 1) | 21 (Reachability) | 2 | **56** |
+| consumer-agent-app | 322 | 10 | 163 (1: 66, 2: 38, 4: 35, 6: 18, 7: 4, 8: 2) | 122 (placeholders, class 9) | 3 | **24** |
+| mobile-banking-app | 300 | 0 | 295 (1: 116, 2: 31, 4: 101, 6: 30, 7: 16, 8: 1) | 0 | 5 | 0 |
+| maestro-reference | 491 | 0 | 467 (1: 105, 2: 35, 4: 203, 6: 37, 7: 3, 8: 1, 10: 1, D: 6, U-4: 76) | 18 (Reachability) | 6 | 0 |
+| **All** | **1,930** | **38** | **1,635** | **161** | **16** | **80** |
+
+- **Class 5.** agentic-app's D-10, D-11, LLM-15 and LLM-16 (28 diffs: the rendered `cvss_base` is 9.3 and the shipped 8.5, the chain without and with the denial-of-service bound, and the stage record states the missing baseline), and consumer-agent-app's T-3 and I-1 (10 diffs, same test).
+- **Own groups.** The out-of-formula Reachability goes to the example table (7 findings, section 5). consumer-agent-app's placeholders, `Unspecified` and `No threat description.` on all 19 findings, go to class 9, each flagged `input:<field>:not-in-form`.
+- **The rule chain (16).** A rule's `security-severity` equals the highest rendered result's, and each result diff that moves it has a disposition. This is class 6's own clause, applied to Run B's dispositions. The PM may prefer to send these 16 back with the rest.
+- **The aggregated entries.** All derive from row-level dispositions. Four return, because their members do: agentic-app's two row-order entries (the pairs that the 8 findings below move) and consumer-agent-app's High and Medium counts (TE-3's band change).
+
+**Back to the PM: 80 value diffs, 10 findings.** agentic-app T-8, R-7, R-9, AG-7, LLM-3, LLM-9, LLM-11 and LLM-12 (7 diffs each: `cvss_base` and composite in the SARIF, the §2 row, §3's composite line and the two weighted rows) and consumer-agent-app TE-3 (17 diffs; its band moves from Medium to High) and TE-4 (7). Each has no identical Run A diff. In Run A the same finding is carried with the stored score and flagged `unchecked:cvss_base:bound-n17c` (the stored value can't be checked, because its assessed score isn't recorded and a ±1.0 bound may explain it). Run B has no stored value, so it scores the vector's chain without a bound. They fail class 5 as written, for two reasons: eight are UNCHANGED in Section 7 (not NEW), and for none does the shipped value equal the vector's chain under the category's ±1.0 bound (T-8: 8.5 against 8.1; R-7 and R-9: 6.5 against 4.3; LLM-3 and LLM-12: 6.5 against 8.3; AG-7, LLM-9, LLM-11, TE-3 and TE-4 fail the same test). Whether class 5 should cover a shipped value that Run A can only mark `unchecked` is the PM's ruling.
+
+### W4-7. What comes back to the PM
+
+W3's list stands, with "the six classes" read as the eleven classes and the example table, and W4's list follows.
+
+1. **An empty-chain `Unclassified` beyond the 26:** none.
+2. **U-1's residual:** 83, with the predicted distribution. No deviation.
+3. **A value that moves when U-6 is re-run after FX-1 and FX-5:** none (W4-8).
+4. **An example-table entry outside its five groups, a rising count, or a failed test:** none outside the five groups, no rising count, no failed test. The movement inside the table (U-4 179 to 178, U-17 11 to 10, two entries to class 1) is in W4-5, for acknowledgement.
+5. **A Run B diff that no Run A diff matches and that isn't one of Run B's own groups: 80 value diffs on 10 findings, plus 4 aggregated entries that derive from them** (W4-6). The evidence is there, and the ruling needed is whether class 5 covers a shipped score that Run A can only flag `unchecked:cvss_base:bound-n17c`. The 16 rule-score diffs in the Run B table are a separate reading for the PM to accept.
+6. **A diff that the three harness fixes leave behind: 81, from fix 2.**
+   - *What they are.* agentic-app's `compensating-controls.md`, section 2, the `CF` cell of 81 rows. The shipped file's frontmatter says `rescan_scope: incremental` and `carry_forward_count: 84`, and its text says "84 findings carried forward", yet all 85 of its `CF` cells read `—`. With the fix, the rendered cells read `CF` on exactly the 81 findings that are UNCHANGED in Section 7 and that the shipped file holds (T-1 is UNCHANGED too, but the shipped file has no row for it).
+   - *Why no class takes them.* Class 8 lists the count and the scope, not the cell that the count counts.
+   - *The two ways out.* Either class 8's closed list gains the §2 `CF` cell (renderer-computed, ADR-050 D2; its test: the cell reads `CF` exactly for an UNCHANGED finding that the resolved baseline controls file holds; the shipped value's origin: the agent left every cell `—` against its own frontmatter), or the shipped file's contradiction of its own frontmatter becomes a sixth example-table group. **Or fix 2 goes:** run without it, Run A is clean for agentic-app (0 unattributed), and class 8 takes `rescan_scope` (`incremental` to `full`) and `carry_forward_count` (84 to 0, the 84 being the baseline registry's size).
+   - Fixes 1 and 3 leave nothing behind.
+7. **R-F's report, if the lead's re-pricing moves it out of PR 1:** it is in `d8cf928` and works (W4-3, class 10). Nothing to return.
+8. **A dependency for PR 1's gate:** the architect's contract line for the placeholders is not in `d8cf928`. Class 9 compares against strings that no contract names (W4-3).
+
+### W4-8. Other checks
+
+- **U-6 after FX-1 and FX-5.** The first run's 271 `recommendation` diffs and this run's 270 are the same findings with the same values on both sides (compared on the first 100 characters, which the first run stored). The one that disappeared is the harness's clip (mobile-banking-app T-4's markdown cell). The 80 SARIF diffs pass class 11 on the full text. No value moved.
+- **S-12 (a) to (d)** re-asserted on consumer-agent-app, predictive-ml-app and maestro-reference, and all four hold as in the first run's section 8: the forms read (list, list, table), the missing values flagged and never stopped (57, 125 and 110 `input` flags), any other Section 7 stops with exit 2 and no `.tachi-build` directory, and an unreadable baseline counts as missing (warning `baseline-unreadable`, §6 says the owners, SLAs and dispositions weren't carried).
+- **Uncontracted keys** (PM W3 ruling 2, condition 2): re-derived, identical to the first run's section 7, key for key and count for count (53 file and key pairs, 38 distinct result-property names; with the two rule keys and the two retired fingerprint keys, the first run's 42). No new key, no dropped one.
+- **Additive keys:** identical to the first run's section 9, plus the eleven rendered-only sections now listed one by one (harness fix 3).
+- **Removed by a named decision** (first run, section 5): unchanged. The 6 scorer `relatedLocations` are D8's placement, and the group they named is now in the `correlation-*` properties.
+- **The 1.1 SARIF templates' run-level blocks** (W3 ruling 2c, open): both templates now show `version` and `semanticVersion` as the release-version placeholder, and carry `supportedTaxonomies` and `taxonomies`.
+- **Taxa pin:** 709 passed.
+
+### W4-9. Re-running
+
+The harness is scratch code, not tracked. This run's steps, over the first run's (its section 10):
+1. Clone the committed tip into a scratch directory, and check out `d8cf928`. Run the taxa pin in a second clone, so the first stays clean.
+2. Apply the three harness fixes (no clip; carry the UNCHANGED findings that the shipped controls file holds; the rendered-only sections are additive). Run A as before, then Run B (the scorer with no baseline).
+3. Attribute each diff by the class tests above, with the oracle's own readers for the added class-4 sources and for class 11's block. Map each Run B diff to the identical Run A diff.
+4. `git status` stays empty in both clones and in the lane worktree outside this record.
