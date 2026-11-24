@@ -25,6 +25,7 @@
 | SA-13 | T064 | The Affected Assets reader splits rows on newlines only | `031f575` |
 | U-1 (D) | T066, triaged | Each finding's MAESTRO layer comes from its own §3/§4 row, through one reader, `parse_finding_layers` | `d8cf928` |
 | R-F | PM W4 ruling | A finding listed in two correlation groups is reported (`correlation-member-repeated`), never silent | `d8cf928`, `977a622` |
+| D2 carry claim | T066's re-run (the PM's question, the architect's ruling) | The controls renderer accepts `carried_forward` only where the baseline holds the finding's result, and clears any other claim with its reason (ADR-050 D2, amended at W4) | `bfe3e85`, `9bd337e` |
 | SA-2 | T064 | Already answered at W3: a missing evidence file is flagged, not refused | (W3) |
 
 The tests that pin the renderers' own refusals now run past the planner's earlier refusal (`94d69d8`, `17ea8e6`).
