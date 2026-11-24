@@ -139,6 +139,9 @@ RULES = (
 RULE_BY_CATEGORY = {entry[0]: entry for entry in RULES}
 
 KIND_OF_DFD_TYPE = {"External Entity": "external-entity", "Process": "process", "Data Store": "data"}
+# The reverse, for D8's fallback: the ``kind`` of a ``threats.sarif`` result's logical location, back to a DFD type.
+# ``threats.sarif`` writes ``data-store`` where this file writes ``data``, so both name a Data Store.
+DFD_TYPE_OF_KIND = dict({kind: dfd_type for dfd_type, kind in KIND_OF_DFD_TYPE.items()}, **{"data-store": "Data Store"})
 
 # ``trust-zones.md`` section 2c: a §2 label names a trust level when it matches a canonical value, or when its
 # keywords all point to one level. The words are matched after any ``untrusted`` or ``semi-trusted`` is taken out of
@@ -266,11 +269,7 @@ def _load_plan(out: str, plan_id: str, digest: str) -> Tuple[Dict[str, Any], Dic
         stored = tp.input_path(out, STAGE, plan_id, entry["batch_id"])
         if tp.path_guard_problem(stored, out) is not None or tp.file_digest(stored) != entry["input_sha256"]:
             raise RenderError(2, "the batch input %s changed after plan" % entry["batch_id"], "re-run the command", kept=kept)
-    refs: Dict[str, str] = dict(plan["refs"]) if isinstance(plan.get("refs"), dict) else {}
-    if "refs" not in plan and plan["batches"]:   # a plan from before the refs moved to the plan: its first batch input has them
-        first_id = plan["batches"][0]["batch_id"]
-        refs = dict(_document(tp.input_path(out, STAGE, plan_id, first_id), out, tp.BATCH_INPUT_SCHEMA, "the batch input %s" % first_id, kept)["refs"])
-    return plan, inputs, refs
+    return plan, inputs, dict(plan["refs"])   # validate_plan requires refs, and no script reads a path from a batch input (W2 ruling 2, P0-7)
 
 
 def _read_parts(out: str, plan: Mapping[str, Any]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, List[str]], Dict[str, int]]:
@@ -369,8 +368,8 @@ class Run(object):
         self.rows: List[Row] = []
         self.ordered: List[Row] = []
         self.resolved: List[Dict[str, Any]] = []
-        self.groups: List[Dict[str, Any]] = []
-        self.assignments: Dict[str, Any] = {}
+        self.groups: List[Dict[str, Any]] = []      # every group, a fallback group with no ID (D8) included: its peers still route
+        self.assignments: Dict[str, Any] = {}       # the emitter's roles, for the groups that have an ID only
         self.baseline: Any = None
         self.baseline_path: Optional[str] = None
         self.baseline_note = "none"
@@ -556,53 +555,41 @@ def _delta_status(finding: Mapping[str, Any]) -> str:
     return status if status in ("NEW", "UPDATED", "UNCHANGED") else "NEW"
 
 
-def _risk_level(score: Any) -> str:
-    """The risk level that ``risk-scorer.md`` section 1b derives from a SARIF result's ``security-severity``."""
-    value = tachi_parsers.parse_score(score) if isinstance(score, str) else None
-    if value is None:
+def _risk_level(level: Optional[str]) -> str:
+    """The "Original Risk Level" of a fallback member (D8, P0-3), from what its result holds: ``properties.risk_level``, else ``security-severity``.
+
+    A word (``Critical``, ``Note``) stays as written. A score, which is all that ``security-severity`` ever is, becomes
+    its severity band through ``tachi_scoring.band``, after the score is put on the 0.1 grid inside 0.0 to 10.0 that the
+    band function takes. That function has four bands, so a score under 1.0 is Low and never Note. A result with neither
+    a level nor a score gets a dash.
+    """
+    if level is None:
         return DASH
-    return "Critical" if value >= 9 else "High" if value >= 7 else "Medium" if value >= 4 else "Low" if value >= 1 else "Note"
+    score = tachi_parsers.parse_score(level)
+    return level if score is None else ts.band(_grid(score))
 
 
 def _sarif_reference(text: str) -> Dict[str, Any]:
-    """The reference set of a plan that read ``threats.sarif`` (D8's fallback): each finding's text from its result.
+    """The reference set of a plan that read ``threats.sarif`` (D8's fallback): each finding's text from its own result.
 
-    The member set and the groups are ``parse_sarif_member_set``'s, as the planner read them. An IDs that only a legacy
-    peer reference names has no result, so its text is empty. There are no RESOLVED findings: a result that is
-    ``absent`` is dropped, and nothing here lists a resolved one.
+    The member set, the groups and each member's details are ``parse_sarif_member_set(..., with_details=True)``'s, the one
+    reader that the planner uses too, so both sides see the same findings and the same groups. A result gives its
+    component, threat, mitigation, risk level, layer and DFD kind whichever ID form it uses (``findingId/v1``, else
+    ``properties.id``), and a value it lacks is empty (the risk level is a dash). An ID that only a legacy peer reference
+    names has no result, so its text is empty. A group the file names no ID for stays in ``groups`` with a ``None`` ID,
+    because its peers still route (``_prepare`` passes only the named ones to the emitter). There are no RESOLVED
+    findings: a result that is ``absent`` is dropped, and nothing here lists a resolved one. Nothing is stripped or
+    escaped here, so that ``_refuse_forbidden_inputs`` sees each value as the file wrote it (P0-4).
     """
-    members = tachi_parsers.parse_sarif_member_set(text)["members"]
-    details: Dict[str, Dict[str, Any]] = {}
-    try:
-        results = json.loads(text)["runs"][0].get("results", [])
-    except (ValueError, KeyError, IndexError, TypeError, AttributeError):
-        results = []
-    for result in results if isinstance(results, list) else []:
-        try:
-            identifier = result["partialFingerprints"]["findingId/v1"]
-            if not tp.id_matches("finding", identifier):
-                continue
-            location = result["locations"][0]
-            logical = (location.get("logicalLocations") or [location.get("logicalLocation") or {}])[0]
-            properties = result.get("properties") if isinstance(result.get("properties"), dict) else {}
-            message = result.get("message") if isinstance(result.get("message"), dict) else {}
-        except (KeyError, IndexError, TypeError, AttributeError):
-            continue
-        kind = {value: key for key, value in KIND_OF_DFD_TYPE.items()}.get(logical.get("kind"), "")
-        details.setdefault(tp.canonical_finding_id(identifier), {
-            "component": logical.get("name") if isinstance(logical.get("name"), str) else "",
-            "type": kind, "threat": message.get("text") if isinstance(message.get("text"), str) else "",
-            "mitigation": message.get("markdown") if isinstance(message.get("markdown"), str) else "",
-            "risk_level": _risk_level(properties.get("security-severity")),
-            "layer": properties.get("maestro-layer") if isinstance(properties.get("maestro-layer"), str) else ""})
+    found = tachi_parsers.parse_sarif_member_set(text, with_details=True)
     rows = []
-    for member in sorted(members, key=tp.finding_sort_key):
-        found = details.get(member, {})
-        rows.append({"id": member, "component": found.get("component", ""), "threat": found.get("threat", ""),
-                     "mitigation": found.get("mitigation", ""), "risk_level": found.get("risk_level", DASH), "layer": found.get("layer", ""),
-                     "type": found.get("type", ""), "agentic_pattern": "none"})
+    for member in sorted(found["members"], key=tp.finding_sort_key):
+        own = found["details"].get(member, {})
+        rows.append({"id": member, "component": own.get("component") or "", "type": DFD_TYPE_OF_KIND.get(own.get("kind"), ""),
+                     "threat": own.get("threat") or "", "mitigation": own.get("mitigation") or "",
+                     "risk_level": _risk_level(own.get("risk_level")), "layer": own.get("layer") or "", "agentic_pattern": "none"})
     lacking = {row["id"]: ["delta_status"] for row in rows}  # S-12(b): the file has no place for a status, on any member
-    return {"open": rows, "resolved": [], "duplicates": [], "groups": tachi_parsers.parse_sarif_member_set(text)["groups"],
+    return {"open": rows, "resolved": [], "duplicates": [], "groups": found["groups"],
             "lacking": lacking, "flags": {finding_id: [tachi_parsers.FORM_LACKS_FLAG % "delta_status"] for finding_id in lacking}}
 
 
@@ -677,7 +664,15 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
             run.issues.append("Section 4a of threats.md, line %d: the row %s %s, so it is skipped" % (problem["line"], repr(problem["row"][:60]), problem["reason"]))
         run.groups = grouped["groups"]
     _refuse_forbidden_inputs(run, reference, os.path.basename(run.threats_path), kept)   # NFR-10: a value from an input is checked where it is taken
-    run.assignments = sc.correlation_assignments([(group["group_id"], group["members"]) for group in run.groups], open_ids)
+    # D8 (P0-3): only a group with an ID reaches the emitter, whose role assignment, ``correlation-*`` properties and ruling C's
+    # sentence all name it. A group the SARIF names no ID for (``group_id`` is ``None``) still routes its peers through
+    # ``run.groups`` (copy and divergence, D9), and the record counts it. No ID is invented.
+    named = [(group["group_id"], group["members"]) for group in run.groups if group["group_id"] is not None]
+    if len(named) != len(run.groups):
+        run.warn("correlation-group-unnamed", "%s gives no group ID to %d of its %d correlation groups, so their members carry no correlation "
+                 "properties and no correlation sentence. Their peers are still peers: a new or updated one copies its primary, and a "
+                 "carried one is compared with it" % (os.path.basename(run.threats_path), len(run.groups) - len(named), len(run.groups)))
+    run.assignments = sc.correlation_assignments(named, open_ids)
 
     # The baseline first: S-12(b) needs it to route and to supply a carried finding's component before the tag join.
     run.lacking = {finding_id: list(names) for finding_id, names in reference.get("lacking", {}).items()}
@@ -1504,7 +1499,8 @@ def _zone_of(run: Run, row: Row) -> str:
 
 
 def _render_sarif(run: Run, digest: str) -> str:
-    results = [sc.build_result(tool=TOOL, finding_id=row.finding_id, message=row.threat, markdown=row.mitigation or None,
+    # ``markdown`` is always written, an empty mitigation's empty string included: the shipped scorer files carry it (P0-8, NFR-1)
+    results = [sc.build_result(tool=TOOL, finding_id=row.finding_id, message=row.threat, markdown=row.mitigation or "",
                                level=sc.level_for_band(row.band), uri=run.uri, component=row.component, zone=_zone_of(run, row),
                                kind=row.kind, properties=_properties(row), correlation=run.assignments.get(row.canon))
                for row in run.ordered]

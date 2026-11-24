@@ -60,6 +60,9 @@ The groups of tests, by the task that turns them green:
 * ``test_carry_*``, ``test_readback_*``, ``test_refusal_*`` and ``test_backstop_*`` (section 28, W3's P0-1 and P0-4): a prose
   line that would forge structure, the from-disk read-back through ``read_baseline_scores``, a forbidden character in an
   input (exit 2, at intake) and in a staged file (exit 4, the whole-file backstop).
+* ``test_fallback_*``, ``test_cli_*`` and ``test_sarif_*`` (section 29, W3's P0-3, P0-7 and P0-8): D8's ``threats.sarif`` fallback on
+  copies of three shipped samples (the modern form, a file whose correlation groups have no ID, and the legacy ``properties.id``
+  form), the plan's own ``refs``, and ``message.markdown`` written for an empty mitigation.
 
 Standard library and pytest only, and Python 3.9 syntax.
 """
@@ -434,7 +437,7 @@ _REFERENCE = re.compile("|".join(re.escape(reference) for reference in tp.ESCAPE
 
 
 def decode(text):
-    """ADR-050 D3's closed decoder: exactly the references in ``tp.ESCAPE_REFERENCES``, in one left-to-right pass."""
+    """ADR-050 D3's closed decoder: exactly the nine references in ``tp.ESCAPE_REFERENCES``, in one left-to-right pass."""
     return _REFERENCE.sub(lambda match: tp.ESCAPE_REFERENCES[match.group(0)], text)
 
 
@@ -3351,6 +3354,20 @@ def test_carry_a_tilde_fence_line_in_a_rationale_keeps_sections_4_and_6_and_ever
     assert persisted_inputs(second)[key] == persisted_inputs(first)[key], "and run 2 carries it unchanged"
 
 
+def test_carry_a_tilde_fence_line_after_a_no_break_space_keeps_sections_4_and_6_and_every_owner(stage, renderer, tmp_path):
+    """The architect's W3 residual ruling: the guard looks past any whitespace but a newline, and the reader's structure tests look
+    past only spaces and tabs, so a Unicode space can't lead a fence past either. U+00A0 is not in step 10's set, so the part passes."""
+    nbsp = chr(0xA0)
+    first, second = carry_twice(stage, renderer, tmp_path, mutate=fence_the_prose(nbsp))
+    assert "\n%s&#126;~~\n" % nbsp in subsection_for(first.md, "S-2"), "Section 3 writes the line as a reference, after the same no-break space"
+    for project in (first, second):
+        assert not re.search(r"(?m)^[^\S\n]*~~~", project.md), "no line of the file opens a code fence, whatever whitespace leads it"
+    assert_the_carry_kept_everything(first, second)
+    key = ("S-2", "rationale.cvss")
+    assert re.search(r"\n%s~~~\n" % nbsp, persisted_inputs(first)[key]), "Section 6 keeps the line in the persisted text"
+    assert persisted_inputs(second)[key] == persisted_inputs(first)[key], "and run 2 carries it unchanged"
+
+
 def test_carry_a_tilde_fence_line_in_a_threat_text_keeps_sections_4_and_6_and_every_owner(stage, renderer, tmp_path):
     """A ``**Threat**:`` text that arrives from threats.md as ``&#10;~~~``: the parser decodes the reference, so the text has a line of its own."""
     specs = [dict(item, threat=item["threat"] + "&#10;~~~&#10;The text goes on.") if item["id"] == "S-2" else item for item in SPECS]
@@ -3569,9 +3586,12 @@ def test_refusal_a_baseline_row_of_a_finding_that_this_run_no_longer_lists_is_no
     assert RLO not in project.md and RLO not in json.dumps(project.sarif, ensure_ascii=False), "the stale row's text reached neither file"
 
 
-def sarif_fallback_project(stage_module, renderer_module, root, text=None):
-    """The nine-finding project whose threats.md is gone, so the plan reads the ``threats.sarif`` beside it (D8's fallback)."""
-    project = Project(stage_module, renderer_module, root)
+def sarif_fallback_project(stage_module, renderer_module, root, text=None, items=None):
+    """The nine-finding project whose threats.md is gone, so the plan reads the ``threats.sarif`` beside it (D8's fallback).
+
+    ``items`` is the project's scorer-item factory, for a ``threats.sarif`` whose findings are not the nine.
+    """
+    project = Project(stage_module, renderer_module, root, items=items)
     project.threats.unlink()
     (project.out / "threats.sarif").write_text(make_threats_sarif() if text is None else text, encoding="utf-8")
     return project
@@ -3682,3 +3702,289 @@ def test_backstop_a_forbidden_character_in_a_decoded_sarif_string_fails_closed(p
         res = project.render()
     assert_failed_closed(project, res, "the staged risk-scores.sarif holds the character U+%04X, which the part contract forbids, in " % ord(char))
     assert char not in res.err, "the message gives the code point and never the character"
+
+
+# =============================================================================
+# 29. P0-3, P0-7 and P0-8: the threats.sarif fallback, the plan's own refs and message.markdown (W3, lane FX0)
+# =============================================================================
+#
+# P0-3. When the plan reads ``threats.sarif`` (D8's fallback), the planner and the renderer must see the same findings and the
+# same groups, and the renderer must take each finding's text from its own result, whichever ID form the result uses. Two shipped
+# shapes failed that: a file whose correlation groups have no ID crashed the render (the emitter raises on an ID it was not given),
+# and the legacy form, with the ID only in ``properties.id``, rendered every finding blank, with no warning. D8's reading: a group
+# the file gives no ID still routes its peers (copy and divergence, D9), but its members carry no ``correlation-*`` property and no
+# ruling-C sentence, and the stage record warns ``correlation-group-unnamed`` with the count.
+#
+# These cases run copies of three shipped samples through plan, parts and render, in a temporary directory (nothing is written under
+# examples/). Each is read back against the sample itself, by plain lookups, so the oracle is the file and not the reader that the
+# renderer uses. The agent's parts are generic: the file has no Section 2, so every zone is an Input Issue and the run exits 5.
+#
+# P0-7. The plan's own ``refs`` are the renderer's refs. P0-8. ``message.markdown`` is always written, the empty string included.
+
+EXAMPLES = REPO_ROOT / "examples"
+FALLBACK_SHAPES = {   # shape -> the shipped threats.sarif that shows it
+    "modern": "agentic-app/sample-report/threats.sarif",             # findingId/v1; a mitigation, a layer and a DFD kind on every result
+    "unnamed": "maestro-reference/threats.sarif",                    # three correlation groups that the file gives no group ID
+    "legacy": "mobile-banking-app/sample-report/threats.sarif",      # the ID only in properties.id; no mitigation and no layer
+}
+UNNAMED_GROUPS = {"modern": 0, "unnamed": 3, "legacy": 0}
+UNNAMED_PEERS = (("T-7", "AG-7"), ("R-6", "AG-1"), ("I-7", "LLM-1"))   # maestro-reference's three groups: (primary, peer)
+KIND_WRITTEN = {"external-entity": "external-entity", "process": "process", "data-store": "data", "component": "process"}
+# What the renderer writes for each ``kind`` that a shipped threats.sarif has. ``data-store`` is a Data Store, which the scorer's file
+# writes as ``data``. The legacy form's ``component`` is no DFD kind, so the finding is a process, as it is when threats.md has no type.
+
+
+def shipped_sarif(shape):
+    return (EXAMPLES / FALLBACK_SHAPES[shape]).read_text(encoding="utf-8")
+
+
+def generic_scorer_item(finding_id):
+    """A valid scorer item for any finding ID: its category's default vector, numbers from the ID and one made-up zone."""
+    return scorer_item(generic_item(finding_id, "any", collections.defaultdict(lambda: ("Fallback Zone", "Semi-Trusted"))))
+
+
+def sarif_results_of(document):
+    """``{canonical ID: result}`` of a ``threats.sarif``, by plain lookups: ``findingId/v1``, else ``properties.id``; the first result of an ID wins."""
+    found = {}
+    for result in document["runs"][0]["results"]:
+        identifier = result.get("partialFingerprints", {}).get("findingId/v1") or result["properties"]["id"]
+        found.setdefault(canon(identifier), result)
+    return found
+
+
+def sarif_says(result):
+    """What a shipped ``threats.sarif`` result says about its own finding (D8's reading, restated by plain lookups on the three shapes).
+
+    The risk level is ``properties.risk_level``, else a dash. Only the legacy form writes one: the modern form writes its level as
+    ``properties.severity``, which D8's reading does not take, so its findings show a dash, as they did before the reader changed.
+    """
+    logical = result["locations"][0]["logicalLocations"][0]
+    return {"component": logical["name"], "kind": logical["kind"], "threat": result["message"]["text"],
+            "mitigation": result["message"].get("markdown", ""), "risk_level": result["properties"].get("risk_level", DASH),
+            "layer": result["properties"].get("maestro-layer", "Unclassified")}
+
+
+def planned_agents(project):
+    return {canon(finding_id) for entry in project.plan_json()["batches"] for finding_id in entry["finding_ids"]}
+
+
+def render_fallback(stage_module, renderer_module, root, text):
+    """Plan, score with generic parts and render the project whose only input is the ``threats.sarif`` ``text`` (D8's fallback).
+
+    Returns ``(project, result, seen)``. ``seen`` is what the renderer itself was asked while it ran: ``agents``, the IDs that its routing sends
+    to the agent, and ``joined``, the ``(ID, component)`` rows that its asset-tag join was given.
+    """
+    project = sarif_fallback_project(stage_module, renderer_module, root, text=text, items=generic_scorer_item)
+    seen = {"agents": None, "joined": None}
+    real_route, real_recompute = renderer_module._route, rules.recompute_tags
+
+    def route(run, reference):
+        routing = real_route(run, reference)
+        seen["agents"] = set(routing.to_agent)
+        return routing
+
+    def recompute(architecture_text, open_rows, matcher):
+        seen["joined"] = {(row["id"], row["component"]) for row in open_rows}
+        return real_recompute(architecture_text, open_rows, matcher)
+
+    project.prepare()
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(renderer_module, "_route", route)
+        patch.setattr(rules, "recompute_tags", recompute)
+        res = project.render()
+    return project, res, seen
+
+
+def shipped_fallback(shape, stage_module, renderer_module, tmp_path_factory):
+    text = shipped_sarif(shape)
+    project, res, seen = render_fallback(stage_module, renderer_module, tmp_path_factory.mktemp("fallback-" + shape), text)
+    return types.SimpleNamespace(shape=shape, text=text, source=json.loads(text), project=project, res=res, seen=seen)
+
+
+@pytest.fixture(scope="module")
+def fallback_modern(stage, renderer, tmp_path_factory):
+    return shipped_fallback("modern", stage, renderer, tmp_path_factory)
+
+
+@pytest.fixture(scope="module")
+def fallback_unnamed(stage, renderer, tmp_path_factory):
+    return shipped_fallback("unnamed", stage, renderer, tmp_path_factory)
+
+
+@pytest.fixture(scope="module")
+def fallback_legacy(stage, renderer, tmp_path_factory):
+    return shipped_fallback("legacy", stage, renderer, tmp_path_factory)
+
+
+@pytest.fixture(scope="module", params=sorted(FALLBACK_SHAPES))
+def fallback(request):
+    return request.getfixturevalue("fallback_" + request.param)
+
+
+def test_fallback_each_shape_shows_the_form_it_is_there_for(fallback_modern, fallback_unnamed, fallback_legacy):
+    """The premise of the cases below: if a sample stops showing its form, these fail instead of the cases passing for nothing."""
+    modern = fallback_modern.source["runs"][0]["results"] + fallback_unnamed.source["runs"][0]["results"]
+    legacy = fallback_legacy.source["runs"][0]["results"]
+    assert modern and all("findingId/v1" in result["partialFingerprints"] for result in modern)
+    assert legacy and all("partialFingerprints" not in result and "id" in result["properties"] for result in legacy), \
+        "the legacy form has the ID only in properties.id"
+    assert not [result for result in legacy if "markdown" in result["message"] or "maestro-layer" in result["properties"]]
+    assert {sarif_says(result)["kind"] for result in modern} == {"external-entity", "process", "data-store"}
+    groups = tachi_parsers.parse_sarif_member_set(fallback_unnamed.text)["groups"]
+    assert [group["group_id"] for group in groups] == [None, None, None], "three groups, and the file names none of them"
+    assert [(group["primary"], group["members"][1]) for group in groups] == list(UNNAMED_PEERS)
+
+
+def test_fallback_a_run_over_each_shape_finishes_and_the_planners_agents_are_the_renderers(fallback):
+    """D2: one partition. The planner reads the file through one path and the renderer through another, and they must name the same agent set."""
+    assert fallback.res.code == 5, fallback.res.describe()
+    members = set(sarif_results_of(fallback.source))
+    peers = {peer for _primary, peer in UNNAMED_PEERS} if fallback.shape == "unnamed" else set()
+    planned = planned_agents(fallback.project)
+    assert planned == members - peers, "a peer of an unnamed group is not dispatched either: its primary's values are copied"
+    assert fallback.seen["agents"] == planned
+    counts = fallback.project.record["counts"]
+    assert (counts["open"], counts["units"], counts["rendered"]) == (len(members), len(planned), len(members))
+
+
+def test_fallback_every_findings_identity_text_is_its_own_results(fallback):
+    """P0-3 (b): the legacy form rendered every finding as component ``Unspecified``, no threat, no mitigation and no risk level."""
+    results = {canon(key): value for key, value in results_by_id(fallback.project.sarif).items()}
+    source = sarif_results_of(fallback.source)
+    assert sorted(results, key=s2_key) == sorted(source, key=s2_key)
+    for finding_id, result in source.items():
+        said, written = sarif_says(result), results[finding_id]
+        logical = written["locations"][0]["logicalLocations"][0]
+        assert logical["name"] == said["component"], finding_id
+        assert logical["kind"] == KIND_WRITTEN[said["kind"]], finding_id
+        assert written["message"] == {"text": said["threat"], "markdown": said["mitigation"]}, "%s: text, and markdown always (P0-8)" % finding_id
+        assert written["properties"]["maestro-layer"] == said["layer"], finding_id
+        level = re.search(r"\*\*Original Risk Level\*\*: (.*?) \| \*\*Composite\*\*", subsection_for(fallback.project.md, finding_id)).group(1)
+        assert decode(level) == said["risk_level"], finding_id
+    assert not [finding_id for finding_id, result in source.items() if sarif_says(result)["component"] == "Unspecified"]
+
+
+def test_fallback_the_asset_tag_join_is_asked_about_each_findings_own_component(fallback):
+    """P0-3 (b): with no component the join matched nothing, so a finding's tags (and its CVSS) never followed its component."""
+    assert fallback.seen["joined"] == {(finding_id, sarif_says(result)["component"]) for finding_id, result in sarif_results_of(fallback.source).items()}
+
+
+def test_fallback_correlation_follows_d8_when_no_group_has_an_id(fallback):
+    """No result names a group, so none carries a ``correlation-*`` property or ruling C's sentence, and the record warns with the count."""
+    results = fallback.project.sarif["runs"][0]["results"]
+    assert not [key for result in results for key in result["properties"] if key.startswith("correlation-")]
+    assert not [result for result in results if "Correlated in" in result["message"]["text"]]
+    warnings = [warning for warning in fallback.project.record["warnings"] if warning["code"] == "correlation-group-unnamed"]
+    count = UNNAMED_GROUPS[fallback.shape]
+    if count:
+        assert len(warnings) == 1 and warnings[0]["detail"].startswith("threats.sarif gives no group ID to %d of its %d correlation groups" % (count, count)), warnings
+    else:
+        assert warnings == [], "a file with no group has nothing to warn about"
+
+
+def test_fallback_an_unnamed_group_still_routes_its_peers_so_each_copies_its_primary(fallback_unnamed):
+    results = {canon(key): value for key, value in results_by_id(fallback_unnamed.project.sarif).items()}
+    source = sarif_results_of(fallback_unnamed.source)
+    copied = ("security-severity", "cvss-base-score", "cvss-vector", "exploitability", "scalability", "reachability", "severity-band")
+    for primary, peer in UNNAMED_PEERS:
+        assert peer not in fallback_unnamed.seen["agents"] and primary in fallback_unnamed.seen["agents"], (primary, peer)
+        assert [results[peer]["properties"][key] for key in copied] == [results[primary]["properties"][key] for key in copied], (primary, peer)
+        assert results[peer]["message"]["text"] == sarif_says(source[peer])["threat"], "but the peer keeps its own text"
+        assert results[peer]["locations"][0]["logicalLocations"][0]["name"] == sarif_says(source[peer])["component"]
+    sc.self_check(fallback_unnamed.project.sarif["runs"][0]["results"], tool=TOOL, member_ids=sorted(source), assignments={}, resolved_ids=[],
+                  uri=URI)
+
+
+def test_fallback_only_a_group_with_an_id_reaches_the_emitter_and_the_others_are_counted(stage, renderer, tmp_path):
+    """The file names the first of its three groups: its two members get ``correlation-*`` and ruling C's sentence, the other four members get neither."""
+    document = json.loads(shipped_sarif("unnamed"))
+    named = {"T-7": "primary", "AG-7": "peer"}
+    for result in document["runs"][0]["results"]:
+        if result["partialFingerprints"]["findingId/v1"] in named:
+            result["properties"].update({"correlation-group": "CG-2", "correlation-role": named[result["partialFingerprints"]["findingId/v1"]],
+                                         "correlation-primary": "T-7"})
+    project, res, seen = render_fallback(stage, renderer, tmp_path, json.dumps(document))
+    assert res.code == 5, res.describe()
+    results = {canon(key): value for key, value in results_by_id(project.sarif).items()}
+    source = sarif_results_of(document)
+    assignments = {"T-7": sc.Correlation("CG-2", "primary", "T-7", ("AG-7",)), "AG-7": sc.Correlation("CG-2", "peer", "T-7", ())}
+    for finding_id, result in results.items():
+        properties = result["properties"]
+        found = assignments.get(finding_id)
+        if found is None:
+            assert not [key for key in properties if key.startswith("correlation-")] and result["message"]["text"] == sarif_says(source[finding_id])["threat"]
+            continue
+        assert (properties["correlation-group"], properties["correlation-role"], properties["correlation-primary"]) == (found.group, found.role, found.primary)
+        assert result["message"]["text"] == sc.correlated_message(sarif_says(source[finding_id])["threat"], found)
+    warnings = [warning for warning in project.record["warnings"] if warning["code"] == "correlation-group-unnamed"]
+    assert len(warnings) == 1 and warnings[0]["detail"].startswith("threats.sarif gives no group ID to 2 of its 3 correlation groups"), warnings
+    assert seen["agents"] == planned_agents(project) == set(source) - {"AG-7", "AG-1", "LLM-1"}, "all three groups route their peers, named or not"
+
+
+def test_refusal_a_forbidden_character_in_a_legacy_form_results_text_is_refused_in_the_fallback(stage, renderer, tmp_path):
+    """The legacy form reaches the renderer's intake check as the modern form does: the reader hands each value back as the file wrote it."""
+    char = FORBIDDEN["escape"]
+    document = json.loads(shipped_sarif("legacy"))
+    next(result for result in document["runs"][0]["results"] if result["properties"]["id"] == "S-1")["message"]["text"] += char
+    project = sarif_fallback_project(stage, renderer, tmp_path, text=json.dumps(document), items=generic_scorer_item)
+    project.earlier()
+    project.prepare()
+    assert_refused(project, project.render(), char, "threats.sarif", "S-1", "threat")
+
+
+def test_fallback_a_result_with_only_a_security_severity_shows_its_band_as_the_original_risk_level(stage, renderer, tmp_path):
+    """D8: the risk level is ``properties.risk_level``, else ``security-severity``, which is a score, so it is read as its severity band."""
+    project = sarif_fallback_project(stage, renderer, tmp_path)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert "**Original Risk Level**: Medium |" in subsection_for(project.md, "S-2"), "the synthetic file writes security-severity 6.0 and no risk level"
+
+
+RISK_LEVELS = [(None, DASH), ("Critical", "Critical"), ("High", "High"), ("Note", "Note"), ("critical", "critical"),
+               ("9.0", "Critical"), ("8.9", "High"), ("7.0", "High"), ("6.9", "Medium"), ("4.0", "Medium"), ("3.9", "Low"), ("0.0", "Low"),
+               ("10", "Critical"), ("12.5", "Critical"), ("-1", "Low"), ("8.95", "Critical"), (" 6.0 ", "Medium")]
+
+
+@pytest.mark.parametrize("level,expected", RISK_LEVELS, ids=[repr(case[0]) for case in RISK_LEVELS])
+def test_fallback_a_risk_level_is_a_word_as_written_a_score_as_its_band_and_nothing_as_a_dash(renderer, level, expected):
+    assert renderer._risk_level(level) == expected
+
+
+def test_fallback_a_score_is_banded_by_the_shipped_band_function_at_every_point_of_the_grid(renderer):
+    """The conversion is ``tachi_scoring.band`` and nothing of its own: it can't drift from the bands that Section 5 states."""
+    for tenth in range(0, 101):
+        score = Decimal(tenth) / 10
+        assert renderer._risk_level(str(score)) == ts.band(score), score
+
+
+def test_cli_a_plan_with_no_refs_is_refused_and_never_repaired_from_a_batch_input(project, renderer):
+    """P0-7: ``validate_plan`` requires ``refs``, so the old fallback to the first batch input's ``refs`` could not run. It is gone."""
+    project.plan()
+    path = project.plan_dir / "plan.json"
+    document = json.loads(path.read_text(encoding="utf-8"))
+    assert document["refs"] and project.batch_input("B001")["refs"], "the premise: both hold refs"
+    del document["refs"]
+    path.write_text(json.dumps(document), encoding="utf-8")
+    res = invoke(renderer, ["--out", project.out, "--plan", project.plan_id, "--plan-digest", tp.file_digest(str(path))], project.root)
+    assert res.code == 2 and "plan.json is not acceptable" in res.err, res.describe()
+    assert not (project.out / MD).exists() and not (project.plan_dir / "staged").exists()
+
+
+def test_cli_the_renderer_never_reads_a_batch_inputs_content(renderer):
+    """W2 ruling 2: no script reads a path or a ref from a batch input. The renderer checks each one's digest and that is all."""
+    names = {node.attr for node in ast.walk(ast.parse(RENDERER.read_text(encoding="utf-8"))) if isinstance(node, ast.Attribute)}
+    assert "BATCH_INPUT_SCHEMA" not in names
+
+
+def test_sarif_an_empty_mitigation_still_writes_message_markdown_as_the_empty_string(stage, renderer, tmp_path):
+    """P0-8 (NFR-1): shipped scorer files carry ``"markdown": ""`` for a finding with no mitigation, so dropping the key loses a field."""
+    text = edit_table_cell(make_threats_md(), "## 7. Recommended Actions", "S-2", "Mitigation", "")
+    project = Project(stage, renderer, tmp_path, threats_text=text)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    results = results_by_id(project.sarif)
+    assert results["S-2"]["message"] == {"text": by_id("S-2")["threat"], "markdown": ""}
+    assert list(results["S-2"]["message"]) == ["text", "markdown"]
+    assert [finding_id for finding_id, result in results.items() if "markdown" not in result["message"]] == [], "every result carries the key"
+    assert results["T-1"]["message"]["markdown"] == mitigation_of(by_id("T-1")), "and a mitigation that is there is written as it was"
+    sc.self_check(project.sarif["runs"][0]["results"], tool=TOOL, member_ids=OPEN_IDS, assignments={}, resolved_ids=RESOLVED_IDS, uri=URI)
