@@ -538,7 +538,7 @@ New program guidance is one of this runbook's refresh triggers (header).
 
 The privilege matrix lists each tachi agent's tools, model, shell command families, written paths and hosts, and each command's dispatches, written paths and child processes. It is section 8 of `CLAUDE_PERMISSIONS.md` in the tachi repository. That file is not installed into your project, so the link is pinned to a release:
 
-[Agent and command privilege matrix](https://github.com/davidmatousek/tachi/blob/v4.48.4/docs/standards/CLAUDE_PERMISSIONS.md#8-agent-and-command-privilege-matrix) <!-- x-release-please-version -->
+[Agent and command privilege matrix](https://github.com/davidmatousek/tachi/blob/v4.48.5/docs/standards/CLAUDE_PERMISSIONS.md#8-agent-and-command-privilege-matrix) <!-- x-release-please-version -->
 
 The pin moves only when tachi cuts a release. A post-release `main` install therefore sees the previous release's matrix, which can differ from the agents you installed. No matrix exists before the first release that carries section 8.
 
