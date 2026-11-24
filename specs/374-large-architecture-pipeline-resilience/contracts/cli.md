@@ -18,7 +18,7 @@ Orchestrator fences pass literal arguments only (C6). `PLAN` below stands for `-
 |---|---|---|
 | 0 | done | continue |
 | 1 | an input is missing or unreadable | stop and print the error |
-| 2 | a validation, usage or guard failure; a plan digest or pointer mismatch; or Python below 3.9 | stop, and run the fail step if a plan exists, with three exceptions (below) |
+| 2 | a validation, usage or guard failure; a plan digest or pointer mismatch; a forbidden character in an input (P0-4); or Python below 3.9 | stop, and run the fail step if a plan exists, with three exceptions (below) |
 | 3 | batches are pending (`reconcile` only) | dispatch exactly the listed batches, then reconcile |
 | 4 | unrecoverable: a cap or the budget is exhausted, or a completeness or parity check failed | run the fail step |
 | 5 | done, with warnings (undeclared paths, FR-E.10, R-24, a reissued ID) | print the warnings and continue |
@@ -30,7 +30,7 @@ Orchestrator fences pass literal arguments only (C6). `PLAN` below stands for `-
 
 | Invocation | Exit codes |
 |---|---|
-| `python3 scripts/tachi-stage.py plan --stage S --out DIR --date YYYY-MM-DD [--threats FILE] [--risk-scores FILE] [--baseline-dir DIR] [--architecture PATH] [--target DIR]` → `{plan_id, plan_digest, waves: [[{batch_id, input_path}]]}`. `--threats` is required except for `threat-model`, the run-level plan, which plans no units. `--architecture` is a candidate path that the shared resolver checks in code (D7). A candidate it refuses, whatever check fails, syntactic ones included, is left out of `refs`, printed on stderr and recorded as the plan's `architecture_warning`, and `plan` still exits 0 (ruled at W2) | 0, 1, 2 |
+| `python3 scripts/tachi-stage.py plan --stage S --out DIR --date YYYY-MM-DD [--threats FILE] [--risk-scores FILE] [--baseline-dir DIR] [--architecture PATH] [--target DIR]` → `{plan_id, plan_digest, waves: [[{batch_id, input_path}]]}`. `--threats` is required for `risk-score`. `compensating-controls` requires `--risk-scores` and `--target` instead, and reaches `threats.md` through `risk-scores.md`'s validated `source_file` ("Readings ruled at W3", below). `threat-model`, the run-level plan, plans no units. `--architecture` is a candidate path that the shared resolver checks in code (D7). A candidate it refuses, whatever check fails, syntactic ones included, is left out of `refs`, printed on stderr and recorded as the plan's `architecture_warning`, and `plan` still exits 0 (ruled at W2) | 0, 1, 2 |
 | `python3 scripts/tachi-stage.py reconcile --stage S --out DIR PLAN` → `{status: complete \| pending \| exhausted, plan_digest, done, waves, exhausted: [{batch_id, finding_ids}]}` | 0, 1, 2, 3, 4 |
 | `python3 scripts/tachi-stage.py fail --stage S --out DIR PLAN --reason agent-not-spawned \| unrecoverable-batch \| check-failed \| render-failed [--detail TEXT]` → `{moved, restored, record}`. `--detail` is at most 500 characters and is validated as a string field | 0; 2 if a guard refuses a move or the digest differs (the record is still written) |
 | `python3 scripts/render-risk-scores.py --out DIR PLAN`, and `render-compensating-controls.py` with the same arguments | 0, 1, 2, 4, 5 |
@@ -85,3 +85,14 @@ T017's tests pin these readings for T018. The plan's halving and retry readings 
   - The pre-check that every other pointer gets (`tachi_parts.path_problem`, which exits 2) doesn't apply to `--architecture`. A control character, backslash or backtick is a refused candidate, as it is for `architecture-source`, and nothing in D7 stops a run.
   - stderr keeps its `WARNING` line, which names the candidate in escaped form and the failed check.
 - **The renderers** read `refs` and `architecture_warning` from the plan, never from a batch input (`part-files.md`, "Readings ruled at W2").
+
+### Readings ruled at W3 (2026-11-23)
+
+- **`plan --stage compensating-controls`** (T036, as built):
+  - `--risk-scores FILE` and `--target DIR` are required, and either one missing exits 2, because every evidence file resolves under the target (ADR-050 D7). A `--target` that isn't a directory exits 1, and so does a `--risk-scores` that names nothing, unless `risk-scores.sarif` lies beside it: `plan` then reads the SARIF (D8's fallback, AR-T2), and `refs.risk_scores` and `inputs.risk_scores` name the file it read.
+  - `threats.md` is reached only through `risk-scores.md`'s frontmatter `source_file`, validated by `check_run_file` (D7, D8). `--threats` is optional and unnecessary, and the command passes none. One that names another file than `source_file` exits 2, because one stage reads one threat model.
+  - When `source_file` can't be used, the plan has no `refs.threats` and no `inputs.threats`, each unit holds the finding ID only, nothing is carried, and a `--threats` given is ignored. stderr says so, and `plan` still exits 0.
+  - `--baseline-dir` may name a run directory or a file in one, on both stages (D9).
+  - A finding whose Section 7 has no Status column is scanned fresh, and nothing is carried for it (ADR-050 D2).
+- **Why `threats.md` wasn't reached has no plan key.** `plan` prints the reason on stderr only. The renderer takes reachability from the plan alone, `refs.threats` and `inputs.threats`, and never resolves `source_file` a second time to find a threat model. For its stage record it re-derives the reason with the planner's reading of `source_file` and `check_run_file`. Where that check now passes, the reason says that the plan holds no `threats.md`. A test runs both readings of `source_file` over the same forms and requires the same result.
+- **No `--architecture`, on either stage:** `refs` holds no `architecture`, and `plan` never fills it from D7's chain or from a snapshot. The agents read the run's snapshot, and the renderer resolves the body line and then the default (ADR-050 D7).

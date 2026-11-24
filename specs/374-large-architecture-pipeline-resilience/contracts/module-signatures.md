@@ -11,6 +11,7 @@
 - **Additions ruled at W2 (2026-11-23), all additive:** `BaselineRow.component`, `.threat` and `.risk_level`; `ScorerRouting.status`; `route_scorer_units(..., lacking=None)`; `parse_markdown_table`'s `row_lines` and `keep_bold` (lane P's, recorded here); and `sarif_common.resolve_explicit`. The scorer's closed flag vocabulary gains four strings.
 - **Additions ruled at the P0 checkpoint (2026-11-23, T061), all additive:** `BaselineResolution.file_reasons` (R1b's, named in T042's commit and recorded here, P0-12); `parse_sarif_member_set(..., with_details=False)` (P0-3); `tachi_parts.forbidden_character` (P0-4); and `"3a"` among `VectorCheck.step`'s values (P0-2). The comments on `BaselineRow.tags_used` and `.scored_on` now read "whenever §6 records them" (P0-2), which widens what the reader fills without changing a type.
 - **Additions ruled at W3 (2026-11-23), from P0-6 and the PM's W3 ruling 1, all additive:** `VectorCheck.assessed`, last, defaulting to `None`. `peer_divergence` keeps its signature and now also serves NEW and UPDATED peers. The controls `matrix_row`'s form is pinned in the persisted-inputs format below, with no change to a type.
+- **From the W3 sweep (2026-11-23), also additive:** `parse_sarif_member_set`'s return gains `details` only with `with_details=True`, and each entry carries `kind` too (FX0, named in `7d133c6`); `match_heading` gains `outside_fences=False`, keyword-only (from T087's observation). The fallback risk label is pinned under `details`, with no new function.
 
 **Shared conventions.**
 - Every module has `from __future__ import annotations` and runs on Python 3.9 (S-11). Annotations use `typing` forms, so nothing here needs 3.10.
@@ -333,6 +334,7 @@ def decode_references(text: str) -> str: ...
 def parse_correlation_groups(content: str, member_ids: Optional[Iterable[str]] = None) -> dict: ...
 def parse_sarif_member_set(sarif_text: str, *, with_scores: bool = False, with_details: bool = False) -> dict: ...
 def parse_controls_assessment_inputs(content: str) -> dict: ...
+def match_heading(pattern: str, text: str, *, outside_fences: bool = False) -> Optional[int]: ...  # existing; W3 adds the keyword
 ```
 
 - **`decode_references` (T033)** is D3's one closed decoder.
@@ -352,7 +354,12 @@ def parse_controls_assessment_inputs(content: str) -> dict: ...
   - `members` are canonical IDs in result order, from `findingId/v1`, plus legacy peer references. A legacy reference is an allow-listed ID at the start of a `relatedLocations` entry's `message.text`, followed by `: `, and each one is grouped under its result.
   - `groups` take the shape `parse_correlation_groups` returns. `group_id` comes from the `correlation-group` property, and is `None` where the file names none.
   - `scores` is filled only with `with_scores=True`, for `risk-scores.sarif`: `{id: {"composite": Decimal or None, "band": str or None}}`, read across the property names the shipped files use.
-  - **`details` (ruled at the P0 checkpoint, 2026-11-23, P0-3)** is filled only with `with_details=True`: `{id: {...}}`, one entry per member that has its own result, in either ID form. It holds D8's reading of that result: `component` (`logicalLocations[0].name`, else `properties.component`), `threat` (`message.text`), `mitigation` (`message.markdown`), `risk_level` (`properties.risk_level`, else `security-severity`) and `layer` (`maestro-layer`), each `None` when the result holds none. A member that only a legacy peer reference names has no entry. The planner's fallback units (R1b) and the renderer's fallback reference set (R1) both read it, so neither reads a result a second way. Any further key, such as the DFD kind the renderer reads from the same result, is named in the owning lane's commit, as the freeze asks.
+  - **`details` (ruled at the P0 checkpoint, 2026-11-23, P0-3; amended at W3 from FX0's reader)** is present only with `with_details=True`. The default return has no `details` key, so its dict is what it was, and a caller that forgets the flag gets a `KeyError`, never a silent blank. It is `{id: {...}}`, one entry per member that has its own result, in either ID form. The first kept result of an ID wins, and a member that only a legacy peer reference names has no entry, so a caller iterates `members` and looks each one up with `details.get(id, {})`.
+    - Each entry holds D8's reading of that result: `component` (`logicalLocations[0].name`, else `properties.component`), `threat` (`message.text`), `mitigation` (`message.markdown`), `risk_level` (`properties.risk_level`, else `security-severity`), `layer` (`maestro-layer`) and `kind` (`logicalLocations[0].kind`, the logical location's kind as written, such as `process` or `data-store`).
+    - A value is the string as written: unstripped, unescaped and unchecked, so the renderer's P0-4 intake sees it. It is `None` when the result holds none, and a blank string or a non-string counts as none.
+    - An absent mitigation is `None`. The renderer writes `""` for it as `message.markdown`, which is always written (P0-8).
+    - The planner's fallback units (R1b, R3a) and the renderer's fallback reference set (R1) both read it, so neither reads a result a second way. A unit row takes `component`, `threat`, `risk_level` and `mitigation`, and leaves out one that is `None`, as `_unit_row` leaves out what a finding lacks.
+    - **The risk label (confirmed at W3).** Every reader of `details` turns `risk_level` into the finding's label the same way, so a planner's unit and the renderer's row agree. A string that `tachi_parsers.parse_score` doesn't read as a finite number is kept as written, such as the band word `High` or `Note`. A score is clamped to 0.0–10.0, rounded with `tachi_scoring.q1` and banded with `tachi_scoring.band`, as the renderer's `_risk_level` and `_grid` do. `None` gives no label: the unit leaves the key out, and the renderer writes `—`. `tachi-stage.py` keeps one local copy for both stages' fallbacks, and a test runs the planner's and the renderer's labels over the shipped samples and the edges `8.95`, `6.95`, `-1`, `10.5`, `NaN` and `High`.
   - **A group whose `group_id` is `None` (ruled at the P0 checkpoint, P0-3)** still routes its peers (D9), but carries no `correlation-*` property and no ruling-C sentence: the renderer passes only named groups to `sarif_common.correlation_assignments`, and its stage record warns `correlation-group-unnamed`, with the count (ADR-050 D8).
   - Results whose `baselineState` or `baseline-state` property is `absent` are dropped, and no hash is ever read.
   - It raises `ValueError` on JSON that doesn't parse and on an empty extraction, so the stage stops before dispatch (KB 22).
@@ -365,6 +372,13 @@ def parse_controls_assessment_inputs(content: str) -> dict: ...
   - Each item is the controls payload as `contracts/part-files.md` keys it, without `finding_id`, decoded. Narrative values keep their slot tokens, and evidence-class values come back as written.
   - A pre-1.1 file, which has no `### Assessment Inputs`, gives `{"inputs": {}, "errors": []}`.
   - A row whose field isn't in the controls payload's closed key set goes to `errors`.
+  - It finds `### Assessment Inputs` with `match_heading(..., outside_fences=True)` (ruled at W3), so a quoted snippet in §3 can't stand in for it.
+- **`match_heading` (existing; `outside_fences` ruled at W3, 2026-11-23, from T087's observation)** returns the 0-based index of the first line that `pattern`, a line-anchored regex, matches, or `None`. The default is today's one search over the whole text, so every existing caller is unchanged. With `outside_fences=True` it tests the lines, split on `\n` only, one at a time, and skips every line of a fenced code block, the fence lines included:
+  - a fence opens on a run of at least three backticks or three tildes, after spaces and tabs only. A backtick run with another backtick later on its line opens none;
+  - it closes only on a run of the same character at least as long as the opener's, followed by nothing but spaces, tabs or a `\r`;
+  - an unclosed fence runs to the end of the text, so no heading after it is found.
+
+  Every reader that a renderer's from-disk checks or the next run rely on passes `True` (ADR-050 D3, "Finding a section"): `parse_controls_assessment_inputs`, and every section lookup in both renderers' `_check_staged`. The extractors keep the default until their follow-up.
 
 ## `scripts/sarif_common.py`: one W2 addition (lane R0b, ruled at W2, 2026-11-23)
 
