@@ -716,6 +716,15 @@ HASH_SUFFIX = ":1"
 REGION = {"startLine": 1}
 FINGERPRINT_KEYS = ("primaryLocationLineHash", "findingId/v1")
 FLAG_PROPERTIES = {"risk-scores.sarif": "score-flags", "compensating-controls.sarif": "integrity-flags"}
+# D8, ruled at W3 (2026-11-23, from T053; it settles P0-10). The self-check's RESOLVED scan reads what a renderer
+# composes or takes as a closed value. A property that carries text copied from an input is skipped, in the one
+# file that writes it: the scorer's owner (a person's text) and the controls file's evidence (the scanned
+# repository's own snippets and paths) and recommendation. An ID in copied text is a mention, not a reference.
+# Keyed by driver name, as `self_check` takes it. The threats file has none until PR 2.
+COPIED_TEXT_PROPERTIES = {
+    TOOL_NAMES["risk-scores.sarif"]: ("risk-owner",),
+    TOOL_NAMES["compensating-controls.sarif"]: ("control-evidence", "recommendation"),
+}
 EVIDENCE_MESSAGE = "Control evidence: {category} detected in {file}"
 LEVELS = ("error", "warning", "note", "none")
 FORBIDDEN_RESULT_KEYS = ("guid", "correlationGuid", "fingerprints", "baselineState")
@@ -1153,13 +1162,21 @@ def _shape_problems(result: object) -> List[str]:
     return out
 
 
-def _strings_that_name_findings(result: Mapping[str, Any]) -> Iterable[Tuple[str, str]]:
-    """``(where, text)`` for every place a result may name a finding: message, properties, evidence."""
-    yield "message", result["message"]["text"]
-    if "markdown" in result["message"]:
-        yield "message.markdown", result["message"]["markdown"]
+def _strings_that_name_findings(
+    result: Mapping[str, Any], copied: Sequence[str] = ()
+) -> Iterable[Tuple[str, str]]:
+    """``(where, text)`` for every string that a renderer composes or takes as a closed value (D8).
+
+    That is ``findingId/v1`` and every property, except the top-level ones in ``copied``
+    (``COPIED_TEXT_PROPERTIES``). Text copied from an input is not read, because an ID in it is a
+    mention and not a reference: ``message.text`` and ``message.markdown`` (the reference set's
+    threat and mitigation; ruling C's sentence has its own exact check), the ``relatedLocations``
+    messages, and the ``copied`` properties.
+    """
     yield "findingId/v1", result["partialFingerprints"][FINGERPRINT_KEYS[1]]
-    stack: List[Tuple[str, Any]] = [("properties", result["properties"])]
+    stack: List[Tuple[str, Any]] = [
+        ("properties.%s" % key, item) for key, item in result["properties"].items() if key not in copied
+    ]
     while stack:
         where, value = stack.pop()
         if isinstance(value, str):
@@ -1168,8 +1185,6 @@ def _strings_that_name_findings(result: Mapping[str, Any]) -> Iterable[Tuple[str
             stack.extend(("%s.%s" % (where, key), item) for key, item in value.items())
         elif isinstance(value, (list, tuple)):
             stack.extend(("%s[%d]" % (where, index), item) for index, item in enumerate(value))
-    for entry in result.get("relatedLocations", ()):
-        yield "relatedLocations", entry["message"]["text"]
 
 
 def _id_token_pattern(ids: Iterable[str]) -> "re.Pattern[str]":
@@ -1201,11 +1216,16 @@ def self_check(
     * every ``primaryLocationLineHash`` is tachi's own for ``tool`` and the ID, and no two
       present results share one (the error names both IDs); every ``ruleId`` is the ID's rule;
     * every result has the one ``uri`` (``uri``, when given);
-    * no RESOLVED ID (``resolved_ids`` less the member set) appears in a message (its markdown
-      included), a property or a ``relatedLocations`` entry, and no ``relatedLocations`` entry
-      names a finding or sits outside the controls file, and every ``relatedLocations`` uri
-      passes ``tachi_parts.path_problem``, the resolver's own relative-path rule (the error names
-      the finding and the failed check);
+    * no RESOLVED ID (``resolved_ids`` less the member set) appears in a string that a renderer
+      composes or takes as a closed value: ``findingId/v1`` and every property, except copied
+      text. An ID in copied text is a mention, not a reference (ruled at W3, settling P0-10), so
+      the scan skips ``message.text`` and ``message.markdown`` (ruling C's sentence keeps its own
+      exact check, below), the ``relatedLocations`` messages, and the properties that
+      ``COPIED_TEXT_PROPERTIES`` lists for ``tool``: the scorer's ``risk-owner``, and the
+      controls file's ``control-evidence`` and ``recommendation``;
+    * no ``relatedLocations`` entry names a finding or sits outside the controls file, and every
+      ``relatedLocations`` uri passes ``tachi_parts.path_problem``, the resolver's own
+      relative-path rule (the error names the finding and the failed check);
     * every ``correlation-primary`` and every group member is a result, with one primary per
       group, every correlated result's message ends with ruling C's sentence, and an
       uncorrelated result carries neither the keys nor the sentence.
@@ -1275,8 +1295,9 @@ def self_check(
 
     if resolved:
         pattern = _id_token_pattern(resolved)
+        copied = COPIED_TEXT_PROPERTIES.get(tool, ())
         for finding_id, result in by_id.items():
-            for where, text in _strings_that_name_findings(result):
+            for where, text in _strings_that_name_findings(result, copied):
                 hit = pattern.search(text)
                 if hit:
                     problems.append(

@@ -3239,16 +3239,19 @@ def detail_result(finding_id, form="fingerprint", name=None, text=None, markdown
 
 def own_text(result):
     """D8's reading of one result, written out here and apart from the reader that the planner uses: the first usable string for each
-    detail (a missing key, a blank string and a value that isn't a string are no value)."""
+    detail (a missing key, a blank string and a value that isn't a string are no value). The logical location is the first of
+    ``logicalLocations``, else the singular ``logicalLocation`` that tachi's older scorer and controls files write, and the risk level is
+    ``risk_level``, else ``severity``, else ``security-severity`` (ruled at W3: a word comes before a score)."""
     properties = result.get("properties") or {}
-    logical = ((result.get("locations") or [{}])[0].get("logicalLocations") or [{}])[0]
+    location = (result.get("locations") or [{}])[0]
+    logical = (location.get("logicalLocations") or [location.get("logicalLocation") or {}])[0]
     message = result.get("message") or {}
 
     def first(*values):
         return next((value for value in values if isinstance(value, str) and value.strip()), None)
 
     return {"component": first(logical.get("name"), properties.get("component")), "threat": first(message.get("text")),
-            "risk_level": first(properties.get("risk_level"), properties.get("security-severity")),
+            "risk_level": first(properties.get("risk_level"), properties.get("severity"), properties.get("security-severity")),
             "mitigation": first(message.get("markdown")), "layer": first(properties.get("maestro-layer"))}
 
 

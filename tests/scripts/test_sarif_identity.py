@@ -31,6 +31,9 @@ T049 and T052, T142 and the message text: the renderers' files
 PM W3 ruling 2, gaps A and C, and T052's evidence-URI finding: what both renderers share
 20. The shared rules table (``RULES``, ``build_rules``) against both 1.1 templates
 
+The architect's W3 ruling d, question 9 (P0-10): what the RESOLVED scan reads
+21. The scan reads what a renderer composes, and not text it copies (the scorer's renderer drives the last cases)
+
 Section 11 also holds the guard that an evidence URI is relative, and section 12 the driver's ``version``.
 
 The fake filesystem is the offline stand-in for a case-insensitive volume (KB 24): it keeps each
@@ -1478,18 +1481,13 @@ def add_related(result, entries):
     result.update(tail)
 
 
-@pytest.mark.parametrize("where", ["message", "property", "evidence"])
-def test_a_resolved_id_may_appear_nowhere(where):
-    results, assignments = build_run(tool=CONTROLS)
-    victim = results[0]
-    if where == "message":
-        victim["message"]["text"] += " See also R-9."
-    elif where == "property":
-        victim["properties"]["notes"] = ["fine", {"deep": "relates to R-09"}]
-    else:
-        add_related(victim, [evidence_entry("Control evidence: logging-audit detected in R-9")])
-    problems = problems_of(results, assignments, tool=CONTROLS)
-    assert any("RESOLVED finding" in p and "R-9" in p.replace("R-09", "R-9") for p in problems), problems
+@pytest.mark.parametrize("tool", [SCORER, CONTROLS, THREATS], ids=["risk-scores", "compensating-controls", "threats"])
+def test_a_resolved_id_may_not_appear_in_a_property_however_deep(tool):
+    """The scan reads every property that a renderer composes (Section 21 holds what it does not read: copied text)."""
+    results, assignments = build_run(tool=tool)
+    results[0]["properties"]["notes"] = ["fine", {"deep": "relates to R-09"}]
+    problems = problems_of(results, assignments, tool=tool)
+    assert "S-1: the RESOLVED finding R-09 appears in properties.notes[1].deep" in problems, problems
 
 
 def test_a_resolved_id_that_a_member_also_uses_is_not_resolved_for_this_check():
@@ -1499,8 +1497,10 @@ def test_a_resolved_id_that_a_member_also_uses_is_not_resolved_for_this_check():
 
 def test_a_resolved_id_inside_another_token_or_a_uri_is_not_a_hit():
     results, assignments = build_run()
-    results[4]["message"]["text"] += " Mentions R-90, XR-9 and R-9x."  # AG-5 is uncorrelated
+    results[4]["properties"]["notes"] = "Mentions R-90, XR-9, R-9x and R-9-2."  # AG-5 is uncorrelated; a property is read
     check(results, assignments)
+    results[4]["properties"]["notes"] += " And R-9 itself."
+    assert "AG-5: the RESOLVED finding R-9 appears in properties.notes" in problems_of(results, assignments)
 
 
 def test_a_related_location_that_names_a_finding_is_refused():
@@ -3068,10 +3068,9 @@ def test_the_self_check_accepts_markdown_that_only_looks_like_a_path(text):
     check([make_result("T-2", markdown=text)], {}, members=["T-2"], resolved=[])
 
 
-def test_the_self_check_refuses_a_resolved_id_in_markdown_and_not_one_inside_another_token():
-    result = make_result("T-2", markdown="This is related to S-9, which was fixed.")
-    assert any("S-9" in problem and "markdown" in problem for problem in problems_of([result], {}, members=["T-2"], resolved=["S-9"]))
-    check([make_result("T-2", markdown="See S-90 and AS-9 for the background.")], {}, members=["T-2"], resolved=["S-9"])
+def test_the_self_check_reads_no_markdown_for_a_resolved_id():
+    """The mitigation is copied text: an ID in it is a mention and not a reference (ruled at W3, P0-10; Section 21)."""
+    check([make_result("T-2", markdown="This is related to S-9, which was fixed.")], {}, members=["T-2"], resolved=["S-9"])
 
 
 @pytest.mark.parametrize("message", [
@@ -3555,3 +3554,228 @@ def test_the_rules_are_new_on_every_call_so_a_caller_cannot_change_the_table():
     changed[0]["relationships"].append({})
     changed[0]["shortDescription"]["text"] = "changed"
     assert json.dumps(sc.build_rules(EVERY_CATEGORY)) == before
+
+
+# =============================================================================
+# 21. The RESOLVED scan reads what a renderer composes, and not text it copies (ADR-050 D8; ruled at W3 from T053; P0-10)
+# =============================================================================
+#
+# T-3 is RESOLVED in these cases, and it is none of ``MEMBERS``. An ID in text that a renderer copies from an input is a
+# mention, not a reference: a threat or a mitigation (the reference set's), a person's owner, a snippet or a path in the
+# scanned repository, a recommendation. The self-check lets it pass, so a repository that annotates its code with finding IDs
+# can't fail every baseline-aware render with exit 4. The IDs, the correlation keys and the flags that a renderer composes
+# still may not name a RESOLVED finding. The first cases need no renderer. The last ones drive the scorer's renderer, on the
+# project harness of Section 16, where T-3 is in Section 4c. None of them needs the controls renderer.
+
+COPIED_PROPERTIES = {  # the ruling's table, written out here and not imported: each file skips the text that its renderer copies
+    SCORER: ("risk-owner",),
+    CONTROLS: ("control-evidence", "recommendation"),
+}
+FLAG_NAMES = {SCORER: "score-flags", CONTROLS: "integrity-flags"}
+EACH_FILE_THAT_COPIES_TEXT = pytest.mark.parametrize("tool", [SCORER, CONTROLS], ids=["risk-scores", "compensating-controls"])
+
+
+def mention_in_threat(result):
+    """``message.text``, before ruling C's sentence when the result is correlated (the text ends with the sentence)."""
+    own, sentence, tail = result["message"]["text"].partition(" Correlated in ")
+    result["message"]["text"] = own + " It is what T-3 once was." + sentence + tail
+
+
+def mention_in_mitigation(result):
+    result["message"]["markdown"] = "Rotate the token, the fix that closed T-3."
+
+
+def mention_in_owner(result):
+    result["properties"]["risk-owner"] = "T-3 team"
+
+
+def mention_in_snippet(result):
+    result["properties"]["control-evidence"] = [{"file": "src/auth.py", "line": 4, "snippet": "# mitigates T-3\nverify(token)"}]
+
+
+def mention_in_evidence_path(result):
+    """The path that the renderer writes in both places: the ``control-evidence`` entry and the ``relatedLocations`` entry."""
+    path = sc.ResolvedPath("docs/T-3.md", "docs/T-3.md")
+    result["properties"]["control-evidence"] = [{"file": path.path, "line": 1, "snippet": "A design note."}]
+    add_related(result, [sc.evidence_location(0, "authentication", path, 1)])
+
+
+def mention_in_recommendation(result):
+    result["properties"]["recommendation"] = "**What to Implement**: Redo the check that T-3 once had."
+
+
+MENTIONS = [  # (case, the file whose renderer copies this text, how the mention gets in)
+    ("risk-scores-threat", SCORER, mention_in_threat),
+    ("risk-scores-mitigation", SCORER, mention_in_mitigation),
+    ("risk-scores-owner", SCORER, mention_in_owner),
+    ("controls-threat", CONTROLS, mention_in_threat),
+    ("controls-mitigation", CONTROLS, mention_in_mitigation),
+    ("controls-snippet", CONTROLS, mention_in_snippet),
+    ("controls-evidence-path", CONTROLS, mention_in_evidence_path),
+    ("controls-recommendation", CONTROLS, mention_in_recommendation),
+]
+
+
+@pytest.mark.parametrize("tool,plant", [pytest.param(tool, plant, id=case) for case, tool, plant in MENTIONS])
+def test_a_resolved_id_in_text_that_a_renderer_copies_is_a_mention_and_passes(tool, plant):
+    """Every result of the run, correlated or not, carries the mention, so primaries and peers are both covered."""
+    results, assignments = build_run(tool=tool)
+    assert {assignment.role for assignment in assignments.values()} == {"primary", "peer"}
+    for result in results:
+        plant(result)
+        assert "T-3" in json.dumps(result), "the mention is in the result"
+    check(results, assignments, tool=tool, resolved=["T-3"])
+
+
+def test_a_threat_that_names_a_resolved_id_still_ends_with_ruling_cs_sentence_exactly():
+    """The sentence keeps its own exact check against the member set, whatever the text before it says."""
+    results, assignments = build_run()
+    primary = results[0]
+    assert assignments["S-1"].role == "primary"
+    mention_in_threat(primary)
+    primary["message"]["text"] = primary["message"]["text"].replace("peers T-2.", "peers T-2, T-3.")
+    problems = problems_of(results, assignments, resolved=["T-3"])
+    assert any(p.startswith("S-1: the message does not end with ruling C's sentence") for p in problems), problems
+
+
+def test_the_properties_that_carry_copied_text_are_the_ones_the_ruling_names():
+    assert sc.COPIED_TEXT_PROPERTIES == COPIED_PROPERTIES
+
+
+@pytest.mark.parametrize("name,tool", [("risk-scores.sarif", SCORER), ("compensating-controls.sarif", CONTROLS)], ids=["risk-scores", "compensating-controls"])
+def test_each_skipped_property_is_one_that_the_files_template_writes(name, tool):
+    """A template rename can't leave a stale skip behind: every name is a property of the 1.1 template's results."""
+    document = json.loads((SCHEMAS / name).read_text(encoding="utf-8"))
+    written = {key for result in document["runs"][0]["results"] for key in result["properties"]}
+    assert set(COPIED_PROPERTIES[tool]) <= written, sorted(written)
+
+
+# --- what the scan still reads ------------------------------------------------------------------------------------------
+
+@EACH_FILE_THAT_COPIES_TEXT
+def test_a_correlation_key_that_names_a_resolved_id_is_still_refused(tool):
+    results, assignments = build_run(tool=tool)
+    assert assignments["T-2"].role == "peer"
+    results[1]["properties"]["correlation-primary"] = "T-3"
+    problems = problems_of(results, assignments, tool=tool, resolved=["T-3"])
+    assert "T-2: the RESOLVED finding T-3 appears in properties.correlation-primary" in problems, problems
+
+
+@EACH_FILE_THAT_COPIES_TEXT
+def test_a_result_for_a_resolved_finding_is_still_refused_in_findingid_v1(tool):
+    results, assignments = build_run(tool=tool)
+    results.append(make_result("T-3", tool=tool))
+    problems = problems_of(results, assignments, tool=tool, resolved=["T-3"])
+    assert "T-3: the RESOLVED finding T-3 appears in findingId/v1" in problems, problems
+    assert any("results for findings outside the member set: T-3" in p for p in problems), problems
+
+
+@EACH_FILE_THAT_COPIES_TEXT
+def test_a_flag_that_names_a_resolved_id_is_still_refused(tool):
+    """A flag is composed, ``kind:field:cause``, so its ID is a reference: ``divergent:composite_score:primary=T-3``."""
+    results, assignments = build_run(tool=tool)
+    results[2]["properties"][FLAG_NAMES[tool]] = ["divergent:composite_score:primary=T-3"]
+    problems = problems_of(results, assignments, tool=tool, resolved=["T-3"])
+    assert "I-3: the RESOLVED finding T-3 appears in properties.%s[0]" % FLAG_NAMES[tool] in problems, problems
+
+
+COPIED_VALUES = {
+    "risk-owner": "T-3 team",
+    "control-evidence": [{"file": "docs/T-3.md", "line": 1, "snippet": "A design note."}],
+    "recommendation": "**What to Implement**: Redo the check that T-3 once had.",
+}
+
+
+@pytest.mark.parametrize("tool,name", [
+    (CONTROLS, "risk-owner"), (THREATS, "risk-owner"),
+    (SCORER, "control-evidence"), (THREATS, "control-evidence"),
+    (SCORER, "recommendation"), (THREATS, "recommendation"),
+], ids=["controls-risk-owner", "threats-risk-owner", "risk-scores-control-evidence", "threats-control-evidence",
+        "risk-scores-recommendation", "threats-recommendation"])
+def test_a_property_is_skipped_only_in_the_file_that_writes_it(tool, name):
+    """The scorer writes ``risk-owner`` and the controls file the other two. Anywhere else the property isn't known copied text."""
+    assert name not in COPIED_PROPERTIES.get(tool, ())
+    results, assignments = build_run(tool=tool)
+    results[0]["properties"][name] = COPIED_VALUES[name]
+    problems = problems_of(results, assignments, tool=tool, resolved=["T-3"])
+    assert any(p.startswith("S-1: the RESOLVED finding T-3 appears in properties.%s" % name) for p in problems), problems
+
+
+def test_a_skipped_property_is_skipped_at_the_top_level_only():
+    results, assignments = build_run(tool=SCORER)
+    results[0]["properties"]["notes"] = {"risk-owner": "T-3 team"}
+    problems = problems_of(results, assignments, tool=SCORER, resolved=["T-3"])
+    assert "S-1: the RESOLVED finding T-3 appears in properties.notes.risk-owner" in problems, problems
+
+
+def test_a_related_location_that_leads_with_a_resolved_finding_is_still_refused_as_a_peer_reference():
+    """The scan no longer reads a ``relatedLocations`` message, but D8's other rule stands: none names a finding, whichever one."""
+    results, assignments = build_run(tool=CONTROLS)
+    add_related(results[0], [evidence_entry("T-3: a peer that was resolved")])
+    problems = problems_of(results, assignments, tool=CONTROLS, resolved=["T-3"])
+    assert "S-1: a relatedLocations entry names the finding T-3" in problems, problems
+
+
+# --- through the scorer's renderer (Section 16's project harness) ---------------------------------------------------------
+
+def test_an_open_findings_threat_and_mitigation_that_name_a_resolved_finding_render_cleanly(rrs, entries, tmp_path):
+    """P0-10's own case: the reference set's threat and mitigation are copied text, and T-3 is listed in Section 4c.
+
+    S-2 is the primary of CG-1, so its text ends with ruling C's sentence after the mention.
+    """
+    threat = "Shared tokens let callers impersonate each other, as they did in T-3."
+    mitigation = "Rotate the token, the fix that closed T-3."
+    text = rrs.edit_table_cell(rrs.make_threats_md(groups=FIRST_RUN_GROUPS), "## 7. Recommended Actions", "S-2", "Threat", threat)
+    text = rrs.edit_table_cell(text, "## 7. Recommended Actions", "S-2", "Mitigation", mitigation)
+    project = scorer_project(rrs, entries, tmp_path, threats_text=text)
+    res = project.run()
+    assert "T-3" in rrs.RESOLVED_IDS and res.code in RUN_CODES[SCORER_FILE], res.describe()
+    assignment = sc.correlation_assignments(FIRST_RUN_GROUPS, [item["id"] for item in rrs.SPECS])["S-2"]
+    assert assignment.role == "primary"
+    result = results_by(project.sarif)["S-2"]
+    assert result["message"] == {"text": expected_text(threat, assignment), "markdown": mitigation}
+
+
+def test_an_owner_that_names_a_resolved_finding_is_carried_and_renders_cleanly(rrs, entries, tmp_path):
+    """A person's owner is carried verbatim from the baseline (D9), so ``T-3 team`` is a mention and not a reference."""
+    first = scorer_project(rrs, entries, tmp_path / "first")
+    res = first.run()
+    assert res.code in RUN_CODES[SCORER_FILE], res.describe()
+    second = rrs.second_run(entries[0], entries[1], tmp_path / "second", first, edit_baseline=lambda md: rrs.edit_table_cell(
+        md, "## 4. Governance Fields", "S-2", "Owner", "T-3 team"))
+    res = second.run()
+    assert "T-3" in rrs.RESOLVED_IDS and res.code in RUN_CODES[SCORER_FILE], res.describe()
+    assert results_by(second.sarif)["S-2"]["properties"]["risk-owner"] == "T-3 team"
+
+
+def name_resolved_in_correlation_primary(document):
+    peer = next(result for result in document["runs"][0]["results"] if result["properties"].get("correlation-role") == "peer")
+    peer["properties"]["correlation-primary"] = "T-3"
+
+
+def name_resolved_in_findingid(document):
+    """Add a result for T-3 with the hash and the rule of its own: a renderer that kept a RESOLVED finding."""
+    results = document["runs"][0]["results"]
+    extra = copy.deepcopy(next(result for result in results if "correlation-group" not in result["properties"]))
+    extra["ruleId"] = sc.rule_id_for("T-3")
+    extra["partialFingerprints"] = sc.partial_fingerprints(SCORER, "T-3")
+    results.append(extra)
+
+
+def name_resolved_in_a_flag(document):
+    document["runs"][0]["results"][0]["properties"]["score-flags"] = ["divergent:composite_score:primary=T-3"]
+
+
+@pytest.mark.parametrize("poison,where", [
+    pytest.param(name_resolved_in_correlation_primary, "properties.correlation-primary", id="correlation-primary"),
+    pytest.param(name_resolved_in_findingid, "findingId/v1", id="findingid-v1"),
+    pytest.param(name_resolved_in_a_flag, "properties.score-flags[0]", id="score-flags"),
+])
+def test_a_composed_value_that_names_a_resolved_finding_still_fails_the_scorers_render_with_exit_4(rrs, entries, tmp_path, poison, where):
+    """A seeded renderer bug, in the staged SARIF only: the from-disk self-check is the one that sees it (ADR-050 D4)."""
+    project = scorer_project(rrs, entries, tmp_path, threats_text=rrs.make_threats_md(groups=FIRST_RUN_GROUPS))
+    project.earlier()
+    project.prepare()
+    with rrs.tampering_with_staged(rrs.SARIF, rrs.json_edit(poison)):
+        res = project.render()
+    rrs.assert_failed_closed(project, res, "the RESOLVED finding T-3 appears in " + where)
