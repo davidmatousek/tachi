@@ -8,6 +8,12 @@
 **Superseded by**: None
 **Related ADRs**: [ADR-026](ADR-026-pattern-classification-mechanism.md) (minor-bump rule — `affected_assets` is the additive `1.8 → 1.9` bump; ADR-026 alone would be no-ADR per its own rule), [ADR-028](ADR-028-source-attribution-schema-extension.md) (additive-optional-field + serialization-surface precedent; `affected_assets` follows the always-present-default arm, not the `source_attribution` omit-when-empty arm), [ADR-037](ADR-037-web-api-coverage-attestation-and-populator-wiring.md) (`maestro_layer` / populator-wiring precedent — test-checked production consistency, structural only in the script tier)
 
+> **Note (2026-11-22, Feature 374)**: [ADR-050](ADR-050-large-architecture-output-authority.md) supersedes D1 and D4 in part, each from the PR that ships it. D2 and D3 stand.
+>
+> - **D1, the tier boundary (ADR-050 D1 and D4).** From PR 1, shipped renderers write `risk-scores.md`, `risk-scores.sarif`, `compensating-controls.md` and `compensating-controls.sarif`, and no agent authors them. From PR 2, a shipped generator writes `threats.sarif` from the compiled `threats.md`. `threats.md`'s tables stay model-authored. D5's deferred structural ideal is adopted for the rendered files.
+> - **D4, consistency by test (ADR-050 D1 and D2).** On the rendered files, consistency becomes structural, because one renderer writes both formats from one set of values. From PR 1 that includes `risk-scores.sarif`'s `affected_assets`, which the renderer takes from the same tag source as its modifier step. D4's tests stay where output remains model-authored, such as `threats.md`'s tables and Section 6.
+> - **D2 stands.** The populator's block stays the one value authority. The renderer checks the block against the populator's own join and adds no second authority (ADR-050 D2). D2's sequencing becomes script order: the populator runs before any stage reads `threats.md` (ADR-050 D4).
+
 ---
 
 ## Context

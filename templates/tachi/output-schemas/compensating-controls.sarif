@@ -1,6 +1,5 @@
 {
-  "_comment": "COMPENSATING CONTROLS OUTPUT (compensating-controls.sarif) — the third link in tachi's SARIF supersession chain: threats.sarif → risk-scores.sarif → compensating-controls.sarif. This file extends risk-scores.sarif with per-finding control detection results, residual risk scores, and remediation recommendations. Key distinction: security-severity in risk-scores.sarif is the per-finding composite (inherent) score; in compensating-controls.sarif it is the per-finding RESIDUAL score after applying control reduction factors. Rule-level security-severity reflects the MAX residual score among that rule's findings. Fingerprints (findingId/v1) are preserved unchanged through all three files for GitHub Code Scanning alert continuity. Producers: agents/tachi/control-analyzer.md. Schema: schemas/compensating-controls.yaml.",
-  "_supersession_chain": "threats.sarif (static category severity) → risk-scores.sarif (per-finding composite score) → compensating-controls.sarif (per-finding RESIDUAL score). Uploading this file supersedes risk-scores.sarif alerts in GitHub Code Scanning without creating duplicates, because partialFingerprints are preserved.",
+  "_comment": "COMPENSATING CONTROLS OUTPUT (compensating-controls.sarif). This is the compensating controls SARIF produced by the /tachi.compensating-controls command, and the shipped renderer (scripts/render-compensating-controls.py, through scripts/sarif_common.py) writes it: an agent never authors it. It carries one result per open finding, correlated peers included, with the finding's control detection result, residual score and remediation recommendation in the result's property bag. Key distinction: security-severity in risk-scores.sarif is the per-finding composite (inherent) score; in compensating-controls.sarif it is the per-finding RESIDUAL score after applying the control reduction factor. Rule-level security-severity reflects the MAX residual score among that rule's findings, and a rule is written only for a category that has a result. This is the third of tachi's three SARIF files (threats.sarif, risk-scores.sarif, compensating-controls.sarif), and none supersedes another: each has its own tool name, so its own alert hashes, and uploads under its own category. The identity of each alert (tool, ruleId, primaryLocationLineHash, artifactLocation.uri) is fixed by .claude/skills/tachi-shared/references/sarif-identity-shared.md. Results follow Section 2 of compensating-controls.md: residual score descending, then finding ID order. The run-level values are the renderer's fixed values: the driver's version and semanticVersion both carry tachi's release version (the placeholder below), supportedTaxonomies and taxonomies are the entries of scripts/sarif_common.py's TAXONOMIES (supported_taxonomies() derives the driver's list from it), and runs[0].properties.tachi_provenance records the renderer, its version and the input digest, the same values as the stamp that ends compensating-controls.md. A rule's relationships name their taxonomy only, as they did in 1.0. Producer: scripts/render-compensating-controls.py. Schema: schemas/compensating-controls.yaml.",
   "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
   "version": "2.1.0",
   "runs": [
@@ -8,12 +7,31 @@
       "tool": {
         "driver": {
           "name": "tachi-control-analyzer",
-          "version": "1.0",
-          "semanticVersion": "1.0",
-          "informationUri": "https://github.com/owner/tachi",
+          "version": "<tachi-release-version-X.Y.Z>",
+          "semanticVersion": "<tachi-release-version-X.Y.Z>",
+          "informationUri": "https://github.com/davidmatousek/tachi",
           "supportedTaxonomies": [
-            { "name": "OWASP", "index": 0 },
-            { "name": "CWE", "index": 1 }
+            {
+              "name": "OWASP-LLM",
+              "index": 0,
+              "guid": "b4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
+              "version": "2026",
+              "informationUri": "https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/"
+            },
+            {
+              "name": "OWASP-ASI",
+              "index": 1,
+              "guid": "c4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
+              "version": "2026",
+              "informationUri": "https://owasp.org/"
+            },
+            {
+              "name": "CWE",
+              "index": 2,
+              "guid": "a4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
+              "version": "4.13",
+              "informationUri": "https://cwe.mitre.org/"
+            }
           ],
           "rules": [
             {
@@ -254,33 +272,63 @@
       },
       "taxonomies": [
         {
-          "name": "OWASP",
-          "version": "2021",
-          "informationUri": "https://owasp.org/Top10/",
-          "organization": "OWASP Foundation",
-          "shortDescription": { "text": "OWASP Top 10 Web Application Security Risks" }
+          "name": "OWASP-LLM",
+          "version": "2026",
+          "guid": "b4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
+          "informationUri": "https://genai.owasp.org/resource/owasp-genai-llm-top-10-2026/",
+          "taxa": [
+            { "id": "LLM01", "name": "Prompt Injection" },
+            { "id": "LLM02", "name": "Sensitive Information Disclosure" },
+            { "id": "LLM03", "name": "Excessive Agency" },
+            { "id": "LLM04", "name": "Supply Chain" },
+            { "id": "LLM05", "name": "Data and Model Poisoning" },
+            { "id": "LLM06", "name": "Unbounded Consumption" },
+            { "id": "LLM07", "name": "Misinformation" },
+            { "id": "LLM08", "name": "Hidden Context Exposure" },
+            { "id": "LLM09", "name": "Vector and Embedding Weaknesses" },
+            { "id": "LLM10", "name": "Improper Output Handling" }
+          ]
+        },
+        {
+          "name": "OWASP-ASI",
+          "version": "2026",
+          "guid": "c4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
+          "informationUri": "https://owasp.org/",
+          "taxa": [
+            { "id": "ASI01", "name": "Agent Autonomy Abuse" },
+            { "id": "ASI07", "name": "Insecure Inter-Agent Communication" }
+          ]
         },
         {
           "name": "CWE",
           "version": "4.13",
+          "guid": "a4da3eca-0deb-4f4e-8c3c-1c0e2d3f4a5b",
           "informationUri": "https://cwe.mitre.org/",
-          "organization": "MITRE",
-          "shortDescription": { "text": "Common Weakness Enumeration" }
+          "taxa": [
+            { "id": "CWE-78", "name": "OS Command Injection" },
+            { "id": "CWE-79", "name": "Cross-site Scripting" },
+            { "id": "CWE-89", "name": "SQL Injection" },
+            { "id": "CWE-223", "name": "Omission of Security-relevant Information" },
+            { "id": "CWE-287", "name": "Improper Authentication" },
+            { "id": "CWE-345", "name": "Insufficient Verification of Data Authenticity" },
+            { "id": "CWE-918", "name": "Server-Side Request Forgery (SSRF)" }
+          ]
         }
       ],
       "results": [
         {
-          "_comment": "Example 1: Threat with control found — residual risk is reduced. security-severity reflects RESIDUAL score (inherent * (1 - reduction_factor)), not inherent. relatedLocations contains control evidence (file:line:snippet), NOT correlated peer findings. level is mapped from RESIDUAL severity band.",
+          "_comment": "Example 1: Threat with a control found, assessed in this run. security-severity reflects the RESIDUAL score (inherent * (1 - reduction_factor)), not the inherent score. The level is mapped from the RESIDUAL severity band: Critical and High are error, Medium is warning, Low is note. message.text ends with the control status in brackets, and message.markdown is the finding's mitigation text from the threat model, as in risk-scores.sarif, or the empty string when the finding has none. relatedLocations holds control evidence only, one entry for each evidence item, and no entry names a finding. control-evidence repeats the same evidence as file, line and snippet (line is an integer), and a found finding has an empty recommendation and effort-estimate. integrity-flags is always present, and holds sorted kind:field:cause strings.",
           "ruleId": "tachi/stride/spoofing",
           "message": {
-            "text": "<threat-description-from-source-finding> [Control: found]"
+            "text": "<threat-description-from-source-finding> [Control: found]",
+            "markdown": "<mitigation-recommendation-from-source-finding>"
           },
           "level": "warning",
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "<input-architecture-file-path>"
+                  "uri": "<repo-relative-architecture-file-path>"
                 },
                 "region": {
                   "startLine": 1
@@ -306,7 +354,7 @@
                   "uri": "<control-evidence-file-path>"
                 },
                 "region": {
-                  "startLine": "<control-evidence-line-number>"
+                  "startLine": 42
                 }
               }
             },
@@ -320,13 +368,13 @@
                   "uri": "<control-evidence-file-path-2>"
                 },
                 "region": {
-                  "startLine": "<control-evidence-line-number-2>"
+                  "startLine": 17
                 }
               }
             }
           ],
           "partialFingerprints": {
-            "primaryLocationLineHash": "<preserved-from-source-risk-scores-sarif>",
+            "primaryLocationLineHash": "<tachi-plh/1-hash-16-hex-digits-then-:1>",
             "findingId/v1": "S-1"
           },
           "properties": {
@@ -334,36 +382,39 @@
             "control-status": "found",
             "control-evidence": [
               {
-                "file": "<control-file-path>",
-                "line": "<line-number>",
+                "file": "<control-evidence-file-path>",
+                "line": 42,
                 "snippet": "<code-snippet-up-to-5-lines>"
               },
               {
-                "file": "<control-file-path-2>",
-                "line": "<line-number-2>",
+                "file": "<control-evidence-file-path-2>",
+                "line": 17,
                 "snippet": "<code-snippet-2>"
               }
             ],
-            "control-carry-forward": "<true|false>",
+            "control-carry-forward": false,
             "control-effectiveness": "strong",
             "inherent-risk": "<original-composite-score-from-risk-scores>",
             "residual-risk": "<calculated-residual-score>",
+            "maestro-layer": "<maestro-layer-name-or-Unclassified>",
             "recommendation": "",
-            "effort-estimate": ""
+            "effort-estimate": "",
+            "integrity-flags": []
           }
         },
         {
-          "_comment": "Example 2: Threat with partial control — residual risk is partially reduced. Recommendation focuses on hardening the existing control (what is missing, how to extend). relatedLocations contains control evidence for the partial control found.",
+          "_comment": "Example 2: Threat with a partial control: the residual score is partially reduced. recommendation is the What to Implement text of the finding's Section 4 block, which for a partial control focuses on hardening the existing control (what is missing, how to extend), and effort-estimate is that block's Effort word (Low, Medium or High). relatedLocations holds the evidence of the partial control. integrity-flags shows one flag here, for a prose field that was cut at its length limit.",
           "ruleId": "tachi/stride/tampering",
           "message": {
-            "text": "<threat-description-from-source-finding> [Control: partial]"
+            "text": "<threat-description-from-source-finding> [Control: partial]",
+            "markdown": "<mitigation-recommendation-from-source-finding>"
           },
           "level": "warning",
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "<input-architecture-file-path>"
+                  "uri": "<repo-relative-architecture-file-path>"
                 },
                 "region": {
                   "startLine": 1
@@ -389,13 +440,13 @@
                   "uri": "<control-evidence-file-path>"
                 },
                 "region": {
-                  "startLine": "<control-evidence-line-number>"
+                  "startLine": 42
                 }
               }
             }
           ],
           "partialFingerprints": {
-            "primaryLocationLineHash": "<preserved-from-source-risk-scores-sarif>",
+            "primaryLocationLineHash": "<tachi-plh/1-hash-16-hex-digits-then-:1>",
             "findingId/v1": "T-2"
           },
           "properties": {
@@ -403,31 +454,34 @@
             "control-status": "partial",
             "control-evidence": [
               {
-                "file": "<partial-control-file-path>",
-                "line": "<line-number>",
+                "file": "<control-evidence-file-path>",
+                "line": 42,
                 "snippet": "<code-snippet-showing-partial-control>"
               }
             ],
-            "control-carry-forward": "<true|false>",
+            "control-carry-forward": false,
             "control-effectiveness": "moderate",
             "inherent-risk": "<original-composite-score-from-risk-scores>",
             "residual-risk": "<calculated-residual-score>",
-            "recommendation": "<hardening-guidance-for-partial-control>",
-            "effort-estimate": "Medium"
+            "maestro-layer": "<maestro-layer-name-or-Unclassified>",
+            "recommendation": "<what-to-implement-text-of-the-section-4-block>",
+            "effort-estimate": "Medium",
+            "integrity-flags": ["input:evidence.summary:truncated"]
           }
         },
         {
-          "_comment": "Example 3: Threat with no control found — residual risk equals inherent risk (no reduction). relatedLocations is omitted (no evidence to link). Recommendation provides full remediation guidance. level is mapped from the INHERENT severity band (since residual = inherent).",
+          "_comment": "Example 3: Threat with no control found: the residual score equals the inherent score (no reduction), and the level is mapped from that band. relatedLocations is omitted, because a missing finding has no evidence to link, and control-evidence is an empty array. recommendation is the What to Implement text of the finding's Section 4 block, which for a missing control gives full implementation guidance, and effort-estimate is that block's Effort word.",
           "ruleId": "tachi/stride/denial-of-service",
           "message": {
-            "text": "<threat-description-from-source-finding> [Control: missing]"
+            "text": "<threat-description-from-source-finding> [Control: missing]",
+            "markdown": "<mitigation-recommendation-from-source-finding>"
           },
           "level": "error",
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "<input-architecture-file-path>"
+                  "uri": "<repo-relative-architecture-file-path>"
                 },
                 "region": {
                   "startLine": 1
@@ -443,33 +497,36 @@
             }
           ],
           "partialFingerprints": {
-            "primaryLocationLineHash": "<preserved-from-source-risk-scores-sarif>",
+            "primaryLocationLineHash": "<tachi-plh/1-hash-16-hex-digits-then-:1>",
             "findingId/v1": "D-1"
           },
           "properties": {
             "security-severity": "<residual-score-equals-inherent-score-as-numeric-string>",
             "control-status": "missing",
             "control-evidence": [],
-            "control-carry-forward": "<true|false>",
+            "control-carry-forward": false,
             "control-effectiveness": "none",
             "inherent-risk": "<original-composite-score-from-risk-scores>",
             "residual-risk": "<same-as-inherent-no-reduction>",
-            "recommendation": "<full-remediation-guidance-what-to-implement-where-and-reference-patterns>",
-            "effort-estimate": "High"
+            "maestro-layer": "<maestro-layer-name-or-Unclassified>",
+            "recommendation": "<what-to-implement-text-of-the-section-4-block>",
+            "effort-estimate": "High",
+            "integrity-flags": []
           }
         },
         {
-          "_comment": "Example 4: AI agentic threat with control found. Demonstrates AI-category rule with CWE-only taxonomy relationship. relatedLocations contains control evidence. Fingerprint preserved from upstream risk-scores.sarif. P0: control-effectiveness is deterministic from control-status (found=strong).",
+          "_comment": "Example 4: AI agentic threat with a control found, carried forward from the baseline (an UNCHANGED finding): control-carry-forward is true, and the finding's row in Section 2 shows CF. The rule is an AI-category rule, whose relationships name a CWE target only. The carried status, evidence and recommendation come from the baseline's persisted inputs, and the renderer recomputes the residual score from this run's inherent score. P0: control-effectiveness is derived from control-status (found is strong, partial is moderate, missing is none).",
           "ruleId": "tachi/ai/agentic-threats",
           "message": {
-            "text": "<threat-description-from-source-finding> [Control: found]"
+            "text": "<threat-description-from-source-finding> [Control: found]",
+            "markdown": "<mitigation-recommendation-from-source-finding>"
           },
           "level": "note",
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "<input-architecture-file-path>"
+                  "uri": "<repo-relative-architecture-file-path>"
                 },
                 "region": {
                   "startLine": 1
@@ -495,13 +552,13 @@
                   "uri": "<control-evidence-file-path>"
                 },
                 "region": {
-                  "startLine": "<control-evidence-line-number>"
+                  "startLine": 42
                 }
               }
             }
           ],
           "partialFingerprints": {
-            "primaryLocationLineHash": "<preserved-from-source-risk-scores-sarif>",
+            "primaryLocationLineHash": "<tachi-plh/1-hash-16-hex-digits-then-:1>",
             "findingId/v1": "AG-1"
           },
           "properties": {
@@ -509,31 +566,34 @@
             "control-status": "found",
             "control-evidence": [
               {
-                "file": "<control-file-path>",
-                "line": "<line-number>",
+                "file": "<control-evidence-file-path>",
+                "line": 42,
                 "snippet": "<code-snippet>"
               }
             ],
-            "control-carry-forward": "<true|false>",
+            "control-carry-forward": true,
             "control-effectiveness": "strong",
             "inherent-risk": "<original-composite-score-from-risk-scores>",
             "residual-risk": "<calculated-residual-score>",
+            "maestro-layer": "<maestro-layer-name-or-Unclassified>",
             "recommendation": "",
-            "effort-estimate": ""
+            "effort-estimate": "",
+            "integrity-flags": []
           }
         },
         {
-          "_comment": "Example 5: Correlated finding group — primary finding with correlationGroup in fingerprints. In compensating-controls.sarif, relatedLocations serves DUAL purpose: control evidence entries use physicalLocation (file:line), while correlated peer references use logicalLocations (component-level). Distinguish by presence of physicalLocation vs logicalLocations on each entry.",
+          "_comment": "Correlation group example, 1 of 2: the primary. Every member of a group is its own top-level result, so the file holds one result for each open finding. Group membership is recorded in the result's own properties (correlation-group, correlation-role, correlation-primary), and the message ends with one sentence, after the control status, that names the group and the peers (up to 10, then a count). Neither is identity: a regroup changes the text and the properties and never a key. relatedLocations holds this finding's own control evidence only, and no entry names a finding.",
           "ruleId": "tachi/stride/information-disclosure",
           "message": {
-            "text": "<threat-description-for-correlation-group-primary> [Control: partial]"
+            "text": "<threat-description-for-correlation-group-primary> [Control: partial] Correlated in CG-1; peers T-6.",
+            "markdown": "<mitigation-recommendation-for-correlation-group-primary>"
           },
           "level": "warning",
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "<input-architecture-file-path>"
+                  "uri": "<repo-relative-architecture-file-path>"
                 },
                 "region": {
                   "startLine": 1
@@ -550,7 +610,6 @@
           ],
           "relatedLocations": [
             {
-              "_comment": "Control evidence entries — identified by physicalLocation with file:line",
               "id": 0,
               "message": {
                 "text": "Control evidence: <control-category> detected in <file-path>"
@@ -560,15 +619,55 @@
                   "uri": "<control-evidence-file-path>"
                 },
                 "region": {
-                  "startLine": "<control-evidence-line-number>"
+                  "startLine": 42
                 }
               }
-            },
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "<tachi-plh/1-hash-16-hex-digits-then-:1>",
+            "findingId/v1": "I-3"
+          },
+          "properties": {
+            "security-severity": "<residual-score-as-numeric-string>",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "<control-evidence-file-path>",
+                "line": 42,
+                "snippet": "<code-snippet>"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "inherent-risk": "<original-composite-score-from-risk-scores>",
+            "residual-risk": "<calculated-residual-score>",
+            "maestro-layer": "<maestro-layer-name-or-Unclassified>",
+            "recommendation": "<what-to-implement-text-of-the-section-4-block>",
+            "effort-estimate": "Medium",
+            "integrity-flags": [],
+            "correlation-group": "CG-1",
+            "correlation-role": "primary",
+            "correlation-primary": "I-3"
+          }
+        },
+        {
+          "_comment": "Correlation group example, 2 of 2: a peer. A peer is assessed on its own: its control status, evidence and residual score are its own, and its correlation properties name its group and its primary. Its message ends with the sentence that names the group and its primary, and the sentence is not identity.",
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "<threat-description-for-correlation-group-peer> [Control: partial] Correlated in CG-1; primary I-3.",
+            "markdown": "<mitigation-recommendation-for-correlation-group-peer>"
+          },
+          "level": "warning",
+          "locations": [
             {
-              "_comment": "Correlated peer entries — identified by logicalLocations with component-level data",
-              "id": 1,
-              "message": {
-                "text": "<correlated-peer-finding-id>: <peer-threat-summary>"
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<repo-relative-architecture-file-path>"
+                },
+                "region": {
+                  "startLine": 1
+                }
               },
               "logicalLocations": [
                 {
@@ -579,30 +678,57 @@
               ]
             }
           ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: <control-category> detected in <file-path>"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "<control-evidence-file-path>"
+                },
+                "region": {
+                  "startLine": 42
+                }
+              }
+            }
+          ],
           "partialFingerprints": {
-            "primaryLocationLineHash": "<preserved-from-source-risk-scores-sarif>",
-            "findingId/v1": "I-3",
-            "correlationGroup": "CG-1"
+            "primaryLocationLineHash": "<tachi-plh/1-hash-16-hex-digits-then-:1>",
+            "findingId/v1": "T-6"
           },
           "properties": {
             "security-severity": "<residual-score-as-numeric-string>",
             "control-status": "partial",
             "control-evidence": [
               {
-                "file": "<control-file-path>",
-                "line": "<line-number>",
+                "file": "<control-evidence-file-path>",
+                "line": 42,
                 "snippet": "<code-snippet>"
               }
             ],
-            "control-carry-forward": "<true|false>",
+            "control-carry-forward": false,
             "control-effectiveness": "moderate",
             "inherent-risk": "<original-composite-score-from-risk-scores>",
             "residual-risk": "<calculated-residual-score>",
-            "recommendation": "<hardening-guidance-for-partial-control>",
-            "effort-estimate": "Medium"
+            "maestro-layer": "<maestro-layer-name-or-Unclassified>",
+            "recommendation": "<what-to-implement-text-of-the-section-4-block>",
+            "effort-estimate": "Medium",
+            "integrity-flags": [],
+            "correlation-group": "CG-1",
+            "correlation-role": "peer",
+            "correlation-primary": "I-3"
           }
         }
-      ]
+      ],
+      "properties": {
+        "tachi_provenance": {
+          "renderer": "render-compensating-controls.py",
+          "version": "<tachi-release-version-X.Y.Z>",
+          "input_digest": "sha256:<64-lowercase-hex-digits>"
+        }
+      }
     }
   ]
 }

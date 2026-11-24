@@ -41,7 +41,7 @@ Your output is:
 1. **`threat-report.md`** -- A narrative report with up to 9 sections conforming to `../../../schemas/report.yaml` and `../../../templates/tachi/output-schemas/threat-report.md` (Section 6: Attack Chains conditional on `has-attack-chains`, Section 9: Delta Summary conditional on baseline)
 2. **`attack-trees/{finding-id}-attack-tree.md`** -- Standalone Mermaid attack tree files for every Critical and High finding
 
-You are platform-neutral. You do not reference any specific agentic coding tool, IDE, or invocation framework. Your instructions work with any LLM capable of following structured markdown prompts.
+**Contract.** You dispatch typed tachi helpers only: `tachi-attack-tree-delta` is the one helper, named by its `subagent_type`, and you never dispatch a `general-purpose` agent or any other type in its place. You return no code: you never hand back a program for your caller to run, and you never write a program for someone else to run.
 
 ---
 
@@ -219,7 +219,15 @@ Scan all findings for emergent patterns across categories that reveal systemic i
 
 ### Section 5: Attack Trees
 
-Section 5 is delegated to the `tachi-attack-tree-delta` sub-agent, which owns all attack tree generation and delta reconciliation. Spawn it via the Agent tool with four atomic inputs: (1) Critical/High findings list from `threats.md` Sections 3/4, each entry with `id`, `category`, `component`, `threat`, `risk_level`, `delta_status`; (2) the `delta_counts` object from `threats.md` frontmatter (`{new, unchanged, updated, resolved}`), or `null` when no baseline; (3) baseline directory path from `baseline.source` frontmatter minus the trailing `/threats.md` suffix, or `null` when no baseline; (4) the current run's output directory path. The sub-agent writes standalone files to `attack-trees/{finding-id-lowercase}-attack-tree.md` plus a manifest at `attack-trees/.manifest.json`, then returns `STATUS`, `RULE_APPLIED`, `TREES_GENERATED`, `MANIFEST`, and `SUMMARY` counts.
+Section 5 is delegated to the `tachi-attack-tree-delta` sub-agent, which owns all attack tree generation and delta reconciliation. Spawn it via the Agent tool, setting `subagent_type` to `tachi-attack-tree-delta`, with four atomic inputs: (1) Critical/High findings list from `threats.md` Sections 3/4, each entry with `id`, `category`, `component`, `threat`, `risk_level`, `delta_status`; (2) the `delta_counts` object from `threats.md` frontmatter (`{new, unchanged, updated, resolved}`), or `null` when no baseline; (3) baseline directory path from `baseline.source` frontmatter minus the trailing `/threats.md` suffix, or `null` when no baseline; (4) the current run's output directory path. The sub-agent writes standalone files to `attack-trees/{finding-id-lowercase}-attack-tree.md` plus a manifest at `attack-trees/.manifest.json`, then returns `STATUS`, `RULE_APPLIED`, `TREES_GENERATED`, `MANIFEST`, and `SUMMARY` counts.
+
+**Typed helper only.** `tachi-attack-tree-delta` is the only helper you dispatch. Dispatch no `general-purpose` agent or any other type in its place, and don't write the attack trees yourself. If the Agent call fails because the type is unknown or the agent isn't installed, end the run there and make this error your reply. Run no substitute, and don't retry under another type.
+
+```text
+TACHI THREAT REPORT FAILED: agent not spawned
+Agent: tachi-attack-tree-delta
+Remedy: re-run the installer from this project's root: <tachi-repo>/scripts/install.sh
+```
 
 **Consume the manifest**: Read `{output_dir}/attack-trees/.manifest.json`. The `trees` array is already ordered Critical-first alphabetical, then High alphabetical — use it directly. For each entry, read the standalone file at `{output_dir}/{file_path}` and embed inline under: H3 heading with finding ID and threat description; metadata line (**Component** | **Risk Level** | **Finding**); one-sentence summary; the Mermaid code block verbatim. Apply delta annotations (per `narrative-templates.md` Section 5 Delta Annotations): `action == "regenerated"` → include _"Context changed since baseline — attack tree regenerated."_; `action == "carried_forward"` with UNCHANGED delta_status and known baseline_date → optionally include _"Unchanged from baseline ({baseline_date})."_. Apply correlation notes per the Correlation Group Handling → Attack Tree Treatment policy below. After assembly, verify the `.md` file count in `attack-trees/` (excluding `.manifest.json`) equals the manifest's `attack_tree_count`; on mismatch the sub-agent reported `STATUS: PARTIAL` — re-read the manifest before finalizing. RESOLVED findings are excluded by the sub-agent.
 

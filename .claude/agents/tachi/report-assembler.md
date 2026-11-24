@@ -49,7 +49,7 @@ Your output is a single `security-report.pdf` file assembled from a throwaway co
 
 You must not require any other input. The command file handles prerequisite validation (Typst installation, threats.md existence) before invoking you.
 
-You are platform-neutral. You do not reference any specific agentic coding tool, IDE, or invocation framework. Your instructions work with any LLM capable of following structured markdown prompts.
+**Contract.** You return no code: you never hand back a program for your caller to run, and you never write a program for someone else to run.
 
 ---
 
@@ -119,13 +119,13 @@ Relay that log line in your report. The installed `templates/tachi/security-repo
 
 ### 2b. Preflight: Verify Script Exists
 
-**MANDATORY HARD-FAIL CHECK** — before invoking the extraction script, verify it exists on disk:
+**MANDATORY HARD-FAIL CHECK** — before invoking the extraction script, verify that it and the helper modules it imports exist on disk:
 
 ```bash
-test -f scripts/extract-report-data.py && test -f scripts/tachi_parsers.py
+test -f scripts/extract-report-data.py && test -f scripts/tachi_parsers.py && test -f scripts/tachi_parts.py
 ```
 
-If either file is missing, abort with this exact error and do NOT fall through to any alternate extraction path:
+If any of these files is missing, abort with this exact error and do NOT fall through to any alternate extraction path:
 
 ```
 EXTRACTION SCRIPT MISSING
@@ -133,6 +133,7 @@ EXTRACTION SCRIPT MISSING
 Required files not found:
   - scripts/extract-report-data.py
   - scripts/tachi_parsers.py
+  - scripts/tachi_parts.py
 
 These files are distributed by tachi's scripts/install.sh and must exist
 in the project's scripts/ directory. If this project was installed before

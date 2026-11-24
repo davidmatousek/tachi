@@ -1,0 +1,430 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "tachi-risk-scorer",
+          "version": "1.0",
+          "semanticVersion": "1.0",
+          "informationUri": "https://github.com/owner/tachi",
+          "supportedTaxonomies": [
+            {
+              "name": "OWASP",
+              "index": 0
+            },
+            {
+              "name": "CWE",
+              "index": 1
+            }
+          ],
+          "rules": [
+            {
+              "id": "tachi/stride/spoofing",
+              "shortDescription": {
+                "text": "Identity spoofing threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker pretends to be something or someone else, such as replaying credentials or impersonating a trusted component."
+              },
+              "help": {
+                "text": "Review authentication mechanisms, token validation, credential storage and session management at every trust boundary.",
+                "markdown": "## Detection Guidance\n\nReview authentication mechanisms for weaknesses:\n- Token signing and binding\n- Credential storage and rotation\n- Session management\n\n## Framework References\n\n- OWASP Top 10: A07 Identification and Authentication Failures\n- CWE-287: Improper Authentication"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "spoofing",
+                  "authentication"
+                ],
+                "security-severity": "7.3"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A07",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-287",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/tampering",
+              "shortDescription": {
+                "text": "Data tampering threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker modifies data or code without authorization, in transit, at rest or in the build and deployment path."
+              },
+              "help": {
+                "text": "Review input validation, message integrity, configuration control and supply chain provenance.",
+                "markdown": "## Detection Guidance\n\nReview integrity controls:\n- Schema validation at boundaries\n- Message signing\n- Build provenance\n\n## Framework References\n\n- OWASP Top 10: A08 Software and Data Integrity Failures\n- CWE-345: Insufficient Verification of Data Authenticity"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "tampering",
+                  "integrity"
+                ],
+                "security-severity": "5.4"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A08",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-345",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/repudiation",
+              "shortDescription": {
+                "text": "Repudiation threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an actor can deny an action because the system cannot prove who did what and when."
+              },
+              "help": {
+                "text": "Review audit logging, log protection, time synchronisation and approval binding.",
+                "markdown": "## Detection Guidance\n\nReview accountability controls:\n- Who, what, when and outcome in every record\n- Tamper-evident storage\n- Approval binding\n\n## Framework References\n\n- OWASP Top 10: A09 Security Logging and Monitoring Failures\n- CWE-778: Insufficient Logging"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "repudiation",
+                  "logging"
+                ],
+                "security-severity": "6.2"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A09",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-778",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/information-disclosure",
+              "shortDescription": {
+                "text": "Information disclosure threats"
+              },
+              "fullDescription": {
+                "text": "Threats where sensitive data is exposed to parties that should not see it, through errors, logs, storage or transport."
+              },
+              "help": {
+                "text": "Review error handling, logging content, encryption in transit and at rest, and tenant isolation.",
+                "markdown": "## Detection Guidance\n\nReview confidentiality controls:\n- Error and log content\n- Encryption in transit and at rest\n- Tenant isolation\n\n## Framework References\n\n- OWASP Top 10: A01 Broken Access Control\n- CWE-200: Exposure of Sensitive Information"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "information-disclosure",
+                  "data-exposure"
+                ],
+                "security-severity": "5.2"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A01",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-200",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "taxonomies": [
+        {
+          "name": "OWASP",
+          "version": "2021",
+          "informationUri": "https://owasp.org/Top10/",
+          "organization": "OWASP Foundation",
+          "shortDescription": {
+            "text": "OWASP Top 10 Web Application Security Risks"
+          }
+        },
+        {
+          "name": "CWE",
+          "version": "4.13",
+          "informationUri": "https://cwe.mitre.org/",
+          "organization": "MITRE",
+          "shortDescription": {
+            "text": "Common Weakness Enumeration"
+          }
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "A shared or long-lived bearer token on edge-gateway lets anyone who obtains one copy authenticate as every tenant that uses the same deployment profile.",
+            "markdown": "Replace the shared bearer token with per-workload identities that rotate automatically, and alert when one identity authenticates from two networks within the rotation window."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "41828eafe016e25d",
+            "findingId/v1": "S-1"
+          },
+          "properties": {
+            "security-severity": "7.3",
+            "cvss-base-score": "7.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+            "exploitability": "7.5",
+            "scalability": "8.5",
+            "reachability": "6.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": null,
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Log entries from edge-gateway can be edited or deleted by the same operators who administer it, so evidence of misuse can be removed after the fact.",
+            "markdown": "Write the records of edge-gateway to an append-only store that operators cannot modify, and anchor periodic hashes of the log in a separate system."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "983b3bebb029d996",
+            "findingId/v1": "R-1"
+          },
+          "properties": {
+            "security-severity": "6.2",
+            "cvss-base-score": "7.2",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N",
+            "exploitability": "6.5",
+            "scalability": "6.5",
+            "reachability": "6.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Replay of an earlier valid update to free-text shipment requests reaches intake-agent because updates carry no nonce or expiry, restoring a state the owner already corrected.",
+            "markdown": "Add a nonce and a short expiry to every update accepted by intake-agent, store seen nonces for the validity window and reject any repeat."
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "3eef3fd4767b7e91",
+            "findingId/v1": "T-1"
+          },
+          "properties": {
+            "security-severity": "5.4",
+            "cvss-base-score": "7.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L",
+            "exploitability": "6.5",
+            "scalability": "4.0",
+            "reachability": "2.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Low",
+            "risk-owner": "Unassigned",
+            "remediation-sla": null,
+            "risk-disposition": "Review",
+            "review-date": null,
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "embedded documents and metadata held by vector-store-a are readable by any service in the Data Zone that shares the same network role, because access is granted by network position.",
+            "markdown": "Grant access to embedded documents and metadata per workload identity with least privilege, enforce it at vector-store-a and remove network-position trust within the Data Zone."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "vector-store-a",
+                  "fullyQualifiedName": "Data Zone/vector-store-a",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "cfe9b03984131775",
+            "findingId/v1": "I-1"
+          },
+          "properties": {
+            "security-severity": "5.2",
+            "cvss-base-score": "6.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "6.0",
+            "scalability": "5.0",
+            "reachability": "2.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L2 \u2014 Data Operations",
+            "affected_assets": []
+          }
+        }
+      ]
+    }
+  ]
+}

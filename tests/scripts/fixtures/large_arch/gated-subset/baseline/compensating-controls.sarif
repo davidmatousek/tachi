@@ -1,0 +1,2865 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "tachi-control-analyzer",
+          "version": "1.0",
+          "semanticVersion": "1.0",
+          "informationUri": "https://github.com/owner/tachi",
+          "supportedTaxonomies": [
+            {
+              "name": "OWASP",
+              "index": 0
+            },
+            {
+              "name": "CWE",
+              "index": 1
+            }
+          ],
+          "rules": [
+            {
+              "id": "tachi/stride/spoofing",
+              "shortDescription": {
+                "text": "Identity spoofing threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker pretends to be something or someone else, such as replaying credentials or impersonating a trusted component."
+              },
+              "help": {
+                "text": "Review authentication mechanisms, token validation, credential storage and session management at every trust boundary.",
+                "markdown": "## Detection Guidance\n\nReview authentication mechanisms for weaknesses:\n- Token signing and binding\n- Credential storage and rotation\n- Session management\n\n## Framework References\n\n- OWASP Top 10: A07 Identification and Authentication Failures\n- CWE-287: Improper Authentication"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "spoofing",
+                  "authentication"
+                ],
+                "security-severity": "5.9"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A07",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-287",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/tampering",
+              "shortDescription": {
+                "text": "Data tampering threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker modifies data or code without authorization, in transit, at rest or in the build and deployment path."
+              },
+              "help": {
+                "text": "Review input validation, message integrity, configuration control and supply chain provenance.",
+                "markdown": "## Detection Guidance\n\nReview integrity controls:\n- Schema validation at boundaries\n- Message signing\n- Build provenance\n\n## Framework References\n\n- OWASP Top 10: A08 Software and Data Integrity Failures\n- CWE-345: Insufficient Verification of Data Authenticity"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "tampering",
+                  "integrity"
+                ],
+                "security-severity": "6.7"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A08",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-345",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/repudiation",
+              "shortDescription": {
+                "text": "Repudiation threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an actor can deny an action because the system cannot prove who did what and when."
+              },
+              "help": {
+                "text": "Review audit logging, log protection, time synchronisation and approval binding.",
+                "markdown": "## Detection Guidance\n\nReview accountability controls:\n- Who, what, when and outcome in every record\n- Tamper-evident storage\n- Approval binding\n\n## Framework References\n\n- OWASP Top 10: A09 Security Logging and Monitoring Failures\n- CWE-778: Insufficient Logging"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "repudiation",
+                  "logging"
+                ],
+                "security-severity": "2.8"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A09",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-778",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/information-disclosure",
+              "shortDescription": {
+                "text": "Information disclosure threats"
+              },
+              "fullDescription": {
+                "text": "Threats where sensitive data is exposed to parties that should not see it, through errors, logs, storage or transport."
+              },
+              "help": {
+                "text": "Review error handling, logging content, encryption in transit and at rest, and tenant isolation.",
+                "markdown": "## Detection Guidance\n\nReview confidentiality controls:\n- Error and log content\n- Encryption in transit and at rest\n- Tenant isolation\n\n## Framework References\n\n- OWASP Top 10: A01 Broken Access Control\n- CWE-200: Exposure of Sensitive Information"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "information-disclosure",
+                  "data-exposure"
+                ],
+                "security-severity": "5.7"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A01",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-200",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/denial-of-service",
+              "shortDescription": {
+                "text": "Denial of service threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker degrades or prevents legitimate use through resource exhaustion or cascading dependency failure."
+              },
+              "help": {
+                "text": "Review limits on concurrency, payload size, retries and dependency timeouts.",
+                "markdown": "## Detection Guidance\n\nReview availability controls:\n- Rate and concurrency limits\n- Timeouts and bulkheads\n- Capacity alerts\n\n## Framework References\n\n- OWASP Top 10: A05 Security Misconfiguration\n- CWE-400: Uncontrolled Resource Consumption"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "denial-of-service",
+                  "availability"
+                ],
+                "security-severity": "6.1"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A05",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-400",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/elevation-of-privilege",
+              "shortDescription": {
+                "text": "Elevation of privilege threats"
+              },
+              "fullDescription": {
+                "text": "Threats where a caller gains rights that were not granted, through missing ownership checks, role confusion or excess permissions."
+              },
+              "help": {
+                "text": "Review authorization at every object and action, role resolution and the permissions each service holds.",
+                "markdown": "## Detection Guidance\n\nReview authorization controls:\n- Ownership checks on object references\n- Role resolution\n- Least privilege\n\n## Framework References\n\n- OWASP Top 10: A01 Broken Access Control\n- CWE-269: Improper Privilege Management"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "elevation-of-privilege",
+                  "authorization"
+                ],
+                "security-severity": "8.0"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A01",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-269",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/ai/agentic-threats",
+              "shortDescription": {
+                "text": "AI agent autonomy and misuse threats"
+              },
+              "fullDescription": {
+                "text": "Threats arising from autonomous agent behavior, including uncontrolled tool use, excessive autonomy, agent-to-agent trust and reliance on agent output."
+              },
+              "help": {
+                "text": "Review agent autonomy boundaries, tool access controls, human approval gates and inter-agent trust assumptions.",
+                "markdown": "## Detection Guidance\n\nReview agent controls:\n- Tool allowlists and scopes\n- Human approval for high-impact actions\n- Delegation limits\n\n## Framework References\n\n- OWASP Agentic Security Initiative\n- CWE-693: Protection Mechanism Failure"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "ai",
+                  "agentic",
+                  "autonomy",
+                  "tool-use"
+                ],
+                "security-severity": "4.7"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "CWE-693",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/ai/llm-threats",
+              "shortDescription": {
+                "text": "LLM-specific threats"
+              },
+              "fullDescription": {
+                "text": "Threats to and through language models, including prompt injection, data poisoning, extraction, unsafe output handling and misinformation."
+              },
+              "help": {
+                "text": "Review prompt construction, retrieval sources, training data provenance, output handling and grounding.",
+                "markdown": "## Detection Guidance\n\nReview model controls:\n- Separation of instructions and content\n- Provenance of retrieved and training data\n- Output validation\n\n## Framework References\n\n- OWASP Top 10 for LLM Applications\n- CWE-74: Improper Neutralization of Special Elements in Output"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "ai",
+                  "llm",
+                  "prompt-injection"
+                ],
+                "security-severity": "6.3"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "CWE-74",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "taxonomies": [
+        {
+          "name": "OWASP",
+          "version": "2021",
+          "informationUri": "https://owasp.org/Top10/",
+          "organization": "OWASP Foundation",
+          "shortDescription": {
+            "text": "OWASP Top 10 Web Application Security Risks"
+          }
+        },
+        {
+          "name": "CWE",
+          "version": "4.13",
+          "informationUri": "https://cwe.mitre.org/",
+          "organization": "MITRE",
+          "shortDescription": {
+            "text": "Common Weakness Enumeration"
+          }
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "Object identifiers in requests to edge-gateway are trusted without an ownership check, so a caller can read or change inbound API requests that belong to others. [Control: missing]"
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "b519ad7937a2e79a",
+            "findingId/v1": "E-1"
+          },
+          "properties": {
+            "security-severity": "8.0",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": false,
+            "control-effectiveness": "none",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "inherent-risk": "8.0",
+            "residual-risk": "8.0",
+            "recommendation": "Implement access control for edge-gateway. Evaluate the original caller's entitlement for each object and action, and deny by default when the check cannot be made. Place the control where inbound API requests are first received, so that nothing downstream has to repeat the check. This addresses: Object identifiers in requests to edge-gateway are trusted without an ownership check, so a caller can read or change inbound API requests that belong to others. Acceptance check: a caller without the entitlement is denied for every object and action, including through indirect paths, and the denial is recorded. Ship to the internal environment first, compare behaviour with the previous release and promote after reviewing the first week of records. Suggested location: stub-codebase/src/edge_gateway/access_control.py. Reference patterns: Role and attribute checks at the service boundary, deny-by-default policy.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Unsanitised credential assertions and session grants reach auth-broker and are processed as trusted structure, so crafted input changes how later steps interpret the record. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "auth-broker",
+                  "fullyQualifiedName": "Edge DMZ/auth-broker",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "824bcfd900bb1f02",
+            "findingId/v1": "T-4"
+          },
+          "properties": {
+            "security-severity": "6.7",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": false,
+            "control-effectiveness": "none",
+            "maestro-layer": "L6 \u2014 Security and Compliance",
+            "inherent-risk": "6.7",
+            "residual-risk": "6.7",
+            "recommendation": "Implement input validation for auth-broker. Validate each structured input against a closed schema before use, and reject unknown fields and oversized values. Place the control where credential assertions and session grants are first received, so that nothing downstream has to repeat the check. This addresses: Unsanitised credential assertions and session grants reach auth-broker and are processed as trusted structure, so crafted input changes how later steps interpret the record. Acceptance check: malformed, oversized and unexpected fields are rejected before any side effect, and a regression test covers each rejected shape. Roll the change out behind a flag, watch error rates for one release and remove the flag once no regression is seen. Suggested location: stub-codebase/src/auth_broker/input_validation.py. Reference patterns: Schema validation, parameterised queries, output encoding.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Markdown or HTML produced by worker-2 contains remote images that leak data when a client renders it. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "worker-2",
+                  "fullyQualifiedName": "Agent Runtime Zone/worker-2",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f977eb2792956a33",
+            "findingId/v1": "OI-3"
+          },
+          "properties": {
+            "security-severity": "6.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": false,
+            "control-effectiveness": "none",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "6.3",
+            "residual-risk": "6.3",
+            "recommendation": "Implement input validation for worker-2. Validate each structured input against a closed schema before use, and reject unknown fields and oversized values. Place the control where work orders and route candidates are first received, so that nothing downstream has to repeat the check. This addresses: Markdown or HTML produced by worker-2 contains remote images that leak data when a client renders it. Acceptance check: malformed, oversized and unexpected fields are rejected before any side effect, and a regression test covers each rejected shape. Apply the change to the most exposed instances first, then to the rest, and keep the previous configuration available for a quick rollback. Suggested location: stub-codebase/src/worker_2/input_validation.py. Reference patterns: Schema validation, parameterised queries, output encoding.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "A single oversized or deeply nested payload makes intake-agent spend disproportionate memory and CPU parsing free-text shipment requests. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "904eee6bf581bf38",
+            "findingId/v1": "D-2"
+          },
+          "properties": {
+            "security-severity": "6.1",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": false,
+            "control-effectiveness": "none",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "6.1",
+            "residual-risk": "6.1",
+            "recommendation": "Implement rate limiting for intake-agent. Bound concurrency, request rate and per-task spend for this component and shed load with a clear status. Place the control where free-text shipment requests are first received, so that nothing downstream has to repeat the check. This addresses: A single oversized or deeply nested payload makes intake-agent spend disproportionate memory and CPU parsing free-text shipment requests. Acceptance check: a load test above the configured limits is shed with a clear status while normal traffic keeps its latency budget. Ship to the internal environment first, compare behaviour with the previous release and promote after reviewing the first week of records. Suggested location: stub-codebase/src/intake_agent/rate_limiting.py. Reference patterns: Token buckets, bulkheads, circuit breakers, task budgets.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Backups and exports of credential assertions and session grants on auth-broker are writable by operators without a second approver, so a malicious change survives restores. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "auth-broker",
+                  "fullyQualifiedName": "Edge DMZ/auth-broker",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "824bcfd900bb1f02",
+            "findingId/v1": "T-1"
+          },
+          "properties": {
+            "security-severity": "6.0",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": false,
+            "control-effectiveness": "none",
+            "maestro-layer": "L6 \u2014 Security and Compliance",
+            "inherent-risk": "6.0",
+            "residual-risk": "6.0",
+            "recommendation": "Implement input validation for auth-broker. Validate each structured input against a closed schema before use, and reject unknown fields and oversized values. Place the control where credential assertions and session grants are first received, so that nothing downstream has to repeat the check. This addresses: Backups and exports of credential assertions and session grants on auth-broker are writable by operators without a second approver, so a malicious change survives restores. Acceptance check: malformed, oversized and unexpected fields are rejected before any side effect, and a regression test covers each rejected shape. Coordinate the change with the owners of dependent services so that none of them relies on the behaviour being removed. Suggested location: stub-codebase/src/auth_broker/input_validation.py. Reference patterns: Schema validation, parameterised queries, output encoding.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "A shared or long-lived refresh token on auth-broker lets anyone who obtains one copy authenticate as every tenant that uses the same deployment profile. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "auth-broker",
+                  "fullyQualifiedName": "Edge DMZ/auth-broker",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Authentication detected in src/gateway/token_verify.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/gateway/token_verify.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4cfd16d0f0d8d520",
+            "findingId/v1": "S-3"
+          },
+          "properties": {
+            "security-severity": "5.9",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/gateway/token_verify.py",
+                "line": 7,
+                "snippet": "def verify_token(raw, keys, audience):\n    claims = decode_signed(raw, keys, algorithms=[\"ES256\"])\n    if claims[\"aud\"] != audience or claims[\"exp\"] < now():\n        raise Rejected(\"token not valid for this service\")\n    return claims"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L6 \u2014 Security and Compliance",
+            "inherent-risk": "7.9",
+            "residual-risk": "5.9",
+            "recommendation": "Harden the existing access control control: evaluate the original caller's entitlement for each object and action, and deny by default when the check cannot be made on the paths of auth-broker that it does not yet cover. The current implementation is recorded at src/gateway/token_verify.py:7 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: A shared or long-lived refresh token on auth-broker lets anyone who obtains one copy authenticate as every tenant that uses the same deployment profile. Acceptance check: a caller without the entitlement is denied for every object and action, including through indirect paths, and the denial is recorded. Ship to the internal environment first, compare behaviour with the previous release and promote after reviewing the first week of records. Suggested location: src/gateway/token_verify.py. Reference patterns: Role and attribute checks at the service boundary, deny-by-default policy.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "embedded documents and metadata held by vector-store-a are readable by any service in the Data Zone that shares the same network role, because access is granted by network position. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "vector-store-a",
+                  "fullyQualifiedName": "Data Zone/vector-store-a",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "cfe9b03984131775",
+            "findingId/v1": "I-5"
+          },
+          "properties": {
+            "security-severity": "5.7",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": false,
+            "control-effectiveness": "none",
+            "maestro-layer": "L2 \u2014 Data Operations",
+            "inherent-risk": "5.7",
+            "residual-risk": "5.7",
+            "recommendation": "Implement encryption for vector-store-a. Protect this data in transit and at rest with current protocols and keys held outside the storage account. Place the control where embedded documents and metadata are first received, so that nothing downstream has to repeat the check. This addresses: embedded documents and metadata held by vector-store-a are readable by any service in the Data Zone that shares the same network role, because access is granted by network position. Acceptance check: a scan of the link or store shows only current protocol versions and encrypted content, and keys rotate without downtime. Apply the change to the most exposed instances first, then to the rest, and keep the previous configuration available for a quick rollback. Suggested location: stub-codebase/src/vector_store_a/encryption.py. Reference patterns: TLS 1.3, envelope encryption, managed key service.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "A dependency of edge-gateway becomes unavailable and the failure cascades because edge-gateway waits on it synchronously for every request. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Rate Limiting detected in src/gateway/ratelimit.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/gateway/ratelimit.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "401db5417ef99d98",
+            "findingId/v1": "D-1"
+          },
+          "properties": {
+            "security-severity": "5.5",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/gateway/ratelimit.py",
+                "line": 7,
+                "snippet": "def allow(caller, now):\n    bucket = buckets.setdefault(caller, Bucket(rate=RATE, burst=BURST))\n    bucket.refill(now)\n    return bucket.take(1)"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "inherent-risk": "7.3",
+            "residual-risk": "5.5",
+            "recommendation": "Harden the existing rate limiting control: bound concurrency, request rate and per-task spend for this component and shed load with a clear status on the paths of edge-gateway that it does not yet cover. The current implementation is recorded at src/gateway/ratelimit.py:7 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: A dependency of edge-gateway becomes unavailable and the failure cascades because edge-gateway waits on it synchronously for every request. Acceptance check: a load test above the configured limits is shed with a clear status while normal traffic keeps its latency budget. Apply the change to the most exposed instances first, then to the rest, and keep the previous configuration available for a quick rollback. Suggested location: src/gateway/ratelimit.py. Reference patterns: Token buckets, bulkheads, circuit breakers, task budgets.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "Retry storms from worker-2 multiply the load on vector-store-a when it slows down, turning a brief delay into a sustained outage. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "vector-store-a",
+                  "fullyQualifiedName": "Data Zone/vector-store-a",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "8be8ccb6250cae9d",
+            "findingId/v1": "D-3"
+          },
+          "properties": {
+            "security-severity": "5.3",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": false,
+            "control-effectiveness": "none",
+            "maestro-layer": "L2 \u2014 Data Operations",
+            "inherent-risk": "5.3",
+            "residual-risk": "5.3",
+            "recommendation": "Implement rate limiting for vector-store-a. Bound concurrency, request rate and per-task spend for this component and shed load with a clear status. Place the control where embedded documents and metadata are first received, so that nothing downstream has to repeat the check. This addresses: Retry storms from worker-2 multiply the load on vector-store-a when it slows down, turning a brief delay into a sustained outage. Acceptance check: a load test above the configured limits is shed with a clear status while normal traffic keeps its latency budget. Roll the change out behind a flag, watch error rates for one release and remove the flag once no regression is seen. Suggested location: stub-codebase/src/vector_store_a/rate_limiting.py. Reference patterns: Token buckets, bulkheads, circuit breakers, task budgets.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "intake-agent emits URLs that downstream services fetch, so an attacker can make internal addresses part of the output and trigger server-side requests. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/intake/schema.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/intake/schema.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4bcca12a86cc1a88",
+            "findingId/v1": "OI-1"
+          },
+          "properties": {
+            "security-severity": "5.3",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/intake/schema.py",
+                "line": 7,
+                "snippet": "def parse_request(payload):\n    data = REQUEST_SCHEMA.validate(payload, extra=\"forbid\")\n    if len(data[\"text\"]) > MAX_TEXT:\n        raise Rejected(\"request too large\")\n    return data"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "7.1",
+            "residual-risk": "5.3",
+            "recommendation": "Harden the existing logging/audit control: record who did what, to which object, with which outcome, in a store that operators cannot alter on the paths of intake-agent that it does not yet cover. The current implementation is recorded at src/intake/schema.py:7 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: intake-agent emits URLs that downstream services fetch, so an attacker can make internal addresses part of the output and trigger server-side requests. Acceptance check: every state change produces one complete record that an operator cannot edit, and a gap in the sequence raises an alert. Roll the change out behind a flag, watch error rates for one release and remove the flag once no regression is seen. Suggested location: src/intake/schema.py. Reference patterns: Append-only ledger, hash chaining, structured events.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Structured output from intake-agent is trusted by edge-gateway as already validated, so a malformed field flows straight into business logic. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/intake/schema.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/intake/schema.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4bcca12a86cc1a88",
+            "findingId/v1": "OI-2"
+          },
+          "properties": {
+            "security-severity": "5.3",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/intake/schema.py",
+                "line": 7,
+                "snippet": "def parse_request(payload):\n    data = REQUEST_SCHEMA.validate(payload, extra=\"forbid\")\n    if len(data[\"text\"]) > MAX_TEXT:\n        raise Rejected(\"request too large\")\n    return data"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "7.1",
+            "residual-risk": "5.3",
+            "recommendation": "Harden the existing logging/audit control: record who did what, to which object, with which outcome, in a store that operators cannot alter on the paths of intake-agent that it does not yet cover. The current implementation is recorded at src/intake/schema.py:7 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: Structured output from intake-agent is trusted by edge-gateway as already validated, so a malformed field flows straight into business logic. Acceptance check: every state change produces one complete record that an operator cannot edit, and a gap in the sequence raises an alert. Coordinate the change with the owners of dependent services so that none of them relies on the behaviour being removed. Suggested location: src/intake/schema.py. Reference patterns: Append-only ledger, hash chaining, structured events.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Secrets such as the bearer token for edge-gateway appear in process arguments and environment dumps that diagnostic tooling captures. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Encryption detected in src/common/tls.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/common/tls.py"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "787e8ebb87d59ea9",
+            "findingId/v1": "I-1"
+          },
+          "properties": {
+            "security-severity": "5.2",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/common/tls.py",
+                "line": 9,
+                "snippet": "def client_context():\n    ctx = new_tls_context(purpose=\"client\")\n    ctx.minimum_version = TLS_1_3\n    ctx.verify_hostname = True\n    return ctx"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "inherent-risk": "6.9",
+            "residual-risk": "5.2",
+            "recommendation": "Harden the existing encryption control: protect this data in transit and at rest with current protocols and keys held outside the storage account on the paths of edge-gateway that it does not yet cover. The current implementation is recorded at src/common/tls.py:9 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: Secrets such as the bearer token for edge-gateway appear in process arguments and environment dumps that diagnostic tooling captures. Acceptance check: a scan of the link or store shows only current protocol versions and encrypted content, and keys rotate without downtime. Apply the change to the most exposed instances first, then to the rest, and keep the previous configuration available for a quick rollback. Suggested location: src/common/tls.py. Reference patterns: TLS 1.3, envelope encryption, managed key service.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "edge-gateway passes conversation history from earlier turns into the model unchanged, so an injection planted earlier keeps working in later turns. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/intake/schema.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/intake/schema.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "1d7f63e114f5815c",
+            "findingId/v1": "LLM-1"
+          },
+          "properties": {
+            "security-severity": "5.2",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/intake/schema.py",
+                "line": 7,
+                "snippet": "def parse_request(payload):\n    data = REQUEST_SCHEMA.validate(payload, extra=\"forbid\")\n    if len(data[\"text\"]) > MAX_TEXT:\n        raise Rejected(\"request too large\")\n    return data"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "inherent-risk": "6.9",
+            "residual-risk": "5.2",
+            "recommendation": "Harden the existing input validation control: validate each structured input against a closed schema before use, and reject unknown fields and oversized values on the paths of edge-gateway that it does not yet cover. The current implementation is recorded at src/intake/schema.py:7 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: edge-gateway passes conversation history from earlier turns into the model unchanged, so an injection planted earlier keeps working in later turns. Acceptance check: malformed, oversized and unexpected fields are rejected before any side effect, and a regression test covers each rejected shape. Apply the change to the most exposed instances first, then to the rest, and keep the previous configuration available for a quick rollback. Suggested location: src/intake/schema.py. Reference patterns: Schema validation, parameterised queries, output encoding.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Prompt content logged by auth-broker is later replayed to edge-gateway for evaluation, carrying planted instructions into a trusted context. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/intake/schema.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/intake/schema.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "1d7f63e114f5815c",
+            "findingId/v1": "LLM-2"
+          },
+          "properties": {
+            "security-severity": "5.2",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/intake/schema.py",
+                "line": 7,
+                "snippet": "def parse_request(payload):\n    data = REQUEST_SCHEMA.validate(payload, extra=\"forbid\")\n    if len(data[\"text\"]) > MAX_TEXT:\n        raise Rejected(\"request too large\")\n    return data"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "inherent-risk": "6.9",
+            "residual-risk": "5.2",
+            "recommendation": "Harden the existing input validation control: validate each structured input against a closed schema before use, and reject unknown fields and oversized values on the paths of edge-gateway that it does not yet cover. The current implementation is recorded at src/intake/schema.py:7 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: Prompt content logged by auth-broker is later replayed to edge-gateway for evaluation, carrying planted instructions into a trusted context. Acceptance check: malformed, oversized and unexpected fields are rejected before any side effect, and a regression test covers each rejected shape. Roll the change out behind a flag, watch error rates for one release and remove the flag once no regression is seen. Suggested location: src/intake/schema.py. Reference patterns: Schema validation, parameterised queries, output encoding.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Encoded or multilingual payloads bypass the keyword filter in front of intake-agent, which only checks plain English text. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/intake/schema.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/intake/schema.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4bcca12a86cc1a88",
+            "findingId/v1": "LLM-3"
+          },
+          "properties": {
+            "security-severity": "5.2",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/intake/schema.py",
+                "line": 7,
+                "snippet": "def parse_request(payload):\n    data = REQUEST_SCHEMA.validate(payload, extra=\"forbid\")\n    if len(data[\"text\"]) > MAX_TEXT:\n        raise Rejected(\"request too large\")\n    return data"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "6.9",
+            "residual-risk": "5.2",
+            "recommendation": "Harden the existing input validation control: validate each structured input against a closed schema before use, and reject unknown fields and oversized values on the paths of intake-agent that it does not yet cover. The current implementation is recorded at src/intake/schema.py:7 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: Encoded or multilingual payloads bypass the keyword filter in front of intake-agent, which only checks plain English text. Acceptance check: malformed, oversized and unexpected fields are rejected before any side effect, and a regression test covers each rejected shape. Apply the change to the most exposed instances first, then to the rest, and keep the previous configuration available for a quick rollback. Suggested location: src/intake/schema.py. Reference patterns: Schema validation, parameterised queries, output encoding.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Logs and traces emitted by worker-2 include raw work orders and route candidates, so anyone with access to the logging pipeline can read content meant for one tenant. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "worker-2",
+                  "fullyQualifiedName": "Agent Runtime Zone/worker-2",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "acba224e8e7a2ff6",
+            "findingId/v1": "I-3"
+          },
+          "properties": {
+            "security-severity": "4.8",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": false,
+            "control-effectiveness": "none",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "4.8",
+            "residual-risk": "4.8",
+            "recommendation": "Implement encryption for worker-2. Protect this data in transit and at rest with current protocols and keys held outside the storage account. Place the control where work orders and route candidates are first received, so that nothing downstream has to repeat the check. This addresses: Logs and traces emitted by worker-2 include raw work orders and route candidates, so anyone with access to the logging pipeline can read content meant for one tenant. Acceptance check: a scan of the link or store shows only current protocol versions and encrypted content, and keys rotate without downtime. Coordinate the change with the owners of dependent services so that none of them relies on the behaviour being removed. Suggested location: stub-codebase/src/worker_2/encryption.py. Reference patterns: TLS 1.3, envelope encryption, managed key service.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "worker-2 follows links and files named in work orders and route candidates, which turns a harmless-looking request into a fetch of attacker-controlled content. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "worker-2",
+                  "fullyQualifiedName": "Agent Runtime Zone/worker-2",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f977eb2792956a33",
+            "findingId/v1": "LLM-7"
+          },
+          "properties": {
+            "security-severity": "4.8",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": false,
+            "control-effectiveness": "none",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "4.8",
+            "residual-risk": "4.8",
+            "recommendation": "Implement input validation for worker-2. Validate each structured input against a closed schema before use, and reject unknown fields and oversized values. Place the control where work orders and route candidates are first received, so that nothing downstream has to repeat the check. This addresses: worker-2 follows links and files named in work orders and route candidates, which turns a harmless-looking request into a fetch of attacker-controlled content. Acceptance check: malformed, oversized and unexpected fields are rejected before any side effect, and a regression test covers each rejected shape. Roll the change out behind a flag, watch error rates for one release and remove the flag once no regression is seen. Suggested location: stub-codebase/src/worker_2/input_validation.py. Reference patterns: Schema validation, parameterised queries, output encoding.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "tool-server-1 retries failed actions on its own, repeating side effects such as bookings or messages when the first attempt partly succeeded. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "tool-server-1",
+                  "fullyQualifiedName": "Agent Runtime Zone/tool-server-1",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/intake/schema.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/intake/schema.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "c3795a6aa255831d",
+            "findingId/v1": "AG-4"
+          },
+          "properties": {
+            "security-severity": "4.7",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/intake/schema.py",
+                "line": 7,
+                "snippet": "def parse_request(payload):\n    data = REQUEST_SCHEMA.validate(payload, extra=\"forbid\")\n    if len(data[\"text\"]) > MAX_TEXT:\n        raise Rejected(\"request too large\")\n    return data"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "6.3",
+            "residual-risk": "4.7",
+            "recommendation": "Harden the existing authentication control: verify the caller's signed credential on every request to this component and bind it to the channel it arrived on on the paths of tool-server-1 that it does not yet cover. The current implementation is recorded at src/intake/schema.py:7 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: tool-server-1 retries failed actions on its own, repeating side effects such as bookings or messages when the first attempt partly succeeded. Acceptance check: a request that carries a missing, expired or mismatched credential is rejected with a logged reason, and a valid request still succeeds. Roll the change out behind a flag, watch error rates for one release and remove the flag once no regression is seen. Suggested location: src/intake/schema.py. Reference patterns: Short-lived signed tokens, mutual TLS, workload identity.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "planner-agent does not limit the rate or total number of tool calls per task, so abuse of a costly tool goes unnoticed until the invoice arrives. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "planner-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/planner-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Access Control detected in src/policy/rbac.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/policy/rbac.py"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "eded79e55e7b3f26",
+            "findingId/v1": "AG-6"
+          },
+          "properties": {
+            "security-severity": "4.7",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/policy/rbac.py",
+                "line": 9,
+                "snippet": "def require_role(role):\n    def guard(request):\n        if role not in directory.roles_for(request.principal):\n            raise Forbidden(request.principal, role)\n    return guard"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "6.3",
+            "residual-risk": "4.7",
+            "recommendation": "Harden the existing input validation control: validate each structured input against a closed schema before use, and reject unknown fields and oversized values on the paths of planner-agent that it does not yet cover. The current implementation is recorded at src/policy/rbac.py:9 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: planner-agent does not limit the rate or total number of tool calls per task, so abuse of a costly tool goes unnoticed until the invoice arrives. Acceptance check: malformed, oversized and unexpected fields are rejected before any side effect, and a regression test covers each rejected shape. Coordinate the change with the owners of dependent services so that none of them relies on the behaviour being removed. Suggested location: src/policy/rbac.py. Reference patterns: Schema validation, parameterised queries, output encoding.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "Role claims carried in the service token presented to intake-agent are honoured without confirmation against the authoritative directory. [Control: missing]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "e6e2e0ac2f5164d7",
+            "findingId/v1": "E-2"
+          },
+          "properties": {
+            "security-severity": "4.6",
+            "control-status": "missing",
+            "control-evidence": [],
+            "control-carry-forward": false,
+            "control-effectiveness": "none",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "4.6",
+            "residual-risk": "4.6",
+            "recommendation": "Implement access control for intake-agent. Evaluate the original caller's entitlement for each object and action, and deny by default when the check cannot be made. Place the control where free-text shipment requests are first received, so that nothing downstream has to repeat the check. This addresses: Role claims carried in the service token presented to intake-agent are honoured without confirmation against the authoritative directory. Acceptance check: a caller without the entitlement is denied for every object and action, including through indirect paths, and the denial is recorded. Ship to the internal environment first, compare behaviour with the previous release and promote after reviewing the first week of records. Suggested location: stub-codebase/src/intake_agent/access_control.py. Reference patterns: Role and attribute checks at the service boundary, deny-by-default policy.",
+            "effort-estimate": "High"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Worker agents coordinate through the shared message bus and memory so that each stays under its individual limits while together they exceed the authority intended for any one of them, and no single-agent control observes the combined behaviour. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "worker-2",
+                  "fullyQualifiedName": "Agent Runtime Zone/worker-2",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Authentication detected in src/gateway/mtls_config.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/gateway/mtls_config.py"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "0d85d4cf33516dfb",
+            "findingId/v1": "AGP-01"
+          },
+          "properties": {
+            "security-severity": "4.5",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/gateway/mtls_config.py",
+                "line": 8,
+                "snippet": "def internal_context(ca_bundle, cert, key):\n    ctx = new_tls_context(purpose=\"server\")\n    ctx.load_chain(cert, key)\n    ctx.require_client_certificate(ca_bundle)\n    return ctx"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "6.0",
+            "residual-risk": "4.5",
+            "recommendation": "Harden the existing rate limiting control: bound concurrency, request rate and per-task spend for this component and shed load with a clear status on the paths of worker-2 that it does not yet cover. The current implementation is recorded at src/gateway/mtls_config.py:8 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: Worker agents coordinate through the shared message bus and memory so that each stays under its individual limits while together they exceed the authority intended for any one of them, and no single-agent control observes the combined behaviour. Acceptance check: a load test above the configured limits is shed with a clear status while normal traffic keeps its latency budget. Coordinate the change with the owners of dependent services so that none of them relies on the behaviour being removed. Suggested location: src/gateway/mtls_config.py. Reference patterns: Token buckets, bulkheads, circuit breakers, task budgets.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "A shared or long-lived tool API key on tool-server-1 lets anyone who obtains one copy authenticate as every tenant that uses the same deployment profile. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "tool-server-1",
+                  "fullyQualifiedName": "Agent Runtime Zone/tool-server-1",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Authentication detected in src/gateway/mtls_config.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/gateway/mtls_config.py"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "a50a80778a188210",
+            "findingId/v1": "S-4"
+          },
+          "properties": {
+            "security-severity": "4.4",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/gateway/mtls_config.py",
+                "line": 8,
+                "snippet": "def internal_context(ca_bundle, cert, key):\n    ctx = new_tls_context(purpose=\"server\")\n    ctx.load_chain(cert, key)\n    ctx.require_client_certificate(ca_bundle)\n    return ctx"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "5.9",
+            "residual-risk": "4.4",
+            "recommendation": "Harden the existing authentication control: verify the caller's signed credential on every request to this component and bind it to the channel it arrived on on the paths of tool-server-1 that it does not yet cover. The current implementation is recorded at src/gateway/mtls_config.py:8 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: A shared or long-lived tool API key on tool-server-1 lets anyone who obtains one copy authenticate as every tenant that uses the same deployment profile. Acceptance check: a request that carries a missing, expired or mismatched credential is rejected with a logged reason, and a valid request still succeeds. Coordinate the change with the owners of dependent services so that none of them relies on the behaviour being removed. Suggested location: src/gateway/mtls_config.py. Reference patterns: Short-lived signed tokens, mutual TLS, workload identity.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "planner-agent runs with broader permissions than its function needs, so a flaw in handling task plans and tool selections yields access to unrelated resources. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "planner-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/planner-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Access Control detected in src/policy/rbac.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/policy/rbac.py"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "78fbcd7f0ec76c98",
+            "findingId/v1": "E-3"
+          },
+          "properties": {
+            "security-severity": "4.3",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/policy/rbac.py",
+                "line": 9,
+                "snippet": "def require_role(role):\n    def guard(request):\n        if role not in directory.roles_for(request.principal):\n            raise Forbidden(request.principal, role)\n    return guard"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "5.7",
+            "residual-risk": "4.3",
+            "recommendation": "Harden the existing access control control: evaluate the original caller's entitlement for each object and action, and deny by default when the check cannot be made on the paths of planner-agent that it does not yet cover. The current implementation is recorded at src/policy/rbac.py:9 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: planner-agent runs with broader permissions than its function needs, so a flaw in handling task plans and tool selections yields access to unrelated resources. Acceptance check: a caller without the entitlement is denied for every object and action, including through indirect paths, and the denial is recorded. Ship to the internal environment first, compare behaviour with the previous release and promote after reviewing the first week of records. Suggested location: src/policy/rbac.py. Reference patterns: Role and attribute checks at the service boundary, deny-by-default policy.",
+            "effort-estimate": "Medium"
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "planner-agent runs without a budget on steps or spend, so a loop or an adversarial task keeps it acting long after it stopped being useful. [Control: partial]"
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "planner-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/planner-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Access Control detected in src/policy/rbac.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/policy/rbac.py"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "eded79e55e7b3f26",
+            "findingId/v1": "AG-2"
+          },
+          "properties": {
+            "security-severity": "4.3",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/policy/rbac.py",
+                "line": 9,
+                "snippet": "def require_role(role):\n    def guard(request):\n        if role not in directory.roles_for(request.principal):\n            raise Forbidden(request.principal, role)\n    return guard"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "5.7",
+            "residual-risk": "4.3",
+            "recommendation": "Harden the existing logging/audit control: record who did what, to which object, with which outcome, in a store that operators cannot alter on the paths of planner-agent that it does not yet cover. The current implementation is recorded at src/policy/rbac.py:9 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: planner-agent runs without a budget on steps or spend, so a loop or an adversarial task keeps it acting long after it stopped being useful. Acceptance check: every state change produces one complete record that an operator cannot edit, and a gap in the sequence raises an alert. Roll the change out behind a flag, watch error rates for one release and remove the flag once no regression is seen. Suggested location: src/policy/rbac.py. Reference patterns: Append-only ledger, hash chaining, structured events.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "A shared or long-lived bearer token on edge-gateway lets anyone who obtains one copy authenticate as every tenant that uses the same deployment profile. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Authentication detected in src/gateway/token_verify.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/gateway/token_verify.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "41828eafe016e25d",
+            "findingId/v1": "S-1"
+          },
+          "properties": {
+            "security-severity": "3.8",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/gateway/token_verify.py",
+                "line": 7,
+                "snippet": "def verify_token(raw, keys, audience):\n    claims = decode_signed(raw, keys, algorithms=[\"ES256\"])\n    if claims[\"aud\"] != audience or claims[\"exp\"] < now():\n        raise Rejected(\"token not valid for this service\")\n    return claims"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "inherent-risk": "7.6",
+            "residual-risk": "3.8",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Stale data in the knowledge base lets intake-agent present superseded tariffs as current, causing wrong quotes. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/intake/schema.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/intake/schema.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4bcca12a86cc1a88",
+            "findingId/v1": "MI-2"
+          },
+          "properties": {
+            "security-severity": "3.4",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/intake/schema.py",
+                "line": 7,
+                "snippet": "def parse_request(payload):\n    data = REQUEST_SCHEMA.validate(payload, extra=\"forbid\")\n    if len(data[\"text\"]) > MAX_TEXT:\n        raise Rejected(\"request too large\")\n    return data"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "6.8",
+            "residual-risk": "3.4",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "An unauthenticated callback or health route on tool-server-1 accepts requests that downstream code treats as if they had come from audit-ledger. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "tool-server-1",
+                  "fullyQualifiedName": "Agent Runtime Zone/tool-server-1",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Authentication detected in src/gateway/mtls_config.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/gateway/mtls_config.py"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "a50a80778a188210",
+            "findingId/v1": "S-5"
+          },
+          "properties": {
+            "security-severity": "3.3",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/gateway/mtls_config.py",
+                "line": 8,
+                "snippet": "def internal_context(ca_bundle, cert, key):\n    ctx = new_tls_context(purpose=\"server\")\n    ctx.load_chain(cert, key)\n    ctx.require_client_certificate(ca_bundle)\n    return ctx"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "6.6",
+            "residual-risk": "3.3",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Encoded or multilingual payloads bypass the keyword filter in front of tool-server-1, which only checks plain English text. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "tool-server-1",
+                  "fullyQualifiedName": "Agent Runtime Zone/tool-server-1",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/intake/schema.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/intake/schema.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "c3d10b22b6a28f94",
+            "findingId/v1": "LLM-4"
+          },
+          "properties": {
+            "security-severity": "3.3",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/intake/schema.py",
+                "line": 7,
+                "snippet": "def parse_request(payload):\n    data = REQUEST_SCHEMA.validate(payload, extra=\"forbid\")\n    if len(data[\"text\"]) > MAX_TEXT:\n        raise Rejected(\"request too large\")\n    return data"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "6.6",
+            "residual-risk": "3.3",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "intake-agent fabricates reference numbers and clause citations that look real, which operators then paste into official documents. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/intake/schema.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/intake/schema.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4bcca12a86cc1a88",
+            "findingId/v1": "MI-1"
+          },
+          "properties": {
+            "security-severity": "3.3",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/intake/schema.py",
+                "line": 7,
+                "snippet": "def parse_request(payload):\n    data = REQUEST_SCHEMA.validate(payload, extra=\"forbid\")\n    if len(data[\"text\"]) > MAX_TEXT:\n        raise Rejected(\"request too large\")\n    return data"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "6.6",
+            "residual-risk": "3.3",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Persuasive phrasing from intake-agent pushes operators to approve proposals quickly, which reduces careful review. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Authentication detected in src/gateway/token_verify.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/gateway/token_verify.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "d65e72338538dd30",
+            "findingId/v1": "TE-2"
+          },
+          "properties": {
+            "security-severity": "3.1",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/gateway/token_verify.py",
+                "line": 7,
+                "snippet": "def verify_token(raw, keys, audience):\n    claims = decode_signed(raw, keys, algorithms=[\"ES256\"])\n    if claims[\"aud\"] != audience or claims[\"exp\"] < now():\n        raise Rejected(\"token not valid for this service\")\n    return claims"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "6.2",
+            "residual-risk": "3.1",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "tool-server-1 invokes tools with arguments assembled from model output, so an attacker who shapes the output can call a tool with parameters the designer never allowed. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "tool-server-1",
+                  "fullyQualifiedName": "Agent Runtime Zone/tool-server-1",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/intake/schema.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/intake/schema.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "c3795a6aa255831d",
+            "findingId/v1": "AG-5"
+          },
+          "properties": {
+            "security-severity": "3.0",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/intake/schema.py",
+                "line": 7,
+                "snippet": "def parse_request(payload):\n    data = REQUEST_SCHEMA.validate(payload, extra=\"forbid\")\n    if len(data[\"text\"]) > MAX_TEXT:\n        raise Rejected(\"request too large\")\n    return data"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "6.0",
+            "residual-risk": "3.0",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Actions taken through tool-server-1 are logged without the authenticated principal or a request identifier, so a caller can deny having submitted a change to tool call arguments and results. [Control: partial]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "tool-server-1",
+                  "fullyQualifiedName": "Agent Runtime Zone/tool-server-1",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Logging/Audit detected in src/audit/ledger_writer.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/audit/ledger_writer.py"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "594593b1e1f8365c",
+            "findingId/v1": "R-4"
+          },
+          "properties": {
+            "security-severity": "2.8",
+            "control-status": "partial",
+            "control-evidence": [
+              {
+                "file": "src/audit/ledger_writer.py",
+                "line": 9,
+                "snippet": "def record(event):\n    entry = {\"at\": utc_now(), \"who\": event.principal, \"what\": event.action}\n    entry[\"prev\"] = ledger.tail_hash()\n    ledger.append(entry)\n    return entry[\"prev\"]"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "weak",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "3.7",
+            "residual-risk": "2.8",
+            "recommendation": "Harden the existing logging/audit control: record who did what, to which object, with which outcome, in a store that operators cannot alter on the paths of tool-server-1 that it does not yet cover. The current implementation is recorded at src/audit/ledger_writer.py:9 and covers the main request path. Extend it to the secondary paths and add a test that exercises each of them. This addresses: Actions taken through tool-server-1 are logged without the authenticated principal or a request identifier, so a caller can deny having submitted a change to tool call arguments and results. Acceptance check: every state change produces one complete record that an operator cannot edit, and a gap in the sequence raises an alert. Ship to the internal environment first, compare behaviour with the previous release and promote after reviewing the first week of records. Suggested location: src/audit/ledger_writer.py. Reference patterns: Append-only ledger, hash chaining, structured events.",
+            "effort-estimate": "Low"
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Cross-tenant filters on model-gateway are applied in application code only, so one missing predicate exposes another tenant's prompts and completions. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "model-gateway",
+                  "fullyQualifiedName": "Agent Runtime Zone/model-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Encryption detected in src/common/tls.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/common/tls.py"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "94eb1e6e7268633e",
+            "findingId/v1": "I-4"
+          },
+          "properties": {
+            "security-severity": "2.7",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/common/tls.py",
+                "line": 9,
+                "snippet": "def client_context():\n    ctx = new_tls_context(purpose=\"client\")\n    ctx.minimum_version = TLS_1_3\n    ctx.verify_hostname = True\n    return ctx"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L1 \u2014 Foundation Model",
+            "inherent-risk": "5.4",
+            "residual-risk": "2.7",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Indirect injection through documents retrieved for model-gateway lets the author of a retrieved page steer the answer without ever talking to the system. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "model-gateway",
+                  "fullyQualifiedName": "Agent Runtime Zone/model-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Logging/Audit detected in src/obs/trace_redact.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/obs/trace_redact.py"
+                },
+                "region": {
+                  "startLine": 6
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "97ad9f28442e9773",
+            "findingId/v1": "LLM-5"
+          },
+          "properties": {
+            "security-severity": "2.7",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/obs/trace_redact.py",
+                "line": 6,
+                "snippet": "def redact(span):\n    for field in SENSITIVE_FIELDS:\n        if field in span.attributes:\n            span.attributes[field] = \"[redacted]\"\n    return span"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L1 \u2014 Foundation Model",
+            "inherent-risk": "5.4",
+            "residual-risk": "2.7",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Serialised objects arriving from worker-2 are deserialised by vector-store-a with permissive type handling, allowing crafted payloads to instantiate unintended behaviour. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "vector-store-a",
+                  "fullyQualifiedName": "Data Zone/vector-store-a",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/store/queries.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/store/queries.py"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "74d94afde2e1f602",
+            "findingId/v1": "T-2"
+          },
+          "properties": {
+            "security-severity": "2.5",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/store/queries.py",
+                "line": 8,
+                "snippet": "def load_task(conn, task_id):\n    cur = conn.cursor()\n    cur.execute(\"select body from tasks where id = %s\", (task_id,))\n    row = cur.fetchone()\n    return row[0] if row else None"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L2 \u2014 Data Operations",
+            "inherent-risk": "5.0",
+            "residual-risk": "2.5",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Operators approve changes to tool call arguments and results through a chat message or ticket comment that is not bound to the executed change, so approvals can be disputed. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "tool-server-1",
+                  "fullyQualifiedName": "Agent Runtime Zone/tool-server-1",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Logging/Audit detected in src/audit/ledger_writer.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/audit/ledger_writer.py"
+                },
+                "region": {
+                  "startLine": 9
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "594593b1e1f8365c",
+            "findingId/v1": "R-3"
+          },
+          "properties": {
+            "security-severity": "2.5",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/audit/ledger_writer.py",
+                "line": 9,
+                "snippet": "def record(event):\n    entry = {\"at\": utc_now(), \"who\": event.principal, \"what\": event.action}\n    entry[\"prev\"] = ledger.tail_hash()\n    ledger.append(entry)\n    return entry[\"prev\"]"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "5.0",
+            "residual-risk": "2.5",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Memory written by tool-server-1 is trusted on later runs, so one poisoned entry changes the behaviour of every future task. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "tool-server-1",
+                  "fullyQualifiedName": "Agent Runtime Zone/tool-server-1",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/intake/schema.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/intake/schema.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "c3795a6aa255831d",
+            "findingId/v1": "AG-3"
+          },
+          "properties": {
+            "security-severity": "2.5",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/intake/schema.py",
+                "line": 7,
+                "snippet": "def parse_request(payload):\n    data = REQUEST_SCHEMA.validate(payload, extra=\"forbid\")\n    if len(data[\"text\"]) > MAX_TEXT:\n        raise Rejected(\"request too large\")\n    return data"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "5.0",
+            "residual-risk": "2.5",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Anyone who can write to the ingestion path of vector-store-a can slip in documents that contradict authoritative sources. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "vector-store-a",
+                  "fullyQualifiedName": "Data Zone/vector-store-a",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/store/queries.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/store/queries.py"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "751012fac8445d39",
+            "findingId/v1": "LLM-6"
+          },
+          "properties": {
+            "security-severity": "2.5",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/store/queries.py",
+                "line": 8,
+                "snippet": "def load_task(conn, task_id):\n    cur = conn.cursor()\n    cur.execute(\"select body from tasks where id = %s\", (task_id,))\n    row = cur.fetchone()\n    return row[0] if row else None"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L2 \u2014 Data Operations",
+            "inherent-risk": "5.0",
+            "residual-risk": "2.5",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Clock drift between intake-agent and edge-gateway leaves events in inconsistent order, so the sequence of actions on free-text shipment requests cannot be reconstructed reliably. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Logging/Audit detected in src/obs/trace_redact.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/obs/trace_redact.py"
+                },
+                "region": {
+                  "startLine": 6
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "b741c337e48475c5",
+            "findingId/v1": "R-1"
+          },
+          "properties": {
+            "security-severity": "2.3",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/obs/trace_redact.py",
+                "line": 6,
+                "snippet": "def redact(span):\n    for field in SENSITIVE_FIELDS:\n        if field in span.attributes:\n            span.attributes[field] = \"[redacted]\"\n    return span"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "4.6",
+            "residual-risk": "2.3",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Memory written by intake-agent is trusted on later runs, so one poisoned entry changes the behaviour of every future task. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Authentication detected in src/gateway/token_verify.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/gateway/token_verify.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "d65e72338538dd30",
+            "findingId/v1": "AG-1"
+          },
+          "properties": {
+            "security-severity": "2.3",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/gateway/token_verify.py",
+                "line": 7,
+                "snippet": "def verify_token(raw, keys, audience):\n    claims = decode_signed(raw, keys, algorithms=[\"ES256\"])\n    if claims[\"aud\"] != audience or claims[\"exp\"] < now():\n        raise Rejected(\"token not valid for this service\")\n    return claims"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "4.6",
+            "residual-risk": "2.3",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "intake-agent adopts a persona that presents itself as a named colleague, so operators trust its suggestions more than its accuracy warrants. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Authentication detected in src/gateway/token_verify.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/gateway/token_verify.py"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "d65e72338538dd30",
+            "findingId/v1": "TE-1"
+          },
+          "properties": {
+            "security-severity": "2.2",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/gateway/token_verify.py",
+                "line": 7,
+                "snippet": "def verify_token(raw, keys, audience):\n    claims = decode_signed(raw, keys, algorithms=[\"ES256\"])\n    if claims[\"aud\"] != audience or claims[\"exp\"] < now():\n        raise Rejected(\"token not valid for this service\")\n    return claims"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "inherent-risk": "4.4",
+            "residual-risk": "2.2",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "An attacker who can write to the channel between tool-server-1 and audit-ledger modifies approval and tool call records in transit because messages carry no integrity protection of their own. [Control: found]"
+          },
+          "level": "note",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "audit-ledger",
+                  "fullyQualifiedName": "Operations Zone/audit-ledger",
+                  "kind": "data-store"
+                }
+              ]
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "message": {
+                "text": "Control evidence: Input Validation detected in src/store/queries.py"
+              },
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/store/queries.py"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "109140cfcc16425b",
+            "findingId/v1": "T-3"
+          },
+          "properties": {
+            "security-severity": "2.1",
+            "control-status": "found",
+            "control-evidence": [
+              {
+                "file": "src/store/queries.py",
+                "line": 8,
+                "snippet": "def load_task(conn, task_id):\n    cur = conn.cursor()\n    cur.execute(\"select body from tasks where id = %s\", (task_id,))\n    row = cur.fetchone()\n    return row[0] if row else None"
+              }
+            ],
+            "control-carry-forward": false,
+            "control-effectiveness": "moderate",
+            "maestro-layer": "L6 \u2014 Security and Compliance",
+            "inherent-risk": "4.2",
+            "residual-risk": "2.1",
+            "recommendation": "",
+            "effort-estimate": ""
+          }
+        }
+      ]
+    }
+  ]
+}

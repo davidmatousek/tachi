@@ -150,8 +150,10 @@ For each gap in the gap list, dispatch the specific threat agent(s) for the miss
 | info-disclosure | tachi-info-disclosure |
 | denial-of-service | tachi-denial-of-service |
 | privilege-escalation | tachi-privilege-escalation |
-| agentic | tachi-tool-abuse, tachi-agent-autonomy |
-| llm | tachi-prompt-injection, tachi-data-poisoning, tachi-model-theft |
+| agentic | tachi-tool-abuse, tachi-agent-autonomy, tachi-human-trust-exploitation |
+| llm | tachi-prompt-injection, tachi-data-poisoning, tachi-model-theft, tachi-output-integrity, tachi-misinformation |
+
+Each name is the typed `subagent_type` of a roster agent. Dispatch by that name, with no stand-in. The canonical roster is `.claude/skills/tachi-shared/references/agent-roster-shared.md`, and it governs if the two differ.
 
 For compound categories (`agentic`, `llm`), dispatch **all** listed agents. Findings from any of the listed agents satisfy the coverage requirement.
 

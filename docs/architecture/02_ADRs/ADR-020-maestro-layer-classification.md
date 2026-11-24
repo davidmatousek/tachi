@@ -5,6 +5,13 @@
 **Deciders**: Architect
 **Feature**: 084 (MAESTRO Layer Mapping)
 
+> **Note (2026-11-22, Feature 374)**: At PR 2, [ADR-050](ADR-050-large-architecture-output-authority.md) D13 moves Phase 3.5's chain formation into a shipped script, `attack-chains.py`, and amends "Phase 2: Cross-Layer Correlation" in part. Phase 1's layer tagging and Phase 2's scope boundary are unchanged.
+>
+> - **The record.** An outcome record, a body line under `## Attack Chain Outcome` in `threats.md`, replaces the `has-attack-chains` boolean. A shipped check catches a record that is missing or inconsistent.
+> - **The bound.** "All chains recorded" becomes spec S-3(g)'s bound: every surfaced chain in full, at most 100 compact rows for the other consolidated chains, then a count of the rest. "Top 5" becomes S-3(f)'s surfacing rule, which surfaces at most one chain per terminal-impact finding.
+> - **The total order.** "No tie possible" becomes S-3(e)'s ranking, whose last key compares the chains' ordered finding IDs in spec S-2's total order. Identical sets are deduplicated, so the order is total.
+> - **The placement.** Phase 3.5 runs on the joined `threats.md`, after its bounded parts are written and joined, no longer between Phase 3 and Phase 4.
+
 ---
 
 ## Context

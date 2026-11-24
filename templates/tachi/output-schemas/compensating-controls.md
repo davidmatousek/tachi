@@ -3,22 +3,39 @@
 <!--
   Canonical output template for tachi compensating controls reports.
 
-  Schema version : 1.0
+  Schema version : 1.1
   Schema file    : schemas/compensating-controls.yaml
   Finding schema : schemas/finding.yaml
 
-  Producers      : agents/tachi/control-analyzer.md
+  Producers      : scripts/render-compensating-controls.py, the shipped renderer, writes the whole file
+                   from the control analyzer's part files, the scored threats and the threat model.
+                   agents/tachi/control-analyzer.md supplies the judgment fields only (each finding's
+                   control status, category, confidence, evidence and recommendation, and the text cells
+                   of its Section 2 row), and writes none of this file.
   Consumers      : Security engineers, security managers, developers, GRC tools
 
   Every generated compensating controls output MUST conform to this structure.
-  All sections are required. Sections must appear in the order listed.
+  All sections are required, and they must appear in the order listed. A band table, a category
+  subsection or a recommendation group that would hold nothing is left out.
+
+  Slots: the agent writes a finding's Section 2 row against this template, with one slot token in each
+  computed cell ({{score:inherent}}, {{band:inherent}}, {{score:residual}} and {{band:residual}}), and
+  writes each effectiveness rationale as prose with slots. The renderer fills every slot with the value
+  it computed, so a number or band in a row or a rationale always equals the one in the table beside it.
+  Section 7's Assessment Inputs keeps the same text with its slots unresolved, so that the next run can
+  re-resolve them against its own values.
+
+  Escaping: the renderer escapes the agent's text and the text it reads from the threat model (`&`, `<`,
+  `>`, `|`, a backtick and a newline in a table cell, a `{{`, and a `#` or `~` that opens a line become
+  numeric or named references), and the readers in scripts/tachi_parsers.py decode exactly those
+  references.
 -->
 
 ---
 
 ```yaml
 ---
-schema_version: "1.0"
+schema_version: "1.1"
 date: "YYYY-MM-DD"
 source_file: "{path to input risk-scores.md or risk-scores.sarif}"
 target_path: "{--target codebase path}"
@@ -32,13 +49,13 @@ carry_forward_count: "{number of carried-forward control results or null}"
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `schema_version` | string | Compensating controls schema version. Always `"1.0"` for this release. |
-| `date` | string | ISO 8601 date when the analysis was performed. Format: `YYYY-MM-DD`. |
-| `source_file` | string | Path to the input risk score file that was analyzed. |
-| `target_path` | string | Path to the target codebase scanned for controls (`--target` flag value). |
+| `schema_version` | string | Compensating controls schema version. Always `"1.1"` for this release. 1.1 is additive to 1.0: the MAESTRO Layer and Control Category columns, the `CF` column's rule (the column is 1.0's; the renderer now fills it), one Section 4 block for each finding that has a recommendation, and Section 7. |
+| `date` | string | ISO 8601 date when the analysis was performed, as the command passed it to the renderer. The clock never enters this file. Format: `YYYY-MM-DD`. |
+| `source_file` | string | Path to the input risk score file that was analyzed, relative to the working directory. |
+| `target_path` | string | Path to the target codebase scanned for controls (`--target` flag value), relative to the working directory. |
 | `classification` | string | Data classification label. Always `"security"` for compensating controls reports. |
 | `rescan_scope` | string | `full` (first run or all findings changed) or `incremental` (only NEW/UPDATED findings re-scanned, UNCHANGED carried forward). |
-| `carry_forward_count` | integer, nullable | Number of findings with carried-forward control results from baseline. Null when no baseline. |
+| `carry_forward_count` | integer, nullable | Number of findings with carried-forward control results from baseline: the rows whose `CF` cell reads `CF` in Section 2. Null when no baseline. |
 
 ---
 
@@ -68,37 +85,43 @@ carry_forward_count: "{number of carried-forward control results or null}"
 | No Control Found | {coverage_missing_count} | {coverage_missing_pct}% |
 | **Total** | **{total_threats}** | **100%** |
 
+The renderer fills this whole section from the rows of Section 2, so every count equals the sum of the rows it counts. The percentages are whole numbers that sum to 100, by largest remainder (ties go to the label that sorts first). The `**Risk Reduction**` line keeps its ASCII arrow, because the readers' pattern needs it. The highest-risk unmitigated finding is the Partial Control or No Control Found finding with the highest inherent score, ties going to the first in finding ID order (defined in Section 2): a Control Found finding is never named, whatever its score.
+
 > {analysis_warnings}
+
+The renderer fills the warnings line from its own checks. A finding whose Section 2 cells disagree with its structured judgment is named there, and Section 7 lists the same flags.
 
 ---
 
 ## 2. Coverage Matrix
 
-Threats grouped by residual severity (Critical first, then High, Medium, Low). Within each group, threats are sorted by residual score descending.
+Threats grouped by residual severity (Critical first, then High, Medium, Low). Within each group, threats are sorted by residual score descending, and by finding ID within equal scores. Finding ID order is the threat model's: prefix rank `S`, `T`, `R`, `I`, `D`, `E`, `AG`, `AGP`, `LLM`, `OI`, `MI`, `TE`, then the numeric suffix as an integer. A band with no finding has no heading and no table.
+
+Every band table uses the one schema below, in this column order. The four computed cells show slot tokens here, and the renderer writes the number or band in their place.
 
 ### Critical Residual Severity
 
-| Threat ID | CF | Component | Threat | Inherent Score | Inherent Severity | Control Status | Residual Score | Residual Severity |
-|-----------|-----|-----------|--------|----------------|-------------------|----------------|----------------|-------------------|
-| {id} | {cf} | {component} | {threat} | {inherent_score} | {inherent_severity} | {control_status} | {residual_score} | Critical |
+| Threat ID | CF | Component | MAESTRO Layer | Threat | Inherent Score | Inherent Severity | Control Status | Control Category | Residual Score | Residual Severity |
+|-----------|----|-----------|---------------|--------|----------------|-------------------|----------------|------------------|----------------|-------------------|
+| {id} | {cf} | {component} | {maestro_layer} | {threat} | {{score:inherent}} | {{band:inherent}} | {control_status} | {control_category} | {{score:residual}} | {{band:residual}} |
 
 ### High Residual Severity
 
-| Threat ID | CF | Component | Threat | Inherent Score | Inherent Severity | Control Status | Residual Score | Residual Severity |
-|-----------|-----|-----------|--------|----------------|-------------------|----------------|----------------|-------------------|
-| {id} | {cf} | {component} | {threat} | {inherent_score} | {inherent_severity} | {control_status} | {residual_score} | High |
+| Threat ID | CF | Component | MAESTRO Layer | Threat | Inherent Score | Inherent Severity | Control Status | Control Category | Residual Score | Residual Severity |
+|-----------|----|-----------|---------------|--------|----------------|-------------------|----------------|------------------|----------------|-------------------|
+| {id} | {cf} | {component} | {maestro_layer} | {threat} | {{score:inherent}} | {{band:inherent}} | {control_status} | {control_category} | {{score:residual}} | {{band:residual}} |
 
 ### Medium Residual Severity
 
-| Threat ID | CF | Component | Threat | Inherent Score | Inherent Severity | Control Status | Residual Score | Residual Severity |
-|-----------|-----|-----------|--------|----------------|-------------------|----------------|----------------|-------------------|
-| {id} | {cf} | {component} | {threat} | {inherent_score} | {inherent_severity} | {control_status} | {residual_score} | Medium |
+| Threat ID | CF | Component | MAESTRO Layer | Threat | Inherent Score | Inherent Severity | Control Status | Control Category | Residual Score | Residual Severity |
+|-----------|----|-----------|---------------|--------|----------------|-------------------|----------------|------------------|----------------|-------------------|
+| {id} | {cf} | {component} | {maestro_layer} | {threat} | {{score:inherent}} | {{band:inherent}} | {control_status} | {control_category} | {{score:residual}} | {{band:residual}} |
 
 ### Low Residual Severity
 
-| Threat ID | CF | Component | Threat | Inherent Score | Inherent Severity | Control Status | Residual Score | Residual Severity |
-|-----------|-----|-----------|--------|----------------|-------------------|----------------|----------------|-------------------|
-| {id} | {cf} | {component} | {threat} | {inherent_score} | {inherent_severity} | {control_status} | {residual_score} | Low |
+| Threat ID | CF | Component | MAESTRO Layer | Threat | Inherent Score | Inherent Severity | Control Status | Control Category | Residual Score | Residual Severity |
+|-----------|----|-----------|---------------|--------|----------------|-------------------|----------------|------------------|----------------|-------------------|
+| {id} | {cf} | {component} | {maestro_layer} | {threat} | {{score:inherent}} | {{band:inherent}} | {control_status} | {control_category} | {{score:residual}} | {{band:residual}} |
 
 ### Summary Statistics
 
@@ -110,11 +133,29 @@ Threats grouped by residual severity (Critical first, then High, Medium, Low). W
 | Low | {residual_low_count} | {residual_low_pct}% |
 | **Total** | **{total_threats}** | **100%** |
 
+### Column Definitions
+
+| Column | Description |
+|--------|-------------|
+| **Threat ID** | The finding's ID. An ID that isn't the finding's own rejects the finding's item in the part. |
+| **CF** | `CF` when the finding's control result was carried forward from the baseline (an UNCHANGED finding), and `—` when it was assessed in this run. The renderer fills this cell, and `carry_forward_count` counts the `CF` rows. |
+| **Component** | The component name from the threat model. The renderer checks the agent's cell against it. |
+| **MAESTRO Layer** | The finding's MAESTRO layer. The agent copies its unit row's `layer`, which is `Unclassified` when no input records a layer. The renderer checks the cell by layer code (`L1` to `L7`) against the layer that the SARIF writes as `maestro-layer`. |
+| **Threat** | The threat description, cut to 80 characters. This is the agent's text. |
+| **Inherent Score** | The finding's composite score from this run's `risk-scores.md`, to one decimal. It is never re-scored. |
+| **Inherent Severity** | The band of the inherent score: Critical (9.0-10.0), High (7.0-8.9), Medium (4.0-6.9) or Low (0.0-3.9). |
+| **Control Status** | `Control Found`, `Partial Control` or `No Control Found`. The renderer checks it against the structured `control_status`. |
+| **Control Category** | The display name of the control category: Authentication, Access Control, Input Validation, Encryption, Rate Limiting, Logging/Audit, CSRF Protection or CSP/Security Headers. The category's own name, such as `input-validation`, is read as the same value. |
+| **Residual Score** | Inherent score * (1 - reduction factor), rounded half up to one decimal. |
+| **Residual Severity** | The band of the residual score. It names the band table that the row sits under. |
+
+**The agent's row.** In its part, the agent writes each finding's row as `matrix_row`: one line of these 11 cells, written as a table line (`| ` before the first cell, ` | ` between cells and ` |` after the last, with no `|` inside a cell). Its own cells are the Threat ID, Component, MAESTRO Layer, Threat, Control Status and Control Category, and it puts one slot token in each computed cell: `{{score:inherent}}`, `{{band:inherent}}`, `{{score:residual}}` and `{{band:residual}}`. The renderer fills those four cells by column position, overwrites any other content that the agent put there, and counts each overwrite in the stage record. It fills `CF` itself and never counts it. A Threat ID that isn't the finding's own, or a cell count other than 11, rejects the finding's item, and the command re-dispatches its batch. A Component, MAESTRO Layer, Control Status or Control Category cell that disagrees with the structured judgment or the input is flagged in Section 7, and the SARIF and every total follow the structured value.
+
 ---
 
 ## 3. Control Details
 
-Per-control evidence showing detected security controls with their location, code evidence, and threat coverage. One subsection per detected control, grouped by control category.
+Per-control evidence showing detected security controls with their location, code evidence, and threat coverage. One block for each distinct control, which is a control category, a file and a line, grouped by control category. A control that several findings share is listed once, and its Threats Mitigated table names each of them.
 
 ### {control_category}
 
@@ -128,9 +169,9 @@ Per-control evidence showing detected security controls with their location, cod
 {evidence_snippet}
 ```
 
-> Code snippet limited to 5 lines centered on the control implementation.
+> Code snippet limited to 5 lines centered on the control implementation. The fence is one backtick longer than the longest backtick run in the snippet, and never shorter than three.
 
-**Effectiveness Assessment**:
+**Effectiveness Assessment** (written only when the agent assessed the control; each rationale is the agent's prose with its slots filled):
 
 | Dimension | Rating | Rationale |
 |-----------|--------|-----------|
@@ -153,17 +194,17 @@ Per-control evidence showing detected security controls with their location, cod
 
 ## 4. Recommendations
 
-Actionable recommendations for threats classified as "No Control Found" or "Partial Control," sorted by composite risk score descending (highest risk gaps first).
+Actionable recommendations for findings classified as "No Control Found" or "Partial Control". Each of those findings has exactly one block, and a block never covers more than one finding. A Control Found finding has no block. The blocks are numbered from 1 through the whole section, sorted by inherent score descending (highest risk gaps first) and by finding ID within equal scores, and they sit under one group for each inherent severity band: Critical and High together, then Medium, then Low. A group with no block has no heading.
 
 ### Critical / High Risk Gaps
 
-#### {rec_id}. {rec_threat_id} — {rec_component} (Composite: {rec_inherent_score}, {rec_inherent_severity})
+#### {rec_number}. {rec_threat_id} — {rec_component} (Composite: {rec_inherent_score}, {rec_inherent_severity})
 
 **Current Status**: {rec_control_status}
 
 **What to Implement**: {rec_what}
 
-**Where to Implement**: `{rec_where_path}` — {rec_where_rationale}
+**Where to Implement**: {rec_where}
 
 **Reference Patterns**: {rec_reference_patterns}
 
@@ -173,13 +214,13 @@ Actionable recommendations for threats classified as "No Control Found" or "Part
 
 ### Medium Risk Gaps
 
-#### {rec_id}. {rec_threat_id} — {rec_component} (Composite: {rec_inherent_score}, {rec_inherent_severity})
+#### {rec_number}. {rec_threat_id} — {rec_component} (Composite: {rec_inherent_score}, {rec_inherent_severity})
 
 **Current Status**: {rec_control_status}
 
 **What to Implement**: {rec_what}
 
-**Where to Implement**: `{rec_where_path}` — {rec_where_rationale}
+**Where to Implement**: {rec_where}
 
 **Reference Patterns**: {rec_reference_patterns}
 
@@ -189,13 +230,13 @@ Actionable recommendations for threats classified as "No Control Found" or "Part
 
 ### Low Risk Gaps
 
-#### {rec_id}. {rec_threat_id} — {rec_component} (Composite: {rec_inherent_score}, {rec_inherent_severity})
+#### {rec_number}. {rec_threat_id} — {rec_component} (Composite: {rec_inherent_score}, {rec_inherent_severity})
 
 **Current Status**: {rec_control_status}
 
 **What to Implement**: {rec_what}
 
-**Where to Implement**: `{rec_where_path}` — {rec_where_rationale}
+**Where to Implement**: {rec_where}
 
 **Reference Patterns**: {rec_reference_patterns}
 
@@ -203,7 +244,9 @@ Actionable recommendations for threats classified as "No Control Found" or "Part
 
 ---
 
-*Repeat the recommendation block for each gap within each severity group. "Partial Control" recommendations focus on hardening (what's missing, how to extend) rather than replacement.*
+*Repeat the recommendation block for each Partial Control or No Control Found finding, in the group of its inherent severity band. "Partial Control" recommendations focus on hardening (what's missing, how to extend) rather than replacement.*
+
+**Who writes what.** The renderer writes each block's group, number, heading and `**Current Status**:` line, and joins the block to its row in Section 2 by the finding's ID. The agent writes the four lines after them, as the finding's `recommendation_body`: `**What to Implement**:`, `**Where to Implement**:`, `**Reference Patterns**:` and `**Effort Estimate**:`, each once and in this order. The Effort Estimate starts with `Low`, `Medium` or `High`, and the body holds no heading and no table line. A body that breaks these rules rejects the finding's item, and the command re-dispatches its batch. The renderer escapes the body as prose, so a backtick in it is written as a reference, and the body never forms a code span, a heading or a table. The SARIF `recommendation` is the What to Implement text and `effort-estimate` is the Effort word, so the two files agree by construction.
 
 ### Recommendation Field Definitions
 
@@ -218,7 +261,7 @@ Actionable recommendations for threats classified as "No Control Found" or "Part
 
 ## 5. Residual Risk Summary
 
-Comparison of inherent risk (before controls) to residual risk (after controls), showing the risk reduction achieved by existing controls.
+Comparison of inherent risk (before controls) to residual risk (after controls), showing the risk reduction achieved by existing controls. The renderer computes every figure here from the rows of Section 2, in exact decimal arithmetic, so each total equals the sum of its rows. The overall reduction is the delta over the inherent total, rounded half up to one decimal (0.0 for a zero inherent total).
 
 ### Aggregate Risk Reduction
 
@@ -244,6 +287,8 @@ Breakdown of how threats shifted between severity bands after residual risk calc
 | No Shift | {shift_none_count} | {shift_none_examples} |
 | **Total** | **{total_threats}** | |
 
+Each Examples cell names the finding IDs of its shift, or `—` when there are none. A finding whose band holds is counted under No Shift.
+
 ### Severity Distribution Comparison
 
 | Severity | Inherent Count | Residual Count | Change |
@@ -253,6 +298,8 @@ Breakdown of how threats shifted between severity bands after residual risk calc
 | Medium | {inherent_medium_count} | {residual_medium_count} | {medium_change} |
 | Low | {inherent_low_count} | {residual_low_count} | {low_change} |
 | **Total** | **{total_threats}** | **{total_threats}** | |
+
+Change is the residual count less the inherent count, signed.
 
 ### Reduction Factor Reference
 
@@ -329,3 +376,46 @@ Analysis draws on the following inputs:
 - Files > 5,000 tokens are truncated to security-relevant sections
 - Binary reduction factors (P0) approximate control impact; effectiveness-aware factors available in P1
 - AI-specific control patterns (agentic, LLM) limited to general categories in P0; specialized patterns in P1
+
+---
+
+## 7. Analysis Integrity
+
+What the renderer checked, flagged or could not use, and the controls inputs it persists for the next run. A run with nothing to flag has empty Integrity Summary and Finding Flags tables and no input issues.
+
+### Integrity Summary
+
+| Kind | Cause | Count |
+|------|-------|-------|
+| {kind} | {cause} | {count} |
+
+The table counts the flags of Finding Flags by kind and cause: one row for each pair that occurs, in the order of the kinds (`corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `retagged`, `reused-id`, `input`), then by cause.
+
+### Finding Flags
+
+| ID | Flag | Field | Cause |
+|----|------|-------|-------|
+| {id} | {kind} | {field} | {cause} |
+
+One row for each flag, in finding ID order (prefix rank `S`, `T`, `R`, `I`, `D`, `E`, `AG`, `AGP`, `LLM`, `OI`, `MI`, `TE`, then the numeric suffix as an integer), and within a finding by kind, field and cause. A flag is a `kind:field:cause` string, and the finding's SARIF `integrity-flags` property carries the same strings, sorted. No controls flag records a stored and a rendered value, so the table has no columns for them. The renderer raises a flag when a Section 2 cell that it only checks (the Component, MAESTRO Layer, Control Status or Control Category) disagrees with the structured judgment or the input, when a narrative field breaks the slot rules and takes its fixed sentence, when a prose field is cut at its length limit, when an evidence entry's `file` doesn't resolve to a file under the target (`input:evidence.file:unresolved`), when the threat model's Section 7 form lacks a value that the run uses (`input:<field>:not-in-form`), and when the scored input flags a finding whose ID the baseline used. The SARIF and every total follow the structured value, never the cell that disagrees.
+
+### Input Issues
+
+Rows and files that the renderer couldn't read or fully use, one entry each, naming the file, the section and the problem: a row of the scored input that has no usable form, a finding ID that the scored input or the threat model lists twice, the values that the threat model's Section 7 form lacks, and each evidence entry whose `file` doesn't resolve under the target, which keeps its text and gets no `relatedLocations` entry. `None.` when there are none.
+
+### Assessment Inputs
+
+| ID | Field | Value |
+|----|-------|-------|
+| {id} | {field} | {value} |
+
+One row for each value of a finding's controls result that the next run needs in order to carry the finding forward, so that it reads them from one place. This one table holds the whole result: the finding's judgment, each of its evidence entries and its Section 2 row. No second table holds the evidence or the row, because the reader reads this one. The planner of the next run decodes an UNCHANGED finding's values into that finding's batch input, and the agent copies them from there, so nothing is ever copied from this file's Sections 2, 3 or 4. The rows go in finding ID order, and within a finding in the order of the agent's part:
+
+- `control_status`, `control_category`, `confidence` and `carried_forward` (`true` or `false`);
+- the finding's evidence, one entry at a time and numbered from 0: `evidence.<n>.file`, `evidence.<n>.line`, `evidence.<n>.language`, `evidence.<n>.snippet` and `evidence.<n>.summary`, then, where the agent assessed the control, `evidence.<n>.assessment.<dimension>.rating` and `evidence.<n>.assessment.<dimension>.rationale` for the dimensions `coverage`, `configuration`, `currency` and `completeness`, in that order;
+- `matrix_row`;
+- `recommendation_body`.
+
+A field name is a dotted address, with a list entry as a numeric segment, such as `evidence.0.summary`. A field with no value writes no row: a No Control Found finding has no `confidence` row and no `evidence` rows, and a Control Found finding has no `recommendation_body` row. `matrix_row` is the finding's whole Section 2 row as one value: its 11 cells in the order of Section 2's header, written as a table line, with every `|` in it, the cell separators included, written as `&#124;` so that the row stays one cell. Its four computed cells hold their slot tokens (`{{score:inherent}}`, `{{band:inherent}}`, `{{score:residual}}` and `{{band:residual}}`), never the numbers that Section 2 shows, and its `CF` cell holds the value that Section 2 shows. So a carried row is copied, read and checked with no overwrite, whatever the first run put in those cells. An assessment rationale keeps its slot tokens too, a snippet keeps its line breaks as `&#10;`, and every value is escaped on write.
+
+<!-- tachi-provenance: renderer=render-compensating-controls.py; version={X.Y.Z}; input-digest=sha256:{hex} -->

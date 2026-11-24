@@ -8,25 +8,29 @@ version: 1.0.0
 
 This reference defines evidence collection rules, confidence level assignments, and the Phase 4 classification rules that map detected controls to threats.
 
+**Who does what.** The control-analyzer agent collects the evidence, assigns the confidence and decides the `control_status` of each finding. The renderer, `scripts/render-compensating-controls.py`, derives everything that follows from the status: the reduction factor, the P0 effectiveness, the residual score and its band (see the "P0 Effectiveness Note" below). The agent writes none of those values.
+
 ## Evidence Collection
 
-For each candidate that survives Phase B semantic analysis, collect a `control_evidence` entry conforming to the `control_evidence` item schema in `schemas/compensating-controls.yaml`:
+For each candidate that survives Phase B semantic analysis, collect one entry of your finding's `evidence` list. Its keys and limits are the part contract's, and the renderer writes each entry into Section 3's control details and into the finding's SARIF result:
 
 ```yaml
-control_evidence:
+evidence:
   - file: "src/middleware/auth.ts"        # Relative path from target root
     line: 42                               # Line number of the control
+    language: "typescript"                 # Lowercase letters, digits, +, # or -
     snippet: |                             # Max 5 lines showing the control
       const authMiddleware = (req, res, next) => {
         const token = req.headers.authorization?.split(' ')[1];
         if (!token) return res.status(401).json({ error: 'Unauthorized' });
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded;
+    summary: "Bearer tokens are verified before a request reaches a route."   # One line
 ```
 
 ### Snippet Selection Rules
 
-1. **Length**: Maximum 5 lines of code. Never capture entire files or entire functions.
+1. **Length**: Maximum 5 lines of code and 600 characters. Never capture entire files or entire functions. The renderer cuts a longer snippet to the limit and flags the finding.
 2. **Representativeness**: Select the lines that most clearly demonstrate the control mechanism in action. Prefer:
    - The function/block declaration line + core implementation logic
    - Middleware registration if it appears within 5 lines of the implementation
@@ -35,7 +39,7 @@ control_evidence:
 4. **Deduplication**: If the same control implementation is applied to multiple routes (e.g., the same auth middleware on 10 endpoints), collect evidence from the middleware definition only -- do not duplicate evidence for each route.
 5. **Multiple controls per category**: If a component has multiple distinct controls in the same category (e.g., JWT auth for API routes AND session auth for web routes), collect separate evidence entries for each.
 
-**File path format**: Always use forward slashes and paths relative to the target codebase root (the path provided as input). Never use absolute paths in evidence.
+**File path format**: Always use forward slashes and paths relative to the target codebase root (the path provided as input). Never use absolute paths in evidence. `file` is a closed value that the validator checks and never rewrites: it has no scheme, leading `/`, backslash, drive letter or `..`, and a bad one rejects the whole part. Each `file` becomes a SARIF location URI, so it must pass those checks.
 
 **Line number accuracy**: The `line` field must reference the first line of the captured snippet within the original file. When a file was truncated during Phase 2 large file handling, map the truncated position back to the original file line number.
 
@@ -57,7 +61,7 @@ Assign a detection confidence to each detected control based on the strength of 
 
 ## Classification Rules (Phase 4)
 
-Map each detected control to the specific threats it addresses using the STRIDE-to-control-category mapping. Assign a `control_status` (found, partial, missing) and determine the `reduction_factor` for each threat-control pair. When a threat has multiple applicable controls, select the control with the highest reduction factor.
+Map each detected control to the specific threats it addresses using the STRIDE-to-control-category mapping. Assign a `control_status` (found, partial, missing) to each finding. The renderer derives the `reduction_factor` of each threat-control pair from that status, so the factor is the status's, and you write no factor. When a threat has multiple applicable controls, select the control that gives the highest reduction factor: found beats partial, and partial beats missing.
 
 ### Threat-to-Control Mapping
 
@@ -72,19 +76,19 @@ For each scored threat in the finding set:
 **Control Found** (`found`):
 - At least one relevant control category has `detected: true` with `confidence: High` or `confidence: Medium`
 - The detected control directly addresses the threat's attack vector
-- Reduction factor: **0.50** (P0 binary)
+- Reduction factor (the renderer's, P0 binary): **0.50**
 
 **Partial Control** (`partial`):
 - One or more relevant control categories have `detected: true` but:
   - The detected control has `confidence: Low` only, OR
   - The threat maps to multiple control categories and only some have detections (e.g., Spoofing maps to Authentication + Access Control, but only Authentication is detected), OR
   - The detected control covers some but not all paths/endpoints for the component (evidence suggests incomplete coverage)
-- Reduction factor: **0.25** (P0 binary)
+- Reduction factor (the renderer's, P0 binary): **0.25**
 
 **No Control Found** (`missing`):
 - No relevant control categories have any detections for this component
 - Or the component was unmapped (no files found in Phase 2)
-- Reduction factor: **0.00**
+- Reduction factor (the renderer's, P0 binary): **0.00**
 
 ### Multi-Control Resolution
 
@@ -110,8 +114,10 @@ Some controls are global -- they apply across all components (e.g., a CORS middl
 
 ### P0 Effectiveness Note
 
-In P0, `control_effectiveness` is derived from `control_status` (found -> "strong", partial -> "moderate", missing -> "none"). The full 4-dimension effectiveness assessment (Coverage, Configuration, Currency, Completeness) is a P1 feature. In P0, display the effectiveness rating but omit the dimension breakdown table -- replace with: *"Detailed effectiveness assessment available in P1 (User Story 6)."*
+In P0, the renderer derives `control_effectiveness` from `control_status` (found -> "strong", partial -> "moderate", missing -> "none"). You never write it, and your part has no key for it. The reduction factor follows the status alone, so no rating changes a factor or a score.
+
+The 4-dimension effectiveness assessment (Coverage, Configuration, Currency, Completeness) is the optional `assessment` of an evidence entry. The renderer writes its ratings and rationales into Section 3's control details, for display only, and the effectiveness-aware reduction model that would use them is a P1 feature (User Story 6). The output template says what Section 3 shows for an entry that has no assessment.
 
 ### Exhaustive Classification Requirement
 
-Every finding in the Phase 1 finding set must receive exactly one classification. After Phase 4, the count of classified threats must equal the count of parsed findings. If any finding is missing a classification, halt with: **"Classification incomplete: {missing_count} findings unclassified. IDs: {id_list}"**
+Every finding in your batch must receive exactly one item: `finding_ids` is the batch's list, and `items` holds one object per ID. The part validator rejects a part with a missing or an extra finding, and the command re-dispatches the batch. The renderer separately checks, from the files it wrote, that every open finding of the scored input has one row in each file, so the count of classified findings equals the count of open findings by construction.

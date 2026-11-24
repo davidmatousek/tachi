@@ -1,0 +1,48 @@
+{
+  "below": [
+    716,
+    764,
+    805,
+    734,
+    263,
+    153,
+    652,
+    510
+  ],
+  "label": {
+    "S-1": 352,
+    "s3-archive": 401,
+    "worker-2": 17
+  },
+  "pick": [
+    "s3-archive",
+    "s3-archive",
+    "s3-archive",
+    "s3-archive",
+    "gateway",
+    "worker-2"
+  ],
+  "seed": 374,
+  "serializer": {
+    "a": "tab\t quote\" back\\ line\n tilde~ del\u007f e-acute\u00e9 emoji\ud83d\ude00",
+    "empty": {
+      "list": [],
+      "map": {}
+    },
+    "z": [
+      true,
+      false,
+      null,
+      0,
+      -7,
+      1.5,
+      1e+16,
+      0.1
+    ]
+  },
+  "unit": [
+    0.26975733879095765,
+    0.12387943864401596,
+    0.8904066763268569
+  ]
+}

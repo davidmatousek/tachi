@@ -1,0 +1,530 @@
+{
+  "baseline": {
+    "files": [
+      "threats.md",
+      "risk-scores.md"
+    ],
+    "form": "legacy",
+    "frontmatter_date": "2026-11-09",
+    "note": "pre-fix form, no SARIF"
+  },
+  "counts": {
+    "findings": 9,
+    "findings_with_flags": 3,
+    "flags_by_kind": {
+      "corrected": 10
+    },
+    "normalized": 2
+  },
+  "findings": {
+    "AG-1": {
+      "case": "boundary-exact-40",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AG",
+      "rendered": {
+        "composite_score": "4.0",
+        "cvss_base": "5.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:L/I:L/A:H",
+        "exploitability": "4.0",
+        "reachability": "1.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "4.0",
+        "cvss_base": "5.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:L/I:L/A:H",
+        "exploitability": "4.0",
+        "reachability": "1.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:L/I:L/A:H",
+        "sarif": null
+      }
+    },
+    "D-1": {
+      "case": "boundary-exact-70",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "D",
+      "rendered": {
+        "composite_score": "7.0",
+        "cvss_base": "4.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:N/I:L/A:L",
+        "exploitability": "9.3",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.0",
+        "cvss_base": "4.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:N/I:L/A:L",
+        "exploitability": "9.3",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:N/I:L/A:L",
+        "sarif": null
+      }
+    },
+    "E-1": {
+      "case": "boundary-exact-90",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "E",
+      "rendered": {
+        "composite_score": "9.0",
+        "cvss_base": "9.6",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "9.8",
+        "reachability": "6.0",
+        "remediation_sla": "24h",
+        "review_date": "2026-11-10",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "10.0",
+        "severity_band": "Critical"
+      },
+      "stored": {
+        "composite_score": "9.0",
+        "cvss_base": "9.6",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "9.8",
+        "reachability": "6.0",
+        "remediation_sla": "24h",
+        "review_date": "2026-11-10",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "10.0",
+        "severity_band": "Critical"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "I-1": {
+      "case": "tie-rounding-only",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": true,
+      "prefix": "I",
+      "rendered": {
+        "composite_score": "6.5",
+        "cvss_base": "7.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+        "exploitability": "4.5",
+        "reachability": "6.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.4",
+        "cvss_base": "7.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+        "exploitability": "4.5",
+        "reachability": "6.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+        "sarif": null
+      }
+    },
+    "LLM-1": {
+      "case": "tie-stored-as-half-up",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "LLM",
+      "rendered": {
+        "composite_score": "8.2",
+        "cvss_base": "9.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:L",
+        "exploitability": "8.3",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "8.2",
+        "cvss_base": "9.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:L",
+        "exploitability": "8.3",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "MI-1": {
+      "case": "tie-band-moves-40",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "rounding",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:rounding",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "Low"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "90d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2027-02-07"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "MI",
+      "rendered": {
+        "composite_score": "4.0",
+        "cvss_base": "5.1",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:L/UI:R/S:U/C:L/I:H/A:N",
+        "exploitability": "4.8",
+        "reachability": "1.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "3.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "3.9",
+        "cvss_base": "5.1",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:L/UI:R/S:U/C:L/I:H/A:N",
+        "exploitability": "4.8",
+        "reachability": "1.0",
+        "remediation_sla": "90d",
+        "review_date": "2027-02-07",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "3.5",
+        "severity_band": "Low"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:H/PR:L/UI:R/S:U/C:L/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "R-1": {
+      "case": "tie-rounding-only",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": true,
+      "prefix": "R",
+      "rendered": {
+        "composite_score": "4.5",
+        "cvss_base": "4.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N",
+        "exploitability": "5.0",
+        "reachability": "4.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.3",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "4.4",
+        "cvss_base": "4.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N",
+        "exploitability": "5.0",
+        "reachability": "4.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.3",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "S-1": {
+      "case": "tie-band-moves-70",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "rounding",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:rounding",
+          "kind": "corrected",
+          "rendered": "High",
+          "stored": "Medium"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "7d",
+          "stored": "30d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "risk_disposition",
+          "flag": "corrected:risk_disposition:follows-band",
+          "kind": "corrected",
+          "rendered": "Mitigate",
+          "stored": "Review"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-11-16",
+          "stored": "2026-12-09"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "7.0",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:L",
+        "exploitability": "4.5",
+        "reachability": "6.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "9.3",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "6.9",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:L",
+        "exploitability": "4.5",
+        "reachability": "6.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "9.3",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "T-1": {
+      "case": "tie-band-moves-90",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "rounding",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:rounding",
+          "kind": "corrected",
+          "rendered": "Critical",
+          "stored": "High"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "24h",
+          "stored": "7d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-11-10",
+          "stored": "2026-11-16"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "9.0",
+        "cvss_base": "9.8",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "exploitability": "10.0",
+        "reachability": "6.0",
+        "remediation_sla": "24h",
+        "review_date": "2026-11-10",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.8",
+        "severity_band": "Critical"
+      },
+      "stored": {
+        "composite_score": "8.9",
+        "cvss_base": "9.8",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "exploitability": "10.0",
+        "reachability": "6.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.8",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "sarif": null
+      }
+    }
+  },
+  "flag_reading": [
+    "A flag is kind:field:cause, and the field is the value whose status the flag describes, by its schemas/risk-scoring.yaml name: cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability.",
+    "The cause of a 'corrected' flag names the step that produced the field's new value: a changed cvss_base is 'vector', a changed composite_score is 'arithmetic', a changed severity_band is 'band-mapping' (or 'rounding' when only rounding moved the band), and a changed remediation_sla, risk_disposition or review_date is 'follows-band'. Where a fallback set the review date, 'baseline-date' or 'clock-restarted' replaces 'follows-band'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves (ruling A). A finding carries at most one flag per kind and field.",
+    "A rounding-only composite difference is normalized and counted and never flagged: only a band that it moves is flagged, as severity_band:rounding.",
+    "basis 'pinned': the string is in the closed vocabulary of contracts/module-signatures.md, and a test requires it. 'optional': the renderer may add the flag or not, and a test accepts both. Only the flags on a value that the input's form lacks are optional, because the cause for those is open (S-12(b), named by T032).",
+    "A flag that the renderer adds and that is not listed is a defect of one side: the list is complete for the cases here."
+  ],
+  "notes": [
+    "R-11. The weighted sum of a tie ends in exactly .x5 (6.95, 8.95, 3.95, mid-band values). The renderer rounds half up; this baseline stored the lower neighbour.",
+    "'tie-band-moves-*': the exact composite is 6.95, 8.95 or 3.95, so half-up gives 7.0, 9.0 or 4.0 and the stored 6.9, 8.9 or 3.9 is in the band below. The difference moves the band, so it is flagged corrected:severity_band:rounding and R-5 applies: the original scoring date is kept, and the SLA, disposition and review date follow the new band. The composite's own change is normalized, and only the band is flagged (D9).",
+    "'tie-rounding-only': a mid-band tie whose lower neighbour is in the same band. The composite is normalized to the half-up value and counted in the run summary, never flagged per finding.",
+    "'tie-stored-as-half-up' is the control: the baseline already stored the half-up value.",
+    "'boundary-exact-*': composites of exactly 7.0, 9.0 and 4.0 with no rounding. A boundary maps to the higher band, and nothing is flagged."
+  ],
+  "populator_fixed_point": true,
+  "routing": {
+    "carried": [
+      "S-1",
+      "T-1",
+      "R-1",
+      "I-1",
+      "D-1",
+      "E-1",
+      "AG-1",
+      "LLM-1",
+      "MI-1"
+    ],
+    "carried_peers": {},
+    "copy_primary": {},
+    "to_agent": []
+  },
+  "run": {
+    "architecture": "architecture/architecture.md",
+    "baseline_dir": "baseline",
+    "baseline_source": "baseline/threats.md",
+    "date": "2026-11-23",
+    "how": "copy the scenario directory to a working directory and run from there: the front matter's baseline.source and every path here are relative to it",
+    "threats": "run/threats.md"
+  },
+  "scenario": "scorer",
+  "schema": "tachi.fixture-expected/1",
+  "stage": "risk-score",
+  "summary": "S-4's ties variant (R-11), the scorer half: band-moving ties, a rounding-only tie that does not move the band, a tie stored correctly, and composites exactly on a band boundary.",
+  "tag_source": {
+    "block_equals_recomputation": true,
+    "source": "block",
+    "tags": {},
+    "warning": false
+  },
+  "unflagged": [
+    "D-1",
+    "E-1",
+    "AG-1",
+    "LLM-1"
+  ],
+  "variant": "ties"
+}

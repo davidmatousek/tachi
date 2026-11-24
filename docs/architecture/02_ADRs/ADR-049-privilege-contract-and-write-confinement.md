@@ -8,6 +8,12 @@
 **Superseded by**: None
 **Related ADRs**: [ADR-041](ADR-041-claude-permissions-baseline.md) (governs this repository's development-time settings; this ADR adds the adopter-facing matrix to the same standard), [ADR-019](ADR-019-shared-definitions-and-model-field-governance.md) (the `model: sonnet` pins, left unchanged), [ADR-014](ADR-014-gemini-api-optional-image-generation.md) (the optional Gemini host that the Hosts column names), [ADR-022](ADR-022-mmdc-hard-prerequisite.md) (`mmdc`, the renderer child that the write rules cover), [ADR-021](ADR-021-source-date-epoch-for-deterministic-pdf-comparison.md) (the byte-identity suites that show a relocation moves no deliverable)
 
+> **Note (2026-11-22, Feature 374)**: Under [ADR-050](ADR-050-large-architecture-output-authority.md) D3, D4, D11, D13 and D14, D7's pinned write paths gain new writers. Every new path stays under `{out}`, so D5 holds.
+>
+> - **PR 1 (ADR-050 D3 and D4).** The scorer and the controls analyzer write only their part files, under `{out}/.tachi-build/<stage>/<plan_id>/parts/`. The command-run renderers, `render-risk-scores.py` and `render-compensating-controls.py`, write the four output files. So the risk-scorer bullet's two output files pass to `render-risk-scores.py`, and its populate-script rule stands.
+> - **PR 2 (ADR-050 D11, D13 and D14).** The orchestrator, and the scripts it runs, write the run files under `{out}/.tachi-build/`: `phase1/`, `briefs/`, `records/`, `idmap.json` and `chains/`. The tree writers write under `.tachi-build/trees/`, and the report writers under `.tachi-build/report/`.
+> - This note adds no decision. #396 adds D10.
+
 ---
 
 ## Context

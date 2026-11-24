@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-11-21T18:43:49Z.
+> Auto-generated from GitHub Issues on 2026-11-24T14:56:02Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,6 +8,7 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
+| #424 | defect bundle: v4.48.4 pipeline fidelity on a graded real-world agentic run (dispatch enforcement, agentic risk scoring, finding-set consistency, chains, controls) | Impact: 9, Confidence: 8, Effort: 3 = **20** | — | 2026-11-24 |
 | #417 | enhancement: trim F-391's test modules: reuse the guard's checks, one install harness, pin the §8 anchor, one script loader | — | — | 2026-11-21 |
 | #416 | enhancement: extract-report-data.py build mode refuses a symlinked report-config.typ and symlinks under the output directory | — | — | 2026-11-21 |
 | #415 | enhancement: run the zsh manual-install-loop cases in CI (the manifest-completeness runner has no zsh) | — | — | 2026-11-21 |
@@ -25,7 +26,7 @@
 | #403 | defect(infographics): several infographic placeholders have no defined source, and the risk funnel sends component names it does not draw | — | — | 2026-11-21 |
 | #402 | defect(infographics): executive-architecture callouts send mitigation text when a finding's threat text is empty | — | — | 2026-11-21 |
 | #401 | enhancement: check the Gemini infographic request against its documented field list before sending | — | — | 2026-11-21 |
-| #400 | F-391 Part B landing: ship #396 (B2) after #364 merges | — | — | 2026-11-21 |
+| #400 | F-391 Part B landing: ship #396 (B2) after #364 merges | — | — | 2026-11-23 |
 | #399 | Run archive and provenance manifest: denial detection on Claude Code 2.1.330 transcripts (F-391 B1 follow-up) | — | — | 2026-11-21 |
 | #397 | Tracking: defects found in a large real-world adopter run on v4.48.1 | — | — | 2026-11-21 |
 | #388 | enhancement: parse scores and section facts once at the parser boundary (incl. an uncaught ValueError on a malformed Section 1 total) | — | — | 2026-10-12 |
@@ -39,20 +40,18 @@
 | #379 | defect(extractors): a stateless run with a free-text baseline.source is treated as a baseline run | — | — | 2026-10-10 |
 | #378 | defect(extractors): headings in the Section N: Title form are not recognized, silently dropping section data | — | — | 2026-10-10 |
 | #377 | defect(install.sh): --version passes a dash-leading value to git checkout instead of refusing it | — | — | 2026-10-10 |
-| #374 | Large-architecture pipeline resilience: skipped attack-chain phase, single-response output overflow, controls table drift | Impact: 8, Confidence: 6, Effort: 4 = **18** | On a run with 200+ findings: | 2026-11-21 |
-| #364 | F-362b: re-key examples/** and sample-report baselines to the OWASP LLM 2026 σ (BLOCKING before next minor release) | — | — | 2026-10-10 |
+| #364 | F-362b: re-key examples/** and sample-report baselines to the OWASP LLM 2026 σ (BLOCKING before next minor release) | — | — | 2026-11-21 |
 | #361 | Extend tachi detection coverage for GhostCommit primitives (encoded exfil, convention-file trust, committed-file dormancy) | Impact: 7, Confidence: 7, Effort: 6 = **20** | Team Observation: coverage mapping of tachi's detection-p... | 2026-07-13 |
-| #360 | Harden tachi's own agents against ingested-repo-text prompt injection (GhostCommit self-exposure) | Impact: 8, Confidence: 8, Effort: 8 = **24** | Team Observation: grounded file:line code analysis of tac... | 2026-07-13 |
+| #360 | Harden tachi's own agents against ingested-repo-text prompt injection (GhostCommit self-exposure) | Impact: 8, Confidence: 8, Effort: 8 = **24** | Team Observation: grounded file:line code analysis of tac... | 2026-11-22 |
 | #349 | Anthropic jailbreak-severity framework alignment (capability-gain risk lens) | Impact: 6, Confidence: 3, Effort: 8 = **17** (P2) | Team observation — prompted by Anthropic's 2026-07-01 Cla... | 2026-07-01 |
 | #346 | Harden read_sidecar against non-dict sidecar member entries (F-329 S-1) | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 329 (OR... | 2026-06-30 |
-| #345 | Regenerate init.sh-substitution baseline (tests/fixtures/init-baseline-tree/) — re-tag from #329 | — | — | 2026-08-12 |
 | #342 | Deliver-stage preflight: guard against stale/diverged local main and behind-main feature branch | Impact: —, Confidence: —, Effort: — = **Not yet scored** | Retrospective: Emerged during delivery of Feature 338 (Re... | 2026-06-30 |
 
 ## Define
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| — | *No items in this stage* | | |
+| #426 | Ship tachi as a Claude Code plugin: self-hosted marketplace, then Anthropic's plugin directory | — | 2026-11-24 |
 
 ## Plan
 
@@ -70,7 +69,7 @@
 
 | # | Title | Delivered | Retro | Updated |
 |---|-------|-----------|-------|---------|
-| #391 | Isolated and auditable operation: egress disclosure, agent permission matrix, and run provenance (CVP mapping) | 2026-11-21 | — | 2026-11-21 |
+| — | *No items in this stage* | | |
 
 ## Document
 
@@ -84,6 +83,7 @@
 
 | # | Title | State | Updated |
 |---|-------|-------|---------|
+| #374 | Large-architecture pipeline resilience: skipped attack-chain phase, single-response output overflow, controls table drift | OPEN | 2026-11-22 |
 | #370 | Covering test for the FR-012b form-drift guard in extract-report-data.py | CLOSED | 2026-10-10 |
 | #369 | CI manifest-integrity check for adapter VERSION attestations (+ copilot-aware generator) | OPEN | 2026-11-21 |
 | #368 | check-catalog-drift: _canonical() widening — decided DEFER with rationale; plus false-docstring defect (docstring :95 vs fail-closed fallback :105) | OPEN | 2026-08-12 |
@@ -91,7 +91,7 @@
 | #366 | Persona↔catalog pattern-category enumeration parity for tachi threat agents | OPEN | 2026-08-11 |
 | #365 | defect(test_backward_compatibility): 6 pre-existing byte-identity reds — measured typst font-subset tag divergence + untested self-perturbing PNG-input candidate | OPEN | 2026-11-21 |
 | #357 | enhancement: parameterize generate-risk-scores-sarif.py (CLI args, configurable paths, findings-count gate) to support additional example baselines | OPEN | 2026-07-03 |
-| #356 | defect(tachi-orchestrator): Phase-3 compilation can absorb output-integrity findings into the LLM-N sequence, dropping the OI- prefix carve-out and CWE citations (F-295 T026 gate FAIL) | OPEN | 2026-07-03 |
+| #356 | defect(tachi-orchestrator): Phase-3 compilation can absorb output-integrity findings into the LLM-N sequence, dropping the OI- prefix carve-out and CWE citations (F-295 T026 gate FAIL) | OPEN | 2026-11-22 |
 | #355 | defect: examples/agentic-app/sample-report/threats.md duplicates output-integrity findings under legacy LLM-5/6/7 and current OI-1/2/3 IDs | OPEN | 2026-07-03 |
 | #354 | defect(292): cross-link-no-emission-contract.md §3/§6 — broken ruleId filter + non-executable invocation | OPEN | 2026-07-03 |
 | #348 | gitleaks: no default rule covers hex-encoded generic high-entropy secrets | OPEN | 2026-07-01 |

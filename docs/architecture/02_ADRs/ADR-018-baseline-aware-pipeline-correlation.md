@@ -5,6 +5,15 @@
 **Deciders**: Architect
 **Feature**: 074 (Baseline-Aware Pipeline)
 
+> **Note (2026-11-22, Feature 374)**: [ADR-050](ADR-050-large-architecture-output-authority.md) refines the fingerprint correlation and the delta classes. The four-phase architecture stands.
+>
+> - **The secondary key becomes local to correlation (ADR-050 D7), at PR 2.** Phase 3 keeps the key's formula and inputs, computed from `threats.md`, and `baseline-correlation.md` renames it the "location key". It's never written to SARIF, and no stage reads a baseline SARIF's hashes. `threats.sarif`'s `primaryLocationLineHash` becomes ADR-050 D7's per-finding hash. The primary key, `findingId/v1`, stands.
+> - **The delta classes (ADR-050 D9 and D10), at PR 1, in the scorer and controls stages.**
+>   - UNCHANGED: "inherit all scores and control status" becomes the rule that inputs and control judgment are inherited, derived fields are recomputed, and each change is flagged.
+>   - NEW: the ±1.0 bound is the finding's own category's, since every prefix now has a category, and it is stored as `score_bounds`.
+>   - UPDATED: still re-scored fresh, keeping its owner and any override.
+>   - RESOLVED: the last-known values move verbatim to a new `## 2a. Resolved Findings` table, flagged `resolved` and never recomputed, and no SARIF file carries them.
+
 ---
 
 ## Context

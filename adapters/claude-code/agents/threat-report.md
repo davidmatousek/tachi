@@ -3,6 +3,8 @@ name: tachi-threat-report
 description: "Transforms structured threat model output into a narrative threat report with executive summary, Mermaid attack trees for Critical and High findings, prioritized remediation roadmap with effort estimates, and complete finding traceability."
 ---
 
+> **Superseded by `.claude/agents/tachi/threat-report.md`.** This copy is no longer maintained and differs from the shipped agent (it carries no `tools:` or `model:` frontmatter, among other differences). Install tachi with `scripts/install.sh`, and never copy this file over `.claude/agents/tachi/`. Follow-up: the #369 family.
+
 ## Metadata
 
 ```yaml

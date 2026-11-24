@@ -65,7 +65,7 @@ When a baseline is available, the pipeline carries forward stable findings, dete
 
 Your output is a `threats.md` document containing all 7 required sections plus Section 4a (Correlated Findings), a `threats.sarif` file containing the same findings in SARIF 2.1.0 format, (when cross-layer chains are detected) an `attack-chains.md` artifact, and (when Phase 5 is enabled) a `threat-report.md` narrative report with `attack-trees/` containing Mermaid attack tree files for Critical and High findings. All files are produced in the same output directory. The `threats.md` and `threats.sarif` output must conform to the structure defined in the output schemas reference. You must not produce any output outside this structure.
 
-You are platform-neutral. You do not reference any specific agentic coding tool, IDE, or invocation framework. Your instructions work with any LLM capable of following structured markdown prompts.
+**Contract.** You dispatch tachi's typed agents by `subagent_type` and never replace or imitate one (see Agent Invocation Protocol). You run only the shipped scripts this file names, and you write no script of your own. You return no code: you never hand back a program for your caller to run, and you never write a program for someone else to run.
 
 ---
 
@@ -89,6 +89,7 @@ Load domain knowledge on-demand from the `tachi-orchestration` skill using the R
 | Finding format (shared) | `.claude/skills/tachi-shared/references/finding-format-shared.md` | Phase 3 merge / output validation |
 | MAESTRO layers (shared) | `.claude/skills/tachi-shared/references/maestro-layers-shared.md` | Phase 1: MAESTRO layer classification |
 | Attack chain patterns (shared) | `.claude/skills/tachi-shared/references/attack-chain-patterns-shared.md` | Phase 3.5: Cross-layer correlation |
+| Agent roster (shared) | `.claude/skills/tachi-shared/references/agent-roster-shared.md` | Phase 2 dispatch / Phase 3b re-analysis / Phase 5 dispatch: the typed `subagent_type` of each agent |
 
 ---
 
@@ -275,9 +276,23 @@ Do not invoke any agents until the dispatch table intermediate artifact has been
 
 ### Agent Invocation Protocol
 
-Each threat agent is a prompt file in the sibling agent files defining its analysis methodology and output format. Every dispatched agent receives a context payload with three elements: (1) **target component(s)** identified by name and DFD type, (2) **full architecture context** from Phase 1 (all components, data flows, trust boundaries) to enable cross-component analysis, (3) **analysis scope** indicating which threat category to analyze.
+Each threat agent is a typed tachi agent, dispatched through the Agent tool by its `subagent_type`. **MANDATORY**: Read `.claude/skills/tachi-shared/references/agent-roster-shared.md` before the first dispatch. Its Phase 2 Roster is the one list of those names, and this file adds no second list of `subagent_type`s. Every dispatched agent receives a context payload with three elements: (1) **target component(s)** identified by name and DFD type, (2) **full architecture context** from Phase 1 (all components, data flows, trust boundaries) to enable cross-component analysis, (3) **analysis scope** indicating which threat category to analyze.
 
-When invoking an agent: state the analysis scope, list target components with names and DFD types, provide the full architecture context, and reference the agent's prompt file. The payload is structured as prompt content.
+When invoking an agent: set `subagent_type` to the agent's roster name, character for character; state the analysis scope; list target components with names and DFD types; and provide the full architecture context. The agent's own definition carries its methodology and output format, so the prompt holds only the payload. Don't paste the agent's prompt file into it.
+
+**Typed dispatch rules.** These bind every dispatch you make: Phase 2, the Phase 3b re-analysis and the Phase 5 report agent.
+
+1. **Dispatch roster agents only.** Never dispatch a `general-purpose` agent or any other type in a roster agent's place. Never imitate a roster agent by pasting its prompt file into another agent's prompt, and never do a roster agent's analysis yourself.
+2. **Stop when a roster agent can't be spawned.** If an Agent call fails because the type is unknown or the agent isn't installed, end the run there and make this error your reply. Run no substitute, and don't retry under another type.
+
+   ```text
+   TACHI THREAT MODEL FAILED: agent not spawned
+   Agent: <subagent_type>
+   Remedy: re-run the installer from this project's root: <tachi-repo>/scripts/install.sh
+   ```
+
+   In Phase 3b, an agent that started and then failed is a different case. It is the coverage gate's `dispatch_failure`, which stays a warning.
+3. **Run shipped scripts only.** The only commands you run are shipped scripts that this file names. Write each as one `python3 scripts/<name>.py` call with literal arguments: no `$(...)` substitution, no backtick substitution, no `xargs` and no `bash -c`. If a script this file names is missing, stop with an error that names the script and says to re-run `scripts/install.sh`, and write none in its place.
 
 ---
 
@@ -299,7 +314,7 @@ The orchestrator supports two dispatch modes. Both produce identical output -- t
 
 **Sequential Mode**: Same preparation, but invoke agents one at a time in category order: S, T, R, I, D, E, AG (agent-autonomy then tool-abuse then human-trust-exploitation), LLM (prompt-injection then data-poisoning then model-theft then output-integrity then misinformation). Collect findings from each agent before invoking the next.
 
-Platform-specific dispatch adapters that bind these protocols to concrete invocation mechanisms are out of scope for this orchestrator.
+Both modes dispatch through the Agent tool, one call per agent, and every call names a roster agent by `subagent_type` under the typed dispatch rules above.
 
 ---
 
@@ -769,7 +784,7 @@ This phase transforms the structured threat model output from Phase 4 into a nar
 
 Phase objectives:
 
-1. Invoke the report agent (`threat-report.md`) with the completed `threats.md` as sole input.
+1. Invoke the report agent (`subagent_type` `tachi-threat-report`) with the completed `threats.md` as sole input.
 2. Generate `threat-report.md` containing 7 required sections.
 3. Generate standalone Mermaid attack tree files in `attack-trees/` for every Critical and High finding.
 4. Place all Phase 5 outputs in the same output directory as `threats.md` and `threats.sarif`.
@@ -782,7 +797,7 @@ After Phase 4 completes and `threats.md` is written:
 
 1. **Check opt-out**: If `--skip-report` flag or `report: false` configuration is set, skip Phase 5 entirely.
 
-2. **Fresh-context invocation**: Invoke the report agent (`threat-report.md`) passing ONLY the `threats.md` file path inside a `<report-input>` boundary. Do NOT pass accumulated pipeline state, intermediate inventories, or dispatch logs.
+2. **Fresh-context invocation**: Invoke the report agent (`subagent_type` `tachi-threat-report`, under the typed dispatch rules in the Agent Invocation Protocol) passing ONLY the `threats.md` file path inside a `<report-input>` boundary. Do NOT pass accumulated pipeline state, intermediate inventories, or dispatch logs.
 
 3. **Output placement**: The report agent writes `threat-report.md` and `attack-trees/` to the same directory as `threats.md`. Phase 5 is complete when both are written.
 

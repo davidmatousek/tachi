@@ -166,8 +166,10 @@ Category strings map to finding ID prefixes for coverage evaluation:
 | `info-disclosure` | I | tachi-info-disclosure |
 | `denial-of-service` | D | tachi-denial-of-service |
 | `privilege-escalation` | E | tachi-privilege-escalation |
-| `agentic` | AG | tachi-tool-abuse, tachi-agent-autonomy |
-| `llm` | LLM | tachi-prompt-injection, tachi-data-poisoning, tachi-model-theft |
+| `agentic` | AG | tachi-tool-abuse, tachi-agent-autonomy, tachi-human-trust-exploitation |
+| `llm` | LLM | tachi-prompt-injection, tachi-data-poisoning, tachi-model-theft, tachi-output-integrity, tachi-misinformation |
+
+Each name is the typed `subagent_type` of a roster agent. The canonical roster is `.claude/skills/tachi-shared/references/agent-roster-shared.md`, and it governs if the two differ.
 
 #### Gap Flagging Format
 

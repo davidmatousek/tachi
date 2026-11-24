@@ -130,5 +130,8 @@ component_types:
 # | info-disclosure      | tachi-info-disclosure    |
 # | denial-of-service    | tachi-denial-of-service  |
 # | privilege-escalation | tachi-privilege-escalation |
-# | agentic              | tachi-tool-abuse, tachi-agent-autonomy |
-# | llm                  | tachi-prompt-injection, tachi-data-poisoning, tachi-model-theft |
+# | agentic              | tachi-tool-abuse, tachi-agent-autonomy, tachi-human-trust-exploitation |
+# | llm                  | tachi-prompt-injection, tachi-data-poisoning, tachi-model-theft, tachi-output-integrity, tachi-misinformation |
+#
+# Each name is the typed subagent_type of a roster agent. The canonical roster is
+# .claude/skills/tachi-shared/references/agent-roster-shared.md, and it governs if the two differ.

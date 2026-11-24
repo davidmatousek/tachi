@@ -1659,9 +1659,9 @@ New/modified phases:
 **Purpose**: Support score inheritance for stable findings and bounded scoring for new findings.
 
 Delta-aware scoring rules:
-- **UNCHANGED**: Inherit all scores (composite, CVSS vector, governance fields) verbatim from baseline. `score_source: inherited`.
-- **UPDATED**: Re-score fresh using full 4-dimensional model. `score_source: fresh`.
-- **NEW**: Score fresh with CVSS base bounded within +/-1.0 of category defaults from `schemas/risk-scoring.yaml`. `score_source: fresh`.
+- **UNCHANGED**: Inherit all scores (composite, CVSS vector, governance fields) verbatim from baseline. `score_source: inherited`, because the finding's scoring inputs come from the baseline.
+- **UPDATED**: Re-score fresh using full 4-dimensional model. `score_source: fresh`, because the finding's scoring inputs are assessed this run.
+- **NEW**: Score fresh with CVSS base bounded within +/-1.0 of category defaults from `schemas/risk-scoring.yaml`. `score_source: fresh`, for the same reason. `score_source` says where a finding's scoring inputs came from, not its delta status, so a correlated peer that copies its primary takes the primary's source: a NEW or UPDATED peer of a carried primary is `inherited`, and one of a primary assessed this run is `fresh` (Feature 374).
 - **RESOLVED**: Retain last-known scores for historical reference.
 
 ### Component 5: Control Analyzer Agent Enhancement
@@ -4047,3 +4047,57 @@ Egress is exactly two hosts during a run: the model provider (inherent to Claude
 Bash 3.2 (`install.sh`, workflow steps, probe commands); Python ≥ 3.9 stdlib for installed scripts (`argparse`, `json`, `hashlib` with chunked updates, `os`, `pathlib`, `re`, `subprocess` for `git rev-parse`/`git check-ignore` only); pytest + PyYAML (tests only); GitHub Actions (existing workflows); Claude Code sandbox (Seatbelt / bubblewrap + local proxy), permission rules, `--settings` launch profile, auto-mode `environment`/`hard_deny`; typst + mmdc (existing). No new runtime dependency.
 
 **Status at Part A's merge (2026-11-21).** Part A shipped alone as `fix(391)` (TW-A2). B1, the archiver and its run manifest, was honest-stopped at TW-B1 and does not ship (follow-up #399). B2, the version marker, the `tachi_version` stamp and the schema 1.5 reconciliation, ships separately through #396 after #364. Until #396 merges, the B2 rows and the `install.sh` → `VERSION` → stamp edges above describe the plan, not `main`; the archiver row, its edge and the Tech Stack's `subprocess` note describe work that did not ship.
+
+---
+
+### Feature 374: large-architecture-pipeline-resilience
+
+**Added**: 2026-11-22 (W1, T024) · **Plan**: `specs/374-large-architecture-pipeline-resilience/plan.md` · **ADR**: [ADR-050](../02_ADRs/ADR-050-large-architecture-output-authority.md) · **Nature**: `fix:` patch bundle in two PRs (R-34). Shipped, stdlib-only Python takes over what an agent can't reliably produce at scale: whole files, arithmetic, completeness and alert identity. Agents keep the judgment, and each writes one bounded JSON part per batch. This section covers PR 1, Tracks S and R (draft #423).
+
+#### Components (PR 1)
+
+| Component | Kind | Track | Role (ADR-050) |
+|---|---|---|---|
+| `scripts/tachi_parts.py` | helper, new | S | The part loader and validator, the identifier patterns, the guards, atomic write, the digest, the stamp and the version (D3, D4) |
+| `scripts/tachi_scoring.py` | helper, new | S | The CVSS 3.1 calculator promoted from Patch A's test, the embedded constants, `q1`, `band`, largest remainder and the prefix resolver (D5, D10) |
+| `scripts/sarif_common.py` | helper, now installed | S | The shared emitter: the rule map, the per-finding hash, the URI resolver, membership and the self-check (D7, D8) |
+| `scripts/tachi-stage.py` | entry, new | S, R | `plan`, `reconcile` and `fail` (S); `architecture-source` (R) (D4, D6, D7) |
+| `scripts/tachi_parsers.py` | helper, extended | S, R | The reference-set wrapper with the drift forms (S-12), `parse_correlation_groups` (D8), both K8 formats, the shared reference decoder (D3), D8's SARIF fallback reader, and the reader for controls §7's persisted inputs |
+| `scripts/tachi_scoring_rules.py` | helper, new | R | R-6's resolver, R-25, R-26's tolerant reader and R-31 (D5, D9) |
+| `scripts/render-risk-scores.py` | entry, new | R | Owns `risk-scores.{md,sarif}`, with recompute-and-flag (D2, D9, D10). Replaces `generate-risk-scores-sarif.py` (#357) |
+| `scripts/render-compensating-controls.py` | entry, new | R | Owns `compensating-controls.{md,sarif}`, with Sections 2 and 4 filled or checked (D2, R-34) |
+| Agent and command contracts | modified | S (text), R | Typed dispatch, no hand-back and the overflow contract (the text, S); the batch-and-resume loops in `/tachi.risk-score` and `/tachi.compensating-controls`, and judgment-only authoring by the scorer and the controls analyzer (R) |
+| Shared references | new and modified | S | The N/N and identity rule; the part-file contract; the overflow error and batch plan; the canonical roster. The dispatch-record and brief templates ship inert until PR 2 |
+
+**PR 2's components (Track O):** `scripts/join-threats-md.py`, the rewritten `scripts/generate-threats-sarif.py`, `scripts/attack-chains.py`, `scripts/check-threat-model.py` and `scripts/assemble-report.py`, plus `tachi-stage.py`'s `close` and `id-mark` and `tachi_parsers`' `parse_chain_outcome`. T136 adds their rows at PR 2's close-out.
+
+#### Data Flow (PR 1)
+
+```mermaid
+flowchart TB
+  subgraph PR1["/tachi.risk-score and /tachi.compensating-controls (main session, depth 1)"]
+    TM1["threats.md (reference set)"] --> POP["populate-affected-assets.py (scorer only)"]
+    POP --> PLAN["tachi-stage.py plan"]
+    PLAN -->|batch inputs| AG["tachi-risk-scorer / tachi-control-analyzer (≤16 in flight, foreground)"]
+    AG -->|parts| REC["tachi-stage.py reconcile (exit 3 = dispatch more)"]
+    REC -->|complete| REN["render-risk-scores.py / render-compensating-controls.py"]
+    REC -->|exhausted, exit 4| FAIL["tachi-stage.py fail (failed/ quarantine)"]
+    REN --> OUT1["risk-scores.{md,sarif} / compensating-controls.{md,sarif} (stamped)"]
+    REN --> SR1["stage-record.json"]
+  end
+```
+
+- **PR 1's flow stands alone.** The scorer and controls stages read a `threats.md` and its baseline run. PR 1 changes the threat model only by its presence check and Step 2.7's body-line write (D7).
+- **Batch sizes** are constants in `tachi-stage.py`, measured at W0 and confirmed at W1 (ADR-050 D6). At or below its size, a stage invokes its agent once (NFR-4).
+
+#### Tech Stack
+
+| Layer | Technology | Notes |
+|---|---|---|
+| Shipped scripts | Python 3.9+, standard library only | `sys.dont_write_bytecode` is set before local imports (ADR-049 D8); installed through `INSTALL_MANIFEST.md`; listed under F-373's S-13 import gate |
+| Agent and command contracts | Markdown, with YAML frontmatter | Agents keep their `tools:`, and commands keep `{description}` |
+| Intermediates | JSON (closed, versioned key sets) | Under `{out}/.tachi-build/` (ADR-050 D3) |
+| Outputs | Markdown and SARIF 2.1.0 | Renderer-owned for the scorer and controls in PR 1. The `threats.sarif` generator is PR 2's |
+| Tests and CI | pytest; GitHub Actions | Three gates, with lock-step `paths:` and invocation (FR-E.5). PR 1 adds the `f374-offline`, `f374-py39-floor` and `f374-macos` jobs |
+
+No new dependency. PyYAML stays optional and test-only, and `pytest-cov`, already in `requirements-dev.txt`, runs only in `f374-offline`, for ADR-050 D16's coverage gate.

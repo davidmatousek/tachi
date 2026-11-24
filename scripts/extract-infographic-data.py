@@ -61,6 +61,7 @@ from tachi_parsers import (
     parse_scope_data,
     parse_compensating_controls_md,
     strip_bold,
+    decode_references,
 )
 
 # =============================================================================
@@ -604,7 +605,7 @@ def deduplicate_findings(threats_content):
                 break
             # Look for table rows with threat IDs in first column
             if stripped.startswith("|") and not re.match(r"^\|[\s\-:|]+\|$", stripped):
-                cells = [c.strip() for c in stripped.split("|")[1:-1]]
+                cells = [decode_references(c.strip()) for c in stripped.split("|")[1:-1]]
                 if cells and cells[0] and not cells[0].lower().startswith("id"):
                     # First cell is the threat ID
                     tid = strip_bold(cells[0])
@@ -627,7 +628,7 @@ def deduplicate_findings(threats_content):
             if stripped.startswith("## ") and not stripped.startswith("## 4a"):
                 break
             if stripped.startswith("|") and not re.match(r"^\|[\s\-:|]+\|$", stripped):
-                cells = [c.strip() for c in stripped.split("|")[1:-1]]
+                cells = [decode_references(c.strip()) for c in stripped.split("|")[1:-1]]
                 # Findings column (index 1) contains comma-separated IDs
                 if len(cells) >= 2 and not cells[0].lower().startswith("group"):
                     findings_cell = cells[1]
@@ -1864,7 +1865,7 @@ def parse_per_finding_maestro(threats_content):
                 continue
             # Parse header row
             if header_cols is None:
-                cells = [c.strip() for c in stripped.split("|")[1:-1]]
+                cells = [decode_references(c.strip()) for c in stripped.split("|")[1:-1]]
                 if cells and cells[0].lower() == "id":
                     header_cols = cells
                 continue
@@ -1872,7 +1873,7 @@ def parse_per_finding_maestro(threats_content):
             if re.match(r"^\|[\s\-:|]+\|$", stripped):
                 continue
             # Data row
-            cells = [c.strip() for c in stripped.split("|")[1:-1]]
+            cells = [decode_references(c.strip()) for c in stripped.split("|")[1:-1]]
             if not cells or not cells[0]:
                 continue
             fid = strip_bold(cells[0])

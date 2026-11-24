@@ -5,6 +5,14 @@
 **Deciders**: Architect
 **Feature**: 012 (SARIF Output Generation)
 
+> **Note (2026-11-22, Feature 374)**: [ADR-050](ADR-050-large-architecture-output-authority.md) supersedes D1 in part, supersedes D4 and D5, and amends D6. These changes reach `threats.sarif`, this ADR's subject, at PR 2. The scorer and controls SARIF files, which follow this ADR's conventions, take ADR-050 D7 and D8 at PR 1.
+>
+> - **D1, co-generation (ADR-050 D1 and D4), at PR 2.** The orchestrator stops authoring `threats.sarif`. A shipped generator writes it from the compiled `threats.md`, in the main session, after every `threats.md` writer.
+> - **D4, fingerprints (ADR-050 D7): superseded.** `primaryLocationLineHash` becomes a per-finding hash, `sha256("tachi-plh/1|" + tool + "|" + id)`, which leaves out the component. `partialFingerprints` holds only that hash and `findingId/v1`.
+> - **D5, correlation (ADR-050 D8): superseded.** Peers are results of their own, and the `correlation-group`, `correlation-role` and `correlation-primary` properties carry the group. No `relatedLocations` entry names a finding, and `correlationGroup` leaves `partialFingerprints`.
+> - **D6, the dual location (ADR-050 D7): amended.** The `physicalLocation` URI is the user's architecture file, repo-relative and identical on every result in a run chain, as one shared resolver sets it. The region stays the constant `startLine: 1`.
+> - D2's rule IDs, whose prefix map gains `TE`, and D3's levels stand.
+
 ---
 
 ## Context

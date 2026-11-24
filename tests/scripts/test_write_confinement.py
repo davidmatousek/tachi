@@ -34,10 +34,32 @@ What each group proves:
   or directory value stops the run with an error that names the variable, before
   mmdc starts and before anything is written. Needs no Typst.
 - legacy mode (``--output``) still writes next to the artifacts, as before.
-- AR-14: a stock ``python3 scripts/<entry> --help`` of each of the three
-  installed scripts that import ``tachi_parsers`` leaves no bytecode cache, in
-  the project or under a test-owned ``PYTHONPYCACHEPREFIX``.
-- AR-1 case 4 and the T015 static assertion: no fenced block in the five
+- AR-14: a stock ``python3 scripts/<entry> --help`` of each installed entry
+  script that imports ``tachi_parsers`` (the three extractors, ``tachi-stage.py``
+  and the two renderers), with its local-import closure installed beside
+  it, leaves no bytecode cache, in the project or under a test-owned
+  ``PYTHONPYCACHEPREFIX``.
+- F-374 (ADR-050 D16): ``tachi-stage.py`` runs ``plan``, ``reconcile`` and
+  ``fail`` for each batched stage on the gated fixture, in a throwaway project,
+  and every write lands under ``--out``. Its ``architecture-source`` command is
+  the one write outside ``--out``: it edits only the ``--threats`` file, and it
+  refuses a symlinked or non-regular one with exit 2. No run writes bytecode.
+  Needs no Typst.
+- F-374 (ADR-050 D16): ``render-risk-scores.py`` runs on the same fixture, after
+  ``tachi-stage.py`` has planned and reconciled the ``risk-score`` stage and this
+  module has written its parts as the scorer agent does. The renderer loads
+  ``populate-affected-assets.py`` by path at run time, so the project installs that
+  file beside it, and a case holds the install manifest to listing it. Every write
+  of a first run, and of a run over earlier outputs, lands under ``--out``; a
+  refused run writes nothing; no run writes bytecode. Needs no Typst.
+- F-374 (ADR-050 D16): ``render-compensating-controls.py`` runs on the same fixture,
+  after the scorer's whole run has left its ``risk-scores.md`` in ``--out``, and after
+  ``tachi-stage.py`` has planned and reconciled the ``compensating-controls`` stage and
+  this module has written its parts as the control-analyzer agent does. It loads no
+  script by path, so its install is its import closure. Every write of a first run, and
+  of a run over earlier outputs, lands under ``--out``, and none of the scorer's files
+  changes; a refused run writes nothing; no run writes bytecode. Needs no Typst.
+- AR-1 case 4 and the T015 static assertion: no fenced block in the eight
   recipe documents names ``templates/tachi/`` as a write target or uses ``/tmp``.
 
 Typst gating: tests that compile are skipped when ``typst`` is not on PATH,
@@ -65,6 +87,7 @@ Stdlib and pytest only; Python 3.9 syntax.
 """
 
 import hashlib
+import json
 import os
 import re
 import shlex
@@ -78,6 +101,10 @@ from typing import Dict, Iterator, List, Optional, Set, Tuple
 
 import pytest
 
+# The one definition of what a script needs installed beside it: the manifest test's import closure (ADR-050 D16),
+# and its reader of the installer's machine-readable block.
+from .test_install_manifest_completeness import MANIFEST_PATH, _import_closure, read_manifest
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "scripts"
@@ -88,8 +115,10 @@ TEMPLATE_DIR = REPO_ROOT / "templates" / "tachi" / "security-report"
 FIXTURE_DIR = (
     REPO_ROOT / "tests" / "scripts" / "fixtures" / "fidelity_373" / "posture_mmdc_free"
 )
-# The pair the report-assembler's own preflight requires: the installed set.
-INSTALLED_SCRIPTS = ("extract-report-data.py", "tachi_parsers.py")
+# The installed set the report build needs: the extractor, ``tachi_parsers.py`` and the helper that
+# ``tachi_parsers.py`` imports at module load (ADR-050 D3). The report-assembler's preflight (step 2b) names
+# all three, and ``test_contract_text_374.py`` keeps it equal to the extractor's import closure.
+INSTALLED_SCRIPTS = ("extract-report-data.py", "tachi_parsers.py", "tachi_parts.py")
 
 CUSTOM_FOOTER = "T015 custom footer"
 SUBPROCESS_TIMEOUT = 300
@@ -1036,13 +1065,54 @@ def test_legacy_mode_still_writes_next_to_the_artifacts(tmp_path: Path):
 # AR-14: a stock run of each installed entry script leaves no bytecode cache
 # =============================================================================
 
-# The installed scripts that import the sibling ``tachi_parsers`` at module level.
-# Each turns bytecode writing off itself when run as a script, before that import.
+# The installed entry scripts that import the sibling ``tachi_parsers`` at module level, directly or through
+# ``sarif_common``. Each turns bytecode writing off itself when run as a script, before its first local import.
+# A new entry joins this tuple and gets its own group below (ADR-050 D16).
 ENTRY_SCRIPTS_IMPORTING_PARSERS = (
     "extract-report-data.py",
     "extract-infographic-data.py",
     "populate-affected-assets.py",
+    "tachi-stage.py",
+    "render-risk-scores.py",
+    "render-compensating-controls.py",
 )
+
+# The scripts an entry loads by path when it runs. No import statement names them, so the import closure can't see
+# them, and an install places them beside the entry all the same (the manifest lists each). ``render-risk-scores.py``
+# takes the populator's component join (ADR-050 D2), and stops with exit 1 when the file is not installed.
+# ``render-compensating-controls.py`` loads none (it reads the threat model that its plan names, and joins no component
+# to an asset tag), so it has no row.
+LOADED_BY_PATH = {
+    "render-risk-scores.py": ("populate-affected-assets.py",),
+}  # type: Dict[str, Tuple[str, ...]]
+
+
+def _install_with_closure(entry: str, scripts: Path) -> List[str]:
+    """Copy ``entry``, its local-import closure and what it loads by path into ``scripts``, as an install places them.
+
+    The closure is the manifest test's own (``_import_closure``), so a script that gains an import is installed
+    with it here, and the manifest must list it. ``LOADED_BY_PATH`` adds the scripts that the entry loads at run
+    time, and the closure of those too. Returns the names of the siblings copied.
+    """
+    loaded = LOADED_BY_PATH.get(entry, ())
+    seeds = {"scripts/" + name for name in (entry,) + loaded}
+    closure = sorted({Path(ref).name for ref in _import_closure(seeds)} | set(loaded))
+    assert closure, "%s imports no sibling script, so the closure is empty: update this case" % entry
+    for name in sorted({entry} | set(closure)):
+        shutil.copy2(str(SCRIPTS_DIR / name), str(scripts / name))
+    return closure
+
+
+@pytest.mark.parametrize("entry", sorted(LOADED_BY_PATH))
+def test_each_script_loaded_by_path_is_in_the_install_manifest(entry: str):
+    """The manifest test's import closure can't see a script that an entry loads by path, so this names each one.
+
+    ``LOADED_BY_PATH`` says an install places these beside the entry. This holds the manifest to it, so an entry
+    that starts to load another script at run time fails here, and not in an adopter's project.
+    """
+    listed = read_manifest(MANIFEST_PATH.read_text(encoding="utf-8"))
+    for name in (entry,) + LOADED_BY_PATH[entry]:
+        assert "scripts/" + name in listed, "INSTALL_MANIFEST.md doesn't list scripts/%s (%s loads it by path)" % (name, entry)
 
 
 @pytest.mark.parametrize("entry", ENTRY_SCRIPTS_IMPORTING_PARSERS)
@@ -1050,18 +1120,17 @@ def test_a_stock_run_of_each_entry_script_leaves_no_bytecode_cache(tmp_path: Pat
     """AR-14: ``python3 scripts/<entry> --help``, with no ``-B`` and no
     ``PYTHONDONTWRITEBYTECODE``, caches none of the project's own modules.
 
-    A stock run would cache the imported ``tachi_parsers`` in ``scripts/__pycache__/``,
-    or, on an interpreter with a default cache prefix (macOS's ``/usr/bin/python3``),
-    outside the project. A test-owned ``PYTHONPYCACHEPREFIX`` sends every cache to a
-    directory this test reads, on any interpreter, so the case fails whenever the
-    script's guard is missing. The interpreter caches the standard library under
-    the prefix too; only the project's own modules are checked.
+    A stock run would cache the imported siblings (``tachi_parsers`` and what it imports) in
+    ``scripts/__pycache__/``, or, on an interpreter with a default cache prefix (macOS's
+    ``/usr/bin/python3``), outside the project. A test-owned ``PYTHONPYCACHEPREFIX`` sends every
+    cache to a directory this test reads, on any interpreter, so the case fails whenever the
+    script's guard is missing. The interpreter caches the standard library under the prefix too;
+    only the project's own modules are checked.
     """
     project = tmp_path / "project"
     scripts = project / "scripts"
     scripts.mkdir(parents=True)
-    for name in (entry, "tachi_parsers.py"):
-        shutil.copy2(str(SCRIPTS_DIR / name), str(scripts / name))
+    _install_with_closure(entry, scripts)
     prefix = tmp_path / "pycache-prefix"
     prefix.mkdir()
 
@@ -1090,16 +1159,537 @@ def test_a_stock_run_of_each_entry_script_leaves_no_bytecode_cache(tmp_path: Pat
 
 
 # =============================================================================
+# F-374 (ADR-050 D16): tachi-stage.py writes only under {out} and leaves no bytecode
+# =============================================================================
+#
+# Each new entry gets a group like this one: it runs the entry's commands on the gated fixture in a throwaway
+# project, and fails on any path written outside ``{out}``. The gated fixture is the subset of S-4's synthetic
+# large-architecture fixture that the gated tests read. Standard library and pytest only.
+
+GATED_FIXTURE = REPO_ROOT / "tests" / "scripts" / "fixtures" / "large_arch" / "gated-subset"
+STAGE_ENTRY = "tachi-stage.py"
+STAGE_DATE = "2026-11-22"
+# Each batched stage, with the extra arguments its plan takes from the fixture's inputs.
+STAGES = {
+    "risk-score": (),
+    "compensating-controls": ("--risk-scores", "run/risk-scores.md", "--target", "run"),
+}  # type: Dict[str, Tuple[str, ...]]
+StageState = Tuple[Snapshot, Snapshot]
+
+
+class StageProject:
+    """A throwaway adopter project that runs ``tachi-stage.py`` on the gated fixture.
+
+    Layout under ``root``: ``project/`` is the working directory. It holds ``scripts/`` (the entry and its
+    local-import closure, as an install places them), ``run/`` (the fixture's three inputs: ``threats.md``,
+    ``risk-scores.md`` and ``architecture.md``) and ``out/``, which exists before the first command, as a command
+    creates it. ``systmp/`` is ``$TMPDIR`` of every child, and ``pycache-prefix/`` takes any bytecode an
+    interpreter writes outside the project.
+    """
+
+    def __init__(self, root: Path):
+        self.cwd = root / "project"
+        self.out = self.cwd / "out"
+        self.inputs = self.cwd / "run"
+        self.systmp = root / "systmp"
+        self.prefix = root / "pycache-prefix"
+        scripts = self.cwd / "scripts"
+        for directory in (scripts, self.inputs, self.out, self.systmp, self.prefix):
+            directory.mkdir(parents=True)
+        _install_with_closure(STAGE_ENTRY, scripts)
+        for source, name in (
+            (GATED_FIXTURE / "baseline" / "threats.md", "threats.md"),
+            (GATED_FIXTURE / "baseline" / "risk-scores.md", "risk-scores.md"),
+            (GATED_FIXTURE / "architecture" / "architecture.md", "architecture.md"),
+        ):
+            shutil.copy2(str(source), str(self.inputs / name))
+
+    def state(self) -> StageState:
+        """The whole project, and ``$TMPDIR`` apart from it, as two snapshots."""
+        return _snapshot(self.cwd), _snapshot(self.systmp)
+
+    def run(self, *args: str) -> "subprocess.CompletedProcess":
+        """``python3 scripts/tachi-stage.py ARGS``: the stock invocation, with bytecode caching left on."""
+        return self.run_entry(STAGE_ENTRY, *args)
+
+    def run_entry(self, entry: str, *args: str) -> "subprocess.CompletedProcess":
+        """``python3 scripts/<entry> ARGS`` in the project: the stock invocation, with bytecode caching left on."""
+        env = dict(os.environ)
+        env["TMPDIR"] = str(self.systmp)
+        env["PYTHONPYCACHEPREFIX"] = str(self.prefix)  # a cache written outside the project lands where this reads
+        env.pop("PYTHONDONTWRITEBYTECODE", None)  # a developer's setting must not mask a regression (AR-14)
+        return subprocess.run(
+            [sys.executable, "scripts/" + entry] + list(args),
+            cwd=str(self.cwd),
+            env=env,
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=SUBPROCESS_TIMEOUT,
+        )
+
+    def assert_writes_only_under_out(
+        self, before: StageState, after: StageState, label: str, also: Tuple[str, ...] = ()
+    ) -> Tuple[Set[str], Set[str], Set[str]]:
+        """Every path added, changed or removed since ``before`` sits under ``out/`` or is one of ``also``.
+
+        ``$TMPDIR`` must be as it was: the stage's writes are atomic in their own directory, so nothing goes there.
+        Returns ``(added, changed, removed)`` over the project.
+        """
+        added, changed, removed = _diff(before[0], after[0])
+        stray = sorted(p for p in added | changed | removed if not any(_within(p, base) for base in ("out",) + also))
+        assert not stray, "%s: wrote outside out/: %s" % (label, stray)
+        assert before[1] == after[1], "%s: wrote under $TMPDIR: %s" % (label, sorted(set(before[1]) ^ set(after[1])))
+        return added, changed, removed
+
+    def assert_no_bytecode(self) -> None:
+        """No ``__pycache__`` or ``.pyc`` anywhere in the project, and none cached for its modules under the prefix."""
+        found = sorted(
+            p.relative_to(self.cwd).as_posix() for p in self.cwd.rglob("*") if p.name == "__pycache__" or p.suffix == ".pyc"
+        )
+        assert not found, "a run wrote bytecode into the project: %s" % found
+        cached = sorted(
+            path.relative_to(self.prefix).as_posix()
+            for module in (self.cwd / "scripts").glob("*.py")
+            for path in self.prefix.rglob(module.stem + ".cpython-*.pyc")
+        )
+        assert not cached, "a run cached the project's own modules under the prefix: %s" % cached
+
+
+@pytest.mark.parametrize("stage", sorted(STAGES))
+def test_tachi_stage_plan_reconcile_and_fail_write_only_under_out(tmp_path: Path, stage: str):
+    """``plan``, ``reconcile`` and ``fail`` write only under ``--out``, and leave the inputs and the scripts as they were.
+
+    No part is ever written, so every batch is pending: ``reconcile`` splits them and exits 3, and ``fail``
+    quarantines nothing and writes the stage record. The digest each command prints is the one the next takes.
+    """
+    project = StageProject(tmp_path)
+    start = project.state()
+
+    plan = project.run("plan", "--stage", stage, "--out", "out", "--date", STAGE_DATE,
+                       "--threats", "run/threats.md", *STAGES[stage])
+    assert plan.returncode == 0, _describe(plan)
+    planned = json.loads(plan.stdout)
+    added, _, _ = project.assert_writes_only_under_out(start, project.state(), "after plan")
+    assert any(p.endswith("/plan.json") for p in added), "the snapshot must see the plan"
+
+    reconcile = project.run("reconcile", "--stage", stage, "--out", "out",
+                            "--plan", planned["plan_id"], "--plan-digest", planned["plan_digest"])
+    assert reconcile.returncode == 3, _describe(reconcile)
+    project.assert_writes_only_under_out(start, project.state(), "after reconcile")
+
+    failed = project.run("fail", "--stage", stage, "--out", "out", "--plan", planned["plan_id"],
+                         "--plan-digest", json.loads(reconcile.stdout)["plan_digest"], "--reason", "check-failed")
+    assert failed.returncode == 0, _describe(failed)
+    end = project.state()
+    added, _, _ = project.assert_writes_only_under_out(start, end, "after fail")
+    assert any(p.endswith("/stage-record.json") for p in added), "the snapshot must see the stage record"
+
+    # The inputs and the installed scripts are byte-unchanged end to end, and nothing wrote bytecode.
+    assert _under(end[0], "run") == _under(start[0], "run"), "the stage changed one of its inputs"
+    assert _under(end[0], "scripts") == _under(start[0], "scripts"), "the stage changed an installed script"
+    project.assert_no_bytecode()
+
+
+def test_tachi_stage_architecture_source_edits_only_the_threats_file(tmp_path: Path):
+    """``architecture-source`` is the one write outside ``--out``: it edits the ``--threats`` file in place.
+
+    Nothing else changes, ``out/`` stays empty, and a second run finds the line already there.
+    """
+    project = StageProject(tmp_path)
+    before = project.state()
+
+    ran = project.run("architecture-source", "--threats", "run/threats.md", "--architecture", "run/architecture.md")
+    assert ran.returncode == 0, _describe(ran)
+    assert json.loads(ran.stdout)["action"] == "added"
+    after = project.state()
+    added, changed, removed = project.assert_writes_only_under_out(before, after, "after architecture-source",
+                                                                   also=("run/threats.md",))
+    assert changed == {"run/threats.md"} and not added and not removed, (added, changed, removed)
+    assert set(_under(after[0], "out")) == {"out"}, "architecture-source wrote under out/"
+
+    again = project.run("architecture-source", "--threats", "run/threats.md", "--architecture", "run/architecture.md")
+    assert again.returncode == 0, _describe(again)
+    assert json.loads(again.stdout)["action"] == "unchanged"
+    assert project.state() == after, "a second run changed something"
+    project.assert_no_bytecode()
+
+
+@pytest.mark.parametrize("shape", ("symlink", "directory"))
+def test_tachi_stage_architecture_source_refuses_a_link_or_a_non_regular_threats_file(tmp_path: Path, shape: str):
+    """A symlinked or non-regular ``--threats`` exits 2 and writes nothing: an edit in place must not follow a link."""
+    project = StageProject(tmp_path)
+    threats = "run"
+    if shape == "symlink":
+        (project.inputs / "threats-link.md").symlink_to("threats.md")
+        threats = "run/threats-link.md"
+    before = project.state()
+
+    ran = project.run("architecture-source", "--threats", threats, "--architecture", "run/architecture.md")
+    assert ran.returncode == 2, _describe(ran)
+    assert "TACHI THREAT-MODEL FAILED" in ran.stderr, _describe(ran)
+    assert project.state() == before, "a refused run must write nothing"
+    project.assert_no_bytecode()
+
+
+# =============================================================================
+# F-374 (ADR-050 D16): render-risk-scores.py writes only under {out} and leaves no bytecode
+# =============================================================================
+#
+# The renderer reads what ``tachi-stage.py`` planned and what the scorer agent wrote, so its project is a
+# ``StageProject`` that also holds the renderer and writes the parts. A run is the command's Steps 2 to 5 on the
+# gated fixture: plan, one part per batch, reconcile, render. The renderer loads ``populate-affected-assets.py`` by
+# path (``LOADED_BY_PATH``), so that file is installed beside it, as an install places it.
+
+RENDER_ENTRY = "render-risk-scores.py"
+SCORER_STAGE = "risk-score"
+SUBSCORE_NAMES = (
+    "known_techniques", "attack_complexity", "tooling_availability", "skill_level",
+    "scriptability", "target_scope", "resource_requirements", "detection_difficulty",
+)
+# A narrative field keeps its digits in slots, which the renderer fills (ADR-050 D3). Free digits would take the
+# fallback sentence and a flag, and this check wants a clean run.
+SCORER_RATIONALE = {
+    "cvss": "The base score is {{score:cvss_base}} for {{name:component}}.",
+    "exploitability": "Public techniques give a mean of {{score:exploitability}}.",
+    "scalability": "Repeatable at scale, with a mean of {{score:scalability}}.",
+    "reachability": "{{name:zone}} yields {{score:reachability}}, with {{count:auth_barriers}} authentication "
+                    "layers and {{count:network_boundaries}} network boundaries.",
+}
+TRUST_LEVELS = {"untrusted": "Untrusted", "semi-trusted": "Semi-Trusted", "trusted": "Trusted"}
+# What an earlier run left in ``{out}``: the renderer replaces both, and the plan records them as its preimage.
+EARLIER_OUTPUTS = {"risk-scores.md": b"# the earlier run's markdown\n", "risk-scores.sarif": b'{"earlier": "run"}\n'}
+
+
+def _trust_zones(threats_text: str) -> Dict[str, Tuple[str, str]]:
+    """``{component: (zone, trust level)}`` from the ``### Trust Zones`` table of a ``threats.md``.
+
+    The level is the agent's spelling (``Semi-Trusted``), not the table's label (``Semi-trusted``).
+    """
+    zones = {}  # type: Dict[str, Tuple[str, str]]
+    for line in threats_text.split("### Trust Zones", 1)[1].splitlines():
+        if line.startswith("#"):  # the next heading ends the table
+            break
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if not line.startswith("|") or cells[0] == "Zone" or not cells[0].strip("-"):
+            continue  # prose, the header row or the rule under it
+        for member in cells[2].split(","):
+            zones[member.strip()] = (cells[0], TRUST_LEVELS[cells[1].lower()])
+    assert zones, "the fixture's Section 2 lists no trust zone"
+    return zones
+
+
+class RenderProject(StageProject):
+    """A ``StageProject`` that also installs ``render-risk-scores.py`` and writes the scorer's parts.
+
+    ``write_parts`` stands in for the scorer agent (``contracts/part-files.md``): one part file per batch, holding one
+    valid item for every finding that the batch input lists. Each item's zone and trust level are what Section 2 of
+    the fixture's ``threats.md`` gives its component, so the renderer has nothing to correct.
+    """
+
+    def __init__(self, root: Path):
+        super().__init__(root)
+        _install_with_closure(RENDER_ENTRY, self.cwd / "scripts")
+        self.zones = _trust_zones((self.inputs / "threats.md").read_text(encoding="utf-8"))
+
+    def write_parts(self, planned: dict) -> None:
+        """One part file per batch of the plan that ``planned`` is the output of, at the path its batch input names."""
+        for wave in planned["waves"]:
+            for entry in wave:
+                batch = json.loads(Path(entry["input_path"]).read_text(encoding="utf-8"))
+                items = []
+                for unit in batch["units"]:
+                    zone, trust = self.zones[unit["component"]]
+                    items.append({
+                        "finding_id": unit["finding_id"],
+                        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+                        "exploitability": dict(zip(SUBSCORE_NAMES[:4], (5, 5, 5, 5))),
+                        "scalability": dict(zip(SUBSCORE_NAMES[4:], (4, 4, 4, 4))),
+                        "reachability": {"zone": zone, "trust_level": trust, "auth_barriers": 1, "network_boundaries": 0},
+                        "rationale": dict(SCORER_RATIONALE),
+                    })
+                part = {
+                    "schema": "tachi.part/1", "plan_id": batch["plan_id"], "batch_id": batch["batch_id"],
+                    "stage": batch["stage"], "agent_type": batch["agent_type"], "finding_ids": list(batch["finding_ids"]),
+                    "items": items, "fragments": [],
+                }
+                path = Path(batch["part_path"])
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(part), encoding="utf-8")
+
+    def prepare(self) -> Tuple[str, str]:
+        """The command's Steps 2 to 4: plan, write the parts, reconcile. Returns ``(plan_id, plan_digest)``."""
+        plan = self.run("plan", "--stage", SCORER_STAGE, "--out", "out", "--date", STAGE_DATE,
+                        "--threats", "run/threats.md", "--architecture", "run/architecture.md")
+        assert plan.returncode == 0, _describe(plan)
+        planned = json.loads(plan.stdout)
+        self.write_parts(planned)
+        reconcile = self.run("reconcile", "--stage", SCORER_STAGE, "--out", "out",
+                             "--plan", planned["plan_id"], "--plan-digest", planned["plan_digest"])
+        assert reconcile.returncode == 0, _describe(reconcile)
+        return planned["plan_id"], json.loads(reconcile.stdout)["plan_digest"]
+
+    def render(self, plan_id: str, digest: str) -> "subprocess.CompletedProcess":
+        """``python3 scripts/render-risk-scores.py --out out --plan ID --plan-digest HEX``: the command's Step 5."""
+        return self.run_entry(RENDER_ENTRY, "--out", "out", "--plan", plan_id, "--plan-digest", digest)
+
+
+@pytest.mark.parametrize("earlier", (False, True), ids=("first-run", "over-earlier-outputs"))
+def test_render_risk_scores_writes_only_under_out(tmp_path: Path, earlier: bool):
+    """The renderer writes both files and its record under ``--out``, and leaves the inputs and the scripts alone.
+
+    Exit 5 is a success with warnings (the fixture's baseline is not on disk), so 0 and 5 both write both files.
+    Over earlier outputs the two canonical files change instead of appearing. ``$TMPDIR`` stays as it was: the
+    renderer stages inside the plan directory. The loaded-by-path populator caches no bytecode either.
+    """
+    project = RenderProject(tmp_path)
+    if earlier:
+        for name, content in EARLIER_OUTPUTS.items():
+            (project.out / name).write_bytes(content)
+    start = project.state()
+
+    plan_id, digest = project.prepare()
+    project.assert_writes_only_under_out(start, project.state(), "after plan, the parts and reconcile")
+
+    rendered = project.render(plan_id, digest)
+    assert rendered.returncode in (0, 5), _describe(rendered)
+    end = project.state()
+    added, changed, _ = project.assert_writes_only_under_out(start, end, "after render")
+    outputs = {"out/risk-scores.md", "out/risk-scores.sarif"}
+    assert outputs <= (changed if earlier else added), "both files must be written: %s" % sorted(added | changed)
+    assert any(p.endswith("/stage-record.json") for p in added), "the snapshot must see the stage record"
+    if earlier:
+        assert all((project.out / name).read_bytes() != content for name, content in EARLIER_OUTPUTS.items())
+
+    # The inputs and the installed scripts are byte-unchanged end to end, and nothing wrote bytecode.
+    assert _under(end[0], "run") == _under(start[0], "run"), "the renderer changed one of its inputs"
+    assert _under(end[0], "scripts") == _under(start[0], "scripts"), "the renderer changed an installed script"
+    assert (project.cwd / "scripts" / "populate-affected-assets.py").is_file(), "the populator must be installed"
+    project.assert_no_bytecode()
+
+
+@pytest.mark.parametrize("case", ("digest-mismatch", "no-plan"))
+def test_render_risk_scores_refuses_without_writing(tmp_path: Path, case: str):
+    """A digest that differs exits 2 and a run directory with no plan exits 1, and neither writes anything."""
+    project = RenderProject(tmp_path)
+    if case == "digest-mismatch":
+        plan_id, _ = project.prepare()
+        digest, code = "0" * 64, 2
+    else:
+        plan_id, digest, code = "20261122T100000Z-0123456789ab", "0" * 64, 1
+    before = project.state()
+
+    refused = project.render(plan_id, digest)
+    assert refused.returncode == code, _describe(refused)
+    assert "TACHI RISK-SCORE FAILED" in refused.stderr, _describe(refused)
+    assert project.state() == before, "a refused run must write nothing"
+    project.assert_no_bytecode()
+
+
+# =============================================================================
+# F-374 (ADR-050 D16): render-compensating-controls.py writes only under {out} and leaves no bytecode
+# =============================================================================
+#
+# The controls renderer reads the scorer's ``risk-scores.md``, what ``tachi-stage.py`` planned and what the control-analyzer
+# agent wrote. So its project is a ``RenderProject`` that first runs the scorer, which is the command's own input, and then
+# drives the controls stage as ``/tachi.compensating-controls`` does: plan, one part per batch, reconcile, render. The
+# renderer loads no script by path, so the install it needs is its import closure, and ``score`` removes the one script
+# that only the scorer loads by path before the stage runs.
+
+CONTROLS_ENTRY = "render-compensating-controls.py"
+CONTROLS_STAGE = "compensating-controls"
+CONTROL_CATEGORIES = (
+    "authentication", "input-validation", "rate-limiting", "encryption",
+    "logging-audit", "csrf-protection", "csp-security-headers", "access-control",
+)
+# The display form of each status, as a Section 2 row spells it. A category is spelled by its slug, which the renderer
+# reads as equal to the display name (``contracts/module-signatures.md``, the controls ``matrix_row``).
+CONTROL_STATUS_CELLS = {"found": "Control Found", "partial": "Partial Control", "missing": "No Control Found"}
+# The one file of the scanned codebase that a found or partial control cites. The project holds it under ``target/``.
+CONTROLS_EVIDENCE_FILE = "src/gateway.py"
+CONTROLS_EVIDENCE = {
+    "file": CONTROLS_EVIDENCE_FILE, "line": 1, "language": "python",
+    "snippet": "def check(request):\n    return verify(request.token)",
+    "summary": "The handler verifies the caller before it runs.",
+}
+# The agent's recommendation for a partial or missing control: the four keys, once each and in order, and an Effort that
+# starts with a level (``contracts/part-files.md``).
+CONTROLS_RECOMMENDATION = (
+    "**What to Implement**: Add a check in front of every handler.\n\n"
+    "**Where to Implement**: src/gateway.py\n\n"
+    "**Reference Patterns**: One shared middleware that every route passes through.\n\n"
+    "**Effort Estimate**: Medium — one new module."
+)
+# What an earlier controls run left in ``{out}``: the renderer replaces both, and the plan records them as its preimage.
+EARLIER_CONTROLS_OUTPUTS = {
+    "compensating-controls.md": b"# the earlier run's controls markdown\n",
+    "compensating-controls.sarif": b'{"earlier": "controls run"}\n',
+}
+
+
+def _maestro_layers(threats_text: str) -> Dict[str, str]:
+    """``{component: layer code}`` from the ``### Components`` table of a ``threats.md``: ``L4`` for a cell that opens with it."""
+    layers = {}  # type: Dict[str, str]
+    for line in threats_text.split("### Components", 1)[1].splitlines():
+        if line.startswith("#"):  # the next heading ends the table
+            break
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if not line.startswith("|") or cells[0] == "Component" or not cells[0].strip("-"):
+            continue  # prose, the header row or the rule under it
+        layers[cells[0]] = cells[2].split()[0]
+    assert layers, "the fixture's Section 1 lists no component"
+    return layers
+
+
+class ControlsProject(RenderProject):
+    """A ``RenderProject`` that also installs ``render-compensating-controls.py`` and writes the control analyzer's parts.
+
+    ``score`` is the scorer's whole run, which leaves the controls stage its input, ``out/risk-scores.md``.
+    ``write_controls_parts`` stands in for the control-analyzer agent (``contracts/part-files.md``): one part file per
+    batch, holding one valid item for every finding that the batch input lists. A finding's status and category are a
+    fixed function of its ID, so a run repeats, and a found or partial control cites a file that ``target/`` holds. Each
+    row's component and MAESTRO layer are what the fixture's ``threats.md`` gives the finding, so nothing is flagged.
+    """
+
+    def __init__(self, root: Path):
+        super().__init__(root)
+        _install_with_closure(CONTROLS_ENTRY, self.cwd / "scripts")
+        self.layers = _maestro_layers((self.inputs / "threats.md").read_text(encoding="utf-8"))
+        cited = self.cwd / "target" / CONTROLS_EVIDENCE_FILE
+        cited.parent.mkdir(parents=True)
+        cited.write_text("# a synthetic module of the scanned codebase\n", encoding="utf-8")
+
+    def score(self) -> None:
+        """The scorer's whole run, the command's Steps 2 to 5, which writes ``out/risk-scores.md`` for the controls stage.
+
+        The scripts that only the scorer loads by path are removed afterwards. The controls stage loads none, so it must
+        run without them: an install places them, and a by-path load added to the controls renderer would fail here.
+        """
+        plan_id, digest = self.prepare()
+        scored = self.render(plan_id, digest)
+        assert scored.returncode in (0, 5), _describe(scored)
+        for name in LOADED_BY_PATH[RENDER_ENTRY]:
+            (self.cwd / "scripts" / name).unlink()
+
+    def _controls_item(self, unit: dict) -> dict:
+        """One valid ``compensating-controls`` item for a unit row of the batch input."""
+        seed = sum(ord(char) for char in unit["finding_id"])
+        status = ("found", "partial", "missing")[seed % 3]
+        category = CONTROL_CATEGORIES[seed % len(CONTROL_CATEGORIES)]
+        # K8's 11 cells: the computed ones as slot tokens, and CF as the dash the renderer fills.
+        cells = [unit["finding_id"], "—", unit["component"], self.layers[unit["component"]], unit["threat"],
+                 "{{score:inherent}}", "{{band:inherent}}", CONTROL_STATUS_CELLS[status], category,
+                 "{{score:residual}}", "{{band:residual}}"]
+        return {
+            "finding_id": unit["finding_id"], "control_status": status, "control_category": category,
+            "confidence": None if status == "missing" else "High", "carried_forward": False,
+            "evidence": [] if status == "missing" else [dict(CONTROLS_EVIDENCE)],
+            "matrix_row": "| " + " | ".join(cells) + " |",
+            "recommendation_body": None if status == "found" else CONTROLS_RECOMMENDATION,
+        }
+
+    def write_controls_parts(self, planned: dict) -> None:
+        """One part file per batch of the plan that ``planned`` is the output of, at the path its batch input names."""
+        for wave in planned["waves"]:
+            for entry in wave:
+                batch = json.loads(Path(entry["input_path"]).read_text(encoding="utf-8"))
+                part = {
+                    "schema": "tachi.part/1", "plan_id": batch["plan_id"], "batch_id": batch["batch_id"],
+                    "stage": batch["stage"], "agent_type": batch["agent_type"], "finding_ids": list(batch["finding_ids"]),
+                    "items": [self._controls_item(unit) for unit in batch["units"]], "fragments": [],
+                }
+                path = Path(batch["part_path"])
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(part), encoding="utf-8")
+
+    def prepare_controls(self) -> Tuple[str, str]:
+        """The controls command's Steps 2 to 4: plan, write the parts, reconcile. Returns ``(plan_id, plan_digest)``."""
+        plan = self.run("plan", "--stage", CONTROLS_STAGE, "--out", "out", "--date", STAGE_DATE,
+                        "--risk-scores", "out/risk-scores.md", "--target", "target", "--architecture", "run/architecture.md")
+        assert plan.returncode == 0, _describe(plan)
+        planned = json.loads(plan.stdout)
+        self.write_controls_parts(planned)
+        reconcile = self.run("reconcile", "--stage", CONTROLS_STAGE, "--out", "out",
+                             "--plan", planned["plan_id"], "--plan-digest", planned["plan_digest"])
+        assert reconcile.returncode == 0, _describe(reconcile)
+        return planned["plan_id"], json.loads(reconcile.stdout)["plan_digest"]
+
+    def render_controls(self, plan_id: str, digest: str) -> "subprocess.CompletedProcess":
+        """``python3 scripts/render-compensating-controls.py --out out --plan ID --plan-digest HEX``: the command's Step 5."""
+        return self.run_entry(CONTROLS_ENTRY, "--out", "out", "--plan", plan_id, "--plan-digest", digest)
+
+
+@pytest.mark.parametrize("earlier", (False, True), ids=("first-run", "over-earlier-outputs"))
+def test_render_compensating_controls_writes_only_under_out(tmp_path: Path, earlier: bool):
+    """The renderer writes both files and its record under ``--out``, and leaves its inputs and the scorer's files alone.
+
+    Exit 5 is a success with warnings, so 0 and 5 both write both files. Over earlier outputs the two canonical files
+    change instead of appearing. ``$TMPDIR`` stays as it was: the renderer stages inside the plan directory.
+    """
+    project = ControlsProject(tmp_path)
+    project.score()
+    if earlier:
+        for name, content in EARLIER_CONTROLS_OUTPUTS.items():
+            (project.out / name).write_bytes(content)
+    start = project.state()
+
+    plan_id, digest = project.prepare_controls()
+    project.assert_writes_only_under_out(start, project.state(), "after plan, the parts and reconcile")
+
+    rendered = project.render_controls(plan_id, digest)
+    assert rendered.returncode in (0, 5), _describe(rendered)
+    end = project.state()
+    added, changed, _ = project.assert_writes_only_under_out(start, end, "after render")
+    outputs = {"out/compensating-controls.md", "out/compensating-controls.sarif"}
+    assert outputs <= (changed if earlier else added), "both files must be written: %s" % sorted(added | changed)
+    assert any(p.startswith("out/.tachi-build/compensating-controls/") and p.endswith("/stage-record.json") for p in added), (
+        "the snapshot must see the stage record"
+    )
+    if earlier:
+        assert all((project.out / name).read_bytes() != content for name, content in EARLIER_CONTROLS_OUTPUTS.items())
+
+    # What the stage reads is byte-unchanged end to end: the run's inputs, the scanned codebase, the installed scripts and
+    # the scorer's own files. And nothing wrote bytecode.
+    for tree in ("run", "target", "scripts", "out/risk-scores.md", "out/risk-scores.sarif", "out/.tachi-build/risk-score"):
+        assert _under(end[0], tree) == _under(start[0], tree), "the controls renderer changed %s" % tree
+    project.assert_no_bytecode()
+
+
+@pytest.mark.parametrize("case", ("digest-mismatch", "no-plan"))
+def test_render_compensating_controls_refuses_without_writing(tmp_path: Path, case: str):
+    """A digest that differs exits 2 and a run directory with no plan exits 1, and neither writes anything."""
+    project = ControlsProject(tmp_path)
+    project.score()
+    if case == "digest-mismatch":
+        plan_id, _ = project.prepare_controls()
+        digest, code = "0" * 64, 2
+    else:
+        plan_id, digest, code = "20261122T100000Z-0123456789ab", "0" * 64, 1
+    before = project.state()
+
+    refused = project.render_controls(plan_id, digest)
+    assert refused.returncode == code, _describe(refused)
+    assert "TACHI COMPENSATING-CONTROLS FAILED" in refused.stderr, _describe(refused)
+    assert project.state() == before, "a refused run must write nothing"
+    project.assert_no_bytecode()
+
+
+# =============================================================================
 # Static assertion (T015) and AR-1 case 4: the recipes never name a bad write target
 # =============================================================================
 
-# The three documents T015 names, plus the two skill references AR-1 case 4 adds.
+# The three documents T015 names, plus the two skill references AR-1 case 4 adds, plus the three commands whose
+# fences run F-374's scripts (ADR-050 D16): /tachi.risk-score and /tachi.threat-model (W2), and
+# /tachi.compensating-controls (W3). Each wave that adds a command to the batched pipeline adds it here.
 RECIPE_DOCS = (
     ".claude/agents/tachi/report-assembler.md",
     ".claude/agents/tachi/threat-infographic.md",
     ".claude/commands/tachi.infographic.md",
     ".claude/skills/tachi-infographics/references/gemini-prompt-construction.md",
     ".claude/skills/tachi-report-assembly/references/typst-artifacts.md",
+    ".claude/commands/tachi.risk-score.md",
+    ".claude/commands/tachi.threat-model.md",
+    ".claude/commands/tachi.compensating-controls.md",
 )
 METADATA_LANGUAGES = ("yaml", "yml")
 

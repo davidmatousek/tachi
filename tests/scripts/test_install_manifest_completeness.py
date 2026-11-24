@@ -82,19 +82,45 @@ SCRIPT_REF_RE = re.compile(r"(?<![\w./-])(?:\./)?scripts/[\w-]+\.py")
 
 # Fail-closed exclusion list (FR-K2.4): {path: reason}. A distributed
 # reference this scan matches that is NOT in the manifest and NOT here fails
-# test_referenced_scripts_covered. Empty today -- every distributed
-# reference (extract-report-data.py, extract-infographic-data.py,
-# populate-affected-assets.py, tachi_parsers.py) is a required script.
-EXCLUDED: dict[str, str] = {}
+# test_referenced_scripts_covered. Every other distributed reference
+# (extract-report-data.py, extract-infographic-data.py,
+# populate-affected-assets.py, tachi_parsers.py, tachi_parts.py,
+# tachi_scoring.py, tachi_scoring_rules.py, sarif_common.py, tachi-stage.py,
+# render-risk-scores.py, render-compensating-controls.py) is a required script.
+EXCLUDED: dict[str, str] = {
+    # F-374 (T022). sarif-identity-shared.md's dormant `threats.sarif` section names the generator that takes over
+    # when it ships. Until then the file is still written under sarif-specification.md, and the script stays
+    # tachi-internal: ADR-050 D1 rewrites it and installs it at PR 2. T114 adds it to the manifest, and deletes this
+    # entry in the same commit.
+    "scripts/generate-threats-sarif.py": "named by the dormant threats.sarif section; installed at PR 2 (ADR-050 D1, T114)",
+}
 
-# The four distributable scripts (spec FR-K2.1, NFR-2, S-13) -- named
+# The distributable scripts (spec FR-K2.1, NFR-2, S-13) -- named
 # explicitly rather than derived from the reference scan, so S-13 keeps
-# checking these four even if the scan's result set ever changes.
+# checking each of them even if the scan's result set ever changes. The F-374
+# scripts (ADR-050 D16) join the original four, wave by wave: W1's three
+# helpers (imported by the entries) and tachi-stage.py (an entry), then W2's
+# tachi_scoring_rules.py (a helper) and render-risk-scores.py (an entry), then
+# W3's render-compensating-controls.py (an entry, so DISTRIBUTED_HELPERS below
+# is unchanged: it imports only helpers that are already listed).
 REQUIRED_SCRIPT_NAMES = (
     "extract-report-data.py",
     "extract-infographic-data.py",
     "tachi_parsers.py",
     "populate-affected-assets.py",
+    "tachi_parts.py",
+    "tachi_scoring.py",
+    "sarif_common.py",
+    "tachi-stage.py",
+    "tachi_scoring_rules.py",
+    "render-risk-scores.py",
+    "render-compensating-controls.py",
+)
+
+# The sibling modules a distributable script may import at module load besides the standard library: the
+# distributed helpers themselves. S-13 widens from tachi_parsers alone to each helper as it ships (ADR-050 D16).
+DISTRIBUTED_HELPERS = frozenset(
+    {"tachi_parsers", "tachi_parts", "tachi_scoring", "tachi_scoring_rules", "sarif_common"}
 )
 
 
@@ -397,7 +423,11 @@ def test_import_closure_covered(manifest_entries: list[str]) -> None:
 
 
 def test_distributable_imports_stdlib_only() -> None:
-    """S-13/NFR-2: required distributable scripts import only stdlib or tachi_parsers.
+    """S-13/NFR-2: required distributable scripts import only stdlib or a distributed helper.
+
+    A distributed helper is one of ``DISTRIBUTED_HELPERS``: ``tachi_parsers`` and, from F-374
+    (ADR-050 D16), ``tachi_parts``, ``tachi_scoring``, ``tachi_scoring_rules`` and ``sarif_common``.
+    Each is itself a required script, so an import of one can never name a file that isn't installed.
 
     Checks module-level imports only (see ``_module_level_import_nodes``);
     needs Python 3.10+ for ``sys.stdlib_module_names``.
@@ -405,7 +435,10 @@ def test_distributable_imports_stdlib_only() -> None:
     if sys.version_info < (3, 10):
         pytest.skip("sys.stdlib_module_names requires Python >= 3.10 (S-13)")
 
-    allowed = set(sys.stdlib_module_names) | {"tachi_parsers"}
+    assert {Path(name).stem for name in REQUIRED_SCRIPT_NAMES} >= DISTRIBUTED_HELPERS, (
+        "every distributed helper must itself be a required script"
+    )
+    allowed = set(sys.stdlib_module_names) | DISTRIBUTED_HELPERS
     for name in REQUIRED_SCRIPT_NAMES:
         path = SCRIPTS_DIR / name
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -415,13 +448,13 @@ def test_distributable_imports_stdlib_only() -> None:
                     top = alias.name.split(".")[0]
                     assert top in allowed, (
                         f"{name}: module-level `import {alias.name}` (line {node.lineno}) "
-                        "is neither stdlib nor tachi_parsers (NFR-2, S-13)"
+                        "is neither stdlib nor a distributed helper (NFR-2, S-13)"
                     )
             else:
                 top = (node.module or "").split(".")[0]
                 assert top in allowed, (
                     f"{name}: module-level `from {node.module} import ...` (line {node.lineno}) "
-                    "is neither stdlib nor tachi_parsers (NFR-2, S-13)"
+                    "is neither stdlib nor a distributed helper (NFR-2, S-13)"
                 )
 
 

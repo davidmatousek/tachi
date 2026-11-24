@@ -6,6 +6,8 @@
 **Feature**: 142 (MAESTRO Phase 3 — Agentic Threat Pattern Expansion)
 **Related ADRs**: [ADR-019](ADR-019-shared-definitions-and-model-field-governance.md) (shared cross-agent definitions), [ADR-020](ADR-020-maestro-layer-classification.md) (MAESTRO layer classification — extended for Phase 3 here), [ADR-021](ADR-021-source-date-epoch-for-deterministic-pdf-comparison.md) (SOURCE_DATE_EPOCH determinism), [ADR-023](ADR-023-threat-agent-skill-references-pattern.md) (lean agent + skill-references pattern)
 
+> **Note (2026-11-22, Feature 374)**: At PR 2, [ADR-050](ADR-050-large-architecture-output-authority.md) D4 and D13 move Phase 3.5's chain formation into a shipped script, which runs on the joined `threats.md`. So Phase 3.6 no longer follows Phase 3.5. It runs after Phase 3's compilation and before Phase 4, and before any `threats.md` part is written, because Sections 4b and 7 carry its results. From PR 2, Decision item 1's "after Feature 141's Phase 3.5" reads "after Phase 3". The invariants stand: no edit to the detection agents, independence from Phase 3.5, and determinism.
+
 ---
 
 ## Context

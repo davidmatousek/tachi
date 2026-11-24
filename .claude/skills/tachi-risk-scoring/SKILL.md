@@ -46,8 +46,10 @@ When a finding has `delta_status: UNCHANGED`, all scoring fields are inherited v
 
 Every scored finding includes `score_source` (per `schemas/risk-scoring.yaml` v1.1):
 
-- `"inherited"` — Scores copied from baseline (UNCHANGED, RESOLVED)
-- `"fresh"` — Scores computed this run (NEW, UPDATED)
+- `"inherited"` — The finding's scoring inputs come from the baseline: scores carried from it (UNCHANGED, RESOLVED), and a NEW or UPDATED correlated peer that copies a carried primary
+- `"fresh"` — The finding's scoring inputs were assessed this run (NEW, UPDATED), and a NEW or UPDATED correlated peer that copies a primary assessed this run
+
+`score_source` says where a finding's scoring inputs came from, so a copied peer takes its primary's source.
 
 ### Bounded Scoring for NEW Findings
 

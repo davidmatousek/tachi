@@ -9,6 +9,12 @@
 **Superseded by**: None
 **Related ADRs**: [ADR-013](ADR-013-sarif-2.1.0-adoption.md) (SARIF adoption — help.markdown prose is the LLM-reference surface), [ADR-021](ADR-021-source-date-epoch-for-deterministic-pdf-comparison.md) (determinism posture the no-churn proof rides on), [ADR-027](ADR-027-taxonomy-crosswalk-schema.md) (catalog/crosswalk shapes this decision keeps frozen; +ADR-037 Extension-History discipline), [ADR-028](ADR-028-source-attribution-referential-integrity.md) (bare-id contract), ADR-030/031/034/045 (immutable detection lineage whose category attestations re-key)
 
+> **Note (2026-11-22, Feature 374)**: Under [ADR-050](ADR-050-large-architecture-output-authority.md) D1, D3's enforcement points gain the shipped emitters. They emit only `:2026` tokens, and they reject `LLMnn:2025`.
+>
+> - **PR 1.** `scripts/sarif_common.py`, installed as the shared emitter, and the scorer and controls renderers, which write `risk-scores.sarif` and `compensating-controls.sarif` through it. `generate-risk-scores-sarif.py` retires, and FR-012a's taxa contract moves to the scorer renderer (ADR-050 D16).
+> - **PR 2.** `scripts/generate-threats-sarif.py`, rewritten as the shipped `threats.sarif` generator on the shared emitter.
+> - The authored-prose enforcement points stay for the surfaces that remain model-authored, such as `threats.md`'s tables. D1 and D2 stand.
+
 ## Context
 
 OWASP published the Top 10 for LLM Applications 2026 (v1.0, 2026-08-04). The rank order changed, so bare codes changed meaning (LLM03: Supply Chain in 2025 → Excessive Agency in 2026); LLM07:2025 System Prompt Leakage was renamed and re-scoped to LLM08:2026 Hidden Context Exposure. Downstream consumers may be pinned to 2025 identifiers. F-362 (PRD FR-6 / spec FR-006) requires this alias/cutover decision **before any remap mechanics**, because it constrains every emission surface.

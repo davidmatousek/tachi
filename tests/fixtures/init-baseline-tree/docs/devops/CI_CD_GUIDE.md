@@ -457,6 +457,7 @@ See the workflow file for the authoritative full list.
 | F-362 | #363 | `tests/scripts/test_owasp_2026_contract.py` added to suite + path filter (T017 — `normalize_owasp_id` D2 covering matrix + FR-012a derived-taxa contract asserting risk-scores taxa == catalog records); `scripts/generate-risk-scores-sarif.py` and `schemas/taxonomy/owasp.yaml` added to path filter only, no new test module for either (architect MEDIUM-1 — the FR-012a emitter and its catalog derive-source must trigger their own gate); gated module count 15 → 16 |
 | **F-373** | **#375** | **`test_install_sh_symlink_preflight.py` + `test_install_sh_ref_restore.py` added to suite + path filter (K3 — `scripts/install.sh`'s destination-containment pre-flight behind the new `--follow-symlinks` opt-in flag, plus the `--version` ref-restore trap fix), with `tests/scripts/install_sh_helpers.py`'s sandbox builders added to the path filter only (no invocation line — it is a helper module, not a test module); gated module count 16 → 18. This is the existing 2-OS bash matrix's own K3 coverage — distinct from the new `tachi-install-fidelity.yml` workflow's `manifest-completeness` / `extraction-fidelity` / `report-posture` jobs, which gate the manifest and the extraction/report pipeline on a single fast `ubuntu-latest` runner instead. See "Tachi Install Fidelity Workflow" below.** |
 | **F-391** | **#392** | **`test_isolated_profile_contract.py` + `test_agent_privilege_guard.py` added to suite + path filter (Isolated and Auditable Operation, Part A: the session-profile contract of the isolated-operation runbook, and the privilege guard's own suite — live tree green, one red case per check, exit codes, `--json`). `scripts/check-agent-privileges.py` (run as a subprocess by every guard case), `.claude/agents/tachi/**` and `.claude/commands/tachi.*.md` (copied into each guard case), `docs/guides/ISOLATED_OPERATION_TACHI.md`, `docs/standards/CLAUDE_PERMISSIONS.md` and the F-391 PRD (`docs/product/02_PRD/391-isolated-auditable-operation-2026-11-16.md`) added to the path filter only (inputs, no invocation line); gated module count 19 → 21 (F-393's `test_gemini_key_env_only.py` took it from 18 to 19 and has no row in this table). The two agent and command globs widen the trigger: an edit to any tachi agent or command file now also runs this 2-OS matrix. `test_write_confinement.py` (F-391 write confinement) is not in this workflow — it runs in the Typst-gated `report-posture` job of `tachi-install-fidelity.yml`. The same guard also runs as a step of `tachi-permissions-verify.yml`. See "Tachi Permissions-Verify Workflow" and "Tachi Install Fidelity Workflow" below.** |
+| F-374 (PR 1) | #423 | No module added: the gated module count stays at 23 (Fix 397's `test_cvss_category_defaults.py` and `test_baseline_owasp_rekey.py` took it from 21 to 23). PR 1 retired `generate-risk-scores-sarif.py` (T054), so `test_owasp_2026_contract.py` and `test_affected_assets_wiring.py` now plan with `scripts/tachi-stage.py` and render with `scripts/render-risk-scores.py` in-process, on `tests/scripts/test_render_risk_scores.py`'s project harness. Those three, `scripts/tachi_scoring_rules.py`, and the helpers that `sarif_common.py` now imports at load (`scripts/tachi_scoring.py`, `scripts/tachi_parts.py`, `scripts/tachi_parsers.py`) joined the path filter (T022, T039), with two inputs that `test_cvss_category_defaults.py` compares (`schemas/compensating-controls.yaml` and the skill reference `reachability-analysis.md`). That module grew from 22 to 248 cases when the CVSS calculator moved into the shipped `tachi_scoring.py`. F-374's own modules run in the three `f374-*` jobs of `tachi-install-fidelity.yml`, not here. See "Tachi Install Fidelity Workflow" below |
 
 ### Environment Variables
 
@@ -636,15 +637,17 @@ The guard needs no network and writes nothing outside its self-test's temp direc
 
 **Extended in Feature 391** (Isolated and Auditable Operation, Part A; PR #392, merged 2026-11-21, patch release v4.48.3 pending). The same workflow also reddens CI when the agents an install path produces carry `tools:` that differ from §8 of `docs/standards/CLAUDE_PERMISSIONS.md` (SC-004, PRD SC-A4; in `manifest-completeness`), when the isolated-operation runbook `docs/guides/ISOLATED_OPERATION_TACHI.md` drops out of the manifest or is not installed (`manifest-completeness`), and when a report run writes anywhere outside its output directory and `$TMPDIR` (write confinement, SC-005; in `report-posture`).
 
+**Extended in Feature 374** (Large-Architecture Pipeline Resilience, PR 1; PR #423, a `fix(374)` patch release). Three more jobs, `f374-offline`, `f374-py39-floor` and `f374-macos`, run PR 1's offline modules on synthetic fixtures, with no model, no network and no Typst: the planner (`scripts/tachi-stage.py`), the two renderers (`scripts/render-risk-scores.py`, `scripts/render-compensating-controls.py`) and their helper modules. They redden CI when that code or its contract text regresses, when the new scripts' line coverage falls below 80%, when `scripts/tachi_parsers.py`'s coverage falls below its recorded floor, when a shipped script or its tests stops working on Python 3.9, or when SARIF identity breaks on a case-insensitive volume. See "The three F-374 jobs" below.
+
 | Property | Value |
 |----------|-------|
 | Workflow file | `.github/workflows/tachi-install-fidelity.yml` |
-| Jobs | `manifest-completeness`, `extraction-fidelity`, `report-posture` |
-| Runner | `ubuntu-latest` (all three jobs) |
+| Jobs | `manifest-completeness`, `extraction-fidelity`, `report-posture`; F-374 adds `f374-offline`, `f374-py39-floor` and `f374-macos` |
+| Runner | `ubuntu-latest` (all three jobs); the F-374 jobs: `ubuntu-latest`, `ubuntu-24.04` (`f374-py39-floor`) and `macos-latest` (`f374-macos`) |
 | Timeout | 10 minutes per job |
 | Permissions | `contents: read` |
-| Python version | 3.11 |
-| Pytest dependencies | `pytest>=8`, `pytest-timeout>=2`, `pyyaml>=6` |
+| Python version | 3.11 (3.9 in `f374-py39-floor`) |
+| Pytest dependencies | `pytest>=8`, `pytest-timeout>=2`, `pyyaml>=6`; `f374-offline` adds `pytest-cov>=4.1`, a test dependency only (the shipped scripts stay stdlib-only) |
 | Extra tooling | `report-posture` only — `typst-community/setup-typst@v5`, with `TACHI_REQUIRE_TYPST: "1"` set in the job `env:` |
 
 ### The three jobs
@@ -652,6 +655,25 @@ The guard needs no network and writes nothing outside its self-test's temp direc
 1. **`manifest-completeness`** — runs `tests/scripts/test_install_manifest_completeness.py` only. This is the K1/K2 guard (FR-K2.2–K2.5): every `.claude/skills/tachi-*` dir, every `.claude/commands/tachi.*.md` file, and every distributable `scripts/*.py` a distributed command/agent/skill/template references must be covered by `INSTALL_MANIFEST.md` or carry an explicit, reasoned exclusion. Since F-391 (T028) the same module also pins the isolated-operation runbook (`docs/guides/ISOLATED_OPERATION_TACHI.md`) as a docs-table row and a manifest-block entry that `install.sh` places byte-for-byte, and asserts **SC-A4**: after each documented install path — `install.sh`, the README's manual install loop under bash, and the same loop under interactive zsh — every installed `.claude/agents/tachi/` agent's `tools:` set equals its row in §8 of `docs/standards/CLAUDE_PERMISSIONS.md` (`test_installed_agent_tools_match_matrix`, with a synthetic negative matrix, `test_installed_tools_negative_matrix`, so the comparison cannot go vacuous). Both sides are read with the privilege guard's own parser (`scripts/check-agent-privileges.py`, loaded by path), so the test and the guard cannot disagree about a cell or a `tools:` shape. The zsh path skips on the CI runner, which has no zsh (#415), so CI asserts SC-A4 on the other two paths. The job's pytest invocation is unchanged: the new cases live in the module it already runs, in `.git`-less throwaway sources and projects under `tmp_path`.
 2. **`extraction-fidelity`** — runs the pre-existing extraction/parser modules on a bare `ubuntu-latest` runner for the first time, plus two new F-373 modules: `test_tachi_parsers.py`, `test_extract_infographic_data.py`, `test_extract_report_data.py`, `test_extractor_contract_fixes.py`, `test_executive_architecture_payload.py`, `test_gemini_request_contract.py` (new — the K14 static request-contract test), and `test_extraction_sibling_parity.py` (new — W2, compares posture/severity/delta counts and MAESTRO output between the infographic JSON and `report-data.typ` on shared fixtures). No `mmdc` is installed on this runner; the five `mmdc`-dependent cases in `test_extract_report_data.py`'s Typst fixture skip rather than fail, and every other case in these seven modules must pass.
 3. **`report-posture`** — runs `tests/scripts/test_report_posture_contract.py` and `tests/scripts/test_write_confinement.py` in one pytest session, with Typst installed via `typst-community/setup-typst@v5` and `TACHI_REQUIRE_TYPST: "1"` set so a missing Typst fails this job instead of silently skipping the gate. The posture module asserts that a `report-data.typ` built without the `risk-posture-level`/`risk-posture-label` variables fails Typst compilation with an explicit regenerate-instruction panic, rather than rendering with a stale or default posture. The write-confinement module (F-391, SC-005) runs the report-assembler's three commands (`extract-report-data.py --build-dir`, `typst compile`, `extract-report-data.py --remove-build-dir`) in a throwaway adopter project and fails on any write outside the output directory and `$TMPDIR`. Of the write-confinement module, only the cases that compile are Typst-gated; the rest (the command-line refusals, the `TACHI_MMDC_PUPPETEER_CONFIG` cases, the bytecode-cache cases and the static checks of the recipe documents) runs without Typst. See `docs/devops/environment-variables.md` → "F-373 Report-Posture Typst Gate" for the `TACHI_REQUIRE_TYPST` contract.
+
+### The three F-374 jobs
+
+**Added in Feature 374** (PR 1, PR #423; ADR-050 D16). Wired in W1 (T022), with `test_tachi_scoring_rules.py` and `test_render_risk_scores.py` added in W2 (T047) and `test_render_compensating_controls.py` in W3 (T039).
+
+| Job | Runner | Python | What it runs |
+|-----|--------|--------|--------------|
+| `f374-offline` | `ubuntu-latest` | 3.11 | The module list below under `pytest-cov`, then the `tachi_parsers.py` ratchet |
+| `f374-py39-floor` | `ubuntu-24.04` | 3.9 | The same list without coverage and without `test_sarif_common_affected_assets.py`. 3.9 is pinned to `ubuntu-24.04` because `actions/setup-python` has no 3.9 build for `ubuntu-latest` |
+| `f374-macos` | `macos-latest` | 3.11 | `tests/scripts/test_sarif_identity.py` alone |
+
+The module list is `test_tachi_parts.py`, `test_tachi_stage.py`, `test_tachi_scoring_rules.py`, `test_render_risk_scores.py`, `test_render_compensating_controls.py`, `test_runtime_floor_374.py`, `test_tachi_parsers.py`, `test_sarif_identity.py`, `test_fixture_374.py`, `test_contract_text_374.py` and `test_cvss_category_defaults.py`, all under `tests/scripts/`. `f374-offline` also runs `test_sarif_common_affected_assets.py`, so that `sarif_common.py`'s coverage counts that module's tests.
+
+1. **`f374-offline` — the coverage gate (its first step).** `python3 -m pytest --cov --cov-config=tests/scripts/coverage-f374.ini --cov-report=term-missing <the list>`. The config's `include` names the seven new or rewritten shipped scripts: `tachi_parts.py`, `tachi_scoring.py`, `sarif_common.py`, `tachi-stage.py`, `tachi_scoring_rules.py`, `render-risk-scores.py` and `render-compensating-controls.py`. It sets `fail_under = 80` with `precision = 2`, so a total of 79.6% fails rather than rounding up to a pass (constitution VI and VII). Only in-process runs count: the gated tests load each entry through `tests/conftest.py`'s `_load_hyphenated_script` and call its `main(argv)`, and coverage's subprocess support stays off, so a subprocess run adds nothing (H15). A script joins `include` in the commit that wires its tests into the job. PR 2 adds its own new scripts.
+2. **`f374-offline` — the ratchet (its second step).** `tachi_parsers.py` is extended, not new, and its legacy code would dominate its figure, so it is held to the floor that T001 measured (44.9%, `specs/374-large-architecture-pipeline-resilience/test-results/prestate.md`) instead of 80%: `python3 -m pytest --cov=scripts --cov-report= tests/scripts/test_tachi_parsers.py`, then `python3 -m coverage report --include=scripts/tachi_parsers.py --precision=1 --show-missing --fail-under=44.9`. The floor and the check count the same tests, so each new parser function's unit tests go in `test_tachi_parsers.py`. The floor is never lowered within the bundle.
+3. **`f374-py39-floor` — the runtime floor (spec S-11).** The shipped scripts run on Python 3.9 and later, so their tests run on 3.9 too, and a later API in a script or a test fails here. No coverage runs: the gate runs once, in `f374-offline`.
+4. **`f374-macos` — the case-insensitive volume (ADR-050 D7, KB Entry 24).** Three of the module's cases need a real case-insensitive volume, and macOS is the platform most adopters use; the other cases fake the filesystem and also run in both Linux jobs. The module renders `risk-scores.sarif` and `compensating-controls.sarif` through both renderers, on `test_render_risk_scores.py`'s project harness (FR-E.2's two-run model), so a change to either renderer, the planner, the helpers they import or that harness reruns this job.
+
+**Lock-step (KB Entry 3).** A module, the surfaces it reads, its `paths:` entries and its invocation line in each `f374-*` job that runs it land in one commit, and the two module lists stay one list apart from the one extra module. At PR 1's W4 push the gate measured 96.35% against 80%, and the ratchet 83.4% against 44.9% (`specs/374-large-architecture-pipeline-resilience/test-results/ci-pr1.md`).
 
 ### Trigger Design (F-373 — dual-trigger with YAML anchor)
 
@@ -678,6 +700,8 @@ on:
 
 The `paths:` list is intentionally broad — together with `adapters/claude-code/**` and the two manual-install-loop docs, it matches **every** `INSTALL_MANIFEST.md` entry — because all three jobs together run in well under a minute. This is the opposite trigger-design trade-off from the installer's own K3 suite below: broad trigger + fast run, instead of narrow trigger + slow run. F-391 added three entries: `tests/scripts/test_write_confinement.py`, and two files the SC-A4 cases read that no other entry covers, `docs/standards/CLAUDE_PERMISSIONS.md` and `docs/guides/ISOLATED_OPERATION_TACHI.md`. The guard script whose parsers those cases load matches `scripts/*.py`, and the agents they compare match `.claude/agents/tachi/**`.
 
+F-374 (T022, T047, T039) added fourteen entries: eleven test modules for the `f374-*` jobs (two of them, `test_cvss_category_defaults.py` and `test_sarif_common_affected_assets.py`, predate it), the fixture generator `tests/scripts/generate_large_arch_fixture.py`, the synthetic fixture tree `tests/scripts/fixtures/large_arch/**` and the coverage config `tests/scripts/coverage-f374.ini`. Its scripts match `scripts/*.py`, and the schemas, skills, agents, commands, adapter copies, output templates and shipped examples that its modules read already match entries above. So any edit to a script also reruns the three `f374-*` jobs, which run several thousand cases and are the slower part of this workflow, each within the 10-minute job timeout.
+
 ### Relationship to `tachi-pytest.yml`'s K3 installer suite
 
 `tachi-install-fidelity.yml` and the K3 addition to `tachi-pytest.yml` (see "Tachi Pytest Workflow" → "Feature History" above) both ship with F-373 and both guard installer-adjacent surfaces, but they are deliberately **not** the same gate:
@@ -694,7 +718,7 @@ The `paths:` list is intentionally broad — together with `adapters/claude-code
 | `tachi-pytest.yml` | Substitution-surface hardening (init.sh, template-substitute.sh, etc.) | `&hardening_paths` |
 | `tachi-catalog-drift.yml` | ORDERED_FRAMEWORKS catalog fingerprint integrity | `&drift_paths` |
 | `tachi-permissions-verify.yml` | `.claude/settings.json` ↔ `CLAUDE_PERMISSIONS.md` sync; tachi agent and command privileges ↔ `CLAUDE_PERMISSIONS.md` §8 (F-391) | `&verify_paths` |
-| `tachi-install-fidelity.yml` | Manifest completeness + extraction/report fidelity + report posture + write confinement and installed-agent tools vs §8 (F-391) | `&fidelity_paths` |
+| `tachi-install-fidelity.yml` | Manifest completeness + extraction/report fidelity + report posture + write confinement and installed-agent tools vs §8 (F-391) + the offline pipeline modules, their coverage gate and ratchet, the Python 3.9 floor and the case-insensitive-volume SARIF identity cases (F-374) | `&fidelity_paths` |
 
 ### Local invocation
 
@@ -722,6 +746,33 @@ TACHI_REQUIRE_TYPST=1 python3 -m pytest \
   tests/scripts/test_report_posture_contract.py \
   tests/scripts/test_write_confinement.py \
   -v
+
+# f374-offline, step 1: the coverage gate (needs pytest-cov>=4.1)
+python3 -m pytest \
+  --cov --cov-config=tests/scripts/coverage-f374.ini --cov-report=term-missing \
+  tests/scripts/test_tachi_parts.py \
+  tests/scripts/test_tachi_stage.py \
+  tests/scripts/test_tachi_scoring_rules.py \
+  tests/scripts/test_render_risk_scores.py \
+  tests/scripts/test_render_compensating_controls.py \
+  tests/scripts/test_runtime_floor_374.py \
+  tests/scripts/test_tachi_parsers.py \
+  tests/scripts/test_sarif_identity.py \
+  tests/scripts/test_fixture_374.py \
+  tests/scripts/test_contract_text_374.py \
+  tests/scripts/test_cvss_category_defaults.py \
+  tests/scripts/test_sarif_common_affected_assets.py \
+  -v
+
+# f374-offline, step 2: the tachi_parsers.py ratchet
+python3 -m pytest --cov=scripts --cov-report= tests/scripts/test_tachi_parsers.py
+python3 -m coverage report --include=scripts/tachi_parsers.py --precision=1 --show-missing --fail-under=44.9
+
+# f374-py39-floor: the step 1 list under Python 3.9, without --cov and without
+# test_sarif_common_affected_assets.py
+
+# f374-macos (its three real-volume cases need a case-insensitive volume, as macOS's default is)
+python3 -m pytest tests/scripts/test_sarif_identity.py -v
 ```
 
 ### Rollback note (v4.48.1 patch release)
@@ -734,10 +785,13 @@ TACHI_REQUIRE_TYPST=1 python3 -m pytest \
 |---------|----|--------|
 | F-373 | #375 | Initial workflow — `manifest-completeness` + `extraction-fidelity` + `report-posture` jobs; dual-trigger YAML anchor `&fidelity_paths`; first CI gate to run the pre-existing extraction/parser modules on a bare `ubuntu-latest` runner |
 | F-391 | #392 | `manifest-completeness` gains the runbook's manifest-entry cases and SC-A4 (`test_installed_agent_tools_match_matrix` on the `install-sh`, `manual-loop` and `manual-loop-zsh` paths, plus `test_installed_tools_negative_matrix`) inside its existing module; `report-posture` gains `tests/scripts/test_write_confinement.py` (write confinement, SC-005) in the same pytest session as the K13 stale-data gate; `paths:` gains `tests/scripts/test_write_confinement.py`, `docs/standards/CLAUDE_PERMISSIONS.md` and `docs/guides/ISOLATED_OPERATION_TACHI.md` |
+| F-374 (PR 1) | #423 | Three jobs for PR 1's offline modules (ADR-050 D16): `f374-offline` (Python 3.11, with the 80% line-coverage gate over the seven scripts in `tests/scripts/coverage-f374.ini`, counting in-process runs only, then the `tachi_parsers.py` ratchet at T001's 44.9% floor), `f374-py39-floor` (the same list on Python 3.9, pinned to `ubuntu-24.04`, the S-11 runtime floor) and `f374-macos` (`test_sarif_identity.py` alone, for its real case-insensitive-volume cases); `paths:` gains fourteen F-374 entries (eleven test modules, the fixture generator and tree, and the coverage config); wired in W1 (T022), W2 (T047) and W3 (T039) |
 
 **Reference**: `specs/373-adopter-install-output-fidelity/spec.md` NFR-7. Contract: `specs/373-adopter-install-output-fidelity/contracts/manifest-completeness.md`. No adopter-facing environment variables introduced; one test-only CI variable (`TACHI_REQUIRE_TYPST`) — see `docs/devops/environment-variables.md` → "F-373 Report-Posture Typst Gate".
 
 **F-391 reference**: `specs/391-isolated-auditable-operation/spec.md` (SC-004, SC-005) and `docs/architecture/02_ADRs/ADR-049-privilege-contract-and-write-confinement.md`. `TACHI_REQUIRE_TYPST` is now also read by `test_write_confinement.py`, with the same contract. The feature's one new variable, `TACHI_MMDC_PUPPETEER_CONFIG`, is adopter-facing and opt-in; the CI jobs leave it unset (the write-confinement tests remove it from their children's environment) — see `docs/devops/environment-variables.md` → "F-391 Isolated and Auditable Operation (Part A) — Adopter Variable".
+
+**F-374 reference**: `specs/374-large-architecture-pipeline-resilience/spec.md` (S-11, the runtime floor) and `docs/architecture/02_ADRs/ADR-050-large-architecture-output-authority.md` D16 (test and CI placement, with its 2026-11-22 coverage amendment). The `f374-*` jobs read no environment variable and need no secret.
 
 ---
 

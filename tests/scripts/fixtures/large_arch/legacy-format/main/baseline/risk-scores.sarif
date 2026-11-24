@@ -1,0 +1,1571 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "tachi-risk-scorer",
+          "version": "1.0",
+          "semanticVersion": "1.0",
+          "informationUri": "https://github.com/owner/tachi",
+          "supportedTaxonomies": [
+            {
+              "name": "OWASP",
+              "index": 0
+            },
+            {
+              "name": "CWE",
+              "index": 1
+            }
+          ],
+          "rules": [
+            {
+              "id": "tachi/stride/spoofing",
+              "shortDescription": {
+                "text": "Identity spoofing threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker pretends to be something or someone else, such as replaying credentials or impersonating a trusted component."
+              },
+              "help": {
+                "text": "Review authentication mechanisms, token validation, credential storage and session management at every trust boundary.",
+                "markdown": "## Detection Guidance\n\nReview authentication mechanisms for weaknesses:\n- Token signing and binding\n- Credential storage and rotation\n- Session management\n\n## Framework References\n\n- OWASP Top 10: A07 Identification and Authentication Failures\n- CWE-287: Improper Authentication"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "spoofing",
+                  "authentication"
+                ],
+                "security-severity": "8.2"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A07",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-287",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/tampering",
+              "shortDescription": {
+                "text": "Data tampering threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker modifies data or code without authorization, in transit, at rest or in the build and deployment path."
+              },
+              "help": {
+                "text": "Review input validation, message integrity, configuration control and supply chain provenance.",
+                "markdown": "## Detection Guidance\n\nReview integrity controls:\n- Schema validation at boundaries\n- Message signing\n- Build provenance\n\n## Framework References\n\n- OWASP Top 10: A08 Software and Data Integrity Failures\n- CWE-345: Insufficient Verification of Data Authenticity"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "tampering",
+                  "integrity"
+                ],
+                "security-severity": "7.4"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A08",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-345",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/repudiation",
+              "shortDescription": {
+                "text": "Repudiation threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an actor can deny an action because the system cannot prove who did what and when."
+              },
+              "help": {
+                "text": "Review audit logging, log protection, time synchronisation and approval binding.",
+                "markdown": "## Detection Guidance\n\nReview accountability controls:\n- Who, what, when and outcome in every record\n- Tamper-evident storage\n- Approval binding\n\n## Framework References\n\n- OWASP Top 10: A09 Security Logging and Monitoring Failures\n- CWE-778: Insufficient Logging"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "repudiation",
+                  "logging"
+                ],
+                "security-severity": "6.7"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A09",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-778",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/information-disclosure",
+              "shortDescription": {
+                "text": "Information disclosure threats"
+              },
+              "fullDescription": {
+                "text": "Threats where sensitive data is exposed to parties that should not see it, through errors, logs, storage or transport."
+              },
+              "help": {
+                "text": "Review error handling, logging content, encryption in transit and at rest, and tenant isolation.",
+                "markdown": "## Detection Guidance\n\nReview confidentiality controls:\n- Error and log content\n- Encryption in transit and at rest\n- Tenant isolation\n\n## Framework References\n\n- OWASP Top 10: A01 Broken Access Control\n- CWE-200: Exposure of Sensitive Information"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "information-disclosure",
+                  "data-exposure"
+                ],
+                "security-severity": "6.5"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A01",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-200",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/denial-of-service",
+              "shortDescription": {
+                "text": "Denial of service threats"
+              },
+              "fullDescription": {
+                "text": "Threats where an attacker degrades or prevents legitimate use through resource exhaustion or cascading dependency failure."
+              },
+              "help": {
+                "text": "Review limits on concurrency, payload size, retries and dependency timeouts.",
+                "markdown": "## Detection Guidance\n\nReview availability controls:\n- Rate and concurrency limits\n- Timeouts and bulkheads\n- Capacity alerts\n\n## Framework References\n\n- OWASP Top 10: A05 Security Misconfiguration\n- CWE-400: Uncontrolled Resource Consumption"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "denial-of-service",
+                  "availability"
+                ],
+                "security-severity": "7.3"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A05",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-400",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/stride/elevation-of-privilege",
+              "shortDescription": {
+                "text": "Elevation of privilege threats"
+              },
+              "fullDescription": {
+                "text": "Threats where a caller gains rights that were not granted, through missing ownership checks, role confusion or excess permissions."
+              },
+              "help": {
+                "text": "Review authorization at every object and action, role resolution and the permissions each service holds.",
+                "markdown": "## Detection Guidance\n\nReview authorization controls:\n- Ownership checks on object references\n- Role resolution\n- Least privilege\n\n## Framework References\n\n- OWASP Top 10: A01 Broken Access Control\n- CWE-269: Improper Privilege Management"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "stride",
+                  "elevation-of-privilege",
+                  "authorization"
+                ],
+                "security-severity": "8.4"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "A01",
+                    "toolComponent": {
+                      "name": "OWASP"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                },
+                {
+                  "target": {
+                    "id": "CWE-269",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/ai/agentic-threats",
+              "shortDescription": {
+                "text": "AI agent autonomy and misuse threats"
+              },
+              "fullDescription": {
+                "text": "Threats arising from autonomous agent behavior, including uncontrolled tool use, excessive autonomy, agent-to-agent trust and reliance on agent output."
+              },
+              "help": {
+                "text": "Review agent autonomy boundaries, tool access controls, human approval gates and inter-agent trust assumptions.",
+                "markdown": "## Detection Guidance\n\nReview agent controls:\n- Tool allowlists and scopes\n- Human approval for high-impact actions\n- Delegation limits\n\n## Framework References\n\n- OWASP Agentic Security Initiative\n- CWE-693: Protection Mechanism Failure"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "ai",
+                  "agentic",
+                  "autonomy",
+                  "tool-use"
+                ],
+                "security-severity": "6.5"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "CWE-693",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "tachi/ai/llm-threats",
+              "shortDescription": {
+                "text": "LLM-specific threats"
+              },
+              "fullDescription": {
+                "text": "Threats to and through language models, including prompt injection, data poisoning, extraction, unsafe output handling and misinformation."
+              },
+              "help": {
+                "text": "Review prompt construction, retrieval sources, training data provenance, output handling and grounding.",
+                "markdown": "## Detection Guidance\n\nReview model controls:\n- Separation of instructions and content\n- Provenance of retrieved and training data\n- Output validation\n\n## Framework References\n\n- OWASP Top 10 for LLM Applications\n- CWE-74: Improper Neutralization of Special Elements in Output"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "ai",
+                  "llm",
+                  "prompt-injection"
+                ],
+                "security-severity": "7.4"
+              },
+              "relationships": [
+                {
+                  "target": {
+                    "id": "CWE-74",
+                    "toolComponent": {
+                      "name": "CWE"
+                    }
+                  },
+                  "kinds": [
+                    "relevant"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "taxonomies": [
+        {
+          "name": "OWASP",
+          "version": "2021",
+          "informationUri": "https://owasp.org/Top10/",
+          "organization": "OWASP Foundation",
+          "shortDescription": {
+            "text": "OWASP Top 10 Web Application Security Risks"
+          }
+        },
+        {
+          "name": "CWE",
+          "version": "4.13",
+          "informationUri": "https://cwe.mitre.org/",
+          "organization": "MITRE",
+          "shortDescription": {
+            "text": "Common Weakness Enumeration"
+          }
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "Role claims carried in the refresh token presented to auth-broker are honoured without confirmation against the authoritative directory.",
+            "markdown": "Resolve roles for auth-broker from the authoritative directory on each request or from a short cache, and ignore role claims supplied by the caller."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "auth-broker",
+                  "fullyQualifiedName": "Edge DMZ/auth-broker",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "76f1a20136a47e9f",
+            "findingId/v1": "E-2"
+          },
+          "properties": {
+            "security-severity": "8.4",
+            "cvss-base-score": "9.9",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+            "exploitability": "7.5",
+            "scalability": "8.5",
+            "reachability": "7.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": null,
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L6 \u2014 Security and Compliance",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "An attacker replays a captured session cookie against client-portal, which does not bind the credential to the session or channel it was issued for, so the replay is accepted as the original caller.",
+            "markdown": "Bind each session cookie to the client certificate or device key, shorten its lifetime to minutes and reject any token presented from a different channel than the one it was issued to."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "client-portal",
+                  "fullyQualifiedName": "Public Internet/client-portal",
+                  "kind": "external-entity"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "61d36056dc09b3dc",
+            "findingId/v1": "S-1"
+          },
+          "properties": {
+            "security-severity": "8.2",
+            "cvss-base-score": "7.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "9.0",
+            "scalability": "9.0",
+            "reachability": "8.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-11-16",
+            "maestro-layer": "L7 \u2014 Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/spoofing",
+          "message": {
+            "text": "A shared or long-lived bearer token on edge-gateway lets anyone who obtains one copy authenticate as every tenant that uses the same deployment profile.",
+            "markdown": "Replace the shared bearer token with per-workload identities that rotate automatically, and alert when one identity authenticates from two networks within the rotation window."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "41828eafe016e25d",
+            "findingId/v1": "S-2"
+          },
+          "properties": {
+            "security-severity": "8.1",
+            "cvss-base-score": "8.2",
+            "cvss-vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+            "exploitability": "9.0",
+            "scalability": "7.5",
+            "reachability": "7.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-11-16",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/elevation-of-privilege",
+          "message": {
+            "text": "Object identifiers in requests to edge-gateway are trusted without an ownership check, so a caller can read or change inbound API requests that belong to others.",
+            "markdown": "Check ownership or entitlement for every object reference at edge-gateway on the server, and deny by default when the check cannot be made."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "b519ad7937a2e79a",
+            "findingId/v1": "E-1"
+          },
+          "properties": {
+            "security-severity": "7.7",
+            "cvss-base-score": "5.6",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+            "exploitability": "7.0",
+            "scalability": "8.0",
+            "reachability": "7.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-11-16",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "Backups and exports of credential assertions and session grants on auth-broker are writable by operators without a second approver, so a malicious change survives restores.",
+            "markdown": "Protect exports and backups of credential assertions and session grants with write-once storage and dual approval for restore, and verify checksums against a separately held manifest."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "auth-broker",
+                  "fullyQualifiedName": "Edge DMZ/auth-broker",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "824bcfd900bb1f02",
+            "findingId/v1": "T-2"
+          },
+          "properties": {
+            "security-severity": "7.4",
+            "cvss-base-score": "4.6",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:L/A:L",
+            "exploitability": "8.0",
+            "scalability": "7.0",
+            "reachability": "6.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-11-16",
+            "maestro-layer": "L6 \u2014 Security and Compliance",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "edge-gateway passes conversation history from earlier turns into the model unchanged, so an injection planted earlier keeps working in later turns.",
+            "markdown": "Re-screen conversation history on each turn in edge-gateway, expire old turns and mark which turns came from untrusted sources."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "1d7f63e114f5815c",
+            "findingId/v1": "LLM-1"
+          },
+          "properties": {
+            "security-severity": "7.4",
+            "cvss-base-score": "7.6",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:H/I:H/A:L",
+            "exploitability": "9.0",
+            "scalability": "7.5",
+            "reachability": "7.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-11-16",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "A single oversized or deeply nested payload makes auth-broker spend disproportionate memory and CPU parsing credential assertions and session grants.",
+            "markdown": "Cap payload size, nesting depth and parse time in auth-broker, and reject requests that exceed the limits before allocation."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "auth-broker",
+                  "fullyQualifiedName": "Edge DMZ/auth-broker",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "6f8f310aa766a04d",
+            "findingId/v1": "D-2"
+          },
+          "properties": {
+            "security-severity": "7.3",
+            "cvss-base-score": "6.5",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:L",
+            "exploitability": "8.5",
+            "scalability": "8.0",
+            "reachability": "6.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": null,
+            "maestro-layer": "L6 \u2014 Security and Compliance",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/tampering",
+          "message": {
+            "text": "An attacker who can write to the channel between auth-broker and edge-gateway modifies inbound API requests in transit because messages carry no integrity protection of their own.",
+            "markdown": "Sign messages between auth-broker and edge-gateway with a per-service key and verify the signature and a monotonic counter before accepting any change."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "881bc0d4e0f47fe7",
+            "findingId/v1": "T-1"
+          },
+          "properties": {
+            "security-severity": "7.1",
+            "cvss-base-score": "5.8",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:L",
+            "exploitability": "7.0",
+            "scalability": "7.0",
+            "reachability": "5.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-11-16",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/denial-of-service",
+          "message": {
+            "text": "A dependency of edge-gateway becomes unavailable and the failure cascades because edge-gateway waits on it synchronously for every request.",
+            "markdown": "Isolate calls from edge-gateway to the dependency with timeouts and bulkheads, serve degraded results where possible and alert on dependency health."
+          },
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "401db5417ef99d98",
+            "findingId/v1": "D-1"
+          },
+          "properties": {
+            "security-severity": "7.1",
+            "cvss-base-score": "5.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:N/A:H",
+            "exploitability": "9.5",
+            "scalability": "8.0",
+            "reachability": "7.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "High",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "7d",
+            "risk-disposition": "Mitigate",
+            "review-date": "2026-11-16",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "planner-agent emits URLs that downstream services fetch, so an attacker can make internal addresses part of the output and trigger server-side requests.",
+            "markdown": "Validate URLs from planner-agent against an allowlist, resolve and block private ranges before fetching, and fetch from a restricted network."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "planner-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/planner-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "c1ebb38cbfff7526",
+            "findingId/v1": "OI-2"
+          },
+          "properties": {
+            "security-severity": "6.8",
+            "cvss-base-score": "8.7",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:N",
+            "exploitability": "8.0",
+            "scalability": "6.5",
+            "reachability": "2.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Operators approve changes to operator requests and approval decisions through a chat message or ticket comment that is not bound to the executed change, so approvals can be disputed.",
+            "markdown": "Bind each approval to the exact change hash it covers, record approver and time in the audit ledger and refuse to execute unbound changes."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "client-portal",
+                  "fullyQualifiedName": "Public Internet/client-portal",
+                  "kind": "external-entity"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "3fea443a7e902679",
+            "findingId/v1": "R-1"
+          },
+          "properties": {
+            "security-severity": "6.7",
+            "cvss-base-score": "5.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+            "exploitability": "5.0",
+            "scalability": "7.0",
+            "reachability": "9.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L7 \u2014 Agent Ecosystem",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "credential assertions and session grants held by auth-broker are readable by any service in the Edge DMZ that shares the same network role, because access is granted by network position.",
+            "markdown": "Grant access to credential assertions and session grants per workload identity with least privilege, enforce it at auth-broker and remove network-position trust within the Edge DMZ."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "auth-broker",
+                  "fullyQualifiedName": "Edge DMZ/auth-broker",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "1e8f683117c86c29",
+            "findingId/v1": "I-2"
+          },
+          "properties": {
+            "security-severity": "6.5",
+            "cvss-base-score": "4.9",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:N/A:N",
+            "exploitability": "8.0",
+            "scalability": "8.0",
+            "reachability": "6.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L6 \u2014 Security and Compliance",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Memory written by intake-agent is trusted on later runs, so one poisoned entry changes the behaviour of every future task.",
+            "markdown": "Tag memory entries with provenance and trust level, sanitise them on read and let operators review and expire entries written by intake-agent."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "d65e72338538dd30",
+            "findingId/v1": "AG-1"
+          },
+          "properties": {
+            "security-severity": "6.5",
+            "cvss-base-score": "10.0",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:L",
+            "exploitability": "4.0",
+            "scalability": "5.5",
+            "reachability": "2.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "State persisted across runs lets a sleeper instruction written today change the behaviour of a scheduled run weeks later, after the original entry has left review and the context that explained it is gone.",
+            "markdown": "Expire persisted instructions, re-review any state that scheduled runs read and compare behaviour against pre-run snapshots."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "worker-2",
+                  "fullyQualifiedName": "Agent Runtime Zone/worker-2",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "0d85d4cf33516dfb",
+            "findingId/v1": "AGP-02"
+          },
+          "properties": {
+            "security-severity": "6.5",
+            "cvss-base-score": "10.0",
+            "exploitability": "5.0",
+            "scalability": "5.5",
+            "reachability": "3.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Stale data in the knowledge base lets intake-agent present superseded tariffs as current, causing wrong quotes.",
+            "markdown": "Stamp every source used by intake-agent with an effective date, suppress answers built on expired sources and alert owners when content ages out."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4bcca12a86cc1a88",
+            "findingId/v1": "MI-2"
+          },
+          "properties": {
+            "security-severity": "6.5",
+            "cvss-base-score": "6.9",
+            "cvss-vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:R/S:C/C:L/I:H/A:L",
+            "exploitability": "7.5",
+            "scalability": "7.5",
+            "reachability": "3.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "Encoded or multilingual payloads bypass the keyword filter in front of intake-agent, which only checks plain English text.",
+            "markdown": "Normalise and decode inputs before filtering in intake-agent, apply semantic checks instead of keyword lists and review filter misses weekly."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4bcca12a86cc1a88",
+            "findingId/v1": "LLM-2"
+          },
+          "properties": {
+            "security-severity": "6.3",
+            "cvss-base-score": "6.3",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:H/I:L/A:N",
+            "exploitability": "8.0",
+            "scalability": "7.0",
+            "reachability": "3.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "intake-agent fabricates reference numbers and clause citations that look real, which operators then paste into official documents.",
+            "markdown": "Verify identifiers and citations produced by intake-agent against authoritative systems before display, and mark unverifiable ones clearly."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4bcca12a86cc1a88",
+            "findingId/v1": "MI-1"
+          },
+          "properties": {
+            "security-severity": "6.3",
+            "cvss-base-score": "7.6",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:L/A:N",
+            "exploitability": "8.5",
+            "scalability": "7.0",
+            "reachability": "2.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/information-disclosure",
+          "message": {
+            "text": "Secrets such as the bearer token for edge-gateway appear in process arguments and environment dumps that diagnostic tooling captures.",
+            "markdown": "Pass the bearer token to edge-gateway through a secret manager mount, exclude it from process listings and diagnostics, and rotate it after any exposure."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "787e8ebb87d59ea9",
+            "findingId/v1": "I-1"
+          },
+          "properties": {
+            "security-severity": "6.2",
+            "cvss-base-score": "1.6",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:L/I:N/A:N",
+            "exploitability": "8.5",
+            "scalability": "9.0",
+            "reachability": "5.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/llm-threats",
+          "message": {
+            "text": "intake-agent emits URLs that downstream services fetch, so an attacker can make internal addresses part of the output and trigger server-side requests.",
+            "markdown": "Validate URLs from intake-agent against an allowlist, resolve and block private ranges before fetching, and fetch from a restricted network."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "4bcca12a86cc1a88",
+            "findingId/v1": "OI-1"
+          },
+          "properties": {
+            "security-severity": "6.2",
+            "cvss-base-score": "4.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:L",
+            "exploitability": "7.0",
+            "scalability": "7.5",
+            "reachability": "3.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Persuasive phrasing from intake-agent pushes operators to approve proposals quickly, which reduces careful review.",
+            "markdown": "Neutralise urgency and pressure wording in intake-agent, present alternatives with their trade-offs and require a deliberate action to approve."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "d65e72338538dd30",
+            "findingId/v1": "TE-2"
+          },
+          "properties": {
+            "security-severity": "6.2",
+            "cvss-base-score": "9.1",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:H/A:L",
+            "exploitability": "6.0",
+            "scalability": "5.5",
+            "reachability": "2.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/stride/repudiation",
+          "message": {
+            "text": "Log entries from edge-gateway can be edited or deleted by the same operators who administer it, so evidence of misuse can be removed after the fact.",
+            "markdown": "Write the records of edge-gateway to an append-only store that operators cannot modify, and anchor periodic hashes of the log in a separate system."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "edge-gateway",
+                  "fullyQualifiedName": "Edge DMZ/edge-gateway",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "983b3bebb029d996",
+            "findingId/v1": "R-2"
+          },
+          "properties": {
+            "security-severity": "5.8",
+            "cvss-base-score": "5.5",
+            "exploitability": "5.5",
+            "scalability": "7.5",
+            "reachability": "5.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L4 \u2014 Deployment Infrastructure",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "planner-agent runs without a budget on steps or spend, so a loop or an adversarial task keeps it acting long after it stopped being useful.",
+            "markdown": "Set hard limits on steps, tool calls, runtime and spend for planner-agent, stop on breach and report the stop reason to the operator."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "planner-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/planner-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "eded79e55e7b3f26",
+            "findingId/v1": "AG-2"
+          },
+          "properties": {
+            "security-severity": "5.7",
+            "cvss-base-score": "8.2",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:H/A:L",
+            "exploitability": "5.0",
+            "scalability": "6.0",
+            "reachability": "2.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "Worker agents coordinate through the shared message bus and memory so that each stays under its individual limits while together they exceed the authority intended for any one of them, and no single-agent control observes the combined behaviour.",
+            "markdown": "Monitor combined activity across agents, set aggregate budgets for groups of workers and separate the channels that agents can use to coordinate."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "planner-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/planner-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "eded79e55e7b3f26",
+            "findingId/v1": "AGP-01"
+          },
+          "properties": {
+            "security-severity": "5.7",
+            "cvss-base-score": "10.0",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:H/A:N",
+            "exploitability": "5.0",
+            "scalability": "5.5",
+            "reachability": "2.0",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "affected_assets": []
+          }
+        },
+        {
+          "ruleId": "tachi/ai/agentic-threats",
+          "message": {
+            "text": "intake-agent adopts a persona that presents itself as a named colleague, so operators trust its suggestions more than its accuracy warrants.",
+            "markdown": "Disclose that intake-agent is an automated agent at the start of each session and avoid human-like names or personal claims."
+          },
+          "level": "warning",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "docs/security/architecture.md"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "intake-agent",
+                  "fullyQualifiedName": "Agent Runtime Zone/intake-agent",
+                  "kind": "process"
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "d65e72338538dd30",
+            "findingId/v1": "TE-1"
+          },
+          "properties": {
+            "security-severity": "5.6",
+            "cvss-base-score": "6.6",
+            "cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:H/A:L",
+            "exploitability": "4.5",
+            "scalability": "4.5",
+            "reachability": "3.5",
+            "composite-weights": "0.35/0.30/0.15/0.20",
+            "score-source": "fresh",
+            "baseline-state": "unchanged",
+            "severity-band": "Medium",
+            "risk-owner": "Unassigned",
+            "remediation-sla": "30d",
+            "risk-disposition": "Review",
+            "review-date": "2026-12-09",
+            "maestro-layer": "L3 \u2014 Agent Framework",
+            "affected_assets": []
+          }
+        }
+      ]
+    }
+  ]
+}

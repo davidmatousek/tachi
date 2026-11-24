@@ -1115,7 +1115,7 @@ You do not need to update it for code-level changes that do not affect the archi
 
 ### SARIF Integration with GitHub Code Scanning
 
-Upload `threats.sarif` to GitHub Code Scanning to see threat model findings alongside your code:
+Upload Tachi's SARIF files to GitHub Code Scanning to see threat model findings alongside your code. `/tachi.threat-model` writes each run to its own timestamped output directory, such as `docs/security/2026-03-25T14-30-22/`, and `/tachi.risk-score` and `/tachi.compensating-controls` write `risk-scores.sarif` and `compensating-controls.sarif` into that same directory by default. Upload each of those two files under its own `category`:
 
 ```yaml
 # .github/workflows/threat-model.yml
@@ -1124,6 +1124,12 @@ on:
   push:
     paths:
       - 'docs/security/threats.sarif'
+      - 'docs/security/**/risk-scores.sarif'
+      - 'docs/security/**/compensating-controls.sarif'
+
+env:
+  # Set to the timestamped output directory of the run to upload
+  RUN_DIR: docs/security/2026-03-25T14-30-22
 
 jobs:
   upload-sarif:
@@ -1133,7 +1139,21 @@ jobs:
       - uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: docs/security/threats.sarif
+      # Only if you ran /tachi.risk-score
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ env.RUN_DIR }}/risk-scores.sarif
+          category: risk-score
+      # Only if you ran /tachi.compensating-controls
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ env.RUN_DIR }}/compensating-controls.sarif
+          category: compensating-controls
 ```
+
+**One category per system**: Code Scanning uses the tool and `category` to tell uploads apart, so two systems that share a category are treated as one analysis. If your repository holds more than one architecture file, give each system its own categories, for example by adding the system's name to each (`risk-score-billing`, `compensating-controls-billing`).
+
+**Ignore `.tachi-build/`**: The `.tachi-build/` folder inside a run's output directory holds working files that contain absolute local paths. Add `**/.tachi-build/` to your `.gitignore` before you commit a run's output directory, as Tachi's own repository does.
 
 ### Tips for Teams
 
@@ -1686,7 +1706,7 @@ diff docs/security/v1.0.0/threats.md docs/security/v1.1.0/threats.md
 
 ### Using SARIF in CI/CD Pipelines
 
-GitHub Actions example that runs threat analysis and uploads results:
+GitHub Actions example that runs threat analysis and uploads results. `/tachi.threat-model` writes each run to its own timestamped output directory, such as `docs/security/2026-03-25T14-30-22/`, and `/tachi.risk-score` and `/tachi.compensating-controls` write `risk-scores.sarif` and `compensating-controls.sarif` into that same directory by default. Upload each of those two files under its own `category`:
 
 ```yaml
 # .github/workflows/threat-model.yml
@@ -1696,6 +1716,10 @@ on:
   pull_request:
     paths:
       - 'docs/security/architecture.md'
+
+env:
+  # Set to the timestamped output directory of the run to upload
+  RUN_DIR: docs/security/2026-03-25T14-30-22
 
 jobs:
   threat-model:
@@ -1709,7 +1733,25 @@ jobs:
         with:
           sarif_file: docs/security/threats.sarif
           category: threat-model
+
+      # Only if you ran /tachi.risk-score
+      - name: Upload risk scores
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ env.RUN_DIR }}/risk-scores.sarif
+          category: risk-score
+
+      # Only if you ran /tachi.compensating-controls
+      - name: Upload compensating controls
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ env.RUN_DIR }}/compensating-controls.sarif
+          category: compensating-controls
 ```
+
+**One category per system**: Code Scanning uses the tool and `category` to tell uploads apart, so two systems that share a category are treated as one analysis. If your repository holds more than one architecture file, give each system its own categories, for example by adding the system's name to each (`risk-score-billing`, `compensating-controls-billing`).
+
+**Ignore `.tachi-build/`**: The `.tachi-build/` folder inside a run's output directory holds working files that contain absolute local paths. Add `**/.tachi-build/` to your `.gitignore` before you commit a run's output directory, as Tachi's own repository does.
 
 ### Generating Infographics with Gemini API
 

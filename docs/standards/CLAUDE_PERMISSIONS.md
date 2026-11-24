@@ -334,7 +334,7 @@ The guard reads the tables in this section, and the runbook's write-locations ta
   - `{out}` is the run's output directory, the command's `output_dir` (the report assembler calls it `{output_path}`). For `/tachi.threat-model` it is `{output_dir}/{timestamp}/`, by default `docs/security/{timestamp}/`. `/tachi.security-report` requires it to lie under the working directory, because the report build directory is created there.
   - `$TMPDIR` is the sandbox's per-user temporary directory.
   - `{arch_path}` is the file `/tachi.architecture` writes (by default `docs/security/architecture.md`, or the `--output` path) and `{arch_dir}` is the directory that contains it.
-  - `{template}`, `{stem}`, `{finding-id}`, `{chain-id}` and `{N}` are placeholders filled in at run time.
+  - `{template}`, `{stem}`, `{finding-id}`, `{chain-id}`, `{plan-id}` and `{N}` are placeholders filled in at run time. `{plan-id}` is the ID of one run's batch plan: a UTC timestamp and a random 12-character hex suffix, such as `20261122T120000Z-0123456789ab`. `/tachi.risk-score` and `/tachi.compensating-controls` make a new one on each run, so each stage directory (`risk-score` or `compensating-controls`) under `{out}/.tachi-build/` gains one subdirectory for every run.
 - **Host tokens** are `model-provider` and `generativelanguage.googleapis.com`. **Child-process tokens** are program names as run; a token in capitals is an environment variable that configures a child process.
 
 ### 8.3 Agents
@@ -343,7 +343,7 @@ The guard reads the tables in this section, and the runbook's write-locations ta
 |---|---|---|---|---|---|---|
 | `tachi-agent-autonomy` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
 | `tachi-attack-tree-delta` | writer | `Read`, `Glob`, `Grep`, `Write` | `sonnet` | — | `{out}/attack-trees/` | `model-provider` |
-| `tachi-control-analyzer` | writer | `Read`, `Glob`, `Grep`, `Write` | `sonnet` | — | `{out}/compensating-controls.{md,sarif}` | `model-provider` |
+| `tachi-control-analyzer` | writer | `Read`, `Glob`, `Grep`, `Write` | `sonnet` | — | `{out}/.tachi-build/compensating-controls/{plan-id}/parts/` | `model-provider` |
 | `tachi-data-poisoning` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
 | `tachi-denial-of-service` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
 | `tachi-human-trust-exploitation` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
@@ -356,7 +356,7 @@ The guard reads the tables in this section, and the runbook's write-locations ta
 | `tachi-prompt-injection` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
 | `tachi-report-assembler` | Bash | `Read`, `Glob`, `Grep`, `Write`, `Bash` | `sonnet` | `python3`, `test`, `typst` | `{out}/security-report.pdf`, `{out}/.tachi-build/security-report/`, `{out}/attack-trees/`, `{out}/attack-chains/`, `{out}/threat-{stem}.{jpg,png}`, `$TMPDIR` | `model-provider` |
 | `tachi-repudiation` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
-| `tachi-risk-scorer` | writer | `Read`, `Glob`, `Grep`, `Write` | `sonnet` | — | `{out}/risk-scores.{md,sarif}` | `model-provider` |
+| `tachi-risk-scorer` | writer | `Read`, `Glob`, `Grep`, `Write` | `sonnet` | — | `{out}/.tachi-build/risk-score/{plan-id}/parts/` | `model-provider` |
 | `tachi-spoofing` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
 | `tachi-tampering` | read-only | `Read`, `Glob`, `Grep` | `sonnet` | — | — | `model-provider` |
 | `tachi-threat-infographic` | Bash | `Read`, `Glob`, `Grep`, `Write`, `Bash` | `sonnet` | `[`, `echo`, `python3`, `test` | `{out}/threat-{template}-spec.md`, `{out}/threat-{template}.{jpg,png}`, `{out}/.tachi-build/infographic-{template}.json`, `{out}/.tachi-build/gemini-{template}-request.json`, `{out}/.tachi-build/gemini-{template}-response.json` | `model-provider`, `generativelanguage.googleapis.com` |
@@ -368,15 +368,15 @@ The guard reads the tables in this section, and the runbook's write-locations ta
   - The extractor cleanup recipe in [`typst-artifacts.md`](../../.claude/skills/tachi-report-assembly/references/typst-artifacts.md) (`--cleanup-mislabeled-images`, then `--remove-build-dir`), which treats the target directory as `{out}`.
   - `tachi-report-assembler`'s check that the PDF exists and is not empty (Step 3c), which names no command.
   - Searches that run as `find` and `grep` through the Bash tool. On macOS, Linux and WSL the documentation says Claude Code leaves the Glob and Grep tools out of the default tool set and brings them back for a subagent that lists them and leaves out `Bash` ([tools reference: Glob tool behavior](https://code.claude.com/docs/en/tools-reference#glob-tool-behavior)), so searches by the three Bash-capable agents can appear as Bash calls that this column does not list.
-- **Writes.** Every Writes token in this table is under `{out}` or is `$TMPDIR`. The only paths outside those two locations are the two `/tachi.architecture` entries in the commands table. Section 8.5 gives the writer and the condition for each path.
+- **Writes.** Every Writes token in this table is under `{out}` or is `$TMPDIR`. The only paths outside those two locations are the two `/tachi.architecture` entries in the commands table. The risk scorer and the control analyzer write only part files, one for each dispatch, under `{plan-id}/parts/` in their stage directory. Shipped scripts write the rest of each stage directory and the rendered files, `risk-scores.{md,sarif}` and `compensating-controls.{md,sarif}` (section 8.4). Section 8.5 gives the writer and the condition for each path.
 
 ### 8.4 Commands
 
 | Command | Frontmatter keys | Dispatches | Bash it instructs | Writes | Child processes |
 |---|---|---|---|---|---|
 | `/tachi.threat-model` | `description` | `tachi-orchestrator` | `python3` | `{out}/`, `{out}/architecture.md`, `{out}/threats.md`, `{out}/threats.sarif`, `{out}/attack-chains.md`, `{out}/threat-report.md`, `{out}/attack-trees/` | `python3` |
-| `/tachi.risk-score` | `description` | `tachi-risk-scorer` | `python3` | `{out}/`, `{out}/threats.md`, `{out}/risk-scores.{md,sarif}` | `python3` |
-| `/tachi.compensating-controls` | `description` | `tachi-control-analyzer` | — | `{out}/`, `{out}/compensating-controls.{md,sarif}` | — |
+| `/tachi.risk-score` | `description` | `tachi-risk-scorer` | `python3` | `{out}/`, `{out}/threats.md`, `{out}/risk-scores.{md,sarif}`, `{out}/.tachi-build/risk-score/`, `{out}/.tachi-build/risk-score/{plan-id}/parts/` | `python3` |
+| `/tachi.compensating-controls` | `description` | `tachi-control-analyzer` | `python3` | `{out}/`, `{out}/compensating-controls.{md,sarif}`, `{out}/.tachi-build/compensating-controls/`, `{out}/.tachi-build/compensating-controls/{plan-id}/parts/` | `python3` |
 | `/tachi.infographic` | `description` | `tachi-threat-infographic` | `python3`, `grep` | `{out}/`, `{out}/threat-{template}-spec.md`, `{out}/threat-{template}.{jpg,png}`, `{out}/.tachi-build/infographic-{template}.json`, `{out}/.tachi-build/gemini-{template}-request.json`, `{out}/.tachi-build/gemini-{template}-response.json` | `python3`, `curl` |
 | `/tachi.security-report` | `description` | `tachi-report-assembler` | `which`, `ls`, `head`, `test`, `command` | `{out}/`, `{out}/security-report.pdf`, `{out}/.tachi-build/security-report/`, `{out}/attack-trees/`, `{out}/attack-chains/`, `{out}/threat-{stem}.{jpg,png}`, `$TMPDIR` | `python3`, `typst`, `mmdc`, `chromium`, `TACHI_MMDC_PUPPETEER_CONFIG` |
 | `/tachi.architecture` | `description` | — | `mkdir`, `shasum` | `{arch_path}`, `{arch_dir}/.archive/v{N}/` | — |
@@ -385,6 +385,7 @@ The guard reads the tables in this section, and the runbook's write-locations ta
 - **Dispatches** lists the tachi agent the command starts. `/tachi.threat-model` starts `tachi-orchestrator`, which starts the 14 threat agents and `tachi-threat-report` one level down (see Dispatch). `/tachi.architecture` runs in the main session and starts no agent.
 - **Bash it instructs** is declared only. The commands also tell the main session, in prose that names no command, to create `{out}/`; `/tachi.threat-model` tells it to copy the architecture file into `{out}/`, and `/tachi.architecture` tells it to copy the previous file into its archive directory. Those writes are listed under Writes.
 - **Writes** is the command's whole footprint: its own writes plus those of the agents it starts. `/tachi.risk-score` runs the populate script on its input file only when `{out}` is the input directory; with `--output-dir` set to another directory, the input directory stays read-only.
+- **Stage directories.** In the main session, `/tachi.risk-score` and `/tachi.compensating-controls` run `scripts/tachi-stage.py` and their renderer (`scripts/render-risk-scores.py` or `scripts/render-compensating-controls.py`) through `python3`. The scripts write the command's stage directory, `{out}/.tachi-build/risk-score/` or `{out}/.tachi-build/compensating-controls/`: the current-plan pointer, the batch plan, the batch inputs, copies of the earlier outputs, the staged output files and the stage record. The agent writes only the part files, under `{plan-id}/parts/`. The renderer moves the staged files onto the command's output files in `{out}` once its checks pass.
 
 ### 8.5 Write locations (canonical list)
 
@@ -397,14 +398,18 @@ The runbook states the same write set in its section 5. The table below is the s
 |---|---|---|
 | `{out}/` | the main session of each run command (`/tachi.threat-model`, `/tachi.risk-score`, `/tachi.compensating-controls`, `/tachi.infographic`, `/tachi.security-report`) | the directory does not exist yet |
 | `{out}/architecture.md` | the main session of `/tachi.threat-model` (verbatim copy of the architecture file) | the architecture file exists |
-| `{out}/threats.md` | `tachi-orchestrator`; updated in place by `scripts/populate-affected-assets.py`, which the orchestrator and `/tachi.threat-model` run and which `/tachi.risk-score` runs on its input file | always for `/tachi.threat-model`; for `/tachi.risk-score` only when the input is markdown, an architecture file is found and `{out}` is the input directory |
+| `{out}/threats.md` | `tachi-orchestrator`; updated in place by `scripts/populate-affected-assets.py`, which the orchestrator and `/tachi.threat-model` run and which `/tachi.risk-score` runs on its input file; the one `**Architecture source**` body line (FR-E.18) by `scripts/tachi-stage.py architecture-source`, run by the main session of `/tachi.threat-model` | always for `/tachi.threat-model`; for `/tachi.risk-score` only when the input is markdown, an architecture file is found and `{out}` is the input directory |
 | `{out}/threats.sarif` | `tachi-orchestrator` | always |
 | `{out}/attack-chains.md` | `tachi-orchestrator` | at least one cross-layer chain passes the filter |
 | `{out}/threat-report.md` | `tachi-threat-report` | the report phase runs (the default; the orchestrator's `--skip-report` opt-out skips it) |
 | `{out}/attack-trees/` | `tachi-attack-tree-delta` (`{finding-id}-attack-tree.md` and `.manifest.json`); `scripts/extract-report-data.py` (`{finding-id}-attack-tree.png`) | Critical or High findings exist (the manifest is written either way); the PNGs only when `mmdc` is on `PATH` |
 | `{out}/attack-chains/` | `scripts/extract-report-data.py` (`{chain-id}-attack-chain.png`) | an attack chain is surfaced and `mmdc` is on `PATH` |
-| `{out}/risk-scores.{md,sarif}` | `tachi-risk-scorer` | always |
-| `{out}/compensating-controls.{md,sarif}` | `tachi-control-analyzer` | always |
+| `{out}/risk-scores.{md,sarif}` | `scripts/render-risk-scores.py`, run by the main session of `/tachi.risk-score`: it renders both files into the plan's `staged/` directory, checks them, then moves them onto these names | the render succeeds; a failed run leaves the earlier files in place |
+| `{out}/.tachi-build/risk-score/` | `scripts/tachi-stage.py` and `scripts/render-risk-scores.py`, run by the main session of `/tachi.risk-score`: `current.json` and, in a new `{plan-id}/` directory, the plan, the batch inputs, copies of the earlier outputs, the staged outputs and the stage record; a failed run moves any output it changed into `failed/` | the command reaches its planning step; kept (tachi never removes a plan directory). It holds absolute local paths and copies of earlier outputs, so it is as sensitive as `{out}` |
+| `{out}/.tachi-build/risk-score/{plan-id}/parts/` | `tachi-risk-scorer` (Write tool): one part file for each dispatch, at the path its batch input names | a batch is dispatched; kept |
+| `{out}/compensating-controls.{md,sarif}` | `scripts/render-compensating-controls.py`, run by the main session of `/tachi.compensating-controls`: it renders both files into the plan's `staged/` directory, checks them, then moves them onto these names | the render succeeds; a failed run leaves the earlier files in place |
+| `{out}/.tachi-build/compensating-controls/` | `scripts/tachi-stage.py` and `scripts/render-compensating-controls.py`, run by the main session of `/tachi.compensating-controls`: `current.json` and, in a new `{plan-id}/` directory, the plan, the batch inputs, copies of the earlier outputs, the staged outputs and the stage record; a failed run moves any output it changed into `failed/` | the command reaches its planning step; kept (tachi never removes a plan directory). It holds absolute local paths and copies of earlier outputs, so it is as sensitive as `{out}` |
+| `{out}/.tachi-build/compensating-controls/{plan-id}/parts/` | `tachi-control-analyzer` (Write tool): one part file for each dispatch, at the path its batch input names | a batch is dispatched; kept |
 | `{out}/threat-{template}-spec.md` | `tachi-threat-infographic` | each requested template |
 | `{out}/threat-{template}.{jpg,png}` | `tachi-threat-infographic`, decoding the response with `python3` | `GEMINI_API_KEY` is set and the API returns an image |
 | `{out}/.tachi-build/infographic-{template}.json` | `scripts/extract-infographic-data.py --output` | each template extraction; kept |
