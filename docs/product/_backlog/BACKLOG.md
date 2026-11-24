@@ -1,6 +1,6 @@
 # Backlog
 
-> Auto-generated from GitHub Issues on 2026-11-23T00:22:27Z.
+> Auto-generated from GitHub Issues on 2026-11-24T14:56:02Z.
 > Source of truth: GitHub Issues with `stage:*` labels.
 > Regenerate: `/aod.status` or `.aod/scripts/bash/backlog-regenerate.sh`
 
@@ -8,6 +8,7 @@
 
 | # | Title | ICE | Evidence | Updated |
 |---|-------|-----|----------|---------|
+| #424 | defect bundle: v4.48.4 pipeline fidelity on a graded real-world agentic run (dispatch enforcement, agentic risk scoring, finding-set consistency, chains, controls) | Impact: 9, Confidence: 8, Effort: 3 = **20** | — | 2026-11-24 |
 | #417 | enhancement: trim F-391's test modules: reuse the guard's checks, one install harness, pin the §8 anchor, one script loader | — | — | 2026-11-21 |
 | #416 | enhancement: extract-report-data.py build mode refuses a symlinked report-config.typ and symlinks under the output directory | — | — | 2026-11-21 |
 | #415 | enhancement: run the zsh manual-install-loop cases in CI (the manifest-completeness runner has no zsh) | — | — | 2026-11-21 |
@@ -25,7 +26,7 @@
 | #403 | defect(infographics): several infographic placeholders have no defined source, and the risk funnel sends component names it does not draw | — | — | 2026-11-21 |
 | #402 | defect(infographics): executive-architecture callouts send mitigation text when a finding's threat text is empty | — | — | 2026-11-21 |
 | #401 | enhancement: check the Gemini infographic request against its documented field list before sending | — | — | 2026-11-21 |
-| #400 | F-391 Part B landing: ship #396 (B2) after #364 merges | — | — | 2026-11-21 |
+| #400 | F-391 Part B landing: ship #396 (B2) after #364 merges | — | — | 2026-11-23 |
 | #399 | Run archive and provenance manifest: denial detection on Claude Code 2.1.330 transcripts (F-391 B1 follow-up) | — | — | 2026-11-21 |
 | #397 | Tracking: defects found in a large real-world adopter run on v4.48.1 | — | — | 2026-11-21 |
 | #388 | enhancement: parse scores and section facts once at the parser boundary (incl. an uncaught ValueError on a malformed Section 1 total) | — | — | 2026-10-12 |
@@ -50,7 +51,7 @@
 
 | # | Title | PRD | Updated |
 |---|-------|-----|---------|
-| — | *No items in this stage* | | |
+| #426 | Ship tachi as a Claude Code plugin: self-hosted marketplace, then Anthropic's plugin directory | — | 2026-11-24 |
 
 ## Plan
 
