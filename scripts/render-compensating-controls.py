@@ -39,8 +39,11 @@ other, with the ``correlation-*`` properties and ruling C's sentence; ``relatedL
 that the resolver accepted, and nothing else. Correlation comes from Section 4a of the ``threats.md`` that the scored input's
 validated ``source_file`` names (in D8's fallback, from the properties of ``risk-scores.sarif``). When that file can't be read
 there is no correlation, the stage record says why, and no key changes, because correlation is never identity. ``recommendation`` and
-``effort-estimate`` are read from the rendered Section 4 bodies by ``parse_compensating_controls_md``'s rule, so the two
-files agree by construction. ``integrity-flags`` carries ``reused-id`` over from the input, and ``maestro-layer`` is the
+``effort-estimate`` are read from the rendered Section 4 blocks: each block is found in the Section 4 that sits outside the code
+fences, and its "What to Implement" text is read by the shared rule (``tachi_parsers.recommendation_text``, which is
+``parse_compensating_controls_md``'s), so a consumer of either file reads one text. The from-disk check derives ``recommendation``
+again from each validated part body instead of from the file, so a defect of the reader that built the SARIF can't agree with
+itself (T067b H1). ``integrity-flags`` carries ``reused-id`` over from the input, and ``maestro-layer`` is the
 value that the scorer's file holds for the finding. The result's properties are the contracted set and no other key
 (``contracts/sarif-result.md``). Both files are written to ``staged/`` and checked on disk, against each other as well as
 against the rows, before either replaces a canonical name.
@@ -1510,6 +1513,26 @@ def _render_md(run: Run, scoring: str, digest: str) -> str:
 CATEGORY_OF_RULE = {rule_id: category for category, rule_id in sc.RULE_ID_BY_CATEGORY.items()}
 
 
+def _section_4_blocks(md_text: str) -> Dict[str, List[str]]:
+    """The lines of each Section 4 block, by canonical ID, block by block under the renderer's own ``#### n. ID — `` headings.
+
+    Section 4 is found as every lookup of this file finds a section: from its exact heading line to the exact heading line of
+    Section 5, both outside the code fences (``_lines_of``). A snippet of Section 3 that quotes ``## 4. Recommendations`` and a
+    later section heading can't end it early (P0-1; ADR-050 D3, "Finding a section"; T067b H1). A block is the lines after its
+    heading, up to the next block's heading, so the last block of a group also holds the group heading that follows it, and every
+    reader of a block stops at a heading line. A finding with no block, such as one whose control was found, has no entry.
+    """
+    blocks: Dict[str, List[str]] = {}
+    current: Optional[List[str]] = None
+    for line in _lines_of(md_text, SECTION_TITLES[3], SECTION_TITLES[4]):
+        heading = re.match(r"#### [0-9]+\. (\S+) %s " % DASH, line)
+        if heading is not None:
+            current = blocks.setdefault(tp.canonical_finding_id(heading.group(1)), []) if tp.id_matches("finding", heading.group(1)) else None
+        elif current is not None:
+            current.append(line)
+    return blocks
+
+
 def _section_4_efforts(md_text: str) -> Dict[str, str]:
     """The Effort word (``Low``, ``Medium`` or ``High``) of each Section 4 block, by canonical ID.
 
@@ -1517,28 +1540,36 @@ def _section_4_efforts(md_text: str) -> Dict[str, str]:
     with no such line, and a finding with no block, has none.
     """
     found: Dict[str, str] = {}
-    current: Optional[str] = None
-    for line in _lines_of(md_text, SECTION_TITLES[3], SECTION_TITLES[4]):
-        heading = re.match(r"#### [0-9]+\. (\S+) %s " % DASH, line)
-        if heading is not None:
-            current = tp.canonical_finding_id(heading.group(1)) if tp.id_matches("finding", heading.group(1)) else None
-        elif current is not None and current not in found and line.strip().startswith(EFFORT_MARKER):
-            word = EFFORT_WORD.match(line.strip()[len(EFFORT_MARKER):].strip())
+    for canonical, lines in _section_4_blocks(md_text).items():
+        for line in lines:
+            text = line.strip()
+            word = EFFORT_WORD.match(text[len(EFFORT_MARKER):].strip()) if text.startswith(EFFORT_MARKER) else None
             if word is not None:
-                found[current] = word.group(1)
+                found[canonical] = word.group(1)
+                break
     return found
 
 
-def _read_recommendations(md_text: str) -> Dict[str, Tuple[str, str]]:
-    """``{canonical ID: (recommendation, effort)}`` as the rendered Section 4 says them (ADR-050 D2).
+def _section_4_recommendations(md_text: str) -> Dict[str, str]:
+    """The ``recommendation`` of each Section 4 block, by canonical ID: its "What to Implement" text, decoded, read from the block by
+    the shared rule (ADR-050 D2: ``parse_compensating_controls_md``'s). A consumer reads the same text in the markdown and in the SARIF.
 
-    The recommendation is the "What to Implement" text. The shipped reader, ``parse_compensating_controls_md``, is run on the
-    markdown and its answer is used, so the two files agree by construction and a consumer reads the same text in either. The
-    effort is the Effort word of the finding's block. A finding whose control was found has no block, so both are empty.
+    The blocks are found in the fence-aware Section 4 (``_section_4_blocks``), not in the whole file as the shipped reader finds its
+    own section: a code snippet is raw text, and a line of it that reads like a section heading must not move the section (T067b H1).
+    A finding whose control was found has no block, and so no entry.
     """
-    efforts = _section_4_efforts(md_text)
-    return {tp.canonical_finding_id(found["id"]): (found["recommendation"], efforts.get(tp.canonical_finding_id(found["id"]), ""))
-            for found in tachi_parsers.parse_compensating_controls_md(md_text)["findings"] if tp.id_matches("finding", found["id"])}
+    return {canonical: tachi_parsers.recommendation_text(lines) for canonical, lines in _section_4_blocks(md_text).items()}
+
+
+def _recommendation_of_body(body: Optional[str]) -> str:
+    """The ``recommendation`` that a validated part's ``recommendation_body`` gives, derived without the rendered file (T067b H1).
+
+    The body goes through the escape that Section 4 writes it with (``escape_prose``) and the shared rule reads it as it reads a block, so
+    the value is the one that the file's Section 4 holds for the finding. It is what the from-disk check compares the SARIF with. The SARIF
+    is built from the file (``_section_4_recommendations``), so a check that read the file by the same function would pass whatever that
+    function did. ``None`` is a finding whose control was found: it has no body and no block, and its recommendation is empty.
+    """
+    return "" if body is None else tachi_parsers.recommendation_text(tp.escape_prose(body).split("\n"))
 
 
 def _properties(row: Row, recommendation: str, effort: str) -> Dict[str, Any]:
@@ -1566,7 +1597,7 @@ def _render_sarif(run: Run, digest: str, md_text: str) -> str:
     sentence. ``relatedLocations`` are the finding's evidence in the resolver's spelling, leaving out an entry whose file the resolver
     refused (a result left with none has no key; each location's ``id`` is its entry's index). The level follows the residual band.
     """
-    texts = _read_recommendations(md_text)
+    recommendations, efforts = _section_4_recommendations(md_text), _section_4_efforts(md_text)
     results = []
     for row in run.by_residual:
         evidence = [sc.evidence_location(index, CATEGORY_NAME[row.control_category], run.evidence_cache[entry["file"]], entry["line"])
@@ -1574,7 +1605,8 @@ def _render_sarif(run: Run, digest: str, md_text: str) -> str:
         results.append(sc.build_result(
             tool=TOOL, finding_id=row.finding_id, message="%s [Control: %s]" % (row.threat, row.control), markdown=row.mitigation,
             level=sc.level_for_band(row.residual_band), uri=run.uri, component=row.component, zone=row.zone, kind=row.kind,
-            properties=_properties(row, *texts.get(row.canon, ("", ""))), correlation=run.assignments.get(row.canon), related_locations=evidence))
+            properties=_properties(row, recommendations.get(row.canon, ""), efforts.get(row.canon, "")),
+            correlation=run.assignments.get(row.canon), related_locations=evidence))
     highest: Dict[str, Decimal] = {}
     for row in run.rows:
         highest[row.threat_category] = max(highest.get(row.threat_category, row.residual), row.residual)
@@ -1791,8 +1823,10 @@ def _check_sarif(run: Run, rendered: str, text: str, md_text: str, matrix: Seque
     string holds a character that D3's step 10 forbids (the file is ASCII, so only the decoded strings show it: P0-4). The
     shared self-check passes (N/N, the shape and key order, the hashes, the one URI, no RESOLVED finding, correlation). The
     results are in Section 2's order. Each rule is the rule table's, with the highest residual score of its results. Each
-    result agrees with the row that Section 2 holds on disk (the scores, the level, ``CF``) and with the staged Section 4 (the
-    recommendation and the effort). Its status is the structured one, which a Control Status cell of the agent's own may
+    result agrees with the row that Section 2 holds on disk (the scores, the level, ``CF``), with the staged Section 4 (the effort) and
+    with the validated part (the recommendation). The recommendation is derived again from the part's own ``recommendation_body``
+    (``_recommendation_of_body``) and never read from the file by the function that built the SARIF, because a defect in that reader
+    would agree with itself (T067b H1). Its status is the structured one, which a Control Status cell of the agent's own may
     disagree with (R-34, flagged). It carries the evidence, the layer and the flags of its finding.
     """
     problems: List[str] = []
@@ -1844,13 +1878,14 @@ def _check_sarif(run: Run, rendered: str, text: str, md_text: str, matrix: Seque
         problems.append("the SARIF's rules are not the rule table's, one for each category with a result, each with the highest residual of its results")
 
     cells = dict(matrix)
-    texts = _read_recommendations(md_text)
+    efforts = _section_4_efforts(md_text)
     for row in run.rows:
         result, cell = by_id.get(row.canon), cells.get(row.canon)
         if result is None or cell is None:
             continue   # reported above: a row or a result that is missing
         properties = result["properties"]
-        recommendation, effort = texts.get(row.canon, ("", ""))
+        recommendation = _recommendation_of_body(row.item["recommendation_body"])   # from the validated part, never from the file (T067b H1)
+        effort = efforts.get(row.canon, "")
         evidence = [{"file": path, "line": entry["line"], "snippet": entry["snippet"]} for path, entry in zip(row.paths, row.item["evidence"])]
         wanted_related = [(run.evidence_cache[entry["file"]].uri, entry["line"]) for _index, entry in row.located]   # none for an entry whose file was refused
         pairs = (("security-severity", properties.get("security-severity"), cell[9]), ("residual-risk", properties.get("residual-risk"), cell[9]),

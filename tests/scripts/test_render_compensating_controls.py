@@ -604,9 +604,14 @@ class Project(object):
         """
         err = io.StringIO()
         explicit = self.architecture if architecture is True else (architecture or None)
-        with working_directory(self.root), contextlib.redirect_stderr(err):
-            result = self.stage.plan_stage(stage=STAGE, out=self.out, date=date, threats=self.threats, risk_scores=self.risk_scores,
-                                           architecture=explicit, target=self.target, baseline_dir=baseline_dir, batch_size=batch_size)
+        saved = self.stage._refuse_forbidden_units
+        self.stage._refuse_forbidden_units = lambda *args: None  # the renderer's own refusal is under test, so the planner's earlier one (T146 SA-1) is off
+        try:
+            with working_directory(self.root), contextlib.redirect_stderr(err):
+                result = self.stage.plan_stage(stage=STAGE, out=self.out, date=date, threats=self.threats, risk_scores=self.risk_scores,
+                                               architecture=explicit, target=self.target, baseline_dir=baseline_dir, batch_size=batch_size)
+        finally:
+            self.stage._refuse_forbidden_units = saved
         self.plan_stderr = err.getvalue()
         self.plan_id, self.digest = result["plan_id"], result["plan_digest"]
         return result
@@ -1442,8 +1447,10 @@ def test_sarif_each_result_carries_its_goldens(base):
 
 
 def test_sarifs_recommendation_and_effort_estimate_are_read_from_each_section_4_body(base):
-    """ADR-050 D2: "read from each §4 body by ``parse_compensating_controls_md``'s rule", so the two files agree by construction.
-    The text is what the shipped reader returns from the rendered file, and also the agent's own What and Effort."""
+    """ADR-050 D2: "read from each §4 body by ``parse_compensating_controls_md``'s rule", so a consumer reads one text in either file.
+    The text is what the shipped reader returns from the rendered file, and also the agent's own What and Effort. The from-disk check does not
+    take it from the file by the function that built the SARIF: it derives it again from the validated body (T067b H1; see the seeded readers
+    in ``test_capture_a_defect_in_the_reader_that_builds_the_sarifs_recommendations_fails_the_from_disk_check``)."""
     read = read_findings(base.md)
     results = results_by_id(base.sarif)
     for item in FINDINGS:
@@ -1638,6 +1645,7 @@ CHECK_FAILURES = [
     ("sarif-a-residual-the-md-does-not-have", SARIF, json_edit(set_property("S-2", "security-severity", "1.0"))),
     ("sarif-a-status-the-md-does-not-have", SARIF, json_edit(set_property("AGP-01", "control-status", "found"))),
     ("sarif-a-recommendation-the-md-does-not-have", SARIF, json_edit(set_property("T-4", "recommendation", "A different recommendation."))),
+    ("sarif-an-emptied-recommendation", SARIF, json_edit(set_property("T-4", "recommendation", ""))),   # the shape of T067b H1's loss
 ]
 
 
@@ -1989,6 +1997,24 @@ def test_template_the_sarif_template_carries_the_real_information_uri():
     require_the_1_1_template()
     document = json.loads(template_text(SARIF))
     assert document["runs"][0]["tool"]["driver"]["informationUri"] == sc.INFORMATION_URI, "FR-E.9 (#412)"
+
+
+def section_7_shape(md):
+    """Section 7 as ``[(subsection heading, the header cells of its first table or None)]``, in file order: what a reader of the file sees of its form."""
+    return [(heading, table_of(body)[0] if tables(body) else None) for heading, body in split_headings(section_text(md, "## 7. Analysis Integrity"), "### ")]
+
+
+def test_template_section_7_has_the_subsections_and_table_headers_that_the_renderer_writes(base):
+    """T067b M2. The 1.1 template is the contract for the file (NFR-1's field scope names it, and an adopter or an oracle reads it), so its Section 7 holds the
+    subsections that the renderer writes, in the renderer's order, and each table under the header that the renderer gives it: an Integrity Summary
+    (``Kind | Cause | Count``), then Finding Flags (``ID | Flag | Field | Cause``), then Input Issues, which has no table, and Assessment Inputs.
+    The controls flags compare no two values, so the table has no Stored or Rendered column, and no subsection is called Integrity Flags (the
+    template once showed an ``### Integrity Flags`` table of six columns, which the renderer never wrote)."""
+    require_the_1_1_template()
+    written = section_7_shape(base.md)
+    assert written == [("### Integrity Summary", ["Kind", "Cause", "Count"]), ("### Finding Flags", ["ID", "Flag", "Field", "Cause"]),
+                       ("### Input Issues", None), ("### Assessment Inputs", ["ID", "Field", "Value"])], "what the renderer writes"
+    assert section_7_shape(template_text(MD)) == written, "the template's Section 7 is not the form that the renderer writes"
 
 
 # =============================================================================
@@ -3027,17 +3053,61 @@ def test_fallback_a_run_with_only_risk_scores_sarif_renders_the_same_findings(st
         assert "input:delta_status:not-in-form" in results[item["id"]]["properties"]["integrity-flags"]
 
 
-def test_fallback_a_member_with_no_score_ends_the_render(stage, renderer, tmp_path):
+def plan_holding(project, name, text):
+    """Make the project's plan hold ``text`` as its input ``name``, as a plan made from ``text`` would: the file is rewritten, the plan records its
+    new digest and size, and the project takes the plan's new digest. Every batch input and part stays as it was, so this is a part set that is
+    complete and valid for the plan's own units. It is how a test reaches a refusal of the renderer that the planner now makes first (T067b M1)."""
+    plan = project.plan_json()
+    entry = plan["inputs"][name]
+    data = text.encode("utf-8")
+    Path(entry["path"]).write_bytes(data)
+    entry["sha256"], entry["bytes"] = tp.sha256_hex(data), len(data)
+    path = project.plan_dir / "plan.json"
+    path.write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
+    project.digest = tp.file_digest(path)
+
+
+def without_a_score(document):
+    """S-2's result (the first) loses its composite: ``properties.security-severity`` is the only place the scorer's SARIF holds one."""
+    del document["runs"][0]["results"][0]["properties"]["security-severity"]
+
+
+def with_a_peer_reference_only(document):
+    """R-1 loses its own result and T-4's names it in ``relatedLocations``, the legacy form: the file lists R-1 as a member that it holds no result for."""
+    results = document["runs"][0]["results"]
+    results[:] = [result for result in results if result["partialFingerprints"]["findingId/v1"] != "R-1"]
+    result_of(document, "T-4")["relatedLocations"] = [{"id": 0, "message": {"text": "R-1: " + by_id("R-1")["threat"]}}]
+
+
+BACKSTOPS = [  # (name, the finding the message names, the edit of a valid risk-scores.sarif, the reason's words)
+    ("a-member-with-no-score", "S-2", without_a_score, "holds no score from 0.0 to 10.0"),
+    ("a-member-named-only-as-a-peer-reference", "R-1", with_a_peer_reference_only, "only as a peer reference"),
+]
+
+
+@pytest.mark.parametrize("name,finding_id,edit,reason", BACKSTOPS, ids=[case[0] for case in BACKSTOPS])
+def test_fallback_backstop_the_renderer_still_refuses_a_member_that_it_cannot_score(stage, renderer, tmp_path, name, finding_id, edit, reason):
+    """T067b M1, the renderer's half. Under D8's fallback a member with no composite score, and a member that only a legacy peer reference names
+    (it has no result of its own, so no score), can't be rendered. ``plan`` refuses both before it dispatches anything (KB 22; ``test_tachi_stage.py``
+    pins that), so a plan made by this planner never holds them. The renderer keeps its own refusal as the backstop: a plan
+    from an earlier planner, or one edited by hand, can still reach it, and the render then ends with exit 2 and the finding named, before it
+    stages or replaces anything.
+
+    The part set here is complete and valid. The plan is made from the whole file, every part is written and reconciled, and then
+    ``plan_holding`` makes the plan hold the edited file, which is the plan that a planner without the refusal would have recorded."""
     project = Project(stage, renderer, tmp_path)
-    document = json.loads(sarif_input(FINDINGS))
-    del document["runs"][0]["results"][0]["properties"]["security-severity"]  # S-2's
-    use_sarif(project, json.dumps(document))
+    use_sarif(project, sarif_input(FINDINGS))
     project.earlier()
     project.prepare()
+    document = json.loads(sarif_input(FINDINGS))
+    edit(document)
+    plan_holding(project, "risk_scores", json.dumps(document))
     res = project.render()
     assert res.code == 2, res.describe()
     assert_failure_message(res, project.plan_id)
-    assert re.search(id_pattern(S2_ID), res.err), "the message names the finding: " + res.describe()
+    assert re.search(id_pattern(finding_id), res.err) and reason in res.err, "the message names the finding and says why: " + res.describe()
+    assert "Remedy: regenerate it with /tachi.risk-score" in res.err, res.describe()
+    assert not (project.plan_dir / "staged").exists(), "the refusal comes before anything is staged"
     project.assert_earlier_outputs_untouched()
 
 
@@ -3238,9 +3308,13 @@ QUOTED = "\n".join(["## 4. Recommendations", "### Assessment Inputs", "| ID | Fi
 QUOTED_S1 = QUOTED.replace("S-7", "S-1")
 CONTROL_AND_FENCE_MARKS = "x = 1\n**Detected in**: `x.py:1`\n```\n~~~\n## 2. Coverage Matrix"  # a control's own line, shorter and tilde fences, an earlier section's head
 SECTION_5_TABLE = "### Aggregate Risk Reduction\n| Metric | Value |\n|---|---|\n| Total Inherent Risk Score | 1.0 |\n| Overall Reduction | 1.0% |"  # Section 5 follows Section 3
+# T067b H1: the head of Section 4 and then the head of Section 5, quoted. A reader that finds Section 4 by a raw line, as the shipped
+# ``parse_compensating_controls_md`` does, opens it inside Section 3 and closes it on the next line, and every recommendation is lost with no error.
+SECTION_4_THEN_5 = "## 4. Recommendations\n## 5. Residual Risk Summary\nx = 1"
 PLAIN = "pool = Pool(max_per_caller=4)\npool.open()\npool.limit(4)\npool.warm()\npool.close()"  # five lines that are no heading, no row and no fence
 QUOTING = [("the-architects-five-lines", QUOTED), ("the-architects-lines-naming-a-resolved-finding", QUOTED_S1),
-           ("a-control-line-and-fence-marks", CONTROL_AND_FENCE_MARKS), ("a-section-5-table", SECTION_5_TABLE)]
+           ("a-control-line-and-fence-marks", CONTROL_AND_FENCE_MARKS), ("a-section-5-table", SECTION_5_TABLE),
+           ("section-4s-head-then-section-5s-head", SECTION_4_THEN_5)]
 
 
 def with_snippet(findings, finding_id, snippet, entry=0):
@@ -3301,7 +3375,12 @@ def test_capture_a_snippet_that_quotes_headings_or_a_table_is_read_as_neither_ov
     the "Detected in" lines of the eight after it, and a quoted ``## 4.`` has a later real one to be mistaken for.
 
     Mutation check (by hand, in a clone, results file): with the renderer's five ``match_heading`` calls on ``outside_fences=False``, run 1 of
-    every case exits 4 ("## 4. Recommendations has 2 headings" and the like). Switched off one at a time, each call is caught by a case."""
+    every case exits 4 ("## 4. Recommendations has 2 headings" and the like). Switched off one at a time, each call is caught by a case.
+
+    The last case is T067b's H1, which is the one that a SARIF ``recommendation`` shows: the snippet ends the shipped reader's Section 4
+    inside Section 3, so a SARIF built by that reader holds no recommendation at all, with exit 0 and an intact markdown. The case pins each
+    ``recommendation`` to the agent's own What to Implement, and then the whole SARIF to the one of the same project with five plain lines, so
+    a reader that takes the quoted lines for the section's own fails it."""
     findings = with_snippet(FINDINGS, "S-2", snippet)
     first = Project(stage, renderer, tmp_path / "first", findings=findings)
     res = first.run()
@@ -3322,6 +3401,10 @@ def test_capture_a_snippet_that_quotes_headings_or_a_table_is_read_as_neither_ov
     twin = run_ok(stage, renderer, tmp_path / "twin", findings=with_snippet(FINDINGS, "S-2", PLAIN))
     swapped = first.md.replace(block_of(snippet), block_of(PLAIN)).replace(tp.escape_cell(snippet, keep_slots=True), tp.escape_cell(PLAIN, keep_slots=True))
     assert without_stamp(swapped) == without_stamp(twin.md), "the quoted lines change nothing but themselves"
+    results = results_by_id(first.sarif)
+    for item in findings:   # each recommendation is the agent's own text, which a reader that lost Section 4 would leave empty (T067b H1)
+        wanted = "" if item["control"] == "found" else item["rec"]["what"]
+        assert results[item["id"]]["properties"]["recommendation"] == wanted, "the SARIF's recommendation of %s" % item["id"]
 
     def normalized(project):
         doc = copy.deepcopy(project.sarif)
@@ -3341,6 +3424,40 @@ def test_capture_a_snippet_that_quotes_headings_or_a_table_is_read_as_neither_ov
     tp.validate_stage_record(follow.record)
     assert_carried_from(WithoutFences(follow), WithoutFences(first))
     assert block_of(snippet) in follow.md and persisted(follow.md)["S-2"]["evidence"][0]["snippet"] == snippet, "the snippet came through the carry as written"
+
+
+def whole_file_recommendations(md_text):
+    """The reader that built the SARIF's ``recommendation`` before T146: the shipped ``parse_compensating_controls_md`` over the whole file,
+    which finds its Section 4 by a raw line (``^##\\s+4\\.\\s+Recommendations``, with no fence tracking)."""
+    return {canon(found["id"]): found["recommendation"] for found in tachi_parsers.parse_compensating_controls_md(md_text)["findings"]}
+
+
+SEEDED_READERS = [  # (name, the reader that replaces the renderer's, the snippet of S-2's evidence: None keeps the project's own)
+    ("the-whole-file-reader-with-a-quoted-heading", whole_file_recommendations, SECTION_4_THEN_5),
+    ("a-reader-that-finds-no-block", lambda md_text: {}, None),
+]
+
+
+@pytest.mark.parametrize("name,reader,snippet", SEEDED_READERS, ids=[case[0] for case in SEEDED_READERS])
+def test_capture_a_defect_in_the_reader_that_builds_the_sarifs_recommendations_fails_the_from_disk_check(stage, renderer, tmp_path, monkeypatch, name, reader, snippet):
+    """T067b H1, the check's half. The SARIF's ``recommendation`` is read from the rendered Section 4, so a from-disk check that read it back with the
+    same function could not see a defect in that function: the two sides would agree whatever it did. The check derives the value again from each
+    validated part body, so a reader that loses the text ends the render with exit 4, and no canonical file is replaced.
+
+    The first case seeds back the defect that H1 found (the shipped reader over the whole file, with ``SECTION_4_THEN_5`` in Section 3), and the
+    second a reader that finds nothing. Neither writes a SARIF the check accepts. (Without the seed, the same project renders with exit 0: that is
+    the first case of ``test_capture_a_snippet_that_quotes_headings_or_a_table_is_read_as_neither_over_two_runs``.)"""
+    findings = FINDINGS if snippet is None else with_snippet(FINDINGS, "S-2", snippet)
+    project = Project(stage, renderer, tmp_path, findings=findings)
+    project.earlier()
+    project.prepare()
+    monkeypatch.setattr(renderer, "_section_4_recommendations", reader)
+    res = project.render()
+    assert res.code == 4, "a completeness or parity check that fails is exit 4 (cli.md): %s" % res.describe()
+    assert_failure_message(res, project.plan_id)
+    first = "T-4"  # the first finding in S-2 order that has a Section 4 block, and so a recommendation (the message cuts a long value at 60 characters)
+    assert re.search(r"%s: the recommendation is '' in the SARIF and %s" % (id_pattern(first), re.escape("'" + by_id(first)["rec"]["what"][:20])), res.err), res.describe()
+    project.assert_earlier_outputs_untouched()
 
 
 # --------------------------------------------------------------------------- the architecture source, with no flag
