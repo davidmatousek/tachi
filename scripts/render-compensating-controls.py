@@ -36,9 +36,9 @@ that persists each finding's whole controls item, escaped on write, for the next
 **The SARIF (T053; ADR-050 D7, D8).** ``compensating-controls.sarif`` is written through the shared emitter
 (``sarif_common``), one result for each scored open finding, in Section 2's order. A correlated peer is a result like any
 other, with the ``correlation-*`` properties and ruling C's sentence; ``relatedLocations`` hold the finding's code evidence
-and nothing else. Correlation comes from Section 4a of the ``threats.md`` that the scored input's validated ``source_file``
-names (in D8's fallback, from the properties of ``risk-scores.sarif``). When that file can't be read there is no
-correlation, the stage record says why, and no key changes, because correlation is never identity. ``recommendation`` and
+that the resolver accepted, and nothing else. Correlation comes from Section 4a of the ``threats.md`` that the scored input's
+validated ``source_file`` names (in D8's fallback, from the properties of ``risk-scores.sarif``). When that file can't be read
+there is no correlation, the stage record says why, and no key changes, because correlation is never identity. ``recommendation`` and
 ``effort-estimate`` are read from the rendered Section 4 bodies by ``parse_compensating_controls_md``'s rule, so the two
 files agree by construction. ``integrity-flags`` carries ``reused-id`` over from the input, and ``maestro-layer`` is the
 value that the scorer's file holds for the finding. The result's properties are the contracted set and no other key
@@ -49,7 +49,8 @@ against the rows, before either replaces a canonical name.
 order) and the body of each Section 4 block, and the renderer fills what is computed and checks what is not.
 - Section 2. The band tables (by residual band, an empty band left out), the K8 header and the row order are the renderer's. The four
   computed cells are overwritten by column position, and each one that held anything but its own slot token is counted once, in the
-  stage record's ``corrected`` count. ``CF`` is filled from the accepted ``carried_forward`` and is never counted. The Control Status,
+  stage record's ``cell_overwrites`` (an eighth base count, ruled at W3, always written, ``0`` included, and never a flag). ``CF`` is
+  filled from the accepted ``carried_forward`` and is never counted. The Control Status,
   Control Category, Component and MAESTRO Layer cells are the agent's text: each is checked against the structured value, and a cell
   that disagrees is flagged ``input:<field>:sources-disagree`` and never rejected, because the SARIF and every total follow the
   structured value. The Threat cell is model text, escaped and nothing more.
@@ -59,6 +60,14 @@ order) and the body of each Section 4 block, and the renderer fills what is comp
   finding's, and a body that lacks one of its four keys or has them out of order, an Effort that doesn't start with ``Low``, ``Medium``
   or ``High``, or a heading or table line, reject the item, and ``reconcile`` re-dispatches the batch. This script runs ``read_part``
   again on every part it reads, so a part that fails it never reaches a row: the render stops with exit 2 and writes nothing.
+
+**An evidence file that the resolver refuses (ADR-050 D2, ruled at W3).** The part checked only the syntax of each evidence ``file``, so the
+resolver can still refuse one at render time: it is missing, a link or not a regular file. That is flagged and never refused, because the
+control analyzer copies an UNCHANGED finding's evidence verbatim, so a refusal would recur on every baseline-aware run and no re-run could
+clear it. The entry stays in Section 3, in ``control-evidence`` and in Section 7 with its ``file`` as written, because it has no canonical
+spelling, and the SARIF's ``relatedLocations`` leave it out (a result left with none has no key). The finding is flagged
+``input:evidence.file:unresolved`` once, Section 1's warning lines name it, Section 7 lists each failed entry with the resolver's check,
+and the stage record warns ``evidence-file-unresolved``, so the run exits 5. The status and every computed value follow the part.
 
 Exit codes are ``contracts/cli.md``'s: 0 done, 1 an input is missing or unreadable, 2 a validation, usage or guard
 failure (a digest or pointer mismatch, a part that fails re-validation, a forbidden character in an input), 4 a
@@ -110,8 +119,10 @@ RETRY_REMEDY = "re-run the command; the earlier outputs were left or put back as
 
 # Section 3's Threat cell is cut here before it is escaped. Section 2's is the agent's own, which cuts it at 80 (control-analyzer.md).
 THREAT_WIDTH = 80
-# The finding IDs that one row of Section 5's shift table, or one warning line of Section 1, names before "and N more".
-EXAMPLE_CAP = 5
+# The finding IDs that a list in the rendered markdown names before "and N more": Section 5's Examples cell, Section 1's warning lines and
+# Section 7's Input Issues alike. It is ``sarif_common.PEER_CAP``, the cap of ruling C's sentence, so that one convention holds across both
+# rendered markdown files (ADR-050 D2, ruled at W3, 2026-11-23).
+EXAMPLE_CAP = sc.PEER_CAP
 
 # Section 2's header: K8's order, which the part's ``matrix_row`` follows cell by cell (contracts/module-signatures.md).
 K8_HEADER = ("Threat ID", "CF", "Component", "MAESTRO Layer", "Threat", "Inherent Score", "Inherent Severity", "Control Status",
@@ -231,12 +242,9 @@ def _signed(number: int) -> str:
     return "%+d" % number if number else "0"
 
 
-def _listed(names: Sequence[str], cap: int = 5) -> str:
-    return ", ".join(names[:cap]) + (", and more" if len(names) > cap else "")
-
-
 def _named(names: Sequence[str]) -> str:
-    """The first ``EXAMPLE_CAP`` names and then ``and N more``: the form of Section 5's Examples cell and Section 1's warning lines."""
+    """The first ``EXAMPLE_CAP`` names and then ``and N more``, with N exact: the one form of a list of finding IDs in this file, in Section 1,
+    Section 5, Section 7's Input Issues, the stage record's warning for an evidence file and a check's message. There is no tail at the cap or below."""
     return ", ".join(names[:EXAMPLE_CAP]) + (" and %d more" % (len(names) - EXAMPLE_CAP) if len(names) > EXAMPLE_CAP else "")
 
 
@@ -377,7 +385,8 @@ class Row(object):
         self.residual = ts.residual_score(inherent, self.factor)
         self.residual_band = ts.band(self.residual)
         self.carried = False                               # the agent's carried_forward, once the renderer has accepted it
-        self.paths: List[str] = []                         # each evidence entry's canonical path, under the target
+        self.paths: List[str] = []                         # each evidence entry's path as both rendered files print it: canonical where the resolver accepted the file, as written where it did not
+        self.unresolved: List[Tuple[int, str, str]] = []   # ``(entry index, file as written, the resolver's check)`` for each evidence entry whose file it refused
         self.agent_cells: List[str] = []                   # the agent's matrix_row, split into its 11 cells
         self.overwritten = 0                               # how many of its four computed cells held anything but their slot token
         self.persisted: Dict[str, str] = {}                # narrative address -> the validated, slotted text that Section 7 carries
@@ -388,6 +397,15 @@ class Row(object):
     def cf(self) -> str:
         """Section 2's ``CF`` cell: the renderer's, from the accepted ``carried_forward`` (ruled at W3, never counted)."""
         return "CF" if self.carried else DASH
+
+    @property
+    def located(self) -> List[Tuple[int, Mapping[str, Any]]]:
+        """``(entry index, entry)`` for each evidence entry whose file the resolver accepted: the entries that have a ``relatedLocations`` entry.
+
+        The SARIF's ``id`` of a location is its entry's index, so it still names the entry's place in ``control-evidence`` when an earlier entry has none.
+        """
+        refused = {index for index, _file, _check in self.unresolved}
+        return [(index, entry) for index, entry in enumerate(self.item["evidence"]) if index not in refused]
 
     @property
     def matrix_row(self) -> str:
@@ -451,7 +469,7 @@ class Run(object):
         self.rescan_scope = "full"
         self.overwritten = 0                                # the computed cells of Section 2 that the renderer overwrote, over every row (R-34)
         self.inherent_total = self.residual_total = Decimal("0.0")
-        self.evidence_cache: Dict[str, Any] = {}            # an evidence entry's ``file`` as written -> ``sc.resolve_file``'s answer (path and URI)
+        self.evidence_cache: Dict[str, Any] = {}            # an evidence entry's ``file`` as written -> ``sc.resolve_file``'s answer (path and URI), for the files it accepted
 
     def warn(self, code: str, detail: str) -> None:
         self.warnings.append(_warning(code, detail))
@@ -653,16 +671,32 @@ def _members_from_markdown(run: Run, entry: Mapping[str, Any], raw: bytes, kept:
     return members
 
 
-def _sarif_details(text: str) -> Dict[str, Dict[str, Any]]:
-    """Each result's identity text by canonical ID: its ID as the file spells it, component, threat and MAESTRO layer, and
+def _logical_location(result: Mapping[str, Any]) -> Mapping[str, Any]:
+    """A result's logical location, in the order that ``tachi_parsers.parse_sarif_member_set`` reads it (its own helper stays private):
+    ``locations[0].logicalLocations[0]``, else the singular ``locations[0].logicalLocation`` that tachi's older scorer and controls SARIF
+    write (ADR-050 D8, ruled at W3, 7a), else ``{}``. It is one object either way, and a value that isn't an object doesn't count."""
+    locations = result.get("locations")
+    location = locations[0] if isinstance(locations, list) and locations else None
+    if not isinstance(location, dict):
+        return {}
+    plural = location.get("logicalLocations")
+    plural = plural[0] if isinstance(plural, list) and plural else None
+    logical = plural if isinstance(plural, dict) else location.get("logicalLocation")
+    return logical if isinstance(logical, dict) else {}
+
+
+def _sarif_details(text: str, shared: Mapping[str, Mapping[str, Optional[str]]]) -> Dict[str, Dict[str, Any]]:
+    """Each member's identity text by canonical ID: its ID as the file spells it, component, threat and MAESTRO layer, and
     what the SARIF needs besides: the mitigation, the DFD kind, the zone, and whether the scorer flagged the ID as reused.
 
-    D8's fallback reads them from the member's own result (P0-3): the component from ``logicalLocations[0].name``, else
-    ``properties.component``, the threat from ``message.text`` (less ruling C's sentence, which this file writes for itself),
-    the mitigation from ``message.markdown`` and the layer from ``maestro-layer``. The kind and the zone are the logical
-    location's own (its ``fullyQualifiedName`` is ``<zone>/<component>``), and ``reused`` is the ``reused-id`` flag in
-    ``score-flags`` (ruling B). The ID is the result's ``findingId/v1``, or ``properties.id`` where tachi's older SARIF has no
-    fingerprint.
+    ``shared`` is ``parse_sarif_member_set(..., with_details=True)["details"]``, D8's one reading of a member's own result (P0-3; ruled
+    at W3, 7a): the component from the logical location's ``name``, else ``properties.component``, the threat from ``message.text``,
+    the mitigation from ``message.markdown``, the layer from ``maestro-layer`` and the kind from the logical location's ``kind``, each
+    as written or ``None``. Neither renderer reads a result a second way, so this takes from the same result only what ``shared``
+    lacks: the ID (the result's ``findingId/v1``, or ``properties.id`` where tachi's older SARIF has no fingerprint), the zone (the
+    logical location's ``fullyQualifiedName`` is ``<zone>/<component>``, read from the object the component came from) and ``reused``
+    (the ``reused-id`` flag in ``score-flags``, ruling B). The threat also loses ruling C's sentence, which this file writes for
+    itself, and the kind is read back through ``KIND_SPELLINGS``, so that ``data-store`` is ``data``.
     """
     try:
         results = json.loads(text)["runs"][0].get("results", [])
@@ -679,25 +713,19 @@ def _sarif_details(text: str) -> Dict[str, Dict[str, Any]]:
             identifier = properties.get("id")
         if not tp.id_matches("finding", identifier):
             continue
-        try:
-            location = result["locations"][0]
-            logical = (location.get("logicalLocations") or [location.get("logicalLocation") or {}])[0]
-        except (KeyError, IndexError, TypeError, AttributeError):
-            logical = {}
-        message = result.get("message") if isinstance(result.get("message"), dict) else {}
-
-        def text_of(value: Any) -> str:
-            return value if isinstance(value, str) else ""
-
-        component = text_of(logical.get("name")) or text_of(properties.get("component"))
-        qualified = text_of(logical.get("fullyQualifiedName"))
+        canonical = tp.canonical_finding_id(identifier)
+        if canonical in found or canonical not in shared:   # the first result of an ID, as ``shared`` has it, and none for an ID that has no result of its own
+            continue
+        own = shared[canonical]
+        component = own["component"] or ""
+        qualified = _logical_location(result).get("fullyQualifiedName")
+        qualified = qualified if isinstance(qualified, str) else ""
         flags = properties.get("score-flags")
-        found.setdefault(tp.canonical_finding_id(identifier), {
-            "id": identifier, "component": component, "threat": _CORRELATION_TAIL.sub("", text_of(message.get("text"))),
-            "layer": text_of(properties.get("maestro-layer")), "mitigation": text_of(message.get("markdown")),
-            "kind": KIND_SPELLINGS.get(text_of(logical.get("kind")), DEFAULT_KIND),
+        found[canonical] = {
+            "id": identifier, "component": component, "threat": _CORRELATION_TAIL.sub("", own["threat"] or ""), "layer": own["layer"] or "",
+            "mitigation": own["mitigation"] or "", "kind": KIND_SPELLINGS.get(own["kind"] or "", DEFAULT_KIND),
             "zone": qualified[:-len(component) - 1] if component and qualified.endswith("/" + component) else "",
-            "reused": isinstance(flags, list) and REUSED_FLAG in flags})
+            "reused": isinstance(flags, list) and REUSED_FLAG in flags}
     return found
 
 
@@ -708,16 +736,17 @@ def _members_from_sarif(run: Run, entry: Mapping[str, Any], raw: bytes, kept: st
     legacy peer reference) has no score, so it can't be rendered. The file records no status, so every member lacks
     ``delta_status`` (S-12(b)) and is flagged ``input:delta_status:not-in-form``. A member's own result also gives what
     this file's SARIF repeats: its MAESTRO layer (``Unclassified`` when the result holds none, gap B), mitigation, DFD kind,
-    zone and ``reused-id`` flag. The groups are the file's own correlation properties, and a group that names no ID is kept
-    in ``run.groups`` for ``_prepare`` to count.
+    zone and ``reused-id`` flag, read by the shared reader (``with_details``) except the zone and the flag (``_sarif_details``).
+    The groups are the file's own correlation properties, and a group that names no ID is kept in ``run.groups`` for
+    ``_prepare`` to count.
     """
     name = os.path.basename(entry["path"])
     try:
         text = raw.decode("utf-8")
-        found = tachi_parsers.parse_sarif_member_set(text, with_scores=True)
+        found = tachi_parsers.parse_sarif_member_set(text, with_scores=True, with_details=True)
     except (UnicodeDecodeError, ValueError) as exc:
         raise RenderError(2, "%s holds no findings to assess: %s" % (name, str(exc)[:200]), "regenerate it with /tachi.risk-score", kept=kept) from None
-    details = _sarif_details(text)
+    details = _sarif_details(text, found["details"])
     run.groups = found["groups"]
     members = []
     for canonical in sorted(found["members"], key=tp.finding_sort_key):
@@ -958,19 +987,22 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
 # Computing the rows
 # =============================================================================
 
-def _evidence_path(run: Run, row: Row, index: int, file: str, kept: str) -> str:
-    """The canonical spelling of an evidence entry's ``file``, checked against the target (ADR-050 D7, F16).
+def _evidence_path(run: Run, row: Row, index: int, file: str) -> str:
+    """The spelling of an evidence entry's ``file`` that both rendered files print, checked against the target (ADR-050 D7, F16).
 
-    ``resolve_file`` walks the target without following a link, so a file that is missing, a link or not a regular file
-    is refused. The part only checked the syntax, because the target's files are not its input. Both rendered files
-    print the canonical spelling, so they agree.
+    ``resolve_file`` walks the target without following a link, so a file that is missing, a link or not a regular file is refused.
+    The part only checked the syntax, because the target's files are not its input. A file that it accepts takes its canonical spelling,
+    and is cached for the SARIF's ``relatedLocations``. One that it refuses has no canonical spelling: the entry is kept as written,
+    recorded on the row as ``(entry index, file, check)`` and left out of ``relatedLocations``. It is flagged, never refused (ruled at
+    W3, question 5), because the control analyzer copies an UNCHANGED finding's evidence verbatim, so a refusal would recur on every
+    later run once a file moves, and no re-run could clear it.
     """
     if file not in run.evidence_cache:
         try:
             run.evidence_cache[file] = sc.resolve_file(file, root=str(run.target))
         except sc.PathCheckError as exc:
-            raise RenderError(2, "evidence %d of %s names a file that is not usable under the target (%s)" % (index + 1, row.finding_id, exc.check),
-                              "re-run the command: the control analyzer must cite regular files that exist under the target", kept=kept) from None
+            row.unresolved.append((index, file, exc.check))
+            return file
     return run.evidence_cache[file].path
 
 
@@ -1055,7 +1087,7 @@ def _score(run: Run, members: Sequence[Mapping[str, Any]], items: Mapping[str, M
     """Make every row: the input's identity, the agent's judgment, and every number computed (D2, D5)."""
     extra = sorted(set(items) - run.open_ids, key=tp.finding_sort_key)
     if extra:
-        run.issues.append("The parts hold items for findings that the scored input doesn't list as open, so they are not rendered: %s" % _listed(extra))
+        run.issues.append("The parts hold items for findings that the scored input doesn't list as open, so they are not rendered: %s" % _named(extra))
     cleared: List[Tuple[str, str]] = []
     for member in members:
         item = items.get(member["canon"])
@@ -1067,7 +1099,11 @@ def _score(run: Run, members: Sequence[Mapping[str, Any]], items: Mapping[str, M
         run.rows.append(row)
         row.agent_cells = tp.matrix_row_cells(item["matrix_row"])   # 11 cells, the first this finding's ID: ``read_part`` has checked it (D3 step 9)
         _check_cells(run, row)
-        row.paths = [_evidence_path(run, row, index, entry["file"], kept) for index, entry in enumerate(item["evidence"])]
+        row.paths = [_evidence_path(run, row, index, entry["file"]) for index, entry in enumerate(item["evidence"])]
+        if row.unresolved:   # W3 question 5: the finding is flagged once however many entries fail, and Section 7 lists each failed entry
+            row.flags.append(Flag("input", "evidence.file", "unresolved"))
+            run.issues += ["%s: evidence entry %d, %s, is not a usable file under the target (%s), so it is kept as written and has no relatedLocations entry"
+                           % (row.finding_id, number + 1, ascii(_shorten(file, 80)), check) for number, file, check in row.unresolved]
         if item["carried_forward"]:   # accepted only for an UNCHANGED finding with a resolved baseline controls file (D2); else cleared
             if not run.baseline_resolved:
                 cleared.append((row.finding_id, "no baseline %s resolved" % MD))
@@ -1085,9 +1121,13 @@ def _score(run: Run, members: Sequence[Mapping[str, Any]], items: Mapping[str, M
             row.flags.append(Flag("reused-id", "finding_id", "baseline"))
         seen: set = set()   # a finding carries each flag once, whichever step raised it
         row.flags = [flag for flag in row.flags if not (flag.text() in seen or seen.add(flag.text()))]
+    refused = [row for row in run.rows if row.unresolved]
+    if refused:   # ruled at W3: the run finishes with exit 5, and the warning counts the entries and the findings and names up to ``EXAMPLE_CAP`` of them
+        run.warn("evidence-file-unresolved", "%d evidence entries of %d findings name a file that the resolver refuses under the target, so each is kept as written "
+                 "and has no relatedLocations entry: %s" % (sum(len(row.unresolved) for row in refused), len(refused), _named([row.finding_id for row in refused])))
     if cleared:
         run.issues.append("%d findings had carried_forward cleared (%s), so they count as scanned: %s" % (
-            len(cleared), "carried_forward is accepted only for an UNCHANGED finding when a baseline %s resolved" % MD, _listed([name for name, _why in cleared])))
+            len(cleared), "carried_forward is accepted only for an UNCHANGED finding when a baseline %s resolved" % MD, _named([name for name, _why in cleared])))
         run.warn("carried-forward-cleared", "the control analyzer set carried_forward on %d findings that can't be carried (%s), such as %s"
                  % (len(cleared), cleared[0][1], ", ".join(name for name, _why in cleared[:5])))
     run.carry_forward_count = sum(1 for row in run.rows if row.carried) if run.baseline_resolved else None
@@ -1182,6 +1222,11 @@ def _md_section_1(run: Run, out: List[str], scoring: str) -> None:
         out += ["> For %d finding(s), the control analyzer's own Control Status, Control Category, Component or MAESTRO Layer cell in Section 2 "
                 "disagrees with its structured result or the scored input: %s. Section 2 shows the cell as the analyzer wrote it, and the SARIF "
                 "and every total follow the structured value." % (len(disagree), _named(disagree)), ""]
+    unresolved = [row.finding_id for row in run.rows if row.unresolved]
+    if unresolved:
+        out += ["> For %d finding(s), an evidence file is not a usable regular file under the target: %s. Section 3 and the SARIF's control-evidence "
+                "show each as the control analyzer wrote it, the SARIF's relatedLocations leave it out, and Section 7 gives the resolver's check."
+                % (len(unresolved), _named(unresolved)), ""]
     if run.issues:
         out += ["> %d input issue(s) are listed in Section 7." % len(run.issues), ""]
 
@@ -1501,8 +1546,9 @@ def _properties(row: Row, recommendation: str, effort: str) -> Dict[str, Any]:
 
     The emitter appends the ``correlation-*`` keys of a group member. Scores are strings with one decimal place, and
     ``security-severity`` is the residual score (the markdown's Section 2 shows the same numbers). ``control-carry-forward`` is a
-    JSON boolean, the renderer's accepted value. ``control-evidence`` repeats the finding's evidence in its canonical spelling.
-    ``maestro-layer`` is the value that the scorer file writes for the finding (gap B). The flags are always present and sorted.
+    JSON boolean, the renderer's accepted value. ``control-evidence`` repeats the finding's evidence in its canonical spelling, and an
+    entry whose file the resolver refused as the agent wrote it (W3, question 5). ``maestro-layer`` is the value that the scorer file
+    writes for the finding (gap B). The flags are always present and sorted.
     """
     return {
         "security-severity": _one(row.residual), "control-status": row.control,
@@ -1517,13 +1563,14 @@ def _render_sarif(run: Run, digest: str, md_text: str) -> str:
 
     The message is the finding's threat text and its control status, and its ``markdown`` is the reference set's mitigation
     (``""`` when there is none, which is still written: P0-8). A correlated finding gets the group's properties and ruling C's
-    sentence. ``relatedLocations`` are the finding's evidence, in the resolver's spelling. The level follows the residual band.
+    sentence. ``relatedLocations`` are the finding's evidence in the resolver's spelling, leaving out an entry whose file the resolver
+    refused (a result left with none has no key; each location's ``id`` is its entry's index). The level follows the residual band.
     """
     texts = _read_recommendations(md_text)
     results = []
     for row in run.by_residual:
         evidence = [sc.evidence_location(index, CATEGORY_NAME[row.control_category], run.evidence_cache[entry["file"]], entry["line"])
-                    for index, entry in enumerate(row.item["evidence"])]
+                    for index, entry in row.located]
         results.append(sc.build_result(
             tool=TOOL, finding_id=row.finding_id, message="%s [Control: %s]" % (row.threat, row.control), markdown=row.mitigation,
             level=sc.level_for_band(row.residual_band), uri=run.uri, component=row.component, zone=row.zone, kind=row.kind,
@@ -1715,10 +1762,10 @@ def _check_persisted(run: Run, md_text: str) -> List[str]:
     expected = {row.canon: _expected_input(row) for row in run.rows}
     if set(read["inputs"]) != set(expected):
         problems.append("the next run would read %d of the %d persisted results (missing: %s)" % (
-            len(set(read["inputs"]) & set(expected)), len(expected), _listed(sorted(set(expected) - set(read["inputs"]), key=tp.finding_sort_key))))
+            len(set(read["inputs"]) & set(expected)), len(expected), _named(sorted(set(expected) - set(read["inputs"]), key=tp.finding_sort_key))))
     changed = sorted((canonical for canonical in set(read["inputs"]) & set(expected) if read["inputs"][canonical] != expected[canonical]), key=tp.finding_sort_key)
     if changed:
-        problems.append("the next run would read another result than was written for %d finding(s): %s" % (len(changed), _listed(changed)))
+        problems.append("the next run would read another result than was written for %d finding(s): %s" % (len(changed), _named(changed)))
     return problems
 
 
@@ -1805,7 +1852,7 @@ def _check_sarif(run: Run, rendered: str, text: str, md_text: str, matrix: Seque
         properties = result["properties"]
         recommendation, effort = texts.get(row.canon, ("", ""))
         evidence = [{"file": path, "line": entry["line"], "snippet": entry["snippet"]} for path, entry in zip(row.paths, row.item["evidence"])]
-        wanted_related = [(run.evidence_cache[entry["file"]].uri, entry["line"]) for entry in row.item["evidence"]]
+        wanted_related = [(run.evidence_cache[entry["file"]].uri, entry["line"]) for _index, entry in row.located]   # none for an entry whose file was refused
         pairs = (("security-severity", properties.get("security-severity"), cell[9]), ("residual-risk", properties.get("residual-risk"), cell[9]),
                  ("inherent-risk", properties.get("inherent-risk"), cell[5]),
                  ("control-status", properties.get("control-status"), row.control),
@@ -1927,16 +1974,14 @@ def _undeclared(out: str, plan: Mapping[str, Any]) -> Tuple[List[str], List[Dict
 def _write_record(run: Run, out: str, plan: Mapping[str, Any], digest: str, files: Iterable[str], kept: str) -> Dict[str, Any]:
     undeclared, extra = _undeclared(out, plan)
     warnings = run.warnings + extra
+    # The eighth base count, ``cell_overwrites``, is this renderer's alone and always written, ``0`` included (ADR-050 D2, ruled at W3): the computed
+    # Section 2 cells, over every row, that held anything but their own slot token. It is no flag, so it adds to no flag kind's count.
     counts: Dict[str, int] = {"units": plan["unit_count"], "open": len(run.rows), "resolved": run.resolved_count, "rendered": len(run.rows),
                               "parse_errors": len(run.issues), "narrative_fallbacks": run.counts["narrative_fallbacks"],
-                              "truncations": run.counts["truncations"]}
+                              "truncations": run.counts["truncations"], "cell_overwrites": run.overwritten}
     for row in run.rows:
         for flag in row.flags:
             counts[flag.kind] = counts.get(flag.kind, 0) + 1
-    if run.overwritten:   # D2: "overwritten and counted in the stage record"; each overwritten cell is one correction of the agent's value
-        # AOD-SIMPLIFICATION: the overwrite count is added to the ``corrected`` count — upgrade: a dedicated key in ``tachi_parts.COUNT_KEYS``
-        # (and ``part-files.md`` section 5) once the architect rules one, because the closed set has none.
-        counts["corrected"] = counts.get("corrected", 0) + run.overwritten
     events, retries = tp.retry_history(STAGE, out, dict(plan))
     batches = plan["batches"]
     record = {
