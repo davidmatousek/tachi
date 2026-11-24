@@ -140,7 +140,7 @@ Every band table uses the one schema below, in this column order. The four compu
 | **Threat ID** | The finding's ID. An ID that isn't the finding's own rejects the finding's item in the part. |
 | **CF** | `CF` when the finding's control result was carried forward from the baseline (an UNCHANGED finding), and `—` when it was assessed in this run. The renderer fills this cell, and `carry_forward_count` counts the `CF` rows. |
 | **Component** | The component name from the threat model. The renderer checks the agent's cell against it. |
-| **MAESTRO Layer** | The finding's MAESTRO layer as the scored input records it, or `Unclassified`. The renderer checks the cell by layer code (`L1` to `L7`) against the layer that the SARIF writes as `maestro-layer`. |
+| **MAESTRO Layer** | The finding's MAESTRO layer. The agent copies its unit row's `layer`, which is `Unclassified` when no input records a layer. The renderer checks the cell by layer code (`L1` to `L7`) against the layer that the SARIF writes as `maestro-layer`. |
 | **Threat** | The threat description, cut to 80 characters. This is the agent's text. |
 | **Inherent Score** | The finding's composite score from this run's `risk-scores.md`, to one decimal. It is never re-scored. |
 | **Inherent Severity** | The band of the inherent score: Critical (9.0-10.0), High (7.0-8.9), Medium (4.0-6.9) or Low (0.0-3.9). |
@@ -381,19 +381,27 @@ Analysis draws on the following inputs:
 
 ## 7. Analysis Integrity
 
-What the renderer checked, flagged or could not use, and the controls inputs it persists for the next run. A run with nothing to flag has an empty Integrity Flags table and no input issues.
+What the renderer checked, flagged or could not use, and the controls inputs it persists for the next run. A run with nothing to flag has empty Integrity Summary and Finding Flags tables and no input issues.
 
-### Integrity Flags
+### Integrity Summary
 
-| ID | Flag | Field | Stored | Rendered | Cause |
-|----|------|-------|--------|----------|-------|
-| {id} | {kind} | {field} | {stored_value} | {rendered_value} | {cause} |
+| Kind | Cause | Count |
+|------|-------|-------|
+| {kind} | {cause} | {count} |
 
-One row for each flag, in finding ID order (prefix rank `S`, `T`, `R`, `I`, `D`, `E`, `AG`, `AGP`, `LLM`, `OI`, `MI`, `TE`, then the numeric suffix as an integer). A flag is a `kind:field:cause` string, and the finding's SARIF `integrity-flags` property carries the same strings, sorted. `Stored` is the value that the agent's part or the input held and `Rendered` is the value this file shows, where a flag compares two values, and both read `—` otherwise. The renderer raises a flag when a Section 2 cell that it only checks (the Component, MAESTRO Layer, Control Status or Control Category) disagrees with the structured judgment or the input, when a narrative field breaks the slot rules and takes its fixed sentence, when a prose field is cut at its length limit, and when the scored input flags a finding whose ID the baseline used. The SARIF and every total follow the structured value, never the cell that disagrees.
+The table counts the flags of Finding Flags by kind and cause: one row for each pair that occurs, in the order of the kinds (`corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `retagged`, `reused-id`, `input`), then by cause.
+
+### Finding Flags
+
+| ID | Flag | Field | Cause |
+|----|------|-------|-------|
+| {id} | {kind} | {field} | {cause} |
+
+One row for each flag, in finding ID order (prefix rank `S`, `T`, `R`, `I`, `D`, `E`, `AG`, `AGP`, `LLM`, `OI`, `MI`, `TE`, then the numeric suffix as an integer), and within a finding by kind, field and cause. A flag is a `kind:field:cause` string, and the finding's SARIF `integrity-flags` property carries the same strings, sorted. No controls flag records a stored and a rendered value, so the table has no columns for them. The renderer raises a flag when a Section 2 cell that it only checks (the Component, MAESTRO Layer, Control Status or Control Category) disagrees with the structured judgment or the input, when a narrative field breaks the slot rules and takes its fixed sentence, when a prose field is cut at its length limit, when an evidence entry's `file` doesn't resolve to a file under the target (`input:evidence.file:unresolved`), when the threat model's Section 7 form lacks a value that the run uses (`input:<field>:not-in-form`), and when the scored input flags a finding whose ID the baseline used. The SARIF and every total follow the structured value, never the cell that disagrees.
 
 ### Input Issues
 
-Rows and files that the renderer couldn't read or fully use, one entry each, naming the file, the section and the problem: a row of the scored input that has no usable form, and a finding ID that the scored input lists twice. `None.` when there are none.
+Rows and files that the renderer couldn't read or fully use, one entry each, naming the file, the section and the problem: a row of the scored input that has no usable form, a finding ID that the scored input or the threat model lists twice, the values that the threat model's Section 7 form lacks, and each evidence entry whose `file` doesn't resolve under the target, which keeps its text and gets no `relatedLocations` entry. `None.` when there are none.
 
 ### Assessment Inputs
 

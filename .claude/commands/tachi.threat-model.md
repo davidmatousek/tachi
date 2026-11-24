@@ -57,6 +57,8 @@ Single-command entry point for tachi threat modeling. Validates prerequisites, i
 - `threat-report.md` — narrative report with executive summary and remediation roadmap
 - `attack-trees/` — Mermaid attack tree per Critical/High finding
 
+**Paths go in single quotes**: put each path into its call between the single quotes that the call shows, so the shell expands nothing in it. Inside quotes the shell doesn't expand a leading `~` either, so write the home directory's path in its place. A path that holds a single quote can't be quoted this way: stop there, and print the path.
+
 ## Step 1: Validate Prerequisites
 
 1. **Check tachi agents and scripts are installed**:
@@ -138,8 +140,8 @@ Single-command entry point for tachi threat modeling. Validates prerequisites, i
    `## Affected Assets` block (per-finding asset-sensitivity tags) into threats.md:
 
        python3 scripts/populate-affected-assets.py \
-         --architecture {output_dir}/architecture.md \
-         --threats {output_dir}/threats.md
+         --architecture '{output_dir}/architecture.md' \
+         --threats '{output_dir}/threats.md'
 
    The populator is the single value authority — do NOT author the
    `## Affected Assets` block or guess/assign any finding's `affected_assets`
@@ -182,8 +184,8 @@ records provenance only — it never re-scores.
 ```bash
 # Append/upsert the deterministic affected_assets block into threats.md
 python3 scripts/populate-affected-assets.py \
-  --architecture {output_dir}/architecture.md \
-  --threats {output_dir}/threats.md
+  --architecture '{output_dir}/architecture.md' \
+  --threats '{output_dir}/threats.md'
 ```
 
 2. The block is **always written**, even when the architecture carries no asset
@@ -213,7 +215,7 @@ python3 scripts/populate-affected-assets.py \
 1. Run the shipped upsert with this command's own architecture path, the `{architecture_path}` that Step 0 resolved, and never the snapshot in `{output_dir}`:
 
 ```bash
-python3 scripts/tachi-stage.py architecture-source --threats {output_dir}/threats.md --architecture {architecture_path}
+python3 scripts/tachi-stage.py architecture-source --threats '{output_dir}/threats.md' --architecture '{architecture_path}'
 ```
 
 2. It writes one `**Architecture source**` line into `threats.md`, between the frontmatter and the first `## ` heading, naming the path in its canonical repo-relative spelling. When the path fails its checks, it removes any such line already in the file, including one the orchestrator wrote, and prints a warning. A second run changes no byte.

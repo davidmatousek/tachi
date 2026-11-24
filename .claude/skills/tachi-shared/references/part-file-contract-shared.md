@@ -189,7 +189,7 @@ Every payload string has exactly one class.
 
 **Carried text.** The renderers persist each narrative field's validated, slotted text, escaped on write, in `risk-scores.md` section 6, `### Scoring Inputs`, and in `compensating-controls.md` section 7, `### Assessment Inputs`. Carried text is decoded first, then re-validated as narrative and re-resolved against this run's values, with the per-field fallback. Only legacy prose, which has no slots, is evidence.
 
-**Every string** is at most 16,384 characters. It holds no control character except newline and tab, and none of U+2028, U+2029, U+200E, U+200F, U+061C, U+202A to U+202E or U+2066 to U+2069. A string that breaks this rejects the part, with one exception: over-limit prose is cut at its own limit first, at any length, and these checks run on what is kept. A forbidden character beyond a cut is cut away with the rest, and one inside the kept text rejects the part.
+**Every string** is at most 16,384 characters. It holds no control character except newline and tab, and none of U+2028, U+2029, U+200E, U+200F, U+061C, U+202A to U+202E, U+2066 to U+2069 or the Unicode tag characters U+E0000 to U+E007F. A string that breaks this rejects the part, with one exception: over-limit prose is cut at its own limit first, at any length, and these checks run on what is kept. A forbidden character beyond a cut is cut away with the rest, and one inside the kept text rejects the part.
 
 ---
 
@@ -498,7 +498,7 @@ The model keeps no state of its own. The reconciler classifies each batch from t
 ### Limits
 
 - At most 16 batches are in flight per wave, which leaves margin under the platform's limit of 20.
-- **Wait for completion.** The Agent tool has no option to wait for an agent inline, so every dispatch runs in the background, and a dispatcher waits by ending its turn and resuming on each completion notice. The rule is ADR-050 D6's (its dated note under "Limits"), word for word: "Run `reconcile` only after every agent in the wave has reported completion. While an agent you dispatched is still running, don't run the renderer, report a result or end the stage. If you end your turn to wait, resume this loop on each completion notice."
+- **Wait for completion.** The Agent tool has no option to wait for an agent inline, so every dispatch runs in the background, and a dispatcher waits by ending its turn and resuming on each completion notice. The rule is ADR-050 D6's (its dated note under "Limits"), word for word: "Dispatch every wave that `plan` or the latest `reconcile` listed, in order, before you run `reconcile`. Run `reconcile` once, after every agent of those waves has reported completion. While an agent you dispatched is still running, don't run the renderer, report a result or end the stage. If you end your turn to wait, resume this loop on each completion notice."
 - The scorer and controls dispatch one layer below the main session.
 
 ### Stage record keys

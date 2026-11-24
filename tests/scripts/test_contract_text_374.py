@@ -1815,13 +1815,21 @@ STAGE_SCRIPT = SCRIPTS_DIR / "tachi-stage.py"
 PYTHON_STOP_MESSAGE = ("PYTHON 3.9+ NOT FOUND \u2014 tachi renders this stage with Python 3.9 or later "
                        "(found: {version, or none}); install it and re-run")
 
-# ADR-050 D6's dated note (2026-11-22, T023): Claude Code's Agent tool has no foreground option, so a command waits by
-# ending its turn and resuming on each completion notice. These three sentences replace the word "foreground", and the
-# commands carry them word for word.
+# ADR-050 D6's dated note (2026-11-22, T023; amended at W4 by T146, from T067b's H2): Claude Code's Agent tool has no
+# foreground option, so a command waits by ending its turn and resuming on each completion notice. These four sentences
+# replace the word "foreground". Both commands, the shared part-file contract and the note carry them word for word. The
+# first two run `reconcile` once, after every listed wave: a `reconcile` between waves spends a retry on every batch not yet
+# dispatched, because a batch that was never dispatched looks like one whose agent wrote nothing.
 COMPLETION_RULE = (
-    "Run `reconcile` only after every agent in the wave has reported completion. "
+    "Dispatch every wave that `plan` or the latest `reconcile` listed, in order, before you run `reconcile`. "
+    "Run `reconcile` once, after every agent of those waves has reported completion. "
     "While an agent you dispatched is still running, don't run the renderer, report a result or end the stage. "
     "If you end your turn to wait, resume this loop on each completion notice.")
+# The first wording, which reads as one `reconcile` after each wave (T067b's H2), as the commands said it and as the note
+# paraphrased it. No copy of either may survive. Step 3's "start a wave only after every agent of the wave before it" orders
+# the waves, and stays.
+PER_WAVE_WORDINGS = ("`reconcile` only after every agent in the wave", "`reconcile` only after every agent of the wave")
+ADR_050 = "docs/architecture/02_ADRs/ADR-050-large-architecture-output-authority.md"
 
 # A script that a W2 text names and that lane R1 writes in the same wave. T047 wires it into INSTALL_MANIFEST.md
 # after the lanes return, so until the script is in the tree, naming it is allowed. Once the file exists, only
@@ -1839,17 +1847,26 @@ SCRIPT_EXITS = {
 
 RISK_SCORE_CALLS = [
     "python3 scripts/tachi-stage.py --version",
-    "python3 scripts/populate-affected-assets.py --architecture {architecture_path} --threats {input_file}",
-    "python3 scripts/tachi-stage.py plan --stage risk-score --out {output_dir} --date {scoring_date} --threats {input_dir}/threats.md",
-    "python3 scripts/tachi-stage.py reconcile --stage risk-score --out {output_dir} --plan {plan_id} --plan-digest {plan_digest}",
-    "python3 scripts/render-risk-scores.py --out {output_dir} --plan {plan_id} --plan-digest {plan_digest}",
-    "python3 scripts/tachi-stage.py fail --stage risk-score --out {output_dir} --plan {plan_id} --plan-digest {plan_digest} --reason {reason}",
+    "python3 scripts/populate-affected-assets.py --architecture '{architecture_path}' --threats '{input_file}'",
+    "python3 scripts/tachi-stage.py plan --stage risk-score --out '{output_dir}' --date {scoring_date} --threats '{input_dir}/threats.md'",
+    "python3 scripts/tachi-stage.py reconcile --stage risk-score --out '{output_dir}' --plan {plan_id} --plan-digest {plan_digest}",
+    "python3 scripts/render-risk-scores.py --out '{output_dir}' --plan {plan_id} --plan-digest {plan_digest}",
+    "python3 scripts/tachi-stage.py fail --stage risk-score --out '{output_dir}' --plan {plan_id} --plan-digest {plan_digest} --reason {reason}",
 ]
 THREAT_MODEL_CALLS = [
     "python3 scripts/tachi-stage.py --version",
-    "python3 scripts/populate-affected-assets.py --architecture {output_dir}/architecture.md --threats {output_dir}/threats.md",
-    "python3 scripts/tachi-stage.py architecture-source --threats {output_dir}/threats.md --architecture {architecture_path}",
+    "python3 scripts/populate-affected-assets.py --architecture '{output_dir}/architecture.md' --threats '{output_dir}/threats.md'",
+    "python3 scripts/tachi-stage.py architecture-source --threats '{output_dir}/threats.md' --architecture '{architecture_path}'",
 ]
+
+# T068's S7-2: every path that a command puts into a `python3` call goes in single quotes, so the shell expands nothing in it,
+# whatever name the scanned repository gives a directory. Double quotes would still run `$(` and backticks. These placeholders
+# are a script's own output or a date the command computes, so they stay bare. Each command states the rule once, in these words.
+BARE_PLACEHOLDERS = frozenset({"{plan_id}", "{plan_digest}", "{reason}", "{scoring_date}", "{analysis_date}"})
+PATH_QUOTING_RULE = (
+    "**Paths go in single quotes**: put each path into its call between the single quotes that the call shows, so the shell "
+    "expands nothing in it. Inside quotes the shell doesn't expand a leading `~` either, so write the home directory's path in "
+    "its place. A path that holds a single quote can't be quoted this way: stop there, and print the path.")
 
 
 def shipped_or_wired_by_t047() -> Set[str]:
@@ -1865,6 +1882,21 @@ def calls(text: str) -> List[str]:
             lines = [line for line in fence.body.splitlines() if line.strip() and not line.strip().startswith("#")]
             found.append(" ".join(re.sub(r"\\\n\s*", " ", "\n".join(lines)).split()))
     return found
+
+
+def python3_calls(text: str) -> List[str]:
+    """Every ``python3 scripts/...`` line in any fence of ``text``, an agent prompt's included, continuations joined."""
+    found: List[str] = []
+    for fence in fences(text):
+        for line in re.sub(r"\\\n\s*", " ", fence.body).splitlines():
+            if line.strip().startswith("python3 scripts/"):
+                found.append(" ".join(line.split()))
+    return found
+
+
+def unquoted_placeholders(command: str) -> List[str]:
+    """The placeholders of ``command`` outside single quotes, other than a script's output or a computed date (S7-2)."""
+    return [name for name in re.findall(r"\{[a-z_]+\}", re.sub(r"'[^']*'", "", command)) if name not in BARE_PLACEHOLDERS]
 
 
 def routes(text: str, anchor: str, where: str) -> Dict[str, str]:
@@ -1915,6 +1947,15 @@ def test_routes_reads_the_exit_table_after_an_anchor():
     assert routes(sample, "## Step 9:", "the sample") == {"0": "Go on", "anything else": "Stop"}
     with pytest.raises(AssertionError):
         routes("## Step 9: x\n\n| Code | Meaning |\n|---|---|\n| 0 | x |\n", "## Step 9:", "the sample")
+
+
+def test_python3_calls_reads_every_fence_and_the_quoting_check_finds_a_bare_path():
+    sample = ("```text\nRun this:\n    python3 scripts/a.py \\\n      --x '{output_dir}/t.md'\n```\n\n"
+              "```bash\npython3 scripts/b.py --out {output_dir} --plan {plan_id}\n```\n")
+    assert python3_calls(sample) == ["python3 scripts/a.py --x '{output_dir}/t.md'", "python3 scripts/b.py --out {output_dir} --plan {plan_id}"]
+    assert unquoted_placeholders(python3_calls(sample)[0]) == []
+    assert unquoted_placeholders(python3_calls(sample)[1]) == ["{output_dir}"], "a script's own output, {plan_id}, stays bare"
+    assert unquoted_placeholders('python3 scripts/b.py --out "{output_dir}"') == ["{output_dir}"], "double quotes still run $("
 
 
 # --- the presence check (ADR-050 D4, KB 20, PM finding 7) -------------------------------------------
@@ -1985,7 +2026,7 @@ def test_risk_score_step_1_5_keeps_the_populator_and_retires_the_copy_verbatim_i
 def test_risk_score_plans_once_with_the_command_date_and_the_canonical_threats_path():
     step = step_of(text_of(RISK_SCORE_COMMAND), "## Step 2:", RISK_SCORE_COMMAND)
     assert calls(step) == [RISK_SCORE_CALLS[2]]
-    assert "--baseline-dir {baseline_dir}" in step and "--architecture {architecture_flag}" in step
+    assert "`--baseline-dir '{baseline_dir}'`" in step and "`--architecture '{architecture_flag}'`" in step
     assert "and only then" in step, "only the explicit flag may reach --architecture, or a per-run snapshot would set every SARIF URI"
     assert "`plan` reads `threats.sarif` when `threats.md` is absent" in step, "AR-T2: the SARIF fallback is the planner's"
 
@@ -2098,6 +2139,38 @@ def test_threat_model_routes_the_presence_check_and_the_carrier_write_by_the_exi
     assert carrier["5"].startswith("The carrier warning is on stderr. Print it and continue to Step 3"), "5 prints the warning and continues (AR-T5)"
     assert carrier["1"] == "Stop and print the error"
     assert carrier["2"].startswith("Stop and print the error") and "nothing to fail" in carrier["2"], "this command makes no plan"
+
+
+# --- the rules the commands share (T146: T067b's H2, T068's S7-2) ------------------------------------
+
+
+@pytest.mark.parametrize("path", [RISK_SCORE_COMMAND, CONTROLS_COMMAND, PART_CONTRACT, ADR_050])
+def test_the_completion_rule_is_one_text_and_the_per_wave_wording_is_gone(path):
+    text = text_of(path)
+    assert text.count(COMPLETION_RULE) == 1, "%s must quote ADR-050 D6's completion rule once, word for word" % path
+    for old in PER_WAVE_WORDINGS:
+        assert old not in text, "%s still reads as a reconcile after each wave (T067b's H2): %r" % (path, old)
+
+
+def test_the_per_wave_check_catches_both_first_wordings_and_spares_the_wave_order():
+    command = "Run `reconcile` only after every agent in the wave has reported completion."
+    note = "the layer runs `reconcile` only after every agent of the wave has reported completion;"
+    order = "start a wave only after every agent of the wave before it has reported completion."
+    assert [old for old in PER_WAVE_WORDINGS if old in command] and [old for old in PER_WAVE_WORDINGS if old in note]
+    assert not [old for old in PER_WAVE_WORDINGS if old in order], "Step 3's wave order is not the per-wave reconcile"
+
+
+@pytest.mark.parametrize("path, expected", [(RISK_SCORE_COMMAND, 5), (CONTROLS_COMMAND, 4), (THREAT_MODEL_COMMAND, 3)])
+def test_every_path_in_a_commands_python3_calls_is_single_quoted(path, expected):
+    text = text_of(path)
+    taking = [call for call in python3_calls(text) if re.search(r"\{[a-z_]+\}", call)]
+    assert len(taking) == expected, "%s: expected %d calls that take a placeholder, found %s" % (path, expected, taking)
+    for call in taking:
+        assert not unquoted_placeholders(call), "%s leaves %s outside single quotes" % (call, unquoted_placeholders(call))
+    added = [span for span in re.findall(r"`(--[a-z-]+ [^`]*)`", prose(text)) if re.search(r"\{[a-z_]+\}", span)]
+    for span in added:   # the flags that a step adds to a call, such as --baseline-dir
+        assert not unquoted_placeholders(span), "%s: the added flag %s leaves a path outside single quotes" % (path, span)
+    assert text.count(PATH_QUOTING_RULE) == 1, "%s must state the quoting rule once, in the shared words" % path
 
 
 # --- the scorer's spec (T029) ----------------------------------------------------------------------
@@ -2336,11 +2409,11 @@ WIRED_BY_T039 = frozenset({"scripts/render-compensating-controls.py"})
 
 CONTROLS_CALLS = [
     "python3 scripts/tachi-stage.py --version",
-    "python3 scripts/tachi-stage.py plan --stage compensating-controls --out {output_dir} --date {analysis_date} "
-    "--risk-scores {input_dir}/risk-scores.md --target {target_path}",
-    "python3 scripts/tachi-stage.py reconcile --stage compensating-controls --out {output_dir} --plan {plan_id} --plan-digest {plan_digest}",
-    "python3 scripts/render-compensating-controls.py --out {output_dir} --plan {plan_id} --plan-digest {plan_digest}",
-    "python3 scripts/tachi-stage.py fail --stage compensating-controls --out {output_dir} --plan {plan_id} --plan-digest {plan_digest} "
+    "python3 scripts/tachi-stage.py plan --stage compensating-controls --out '{output_dir}' --date {analysis_date} "
+    "--risk-scores '{input_dir}/risk-scores.md' --target '{target_path}'",
+    "python3 scripts/tachi-stage.py reconcile --stage compensating-controls --out '{output_dir}' --plan {plan_id} --plan-digest {plan_digest}",
+    "python3 scripts/render-compensating-controls.py --out '{output_dir}' --plan {plan_id} --plan-digest {plan_digest}",
+    "python3 scripts/tachi-stage.py fail --stage compensating-controls --out '{output_dir}' --plan {plan_id} --plan-digest {plan_digest} "
     "--reason {reason}",
 ]
 # The helpers that the two scripts import. Step 1's installed-files check names them, so that a missing helper is reported as
@@ -2395,7 +2468,7 @@ def test_controls_step_0_adds_the_flags_and_no_date_flag():
 def test_controls_plans_once_with_the_command_date_the_scored_input_and_the_target():
     step = step_of(text_of(CONTROLS_COMMAND), "## Step 2:", CONTROLS_COMMAND)
     assert calls(step) == [CONTROLS_CALLS[1]]
-    assert "--baseline-dir {baseline_dir}" in step and "--architecture {architecture_flag}" in step
+    assert "`--baseline-dir '{baseline_dir}'`" in step and "`--architecture '{architecture_flag}'`" in step
     assert "and only then" in step and "a per-run snapshot must never stand in for it" in step
     assert "`plan` reads `risk-scores.sarif` when `risk-scores.md` is absent" in step, "AR-T2: the SARIF fallback is the planner's"
     assert "Pass no threat model path" in step and "`source_file`" in step and "--threats" not in step
@@ -2575,7 +2648,7 @@ def test_the_control_analyzer_reads_the_refs_names_that_the_commands_plan_fills(
         "the W3 ruling: the snapshot is found from refs.threats, so it is no sixth refs name"
     assert set(re.findall(r"`refs\.([a-z_]+)`", spec)) == CONTROLS_REFS
     plan = calls(step_of(text_of(CONTROLS_COMMAND), "## Step 2:", CONTROLS_COMMAND))[0]
-    assert "--risk-scores {input_dir}/risk-scores.md" in plan and "--target {target_path}" in plan, "refs.risk_scores and refs.target"
+    assert "--risk-scores '{input_dir}/risk-scores.md'" in plan and "--target '{target_path}'" in plan, "refs.risk_scores and refs.target"
     # the controls item's key set is closed, and no value that the renderer computes has a key in it
     keys = set(tachi_parts.KEY_SETS["controls-item"][0]) | set(tachi_parts.KEY_SETS["controls-item"][1])
     for computed in ("reduction_factor", "residual_score", "residual_severity_band", "control_effectiveness", "rescan_scope"):

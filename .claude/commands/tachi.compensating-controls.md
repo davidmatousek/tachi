@@ -51,6 +51,8 @@ Single-command entry point for tachi compensating controls analysis — the thir
 
 **Who does what**: the control-analyzer agent supplies judgment only (for each finding, the control status and category, the code evidence, and the recommendation for a gap) and writes one part file per batch. The scripts plan the batches, reconcile them from disk, compute every score, band, factor and total, and write both files. This command runs only the shipped scripts it names, `scripts/tachi-stage.py` and `scripts/render-compensating-controls.py`, each as a single `python3` call with literal arguments. It writes no script of its own, and it stops on a failure rather than working around it.
 
+**Paths go in single quotes**: put each path into its call between the single quotes that the call shows, so the shell expands nothing in it. Inside quotes the shell doesn't expand a leading `~` either, so write the home directory's path in its place. A path that holds a single quote can't be quoted this way: stop there, and print the path.
+
 ## Step 1: Validate Prerequisites
 
 1. **Check tachi agents and scripts are installed**:
@@ -124,11 +126,11 @@ Single-command entry point for tachi compensating controls analysis — the thir
 2. Plan the batches:
 
    ```bash
-   python3 scripts/tachi-stage.py plan --stage compensating-controls --out {output_dir} --date {analysis_date} --risk-scores {input_dir}/risk-scores.md --target {target_path}
+   python3 scripts/tachi-stage.py plan --stage compensating-controls --out '{output_dir}' --date {analysis_date} --risk-scores '{input_dir}/risk-scores.md' --target '{target_path}'
    ```
 
-   - Add `--baseline-dir {baseline_dir}` when `--baseline` was given.
-   - Add `--architecture {architecture_flag}` when `--architecture-path` was given, and only then. The URI of every SARIF result comes from this path, so a per-run snapshot must never stand in for it.
+   - Add `--baseline-dir '{baseline_dir}'` when `--baseline` was given.
+   - Add `--architecture '{architecture_flag}'` when `--architecture-path` was given, and only then. The URI of every SARIF result comes from this path, so a per-run snapshot must never stand in for it.
    - Always pass the `risk-scores.md` path, even when only `risk-scores.sarif` exists: `plan` reads `risk-scores.sarif` when `risk-scores.md` is absent.
    - Pass no threat model path. The planner reaches the `threats.md` that the scored input names as its source through the `source_file` of `risk-scores.md`, under its own checks.
 
@@ -152,7 +154,7 @@ Read and follow the batch input at <input_path>. Write only the part file it nam
 
 Replace `<input_path>` with that batch's `input_path`. Send all of a wave's Agent calls in one message, so that they run together. Never send more than 16 in one message, and start a wave only after every agent of the wave before it has reported completion.
 
-Run `reconcile` only after every agent in the wave has reported completion. While an agent you dispatched is still running, don't run the renderer, report a result or end the stage. If you end your turn to wait, resume this loop on each completion notice.
+Dispatch every wave that `plan` or the latest `reconcile` listed, in order, before you run `reconcile`. Run `reconcile` once, after every agent of those waves has reported completion. While an agent you dispatched is still running, don't run the renderer, report a result or end the stage. If you end your turn to wait, resume this loop on each completion notice.
 
 If an Agent call fails because `tachi-control-analyzer` can't be spawned, end the run there. Run no substitute, and dispatch no other agent type. Go to Step F with `--reason agent-not-spawned` and `--detail tachi-control-analyzer`. An agent that was spawned and then failed is not a spawn failure: `reconcile` finds its part missing or invalid and plans the retry.
 
@@ -161,7 +163,7 @@ If an Agent call fails because `tachi-control-analyzer` can't be spawned, end th
 Reconcile from the files on disk, never from an agent's reply:
 
 ```bash
-python3 scripts/tachi-stage.py reconcile --stage compensating-controls --out {output_dir} --plan {plan_id} --plan-digest {plan_digest}
+python3 scripts/tachi-stage.py reconcile --stage compensating-controls --out '{output_dir}' --plan {plan_id} --plan-digest {plan_digest}
 ```
 
 `reconcile` prints `status`, a new `plan_digest`, the finished batches (`done`), the batches still to dispatch (`waves`) and any `exhausted` batches. Keep the new `plan_digest`.
@@ -181,7 +183,7 @@ Route by the exit code:
 Run the renderer. It re-validates every part, computes the values (each finding's inherent score and band come from this run's scored input and are never scored again), writes both files to the plan's staging directory, re-reads them and checks them (row parity with the scored input, one SARIF result for each open finding, and agreement between the two files), and only then moves each onto its canonical name. A failed check leaves the canonical files as they were.
 
 ```bash
-python3 scripts/render-compensating-controls.py --out {output_dir} --plan {plan_id} --plan-digest {plan_digest}
+python3 scripts/render-compensating-controls.py --out '{output_dir}' --plan {plan_id} --plan-digest {plan_digest}
 ```
 
 Route by the exit code:
@@ -212,7 +214,7 @@ Next steps:
 Run this step only when an earlier step sends you here, and only once a plan exists:
 
 ```bash
-python3 scripts/tachi-stage.py fail --stage compensating-controls --out {output_dir} --plan {plan_id} --plan-digest {plan_digest} --reason {reason}
+python3 scripts/tachi-stage.py fail --stage compensating-controls --out '{output_dir}' --plan {plan_id} --plan-digest {plan_digest} --reason {reason}
 ```
 
 - `{reason}` is the one the step named: `agent-not-spawned`, `unrecoverable-batch`, `check-failed` or `render-failed`.
