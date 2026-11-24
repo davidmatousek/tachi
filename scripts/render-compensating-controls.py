@@ -33,10 +33,21 @@ that persists each finding's whole controls item, escaped on write, for the next
 ``matrix_row`` is persisted canonically, rebuilt from the agent's 11 cells (the four computed cells as their slot tokens,
 ``CF`` as Section 2 shows it, every other cell as the agent wrote it).
 
-**Slotted in later (the module is built for them).** ``_outputs`` lists the files this build writes. The SARIF
-(T053: ``_render_sarif``, its half of ``_check_staged``) joins it there. R-34's cell-by-cell fill and checks of
-Sections 2 and 4 (T059) replace ``_section_2_cells`` and ``_md_section_4``'s body, which here are built from the
-structured values and the agent's body as it stands.
+**The SARIF (T053; ADR-050 D7, D8).** ``compensating-controls.sarif`` is written through the shared emitter
+(``sarif_common``), one result for each scored open finding, in Section 2's order. A correlated peer is a result like any
+other, with the ``correlation-*`` properties and ruling C's sentence; ``relatedLocations`` hold the finding's code evidence
+and nothing else. Correlation comes from Section 4a of the ``threats.md`` that the scored input's validated ``source_file``
+names (in D8's fallback, from the properties of ``risk-scores.sarif``). When that file can't be read there is no
+correlation, the stage record says why, and no key changes, because correlation is never identity. ``recommendation`` and
+``effort-estimate`` are read from the rendered Section 4 bodies by ``parse_compensating_controls_md``'s rule, so the two
+files agree by construction. ``integrity-flags`` carries ``reused-id`` over from the input, and ``maestro-layer`` is the
+value that the scorer's file holds for the finding. The result's properties are the contracted set and no other key
+(``contracts/sarif-result.md``). Both files are written to ``staged/`` and checked on disk, against each other as well as
+against the rows, before either replaces a canonical name.
+
+**Slotted in later (the module is built for it).** R-34's cell-by-cell fill and checks of Sections 2 and 4 (T059) replace
+``_section_2_cells`` and ``_md_section_4``'s body, which here are built from the structured values and the agent's body as
+it stands.
 
 Exit codes are ``contracts/cli.md``'s: 0 done, 1 an input is missing or unreadable, 2 a validation, usage or guard
 failure (a digest or pointer mismatch, a part that fails re-validation, a forbidden character in an input), 4 a
@@ -80,6 +91,7 @@ import tachi_scoring_rules as rules  # noqa: E402
 STAGE = "compensating-controls"
 RENDERER = "render-compensating-controls.py"  # the stamp's name: the installed file name, as a literal (contracts/cli.md)
 MD, SARIF = "compensating-controls.md", "compensating-controls.sarif"
+TOOL = sc.TOOL_NAMES[SARIF]   # tachi-control-analyzer, verbatim: the tool name is a hash input (D7)
 RISK_SCORES_SARIF = "risk-scores.sarif"
 SCHEMA_VERSION = "1.1"
 DASH = "—"
@@ -123,6 +135,61 @@ GAP_GROUPS = (("### Critical / High Risk Gaps", ("Critical", "High")), ("### Med
 FLAG_KINDS = ("corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input")
 
 _LAYER = re.compile(r"L[1-7](?![0-9])", re.ASCII)
+
+# The SARIF's logical location (ADR-050 D7): the zone of a component that no Section 2 row lists, and the DFD kind of each Section 1
+# type, as render-risk-scores.py writes them. D8's fallback reads a kind back from ``risk-scores.sarif``, and ``threats.sarif``
+# writes ``data-store`` where the scorer writes ``data``, so both name a data store.
+DEFAULT_ZONE = "Application Zone"
+DEFAULT_KIND = "process"
+KIND_OF_DFD_TYPE = {"External Entity": "external-entity", "Process": "process", "Data Store": "data"}
+KIND_SPELLINGS = {"external-entity": "external-entity", "process": "process", "data": "data", "data-store": "data"}
+REUSED_FLAG = "reused-id:finding_id:baseline"   # ruling B (D7): the scored input's flag, carried over to ``integrity-flags``
+# Ruling C's sentence at the end of a text, in the forms that ``sarif_common.correlation_sentence`` writes. The scorer's SARIF has
+# it on a correlated result's message, so D8's fallback takes it off the member's text before this file writes its own.
+_CORRELATION_TAIL = re.compile(r" Correlated in CG-[0-9]{1,6}; (?:primary [A-Za-z]+-[0-9]+"
+                               r"|peers [A-Za-z]+-[0-9]+(?:, [A-Za-z]+-[0-9]+)*(?: and [0-9]+ more)?)\.\Z")
+
+# What each rule says in compensating-controls.sarif, in the template's order (templates/tachi/output-schemas/compensating-controls.sarif):
+# (category, short description, full description, tags, taxonomy IDs the rule relates to). The IDs are what a ``{{ref:...}}`` slot
+# may cite for a finding of that category (ADR-050 D3's table), and each rule writes them as its ``relationships`` (PM W3 ruling 2,
+# gap A). render-risk-scores.py holds the same table for its file, and the 1.1 templates of the two files agree rule for rule.
+# AOD-SIMPLIFICATION: a local copy of the scorer's table — upgrade: both renderers import one table and rule builder from
+# sarif_common (R3a moves it there), and this copy and its drift test go.
+RULES = (
+    ("spoofing", "Identity spoofing threats",
+     "Threats where an attacker pretends to be something or someone else, such as forging authentication credentials, "
+     "replaying tokens, or impersonating trusted components to gain unauthorized access.",
+     ("security", "stride", "spoofing", "authentication", "owasp", "cwe"), ("A07", "CWE-287")),
+    ("tampering", "Data tampering threats",
+     "Threats where an attacker modifies data, code, or configuration without authorization, violating integrity "
+     "guarantees and causing systems to operate on corrupted inputs or persist falsified records.",
+     ("security", "stride", "tampering", "data-integrity", "owasp", "cwe"), ("A08", "CWE-345")),
+    ("repudiation", "Repudiation threats",
+     "Threats where a user or system can deny having performed an action, and the system lacks sufficient evidence to "
+     "prove otherwise, undermining accountability and forensic investigation.",
+     ("security", "stride", "repudiation", "logging", "accountability", "owasp", "cwe"), ("A09", "CWE-778")),
+    ("info-disclosure", "Information disclosure threats",
+     "Threats where sensitive information is exposed to unauthorized parties through direct data leaks, verbose error "
+     "messages, side-channel observations, or insufficient access controls on stored data.",
+     ("security", "stride", "information-disclosure", "data-exposure", "owasp", "cwe"), ("A01", "CWE-200")),
+    ("denial-of-service", "Denial of service threats",
+     "Threats where an attacker degrades or eliminates system availability through resource exhaustion, flooding, "
+     "algorithmic complexity exploitation, or cascading dependency failures.",
+     ("security", "stride", "denial-of-service", "availability", "owasp", "cwe"), ("A05", "CWE-400")),
+    ("privilege-escalation", "Privilege escalation threats",
+     "Threats where an attacker gains higher privileges than authorized, performing actions reserved for "
+     "administrators, accessing other users' resources, or bypassing access control boundaries.",
+     ("security", "stride", "elevation-of-privilege", "access-control", "owasp", "cwe"), ("A01", "CWE-269")),
+    ("agentic", "AI agent autonomy and misuse threats",
+     "Threats arising from autonomous agent behavior, including uncontrolled tool use, excessive autonomy, "
+     "agent-to-agent trust violations, and lack of human oversight in high-impact operations.",
+     ("security", "ai", "agentic", "autonomy", "tool-use", "mcp"), ("CWE-693",)),
+    ("llm", "LLM-specific threats",
+     "Threats from prompt injection vulnerabilities, data poisoning risks, and model theft in LLM-integrated "
+     "components, covering direct and indirect injection, RAG pipeline manipulation, and model extraction.",
+     ("security", "ai", "llm", "prompt-injection", "data-poisoning", "model-theft"), ("CWE-74",)),
+)
+RULE_BY_CATEGORY = {entry[0]: entry for entry in RULES}
 
 
 # =============================================================================
@@ -305,6 +372,8 @@ class Row(object):
         self.canon = tp.canonical_finding_id(finding_id)
         self.component, self.threat, self.layer, self.delta = component, threat, layer, delta
         self.attribution = attribution
+        self.threat_category = ts.category_for_prefix(self.canon.partition("-")[0])   # the finding's rule: spoofing, tampering ...
+        self.kind, self.zone, self.mitigation = DEFAULT_KIND, DEFAULT_ZONE, ""         # the SARIF's logical location and ``message.markdown``
         self.inherent = inherent                           # this run's risk-scores.md composite, never re-scored
         self.inherent_band = ts.band(inherent)
         self.item = item                                   # the validated part item
@@ -371,21 +440,24 @@ class Run(object):
         self.recommended: List[Row] = []                    # partial and missing: inherent descending, then S-2 (Section 4's order)
         self.controls: List[Control] = []
         self.resolved_count = 0
-        self.groups: List[Dict[str, Any]] = []              # correlation groups (T053 emits them)
+        self.resolved_ids: List[str] = []                   # canonical IDs of the RESOLVED findings that an input lists: they appear nowhere in the SARIF
+        self.groups: List[Dict[str, Any]] = []              # every correlation group, one with no ID (D8's fallback) included
+        self.assignments: Dict[str, Any] = {}               # the emitter's roles, for the groups that have an ID only
         self.open_ids: set = set()
         self.threats_text: Optional[str] = None
         self.threats_path: Optional[str] = None
         self.finding_layer: Dict[str, str] = {}
         self.component_info: Dict[str, Tuple[str, str]] = {}
+        self.component_zone: Dict[str, str] = {}            # a component's name, case-folded -> its Section 2 zone
         self.source_file: Optional[str] = None
         self.target: Optional[str] = None                   # the scanned directory, absolute (refs.target)
         self.target_path: Optional[str] = None              # ... and relative to the working directory, or None
-        self.uri = ""                                       # the architecture file's URI (T053 writes it into the SARIF)
+        self.uri = ""                                       # the architecture file's URI: every SARIF result's one ``artifactLocation.uri`` (D7)
         self.baseline_resolved = False
         self.carry_forward_count: Optional[int] = None
         self.rescan_scope = "full"
         self.inherent_total = self.residual_total = Decimal("0.0")
-        self.evidence_cache: Dict[str, str] = {}
+        self.evidence_cache: Dict[str, Any] = {}            # an evidence entry's ``file`` as written -> ``sc.resolve_file``'s answer (path and URI)
 
     def warn(self, code: str, detail: str) -> None:
         self.warnings.append(_warning(code, detail))
@@ -575,6 +647,7 @@ def _members_from_markdown(run: Run, entry: Mapping[str, Any], raw: bytes, kept:
         raise RenderError(2, "the input %s lists no scored open finding" % name, "regenerate it with /tachi.risk-score", kept=kept)
     text = raw.decode("utf-8").lstrip("\ufeff")
     run.resolved_count = len(scores.resolved_rows)
+    run.resolved_ids = list(scores.resolved_rows)
     reused = _reused_ids(text)
     members = []
     for canonical in sorted(scores.rows, key=tp.finding_sort_key):
@@ -586,18 +659,22 @@ def _members_from_markdown(run: Run, entry: Mapping[str, Any], raw: bytes, kept:
     return members
 
 
-def _sarif_details(text: str) -> Dict[str, Dict[str, str]]:
-    """Each result's identity text by canonical ID: its ID as the file spells it, component, threat and MAESTRO layer.
+def _sarif_details(text: str) -> Dict[str, Dict[str, Any]]:
+    """Each result's identity text by canonical ID: its ID as the file spells it, component, threat and MAESTRO layer, and
+    what the SARIF needs besides: the mitigation, the DFD kind, the zone, and whether the scorer flagged the ID as reused.
 
     D8's fallback reads them from the member's own result (P0-3): the component from ``logicalLocations[0].name``, else
-    ``properties.component``, the threat from ``message.text`` and the layer from ``maestro-layer``. The ID is the
-    result's ``findingId/v1``, or ``properties.id`` where tachi's older SARIF has no fingerprint.
+    ``properties.component``, the threat from ``message.text`` (less ruling C's sentence, which this file writes for itself),
+    the mitigation from ``message.markdown`` and the layer from ``maestro-layer``. The kind and the zone are the logical
+    location's own (its ``fullyQualifiedName`` is ``<zone>/<component>``), and ``reused`` is the ``reused-id`` flag in
+    ``score-flags`` (ruling B). The ID is the result's ``findingId/v1``, or ``properties.id`` where tachi's older SARIF has no
+    fingerprint.
     """
     try:
         results = json.loads(text)["runs"][0].get("results", [])
     except (ValueError, KeyError, IndexError, TypeError, AttributeError):
         results = []
-    found: Dict[str, Dict[str, str]] = {}
+    found: Dict[str, Dict[str, Any]] = {}
     for result in results if isinstance(results, list) else []:
         if not isinstance(result, dict):
             continue
@@ -618,9 +695,15 @@ def _sarif_details(text: str) -> Dict[str, Dict[str, str]]:
         def text_of(value: Any) -> str:
             return value if isinstance(value, str) else ""
 
+        component = text_of(logical.get("name")) or text_of(properties.get("component"))
+        qualified = text_of(logical.get("fullyQualifiedName"))
+        flags = properties.get("score-flags")
         found.setdefault(tp.canonical_finding_id(identifier), {
-            "id": identifier, "component": text_of(logical.get("name")) or text_of(properties.get("component")),
-            "threat": text_of(message.get("text")), "layer": text_of(properties.get("maestro-layer"))})
+            "id": identifier, "component": component, "threat": _CORRELATION_TAIL.sub("", text_of(message.get("text"))),
+            "layer": text_of(properties.get("maestro-layer")), "mitigation": text_of(message.get("markdown")),
+            "kind": KIND_SPELLINGS.get(text_of(logical.get("kind")), DEFAULT_KIND),
+            "zone": qualified[:-len(component) - 1] if component and qualified.endswith("/" + component) else "",
+            "reused": isinstance(flags, list) and REUSED_FLAG in flags})
     return found
 
 
@@ -629,7 +712,10 @@ def _members_from_sarif(run: Run, entry: Mapping[str, Any], raw: bytes, kept: st
 
     An empty extraction stops the run before anything is written (KB 22). A member that has no result of its own (a
     legacy peer reference) has no score, so it can't be rendered. The file records no status, so every member lacks
-    ``delta_status`` (S-12(b)) and is flagged ``input:delta_status:not-in-form``.
+    ``delta_status`` (S-12(b)) and is flagged ``input:delta_status:not-in-form``. A member's own result also gives what
+    this file's SARIF repeats: its MAESTRO layer (``Unclassified`` when the result holds none, gap B), mitigation, DFD kind,
+    zone and ``reused-id`` flag. The groups are the file's own correlation properties, and a group that names no ID is kept
+    in ``run.groups`` for ``_prepare`` to count.
     """
     name = os.path.basename(entry["path"])
     try:
@@ -648,7 +734,8 @@ def _members_from_sarif(run: Run, entry: Mapping[str, Any], raw: bytes, kept: st
         score = found["scores"].get(canonical, {}).get("composite")
         members.append({"id": shown["id"], "canon": canonical, "inherent": _valid_inherent(name, canonical, score, kept),
                         "component": shown["component"].strip() or "Unspecified", "threat": shown["threat"].strip() or "No threat description.",
-                        "layer": shown["layer"].strip() or "Unclassified", "reused": False})
+                        "layer": shown["layer"].strip() or "Unclassified", "reused": shown["reused"], "mitigation": shown["mitigation"],
+                        "kind": shown["kind"], "zone": shown["zone"].strip() or DEFAULT_ZONE})
         _refuse_forbidden(name, canonical, shown, "regenerate %s with /tachi.risk-score, or edit the value to remove the character, then re-run the command" % name, kept)
     return members
 
@@ -666,6 +753,18 @@ def _threats_why(risk_text: Optional[str]) -> str:
     return "the plan holds no threats.md input for the usable source_file %s" % ascii(source[:80])
 
 
+def _without_threats(risk_text: Optional[str]) -> str:
+    """What follows from reading no threat model, for the warning's detail (gap B, T053).
+
+    A scored ``risk-scores.md`` holds no layer and no group, so without the threat model every layer is Unclassified and no
+    finding is correlated. D8's fallback input, ``risk-scores.sarif``, holds each member's own text, layer and correlation.
+    """
+    if risk_text is None:
+        return ("the text of each finding comes from the scored SARIF, a MAESTRO layer that its result doesn't hold is Unclassified, and the "
+                "correlation groups are the SARIF's own")
+    return "the text of each finding comes from the scored input, every MAESTRO layer falls back to Unclassified, and no finding is correlated"
+
+
 def _load_threats(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], risk_text: Optional[str]) -> None:
     """The threat model that the planner read (ADR-050 D2, D8).
 
@@ -673,18 +772,17 @@ def _load_threats(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes]
     plan input, so these are the bytes it read. When the plan has none (the input names no usable source, or it is
     ``risk-scores.sarif``), the reason is worked out again for the record. That isn't fatal, because the member set doesn't
     come from this file: the text of each finding then comes from the scored input, a layer that the input doesn't record is
-    Unclassified, there is no body line for the architecture path, and the stage record says why.
+    Unclassified, no finding is correlated (unless the scored SARIF's own properties group it), there is no body line for the
+    architecture path, and the stage record says why.
     """
     planned = plan["inputs"].get("threats")
     if planned is None:
-        run.warn("threats-unreadable", "no threat model was read (%s), so the text of each finding comes from the scored input and a MAESTRO "
-                                       "layer that it doesn't record is Unclassified" % _threats_why(risk_text))
+        run.warn("threats-unreadable", "no threat model was read (%s), so %s" % (_threats_why(risk_text), _without_threats(risk_text)))
         return
     try:
         run.threats_text = inputs["threats"].decode("utf-8")
     except UnicodeDecodeError:
-        run.warn("threats-unreadable", "the threat model %s is not strict UTF-8, so the text of each finding comes from the scored input and a "
-                                       "MAESTRO layer that it doesn't record is Unclassified" % os.path.basename(planned["path"]))
+        run.warn("threats-unreadable", "the threat model %s is not strict UTF-8, so %s" % (os.path.basename(planned["path"]), _without_threats(risk_text)))
         return
     run.threats_path = planned["path"]
 
@@ -707,6 +805,7 @@ def _read_reference(run: Run, kept: str) -> Optional[Dict[str, Any]]:
     remedy = "regenerate %s with /tachi.threat-model, or edit the value to remove the character, then re-run the command" % source
     for finding in list(reference["open"]) + list(reference["resolved"]):
         _refuse_forbidden(source, finding["id"], finding, remedy, kept)
+    run.resolved_ids = sorted({*run.resolved_ids, *(tp.canonical_finding_id(finding["id"]) for finding in reference["resolved"])}, key=tp.finding_sort_key)
     for row in tachi_parsers.parse_markdown_table(run.threats_text, "### Components"):
         name = row.get("Component", "").strip()
         if name and name not in run.component_info:
@@ -715,7 +814,12 @@ def _read_reference(run: Run, kept: str) -> Optional[Dict[str, Any]]:
         finding_id = row.get("Finding ID", "").strip()
         if tp.id_matches("finding", finding_id):
             run.finding_layer.setdefault(tp.canonical_finding_id(finding_id), row.get("MAESTRO Layer", "").strip())
-    _refuse_forbidden(source, None, (run.component_info, run.finding_layer), remedy, kept)
+    for row in tachi_parsers.parse_markdown_table(run.threats_text, "### Trust Zones"):   # the SARIF's logical location names each component's zone
+        zone = row.get("Zone", "").strip()
+        for member in (part.strip() for part in row.get("Components", "").split(",")):
+            if zone and member:
+                run.component_zone.setdefault(member.casefold(), zone)
+    _refuse_forbidden(source, None, (run.component_info, run.finding_layer, run.component_zone), remedy, kept)
     lacking = reference.get("lacking", {})
     if lacking:   # S-12(b): each such finding carries the flags, and the stage record lists them
         names = sorted({name for found in lacking.values() for name in found})
@@ -734,8 +838,11 @@ def _read_reference(run: Run, kept: str) -> Optional[Dict[str, Any]]:
 
 def _overlay_reference(run: Run, members: List[Dict[str, Any]], reference: Optional[Mapping[str, Any]]) -> None:
     """Give each member the identity text of the threat model: the finding ID as Section 7 spells it, its component,
-    threat, layer and status, and its source attribution. The layer is the scorer's chain (``_identity``): the reference
-    set's MAESTRO Layer cell, else the member's own, else its component's Section 1 layer, else ``Unclassified``."""
+    threat, layer and status, its source attribution, and what its SARIF result repeats (the mitigation, the DFD kind and
+    the zone). The layer is the scorer's chain (``_identity``), so that this file's ``maestro-layer`` is the scorer file's
+    for the same finding (gap B): the reference set's MAESTRO Layer cell, else the member's own, else its component's Section 1
+    layer (found by name, then case-folded), else ``Unclassified``. A kind is the component's Section 1 type, as the scorer
+    reads it, and a zone is the one that Section 2 lists the component under."""
     by_canon = {tp.canonical_finding_id(finding["id"]): finding for finding in reference["open"]} if reference is not None else {}
     lacking = reference.get("lacking", {}) if reference is not None else {}
     for member in members:
@@ -751,9 +858,38 @@ def _overlay_reference(run: Run, members: List[Dict[str, Any]], reference: Optio
         member["delta"] = _delta_status(finding) if finding is not None else "NEW"
         member["component"] = member["component"] or "Unspecified"
         member["threat"] = member["threat"] or "No threat description."
-        info = run.component_info.get(member["component"], ("", ""))
+        info = run.component_info.get(member["component"])
+        if info is None:   # the scorer's own lookup: by name, then case-folded
+            folded = member["component"].casefold()
+            info = next((value for name, value in run.component_info.items() if name.casefold() == folded), ("", ""))
         member["layer"] = run.finding_layer.get(member["canon"]) or member["layer"] or info[1] or "Unclassified"
+        member["kind"] = KIND_OF_DFD_TYPE.get(info[0], DEFAULT_KIND)
+        member["zone"] = run.component_zone.get(member["component"].casefold()) or DEFAULT_ZONE
+        member["mitigation"] = finding["mitigation"] if finding is not None else ""
         member["form_flags"] = list(reference["flags"].get(member["canon"], ())) if reference is not None and member["canon"] in lacking else []
+
+
+def _prepare_correlation(run: Run) -> None:
+    """The correlation groups of the scored findings, and each correlated finding's role (D8).
+
+    Correlation comes from Section 4a of the ``threats.md`` that the scored input's validated ``source_file`` names, read
+    by D8's rules and filtered to the member set, or, in D8's fallback, from the correlation properties of the scored SARIF
+    (already in ``run.groups``). With no threat model there is no correlation, and the stage record already says why
+    (``_load_threats``). Correlation is a property and a sentence and never part of a key, so no key changes either way.
+    Only a group with an ID reaches the emitter, whose roles, ``correlation-*`` properties and ruling C's sentence all name
+    it. A group that the SARIF names no ID for is counted in a warning, and its members carry none of them.
+    """
+    if run.threats_text is not None:
+        source = os.path.basename(run.threats_path or "threats.md")
+        grouped = tachi_parsers.parse_correlation_groups(run.threats_text, member_ids=sorted(run.open_ids, key=tp.finding_sort_key))
+        for problem in grouped["errors"]:
+            run.issues.append("Section 4a of %s, line %d: the row %s %s, so it is skipped" % (source, problem["line"], repr(problem["row"][:60]), problem["reason"]))
+        run.groups = grouped["groups"]
+    named = [(group["group_id"], group["members"]) for group in run.groups if group["group_id"] is not None]
+    if len(named) != len(run.groups):
+        run.warn("correlation-group-unnamed", "%s gives no group ID to %d of its %d correlation groups, so their members carry no correlation "
+                 "properties and no correlation sentence" % (RISK_SCORES_SARIF, len(run.groups) - len(named), len(run.groups)))
+    run.assignments = sc.correlation_assignments(named, run.open_ids)
 
 
 def _prepare_baseline(run: Run, plan: Mapping[str, Any], refs: Mapping[str, str]) -> None:
@@ -812,6 +948,7 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
         _load_threats(run, plan, inputs, inputs["risk_scores"].decode("utf-8"))
         _overlay_reference(run, members, _read_reference(run, kept))
     run.open_ids = {member["canon"] for member in members}
+    _prepare_correlation(run)
 
     # The architecture file: the one path that gives the URI (ADR-050 D7). The controls stage elevates nothing, so it reads no tags.
     resolution = sc.resolve_architecture(refs.get("architecture"), threats_text=run.threats_text,
@@ -836,11 +973,11 @@ def _evidence_path(run: Run, row: Row, index: int, file: str, kept: str) -> str:
     """
     if file not in run.evidence_cache:
         try:
-            run.evidence_cache[file] = sc.resolve_file(file, root=str(run.target)).path
+            run.evidence_cache[file] = sc.resolve_file(file, root=str(run.target))
         except sc.PathCheckError as exc:
             raise RenderError(2, "evidence %d of %s names a file that is not usable under the target (%s)" % (index + 1, row.finding_id, exc.check),
                               "re-run the command: the control analyzer must cite regular files that exist under the target", kept=kept) from None
-    return run.evidence_cache[file]
+    return run.evidence_cache[file].path
 
 
 def _agent_cells(row: Row, kept: str) -> List[str]:
@@ -868,9 +1005,7 @@ def _agent_cells(row: Row, kept: str) -> List[str]:
 
 def _lookup_for(run: Run, row: Row) -> Any:
     """The slot lookup of ADR-050 D3's table for this stage: this finding's rendered values."""
-    # AOD-SIMPLIFICATION: a ref slot resolves to the finding's MAESTRO layer code and its source-attribution IDs only
-    # — upgrade: add the SARIF rules' taxonomy IDs ("its rule's relationships") when T053's rule table lands here.
-    allowed_refs = set(row.attribution)
+    allowed_refs = set(RULE_BY_CATEGORY[row.threat_category][4]) | set(row.attribution)   # its rule's relationships, and its reference cell (D3)
     layer = _LAYER.match(row.layer)
     if layer:
         allowed_refs.add(layer.group(0))
@@ -926,6 +1061,7 @@ def _score(run: Run, members: Sequence[Mapping[str, Any]], items: Mapping[str, M
             raise RenderError(4, "the parts hold no item for %s, so the run is incomplete" % member["id"], "re-run the command", kept=kept)
         row = Row(member["id"], member["component"], member["threat"], member["layer"], member["delta"], member["inherent"], item,
                   member.get("attribution", ()))
+        row.kind, row.zone, row.mitigation = member["kind"], member["zone"], member["mitigation"]
         run.rows.append(row)
         row.agent_cells = _agent_cells(row, kept)
         row.paths = [_evidence_path(run, row, index, entry["file"], kept) for index, entry in enumerate(item["evidence"])]
@@ -1303,10 +1439,113 @@ def _render_md(run: Run, scoring: str, digest: str) -> str:
     return "\n".join(out)
 
 
+# =============================================================================
+# compensating-controls.sarif (T053; ADR-050 D7, D8; contracts/sarif-result.md)
+# =============================================================================
+
+EFFORT_MARKER = "**Effort Estimate**:"
+_TAXON_ID = re.compile(r"CWE-[0-9]+|A(?:0[1-9]|10)", re.ASCII)
+CATEGORY_OF_RULE = {rule_id: category for category, rule_id in sc.RULE_ID_BY_CATEGORY.items()}
+
+
+def _relationship(taxon: str) -> Dict[str, Any]:
+    """One rule ``relationships`` entry in the templates' form, naming its taxonomy only (PM W3 ruling 2, gap A).
+
+    The map from an ID to its taxonomy is closed: ``CWE-<n>`` names ``CWE`` and ``A01`` to ``A10`` name ``OWASP``. Any other ID in the
+    rule table is a defect in this script, so it raises.
+    """
+    if _TAXON_ID.fullmatch(taxon) is None:
+        raise ValueError("the rule table names %s, which is neither a CWE ID nor an OWASP Top 10 ID" % ascii(taxon))
+    return {"target": {"id": taxon, "toolComponent": {"name": "CWE" if taxon.startswith("CWE-") else "OWASP"}}, "kinds": ["relevant"]}
+
+
+def _rules(highest: Mapping[str, Decimal]) -> List[Dict[str, Any]]:
+    """The driver's rules: one for each category that has a result, in the table's order, each with the highest residual score of
+    its results as its ``security-severity`` (Phase 6c)."""
+    return [{"id": sc.RULE_ID_BY_CATEGORY[category], "shortDescription": {"text": short}, "fullDescription": {"text": full},
+             "properties": {"tags": list(tags), "security-severity": _one(highest[category])},
+             "relationships": [_relationship(taxon) for taxon in taxa]}
+            for category, short, full, tags, taxa in RULES if category in highest]
+
+
+def _section_4_efforts(md_text: str) -> Dict[str, str]:
+    """The Effort word (``Low``, ``Medium`` or ``High``) of each Section 4 block, by canonical ID.
+
+    The first line of a block that starts with ``**Effort Estimate**:`` and goes on with one of the three words gives it. A block
+    with no such line, and a finding with no block, has none.
+    """
+    found: Dict[str, str] = {}
+    current: Optional[str] = None
+    for line in _lines_of(md_text, SECTION_TITLES[3], SECTION_TITLES[4]):
+        heading = re.match(r"#### [0-9]+\. (\S+) %s " % DASH, line)
+        if heading is not None:
+            current = tp.canonical_finding_id(heading.group(1)) if tp.id_matches("finding", heading.group(1)) else None
+        elif current is not None and current not in found and line.strip().startswith(EFFORT_MARKER):
+            word = re.match(r"(Low|Medium|High)\b", line.strip()[len(EFFORT_MARKER):].strip())
+            if word is not None:
+                found[current] = word.group(1)
+    return found
+
+
+def _read_recommendations(md_text: str) -> Dict[str, Tuple[str, str]]:
+    """``{canonical ID: (recommendation, effort)}`` as the rendered Section 4 says them (ADR-050 D2).
+
+    The recommendation is the "What to Implement" text. The shipped reader, ``parse_compensating_controls_md``, is run on the
+    markdown and its answer is used, so the two files agree by construction and a consumer reads the same text in either. The
+    effort is the Effort word of the finding's block. A finding whose control was found has no block, so both are empty.
+    """
+    efforts = _section_4_efforts(md_text)
+    return {tp.canonical_finding_id(found["id"]): (found["recommendation"], efforts.get(tp.canonical_finding_id(found["id"]), ""))
+            for found in tachi_parsers.parse_compensating_controls_md(md_text)["findings"] if tp.id_matches("finding", found["id"])}
+
+
+def _properties(row: Row, recommendation: str, effort: str) -> Dict[str, Any]:
+    """A result's properties: the contracted set, in the 1.1 template's order, and no other key (``contracts/sarif-result.md``).
+
+    The emitter appends the ``correlation-*`` keys of a group member. Scores are strings with one decimal place, and
+    ``security-severity`` is the residual score (the markdown's Section 2 shows the same numbers). ``control-carry-forward`` is a
+    JSON boolean, the renderer's accepted value. ``control-evidence`` repeats the finding's evidence in its canonical spelling.
+    ``maestro-layer`` is the value that the scorer file writes for the finding (gap B). The flags are always present and sorted.
+    """
+    return {
+        "security-severity": _one(row.residual), "control-status": row.control,
+        "control-evidence": [{"file": path, "line": entry["line"], "snippet": entry["snippet"]} for path, entry in zip(row.paths, row.item["evidence"])],
+        "control-carry-forward": row.carried, "control-effectiveness": row.effectiveness,
+        "inherent-risk": _one(row.inherent), "residual-risk": _one(row.residual), "maestro-layer": row.layer,
+        "recommendation": recommendation, "effort-estimate": effort, "integrity-flags": sorted(flag.text() for flag in row.flags)}
+
+
+def _render_sarif(run: Run, digest: str, md_text: str) -> str:
+    """``compensating-controls.sarif`` through the shared emitter: one result for each scored open finding, in Section 2's order.
+
+    The message is the finding's threat text and its control status, and its ``markdown`` is the reference set's mitigation
+    (``""`` when there is none, which is still written: P0-8). A correlated finding gets the group's properties and ruling C's
+    sentence. ``relatedLocations`` are the finding's evidence, in the resolver's spelling. The level follows the residual band.
+    """
+    texts = _read_recommendations(md_text)
+    results = []
+    for row in run.by_residual:
+        evidence = [sc.evidence_location(index, CATEGORY_NAME[row.control_category], run.evidence_cache[entry["file"]], entry["line"])
+                    for index, entry in enumerate(row.item["evidence"])]
+        results.append(sc.build_result(
+            tool=TOOL, finding_id=row.finding_id, message="%s [Control: %s]" % (row.threat, row.control), markdown=row.mitigation,
+            level=sc.level_for_band(row.residual_band), uri=run.uri, component=row.component, zone=row.zone, kind=row.kind,
+            properties=_properties(row, *texts.get(row.canon, ("", ""))), correlation=run.assignments.get(row.canon), related_locations=evidence))
+    highest: Dict[str, Decimal] = {}
+    for row in run.rows:
+        highest[row.threat_category] = max(highest.get(row.threat_category, row.residual), row.residual)
+    driver = sc.build_driver(SARIF, semantic_version=tp.VERSION, rules=_rules(highest), supported=sc.supported_taxonomies())
+    # AOD-SIMPLIFICATION: the driver's ``version`` is put in place here — upgrade: pass ``version=tp.VERSION`` to ``build_driver`` once
+    # R3a adds that argument (PM ruling 2c, gap C).
+    driver = dict([("name", driver["name"]), ("version", tp.VERSION)] + [(key, value) for key, value in driver.items() if key != "name"])
+    return sc.to_json(sc.build_document(driver, sc.TAXONOMIES, results, sc.provenance_stamp(RENDERER, tp.VERSION, digest)))
+
+
 def _outputs(run: Run, scoring: str, digest: str) -> Dict[str, str]:
-    """The files this build writes, by canonical name. T053 adds ``compensating-controls.sarif`` here, built by
-    ``_render_sarif`` through the shared emitter, and ``_check_staged`` then checks the pair."""
-    return {MD: _render_md(run, scoring, digest)}
+    """The files this build writes, by canonical name, in the order they move onto it: the markdown first. The SARIF is built from the
+    rendered markdown, so that its recommendations are what the shipped reader reads there."""
+    md_text = _render_md(run, scoring, digest)
+    return {MD: md_text, SARIF: _render_sarif(run, digest, md_text)}
 
 
 # =============================================================================
@@ -1450,12 +1689,111 @@ def _check_persisted(run: Run, md_text: str) -> List[str]:
     return problems
 
 
+def _quoted_value(value: Any) -> str:
+    """A value for a check message: its ``ascii`` form, cut at 60 characters (a message never carries a model's text whole)."""
+    shown = ascii(value)
+    return shown if len(shown) <= 60 else shown[:57] + "..."
+
+
+def _related_pairs(result: Mapping[str, Any]) -> Optional[List[Tuple[Any, Any]]]:
+    """``(uri, line)`` of each ``relatedLocations`` entry of a result, in order, or ``None`` when an entry isn't evidence's shape."""
+    try:
+        return [(shown["physicalLocation"]["artifactLocation"]["uri"], shown["physicalLocation"]["region"]["startLine"])
+                for shown in result.get("relatedLocations", [])]
+    except (KeyError, TypeError, AttributeError):
+        return None
+
+
+def _check_sarif(run: Run, rendered: str, text: str, md_text: str, matrix: Sequence[Tuple[str, List[str]]], digest: str) -> List[str]:
+    """Everything that can be wrong with the staged SARIF as it sits on disk, and with its agreement with the staged markdown.
+
+    The text is the one that was rendered. It is a SARIF document with a driver, results and the provenance stamp. No decoded
+    string holds a character that D3's step 10 forbids (the file is ASCII, so only the decoded strings show it: P0-4). The
+    shared self-check passes (N/N, the shape and key order, the hashes, the one URI, no RESOLVED finding, correlation). The
+    results are in Section 2's order. Each rule is the rule table's, with the highest residual score of its results. Each
+    result agrees with the row that Section 2 holds on disk (the scores, the status, the level, ``CF``) and with the staged
+    Section 4 (the recommendation and the effort), and carries the evidence, the layer and the flags of its finding.
+    """
+    problems: List[str] = []
+    if text != rendered:
+        problems.append("the staged %s is not the text that was rendered" % SARIF)
+    try:
+        document = json.loads(text)
+        content = document["runs"][0]
+        results, driver, stamp = content["results"], content["tool"]["driver"], content["properties"]["tachi_provenance"]
+        if not (isinstance(results, list) and isinstance(driver, dict) and isinstance(stamp, dict)):
+            raise TypeError("a part of the document is not the shape it should be")
+    except (ValueError, KeyError, IndexError, TypeError):
+        return problems + ["the staged %s is not a SARIF document with a driver, results and a provenance stamp" % SARIF]
+    forbidden = _first_forbidden(document)
+    if forbidden is not None:
+        problems.append("the staged %s holds the character U+%04X, which the part contract forbids, in %s" % (SARIF, ord(forbidden[1]), ascii(forbidden[0])[1:-1]))
+    if stamp != {"renderer": RENDERER, "version": tp.VERSION, "input_digest": digest}:
+        problems.append("the SARIF's provenance stamp is missing or wrong")
+    if (driver.get("name"), driver.get("informationUri"), driver.get("semanticVersion"), driver.get("version")) != (TOOL, sc.INFORMATION_URI, tp.VERSION, tp.VERSION):
+        problems.append("the SARIF's driver is not the tool's name, the real informationUri and the release version in both version fields")
+    expected = [row.canon for row in run.by_residual]
+    try:
+        sc.self_check(results, tool=TOOL, member_ids=expected, assignments=run.assignments, resolved_ids=run.resolved_ids, uri=run.uri)
+    except sc.SelfCheckError as exc:
+        problems += exc.problems[:10]
+    by_id: Dict[str, Mapping[str, Any]] = {}
+    written: List[str] = []
+    for result in results:
+        try:
+            canonical = tp.canonical_finding_id(result["partialFingerprints"]["findingId/v1"])
+            if not isinstance(result["properties"], dict):
+                raise TypeError("properties is not an object")
+        except (KeyError, ValueError, TypeError):
+            continue
+        written.append(canonical)
+        by_id.setdefault(canonical, result)
+    if len(results) != len(run.rows):
+        problems.append("the SARIF has %d results for %d scored findings" % (len(results), len(run.rows)))
+    elif written != expected and sorted(written, key=tp.finding_sort_key) == sorted(expected, key=tp.finding_sort_key):   # a wrong set is reported above
+        problems.append("the SARIF's results are not in Section 2's order (residual descending, then finding ID order)")
+
+    highest: Dict[str, Decimal] = {}   # each rule's highest residual among the results of this file, as the file spells them
+    for result in by_id.values():
+        category = CATEGORY_OF_RULE.get(result.get("ruleId"))
+        score = tachi_parsers.parse_score(result["properties"].get("security-severity")) if category is not None else None
+        if score is not None:
+            highest[category] = max(highest.get(category, score), score)
+    if driver.get("rules") != _rules(highest):
+        problems.append("the SARIF's rules are not the rule table's, one for each category with a result, each with the highest residual of its results")
+
+    cells = dict(matrix)
+    texts = _read_recommendations(md_text)
+    for row in run.rows:
+        result, cell = by_id.get(row.canon), cells.get(row.canon)
+        if result is None or cell is None:
+            continue   # reported above: a row or a result that is missing
+        properties = result["properties"]
+        recommendation, effort = texts.get(row.canon, ("", ""))
+        evidence = [{"file": path, "line": entry["line"], "snippet": entry["snippet"]} for path, entry in zip(row.paths, row.item["evidence"])]
+        wanted_related = [(run.evidence_cache[entry["file"]].uri, entry["line"]) for entry in row.item["evidence"]]
+        pairs = (("security-severity", properties.get("security-severity"), cell[9]), ("residual-risk", properties.get("residual-risk"), cell[9]),
+                 ("inherent-risk", properties.get("inherent-risk"), cell[5]),
+                 ("control-status", properties.get("control-status"), STATUS_OF_CLASS[tachi_parsers.classify_control_status(cell[7])[0]]),
+                 ("level", result.get("level"), sc.level_for_band(cell[10])),
+                 ("control-carry-forward", properties.get("control-carry-forward"), cell[CF_CELL] == "CF"),
+                 ("recommendation", properties.get("recommendation"), recommendation), ("effort-estimate", properties.get("effort-estimate"), effort),
+                 ("maestro-layer", properties.get("maestro-layer"), row.layer), ("control-effectiveness", properties.get("control-effectiveness"), row.effectiveness),
+                 ("control-evidence", properties.get("control-evidence"), evidence), ("relatedLocations", _related_pairs(result), wanted_related),
+                 ("integrity-flags", properties.get("integrity-flags"), sorted(flag.text() for flag in row.flags)))
+        for name, in_sarif, wanted in pairs:
+            if in_sarif != wanted:
+                problems.append("%s: the %s is %s in the SARIF and %s in the markdown or the rows" % (row.canon, name, _quoted_value(in_sarif), _quoted_value(wanted)))
+    return problems
+
+
 def _check_staged(run: Run, rendered: Mapping[str, str], staged: Mapping[str, str], digest: str) -> List[str]:
     """Everything that can be wrong with the files as they now sit on disk. Empty when they are right.
 
     The markdown is checked against the rows (parity, order, Section 2's arithmetic, the totals of Sections 1 and 5, Sections
     3 and 4), by the readers that consume it (the persisted inputs), for the stamp, and for a character that D3's step 10
-    forbids, raw (P0-4). T053 adds the SARIF here: N/N, the shared self-check, and the two files' agreement on decoded values.
+    forbids, raw (P0-4). The SARIF is checked on its own and against the markdown's rows (``_check_sarif``): N/N, the shared
+    self-check, and the two files' agreement on decoded values.
     """
     md_text = staged[MD]
     problems: List[str] = []
@@ -1485,6 +1823,7 @@ def _check_staged(run: Run, rendered: Mapping[str, str], staged: Mapping[str, st
     problems += _check_totals(run, md_text, read)
     problems += _check_controls_and_recommendations(run, md_text)
     problems += _check_persisted(run, md_text)
+    problems += _check_sarif(run, rendered[SARIF], staged[SARIF], md_text, read, digest)
     return problems
 
 
