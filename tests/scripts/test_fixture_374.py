@@ -1230,8 +1230,8 @@ def test_the_renderer_form_baseline_follows_the_1_1_template(committed):
             "What the renderer checked, corrected or could not check, and the inputs it scored from. A first run with no baseline has "
             "nothing to correct, so its Score Flags table is empty.",
             "> **Correlated findings**: For correlation groups (Section 4a of the source threat model), the primary finding is scored "
-            "independently. A NEW or UPDATED peer takes the primary's vector and scores. An UNCHANGED peer keeps its own score, and is flagged "
-            "`divergent` when that score differs from its primary's.",
+            "independently. A NEW or UPDATED peer takes its primary's assessment and is scored with its own asset tags. An UNCHANGED peer keeps "
+            "its own score, and is flagged `divergent` when that score differs from its primary's.",
             "**Resolved findings** (Section 2a, outside the distribution below):", "**Severity Distribution:**",
             "**Normalized (rounding only)**:", "**Baseline source**:", "**Tag source**:"):
         assert static in text and static in template, static

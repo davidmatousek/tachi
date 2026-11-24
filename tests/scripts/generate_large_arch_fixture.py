@@ -3688,8 +3688,8 @@ def renderer_form_md(world: dict, rows: dict, tag_source: str = "block") -> str:
                    fmt1(rows[f["id"]]["expl"]), fmt1(rows[f["id"]]["scale"]), fmt1(rows[f["id"]]["reach"]), fmt1(rows[f["id"]]["composite"]),
                    rows[f["id"]]["band"], dash(rows[f["id"]]["sla"]), rows[f["id"]]["disposition"], flags_cell(rows[f["id"]])) for f in order]),
            "", "> **Correlated findings**: For correlation groups (Section 4a of the source threat model), the primary finding is scored "
-           "independently. A NEW or UPDATED peer takes the primary's vector and scores. An UNCHANGED peer keeps its own score, and is flagged "
-           "`divergent` when that score differs from its primary's.", "", "---", ""]
+           "independently. A NEW or UPDATED peer takes its primary's assessment and is scored with its own asset tags. An UNCHANGED peer keeps "
+           "its own score, and is flagged `divergent` when that score differs from its primary's.", "", "---", ""]
     if world["resolved"]:
         raise ValueError("a renderer-form fixture with RESOLVED findings needs Section 2a, which no scenario has yet")
     out += ["## 3. Dimensional Breakdown", "",

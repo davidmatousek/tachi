@@ -115,7 +115,7 @@ The scoring pipeline runs in six phases. You supply the judgment in phases 2 and
 
 ### Baseline-Aware Scoring
 
-In a baseline-aware run, the planner sends you only the open findings that need judgment: the non-peers that are NEW, that are UPDATED, or that have no usable baseline row. The renderer carries every other finding forward from the baseline. It inherits an UNCHANGED finding's inputs, recomputes the derived fields from them, flags each change, and gives a correlated peer its primary's values (`severity-bands.md` documents the rules). So you never copy, inherit or adjust a score from a baseline file. Assess every finding in your batch fresh, whatever its `delta_status` says.
+In a baseline-aware run, the planner sends you only the open findings that need judgment: the non-peers that are NEW, that are UPDATED, or that have no usable baseline row. The renderer carries every other finding forward from the baseline. It inherits an UNCHANGED finding's inputs, recomputes the derived fields from them, flags each change, and gives a NEW or UPDATED correlated peer its primary's assessment, which it scores with the peer's own asset tags (`severity-bands.md` documents the rules). That peer's `**Correlation Group**:` line reads `Scores inherited from primary finding {primary_id} ({group})` while its table equals its primary's, and `Assessment inherited from primary finding {primary_id} ({group}); scored with its own asset tags` when its own tags moved its CVSS score. So you never copy, inherit or adjust a score from a baseline file. Assess every finding in your batch fresh, whatever its `delta_status` says.
 
 ### Batching
 

@@ -118,7 +118,7 @@ Findings sorted by Composite score descending (highest risk first), and by findi
 | **Disposition** | Default risk disposition driven by severity: Critical/High = Mitigate, Medium/Low = Review. May be overridden in the Governance Fields table (Section 4). |
 | **Flags** | The finding's integrity flags, as kind names in this fixed order: `corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `retagged`, `reused-id`, `input`. `—` when the finding has none. Section 6 lists each flag with its field and cause. |
 
-> **Correlated findings**: For correlation groups (Section 4a of the source threat model), the primary finding is scored independently. A NEW or UPDATED peer takes the primary's vector and scores. An UNCHANGED peer keeps its own score, and is flagged `divergent` when that score differs from its primary's.
+> **Correlated findings**: For correlation groups (Section 4a of the source threat model), the primary finding is scored independently. A NEW or UPDATED peer takes its primary's assessment and is scored with its own asset tags. An UNCHANGED peer keeps its own score, and is flagged `divergent` when that score differs from its primary's.
 
 ---
 

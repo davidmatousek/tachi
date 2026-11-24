@@ -63,7 +63,7 @@ Findings sorted by Composite score descending (highest risk first), and by findi
 | D-3 | fresh | audit-ledger | Expensive queries over approval and tool call records can be... | 6.7 | 6.3 | 3.0 | 2.5 | 5.2 | Medium | 30d | Review | — |
 | T-2 | fresh | planner-agent | An attacker who can write to the channel between... | 8.1 | 3.0 | 3.3 | 2.5 | 4.7 | Medium | 30d | Review | — |
 
-> **Correlated findings**: For correlation groups (Section 4a of the source threat model), the primary finding is scored independently. A NEW or UPDATED peer takes the primary's vector and scores. An UNCHANGED peer keeps its own score, and is flagged `divergent` when that score differs from its primary's.
+> **Correlated findings**: For correlation groups (Section 4a of the source threat model), the primary finding is scored independently. A NEW or UPDATED peer takes its primary's assessment and is scored with its own asset tags. An UNCHANGED peer keeps its own score, and is flagged `divergent` when that score differs from its primary's.
 
 ---
 

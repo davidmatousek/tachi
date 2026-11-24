@@ -3801,7 +3801,7 @@ def test_backstop_a_forbidden_character_in_a_decoded_sarif_string_fails_closed(p
 
 EXAMPLES = REPO_ROOT / "examples"
 FALLBACK_SHAPES = {   # shape -> the shipped threats.sarif that shows it
-    "modern": "agentic-app/sample-report/threats.sarif",             # findingId/v1; a mitigation, a layer and a DFD kind on every result
+    "modern": "agentic-app/sample-report/threats.sarif",             # findingId/v1; a mitigation, a layer, a DFD kind and a severity word on every result
     "unnamed": "maestro-reference/threats.sarif",                    # three correlation groups that the file gives no group ID
     "legacy": "mobile-banking-app/sample-report/threats.sarif",      # the ID only in properties.id; no mitigation and no layer
 }
@@ -3830,15 +3830,28 @@ def sarif_results_of(document):
     return found
 
 
+LEVEL_KEYS = ("risk_level", "severity", "security-severity")   # D8's order, ruled at W3 (Q6): tachi's older name, then a word, then a score
+
+
+def written_level(properties):
+    """The risk level that a result's properties give, as the file writes it, else ``None`` (D8's order, restated by plain lookups).
+
+    The first of ``LEVEL_KEYS`` that holds text is the level. A missing key, a blank string and a value that isn't a string are no value,
+    so the next key is asked, as the reader asks it.
+    """
+    return next((properties[key] for key in LEVEL_KEYS if isinstance(properties.get(key), str) and properties[key].strip()), None)
+
+
 def sarif_says(result):
     """What a shipped ``threats.sarif`` result says about its own finding (D8's reading, restated by plain lookups on the three shapes).
 
-    The risk level is ``properties.risk_level``, else a dash. Only the legacy form writes one: the modern form writes its level as
-    ``properties.severity``, which D8's reading does not take, so its findings show a dash, as they did before the reader changed.
+    The risk level is ``written_level``, else a dash, shown as written. That holds for the three samples, which write a band word (the
+    modern form as ``properties.severity``, the legacy form as ``risk_level``) or no level at all (maestro-reference), and the premise case
+    pins it. A score is shown as its band instead: ``test_fallback_a_result_with_only_a_security_severity...`` and the ``_risk_level`` cases pin that.
     """
     logical = result["locations"][0]["logicalLocations"][0]
     return {"component": logical["name"], "kind": logical["kind"], "threat": result["message"]["text"],
-            "mitigation": result["message"].get("markdown", ""), "risk_level": result["properties"].get("risk_level", DASH),
+            "mitigation": result["message"].get("markdown", ""), "risk_level": written_level(result["properties"]) or DASH,
             "layer": result["properties"].get("maestro-layer", "Unclassified")}
 
 
@@ -3908,6 +3921,17 @@ def test_fallback_each_shape_shows_the_form_it_is_there_for(fallback_modern, fal
         "the legacy form has the ID only in properties.id"
     assert not [result for result in legacy if "markdown" in result["message"] or "maestro-layer" in result["properties"]]
     assert {sarif_says(result)["kind"] for result in modern} == {"external-entity", "process", "data-store"}
+
+    def keys_written(fallback):   # the level keys that each result of the sample writes
+        return [set(LEVEL_KEYS) & set(result["properties"]) for result in fallback.source["runs"][0]["results"]]
+
+    keys = {"modern": keys_written(fallback_modern), "unnamed": keys_written(fallback_unnamed), "legacy": keys_written(fallback_legacy)}
+    assert keys["modern"] and all(found == {"severity"} for found in keys["modern"]), \
+        "the modern form writes its level as properties.severity alone, which the reader takes since W3 (Q6)"
+    assert keys["legacy"] and all(found == {"risk_level"} for found in keys["legacy"])
+    assert keys["unnamed"] and not any(keys["unnamed"]), "maestro-reference writes no level, so each of its findings shows a dash"
+    levels = [written_level(result["properties"]) for shape in (fallback_modern, fallback_legacy) for result in shape.source["runs"][0]["results"]]
+    assert levels and all(level and level.isalpha() for level in levels), "each level a sample writes is a word, which the cases below take as written"
     groups = tachi_parsers.parse_sarif_member_set(fallback_unnamed.text)["groups"]
     assert [group["group_id"] for group in groups] == [None, None, None], "three groups, and the file names none of them"
     assert [(group["primary"], group["members"][1]) for group in groups] == list(UNNAMED_PEERS)
@@ -3926,7 +3950,11 @@ def test_fallback_a_run_over_each_shape_finishes_and_the_planners_agents_are_the
 
 
 def test_fallback_every_findings_identity_text_is_its_own_results(fallback):
-    """P0-3 (b): the legacy form rendered every finding as component ``Unspecified``, no threat, no mitigation and no risk level."""
+    """P0-3 (b): the legacy form rendered every finding as component ``Unspecified``, no threat, no mitigation and no risk level.
+
+    The risk level is the first of ``risk_level``, ``severity`` and ``security-severity`` that the result holds (W3, Q6), so the modern form's
+    ``severity`` word shows, and a sample with no level shows a dash.
+    """
     results = {canon(key): value for key, value in results_by_id(fallback.project.sarif).items()}
     source = sarif_results_of(fallback.source)
     assert sorted(results, key=s2_key) == sorted(source, key=s2_key)
@@ -4011,7 +4039,8 @@ def test_refusal_a_forbidden_character_in_a_legacy_form_results_text_is_refused_
 
 
 def test_fallback_a_result_with_only_a_security_severity_shows_its_band_as_the_original_risk_level(stage, renderer, tmp_path):
-    """D8: the risk level is ``properties.risk_level``, else ``security-severity``, which is a score, so it is read as its severity band."""
+    """D8: the risk level is ``risk_level``, else ``severity``, else ``security-severity`` (W3, Q6). The synthetic file writes only the last,
+    which is a score, so it is read as its severity band."""
     project = sarif_fallback_project(stage, renderer, tmp_path)
     res = project.run()
     assert res.code in (0, 5), res.describe()
