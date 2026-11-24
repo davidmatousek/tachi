@@ -1,5 +1,5 @@
-"""Contract-text tests for F-374, W1 and W2 (T010, T029 to T031, T051; ADR-050 D16; spec US-4 #5, FR-N4.1,
-FR-N4.4, FR-E.1, FR-E.3, FR-K6.3, FR-N14.1).
+"""Contract-text tests for F-374, W1 to W3 (T010, T029 to T031, T037, T038, T051; ADR-050 D16; spec US-4 #5, FR-N4.1,
+FR-N4.4, FR-E.1, FR-E.3, FR-K6.3, FR-K7.4, FR-K8.3, FR-N14.1).
 
 The agent specs, the shared references and the shipped helpers state one contract in three places.
 This module keeps the places in step. It reads text, and it never runs a script, writes a file or
@@ -13,6 +13,8 @@ Inputs (read-only; repository-relative; every one matches an existing ``paths:``
 - ``.claude/agents/tachi/*.md``: the 21 agent specs, and ``.claude/commands/tachi.*.md``.
 - ``templates/tachi/output-schemas/risk-scores.md`` and ``.sarif``, and the scorer's references under
   ``.claude/skills/tachi-risk-scoring/references/`` (section 12).
+- ``.claude/skills/tachi-control-analysis/references/``, ``adapters/claude-code/agents/references/sarif-generation.md``
+  and the controls spec and command named above (section 13).
 - ``.claude/skills/tachi-shared/SKILL.md`` and its references ``agent-roster-shared.md``,
   ``sarif-identity-shared.md``, ``part-file-contract-shared.md``, ``finding-format-shared.md``,
   ``stride-categories-shared.md`` and ``dispatch-record-brief-shared.md``.
@@ -56,6 +58,13 @@ What each section proves:
    each step routes every exit code of its script, and only shipped scripts run. ``/tachi.threat-model``
    gains its presence check (Step 1) and the architecture-source upsert (Step 2.7) under P-2's anchors.
    The scorer's template and references document the renderer and agree with the code.
+13. W3, lane D. The control analyzer's spec is judgment-only, as the scorer's is: it loads the part contract, states the
+   check in the reference's words, and its example part passes the validator. ``/tachi.compensating-controls`` has the
+   scorer command's loop: the presence check, a plan made once with the command's date, the scored input and the target,
+   waves under the completion rule, a reconcile from disk, the renderer, the summary and Step F (``--reason
+   agent-not-spawned`` included), each step routed by the exit table, and only shipped scripts run (T038). The three
+   controls references document the renderer and agree with the code, and the installed SARIF guide no longer tells an
+   agent to author a file that a renderer owns.
 
 Every comparison parses the reference and compares it with the code, so it fails when either side
 drifts. Each comparison has a negative control that edits one side and expects a mismatch. A parser
@@ -72,6 +81,7 @@ import hashlib
 import json
 import re
 import sys
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Callable, Dict, FrozenSet, List, NamedTuple, Optional, Sequence, Set, Tuple
 
@@ -1501,7 +1511,7 @@ def test_the_part_parsers_find_the_counts_the_reference_states():
     assert len(parse_key_sets(text)) == 24
     assert len(parse_fallbacks(text)) == 24 and len(parse_flag_fields(text)) == 28
     assert sorted(parse_slots(text)) == ["compensating-controls", "risk-score"]
-    assert len(parse_stage_agents(text)) == 2 and len(parse_limits(text)) == 10 and len(parse_escape_references(text)) == 8
+    assert len(parse_stage_agents(text)) == 2 and len(parse_limits(text)) == 10 and len(parse_escape_references(text)) == 9
     identifiers = parse_identifiers(text)
     assert len(identifiers["patterns"]) == 7 and len(identifiers["prefix_order"]) == 12
     closed = parse_closed_values(text)
@@ -1781,6 +1791,7 @@ def test_a_preflight_that_drops_a_helper_is_noticed(stem):
 RISK_SCORER_SPEC = "%s/risk-scorer.md" % AGENTS_DIR
 RISK_SCORE_COMMAND = "%s/tachi.risk-score.md" % COMMANDS_DIR
 THREAT_MODEL_COMMAND = "%s/tachi.threat-model.md" % COMMANDS_DIR
+CONTROLS_COMMAND = "%s/tachi.compensating-controls.md" % COMMANDS_DIR  # section 13 (T038) tests it too
 RISK_SCORING_REFERENCES = SKILLS_DIR + "/tachi-risk-scoring/references"
 RISK_SCORES_TEMPLATE = "templates/tachi/output-schemas/risk-scores.md"
 RISK_SCORES_SARIF_TEMPLATE = "templates/tachi/output-schemas/risk-scores.sarif"
@@ -1898,6 +1909,7 @@ def test_routes_reads_the_exit_table_after_an_anchor():
 @pytest.mark.parametrize("path, no_plan_words", [
     (RISK_SCORE_COMMAND, "No plan exists yet"),
     (THREAT_MODEL_COMMAND, "nothing to fail"),
+    (CONTROLS_COMMAND, "No plan exists yet"),
 ])
 def test_step_1_runs_the_presence_check_and_stops_below_the_python_floor(path, no_plan_words):
     step = step_of(text_of(path), "## Step 1:", path)
@@ -2292,3 +2304,393 @@ def test_asset_modifiers_uses_r_25_s_formula_and_ends_the_unchanged_exemption():
     assessed = tachi_scoring.base_score("CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H")
     elevated = tachi_scoring.base_score(tachi_scoring.elevate("CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H", ["pii"]))
     assert assessed > tachi_scoring.MODIFIER_CEILING and max(assessed, min(tachi_scoring.MODIFIER_CEILING, elevated)) == assessed
+
+
+# =============================================================================
+# 13. W3, lane D: /tachi.compensating-controls, the control analyzer's spec, the controls references and the SARIF
+#     guide (T037, T038; ADR-050 D2, D4, D6, D7; FR-K7.4, FR-K8.3)
+# =============================================================================
+
+CONTROL_ANALYZER_SPEC = "%s/control-analyzer.md" % AGENTS_DIR
+CONTROLS_REFERENCES = SKILLS_DIR + "/tachi-control-analysis/references"
+SARIF_GENERATION_GUIDE = ADAPTER_AGENTS + "/references/sarif-generation.md"
+
+# The controls renderer is written by another lane in the same wave (T035), and T039 wires it into INSTALL_MANIFEST.md.
+# Until the script is in the tree, naming it is allowed. Once the file exists, only the manifest makes it shipped,
+# so a wiring commit that forgets the manifest fails here.
+WIRED_BY_T039 = frozenset({"scripts/render-compensating-controls.py"})
+
+CONTROLS_CALLS = [
+    "python3 scripts/tachi-stage.py --version",
+    "python3 scripts/tachi-stage.py plan --stage compensating-controls --out {output_dir} --date {analysis_date} "
+    "--risk-scores {input_dir}/risk-scores.md --target {target_path}",
+    "python3 scripts/tachi-stage.py reconcile --stage compensating-controls --out {output_dir} --plan {plan_id} --plan-digest {plan_digest}",
+    "python3 scripts/render-compensating-controls.py --out {output_dir} --plan {plan_id} --plan-digest {plan_digest}",
+    "python3 scripts/tachi-stage.py fail --stage compensating-controls --out {output_dir} --plan {plan_id} --plan-digest {plan_digest} "
+    "--reason {reason}",
+]
+# The helpers that the two scripts import. Step 1's installed-files check names them, so that a missing helper is reported as
+# an installation error and never as a missing Python (the architect's P0-11: the presence check imports them at load).
+CONTROLS_HELPERS = ("scripts/tachi_parts.py", "scripts/tachi_scoring.py", "scripts/tachi_scoring_rules.py",
+                    "scripts/sarif_common.py", "scripts/tachi_parsers.py")
+# The names the agent's batch input holds under ``refs``. The command passes what the planner needs to fill them: the scored
+# input (--risk-scores), the target, the architecture candidate and the baseline, and the planner reaches the threat model
+# through the scored input's source_file.
+CONTROLS_REFS = {"risk_scores", "threats", "target", "architecture", "baseline_dir"}
+
+
+def shipped_or_wired_by_t039() -> Set[str]:
+    """The manifest's scripts, plus the controls renderer while it is neither in the manifest nor in the tree."""
+    return shipped_scripts() | {name for name in WIRED_BY_T039 if not (REPO_ROOT / name).exists()}
+
+
+# --- /tachi.compensating-controls (T038) ----------------------------------------------------------
+
+
+def test_controls_runs_only_the_shipped_scripts_it_names_and_each_fence_is_one_python3_call():
+    text = text_of(CONTROLS_COMMAND)
+    allowed = shipped_or_wired_by_t039()
+    assert calls(text) == CONTROLS_CALLS
+    for fence in fences(text):
+        if fence.label.lower() in SHELL_LABELS:
+            assert not command_problems(fence.body, allowed), fence.body
+    named = set(re.findall(r"scripts/[A-Za-z0-9_.-]+\.py", text))
+    assert named <= allowed, "the command names a script that isn't shipped: %s" % sorted(named - allowed)
+    assert named == {"scripts/tachi-stage.py", "scripts/render-compensating-controls.py"} | set(CONTROLS_HELPERS)
+    assert directive_hits(text) == []
+    assert "It writes no script of its own, and it stops on a failure rather than working around it." in text
+
+
+def test_controls_step_0_adds_the_flags_and_no_date_flag():
+    text = text_of(CONTROLS_COMMAND)
+    step = step_of(text, "## Step 0:", CONTROLS_COMMAND)
+    for flag in ("--target <path>", "--output-dir <path>", "--baseline <run-dir>", "--architecture-path <path>"):
+        assert flag in step, flag
+    assert "--date" not in step, "the command exposes no --date flag (PM-T5)"
+    assert text.count("--date") == 1, "the one --date is the planner's, and the command computes the date once"
+    plan = step_of(text, "## Step 2:", CONTROLS_COMMAND)
+    assert "Set `analysis_date` to today's date" in plan
+    assert "the plan's date" in plan, "a resumed run uses the plan's date"
+
+
+def test_controls_plans_once_with_the_command_date_the_scored_input_and_the_target():
+    step = step_of(text_of(CONTROLS_COMMAND), "## Step 2:", CONTROLS_COMMAND)
+    assert calls(step) == [CONTROLS_CALLS[1]]
+    assert "--baseline-dir {baseline_dir}" in step and "--architecture {architecture_flag}" in step
+    assert "and only then" in step and "a per-run snapshot must never stand in for it" in step
+    assert "`plan` reads `risk-scores.sarif` when `risk-scores.md` is absent" in step, "AR-T2: the SARIF fallback is the planner's"
+    assert "Pass no threat model path" in step and "`source_file`" in step and "--threats" not in step
+    # every flag the command passes is one the planner takes, and the stage is one it plans
+    source = STAGE_SCRIPT.read_text(encoding="utf-8")
+    for flag in ("--stage", "--out", "--date", "--risk-scores", "--target", "--baseline-dir", "--architecture"):
+        assert 'plan.add_argument("%s"' % flag in source, flag
+    assert "compensating-controls" in tachi_parts.STAGE_AGENTS
+
+
+def test_controls_installed_files_check_names_the_helpers_so_a_missing_one_is_not_a_missing_python():
+    step = step_of(text_of(CONTROLS_COMMAND), "## Step 1:", CONTROLS_COMMAND)
+    first = step.split("2. **Check Python")[0]
+    for name in ("`.claude/agents/tachi/control-analyzer.md`", "`scripts/tachi-stage.py`", "`scripts/render-compensating-controls.py`"):
+        assert name in first, name
+    for helper in CONTROLS_HELPERS:
+        assert "`%s`" % helper in first, helper
+        assert helper in shipped_scripts(), "%s is not in the manifest" % helper
+    assert "Re-run the installer from this project's root: <tachi-repo>/scripts/install.sh" in first
+
+
+@pytest.mark.parametrize("anchor, script", [("## Step 2:", "plan"), ("## Step 4:", "reconcile"), ("## Step 5:", "render")])
+def test_controls_routes_every_exit_code_of_each_script(anchor, script):
+    table = routes(text_of(CONTROLS_COMMAND), anchor, CONTROLS_COMMAND)
+    assert set(table) == SCRIPT_EXITS[script], "%s routes %s, and the script returns %s" % (anchor, sorted(table), sorted(SCRIPT_EXITS[script]))
+
+
+def test_controls_routing_follows_the_exit_table():
+    text = text_of(CONTROLS_COMMAND)
+    plan = routes(text, "## Step 2:", CONTROLS_COMMAND)
+    assert plan["0"] == "Go to Step 3" and plan["1"].startswith("Stop and print the error")
+    assert plan["2"].startswith("Stop and print the error") and "nothing to fail" in plan["2"], "2 runs fail only once a plan exists"
+    reconcile = routes(text, "## Step 4:", CONTROLS_COMMAND)
+    assert reconcile["0"] == "Go to Step 5"
+    assert reconcile["3"].startswith("Dispatch exactly the batches `waves` lists") and "while the exit code is 3" in reconcile["3"]
+    assert reconcile["4"] == "Go to Step F with `--reason unrecoverable-batch`"
+    assert reconcile["2"] == "Go to Step F with `--reason check-failed`"
+    assert reconcile["1"] == "Stop and print the error"
+    render = routes(text, "## Step 5:", CONTROLS_COMMAND)
+    assert render["0"] == "Success. Go to Step 6"
+    assert render["5"].startswith("Success with warnings. Print the warnings")
+    assert render["4"] == "A completeness or parity check failed. Go to Step F with `--reason check-failed`"
+    assert render["anything else"] == "Go to Step F with `--reason render-failed`"
+
+
+def test_controls_dispatches_the_typed_agent_with_the_fixed_prompt_and_waits_for_completion():
+    text = text_of(CONTROLS_COMMAND)
+    step = step_of(text, "## Step 3:", CONTROLS_COMMAND)
+    prompts = [f.body for f in fences(step) if "Read and follow" in f.body]
+    assert prompts == [the_fixed_prompt()], "the dispatch prompt is the part contract's one fixed line, and nothing else"
+    assert "`subagent_type` set to `tachi-control-analyzer`" in step
+    assert "tachi-control-analyzer" in roster_names()
+    assert tachi_parts.STAGE_AGENTS["compensating-controls"] == "tachi-control-analyzer"
+    assert named_tachi_tokens(text) <= roster_names() | skill_directories()
+    assert COMPLETION_RULE in step, "ADR-050 D6's completion rule, word for word"
+    assert "foreground" not in text.lower(), "the Agent tool has no foreground option"
+    assert "Never send more than 16 in one message" in step and "at most 16 batches each" in step_of(text, "## Step 2:", CONTROLS_COMMAND)
+    assert "end the run there" in step and "Run no substitute" in step
+    assert "`--reason agent-not-spawned` and `--detail tachi-control-analyzer`" in step
+    # the old prompt, which handed the agent the whole pipeline, the paths and the output files, is gone
+    for gone in ("Analyze scored threat findings against the target codebase", "Execute your complete 6-phase analysis pipeline",
+                 "Input format:", "Analysis date:", "Output directory:", "Write output files", "Read the input file yourself"):
+        assert gone not in text, gone
+
+
+def test_controls_step_f_runs_fail_with_one_of_the_scripts_reasons_and_never_twice():
+    text = text_of(CONTROLS_COMMAND)
+    step = step_of(text, "## Step F:", CONTROLS_COMMAND)
+    assert calls(step) == [CONTROLS_CALLS[4]]
+    reasons = stage_reasons()
+    assert reasons == {"agent-not-spawned", "unrecoverable-batch", "check-failed", "render-failed"}
+    named = set(re.findall(r"`(--reason )?(agent-not-spawned|unrecoverable-batch|check-failed|render-failed)`", step))
+    assert {reason for _, reason in named} == reasons, "Step F names every reason, and the routing above uses only these"
+    used = set(re.findall(r"--reason ([a-z-]+)`", text))
+    assert used <= reasons, "a step sends Step F a reason the script doesn't have: %s" % sorted(used - reasons)
+    assert "For `agent-not-spawned`, add `--detail tachi-control-analyzer`" in step, "AR-T5: Step F covers a spawn failure"
+    assert "`fail` never runs a second time" in step and "Whatever `fail` exits with, stop there" in step
+    assert "`TACHI COMPENSATING-CONTROLS FAILED`" in step
+
+
+def test_controls_reports_the_renderers_summary_and_restates_no_number():
+    text = text_of(CONTROLS_COMMAND)
+    step = step_of(text, "## Step 6:", CONTROLS_COMMAND)
+    assert "exactly as it wrote them" in step and "Restate no number" in step
+    assert "with category `%s`" % sc.UPLOAD_CATEGORIES["compensating-controls.sarif"] in step
+    for gone in ("COMPENSATING CONTROLS ANALYSIS COMPLETE", "{found_count}", "{risk_reduction_pct}", "{count}", "Residual Severity Distribution",
+                 "Highest-Risk Unmitigated: {id}", "(supersedes risk-scores.sarif)", "preserved fingerprints"):
+        assert gone not in text, "the model-composed summary and its stale claim are gone: %s" % gone
+
+
+# --- the control analyzer's spec (T037) -----------------------------------------------------------
+
+
+def test_the_control_analyzer_loads_the_part_contract_and_states_its_check_in_the_references_words():
+    spec = text_of(CONTROL_ANALYZER_SPEC)
+    assert "**MANDATORY**: Read `%s` before you write anything" % PART_CONTRACT in spec
+    assert check_statement(spec) == check_statement(text_of(PART_CONTRACT))
+    assert text_of(SARIF_IDENTITY).count("**You never write SARIF.**") == 1 and SARIF_IDENTITY in spec
+
+
+def test_every_slot_the_control_analyzer_names_is_a_slot_of_its_stage():
+    spec = text_of(CONTROL_ANALYZER_SPEC)
+    tokens = set(re.findall(r"\{\{[^{}]*\}\}", spec)) - {"{{kind:arg}}"}
+    assert len(tokens) >= 7, tokens
+    for token in sorted(tokens):
+        assert tachi_parts.narrative_problem(token, "compensating-controls") is None, token
+
+
+def test_the_control_analyzers_example_part_is_accepted_by_the_validator_with_no_flag():
+    blocks = [f.body for f in fences(text_of(CONTROL_ANALYZER_SPEC)) if f.label == "json"]
+    assert len(blocks) == 1, "the spec carries one example part"
+    part = json.loads(blocks[0])
+    assert part["stage"] == "compensating-controls" and part["agent_type"] == "tachi-control-analyzer"
+    result = tachi_parts.classify_part(part, part["plan_id"], part["batch_id"], "compensating-controls", part["agent_type"], part["finding_ids"])
+    assert result.state == "done" and result.flags == {}, (result.state, result.detail, result.flags)
+    for item in part["items"]:
+        row = item["matrix_row"]
+        assert len(row.strip().strip("|").split("|")) == 11, "Section 2's row has the K8 schema's 11 cells"
+        for slot in ("{{score:inherent}}", "{{band:inherent}}", "{{score:residual}}", "{{band:residual}}"):
+            assert row.count(slot) == 1, slot
+        body = item["recommendation_body"]
+        assert re.findall(r"\*\*([A-Za-z ]+)\*\*:", body) == ["What to Implement", "Where to Implement", "Reference Patterns", "Effort Estimate"]
+        assert re.search(r"\*\*Effort Estimate\*\*: (Low|Medium|High)\b", body)
+
+
+def test_the_control_analyzer_is_judgment_only_and_authors_no_output_file():
+    spec = text_of(CONTROL_ANALYZER_SPEC)
+    assert spec.count(NO_HAND_BACK) == 1
+    for gone in ("Risk score content", "String (file content)", "Processing Capacity", "Result count matches", "Coverage Matrix entries MUST equal",
+                 "append peer references", "Preserve ALL", "semanticVersion", "re-hash", "halt with", "{output_directory}"):
+        assert gone not in spec, "the control analyzer spec still carries %r" % gone
+    for kept in ("`tachi.part/1`", "`tachi.overflow/1`", "`part_path`", "`recommendation_body`", "`matrix_row`"):
+        assert kept in spec, kept
+    names = set(re.findall(r"scripts/[A-Za-z0-9_.-]+\.py", spec))
+    assert names == {"scripts/render-compensating-controls.py", "scripts/sarif_common.py"}, sorted(names)
+    assert names <= shipped_or_wired_by_t039(), sorted(names - shipped_or_wired_by_t039())
+
+
+def test_the_control_analyzer_names_each_sarif_tool_with_r_33_s_case_and_states_the_count_rule_once_per_place():
+    spec = text_of(CONTROL_ANALYZER_SPEC)
+    for name in sc.TOOL_NAMES.values():
+        assert "`%s`" % name in spec, name
+    assert "`tachi`" not in spec, "R-33: the threats tool has a capital T"
+    # D-6(a)'s three controls sentences and D8's peer line, each reworded once to the open-findings rule
+    assert spec.count("one entry for each open finding") == 1          # was :345, Phase 6
+    assert spec.count("Each result is one open finding") == 1           # was :394, 6c check 5
+    assert spec.count("both files count the same open findings") == 1  # was :402, 6d check 1
+    assert spec.count("A correlated peer is a result of its own") == 1  # was :383, D8's peer-reference line
+    for old in ("Result count matches", "Coverage Matrix entries MUST equal", "append peer references", "finding count"):
+        assert old not in spec, old
+
+
+def test_the_control_analyzer_resolves_a_category_for_every_prefix_as_the_code_does():
+    spec = text_of(CONTROL_ANALYZER_SPEC)
+    assert "`category_for_prefix`" in spec and "all 12 prefixes" in spec
+    resolved: Dict[str, str] = {}
+    for prefixes, category in re.findall(r"((?:`[A-Z]+-N`(?:, | and )?)+) -> `([a-z-]+)`", spec):
+        for prefix in re.findall(r"[A-Z]+(?=-N)", prefixes):
+            resolved[prefix] = category
+    assert resolved == tachi_scoring.PREFIX_CATEGORY
+
+
+def test_the_control_analyzer_reads_the_refs_names_that_the_commands_plan_fills():
+    spec = text_of(CONTROL_ANALYZER_SPEC)
+    assert set(re.findall(r"`refs\.([a-z_]+)`", spec)) == CONTROLS_REFS
+    plan = calls(step_of(text_of(CONTROLS_COMMAND), "## Step 2:", CONTROLS_COMMAND))[0]
+    assert "--risk-scores {input_dir}/risk-scores.md" in plan and "--target {target_path}" in plan, "refs.risk_scores and refs.target"
+    # the controls item's key set is closed, and no value that the renderer computes has a key in it
+    keys = set(tachi_parts.KEY_SETS["controls-item"][0]) | set(tachi_parts.KEY_SETS["controls-item"][1])
+    for computed in ("reduction_factor", "residual_score", "residual_severity_band", "control_effectiveness", "rescan_scope"):
+        assert computed not in keys, computed
+
+
+# --- the controls references (T038) -----------------------------------------------------------------
+
+
+def test_residual_risk_documents_the_renderers_factors_formula_and_bands_as_the_code_has_them():
+    text = text_of(CONTROLS_REFERENCES + "/residual-risk.md")
+    where = "residual-risk.md"
+    factors = {strip_ticks(row[0]): Decimal(row[1]) for row in table_after(text, "### Reduction Factor Assignment", where=where).rows}
+    assert factors == tachi_scoring.REDUCTION_FACTOR_P0
+    examples = table_after(text, "**Worked examples**:", where=where).rows
+    assert len(examples) == 4
+    for threat, composite, status, factor, _calculation, residual in examples:
+        assert tachi_scoring.REDUCTION_FACTOR_P0[status] == Decimal(factor), threat
+        assert tachi_scoring.residual_score(Decimal(composite), Decimal(factor)) == Decimal(residual), threat
+    assert ("9.1", "found", "0.50", "4.6") in {(row[1], row[2], row[3], row[5]) for row in examples}, "the 4.55 example stays, and half up gives 4.6"
+    minimums = {}
+    for cell, spread in table_after(text, "### Residual Severity Band Mapping", where=where).rows:
+        band = cell.strip("*")
+        if band != "Low":
+            minimums[band] = Decimal(re.search(r"[0-9]+\.[0-9]", spread).group(0))
+    assert minimums == {band: rule["min"] for band, rule in tachi_scoring.SEVERITY_BANDS.items() if band != "Low"}
+    for fact in ("**The renderer's section.**", "`scripts/render-compensating-controls.py`", "`tachi_scoring.residual_score`", "`tachi_scoring.q1`",
+                 "half up", "never uses Python's `round()`", "no step corrects a factor", "`tachi_scoring.reduction_percentage`",
+                 "`tachi_scoring.largest_remainder`"):
+        assert fact in text, fact
+    for gone in ("halt with", "emit a warning", "Processing order", "Clamp the result", "single paragraph"):
+        assert gone not in text, "the reference still tells the agent to %r" % gone
+
+
+def test_the_summary_example_in_residual_risk_has_counts_that_agree_with_each_other():
+    block = next(f.body for f in fences(text_of(CONTROLS_REFERENCES + "/residual-risk.md")) if "residual_risk_summary" in f.body)
+    data: Dict[str, Dict[str, int]] = {}
+    section = ""
+    for line in block.splitlines()[1:]:
+        match = re.match(r"^( +)([a-z_]+):\s*(\S*)$", line)
+        assert match, line
+        indent, key, value = match.groups()
+        if value == "":
+            section = key
+            data[section] = {}
+        elif len(indent) == 4:
+            data[section][key] = int(value)
+    inherent, residual, shifts = data["inherent_distribution"], data["residual_distribution"], data["severity_shifts"]
+    assert sum(inherent.values()) == sum(residual.values())
+    assert shifts["total_shifts"] == sum(value for key, value in shifts.items() if key != "total_shifts")
+    moved_out = {band: sum(v for k, v in shifts.items() if k.startswith(band + "_to_")) for band in ("critical", "high", "medium")}
+    moved_in = {band: sum(v for k, v in shifts.items() if k.endswith("_to_" + band)) for band in ("high", "medium", "low")}
+    for band in ("critical", "high", "medium", "low"):
+        assert residual[band] == inherent[band] - moved_out.get(band, 0) + moved_in.get(band, 0), band
+
+
+def test_the_recommendation_templates_follow_the_four_key_body_the_part_contract_validates():
+    templates = [f.body for f in fences(text_of(CONTROLS_REFERENCES + "/residual-risk.md")) if f.body.startswith("**What to Implement**:")]
+    assert len(templates) == 2, "one template for a missing control and one for a partial control"
+    for body in templates:
+        assert re.findall(r"^\*\*([A-Za-z ]+)\*\*:", body, re.MULTILINE) == ["What to Implement", "Where to Implement", "Reference Patterns",
+                                                                              "Effort Estimate"]
+        assert len(body) <= 2000
+
+
+def test_evidence_criteria_gives_the_renderer_the_factors_and_the_p0_effectiveness():
+    text = text_of(CONTROLS_REFERENCES + "/evidence-criteria.md")
+    factors = re.findall(r"Reduction factor \(the renderer's, P0 binary\): \*\*([0-9.]+)\*\*", text)
+    assert [Decimal(factor) for factor in factors] == [tachi_scoring.REDUCTION_FACTOR_P0[status] for status in ("found", "partial", "missing")]
+    note = section_text(text, "### P0 Effectiveness Note", where="evidence-criteria.md")
+    assert 'the renderer derives `control_effectiveness` from `control_status` (found -> "strong", partial -> "moderate", missing -> "none")' in note
+    assert "You never write it" in note
+    for gone in ("halt with", "Detailed effectiveness assessment available in P1", "conforming to the `control_evidence` item schema"):
+        assert gone not in text, gone
+
+
+def test_control_categories_names_the_closed_enum_and_the_prefix_resolution_as_the_code_has_them():
+    text = text_of(CONTROLS_REFERENCES + "/control-categories.md")
+    slugs = set(re.findall(r"^### Category [0-9]+: .+ \(`([a-z-]+)`\)$", text, re.MULTILINE))
+    assert slugs == set(tachi_parts.CONTROL_CATEGORIES) and len(slugs) == 8
+    sentence = re.search(r"`S`, `T`, `R`, `I`, `D` and `E` to the six STRIDE categories, (.+?) to Agentic, and (.+?) to LLM\.", text)
+    assert sentence, "the reference states the prefix resolution"
+    by_category: Dict[str, Set[str]] = {}
+    for prefix, category in tachi_scoring.PREFIX_CATEGORY.items():
+        by_category.setdefault(category, set()).add(prefix)
+    assert set(re.findall(r"`([A-Z]+)`", sentence.group(1))) == by_category["agentic"]
+    assert set(re.findall(r"`([A-Z]+)`", sentence.group(2))) == by_category["llm"]
+    assert {"S", "T", "R", "I", "D", "E"} == set(tachi_scoring.PREFIX_CATEGORY) - by_category["agentic"] - by_category["llm"]
+    assert "`tachi_scoring.category_for_prefix`" in text and "all 12 prefixes" in text
+
+
+@pytest.mark.parametrize("name", ["residual-risk.md", "evidence-criteria.md", "control-categories.md"])
+def test_every_tachi_scoring_name_that_a_controls_reference_cites_exists(name):
+    text = text_of(CONTROLS_REFERENCES + "/" + name)
+    assert "scripts/render-compensating-controls.py" in text, "the reference says who computes what"
+    for member in set(re.findall(r"`tachi_scoring\.([A-Za-z_0-9]+)`", text)):
+        assert hasattr(tachi_scoring, member), "%s cites tachi_scoring.%s, which doesn't exist" % (name, member)
+
+
+# --- the installed SARIF guide (FR-K8.3) -------------------------------------------------------------
+
+
+def test_the_sarif_guide_no_longer_tells_an_agent_to_author_a_file_that_a_renderer_owns():
+    text = text_of(SARIF_GENERATION_GUIDE)
+    status = text.split("### SARIF Output Generation")[0]
+    assert "no longer tells any agent to author `risk-scores.sarif` or `compensating-controls.sarif`" in status
+    assert "you write no SARIF" in status and SARIF_IDENTITY in status
+    assert "scripts/render-risk-scores.py" in status and "scripts/render-compensating-controls.py" in status
+    assert "### Renderer-Owned SARIF Files" in text and "### Risk Scoring SARIF Extension" not in text
+    for gone in ("MUST preserve", "is designed to supersede", "Fingerprint Preservation Rules", "The risk-scorer does not modify, add, or remove taxonomy data"):
+        assert gone not in text, gone
+    owned = text.split("### Renderer-Owned SARIF Files")[1]
+    assert "No agent authors either file" in owned
+    assert not re.search(r"\b(Set|Populate|Map|Create|Write|Produce|Generate)\b[^.\n]*\b(risk-scores|compensating-controls)\.sarif", owned), \
+        "the renderer-owned section has no authoring instruction"
+
+
+def test_the_sarif_guide_corrects_the_supersession_claim_under_r_33():
+    text = text_of(SARIF_GENERATION_GUIDE)
+    claim = section_text(text, "#### SARIF Supersession", where=SARIF_GENERATION_GUIDE)
+    assert claim.strip().startswith("No SARIF file supersedes another")
+    assert "different tool names" in claim and "different categories" in claim
+    assert "`risk-scores.sarif` does not supersede `threats.sarif`" in claim
+    assert "`compensating-controls.sarif` does not supersede `risk-scores.sarif`" in claim
+    # the three tools and categories are the emitter's
+    table = table_after(text, "#### Tool Metadata Differences", where=SARIF_GENERATION_GUIDE)
+    files = ("threats.sarif", "risk-scores.sarif", "compensating-controls.sarif")
+    names = next(row for row in table.rows if row[0] == "`tool.driver.name`")
+    assert [strip_ticks(cell).strip('"') for cell in names[1:]] == [sc.TOOL_NAMES[name] for name in files]
+    categories = next(row for row in table.rows if row[0].startswith("Recommended upload"))
+    assert [strip_ticks(cell) for cell in categories[1:]] == [sc.UPLOAD_CATEGORIES[name] for name in files]
+    assert sc.TOOL_NAMES["threats.sarif"] == "Tachi", "R-33: the threats tool has a capital T"
+
+
+def test_the_sarif_guide_documents_what_the_renderers_write():
+    text = text_of(SARIF_GENERATION_GUIDE)
+    where = SARIF_GENERATION_GUIDE
+    # the scorer's property bag is the template's, key for key and in order (the renderer writes it)
+    section = section_text(text, "#### Extended Property Bag Schema", where=where, keep_fences=True)
+    documented = list(json.loads(next(f.body for f in fences(section) if f.label == "json"))["properties"])
+    template = json.loads(text_of(RISK_SCORES_SARIF_TEMPLATE))
+    plain_results = [r["properties"] for r in template["runs"][0]["results"] if "correlation-group" not in r["properties"]]
+    assert documented == list(plain_results[0])
+    # the message is written whole, and the layer is a property of every result (P0-8; the PM's ruling on maestro-layer)
+    assert "the renderer always writes `markdown` beside it, the empty string included" in section_text(text, "#### The Result Message", where=where)
+    assert "`maestro-layer`" in section and "`integrity-flags`" in section
+    # identity: tachi's own hash, two fingerprint keys, no copy from upstream
+    identity = section_text(text, "#### Identity and Membership", where=where)
+    assert 'sha256("tachi-plh/1|" + tool + "|" + id)' in identity and "exactly two keys" in identity and "never in `partialFingerprints`" in identity
+    assert "Neither renderer-owned file copies a fingerprint from an upstream file" in identity
