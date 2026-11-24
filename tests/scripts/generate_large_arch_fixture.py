@@ -243,6 +243,17 @@ def composite_is_tie(c: int, e: int, s: int, r: int) -> bool:
     return (35 * c + 30 * e + 15 * s + 20 * r) % 100 == 50
 
 
+# Section 3's weighted table, as the 1.1 template and the renderer write it: the dimension's label, its key in a score row and its weight in hundredths.
+WEIGHT_ROWS = (("CVSS Base", "cvss", 35), ("Exploitability", "expl", 30), ("Scalability", "scale", 15), ("Reachability", "reach", 20))
+
+
+def weighted_cell(tenths: int, weight: int) -> str:
+    """A Weighted cell for a score in tenths and a weight in hundredths: exact in thousandths, then half up to two decimals.
+
+    8.3 x 0.35 is 2.905 and shows 2.91, and 2.5 x 0.20 shows 0.50."""
+    return "%d.%02d" % divmod(half_up(tenths * weight, 10), 100)
+
+
 def composite_on_boundary(t: int) -> bool:
     return t in (40, 70, 90)
 
@@ -3633,9 +3644,10 @@ def whole_percentages(counts: dict) -> dict:
 def renderer_form_md(world: dict, rows: dict, tag_source: str = "block") -> str:
     """risk-scores.md in schema 1.1 as the renderer writes it, laid out by templates/tachi/output-schemas/risk-scores.md: the templated
     Executive Summary, a Flags column in Section 2, no Section 2a when nothing is resolved, the scorer's rationale prose in Section 3
-    beside per-metric cells that read the dash, Section 5 as the template has it, and Section 6, Score Integrity, ending in Scoring
-    Inputs, the one table that the next run reads its carried inputs from. The template's own explanatory subsections (column and field
-    definitions, override guidance) are documentation, and no shipped output carries them."""
+    beside per-metric cells that read the dash (and each finding's MAESTRO Layer field and weighted table), Section 5 as the template
+    has it, and Section 6, Score Integrity, ending in Scoring Inputs, the one table that the next run reads its carried inputs from. The
+    template's own explanatory subsections (column and field definitions, override guidance) are documentation, and no shipped output
+    carries them."""
     cfg, findings, by_name = world["cfg"], world["findings"], world["by_name"]
     when = cfg["dates"]["scores"]
     order = sorted(findings, key=lambda f: (-rows[f["id"]]["composite"], prefix_rank(f["id"])))
@@ -3688,11 +3700,14 @@ def renderer_form_md(world: dict, rows: dict, tag_source: str = "block") -> str:
         r, comp = rows[f["id"]], by_name[f["comp"]]
         metrics = vector_parts(r["vector"])
         out += ["### %s %s %s" % (f["id"], EM, f["comp"]), "", "**Threat**: %s" % f["threat"], "",
-                "**Category**: %s | **Original Risk Level**: %s | **Composite**: %s (%s)" % (
-                    PREFIX_CATEGORY[f["prefix"]], f["risk"], fmt1(r["composite"]), r["band"]), ""]
+                "**Category**: %s | **MAESTRO Layer**: %s | **Original Risk Level**: %s | **Composite**: %s (%s)" % (
+                    PREFIX_CATEGORY[f["prefix"]], layer_label(f["layer"]), f["risk"], fmt1(r["composite"]), r["band"]), ""]
         if r.get("integrity"):
             out += ["**Integrity**: %s" % ", ".join(r["integrity"]), ""]
-        out += ["#### CVSS 3.1 Base", "", "**Score**: %s | **Vector**: `%s`" % (fmt1(r["cvss"]), r["vector"]), "",
+        out += [table(("Dimension", "Score", "Weight", "Weighted"),
+                      [(label, fmt1(r[key]), "0.%02d" % weight, weighted_cell(r[key], weight)) for label, key, weight in WEIGHT_ROWS])
+                + "\n| **Composite** | | | **%s** |" % fmt1(r["composite"]), "",
+                "#### CVSS 3.1 Base", "", "**Score**: %s | **Vector**: `%s`" % (fmt1(r["cvss"]), r["vector"]), "",
                 table(("Metric", "Value", "Rationale"), [(label, names[metrics[key]], EM) for key, label, names, _ in CVSS_METRICS]), "",
                 prose["rationale.cvss"], "",
                 "#### Exploitability", "", "**Score**: %s (average of sub-dimensions)" % fmt1(r["expl"]), "",

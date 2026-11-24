@@ -74,6 +74,9 @@ The groups of tests, by the task that turns them green:
   assessment and is scored with its own asset tags (the architect's cases C1 to C6), and the ±1.0 bound on a NEW finding applies only when a
   usable baseline ``risk-scores.md`` was read. ``test_template_*`` also pins the rendered rules' ``relationships`` and the driver's ``version``
   to the 1.1 template (the PM's W3 ruling 2, gaps A and C).
+* ``test_p0_5_*`` (section 33, W3's P0-5 and the architect's Q4): Section 3's MAESTRO Layer field and weighted table (exact ``Decimal``
+  cells, a tie among them, the Composite row), the two sentences that a copied peer's correlation line can say, and the cap on the finding
+  IDs that Section 1's reachability-default line names (at most ``sarif_common.PEER_CAP``, in S-2 order, then `` and N more``).
 
 Standard library and pytest only, and Python 3.9 syntax.
 """
@@ -96,7 +99,7 @@ import shutil
 import sys
 import time
 import types
-from decimal import Decimal
+from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal, localcontext
 from pathlib import Path
 
 import pytest
@@ -1109,8 +1112,8 @@ def test_md_section_3_shows_each_findings_scores_and_inputs(base):
         cvss, e, s, reach, composite, band = golden(finding_id)
         prefix = item["id"].partition("-")[0]
         assert "**Threat**: " + tp.escape_prose(item["threat"]) in body, finding_id
-        assert "**Category**: %s | **Original Risk Level**: %s | **Composite**: %s (%s)" % (
-            ts.category_for_prefix(prefix), item["risk"], composite, band) in body, finding_id
+        assert "**Category**: %s | **MAESTRO Layer**: %s | **Original Risk Level**: %s | **Composite**: %s (%s)" % (
+            ts.category_for_prefix(prefix), tp.escape_prose(COMPONENTS[item["component"]][1]), item["risk"], composite, band) in body, finding_id
         assert "**Score**: %s | **Vector**: `%s`" % (cvss, item["vector"]) in body, finding_id
         assert "**Score**: %s (average of sub-dimensions)" % e in body, finding_id
         assert "**Score**: %s (average of sub-dimensions)" % s in body, finding_id
@@ -4756,3 +4759,253 @@ def test_p0_9_with_a_usable_baseline_risk_scores_the_same_new_finding_is_bounded
     finished(project)
     assert MdView(project.md).values("R-1")["cvss_base"] == str(floor), "held to its category's bound"
     assert persisted_inputs(project)[("R-1", "score_bounds")] == "%s,%s" % ts.bounds(ts.default_score("repudiation"))
+
+
+# =============================================================================
+# 33. P0-5 and Q4: Section 3's MAESTRO field and weighted table, a copied peer's sentence, and the capped Section 1 list (W3, lane FX0)
+# =============================================================================
+#
+# Section 3 had dropped two things that every shipped v4.48.4 file carries: D2's "Section 3's weighted values", and the MAESTRO layer, which
+# then stood nowhere in the markdown (only the SARIF's ``maestro-layer`` held it). The 1.1 template and ``output-formatting.md`` are one
+# layout now, and these goldens pin what the renderer writes of it:
+#
+#   the Category line   ``**Category**: C | **MAESTRO Layer**: L | **Original Risk Level**: R | **Composite**: X (band)``. L is the string that
+#                       the finding's SARIF result carries as ``maestro-layer`` (escaped in the markdown), or ``Unclassified``.
+#   the weighted table  after the optional Correlation Group and Integrity lines, before ``#### CVSS 3.1 Base``, with a blank line on each
+#                       side: the four dimensions with their stored score, their weight and Weighted, which is the score times the weight in
+#                       exact decimal arithmetic, rounded half up to two decimals; then a Composite row that repeats the composite. The
+#                       renderer rounds that once, from the exact sum, so it is not the sum of the four shown cells.
+#
+# A copied peer's correlation line is true in both cases (P0-6 made the first one not always so): it says ``Scores inherited`` while the
+# peer's table is its primary's, and ``Assessment inherited ...; scored with its own asset tags`` when its own tags moved its CVSS score.
+# The architect's Q4 caps every list of finding IDs in a rendered file at ``sarif_common.PEER_CAP``, then `` and N more``, in S-2 order.
+
+WEIGHTED = {   # finding -> the Weighted cells of CVSS, exploitability, scalability and reachability: literals, re-derived by the first test
+    "E-5": ("3.47", "2.70", "1.28", "2.00"),     # 9.9 x 0.35 = 3.465 and 8.5 x 0.15 = 1.275 end in 5. The cells add to 9.45, and the composite is 9.4
+    "AGP-01": ("3.47", "2.55", "1.20", "0.50"),  # 3.465: half up gives 3.47, and half even would give 3.46
+    "E-3": ("3.47", "1.80", "0.75", "0.80"),
+    "LLM-4": ("3.26", "2.10", "0.75", "0.20"),   # 9.3 x 0.35 = 3.255
+    "S-2": ("2.87", "1.50", "0.60", "0.90"),     # no tie
+    "S-10": ("2.28", "1.80", "0.60", "1.20"),    # 6.5 x 0.35 = 2.275
+    "T-1": ("2.49", "1.80", "0.75", "0.90"),     # 7.1 x 0.35 = 2.485: half up gives 2.49, and half even would give 2.48
+    "AG-1": ("3.47", "1.35", "0.60", "0.50"),
+    "R-1": ("0.63", "0.60", "0.30", "0.50"),     # no tie
+}
+WEIGHTS_SHOWN = ("0.35", "0.30", "0.15", "0.20")
+DIMENSIONS = ("CVSS Base", "Exploitability", "Scalability", "Reachability")
+HUNDREDTH = Decimal("0.01")
+
+
+def weighted_block(finding_id):
+    """The weighted table of a synthetic finding, line for line, from the literal goldens."""
+    scores = golden(finding_id)
+    return "\n".join(["| Dimension | Score | Weight | Weighted |", "|-----------|-------|--------|----------|"]
+                     + ["| %s | %s | %s | %s |" % row for row in zip(DIMENSIONS, scores[:4], WEIGHTS_SHOWN, WEIGHTED[finding_id])]
+                     + ["| **Composite** | | | **%s** |" % scores[4]])
+
+
+def category_line(md, finding_id):
+    """The one ``**Category**:`` line of a finding's Section 3 subsection."""
+    lines = [line for line in subsection_for(md, finding_id).split("\n") if line.startswith("**Category**:")]
+    assert len(lines) == 1, (finding_id, lines)
+    return lines[0]
+
+
+def correlation_line(md, finding_id):
+    """The one ``**Correlation Group**:`` line of a finding's Section 3 subsection."""
+    lines = [line for line in subsection_for(md, finding_id).split("\n") if line.startswith("**Correlation Group**:")]
+    assert len(lines) == 1, (finding_id, lines)
+    return lines[0]
+
+
+# --------------------------------------------------------------------------- the weighted table
+
+def test_harness_the_literal_weighted_goldens_equal_the_exact_decimal_products():
+    """Each cell is re-derived from ``Decimal`` scores and weights, never a float: the product is exact, then half up to two decimals."""
+    assert sorted(WEIGHTED) == sorted(GOLDEN) and [str(weight) for weight in ts.WEIGHTS.values()] == list(WEIGHTS_SHOWN)
+    ties, apart = [], []
+    for finding_id, cells in WEIGHTED.items():
+        products = [Decimal(score) * weight for score, weight in zip(golden(finding_id)[:4], ts.WEIGHTS.values())]
+        assert tuple(str(product.quantize(HUNDREDTH, rounding=ROUND_HALF_UP)) for product in products) == cells, finding_id
+        ties += [str(product) for product in products if product.as_tuple().exponent == -3 and product.as_tuple().digits[-1] == 5]
+        apart += [str(product) for product in products
+                  if product.quantize(HUNDREDTH, rounding=ROUND_HALF_EVEN) != product.quantize(HUNDREDTH, rounding=ROUND_HALF_UP)]
+    assert {"3.465", "1.275", "3.255", "2.275", "2.485"} <= set(ties), "the goldens hold products that end in exactly 5 at the thousandths"
+    assert {"3.465", "2.485"} <= set(apart), "and two of them that half even would round the other way (3.46 and 2.48)"
+    shown = sum(Decimal(cell) for cell in WEIGHTED["E-5"])
+    assert (str(shown), golden("E-5")[4]) == ("9.45", "9.4"), "E-5's four cells add to 9.45, which is not its composite: the cell is rounded once"
+
+
+@pytest.mark.parametrize("score,dimension,cell", [
+    ("8.3", "cvss_base", "2.91"),         # 2.905: the template's own example
+    ("7.5", "scalability", "1.13"),       # 1.125
+    ("9.9", "cvss_base", "3.47"),         # 3.465, where half even gives 3.46
+    ("7.1", "cvss_base", "2.49"),         # 2.485, where half even gives 2.48
+    ("0.3", "scalability", "0.05"),       # 0.045, where half even gives 0.04
+    ("2.5", "reachability", "0.50"),      # always two decimals
+    ("9.0", "exploitability", "2.70"),
+    ("0.0", "reachability", "0.00"),
+    ("10.0", "cvss_base", "3.50"),
+])
+def test_p0_5_a_weighted_cell_is_exact_and_rounds_half_up_whatever_the_ambient_decimal_context_is(renderer, score, dimension, cell):
+    assert renderer._weighted(Decimal(score), dimension) == cell
+    with localcontext() as ambient:   # another module's getcontext() change moves no digit
+        ambient.prec, ambient.rounding = 2, ROUND_HALF_EVEN
+        assert renderer._weighted(Decimal(score), dimension) == cell
+
+
+def test_p0_5_a_float_never_reaches_a_weighted_cell(renderer):
+    with pytest.raises(TypeError):
+        renderer._weighted(9.9, "cvss_base")
+
+
+def test_p0_5_section_3_holds_each_findings_weighted_table_after_its_lines_and_before_the_cvss_heading(base):
+    for finding_id in ORDER:
+        body = subsection_for(base.md, finding_id)
+        assert body.count("| Dimension | Score | Weight | Weighted |") == 1, finding_id
+        assert "\n\n%s\n\n#### CVSS 3.1 Base\n" % weighted_block(finding_id) in body, "%s: the table, its blank lines and its place" % finding_id
+        assert body.index("**Category**:") < body.index("| Dimension |"), finding_id
+        header, rows = table_of(body, "Dimension")
+        assert header == ["Dimension", "Score", "Weight", "Weighted"] and [row[0] for row in rows] == list(DIMENSIONS) + ["**Composite**"], finding_id
+
+
+def test_p0_5_the_composite_row_repeats_the_composite_and_never_adds_up_the_cells(base):
+    """E-5's cells add to 9.45, and a sum of the shown cells would round up to 9.5. The row says 9.4, which is Section 2's composite."""
+    scored = {row["ID"]: row for row in records(*table_of(section(base.md, "## 2. Scored Threat Table"), "ID"))}
+    for finding_id in ORDER:
+        rows = table_of(subsection_for(base.md, finding_id), "Dimension")[1]
+        assert rows[-1] == ["**Composite**", "", "", "**%s**" % scored[finding_id]["Composite"]], finding_id
+        assert [row[1] for row in rows[:4]] == [scored[finding_id][column] for column in ("CVSS", "Exploit.", "Scale.", "Reach.")], finding_id
+    shown = sum(Decimal(row[3]) for row in table_of(subsection_for(base.md, "E-5"), "Dimension")[1][:4])
+    assert str(shown) == "9.45" and ts.q1(shown) == Decimal("9.5") and scored["E-5"]["Composite"] == "9.4"
+
+
+def test_template_p0_5_the_renderers_section_3_has_the_templates_category_line_and_weighted_table(base):
+    """The 1.1 template and ``output-formatting.md`` once disagreed with the renderer about Section 3 (P0-5). Each line of the template's Category
+    line and weighted table has a line of its shape in every rendered finding, in the template's order and before the CVSS heading."""
+    text = (TEMPLATES / MD).read_text(encoding="utf-8")
+    lines = text[text.index("## 3. Dimensional Breakdown"):text.index("## 4. Governance Fields")].split("\n")
+    start = lines.index("| Dimension | Score | Weight | Weighted |")
+    wanted = [next(line for line in lines if line.startswith("**Category**:"))] + lines[start:start + 7]
+    assert wanted[1:3] == ["| Dimension | Score | Weight | Weighted |", "|-----------|-------|--------|----------|"]
+    assert wanted[-1] == "| **Composite** | | | **{composite_score}** |" and "**MAESTRO Layer**: {maestro_layer}" in wanted[0]
+    shapes = [re.compile(re.sub(r"\\\{[a-z_]+\\\}", ".+?", re.escape(line))) for line in wanted]
+    for finding_id in ORDER:
+        body, at = subsection_for(base.md, finding_id).split("\n"), -1
+        for shape in shapes:
+            at = next((n for n, line in enumerate(body) if n > at and shape.fullmatch(line)), None)
+            assert at is not None, "%s has no line of the shape %s, in the template's order" % (finding_id, shape.pattern)
+        assert at < body.index("#### CVSS 3.1 Base"), finding_id
+
+
+# --------------------------------------------------------------------------- the MAESTRO Layer field
+
+def test_p0_5_the_category_line_carries_the_maestro_layer_and_it_is_the_sarifs_maestro_layer(base):
+    results = results_by_id(base.sarif)
+    for finding_id in ORDER:
+        item, (cvss, _e, _s, _r, composite, band) = by_id(finding_id), golden(finding_id)
+        layer = COMPONENTS[item["component"]][1]
+        line = category_line(base.md, finding_id)
+        assert line == "**Category**: %s | **MAESTRO Layer**: %s | **Original Risk Level**: %s | **Composite**: %s (%s)" % (
+            ts.category_for_prefix(item["id"].partition("-")[0]), layer, item["risk"], composite, band), finding_id
+        assert [part.split(": ")[0] for part in line.split(" | ")] == ["**Category**", "**MAESTRO Layer**", "**Original Risk Level**", "**Composite**"]
+        assert decode(line.split(" | ")[1][len("**MAESTRO Layer**: "):]) == results[finding_id]["properties"]["maestro-layer"] == layer, finding_id
+
+
+def test_p0_5_a_layer_the_threat_model_leaves_blank_is_unclassified_and_markup_in_one_is_escaped(stage, renderer, tmp_path, monkeypatch):
+    """No §7 layer and no §1 layer for a finding: both files say ``Unclassified``. A layer that holds markup is raw in the SARIF, and
+    escaped in the markdown, which decodes to the SARIF's string."""
+    hostile = "L2 " + DASH + " Data <b>Operations</b> and `ops` {{7*7}}"
+    monkeypatch.setitem(COMPONENTS, "vector-store", ("Data Store", hostile))
+    monkeypatch.setitem(COMPONENTS, "planner-agent", ("Process", ""))
+    project = Project(stage, renderer, tmp_path)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    results = results_by_id(project.sarif)
+    for finding_id in ("AG-1", "R-1"):   # both on planner-agent
+        assert results[finding_id]["properties"]["maestro-layer"] == "Unclassified", finding_id
+        assert "| **MAESTRO Layer**: Unclassified | " in category_line(project.md, finding_id), finding_id
+    assert results["AGP-01"]["properties"]["maestro-layer"] == hostile
+    shown = category_line(project.md, "AGP-01").split(" | ")[1][len("**MAESTRO Layer**: "):]
+    assert shown == tp.escape_prose(hostile) and "<b>" not in shown and "{{" not in shown
+    assert decode(shown) == hostile
+    assert "| **MAESTRO Layer**: L7 " + DASH + " Agent Ecosystem | " in category_line(project.md, "E-5"), "the others keep their component's layer"
+
+
+# --------------------------------------------------------------------------- a copied peer's correlation line
+
+INHERITED = "**Correlation Group**: Scores inherited from primary finding S-2 (CG-1)"
+ASSESSED_UNDER_OWN_TAGS = "**Correlation Group**: Assessment inherited from primary finding S-2 (CG-1); scored with its own asset tags"
+CEILING_VECTOR = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H"   # base 9.1, and a forcing tag lifts it only to the 9.2 ceiling
+
+
+@pytest.mark.parametrize("layout,line", [("equal", INHERITED), ("peers-only", ASSESSED_UNDER_OWN_TAGS), ("primary-only", ASSESSED_UNDER_OWN_TAGS)])
+def test_p0_5_a_copied_peers_line_says_scores_when_it_took_them_and_assessment_when_its_own_tags_scored_it(stage, renderer, tmp_path, layout, line):
+    project = finished(peer_project(stage, renderer, tmp_path, LAYOUTS[layout][0]))
+    assert correlation_line(project.md, "S-2") == "**Correlation Group**: CG-1, primary of S-10, T-1"
+    for peer in PEERS:
+        assert correlation_line(project.md, peer) == line, peer
+        assert (DIVERGENT in flags_of(project, peer)) == (layout != "equal"), "divergent exactly when the peer's composite moved"
+        body = subsection_for(project.md, peer).split("\n")   # the weighted table comes after the optional lines, each of which stands alone
+        places = [next(n for n, text in enumerate(body) if text.startswith(start)) for start in ("**Category**:", "**Correlation Group**:")]
+        places += [n for n, text in enumerate(body) if text.startswith("**Integrity**:")]   # only a peer that carries a flag has this line
+        places += [body.index("| Dimension | Score | Weight | Weighted |"), body.index("#### CVSS 3.1 Base")]
+        assert places == sorted(places) and len(places) == 4 + (layout != "equal"), peer
+        assert all(body[n - 1] == "" for n in places[1:]), peer
+    assert (correlation_line(project.md, "S-10") == INHERITED) == (six_of(facts(project, "S-10")) == six_of(facts(project, "S-2"))), (
+        "the sentence follows the values: it says Scores exactly when the peer's table is its primary's")
+
+
+def test_p0_5_a_peer_whose_tags_moved_its_cvss_score_but_not_its_composite_still_says_it_was_scored_with_its_own_tags(stage, renderer, tmp_path):
+    """No ``divergent`` flag marks this peer (the composites are equal), but its CVSS score is not its primary's, so ``Scores inherited`` would be false."""
+    e, s, r = golden("S-2")[1:4]
+
+    def under(tags):
+        return rules.cvss_chain(CEILING_VECTOR, tags=tags, score_bounds=None).cvss_base
+
+    assert (under(()), under(("secrets",))) == (Decimal("9.1"), Decimal("9.2")), "precondition: the ceiling gives the peer one tenth more"
+    assert ts.composite(under(()), Decimal(e), Decimal(s), Decimal(r)) == ts.composite(under(("secrets",)), Decimal(e), Decimal(s), Decimal(r)), (
+        "precondition: and one tenth of CVSS Base does not move the composite")
+    specs = [dict(item, vector=CEILING_VECTOR) if item["id"] == "S-2" else item for item in SPECS]
+    project = finished(peer_project(stage, renderer, tmp_path, LAYOUTS["peers-only"][0], specs=specs))
+    primary, peer = facts(project, "S-2"), facts(project, "S-10")
+    assert (primary["values"]["cvss_base"], peer["values"]["cvss_base"]) == ("9.1", "9.2")
+    assert primary["values"]["composite_score"] == peer["values"]["composite_score"] and peer["flags"] == []
+    assert [correlation_line(project.md, name) for name in PEERS] == [ASSESSED_UNDER_OWN_TAGS] * 2
+
+
+@pytest.mark.parametrize("how", sorted(UNRECORDED))
+def test_p0_5_a_peer_that_kept_its_primarys_score_for_want_of_an_assessed_score_says_scores_inherited_and_the_flag_says_why(stage, renderer, tmp_path, how):
+    """Other tags, but no chain ran: the peer's table is its primary's, so the sentence is true, and ``unchecked`` says that nothing checked it."""
+    vector, stored, tag, _step = UNRECORDED[how]
+    project, _baseline = legacy_primary_project(stage, renderer, tmp_path, vector, stored, {"edge-gateway": tag, "auth-broker": "safety"})
+    finished(project)
+    assert six_of(facts(project, "S-10")) == six_of(facts(project, "S-2"))
+    assert correlation_line(project.md, "S-10") == INHERITED
+    assert flags_of(project, "S-10") == [UNRECORDED_FLAG]
+
+
+# --------------------------------------------------------------------------- Q4: the reachability-default list names at most ten findings
+
+NO_ZONE_NARRATIVE = dict(RATIONALE, reachability="No trust zone data was recorded for the component, so its reachability is the default.")
+
+
+def defaulted_project(stage_module, renderer_module, root, count):
+    """``count`` open findings T-1 to T-<count> with no trust zone data. The last one scores highest, so a list in composite order would name it first."""
+    specs = [dict(by_id("S-2"), id="T-%d" % number, status="NEW", zone=None, trust=None, e=(9, 9, 9, 9) if number == count else (5, 5, 5, 5))
+             for number in range(1, count + 1)]
+    return Project(stage_module, renderer_module, root, specs=specs, resolved=[], items=lambda finding_id: scorer_item(by_id(finding_id, specs), NO_ZONE_NARRATIVE))
+
+
+@pytest.mark.parametrize("count,tail", [(3, ""), (10, ""), (11, " and 1 more"), (12, " and 2 more")])
+def test_p0_5_the_reachability_default_line_names_at_most_ten_findings_in_s2_order_then_the_count(stage, renderer, tmp_path, count, tail):
+    project = defaulted_project(stage, renderer, tmp_path, count)
+    res = project.run()
+    assert res.code == 5, res.describe()
+    assert records(*table_of(section(project.md, "## 2. Scored Threat Table"), "ID"))[0]["ID"] == "T-%d" % count, (
+        "precondition: the finding that scores highest is the last by ID, so Section 2's order is not S-2's")
+    named = ", ".join("T-%d" % number for number in range(1, min(count, 10) + 1)) + tail
+    assert "> Reachability defaulted to 5.0 for %d finding(s) with no trust zone data: %s." % (count, named) in project.md.split("\n")
+    warnings = [warning for warning in project.record["warnings"] if warning["code"] == "reachability-defaulted"]
+    assert [warning["detail"] for warning in warnings] == [
+        "%d findings had no trust zone data, so their reachability is the default 5.0: %s" % (count, named)], "the stage record's warning follows the same form"

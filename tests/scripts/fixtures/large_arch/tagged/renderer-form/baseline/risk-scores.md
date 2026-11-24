@@ -75,7 +75,15 @@ Per-finding detail showing the full scoring rationale for each dimension. One su
 
 **Threat**: An attacker who can write to the channel between tool-server-1 and audit-ledger modifies approval and tool call records in transit because messages carry no integrity protection of their own. The weakness sits at layer Security and Compliance of the stack, so every workflow that depends on approval and tool call records inherits the exposure. The change can persist across restarts and restores, which makes the original state difficult to prove and to recover. Rated LOW likelihood because the path needs several preconditions to line up, such as insider access or a rare timing window, and LOW impact because the effect is contained and easy to reverse once it is noticed.
 
-**Category**: tampering | **Original Risk Level**: Note | **Composite**: 7.1 (High)
+**Category**: tampering | **MAESTRO Layer**: L6 — Security and Compliance | **Original Risk Level**: Note | **Composite**: 7.1 (High)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | 9.2 | 0.35 | 3.22 |
+| Exploitability | 7.5 | 0.30 | 2.25 |
+| Scalability | 7.3 | 0.15 | 1.10 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **7.1** |
 
 #### CVSS 3.1 Base
 
@@ -132,7 +140,15 @@ The component sits in a trusted zone with no extra barriers recorded.
 
 **Threat**: Backups and exports of embedded documents and metadata on vector-store-a are writable by operators without a second approver, so a malicious change survives restores. The weakness sits at layer Data Operations of the stack, so every workflow that depends on embedded documents and metadata inherits the exposure. The change can persist across restarts and restores, which makes the original state difficult to prove and to recover. Rated MEDIUM likelihood because the path needs a foothold on a neighbouring service or a prepared request, and MEDIUM impact because the effect is bounded to one workflow or one tenant and can be corrected with effort.
 
-**Category**: tampering | **Original Risk Level**: Medium | **Composite**: 6.9 (Medium)
+**Category**: tampering | **MAESTRO Layer**: L2 — Data Operations | **Original Risk Level**: Medium | **Composite**: 6.9 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | 8.6 | 0.35 | 3.01 |
+| Exploitability | 8.5 | 0.30 | 2.55 |
+| Scalability | 5.3 | 0.15 | 0.80 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **6.9** |
 
 #### CVSS 3.1 Base
 
@@ -189,7 +205,15 @@ The component sits in a trusted zone with no extra barriers recorded.
 
 **Threat**: An attacker replays a captured model API key against model-gateway, which does not bind the credential to the session or channel it was issued for, so the replay is accepted as the original caller. The exposure follows from how model-gateway receives prompts and completions from planner-agent and hands them to the next stage without an independent check. A successful impersonation exposes every function the genuine caller may use and is hard to tell apart from normal traffic. Rated LOW likelihood because the path needs several preconditions to line up, such as insider access or a rare timing window, and MEDIUM impact because the effect is bounded to one workflow or one tenant and can be corrected with effort.
 
-**Category**: spoofing | **Original Risk Level**: Low | **Composite**: 6.8 (Medium)
+**Category**: spoofing | **MAESTRO Layer**: L1 — Foundation Model | **Original Risk Level**: Low | **Composite**: 6.8 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | 9.2 | 0.35 | 3.22 |
+| Exploitability | 8.5 | 0.30 | 2.55 |
+| Scalability | 3.3 | 0.15 | 0.50 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **6.8** |
 
 #### CVSS 3.1 Base
 
@@ -246,7 +270,15 @@ The component sits in a trusted zone with no extra barriers recorded.
 
 **Threat**: Serialised objects arriving from worker-2 are deserialised by vector-store-a with permissive type handling, allowing crafted payloads to instantiate unintended behaviour. The weakness sits at layer Data Operations of the stack, so every workflow that depends on embedded documents and metadata inherits the exposure. Altered data is then treated as authoritative by every consumer, so the damage spreads before anyone compares it with the source. Rated MEDIUM likelihood because the path needs a foothold on a neighbouring service or a prepared request, and HIGH impact because the affected data or action is central to shipment handling and hard to reverse.
 
-**Category**: tampering | **Original Risk Level**: High | **Composite**: 6.8 (Medium)
+**Category**: tampering | **MAESTRO Layer**: L2 — Data Operations | **Original Risk Level**: High | **Composite**: 6.8 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | 7.5 | 0.35 | 2.63 |
+| Exploitability | 7.8 | 0.30 | 2.34 |
+| Scalability | 8.8 | 0.15 | 1.32 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **6.8** |
 
 #### CVSS 3.1 Base
 
@@ -303,7 +335,15 @@ The component sits in a trusted zone with no extra barriers recorded.
 
 **Threat**: Unsanitised embedded documents and metadata reach vector-store-a and are processed as trusted structure, so crafted input changes how later steps interpret the record. vector-store-a runs in the Data Zone and exchanges embedded documents and metadata with worker-2 over PostgreSQL over TLS, so anything able to reach worker-2 can also reach this weakness. The change can persist across restarts and restores, which makes the original state difficult to prove and to recover. Rated HIGH likelihood because the path needs no special position and uses interfaces that are exposed by design, and MEDIUM impact because the effect is bounded to one workflow or one tenant and can be corrected with effort.
 
-**Category**: tampering | **Original Risk Level**: High | **Composite**: 6.8 (Medium)
+**Category**: tampering | **MAESTRO Layer**: L2 — Data Operations | **Original Risk Level**: High | **Composite**: 6.8 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | 7.2 | 0.35 | 2.52 |
+| Exploitability | 8.5 | 0.30 | 2.55 |
+| Scalability | 8.3 | 0.15 | 1.25 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **6.8** |
 
 #### CVSS 3.1 Base
 
@@ -360,7 +400,15 @@ The component sits in a trusted zone with no extra barriers recorded.
 
 **Threat**: Retry storms from worker-2 multiply the load on vector-store-a when it slows down, turning a brief delay into a sustained outage. Because vector-store-a serves the Data Zone, a single failure here reaches each consumer of embedded documents and metadata at once. The outage propagates to dependent agents, which stall or retry and prolong the disruption. Rated HIGH likelihood because the path needs no special position and uses interfaces that are exposed by design, and HIGH impact because the affected data or action is central to shipment handling and hard to reverse.
 
-**Category**: denial-of-service | **Original Risk Level**: Critical | **Composite**: 6.3 (Medium)
+**Category**: denial-of-service | **MAESTRO Layer**: L2 — Data Operations | **Original Risk Level**: Critical | **Composite**: 6.3 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | 8.8 | 0.35 | 3.08 |
+| Exploitability | 6.3 | 0.30 | 1.89 |
+| Scalability | 5.5 | 0.15 | 0.83 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **6.3** |
 
 #### CVSS 3.1 Base
 
@@ -417,7 +465,15 @@ The component sits in a trusted zone with no extra barriers recorded.
 
 **Threat**: Unsanitised task plans and tool selections reach planner-agent and are processed as trusted structure, so crafted input changes how later steps interpret the record. The weakness sits at layer Agent Framework of the stack, so every workflow that depends on task plans and tool selections inherits the exposure. Altered data is then treated as authoritative by every consumer, so the damage spreads before anyone compares it with the source. Rated HIGH likelihood because the path needs no special position and uses interfaces that are exposed by design, and HIGH impact because the affected data or action is central to shipment handling and hard to reverse.
 
-**Category**: tampering | **Original Risk Level**: Critical | **Composite**: 6.0 (Medium)
+**Category**: tampering | **MAESTRO Layer**: L3 — Agent Framework | **Original Risk Level**: Critical | **Composite**: 6.0 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | 6.4 | 0.35 | 2.24 |
+| Exploitability | 8.0 | 0.30 | 2.40 |
+| Scalability | 6.0 | 0.15 | 0.90 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **6.0** |
 
 #### CVSS 3.1 Base
 
@@ -474,7 +530,15 @@ The component sits in a trusted zone with no extra barriers recorded.
 
 **Threat**: Configuration of model-gateway can be rewritten by any service that holds the shared deployment credential, silently changing how prompts and completions are handled. model-gateway runs in the Agent Runtime Zone and exchanges prompts and completions with planner-agent over HTTPS (TLS 1.3), so anything able to reach planner-agent can also reach this weakness. Altered data is then treated as authoritative by every consumer, so the damage spreads before anyone compares it with the source. Rated LOW likelihood because the path needs several preconditions to line up, such as insider access or a rare timing window, and MEDIUM impact because the effect is bounded to one workflow or one tenant and can be corrected with effort.
 
-**Category**: tampering | **Original Risk Level**: Low | **Composite**: 5.9 (Medium)
+**Category**: tampering | **MAESTRO Layer**: L1 — Foundation Model | **Original Risk Level**: Low | **Composite**: 5.9 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | 7.6 | 0.35 | 2.66 |
+| Exploitability | 7.0 | 0.30 | 2.10 |
+| Scalability | 4.3 | 0.15 | 0.65 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **5.9** |
 
 #### CVSS 3.1 Base
 
@@ -531,7 +595,15 @@ The component sits in a trusted zone with no extra barriers recorded.
 
 **Threat**: A burst of requests exhausts the connection pool of tool-server-1, which queues work without a bound and blocks legitimate use of tool call arguments and results. Because tool-server-1 serves the Agent Runtime Zone, a single failure here reaches each consumer of tool call arguments and results at once. Operators lose the ability to book or amend shipments while the condition lasts, and recovery depends on manual intervention. Rated MEDIUM likelihood because the path needs a foothold on a neighbouring service or a prepared request, and HIGH impact because the affected data or action is central to shipment handling and hard to reverse.
 
-**Category**: denial-of-service | **Original Risk Level**: High | **Composite**: 5.7 (Medium)
+**Category**: denial-of-service | **MAESTRO Layer**: L3 — Agent Framework | **Original Risk Level**: High | **Composite**: 5.7 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | 8.6 | 0.35 | 3.01 |
+| Exploitability | 4.3 | 0.30 | 1.29 |
+| Scalability | 6.3 | 0.15 | 0.95 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **5.7** |
 
 #### CVSS 3.1 Base
 
@@ -588,7 +660,15 @@ The component sits in a trusted zone with no extra barriers recorded.
 
 **Threat**: Role claims carried in the model API key presented to model-gateway are honoured without confirmation against the authoritative directory. The weakness sits at layer Foundation Model of the stack, so every workflow that depends on prompts and completions inherits the exposure. Once the boundary is crossed the attacker can reach administrative functions and persist there. Rated MEDIUM likelihood because the path needs a foothold on a neighbouring service or a prepared request, and HIGH impact because the affected data or action is central to shipment handling and hard to reverse.
 
-**Category**: privilege-escalation | **Original Risk Level**: High | **Composite**: 5.3 (Medium)
+**Category**: privilege-escalation | **MAESTRO Layer**: L1 — Foundation Model | **Original Risk Level**: High | **Composite**: 5.3 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | 9.9 | 0.35 | 3.47 |
+| Exploitability | 3.0 | 0.30 | 0.90 |
+| Scalability | 3.0 | 0.15 | 0.45 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **5.3** |
 
 #### CVSS 3.1 Base
 
@@ -645,7 +725,15 @@ The component sits in a trusted zone with no extra barriers recorded.
 
 **Threat**: Expensive queries over approval and tool call records can be triggered by any authorised caller of audit-ledger, so one user can degrade the service for all. Because audit-ledger serves the Operations Zone, a single failure here reaches each consumer of approval and tool call records at once. The outage propagates to dependent agents, which stall or retry and prolong the disruption. Rated MEDIUM likelihood because the path needs a foothold on a neighbouring service or a prepared request, and MEDIUM impact because the effect is bounded to one workflow or one tenant and can be corrected with effort.
 
-**Category**: denial-of-service | **Original Risk Level**: Medium | **Composite**: 5.2 (Medium)
+**Category**: denial-of-service | **MAESTRO Layer**: L6 — Security and Compliance | **Original Risk Level**: Medium | **Composite**: 5.2 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | 6.7 | 0.35 | 2.35 |
+| Exploitability | 6.3 | 0.30 | 1.89 |
+| Scalability | 3.0 | 0.15 | 0.45 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **5.2** |
 
 #### CVSS 3.1 Base
 
@@ -702,7 +790,15 @@ The component sits in a trusted zone with no extra barriers recorded.
 
 **Threat**: An attacker who can write to the channel between model-gateway and planner-agent modifies task plans and tool selections in transit because messages carry no integrity protection of their own. planner-agent runs in the Agent Runtime Zone and exchanges task plans and tool selections with model-gateway over HTTPS (TLS 1.3), so anything able to reach model-gateway can also reach this weakness. Altered data is then treated as authoritative by every consumer, so the damage spreads before anyone compares it with the source. Rated HIGH likelihood because the path needs no special position and uses interfaces that are exposed by design, and MEDIUM impact because the effect is bounded to one workflow or one tenant and can be corrected with effort.
 
-**Category**: tampering | **Original Risk Level**: High | **Composite**: 4.7 (Medium)
+**Category**: tampering | **MAESTRO Layer**: L3 — Agent Framework | **Original Risk Level**: High | **Composite**: 4.7 (Medium)
+
+| Dimension | Score | Weight | Weighted |
+|-----------|-------|--------|----------|
+| CVSS Base | 8.1 | 0.35 | 2.84 |
+| Exploitability | 3.0 | 0.30 | 0.90 |
+| Scalability | 3.3 | 0.15 | 0.50 |
+| Reachability | 2.5 | 0.20 | 0.50 |
+| **Composite** | | | **4.7** |
 
 #### CVSS 3.1 Base
 

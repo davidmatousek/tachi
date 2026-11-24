@@ -50,7 +50,7 @@ import os
 import platform
 import re
 import stat
-from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal
+from decimal import ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP, Context, Decimal
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
@@ -169,6 +169,29 @@ def _shorten(text: str, limit: int) -> str:
 def _one(value: Decimal) -> str:
     """A score as text with exactly one decimal place."""
     return str(ts.q1(value))
+
+
+# Section 3's Weighted cell (ADR-050 D2, P0-5): the stored one-decimal score times its weight is exact, and a product that ends in 5 at the
+# thousandths ("8.3 x 0.35 = 2.905") rounds up, never to even. The renderer holds that rule in a context of its own, as ``tachi_scoring`` does
+# for its values, so no other module's ``getcontext()`` change can move a digit and a float is refused.
+_WEIGHTED_CONTEXT = Context(prec=28, rounding=ROUND_HALF_UP)
+_HUNDREDTH = Decimal("0.01")
+
+
+def _weighted(score: Decimal, dimension: str) -> str:
+    """A dimension's Weighted cell: its score times its weight, exact, half up to two decimals (always two, such as ``0.50`` and ``2.40``)."""
+    return str(_WEIGHTED_CONTEXT.quantize(_WEIGHTED_CONTEXT.multiply(score, ts.WEIGHTS[dimension]), _HUNDREDTH))
+
+
+def _named(ids: Sequence[str]) -> str:
+    """Finding IDs as a rendered file names them (ADR-050 D2's W3 ruling): the first ``sarif_common.PEER_CAP``, then `` and N more`` with N exact."""
+    shown = ", ".join(ids[:sc.PEER_CAP])
+    return "%s and %d more" % (shown, len(ids) - sc.PEER_CAP) if len(ids) > sc.PEER_CAP else shown
+
+
+def _defaulted_ids(run: Run) -> List[str]:
+    """The IDs of the findings whose reachability is the default (no trust zone data), in S-2 order."""
+    return [row.finding_id for row in sorted(run.rows, key=lambda row: tp.finding_sort_key(row.canon)) if row.defaulted_reach]
 
 
 def _grid(value: Optional[Decimal]) -> Decimal:
@@ -323,6 +346,7 @@ class Row(object):
         self.flags: List[Flag] = []
         self.defaulted_reach = False
         self.copied = False                    # a peer that took its primary's scores
+        self.rescored = False                  # a copied peer whose own asset tags moved its CVSS score off its primary's (P0-6)
 
 
 class Run(object):
@@ -1129,6 +1153,7 @@ def _copy_peer(run: Run, row: Row, primary: Row, stored: Any, scoring_date: date
             text = "unverifiable:cvss_base:no-vector" if primary.vector is None else "unchecked:cvss_base:assessed-unrecorded"
             own = stored if row.status == "UPDATED" else None   # a NEW peer's baseline row is a reused ID's, another finding's (ruling B)
             row.flags.append(_flag_with_values(text, own, row))
+    row.rescored = row.cvss != primary.cvss   # Section 3's correlation line says which: the primary's scores inherited, or the assessment scored under other tags
     change = "none"
     if stored is not None and row.status == "UPDATED":
         change = rules.classify_band_change(stored_band=stored.band, rendered_band=row.band, band_with_baseline_tags=None)
@@ -1186,10 +1211,10 @@ def _score(run: Run, reference: Mapping[str, Any], items: Mapping[str, Mapping[s
     run.ordered = sorted(run.rows, key=lambda row: (-row.composite, tp.finding_sort_key(row.canon)))
     for finding in reference["resolved"]:
         run.resolved.append(dict(finding, canon=tp.canonical_finding_id(finding["id"])))
-    defaulted = [row for row in run.ordered if row.defaulted_reach]
+    defaulted = _defaulted_ids(run)
     if defaulted:
         run.warn("reachability-defaulted", "%d findings had no trust zone data, so their reachability is the default 5.0: %s"
-                 % (len(defaulted), ", ".join(row.finding_id for row in defaulted[:5]) + (", and more" if len(defaulted) > 5 else "")))
+                 % (len(defaulted), _named(defaulted)))
 
 
 # =============================================================================
@@ -1278,10 +1303,9 @@ def _md_section_1(run: Run, out: List[str], scoring: str) -> None:
             "| Metric | Value |", "|--------|-------|", "| Scoring date | %s |" % scoring,
             "| Source file | %s |" % ("`%s`" % tp.escape_cell(run.source_file) if run.source_file else DASH),
             "| Schema version | %s |" % SCHEMA_VERSION, ""]
-    defaulted = [row for row in run.ordered if row.defaulted_reach]
+    defaulted = _defaulted_ids(run)
     if defaulted:
-        out += ["> Reachability defaulted to 5.0 for %d finding(s) with no trust zone data: %s." % (
-            len(defaulted), ", ".join(row.finding_id for row in defaulted[:5]) + (", and more" if len(defaulted) > 5 else "")), ""]
+        out += ["> Reachability defaulted to 5.0 for %d finding(s) with no trust zone data: %s." % (len(defaulted), _named(defaulted)), ""]
 
 
 def _md_section_2(run: Run, out: List[str]) -> None:
@@ -1319,6 +1343,9 @@ def _correlation_line(run: Run, row: Row) -> Optional[str]:
         more = " and %d more" % (len(found.peers) - sc.PEER_CAP) if len(found.peers) > sc.PEER_CAP else ""
         return "**Correlation Group**: %s, primary of %s%s" % (found.group, named, more)
     if row.copied:
+        if row.rescored:   # its own asset tags moved its score off its primary's (P0-6), so it took the primary's assessment and not its scores
+            return ("**Correlation Group**: Assessment inherited from primary finding %s (%s); scored with its own asset tags"
+                    % (name(found.primary), found.group))
         return "**Correlation Group**: Scores inherited from primary finding %s (%s)" % (name(found.primary), found.group)
     return "**Correlation Group**: %s, peer of primary %s (this finding keeps its own score)" % (found.group, name(found.primary))
 
@@ -1326,14 +1353,18 @@ def _correlation_line(run: Run, row: Row) -> Optional[str]:
 def _md_finding(run: Run, row: Row, out: List[str]) -> None:
     out += ["### %s %s %s" % (row.finding_id, DASH, tp.escape_prose(row.component)), "",
             "**Threat**: %s" % tp.escape_prose(row.threat), "",
-            "**Category**: %s | **Original Risk Level**: %s | **Composite**: %s (%s)"
-            % (row.category, tp.escape_prose(row.risk_level), _one(row.composite), row.band), ""]
+            "**Category**: %s | **MAESTRO Layer**: %s | **Original Risk Level**: %s | **Composite**: %s (%s)"
+            % (row.category, tp.escape_prose(row.layer), tp.escape_prose(row.risk_level), _one(row.composite), row.band), ""]
     line = _correlation_line(run, row)
     if line:
         out += [line, ""]
     if row.flags:
         out += ["**Integrity**: %s" % ", ".join(tp.escape_prose(flag.text()) for flag in _sorted_flags(row.flags)), ""]
-    out += ["#### CVSS 3.1 Base", ""]
+    out += ["| Dimension | Score | Weight | Weighted |", "|-----------|-------|--------|----------|"]
+    out += ["| %s | %s | %s | %s |" % (label, _one(score), ts.WEIGHTS[name], _weighted(score, name))
+            for label, name, score in (("CVSS Base", "cvss_base", row.cvss), ("Exploitability", "exploitability", row.exploit),
+                                       ("Scalability", "scalability", row.scale), ("Reachability", "reachability", row.reach))]
+    out += ["| **Composite** | | | **%s** |" % _one(row.composite), "", "#### CVSS 3.1 Base", ""]
     if row.vector is not None:
         out += ["**Score**: %s | **Vector**: `%s`" % (_one(row.cvss), row.vector), ""]
         letters = dict(part.split(":") for part in row.vector.split("/")[1:])
