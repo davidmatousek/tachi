@@ -48,7 +48,7 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 SUBPROCESS_TIMEOUT = 120
 
 # --------------------------------------------------------------------------- the script lists
-# W1's and W2's scripts. A missing file is a failure: T012, T013, T014, T015, T016, T018, T140, T028 and T042 write them.
+# W1's, W2's and W3's scripts. A missing file is a failure: T012, T013, T014, T015, T016, T018, T140, T028, T042 and T035 write them.
 REQUIRED_NOW = (
     "tachi_parts.py",
     "tachi_scoring.py",
@@ -56,6 +56,7 @@ REQUIRED_NOW = (
     "tachi-stage.py",
     "tachi_scoring_rules.py",  # W2 (lane R1b): T042 to T044
     "render-risk-scores.py",  # W2 (lane R1): T028, T045, T046 and T050
+    "render-compensating-controls.py",  # W3 (lane R2): T035, T053 and T059; its core-path driver is T036's
 )
 
 # Scripts a later wave adds, with the wave that lands each. While one is missing its checks skip with
@@ -63,7 +64,6 @@ REQUIRED_NOW = (
 # one-line edit. T150 (PR 2) adds scripts/generate-threats-sarif.py to REQUIRED_NOW, because that
 # file exists today and is not "new" until PR 2 rewrites it on the shared emitter.
 PLANNED = {
-    "render-compensating-controls.py": "W3 (lane R2)",  # its core-path driver is written (T036), so T035's move to REQUIRED_NOW is the one line
     "join-threats-md.py": "PR 2, W2' (lane OS)",
     "attack-chains.py": "PR 2, W2' (lane OC)",
     "assemble-report.py": "PR 2, W2' (lane T)",
@@ -80,7 +80,7 @@ def _resolve(name):
         return path
     if name in PLANNED:
         pytest.skip("scripts/%s is planned for %s and does not exist yet" % (name, PLANNED[name]))
-    pytest.fail("scripts/%s is a W1 script and must exist (S-11, T149)" % name, pytrace=False)
+    pytest.fail("scripts/%s is a required script and must exist (S-11, T149)" % name, pytrace=False)
 
 
 # --------------------------------------------------------------------------- 1. grammar
@@ -736,8 +736,8 @@ EXPECTED_CODES = {"tachi-stage.py": [0, 0, 3, 0, 0, 0], "render-risk-scores.py":
                   "render-compensating-controls.py": [0] + [0] * 6 + [0] * 6}
 
 # One driver per entry script, each `(Interpreter, workdir) -> (steps, tree)`. A later wave adds its entry's
-# driver here: PR 2's entries. The controls renderer's driver (T036) skips while the script is PLANNED and missing: when T035
-# writes it, the script moves to REQUIRED_NOW and the driver runs.
+# driver here: PR 2's entries. The controls renderer's driver (T036) was written first and skipped while the script was
+# PLANNED and missing. W3 (T039) moved the script to REQUIRED_NOW, so the driver runs and a missing script fails.
 CORE_PATH_DRIVERS = {"tachi-stage.py": _drive_tachi_stage, "render-risk-scores.py": _drive_render_risk_scores,
                      "render-compensating-controls.py": _drive_render_compensating_controls}
 

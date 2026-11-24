@@ -38,8 +38,9 @@
 #
 # F-374 (ADR-050 D16): three jobs run PR 1's offline modules on synthetic
 # fixtures, with no model, no network and no Typst. W1 wired the first
-# modules and W2 added test_tachi_scoring_rules.py and
-# test_render_risk_scores.py; W3 adds the controls renderer's.
+# modules, W2 added test_tachi_scoring_rules.py and
+# test_render_risk_scores.py, and W3 (T039) added
+# test_render_compensating_controls.py.
 #   - f374-offline (ubuntu-latest, Python 3.11) runs the module list under
 #     pytest-cov. Its first step is the coverage gate: at least 80% line
 #     coverage over the new scripts, counting in-process runs only
@@ -53,6 +54,9 @@
 #     From W2 that module also drives render-risk-scores.py, on the project
 #     harness of test_render_risk_scores.py (FR-E.2's two-run model), so a
 #     change to either module, the renderer or the planner reruns this job.
+#     From W3 it drives render-compensating-controls.py too, on the same
+#     harness (the controls stage reads the scorer's run), so a change to the
+#     controls renderer reruns this job as well.
 # Lock-step (KB 3, H7): a module, its input surfaces, its `paths:` entries and
 # its invocation line in each f374 job that runs it land in one commit. The two
 # module lists are one list, except that f374-offline also runs
@@ -143,8 +147,11 @@ on:
       #     renderer's goldens compare (templates/tachi/**) and the shipped
       #     examples (examples/**: test_tachi_scoring_rules.py reads each
       #     sample's risk-scores.md, and test_sarif_identity.py, which
-      #     f374-macos runs alone, reads every examples/**/*.sarif). Only the
-      #     two new test modules need an entry ---
+      #     f374-macos runs alone, reads every examples/**/*.sarif).
+      #     W3 (T039) adds the controls renderer, which also matches
+      #     scripts/*.py, and its test module, which reads the same output
+      #     templates and imports helpers from test_render_risk_scores.py.
+      #     Only the three new test modules need an entry ---
       - tests/scripts/test_tachi_parts.py
       - tests/scripts/test_tachi_stage.py
       - tests/scripts/test_runtime_floor_374.py
@@ -155,6 +162,7 @@ on:
       - tests/scripts/test_sarif_common_affected_assets.py
       - tests/scripts/test_tachi_scoring_rules.py     # F-374 (T047) — tachi_scoring_rules.py's goldens (W2)
       - tests/scripts/test_render_risk_scores.py      # F-374 (T047) — render-risk-scores.py's goldens (W2); test_sarif_identity.py imports its harness
+      - tests/scripts/test_render_compensating_controls.py   # F-374 (T039) — render-compensating-controls.py's goldens (W3); imports test_render_risk_scores.py's helpers
       - tests/scripts/generate_large_arch_fixture.py  # F-374 (T020) — the fixture generator test_fixture_374.py drives
       - tests/scripts/fixtures/large_arch/**          # F-374 (T019) — the synthetic large-architecture fixture (S-4)
       - tests/scripts/coverage-f374.ini               # F-374 (D16) — the coverage gate's config
@@ -275,7 +283,7 @@ jobs:
             tests/scripts/test_write_confinement.py \
             -v
 
-  # F-374 (T022, T047, ADR-050 D16), W1 and W2: PR 1's offline modules on synthetic fixtures. This job and
+  # F-374 (T022, T047, T039, ADR-050 D16), W1 to W3: PR 1's offline modules on synthetic fixtures. This job and
   # f374-py39-floor run one module list, except that this job also runs test_sarif_common_affected_assets.py, so
   # that sarif_common.py's coverage counts that module's tests. pytest-cov is a test dependency only: the shipped
   # scripts stay stdlib-only (NFR-2). Keep the list in lock-step with the `paths:` list above (F-250 rule, H7).
@@ -306,6 +314,7 @@ jobs:
             tests/scripts/test_tachi_stage.py \
             tests/scripts/test_tachi_scoring_rules.py \
             tests/scripts/test_render_risk_scores.py \
+            tests/scripts/test_render_compensating_controls.py \
             tests/scripts/test_runtime_floor_374.py \
             tests/scripts/test_tachi_parsers.py \
             tests/scripts/test_sarif_identity.py \
@@ -326,7 +335,7 @@ jobs:
           python3 -m pytest --cov=scripts --cov-report= tests/scripts/test_tachi_parsers.py
           python3 -m coverage report --include=scripts/tachi_parsers.py --precision=1 --show-missing --fail-under=44.9
 
-  # F-374 (T022, T047, ADR-050 D16), W1 and W2: the Python 3.9 floor (S-11). The shipped scripts run on 3.9 and
+  # F-374 (T022, T047, T039, ADR-050 D16), W1 to W3: the Python 3.9 floor (S-11). The shipped scripts run on 3.9 and
   # later, so their tests run on 3.9 too. 3.9 is pinned to ubuntu-24.04, an image that has it (#396). No coverage
   # here: the gate runs once, in f374-offline. conftest.py imports PyYAML, so it is installed.
   f374-py39-floor:
@@ -352,6 +361,7 @@ jobs:
             tests/scripts/test_tachi_stage.py \
             tests/scripts/test_tachi_scoring_rules.py \
             tests/scripts/test_render_risk_scores.py \
+            tests/scripts/test_render_compensating_controls.py \
             tests/scripts/test_runtime_floor_374.py \
             tests/scripts/test_tachi_parsers.py \
             tests/scripts/test_sarif_identity.py \
@@ -360,11 +370,12 @@ jobs:
             tests/scripts/test_cvss_category_defaults.py \
             -v
 
-  # F-374 (T022, T047, ADR-050 D16), W1 and W2: the one module whose real case-insensitive-volume case needs a
+  # F-374 (T022, T047, T039, ADR-050 D16), W1 to W3: the one module whose real case-insensitive-volume case needs a
   # macOS runner (D7, KB 24), because macOS is the platform most adopters use. The other cases fake the filesystem
   # and run on both Linux jobs above. From W2 the module also renders risk-scores.sarif through the renderer
-  # (FR-E.2), so its inputs are the renderer, the planner, the helpers they import and test_render_risk_scores.py,
-  # whose project harness it imports; each matches an entry in `paths:` above.
+  # (FR-E.2), and from W3 compensating-controls.sarif through the controls renderer, so its inputs are the two
+  # renderers, the planner, the helpers they import and test_render_risk_scores.py, whose project harness it imports;
+  # each matches an entry in `paths:` above.
   f374-macos:
     name: f374-macos
     runs-on: macos-latest

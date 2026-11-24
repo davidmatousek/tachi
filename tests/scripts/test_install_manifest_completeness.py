@@ -86,7 +86,7 @@ SCRIPT_REF_RE = re.compile(r"(?<![\w./-])(?:\./)?scripts/[\w-]+\.py")
 # (extract-report-data.py, extract-infographic-data.py,
 # populate-affected-assets.py, tachi_parsers.py, tachi_parts.py,
 # tachi_scoring.py, tachi_scoring_rules.py, sarif_common.py, tachi-stage.py,
-# render-risk-scores.py) is a required script.
+# render-risk-scores.py, render-compensating-controls.py) is a required script.
 EXCLUDED: dict[str, str] = {
     # F-374 (T022). sarif-identity-shared.md's dormant `threats.sarif` section names the generator that takes over
     # when it ships. Until then the file is still written under sarif-specification.md, and the script stays
@@ -100,7 +100,9 @@ EXCLUDED: dict[str, str] = {
 # checking each of them even if the scan's result set ever changes. The F-374
 # scripts (ADR-050 D16) join the original four, wave by wave: W1's three
 # helpers (imported by the entries) and tachi-stage.py (an entry), then W2's
-# tachi_scoring_rules.py (a helper) and render-risk-scores.py (an entry).
+# tachi_scoring_rules.py (a helper) and render-risk-scores.py (an entry), then
+# W3's render-compensating-controls.py (an entry, so DISTRIBUTED_HELPERS below
+# is unchanged: it imports only helpers that are already listed).
 REQUIRED_SCRIPT_NAMES = (
     "extract-report-data.py",
     "extract-infographic-data.py",
@@ -112,6 +114,7 @@ REQUIRED_SCRIPT_NAMES = (
     "tachi-stage.py",
     "tachi_scoring_rules.py",
     "render-risk-scores.py",
+    "render-compensating-controls.py",
 )
 
 # The sibling modules a distributable script may import at module load besides the standard library: the
