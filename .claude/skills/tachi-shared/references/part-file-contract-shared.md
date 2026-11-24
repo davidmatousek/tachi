@@ -515,7 +515,7 @@ Every stage writes one stage record, `tachi.stage-record/1`, with a closed key s
 | `started_utc` | UTC, ending in `Z`, and no other form is accepted |
 | `finished_utc` | UTC, ending in `Z`, and no other form is accepted |
 | `input_digest` | `sha256:` and the hex digest |
-| `counts` | non-negative integers under exactly these keys: `units`, `open`, `resolved`, `rendered`, `parse_errors`, `narrative_fallbacks`, `truncations`, `corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `retagged`, `reused-id` and `input`. The seven base counts come first, then one count per flag kind, and `resolved` is both the base count and the flag kind, because the flag marks exactly the RESOLVED rows |
+| `counts` | non-negative integers under exactly these keys: `units`, `open`, `resolved`, `rendered`, `parse_errors`, `narrative_fallbacks`, `truncations`, `cell_overwrites`, `corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `retagged`, `reused-id` and `input`. The eight base counts come first, then one count per flag kind, and `resolved` is both the base count and the flag kind, because the flag marks exactly the RESOLVED rows |
 | `batches` | `{planned, dispatched, done, retried, split, exhausted}` |
 | `overflow_events` | an array of `{batch_id, attempt, kind}`, where `kind` is `missing`, `overflow-reported`, `unparseable` or `invalid` |
 | `retries` | an array of `{batch_id, attempt, cause, children}` |

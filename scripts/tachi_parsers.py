@@ -1803,26 +1803,43 @@ def _sarif_text(*values) -> Optional[str]:
     return next((value for value in values if isinstance(value, str) and value.strip()), None)
 
 
-def _sarif_details(result: dict, properties: dict) -> dict:
-    """D8's reading of what one result says about its own finding (P0-3), the same for either ID form.
+def _sarif_logical_location(result: dict) -> dict:
+    """The result's logical location, as an object: ``locations[0].logicalLocations[0]``, else the singular
+    ``locations[0].logicalLocation`` that tachi's older scorer and controls SARIF write (ADR-050 D8, ruled at W3), else ``{}``.
 
-    ``component`` is the first logical location's ``name``, else ``properties.component``. ``threat`` is
-    ``message.text`` and ``mitigation`` is ``message.markdown``. ``risk_level`` is ``properties.risk_level``, else
-    ``security-severity`` (a score as the file writes it, not a band). ``layer`` is ``maestro-layer``. ``kind`` is the
-    first logical location's ``kind``, which the renderer reads from the same result. Each value is the string as
-    written, or ``None``. Nothing here raises: a result of any other shape reads as holding none.
+    It is one object either way (``name``, ``fullyQualifiedName``, ``kind``). The plural form wins when its first entry is
+    an object, so a result that carries both reads as its plural form says. A value that isn't an object doesn't count.
     """
     locations = result.get("locations")
     location = locations[0] if isinstance(locations, list) and locations else None
-    logical = location.get("logicalLocations") if isinstance(location, dict) else None
+    if not isinstance(location, dict):
+        return {}
+    logical = location.get("logicalLocations")
     logical = logical[0] if isinstance(logical, list) and logical else None
-    logical = logical if isinstance(logical, dict) else {}
+    if not isinstance(logical, dict):
+        logical = location.get("logicalLocation")
+    return logical if isinstance(logical, dict) else {}
+
+
+def _sarif_details(result: dict, properties: dict) -> dict:
+    """D8's reading of what one result says about its own finding (P0-3), the same for either ID form.
+
+    ``component`` is the logical location's ``name``, else ``properties.component``. ``threat`` is ``message.text`` and
+    ``mitigation`` is ``message.markdown``. ``risk_level`` is ``properties.risk_level``, else ``properties.severity``,
+    else ``security-severity``: a word before a score (ADR-050 D8, ruled at W3), and each as the file writes it, so a score
+    is not turned into a band here. ``layer`` is ``maestro-layer``. ``kind`` is the logical location's ``kind``, which the
+    renderer reads from the same result. The logical location is ``locations[0].logicalLocations[0]``, else the singular
+    ``locations[0].logicalLocation`` (see :func:`_sarif_logical_location`). Each value is the string as written, or
+    ``None``. Nothing here raises: a result of any other shape reads as holding none.
+    """
+    logical = _sarif_logical_location(result)
     message = result.get("message") if isinstance(result.get("message"), dict) else {}
     return {
         "component": _sarif_text(logical.get("name"), properties.get("component")),
         "threat": _sarif_text(message.get("text")),
         "mitigation": _sarif_text(message.get("markdown")),
-        "risk_level": _sarif_text(properties.get("risk_level"), properties.get("security-severity")),
+        "risk_level": _sarif_text(properties.get("risk_level"), properties.get("severity"),
+                                  properties.get("security-severity")),
         "layer": _sarif_text(properties.get("maestro-layer")),
         "kind": _sarif_text(logical.get("kind")),
     }

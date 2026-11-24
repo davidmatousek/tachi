@@ -798,7 +798,8 @@ def test_a_closed_value_over_sixteen_thousand_characters_is_invalid():
 # --- P0-4: step 10's character set is published as `forbidden_character`, so a renderer that takes a value from an input
 # that isn't a part (`threats.md`, a baseline file, `threats.sarif`) asks the same question a part's strings are asked.
 
-# The separators and the bidi controls are written with chr(), so that no invisible character sits in this file's source.
+# The separators, the bidi controls and the lone surrogates are written with chr(), so that no invisible character sits in
+# this file's source.
 LINE_SEPARATOR, PARAGRAPH_SEPARATOR = chr(0x2028), chr(0x2029)
 RIGHT_TO_LEFT_MARK, RIGHT_TO_LEFT_OVERRIDE = chr(0x200F), chr(0x202E)
 FORBIDDEN_CLASSES = {
@@ -807,6 +808,9 @@ FORBIDDEN_CLASSES = {
     "separators": [LINE_SEPARATOR, PARAGRAPH_SEPARATOR],
     "bidi controls": [chr(code) for code in (0x200E, 0x200F, 0x061C, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
                                              0x2066, 0x2067, 0x2068, 0x2069)],
+    # a lone surrogate (ADR-050 D3, ruled at W3), which only a JSON escape can spell. The first and last of the range, the
+    # last high half and first low half either side of its middle, and one half of the pair that spells U+1F600.
+    "lone surrogates": [chr(code) for code in (0xD800, 0xD83D, 0xDBFF, 0xDC00, 0xDE00, 0xDFFF)],
 }
 
 
@@ -832,21 +836,51 @@ def test_forbidden_character_returns_the_first_one_of_several():
     "caf" + chr(0xE9) + " " + chr(0x2014) + " quoted " + chr(0x65E5) + chr(0x672C) + chr(0x8A9E), "emoji \U0001f600",
     "~~~ # | ` & < > {{score:cvss_base}}",
     # the neighbours of each forbidden range, which are allowed: below DEL, the no-break space above C1, the characters just
-    # before U+2028 and U+2066 and after U+202E and U+2069, the two around U+061C, and the zero-width joiner before U+200E
+    # before U+2028 and U+2066 and after U+202E and U+2069, the two around U+061C, the zero-width joiner before U+200E, and the
+    # two either side of the surrogate range, U+D7FF and U+E000, and the first, an emoji and the last of the astral characters
+    # (a valid surrogate pair spells one, and arrives from JSON as one character)
     "\x7e", chr(0xA0), chr(0x2027), chr(0x202F), chr(0x2065), chr(0x206A), chr(0x061B) + chr(0x061D), chr(0x200D),
+    chr(0xD7FF), chr(0xE000), chr(0x10000), chr(0x1F600), chr(0x10FFFF),
 ])
 def test_forbidden_character_is_none_for_clean_text_a_tab_and_a_newline(text):
     assert _api("forbidden_character")(text) is None
 
 
 def test_forbidden_character_is_exactly_the_contracts_set_over_the_whole_basic_multilingual_plane():
-    """Worked out from Unicode, not from the regex: Cc other than tab and newline, the separators and the bidi controls."""
+    """Worked out from Unicode, not from the regex: Cc other than tab and newline, the separators, the bidi controls and the
+    surrogates (Cs, ADR-050 D3 as ruled at W3)."""
     expected = {code for code in range(0x10000) if unicodedata.category(chr(code)) == "Cc" and code not in (0x09, 0x0A)}
+    expected |= {code for code in range(0x10000) if unicodedata.category(chr(code)) == "Cs"}
     expected |= {0x2028, 0x2029} | {0x200E, 0x200F, 0x061C} | set(range(0x202A, 0x202F)) | set(range(0x2066, 0x206A))
     found = {code for code in range(0x10000) if _api("forbidden_character")(chr(code)) is not None}
     assert found == expected
-    assert len(expected) == 63 + 2 + 12, "63 controls, 2 separators and 12 bidi controls"
+    assert len(expected) == 63 + 2 + 12 + 2048, "63 controls, 2 separators, 12 bidi controls and 2,048 surrogates: 2,125"
     assert _api("forbidden_character")("\U000e0001\U0001f600") is None
+
+
+def test_forbidden_character_returns_a_lone_surrogate_and_not_the_astral_character_that_a_pair_spells():
+    """ADR-050 D3, as ruled at W3: only a JSON escape can spell a lone surrogate, and `json.loads` joins an escaped valid
+    pair into the one astral character, which is clean. So the lone half is returned wherever it stands, and U+1F600 isn't."""
+    forbidden = _api("forbidden_character")
+    lone = json.loads('"\\ud83d"')
+    assert lone == chr(0xD83D) and len(lone) == 1, "a lone escape arrives as one surrogate code point"
+    assert forbidden(lone) == lone and forbidden("a" + lone + "b") == lone
+    assert forbidden("\U0001f600") is None, "a valid astral character is clean"
+    pair = json.loads('"\\ud83d\\ude00"')
+    assert pair == "\U0001f600" and forbidden(pair) is None, "an escaped valid pair arrives as the astral character, so it is clean"
+    assert forbidden("\U0001f600" + lone) == lone and forbidden(lone + "\U0001f600") == lone, "a clean one beside a lone half"
+    assert forbidden(chr(0xD83D) + chr(0xDE00)) == chr(0xD83D), "two halves that were never joined are two lone surrogates"
+    assert forbidden("a\x1b" + chr(0xD800)) == "\x1b", "the first forbidden character wins, a surrogate included"
+    assert forbidden(chr(0xD800) + "\x1b") == chr(0xD800)
+
+
+def test_step_10_refuses_a_lone_surrogate_through_the_published_predicate():
+    """A part never reaches step 10 with one (`load_json` refuses the escape first, as `unparseable`), so step 10's refusal is
+    reached by a direct call: the predicate is the one definition, so the string checks follow it."""
+    with pytest.raises(_api("PartError")) as excinfo:
+        _api("closed_string")("a zone" + chr(0xD800), "zone")
+    assert excinfo.value.kind == "invalid"
+    assert _api("closed_string")("a zone \U0001f600", "zone") == "a zone \U0001f600"
 
 
 def test_step_10_asks_the_published_predicate_so_the_character_set_has_one_definition(monkeypatch):
@@ -1832,7 +1866,7 @@ STAGE_RECORD_KEYS = ["schema", "stage", "plan_id", "status", "tachi_version", "s
 PLAN_BATCH_KEYS = ["batch_id", "parent", "attempt", "finding_ids", "input_sha256", "state"]
 ASSESSMENT_DIMENSIONS = ["coverage", "configuration", "currency", "completeness"]
 METRICS = ["AV", "AC", "PR", "UI", "S", "C", "I", "A"]
-COUNT_KEYS = {"units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations",
+COUNT_KEYS = {"units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations", "cell_overwrites",
               "corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input"}
 EXPECTED_KEY_SETS = {
     "part": (PART_KEYS, []), "overflow": (OVERFLOW_KEYS, []), "batch-input": (BATCH_INPUT_KEYS, []),

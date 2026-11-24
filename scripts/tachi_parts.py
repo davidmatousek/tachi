@@ -273,9 +273,10 @@ BATCH_STATES = ("pending", "done", "failed", "split")
 RECORD_STATUSES = ("success", "success-with-warnings", "failed")
 OVERFLOW_EVENT_KINDS = ("missing", "overflow-reported", "unparseable", "invalid")
 
-# The stage record's closed `counts` keys: the base counts, and one count per flag kind (ADR-050 D9).
+# The stage record's closed `counts` keys: the base counts and the flag kinds (ADR-050 D2, D9). `cell_overwrites` is the
+# eighth base count, the controls renderer's: the computed §2 cells that held anything but their own slot token.
 COUNT_KEYS = frozenset((
-    "units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations",
+    "units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations", "cell_overwrites",
     "corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input"))
 
 # name -> (required keys, optional keys), in the contracts' order. Every key is required unless listed optional.
@@ -873,18 +874,22 @@ class _ItemState(object):
 
 
 _CVSS_VECTOR = re.compile(r"CVSS:3\.1/AV:[NALP]/AC:[LH]/PR:[NLH]/UI:[NR]/S:[UC]/C:[NLH]/I:[NLH]/A:[NLH]", re.ASCII)
-# Cc other than tab and newline, then U+2028, U+2029, U+200E, U+200F, U+061C, U+202A-U+202E and U+2066-U+2069 (step 10).
-_FORBIDDEN_CHARACTERS = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f  ‎‏؜‪-‮⁦-⁩]")
+# Cc other than tab and newline, then U+2028, U+2029, U+200E, U+200F, U+061C, U+202A-U+202E and U+2066-U+2069, then a
+# lone surrogate, U+D800-U+DFFF, written as an escape here (step 10; the surrogate is ADR-050 D3's, ruled at W3).
+_FORBIDDEN_CHARACTERS = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f  ‎‏؜‪-‮⁦-⁩\ud800-\udfff]")
 
 
 def forbidden_character(text: str) -> Optional[str]:
     """The first character of ``text`` that D3's step 10 forbids, or ``None`` (P0-4). ``text`` must be a ``str``.
 
     The set is the contract's: a control character other than tab and newline (C0, DEL and C1), the separators
-    U+2028 and U+2029, and the bidi controls U+200E, U+200F, U+061C, U+202A to U+202E and U+2066 to U+2069. Step 10
-    uses this on every string of a part. A renderer calls it where it takes a value from an input that isn't a part
-    (``threats.md``, a baseline file, ``threats.sarif``), so the character set has one definition. The length limit
-    is step 10's too, but it isn't part of this predicate.
+    U+2028 and U+2029, the bidi controls U+200E, U+200F, U+061C, U+202A to U+202E and U+2066 to U+2069, and a lone
+    surrogate, U+D800 to U+DFFF (ADR-050 D3, ruled at W3). Only a JSON escape can spell a surrogate, and no
+    UTF-8 file can carry one, so a part never reaches step 10 with one: ``load_json`` refuses it first, as
+    ``unparseable``. Step 10 uses this on every string of a part. A renderer calls it where it takes a value from an
+    input that isn't a part (``threats.md``, a baseline file, ``threats.sarif``), so the character set has one
+    definition, and a surrogate that such an input's JSON escape spells is refused where it is taken, before a write
+    can fail on it. The length limit is step 10's too, but it isn't part of this predicate.
     """
     found = _FORBIDDEN_CHARACTERS.search(text)
     return found.group(0) if found is not None else None

@@ -2031,13 +2031,16 @@ def _own_id(result):
 
 
 def _result_says(result):
-    """What a shipped result says, by plain lookups on the shapes the four samples show: D8's reading, restated."""
+    """What a shipped result says, by plain lookups on the shapes the samples show: D8's reading, restated. The logical
+    location is the plural form's first entry, else the singular form, and the risk level is `risk_level`, else `severity`,
+    else `security-severity` (both ADR-050 D8, ruled at W3)."""
     properties = result.get("properties") or {}
-    logical = ((result.get("locations") or [{}])[0].get("logicalLocations") or [{}])[0]
+    location = (result.get("locations") or [{}])[0]
+    logical = (location.get("logicalLocations") or [location.get("logicalLocation") or {}])[0]
     message = result["message"]
     return {"component": logical.get("name") or properties.get("component"), "threat": message.get("text"),
             "mitigation": message.get("markdown") or None,
-            "risk_level": properties.get("risk_level") or properties.get("security-severity"),
+            "risk_level": properties.get("risk_level") or properties.get("severity") or properties.get("security-severity"),
             "layer": properties.get("maestro-layer"), "kind": logical.get("kind")}
 
 
@@ -2097,6 +2100,72 @@ def test_the_modern_form_sample_reads_its_mitigation_and_kind_as_written():
     details = parse_sarif_member_set(text, with_details=True)["details"]
     assert all(details[_own_id(result)]["mitigation"] == result["message"]["markdown"] for result in results)
     assert {entry["kind"] for entry in details.values()} == {"external-entity", "process", "data-store"}, "the kind is not mapped here"
+
+
+def test_the_modern_form_sample_takes_its_risk_level_from_severity_on_every_result():
+    """ADR-050 D8, ruled at W3: `generate-threats-sarif.py` writes Section 7's risk level as `properties.severity`, and `agentic-app`'s modern
+    `threats.sarif` carries no other level property, so its 85 members read none before the chain took `severity`."""
+    text = _shipped_sarif("agentic-app/sample-report/threats.sarif")
+    results = json.loads(text)["runs"][0]["results"]
+    assert len(results) == 85
+    assert all("risk_level" not in r["properties"] and "security-severity" not in r["properties"] for r in results)
+    details = parse_sarif_member_set(text, with_details=True)["details"]
+    assert all(details[_own_id(result)]["risk_level"] == result["properties"]["severity"] for result in results)
+    assert {entry["risk_level"] for entry in details.values()} == {"Critical", "High", "Medium", "Low"}, "the words, as written"
+    assert details["S-1"]["risk_level"] == "Critical"
+
+
+# The controls fallback's input: the shipped `risk-scores.sarif` files. Two write the singular `logicalLocation` on every result,
+# one has neither location form and writes both `severity` and `security-severity`, and none has `properties.component`.
+# (the sample, the number of results)
+_SCORES_FILE_SAMPLES = [
+    ("agentic-app/sample-report/risk-scores.sarif", 86),
+    ("mobile-banking-app/sample-report/risk-scores.sarif", 31),
+    ("predictive-ml-app/sample-report/risk-scores.sarif", 12),
+]
+
+
+@pytest.mark.parametrize("relative,count", _SCORES_FILE_SAMPLES, ids=[sample[0].split("/")[0] for sample in _SCORES_FILE_SAMPLES])
+def test_a_scores_file_member_takes_its_details_from_its_own_result(relative, count):
+    text = _shipped_sarif(relative)
+    results = json.loads(text)["runs"][0]["results"]
+    assert len(results) == count
+    expected = {_own_id(result): _result_says(result) for result in results}
+    assert len(expected) == count, "one result per ID"
+    assert parse_sarif_member_set(text, with_scores=True, with_details=True)["details"] == expected
+
+
+@pytest.mark.parametrize("relative,count,kinds", [
+    ("agentic-app/sample-report/risk-scores.sarif", 86, {"external-entity", "process", "data"}),
+    ("mobile-banking-app/sample-report/risk-scores.sarif", 31, {"process", "data-store"}),
+], ids=["agentic-app", "mobile-banking-app"])
+def test_a_scores_file_that_writes_the_singular_location_gives_every_member_its_component_and_kind(relative, count, kinds):
+    """ADR-050 D8, ruled at W3: these two files write `locations[0].logicalLocation` on every result and no plural form, so before the reader took
+    the singular form every one of their members read no component and no kind, and the controls planner's units held none."""
+    results = json.loads(_shipped_sarif(relative))["runs"][0]["results"]
+    assert len(results) == count
+    assert all("logicalLocation" in r["locations"][0] and "logicalLocations" not in r["locations"][0] for r in results)
+    assert not any((r.get("properties") or {}).get("component") for r in results), "so no other source names a component"
+    details = parse_sarif_member_set(_shipped_sarif(relative), with_details=True)["details"]
+    assert len(details) == count
+    for result in results:
+        logical = result["locations"][0]["logicalLocation"]
+        entry = details[_own_id(result)]
+        assert entry["component"] == logical["name"] and entry["kind"] == logical["kind"], _own_id(result)
+    assert {entry["kind"] for entry in details.values()} == kinds, "the kind is as written: `data-store` is not mapped here"
+
+
+def test_a_scores_file_that_writes_a_word_and_a_score_reads_the_word_first():
+    """ADR-050 D8, ruled at W3: `predictive-ml-app`'s `risk-scores.sarif` writes `severity` and `security-severity` on all 12 results. The word comes
+    first, so S-1 reads `Critical` although its score, 8.4, bands as High. A file with only a score still reads the score."""
+    text = _shipped_sarif("predictive-ml-app/sample-report/risk-scores.sarif")
+    results = json.loads(text)["runs"][0]["results"]
+    assert len(results) == 12 and all({"severity", "security-severity"} <= set(r["properties"]) for r in results)
+    details = parse_sarif_member_set(text, with_details=True)["details"]
+    assert all(details[_own_id(result)]["risk_level"] == result["properties"]["severity"] for result in results)
+    assert (details["S-1"]["risk_level"], next(r for r in results if _own_id(r) == "S-1")["properties"]["security-severity"]) == ("Critical", "8.4")
+    only_a_score = parse_sarif_member_set(_shipped_sarif("agentic-app/sample-report/risk-scores.sarif"), with_details=True)["details"]
+    assert only_a_score["S-1"]["risk_level"] == "8.2", "a score as the file writes it, not a band"
 
 
 @pytest.mark.parametrize("relative", [sample[0] for sample in _DETAIL_SAMPLES] + ["agentic-app/sample-report/risk-scores.sarif"],
@@ -2160,33 +2229,129 @@ def test_the_component_is_the_logical_location_name_else_properties_component(na
     assert _details_of(result)["S-1"]["component"] == expected
 
 
-@pytest.mark.parametrize("risk_level,severity,expected", [
-    ("High", "8.2", "High"), (None, "8.2", "8.2"), ("", "8.2", "8.2"), (3, "8.2", "8.2"), ("High", None, "High"), ("High", 8.2, "High"),
-    (None, 8.2, None), (None, None, None), ("", "  ", None),
+@pytest.mark.parametrize("risk_level,severity,security_severity,expected", [
+    # each source alone: `severity` is the word that `generate-threats-sarif.py` writes (ADR-050 D8, ruled at W3)
+    ("High", None, None, "High"), (None, "Critical", None, "Critical"), (None, None, "8.2", "8.2"),
+    # the order is `risk_level`, then `severity`, then `security-severity`: a word before a score, and the legacy name first
+    ("High", "Critical", None, "High"), ("High", "Critical", "8.2", "High"), ("High", None, "8.2", "High"),
+    (None, "Critical", "8.2", "Critical"), (None, "Low", "9.9", "Low"), (None, "Note", "0.5", "Note"),
+    # a source that holds nothing falls through to the next: a blank string, or a value that isn't a string
+    ("", None, "8.2", "8.2"), (3, None, "8.2", "8.2"), ("High", None, 8.2, "High"),
+    ("", "Critical", None, "Critical"), ("  ", "Critical", "8.2", "Critical"), (3, "Critical", None, "Critical"),
+    (None, "", "8.2", "8.2"), (None, "  ", "8.2", "8.2"), (None, 3, "8.2", "8.2"), (None, ["High"], "8.2", "8.2"),
+    (None, 8.2, "7.0", "7.0"), ("", "", "7.0", "7.0"),
+    (None, None, 8.2, None), (None, 8.2, None, None), (None, None, None, None), ("", None, "  ", None), ("", "  ", "", None),
 ])
-def test_the_risk_level_is_properties_risk_level_else_security_severity_as_the_file_writes_it(risk_level, severity, expected):
+def test_the_risk_level_is_risk_level_else_severity_else_security_severity_as_the_file_writes_it(
+        risk_level, severity, security_severity, expected):
     properties = {}
-    if risk_level is not None:
-        properties["risk_level"] = risk_level
-    if severity is not None:
-        properties["security-severity"] = severity
+    for name, value in (("risk_level", risk_level), ("severity", severity), ("security-severity", security_severity)):
+        if value is not None:
+            properties[name] = value
     assert _details_of(_result("S-1", properties))["S-1"]["risk_level"] == expected, "a score is not turned into a band here"
+
+
+def test_a_risk_level_word_is_kept_as_written_and_a_severity_word_beats_the_score_it_disagrees_with():
+    """No label is derived here (ADR-050 D8). A word comes back unstripped and in its own case, `Note` included, and the word wins
+    over a score that would band differently, so a caller that labels a finding sees the file's own word."""
+    assert _details_of(_result("S-1", {"severity": " critical "}))["S-1"]["risk_level"] == " critical "
+    assert _details_of(_result("S-1", {"severity": "Critical", "security-severity": "8.4"}))["S-1"]["risk_level"] == "Critical"
+    assert _details_of(_result("S-1", {"risk_level": "Medium", "severity": "Critical", "security-severity": "8.4"}))["S-1"]["risk_level"] == "Medium"
 
 
 @pytest.mark.parametrize("parts", [
     {}, {"locations": "x"}, {"locations": []}, {"locations": [None]}, {"locations": [5]}, {"locations": [{}]}, {"locations": {"a": 1}},
     {"locations": [{"logicalLocations": "x"}]}, {"locations": [{"logicalLocations": []}]}, {"locations": [{"logicalLocations": [None]}]},
     {"locations": [{"logicalLocations": ["x"]}]}, {"locations": [{"logicalLocations": {"name": "Gateway", "kind": "process"}}]},
-    {"locations": [{"logicalLocation": {"name": "Gateway", "kind": "process"}}]},
+    # the singular form is read (below), but only as an object: any other value of it, with or without a plural form beside it, is none
+    {"locations": [{"logicalLocation": "x"}]}, {"locations": [{"logicalLocation": ["Gateway"]}]},
+    {"locations": [{"logicalLocation": None}]}, {"locations": [{"logicalLocation": []}]}, {"locations": [{"logicalLocation": 5}]},
+    {"locations": [{"logicalLocations": [None], "logicalLocation": "x"}]}, {"locations": [{"logicalLocations": [], "logicalLocation": []}]},
+    # only the first location is read, in either form
+    {"locations": [{}, {"logicalLocations": [{"name": "Second", "kind": "process"}]}]},
+    {"locations": [{}, {"logicalLocation": {"name": "Second", "kind": "process"}}]},
     {"message": "text"}, {"message": None}, {"message": ["text"]}, {"message": {}}, {"message": {"text": 5, "markdown": ["x"]}},
     {"message": {"text": "", "markdown": "  "}}, {"properties": ["id", "S-1"]}, {"properties": "x"},
     {"properties": {"component": ["x"], "risk_level": 3, "security-severity": 8.2, "maestro-layer": 4}},
 ], ids=lambda parts: json.dumps(parts)[:60])
 def test_a_result_of_any_other_shape_has_no_details_and_never_raises(parts):
-    """The singular `logicalLocation` appears only in tachi's scorer and controls SARIF, never in a `threats.sarif`, so it isn't read."""
+    """Nothing here raises, and a result that has no usable value reads as holding none. The singular `logicalLocation` is a
+    usable source (below), so only a value of it that isn't an object belongs here."""
     result = dict({"partialFingerprints": {"findingId/v1": "S-1"}}, **parts)
     got = parse_sarif_member_set(_sarif(result), with_details=True)
     assert got["members"] == ["S-1"] and got["details"] == {"S-1": _NO_DETAILS}
+
+
+# The logical location (ADR-050 D8, ruled at W3) is `locations[0].logicalLocations[0]`, else the singular `locations[0].logicalLocation`, which
+# tachi's older scorer and controls SARIF write. It is one object either way, and the plural form wins as a whole.
+_PLURAL = {"logicalLocations": [{"name": "Plural", "fullyQualifiedName": "Zone/Plural", "kind": "data"}]}
+_SINGULAR = {"logicalLocation": {"name": "Singular", "fullyQualifiedName": "Zone/Singular", "kind": "process"}}
+
+
+def _location_with(**members):
+    """``locations`` with one entry: a physical location, as the writers give, and the given logical-location members."""
+    return [dict({"physicalLocation": {"artifactLocation": {"uri": "architecture.md"}, "region": {"startLine": 1}}}, **members)]
+
+
+@pytest.mark.parametrize("members,component,kind", [
+    (_PLURAL, "Plural", "data"),            # each form alone
+    (_SINGULAR, "Singular", "process"),
+    (dict(_PLURAL, **_SINGULAR), "Plural", "data"),                         # both present: the plural form wins
+    (dict(_SINGULAR, **_PLURAL), "Plural", "data"),                         # whichever order the keys stand in
+    (dict(_SINGULAR, logicalLocations=[]), "Singular", "process"),          # the plural form holds no object, so the singular one is the location
+    (dict(_SINGULAR, logicalLocations=None), "Singular", "process"),
+    (dict(_SINGULAR, logicalLocations="x"), "Singular", "process"),
+    (dict(_SINGULAR, logicalLocations=[None]), "Singular", "process"),
+    (dict(_SINGULAR, logicalLocations=["x"]), "Singular", "process"),
+    (dict(_SINGULAR, logicalLocations={"name": "Plural", "kind": "data"}), "Singular", "process"),  # an object, not the list the form is
+    # the plural form's first entry is an object, so it is the location as a whole, even when it holds less: the singular
+    # form doesn't fill in what it lacks, and a later entry of the plural list isn't read
+    (dict(_SINGULAR, logicalLocations=[{"name": "Plural"}]), "Plural", None),
+    (dict(_SINGULAR, logicalLocations=[{"kind": "data"}]), None, "data"),
+    (dict(_SINGULAR, logicalLocations=[{}]), None, None),
+    (dict(_SINGULAR, logicalLocations=[None, {"name": "Later", "kind": "data"}]), "Singular", "process"),
+    (dict(_PLURAL, logicalLocation="x"), "Plural", "data"),                 # a singular form that is no object changes nothing
+    (dict(_PLURAL, logicalLocation=None), "Plural", "data"),
+    ({"logicalLocation": {"name": "Singular"}}, "Singular", None),          # each field as written: a missing kind is none
+    ({"logicalLocation": {"kind": "data-store"}}, None, "data-store"),
+    ({"logicalLocation": {"name": "  ", "kind": ""}}, None, None),          # blank is none, as for the plural form
+    ({"logicalLocation": {"name": 7, "kind": ["process"]}}, None, None),
+], ids=lambda value: json.dumps(value)[:70] if isinstance(value, dict) else None)
+def test_the_logical_location_is_the_plural_form_else_the_singular_form(members, component, kind):
+    got = _details_of(_result("S-1", locations=_location_with(**members)))["S-1"]
+    assert (got["component"], got["kind"]) == (component, kind)
+
+
+def test_each_form_of_the_logical_location_gives_the_same_details_as_the_other_for_the_same_object():
+    """It is the same object (`name`, `fullyQualifiedName`, `kind`) in either form, so a result differs only in where the object
+    stands: the reader gives the same component and kind, and the other fields don't depend on the form."""
+    logical = {"name": "Gateway", "fullyQualifiedName": "Edge/Gateway", "kind": "process"}
+    properties = {"maestro-layer": "L3", "severity": "High"}
+    message = {"text": "A threat.", "markdown": "A mitigation."}
+    plural = _result("S-1", properties, locations=_location_with(logicalLocations=[logical]), message=message)
+    singular = _result("S-1", properties, locations=_location_with(logicalLocation=logical), message=message)
+    both = _result("S-1", properties, locations=_location_with(logicalLocations=[logical], logicalLocation=dict(logical, name="Other")),
+                   message=message)
+    got = [_details_of(result)["S-1"] for result in (plural, singular, both)]
+    assert got[0] == got[1] == got[2] == {"component": "Gateway", "threat": "A threat.", "mitigation": "A mitigation.",
+                                          "risk_level": "High", "layer": "L3", "kind": "process"}
+
+
+def test_a_singular_location_without_a_name_falls_back_to_properties_component_and_keeps_its_kind():
+    result = _result("S-1", {"component": "Store"}, locations=_location_with(logicalLocation={"kind": "data-store"}))
+    assert _details_of(result)["S-1"]["component"] == "Store" and _details_of(result)["S-1"]["kind"] == "data-store"
+    named = _result("S-1", {"component": "Store"}, locations=_location_with(logicalLocation={"name": "Gateway"}))
+    assert _details_of(named)["S-1"]["component"] == "Gateway", "the location's name comes first, in the singular form too"
+
+
+def test_the_singular_location_is_read_in_either_id_form():
+    """A result with only `properties.id` (the legacy member form) reads the singular location as one with `findingId/v1` does."""
+    modern = _result("S-1", locations=_location_with(logicalLocation=_SINGULAR["logicalLocation"]))
+    legacy = {"ruleId": "tachi/risk/spoofing", "message": {"text": "Another threat."}, "properties": {"id": "T-2"},
+              "locations": _location_with(logicalLocation=_SINGULAR["logicalLocation"])}
+    got = _details_of(modern, legacy)
+    assert (got["S-1"]["component"], got["S-1"]["kind"]) == ("Singular", "process")
+    assert (got["T-2"]["component"], got["T-2"]["kind"]) == ("Singular", "process")
 
 
 def test_details_are_the_first_open_result_of_an_id_and_a_resolved_or_peer_only_member_has_none():

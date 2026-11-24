@@ -1515,7 +1515,7 @@ def test_the_part_parsers_find_the_counts_the_reference_states():
     identifiers = parse_identifiers(text)
     assert len(identifiers["patterns"]) == 7 and len(identifiers["prefix_order"]) == 12
     closed = parse_closed_values(text)
-    assert len(closed) == 12 and all(closed.values()) and len(closed["COUNT_KEYS"]) == 15
+    assert len(closed) == 12 and all(closed.values()) and len(closed["COUNT_KEYS"]) == 16
 
 
 def test_the_fixed_sentences_and_the_truncation_table_agree_on_the_24_narrative_paths():
