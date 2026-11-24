@@ -41,9 +41,10 @@
     - On a primary with at most 10 peers, every peer is named in group order, joined by `, `: `Correlated in CG-3; peers T-2, I-4.`
     - On a primary with more peers, the first 10 are named, then ` and N more` follows, where N counts the unnamed peers: `…, T-11, I-12 and 3 more.`
     - Only the file's members are named, so no RESOLVED ID appears.
+  - **A finding with no threat text (recorded at W4, 2026-11-24, for PM W4 ruling R-E).** The file's own text is then the placeholder `No threat description.`, followed by ruling C's sentence where it applies (`module-signatures.md`, the placeholders).
 - **The primary location (recorded at W4, 2026-11-24, from T066's groups U-5, U-7 and U-8).** None of these is identity (D7), so a change re-keys nothing.
   - `region` is the constant `{"startLine": 1}` (D7), as v4.48.4's own scorer and controls templates show it.
-  - `logicalLocations[0].name` is the finding's component. Its `kind` is the component's Section 1 Type through D8's closed map: `External Entity` gives `external-entity`, `Process` gives `process` and `Data Store` gives `data`. Any other type, or none, gives `process`.
+  - `logicalLocations[0].name` is the finding's component, or the placeholder `Unspecified` where it has none (`module-signatures.md`, the placeholders; recorded at W4 for PM W4 ruling R-E). Its `kind` is the component's Section 1 Type through D8's closed map: `External Entity` gives `external-entity`, `Process` gives `process` and `Data Store` gives `data`. Any other type, or none, gives `process`.
   - `fullyQualifiedName` is `<zone>/<component>`. `<zone>` is the zone of the Section 2 Trust Zones row that lists the component (by name, case-folded), as Section 2 writes it, a layer note such as `(L7)` included. With no such row, the scorer file uses the zone of the finding's reachability input, and the controls file under D8's fallback uses the zone part of the member's own `fullyQualifiedName`. Otherwise it is `Application Zone`. So both files write one location for a finding whose component Section 2 lists.
 - **`relatedLocations`:** controls file only, code evidence, omitted when empty.
   - Each entry's `message.text` is `sarif_common.EVIDENCE_MESSAGE`, v4.48.4's own template text, filled with the control category's display name and the entry's `file` (recorded at W4, from T066's group U-11).
