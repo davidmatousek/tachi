@@ -14,7 +14,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Sequence
 
 # The reference-set reader below checks IDs against tachi_parts' allow-list. A sibling is found beside this file,
 # whether this module is imported flat (`tachi_parsers`) or as `scripts.tachi_parsers` (ADR-050 D3, C1).
@@ -441,7 +441,7 @@ def classify_maestro_coverage_state(finding_count: int, highest_severity: str) -
 # =============================================================================
 
 def parse_markdown_table(content: str, section_header: str = None, start_line: int = None, skipped: list = None,
-                         row_lines: list = None, keep_bold: bool = False) -> list:
+                         row_lines: list = None, keep_bold: bool = False, overlong: list = None) -> list:
     """Parse a markdown table found after a section header.
 
     Args:
@@ -464,6 +464,11 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
         keep_bold: When true, a data cell keeps its ``**`` markers. A cell holds a persisted value as written there
             (the controls ``recommendation_body`` is markdown with bold labels), so a reader of the persisted-inputs
             tables asks for them kept. The default strips them, as it always has.
+        overlong: An optional list. When given, the 1-based line number of each *returned* row that has more cells than
+            the header row is appended to it. Such a row keeps its first cells and loses the rest, as it always has,
+            and a stray ``|`` (or GFM's ``\\|``, which is not decoded) has already shifted every value after it. A
+            caller that can't afford a shifted value (the F-374 reference set) reads the list and refuses the file.
+            The default leaves every caller unchanged.
 
     Returns:
         List of dicts, one per row, with keys from the header row.
@@ -535,8 +540,8 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
 
     # Parse header row for column names
     header_line = lines[table_header_idx].strip()
-    columns = [decode_references(strip_bold(c.strip())) for c in header_line.split("|")[1:-1]]
-    columns = [c for c in columns if c]
+    header_cells = [decode_references(strip_bold(c.strip())) for c in header_line.split("|")[1:-1]]
+    columns = [c for c in header_cells if c]
 
     if not columns:
         return []
@@ -560,6 +565,8 @@ def parse_markdown_table(content: str, section_header: str = None, start_line: i
             if skipped is not None:
                 skipped.append(i + 1)
             continue
+        if overlong is not None and len(cells) > len(header_cells):
+            overlong.append(i + 1)
         row = {}
         for j, col in enumerate(columns):
             row[col] = cells[j] if j < len(cells) else ""
@@ -1371,6 +1378,10 @@ REFERENCE_SET_FORM = ("a table whose header row has a 'Finding ID' column and on
                       "or a numbered list whose items each start with a bolded finding ID")
 REFERENCE_SET_REMEDY = ("regenerate threats.md with /tachi.threat-model, or correct the section to the table form "
                         "or the numbered-list form")
+# M1 (T067a): a row with more cells than its header holds a `|` in a cell. The renderers write one as `&#124;`, which a
+# reader decodes after it splits the row, and GFM's `\|` is not read (it still splits the row).
+REFERENCE_SET_PIPE_REMEDY = ("write each '|' inside a cell as '&#124;' (a GFM '\\|' still splits the row), or regenerate "
+                             "threats.md with /tachi.threat-model")
 # S-12(b): the flag for a value that Section 7's form lacks, in the scorer's closed `<kind>:<field>:<cause>` vocabulary
 # (contracts/module-signatures.md). `input` is the kind for what an input says, the field is the finding schema's name for
 # the value (`component`, `threat`, `delta_status` or `risk_level`), and the cause is kebab-case, like `no-vector`.
@@ -1381,13 +1392,18 @@ FORM_LACKS_FLAG = "input:%s:" + FORM_LACKS_CAUSE
 # Section 7 that is a numbered list of bolded IDs under priority subheadings, with the bold text in one of three
 # spellings: `**T-10**`, `**LLM-3 + LLM-4**` or `**T-2 through T-9**`, each followed by an optional dash and title. Anything
 # else is unreadable (S-12(c)), so the list of forms stays closed.
+#
+# S7-1 (T068): the reader runs on a file that the scanned repository can write, so each pattern below is linear in the
+# length of a whitespace run, whatever the line holds. The title separator is the one dash that has whitespace on both
+# sides, found by lookaround (a pattern that wraps the dash in `\s+` rescans the run from every start position), and the
+# first cell is anchored on the finding-ID allow-list instead of sitting lazily between two `\s*`.
 _SECTION_7_DRIFT_HEADING = re.compile(r"^#{2,3}\s+Section\s+7[.:]\s+Recommended Actions")
 _LIST_ITEM = re.compile(r"^ {0,3}[0-9]+[.)]\s+(?P<rest>.*)$")
 _BOLD_LEAD = re.compile(r"^\*\*(?P<bold>.+?)\*\*(?P<tail>.*)$")
-_TITLE_SEPARATOR = re.compile(r"\s+[\u2014\u2013-]\s+")
+_TITLE_SEPARATOR = re.compile(r"(?<=\s)[\u2014\u2013-](?=\s)")
 _ID_RANGE = re.compile(r"^(?P<first>\S+)\s+through\s+(?P<last>\S+)$")
 _PRIORITY_BAND = re.compile(r"\b(critical|high|medium|low)\b", re.IGNORECASE)
-_FIRST_CELL = re.compile(r"^\|\s*(?:\*\*)?(?P<cell>[^|*]*?)(?:\*\*)?\s*\|")
+_FIRST_CELL = re.compile(r"^\|\s*(?:\*\*)?(?P<cell>%s)(?:\*\*)?\s*\|" % tachi_parts.ID_PATTERNS["finding"])
 _MAX_RANGE = 500
 
 
@@ -1441,7 +1457,7 @@ def _finding_ids_in_tables(content: str) -> set:
     found = set()
     for line in content.split("\n"):
         cell = _FIRST_CELL.match(line.strip())
-        if cell is not None and tachi_parts.id_matches("finding", cell.group("cell")):
+        if cell is not None:
             found.add(tachi_parts.canonical_finding_id(cell.group("cell")))
     for finding in parse_resolved_findings(content):
         if tachi_parts.id_matches("finding", finding["id"]):
@@ -1465,7 +1481,7 @@ def _ids_of_a_bolded_lead(bold: str, at: int, content: str, source: str, section
     head = _TITLE_SEPARATOR.split(bold, 1)[0].strip()
     span = _ID_RANGE.match(head)
     if span is None:
-        tokens = [token.strip() for token in re.split(r"\s*\+\s*", head)]
+        tokens = [token.strip() for token in head.split("+")]
         for token in tokens:
             if not tachi_parts.id_matches("finding", token):
                 raise ReferenceSetError(source, section, "names %r, which is not a finding ID (line %d)" % (token[:40], at))
@@ -1560,9 +1576,11 @@ def parse_reference_set(content: str, source: str = "threats.md") -> dict:
 
     ``source`` names the file in error messages. It raises :class:`ReferenceSetError`, which ends a run before any
     agent is dispatched (S-12(c)), when Section 7 is missing, holds neither a table nor a numbered list, has a table
-    with no ``Finding ID`` column, loses a malformed row, has a numbered item that doesn't open with a bolded finding
-    ID, has a range that can't be read, or names an ID that isn't a finding ID. The error names the file, the section,
-    the expected forms and the remedy. An empty extraction is an error, never a pass (KB 22).
+    with no ``Finding ID`` column, loses a malformed row, has a table row with more cells than its header (a ``|`` or
+    GFM's ``\\|`` in a cell, which would shift every value after it, so its remedy says to write ``&#124;``), has a
+    numbered item that doesn't open with a bolded finding ID, has a range that can't be read, or names an ID that
+    isn't a finding ID. The error names the file, the section, the expected forms and the remedy. An empty
+    extraction is an error, never a pass (KB 22).
     ``parse_threats_findings`` is unchanged, because the extractors rely on its ``[]``-with-a-warning behavior.
     """
     section = "Section 7 (Recommended Actions)"
@@ -1570,9 +1588,14 @@ def parse_reference_set(content: str, source: str = "threats.md") -> dict:
     if start is None:
         raise ReferenceSetError(source, section, "is missing")
     skipped: list = []
-    rows = parse_markdown_table(content, start_line=start, skipped=skipped)
+    overlong: list = []
+    rows = parse_markdown_table(content, start_line=start, skipped=skipped, overlong=overlong)
     if skipped:
         raise ReferenceSetError(source, section, "has a malformed row (line %s)" % ", ".join(str(n) for n in skipped[:5]))
+    if overlong:
+        raise ReferenceSetError(source, section, "has a row with more cells than its header (line %s): a '|' or GFM's '\\|' in a cell "
+                                "splits it, and every value after the split would shift" % ", ".join(str(n) for n in overlong[:5]),
+                                REFERENCE_SET_PIPE_REMEDY)
     if rows:
         if "Finding ID" not in rows[0]:
             raise ReferenceSetError(source, section, "has no 'Finding ID' column")
@@ -2293,6 +2316,57 @@ def parse_scope_data(content: str) -> dict:
 # Compensating Controls Parser
 # =============================================================================
 
+_WHAT_TO_IMPLEMENT = "**What to Implement**:"
+# A "What to Implement" text goes on over the lines that follow it until one of these starts a line (a `####` heading
+# starts with `###`), or a line is blank.
+_RECOMMENDATION_STOPS = ("**", "###", "---")
+
+
+def _what_to_implement(block_lines: Sequence[str]) -> Optional[str]:
+    """The decoded "What to Implement" text of one Section 4 block, or ``None`` when no line of ``block_lines`` opens
+    one. It is the body of :func:`recommendation_text`, which maps ``None`` to ``""``. The controls reader keeps the
+    difference, because a block whose marker has no text still replaces an earlier block's text for the same ID."""
+    for at, raw in enumerate(block_lines):
+        line = raw.strip()
+        if not line.startswith(_WHAT_TO_IMPLEMENT):
+            continue
+        text = line.replace(_WHAT_TO_IMPLEMENT, "").strip()
+        # Read continuation lines until the next marker
+        for following in range(at + 1, len(block_lines)):
+            next_line = block_lines[following].strip()
+            if not next_line or next_line.startswith(_RECOMMENDATION_STOPS):
+                break
+            text += " " + next_line
+        # D3: the text is decoded once, after the lines that bound it are found on the raw text.
+        return decode_references(text.strip())
+    return None
+
+
+def recommendation_text(block_lines: Sequence[str]) -> str:
+    """The "What to Implement" text of one Section 4 block of ``compensating-controls.md``, decoded, or ``""`` when
+    the block has none (F-374 T146, T067b H1).
+
+    ``block_lines`` are the lines of one block: the lines under its ``#### n. ID —`` heading, up to the line before the
+    next such heading. The heading line itself may be included, because it is not a marker. This is the rule that
+    :func:`parse_compensating_controls_md` has always applied to a block, which it now calls with its own bounds, so
+    the controls readers and every shipped example read as they did (NFR-1). A renderer that checks its SARIF against
+    its markdown finds a block by its own route and applies this same rule to it, so the check can't agree with a
+    reader that lost the text.
+
+    The first line that starts with ``**What to Implement**:``, after its edge whitespace is stripped, opens the text.
+    The text is what follows the marker on that line, then each following line, stripped, joined with single spaces, up
+    to the first blank line or the first line that starts with ``**``, ``###`` (so ``####`` too) or ``---``. A second
+    marker in the block is ignored. :func:`decode_references` runs once on the joined text, after the lines that bound
+    it are found on the raw text (D3), so text that was already decoded is decoded again.
+
+    A ``str`` raises ``TypeError``: it would read as lines of one character each and return ``""`` without a word.
+    """
+    if isinstance(block_lines, str):
+        raise TypeError("recommendation_text takes the lines of one block, not a string")
+    text = _what_to_implement(block_lines)
+    return "" if text is None else text
+
+
 def parse_compensating_controls_md(content: str, composites_by_id: dict = None) -> dict:
     """Parse compensating-controls.md for Tier 1 data.
 
@@ -2379,26 +2453,18 @@ def parse_compensating_controls_md(content: str, composites_by_id: dict = None) 
             break
 
     if sec4_start is not None:
-        current_threat_id = None
+        # One block per heading, up to the next heading (or the end of Section 4). A line before the first heading
+        # belongs to no block, and a later block that has a marker replaces an earlier block's text for the same ID.
+        headings = []  # (line index, threat ID)
         for i in range(sec4_start, sec4_end):
-            line = lines[i].strip()
             # Match: #### 1. S-3 -- Component (Composite: 9.2, Critical)
-            heading_match = re.match(r"^####\s+\d+\.\s+(\S+)\s+[—\-]", line)
+            heading_match = re.match(r"^####\s+\d+\.\s+(\S+)\s+[—\-]", lines[i].strip())
             if heading_match:
-                current_threat_id = heading_match.group(1)
-                continue
-            # Match: **What to Implement**: text
-            if current_threat_id and line.startswith("**What to Implement**:"):
-                rec_text = line.replace("**What to Implement**:", "").strip()
-                # Read continuation lines until next marker
-                for j in range(i + 1, sec4_end):
-                    next_line = lines[j].strip()
-                    if not next_line or next_line.startswith("**") or next_line.startswith("####") or next_line.startswith("###") or next_line.startswith("---"):
-                        break
-                    rec_text += " " + next_line
-                # D3: the text is decoded once, after the lines that bound it are found on the raw text.
-                recommendations[current_threat_id] = decode_references(rec_text.strip())
-                current_threat_id = None
+                headings.append((i, heading_match.group(1)))
+        for (at, threat_id), (block_end, _) in zip(headings, headings[1:] + [(sec4_end, None)]):
+            rec_text = _what_to_implement(lines[at + 1:block_end])
+            if rec_text is not None:
+                recommendations[threat_id] = rec_text
 
     # ---- Section 2: Coverage Matrix findings ----
     # Severity band thresholds for score-based classification

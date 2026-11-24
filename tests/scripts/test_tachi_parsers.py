@@ -34,10 +34,12 @@ Stdlib-only per PAT-014 — no PyYAML, no Path operations beyond importlib.
 from __future__ import annotations
 
 import ast
+import itertools
 import json
 import random
 import re
 import sys
+import time
 from decimal import Decimal
 from pathlib import Path
 
@@ -81,7 +83,11 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     FORM_LACKS_CAUSE,
     FORM_LACKS_FLAG,
     strip_bold,
+    recommendation_text,
     _find_table_with_column,
+    _ids_of_a_bolded_lead,
+    _FIRST_CELL,
+    _TITLE_SEPARATOR,
 )
 
 FIXTURES_DIR = REPO_ROOT / "tests" / "scripts" / "fixtures" / "fidelity_373"
@@ -3216,3 +3222,284 @@ def test_a_heading_that_only_a_fenced_snippet_shows_is_no_section_and_so_is_one_
     assert parse_controls_assessment_inputs(pre_1_1) == {"inputs": {}, "errors": []}
     unclosed = "## 3. Evidence\n\n```\nA snippet that nothing closes.\n\n" + _controls_with_inputs(_persisted_table(_PERSISTED))
     assert parse_controls_assessment_inputs(unclosed) == {"inputs": {}, "errors": []}
+
+
+# =============================================================================
+# Feature 374 (W4, T146, FX-1): three fixes in the Section 7 reader and the controls reader
+#
+#   M1   (T067a)  parse_reference_set refuses a Section 7 row that has more cells than its header. A `|` (or GFM's `\|`, which tachi
+#                 doesn't decode) splits the row and moves every value after it one column, and parse_markdown_table dropped the extra
+#                 cell without a word, so an UNCHANGED finding read as NEW, with its risk level a word of its threat.
+#   S7-1 (T068)   the Section 7 reader is linear in a whitespace run, so a line that the scanned repository writes can't stall a stage.
+#   H1   (T067b)  recommendation_text is the What to Implement rule of one Section 4 block, factored out of the controls reader, so a
+#                 renderer's from-disk check can derive the same text by its own route, not by the reader it checks.
+# =============================================================================
+
+
+# ---- M1: a row wider than its header -------------------------------------------------------------------------
+
+def test_markdown_table_lists_the_rows_wider_than_its_header_only_when_asked(capsys):
+    content = ("## 7. Recommended Actions\n\n| A | B | C |\n|---|---|---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 | 7 |\n| 8 | 9 | 10 |\n"
+               "| 11 | 12 | 13 | |\n| a | b \\| c | d |\n| short | row |\n| e |  | f |\n")
+    overlong, skipped = [], []
+    rows = parse_markdown_table(content, "## 7. Recommended Actions", skipped=skipped, overlong=overlong)
+    assert overlong == [6, 8, 9], "1-based lines of the rows with a fourth cell: a plain one, an empty trailing one and a GFM pipe"
+    assert skipped == [10], "a row with fewer cells is still the skipped one, and is not a wide one"
+    assert [row["A"] for row in rows] == ["1", "4", "8", "11", "a", "e"]
+    assert rows[1] == {"A": "4", "B": "5", "C": "6"}, "a wide row keeps its first cells, as it always did"
+    assert capsys.readouterr().err.count("skipping malformed row") == 1, "a wide row prints nothing"
+    assert parse_markdown_table(content, "## 7. Recommended Actions") == rows, "the default is as it always was"
+
+
+def test_a_header_cell_with_no_name_still_counts_toward_the_width_of_a_row():
+    overlong = []
+    parse_markdown_table("## X\n\n| A |  | C |\n|---|---|---|\n| 1 | 2 | 3 |\n| 4 | 5 | 6 | 7 |\n", "## X", overlong=overlong)
+    assert overlong == [6], "the header has three cells, though one has no name"
+
+
+@pytest.mark.parametrize("threat", ["Header smuggling via a | b split", "Output piped through cat \\| sh"], ids=["raw-pipe", "gfm-escaped-pipe"])
+def test_reference_set_refuses_a_row_with_a_pipe_in_a_cell_instead_of_shifting_its_values(threat):
+    """M1 (T067a). The row has a cell too many, so every value after the pipe moved one column: an UNCHANGED finding read as NEW, with
+    part of its threat as its risk level. The run ends before any agent is dispatched, and the remedy says what works."""
+    row = _ref_row("T-1", "UNCHANGED", threat=threat)
+    content = _ref_md([_ref_row("S-1"), row, _ref_row("T-2")])
+    line = content.split("\n").index(row) + 1
+    with pytest.raises(ReferenceSetError) as raised:
+        parse_reference_set(content, source="run/threats.md")
+    error = raised.value
+    assert error.reason == ("run/threats.md: Section 7 (Recommended Actions) has a row with more cells than its header (line %d): "
+                            "a '|' or GFM's '\\|' in a cell splits it, and every value after the split would shift" % line)
+    assert "&#124;" in error.remedy and "/tachi.threat-model" in error.remedy and "table form" not in error.remedy
+    assert threat not in str(error), "the error never echoes the cell"
+    assert str(error) == "%s. Expected %s. Remedy: %s" % (error.reason, error.expected, error.remedy)
+
+
+def test_the_remedys_spelling_of_a_pipe_reads_back_as_a_pipe_and_shifts_nothing():
+    reference = parse_reference_set(_ref_md([_ref_row("S-1"), _ref_row("T-1", "UNCHANGED", threat="Output piped through cat &#124; sh")]))
+    found = {finding["id"]: finding for finding in reference["open"]}["T-1"]
+    assert (found["threat"], found["risk_level"], found["delta_status"], found["mitigation"]) == \
+        ("Output piped through cat | sh", "High", "UNCHANGED", "A fix")
+
+
+def test_reference_set_names_the_first_five_wide_rows_and_still_refuses_a_short_row_first():
+    wide = [_ref_row("S-%d" % number, threat="a | b") for number in range(1, 8)]
+    content = _ref_md(wide)
+    at = [content.split("\n").index(row) + 1 for row in wide]
+    with pytest.raises(ReferenceSetError) as raised:
+        parse_reference_set(content)
+    assert "(line %s):" % ", ".join(str(number) for number in at[:5]) in raised.value.reason, "five lines, and the sixth and seventh are not named"
+    with pytest.raises(ReferenceSetError) as raised:
+        parse_reference_set(_ref_md([_ref_row("S-1", threat="a | b"), "| T-1 | NEW | too few cells |"]))
+    assert "has a malformed row" in raised.value.reason, "the check that was there first keeps its message"
+
+
+def test_every_shipped_example_still_reads_as_a_reference_set():
+    """NFR-1: refusing a wide row changes no shipped example, because none has one in its Section 7."""
+    paths = sorted((REPO_ROOT / "examples").rglob("threats.md"))
+    assert len(paths) >= 10
+    for path in paths:
+        reference = parse_reference_set(path.read_text(encoding="utf-8"), source=path.relative_to(REPO_ROOT).as_posix())
+        assert reference["open"], path.relative_to(REPO_ROOT).as_posix()
+
+
+# ---- S7-1: a whitespace run in the Section 7 reader --------------------------------------------------------------
+
+_EM_SPACE = chr(0x2003)
+# The patterns that S7-1 replaced. Each rescans a whitespace run from every start position, and the first cell was cubic.
+_OLD_SEPARATOR = re.compile(r"\s+[—–-]\s+")
+_OLD_FIRST_CELL = re.compile(r"^\|\s*(?:\*\*)?(?P<cell>[^|*]*?)(?:\*\*)?\s*\|")
+
+
+def _old_reading_of_a_lead(bold):
+    """What the old patterns made of a bold lead that holds no range: its IDs, or the first token that isn't one, as the error shows it."""
+    head = _OLD_SEPARATOR.split(bold, 1)[0].strip()
+    tokens = [token.strip() for token in re.split(r"\s*\+\s*", head)]
+    wrong = next((token for token in tokens if not tachi_parts.id_matches("finding", token)), None)
+    return ("ids", tokens) if wrong is None else ("not an ID", repr(wrong[:40]))
+
+
+def _reading_of_a_lead(bold):
+    try:
+        return ("ids", _ids_of_a_bolded_lead(bold, 1, "", "t.md", "Section 7", []))
+    except ReferenceSetError as error:
+        return ("not an ID", re.search(r"names (.*), which is not a finding ID", error.reason).group(1))
+
+
+def test_the_bold_lead_reads_as_the_quadratic_patterns_read_it_over_every_short_string():
+    """S7-1 changed how the dash and the plus are found, not what they find: the same IDs, or the same first token that isn't one."""
+    alphabet = [" ", _NBSP, "-", "—", "+", "T", "1"]
+    for length in range(6):
+        for chars in itertools.product(alphabet, repeat=length):
+            bold = "".join(chars)
+            assert _reading_of_a_lead(bold) == _old_reading_of_a_lead(bold), repr(bold)
+    rng = random.Random(374)
+    pieces = ["T-1", "S-2", "AGP-01", "LLM-3", "+", " ", "  ", "\t", _NBSP, _EM_SPACE, "—", "–", "-", "--", " - ", "x", "title words"]
+    for _ in range(3000):
+        bold = "".join(rng.choice(pieces) for _ in range(rng.randint(1, 8)))
+        assert _reading_of_a_lead(bold) == _old_reading_of_a_lead(bold), repr(bold)
+
+
+@pytest.mark.parametrize("bold,ids", [
+    ("T-1 — A title", ["T-1"]),
+    ("T-1 – A title", ["T-1"]),
+    ("T-1 - A title", ["T-1"]),
+    ("T-1" + _NBSP + "—" + _NBSP + "A title", ["T-1"]),
+    ("T-1\t-\tA title", ["T-1"]),
+    ("T-1 - A - B", ["T-1"]),
+    ("S-1 + T-1 — Two together", ["S-1", "T-1"]),
+    ("S-1+T-1", ["S-1", "T-1"]),
+    ("  S-1   +   T-1  ", ["S-1", "T-1"]),
+], ids=["em-dash", "en-dash", "hyphen", "no-break-spaces", "tabs", "the-first-separator-wins", "joined-then-titled", "joined-without-spaces", "padded"])
+def test_a_bold_lead_ends_at_the_first_dash_that_has_whitespace_on_both_sides(bold, ids):
+    assert [finding["id"] for finding in parse_reference_set(_list_md("1. **%s**: Fix.\n" % bold))["open"]] == ids
+
+
+@pytest.mark.parametrize("bold", ["T-1 -A title", "T-1— A title", "T-1 -- A title"], ids=["no-space-after", "no-space-before", "two-hyphens"])
+def test_a_dash_without_whitespace_on_both_sides_is_no_separator_and_the_lead_is_refused(bold):
+    with pytest.raises(ReferenceSetError) as raised:
+        parse_reference_set(_list_md("1. **%s**: Fix.\n" % bold))
+    assert "names %r, which is not a finding ID" % bold in raised.value.reason
+
+
+def _old_first_id(line):
+    cell = _OLD_FIRST_CELL.match(line)
+    return cell.group("cell") if cell is not None and tachi_parts.id_matches("finding", cell.group("cell")) else None
+
+
+def _first_id(line):
+    cell = _FIRST_CELL.match(line)
+    return cell.group("cell") if cell is not None else None
+
+
+def test_the_first_cell_pattern_finds_the_ids_that_the_lazy_pattern_found_over_every_short_line():
+    """The first cell is the ID, so the new pattern is anchored on the allow-list. Every line that the old one took an ID from, the new one
+    does, and no other, whatever bold marks, whitespace or pipes surround it."""
+    for length in range(7):
+        for chars in itertools.product(["|", "*", " ", "T", "-", "1", "x"], repeat=length):
+            line = "".join(chars)
+            assert _first_id(line) == _old_first_id(line), repr(line)
+    rng = random.Random(374)
+    pieces = ["|", "**", "*", " ", "  ", "\t", _NBSP, "T-1", "T-01", "T-1234567", "AGP-01", "AG-3", "LLM-12", "OI-1", "X-1", "S-", "-1", "x", _EM_SPACE, "a"]
+    for _ in range(10000):
+        line = "".join(rng.choice(pieces) for _ in range(rng.randint(1, 10)))
+        assert _first_id(line) == _old_first_id(line), repr(line)
+
+
+def test_the_title_separator_holds_no_whitespace_run_and_the_first_cell_is_the_allow_list():
+    assert not re.search(r"\\s[+*{]", _TITLE_SEPARATOR.pattern), "a run of whitespace around the dash is rescanned from every start position"
+    assert tachi_parts.ID_PATTERNS["finding"] in _FIRST_CELL.pattern, "the cell is the allow-list, not a lazy match between two runs of whitespace"
+
+
+def test_a_whitespace_run_in_a_section_7_line_is_read_in_linear_time():
+    """S7-1 (T068). The sizes are the test, not a stopwatch: at these sizes each of the patterns that were replaced took tens of seconds
+    (the separator and the plus split, quadratic in the run) or more (the first cell, cubic), and the linear forms read each one in a few
+    milliseconds. The bound is three orders of magnitude over that, and only turns a slow pass into a failure."""
+    started = time.perf_counter()
+    run = " " * 60000
+    with pytest.raises(ReferenceSetError) as raised:  # the lead is no ID, so the run is read by the separator and then by the plus split
+        parse_reference_set(_list_md("1. **T-1" + run + "x**: Fix.\n"))
+    assert "which is not a finding ID" in raised.value.reason and len(raised.value.reason) < 300
+    joined = parse_reference_set(_list_md("1. **T-1" + run + "+ S-1**: Fix.\n"))
+    assert [finding["id"] for finding in joined["open"]] == ["S-1", "T-1"]
+    wide_line = "| " + " " * 5000 + "x\n\n"  # no table row, in a file whose Section 7 has a range, so every line is read for its first cell
+    ranged = parse_reference_set(_list_md("1. **T-1 through T-3**: Fix.\n", tables=_FINDING_TABLES + wide_line))
+    assert [finding["id"] for finding in ranged["open"]] == ["T-1", "T-2", "T-3"]
+    assert time.perf_counter() - started < 5, "a whitespace run is no longer read in linear time"
+
+
+# ---- H1: recommendation_text, the What to Implement rule of one Section 4 block --------------------------------------
+
+_SECTION_4_BLOCK = [
+    "#### 1. S-2 — Auth Service (Composite: 9.1, Critical)", "",
+    "**Current Status**: Partial Control", "",
+    "**What to Implement**: Harden the token check", "so it covers the refresh path &lt;too&gt;.", "",
+    "**Where to Implement**: `src/auth.py`", "",
+    "**Effort Estimate**: Medium", "", "---", ""]
+
+
+def test_recommendation_text_reads_the_marker_line_and_the_lines_that_continue_it():
+    expected = "Harden the token check so it covers the refresh path <too>."
+    assert recommendation_text(_SECTION_4_BLOCK) == expected, "a block with its heading line, as a renderer slices it"
+    assert recommendation_text(_SECTION_4_BLOCK[1:]) == recommendation_text(_SECTION_4_BLOCK[4:]) == expected, "and without it, or without the status"
+    assert recommendation_text(["   **What to Implement**:   spaced   ", "   next   "]) == "spaced next", "each line is stripped, and the pieces join with one space"
+    assert recommendation_text(tuple(_SECTION_4_BLOCK)) == expected, "any sequence of lines will do"
+
+
+@pytest.mark.parametrize("stop", ["", "   ", "**Where to Implement**: x", "  **Effort Estimate**: Low", "### Next group",
+                                  "#### 2. T-2 — Gateway (Composite: 7.5, High)", "---", "  ---  "],
+                         ids=["blank", "spaces", "a-bold-label", "an-indented-bold-label", "a-group-heading", "a-block-heading", "a-rule", "an-indented-rule"])
+def test_the_text_runs_over_the_lines_that_follow_until_one_of_the_stops(stop):
+    assert recommendation_text(["**What to Implement**: one", "two", stop, "three"]) == "one two"
+
+
+def test_a_list_item_a_table_row_and_a_second_level_heading_do_not_end_the_text():
+    """As the reader has always done: only a blank line, a bold label, a `###` heading or a rule ends it."""
+    assert recommendation_text(["**What to Implement**: one", "- two", "| three |", "1. four", "## five"]) == "one - two | three | 1. four ## five"
+
+
+def test_a_block_without_a_marker_has_no_text_and_the_first_marker_wins():
+    assert recommendation_text([]) == ""
+    assert recommendation_text(["#### 1. T-1 — x", "**Current Status**: None"]) == ""
+    assert recommendation_text(["Some words **What to Implement**: not at the start of the line"]) == ""
+    assert recommendation_text(["**What to Implement**: first", "", "**What to Implement**: second"]) == "first"
+
+
+def test_a_marker_with_no_text_reads_the_lines_after_it_and_every_copy_of_the_marker_in_its_line_goes():
+    assert recommendation_text(["**What to Implement**:", "  the next line  "]) == "the next line"
+    assert recommendation_text(["**What to Implement**:", ""]) == ""
+    assert recommendation_text(["**What to Implement**: a **What to Implement**: b"]) == "a  b", "kept as the reader had it (NFR-1)"
+
+
+def test_the_text_is_decoded_once_and_a_string_is_not_the_lines_of_a_block():
+    assert recommendation_text(["**What to Implement**: Check &lt;a&gt; &amp;lt; &#124; b"]) == "Check <a> &lt; | b"
+    with pytest.raises(TypeError):
+        recommendation_text("**What to Implement**: a string would read as one-character lines")
+
+
+def _section_4_blocks(text):
+    """``[(ID, lines)]`` of Section 4: the lines under each ``#### n. ID —`` heading, up to the next one or the end of the section."""
+    lines = text.split("\n")
+    start = next(index for index, line in enumerate(lines) if re.match(r"^##\s+4\.\s+Recommendations", line)) + 1
+    end = next((index for index in range(start, len(lines)) if re.match(r"^##\s+\d+\.", lines[index])), len(lines))
+    heads = []
+    for index in range(start, end):
+        heading = re.match(r"^####\s+\d+\.\s+(\S+)\s+[—\-]", lines[index].strip())
+        if heading:
+            heads.append((index, heading.group(1)))
+    stops = [at for at, _ in heads[1:]] + [end]
+    return [(finding_id, lines[at + 1:stop]) for (at, finding_id), stop in zip(heads, stops)]
+
+
+def test_recommendation_text_reads_every_shipped_controls_block_as_the_controls_reader_does():
+    paths = sorted((REPO_ROOT / "examples").rglob("compensating-controls.md"))
+    assert len(paths) >= 5
+    texts = 0
+    for path in paths:
+        name, text = path.relative_to(REPO_ROOT).as_posix(), path.read_text(encoding="utf-8")
+        blocks = _section_4_blocks(text)
+        assert len({finding_id for finding_id, _ in blocks}) == len(blocks) > 0, "premise: each ID has one block in %s" % name
+        read = {finding["id"]: finding["recommendation"] for finding in parse_compensating_controls_md(text)["findings"]}
+        for finding_id, lines in blocks:
+            assert recommendation_text(lines) == read[finding_id], (name, finding_id)
+            texts += bool(read[finding_id])
+    assert texts >= 100, "the check read over a hundred texts, so it is not vacuous"
+
+
+def _controls_with_section_4(section_4):
+    return ("## 2. Coverage Matrix\n\n### High Residual Severity\n\n" + _control_table(_PREFIX_HEADER, _CONTROL_ROWS) + "\n\n## 3. Control Details\n\n"
+            "## 4. Recommendations\n\n" + section_4 + "\n\n## 5. Residual Risk Summary\n\nText.\n")
+
+
+def test_the_controls_reader_keeps_its_rules_for_the_blocks_it_hands_to_the_helper():
+    """Per block: the first marker, a heading that names no ID, a repeated ID and a marker with no text. None of this moved with H1."""
+    section_4 = "\n".join([
+        "**What to Implement**: Before any heading, so nobody's.", "",
+        "#### 1. T-1 — Gateway (Composite: 7.5, High)", "", "**What to Implement**: First text for T-1.", "",
+        "#### Notes", "", "**What to Implement**: A second marker in the same block, so it is ignored.", "",
+        "#### 2. S-2 — Auth (Composite: 9.1, Critical)", "", "#### Notes", "",
+        "**What to Implement**: The text for S-2, under a heading that names no ID.", "",
+        "#### 3. T-1 — Gateway again (Composite: 7.5, High)", "", "**Current Status**: No marker here, so T-1 keeps its text.", "",
+        "#### 4. E-3 — Admin (Composite: 6.0, Medium)", "", "**What to Implement**: The text for E-3.", "",
+        "#### 5. E-3 — Admin again (Composite: 6.0, Medium)", "", "**What to Implement**:", ""])
+    found = {finding["id"]: finding["recommendation"] for finding in parse_compensating_controls_md(_controls_with_section_4(section_4))["findings"]}
+    assert found == {"T-1": "First text for T-1.", "S-2": "The text for S-2, under a heading that names no ID.", "E-3": ""}
