@@ -24,7 +24,9 @@ in step. It holds:
 * the result, the run and the document, in one key order, with the real `informationUri` and the
   `tachi_provenance` stamp;
 * the OWASP-LLM, OWASP-ASI and CWE taxa that the scorer and controls files carry, embedded so
-  the core path needs no PyYAML.
+  the core path needs no PyYAML;
+* the eight rules those two files share, each with its taxonomy `relationships` (`RULES` and
+  `build_rules`), so the two renderers emit one table (PM W3 ruling 2, gap A).
 
 Standard library plus the local helpers `tachi_parsers`, `tachi_parts` and `tachi_scoring`. The
 module sets `sys.dont_write_bytecode` before any of them loads (ADR-049 D8).
@@ -38,6 +40,7 @@ import posixpath
 import re
 import stat
 import sys
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple
 
@@ -965,17 +968,26 @@ def build_driver(
     semantic_version: str,
     rules: Sequence[Mapping[str, Any]],
     supported: Optional[Sequence[Mapping[str, Any]]] = None,
+    version: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """The ``tool.driver`` of a file: its verbatim tool name and the real ``informationUri``."""
+    """The ``tool.driver`` of a file: its verbatim tool name and the real ``informationUri``.
+
+    ``version`` is optional (PM W3 ruling 2, gap C). Given, ``"version"`` is written right after
+    ``"name"``, where the 1.1 templates put it, and the two PR 1 renderers pass the same
+    ``tachi_parts.VERSION`` that ``semantic_version`` holds. Not given, there is no ``"version"`` key:
+    ``threats.sarif``'s driver passes none, and its bytes don't move.
+    """
     if sarif_file not in TOOL_NAMES:
         raise ValueError(
             "not a tachi SARIF file: %s; expected one of %s" % (_short(sarif_file), sorted(TOOL_NAMES))
         )
-    driver: Dict[str, Any] = {
-        "name": TOOL_NAMES[sarif_file],
-        "semanticVersion": semantic_version,
-        "informationUri": INFORMATION_URI,
-    }
+    if version is not None and not _is_text(version):
+        raise ValueError("version must be a non-empty string, not %s" % _short(version))
+    driver: Dict[str, Any] = {"name": TOOL_NAMES[sarif_file]}
+    if version is not None:
+        driver["version"] = version
+    driver["semanticVersion"] = semantic_version
+    driver["informationUri"] = INFORMATION_URI
     if supported is not None:
         driver["supportedTaxonomies"] = [dict(entry) for entry in supported]
     driver["rules"] = [dict(rule) for rule in rules]
@@ -1117,6 +1129,7 @@ def _shape_problems(result: object) -> List[str]:
                     list(entry) == ["id", "message", "physicalLocation"]
                     and isinstance(entry["message"], dict)
                     and _is_text(entry["message"].get("text"))
+                    and isinstance(physical, dict)
                     and isinstance(physical.get("artifactLocation"), dict)
                     and _is_text(physical["artifactLocation"].get("uri"))
                     and isinstance(region, dict)
@@ -1187,7 +1200,9 @@ def self_check(
     * every result has the one ``uri`` (``uri``, when given);
     * no RESOLVED ID (``resolved_ids`` less the member set) appears in a message (its markdown
       included), a property or a ``relatedLocations`` entry, and no ``relatedLocations`` entry
-      names a finding or sits outside the controls file;
+      names a finding or sits outside the controls file, and every ``relatedLocations`` uri
+      passes ``tachi_parts.path_problem``, the resolver's own relative-path rule (the error names
+      the finding and the failed check);
     * every ``correlation-primary`` and every group member is a result, with one primary per
       group, every correlated result's message ends with ruling C's sentence, and an
       uncorrelated result carries neither the keys nor the sentence.
@@ -1274,6 +1289,17 @@ def self_check(
             if lead and tachi_parts.id_matches("finding", lead.group(1)):
                 problems.append(
                     "%s: a relatedLocations entry names the finding %s" % (finding_id, lead.group(1))
+                )
+            # D7: an evidence URI is relative to the target. The test is the resolver's own syntactic
+            # rule, `tachi_parts.path_problem` (a leading slash, scheme, drive letter, backslash and
+            # `..` among its checks), called here and never restated.
+            # AOD-SIMPLIFICATION: checks the URI as written, not percent-decoded (the emitter encodes "%", so it never writes %2E) — upgrade: unquote first
+            evidence_uri = entry["physicalLocation"]["artifactLocation"]["uri"]
+            failed = tachi_parts.path_problem(evidence_uri)
+            if failed is not None:
+                problems.append(
+                    "%s: a relatedLocations uri %s fails the resolver's %s check"
+                    % (finding_id, _short(evidence_uri), failed)
                 )
 
     primaries: Dict[str, List[str]] = {}
@@ -1387,4 +1413,106 @@ def supported_taxonomies() -> List[Dict[str, Any]]:
             "informationUri": taxonomy["informationUri"],
         }
         for index, taxonomy in enumerate(TAXONOMIES)
+    ]
+
+
+# =============================================================================
+# The rules (one table for risk-scores.sarif and compensating-controls.sarif)
+# =============================================================================
+#
+# What each rule says, in the 1.1 templates' order (`templates/tachi/output-schemas/`): (category, short
+# description, full description, tags, taxonomy IDs the rule relates to). Both renderers write their rules from
+# here, so the two files can't drift apart, and `tests/scripts/test_sarif_identity.py` pins every field to both
+# templates. The IDs are what a `{{ref:...}}` slot may cite for a finding of that category (ADR-050 D3's table),
+# and each rule writes them as its `relationships` (PM W3 ruling 2, gap A).
+RULES = (
+    ("spoofing", "Identity spoofing threats",
+     "Threats where an attacker pretends to be something or someone else, such as forging authentication credentials, "
+     "replaying tokens, or impersonating trusted components to gain unauthorized access.",
+     ("security", "stride", "spoofing", "authentication", "owasp", "cwe"), ("A07", "CWE-287")),
+    ("tampering", "Data tampering threats",
+     "Threats where an attacker modifies data, code, or configuration without authorization, violating integrity "
+     "guarantees and causing systems to operate on corrupted inputs or persist falsified records.",
+     ("security", "stride", "tampering", "data-integrity", "owasp", "cwe"), ("A08", "CWE-345")),
+    ("repudiation", "Repudiation threats",
+     "Threats where a user or system can deny having performed an action, and the system lacks sufficient evidence to "
+     "prove otherwise, undermining accountability and forensic investigation.",
+     ("security", "stride", "repudiation", "logging", "accountability", "owasp", "cwe"), ("A09", "CWE-778")),
+    ("info-disclosure", "Information disclosure threats",
+     "Threats where sensitive information is exposed to unauthorized parties through direct data leaks, verbose error "
+     "messages, side-channel observations, or insufficient access controls on stored data.",
+     ("security", "stride", "information-disclosure", "data-exposure", "owasp", "cwe"), ("A01", "CWE-200")),
+    ("denial-of-service", "Denial of service threats",
+     "Threats where an attacker degrades or eliminates system availability through resource exhaustion, flooding, "
+     "algorithmic complexity exploitation, or cascading dependency failures.",
+     ("security", "stride", "denial-of-service", "availability", "owasp", "cwe"), ("A05", "CWE-400")),
+    ("privilege-escalation", "Privilege escalation threats",
+     "Threats where an attacker gains higher privileges than authorized, performing actions reserved for "
+     "administrators, accessing other users' resources, or bypassing access control boundaries.",
+     ("security", "stride", "elevation-of-privilege", "access-control", "owasp", "cwe"), ("A01", "CWE-269")),
+    ("agentic", "AI agent autonomy and misuse threats",
+     "Threats arising from autonomous agent behavior, including uncontrolled tool use, excessive autonomy, "
+     "agent-to-agent trust violations, and lack of human oversight in high-impact operations.",
+     ("security", "ai", "agentic", "autonomy", "tool-use", "mcp"), ("CWE-693",)),
+    ("llm", "LLM-specific threats",
+     "Threats from prompt injection vulnerabilities, data poisoning risks, and model theft in LLM-integrated "
+     "components, covering direct and indirect injection, RAG pipeline manipulation, and model extraction.",
+     ("security", "ai", "llm", "prompt-injection", "data-poisoning", "model-theft"), ("CWE-74",)),
+)
+
+_CWE_TAXON = re.compile(r"CWE-[1-9][0-9]*")
+_OWASP_TAXON = re.compile(r"A(?:0[1-9]|10)")
+
+
+def taxonomy_name_for(taxon_id: str) -> str:
+    """The ``toolComponent`` name of a rule's relationship to this taxonomy ID: ``CWE`` or ``OWASP``.
+
+    The map is closed: ``CWE-<n>`` is ``CWE`` and ``A01`` to ``A10`` is ``OWASP``. Any other ID is a
+    defect in shipped code and raises ``ValueError``. ``OWASP`` is the 1.0 files' name-only form, and
+    no ``taxonomies`` entry carries it, so these links don't resolve inside the file; aligning them is
+    a follow-up (T080).
+    """
+    if isinstance(taxon_id, str):
+        if _CWE_TAXON.fullmatch(taxon_id):
+            return "CWE"
+        if _OWASP_TAXON.fullmatch(taxon_id):
+            return "OWASP"
+    raise ValueError(
+        "not a taxonomy ID that a rule may relate to: %s; expected CWE-<n> or A01 to A10" % _short(taxon_id)
+    )
+
+
+def build_rules(highest: Mapping[str, Decimal]) -> List[Dict[str, Any]]:
+    """The driver's ``rules``: one for each category in ``highest``, in ``RULES``' order.
+
+    ``highest`` maps a category to the highest score among that category's results in the file: the
+    composite in ``risk-scores.sarif``, the residual in ``compensating-controls.sarif``. That score is
+    the rule's ``security-severity``, rounded half-up to one decimal and written as text. A category with
+    no results has no rule, and a key that isn't one of the eight categories raises ``ValueError``.
+
+    A rule is ``id``, ``shortDescription``, ``fullDescription``, ``properties`` (``tags``, then
+    ``security-severity``) and ``relationships``, the keys and the order the 1.1 templates use. There is
+    one ``relationships`` entry for each taxonomy ID in the rule's ``RULES`` row, in that row's order.
+    Every list and object is new on each call.
+    """
+    unknown = [category for category in highest if category not in RULE_ID_BY_CATEGORY]
+    if unknown:
+        raise ValueError(
+            "not a rule category: %s; expected some of %s"
+            % (", ".join(_short(category) for category in unknown[:5]), list(RULE_ID_BY_CATEGORY))
+        )
+    return [
+        {
+            "id": RULE_ID_BY_CATEGORY[category],
+            "shortDescription": {"text": short},
+            "fullDescription": {"text": full},
+            "properties": {"tags": list(tags), "security-severity": str(tachi_scoring.q1(highest[category]))},
+            "relationships": [
+                {"target": {"id": taxon_id, "toolComponent": {"name": taxonomy_name_for(taxon_id)}},
+                 "kinds": ["relevant"]}
+                for taxon_id in taxon_ids
+            ],
+        }
+        for category, short, full, tags, taxon_ids in RULES
+        if category in highest
     ]

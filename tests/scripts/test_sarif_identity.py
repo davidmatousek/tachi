@@ -28,6 +28,11 @@ T049 and T052, T142 and the message text: the renderers' files
 18. ``message.markdown``
 19. ``compensating-controls.sarif``: the cases that are the controls file's own (T052)
 
+PM W3 ruling 2, gaps A and C, and T052's evidence-URI finding: what both renderers share
+20. The shared rules table (``RULES``, ``build_rules``) against both 1.1 templates
+
+Section 11 also holds the guard that an evidence URI is relative, and section 12 the driver's ``version``.
+
 The fake filesystem is the offline stand-in for a case-insensitive volume (KB 24): it keeps each
 entry's own spelling and finds an entry by its case-folded name, as macOS's default volume does,
 so the case-variant cases run on every platform. Section 6 runs the same case on the real
@@ -1516,6 +1521,76 @@ def test_a_related_location_without_a_physical_location_is_refused():
     assert any("not code evidence" in p for p in problems_of(results, assignments, tool=CONTROLS))
 
 
+@pytest.mark.parametrize("physical", ["oops", ["x"], 7, None], ids=repr)
+def test_a_related_location_whose_physical_location_is_not_an_object_is_refused_and_never_a_crash(physical):
+    results, assignments = build_run(tool=CONTROLS)
+    add_related(results[0], [{"id": 0, "message": {"text": "Control evidence: x detected in y"}, "physicalLocation": physical}])
+    assert any("not code evidence" in p for p in problems_of(results, assignments, tool=CONTROLS))
+
+
+def evidence_at(uri):
+    """A controls evidence entry that points at this URI, for the relative-path cases."""
+    return {
+        "id": 0, "message": {"text": "Control evidence: authentication detected in a.py"},
+        "physicalLocation": {"artifactLocation": {"uri": uri}, "region": {"startLine": 1}},
+    }
+
+
+RELATIVITY_VIOLATIONS = [  # the URI, then the check of the resolver's one syntactic rule (tachi_parts.path_problem) that names it
+    ("/etc/passwd", "leading-slash"), ("/docs/security/architecture.md", "leading-slash"),
+    ("../secrets.py", "parent-reference"), ("src/../../secrets.py", "parent-reference"),
+    ("https://example.test/a.py", "scheme"), ("file:///a.py", "scheme"), ("C:/src/a.py", "drive-letter"),
+    ("src\\a.py", "backslash"),
+]
+
+
+@pytest.mark.parametrize(
+    "uri,failed", RELATIVITY_VIOLATIONS, ids=["%s:%s" % (failed, uri) for uri, failed in RELATIVITY_VIOLATIONS])
+def test_an_evidence_uri_that_is_not_relative_is_refused_naming_the_result_and_the_check(uri, failed):
+    """ADR-050 D7: a ``relatedLocations`` URI passes the resolver's relative-path checks (T052's finding).
+
+    The rule is ``tachi_parts.path_problem``, the one the resolver runs, so each case also names its check there.
+    """
+    assert tachi_parts.path_problem(uri) == failed
+    results, assignments = build_run(tool=CONTROLS)
+    add_related(results[0], [evidence_at("src/auth/login.py"), evidence_at(uri)])  # the good entry beside the bad one is not named
+    named = [p for p in problems_of(results, assignments, tool=CONTROLS) if "relatedLocations uri" in p]
+    assert len(named) == 1 and named[0].startswith("S-1: ") and sc._short(uri) in named[0] and failed in named[0], named
+
+
+def test_every_result_with_a_bad_evidence_uri_is_named_once_for_each_bad_entry():
+    results, assignments = build_run(tool=CONTROLS)
+    add_related(results[0], [evidence_at("/etc/passwd")])
+    add_related(results[2], [evidence_at("../x.py"), evidence_at("https://example.test/y")])
+    named = [p for p in problems_of(results, assignments, tool=CONTROLS) if "relatedLocations uri" in p]
+    assert [p.split(":", 1)[0] for p in named] == ["S-1", "I-3", "I-3"]
+
+
+@pytest.mark.parametrize("uri", ["src/auth/login.py", "login.py", "src/My%20Dir/%C3%A9.py", "a/b/c/d/e.txt"])
+def test_a_plain_relative_evidence_uri_passes_the_self_check(uri):
+    results, assignments = build_run(tool=CONTROLS)
+    add_related(results[0], [evidence_at(uri)])
+    check(results, assignments, tool=CONTROLS)
+
+
+def test_an_entry_the_emitter_writes_for_a_resolved_file_passes_the_relative_path_guard():
+    evidence = sc.ResolvedPath("src/My Dir/\u00e9.py", "src/My%20Dir/%C3%A9.py")
+    results, assignments = build_run(tool=CONTROLS)
+    add_related(results[0], [sc.evidence_location(0, "rate-limiting", evidence, 7)])
+    check(results, assignments, tool=CONTROLS)
+
+
+def test_the_evidence_uri_guard_has_no_rule_of_its_own_it_calls_the_resolvers(monkeypatch):
+    """Swap ``tachi_parts.path_problem`` out and the guard follows it, both ways: the rule is called, never restated."""
+    results, assignments = build_run(tool=CONTROLS)
+    add_related(results[0], [evidence_at("/etc/passwd")])
+    monkeypatch.setattr(tachi_parts, "path_problem", lambda value, allow_absolute=False: None)
+    check(results, assignments, tool=CONTROLS)  # a rule that passes everything passes an absolute path too
+    monkeypatch.setattr(tachi_parts, "path_problem", lambda value, allow_absolute=False: "a-check-from-tachi-parts")
+    named = [p for p in problems_of(results, assignments, tool=CONTROLS) if "relatedLocations uri" in p]
+    assert len(named) == 1 and "a-check-from-tachi-parts" in named[0] and named[0].startswith("S-1: ")
+
+
 def test_a_correlated_result_whose_message_lacks_the_sentence_is_refused():
     results, assignments = build_run()
     results[1]["message"]["text"] = "Finding T-2."
@@ -1711,6 +1786,38 @@ def test_the_driver_has_the_verbatim_tool_name_and_the_real_information_uri():
 def test_a_driver_for_a_file_that_is_not_one_of_the_three_is_refused():
     with pytest.raises(ValueError):
         sc.build_driver("other.sarif", semantic_version="1.0", rules=[])
+
+
+# --- PM W3 ruling 2, gap C: the driver's optional ``version`` ----------------------------------------------------------
+
+
+def test_a_driver_given_a_version_writes_it_right_after_the_name_and_one_without_is_unchanged():
+    """The two PR 1 renderers pass ``tachi_parts.VERSION``, which ``semanticVersion`` holds too; ``threats.sarif`` passes none."""
+    release = tachi_parts.VERSION
+    for sarif_file, name in sc.TOOL_NAMES.items():
+        driver = sc.build_driver(sarif_file, semantic_version=release, rules=[], version=release)
+        assert list(driver) == ["name", "version", "semanticVersion", "informationUri", "rules"], sarif_file
+        assert driver["name"] == name and driver["version"] == driver["semanticVersion"] == release
+        bare = sc.build_driver(sarif_file, semantic_version=release, rules=[])
+        assert list(bare) == ["name", "semanticVersion", "informationUri", "rules"] and "version" not in bare
+        assert sc.build_driver(sarif_file, semantic_version=release, rules=[], version=None) == bare
+    full = sc.build_driver(
+        "risk-scores.sarif", semantic_version=release, rules=[], supported=sc.supported_taxonomies(), version=release)
+    assert list(full) == ["name", "version", "semanticVersion", "informationUri", "supportedTaxonomies", "rules"]
+
+
+@pytest.mark.parametrize("bad", ["", 0, False, 4, ["4.48.4"], b"4.48.4"], ids=repr)
+def test_a_version_that_is_not_a_non_empty_string_is_refused(bad):
+    with pytest.raises(ValueError):
+        sc.build_driver("risk-scores.sarif", semantic_version="4.48.4", rules=[], version=bad)
+
+
+def test_a_driver_with_a_version_passes_the_document_builder_and_keeps_its_key_order_in_the_json():
+    driver = sc.build_driver(
+        "compensating-controls.sarif", semantic_version=tachi_parts.VERSION, rules=[], supported=sc.supported_taxonomies(),
+        version=tachi_parts.VERSION)
+    written = json.loads(sc.to_json(sc.build_document(driver, sc.TAXONOMIES, [], stamp())))["runs"][0]["tool"]["driver"]
+    assert list(written) == list(driver) and list(written)[:3] == ["name", "version", "semanticVersion"]
 
 
 def test_a_document_with_a_placeholder_information_uri_or_a_wrong_tool_is_refused():
@@ -1911,7 +2018,7 @@ def test_the_module_imports_the_standard_library_and_the_three_local_helpers_onl
     local = {"tachi_parsers", "tachi_parts", "tachi_scoring"}
     assert local <= imported
     standard = imported - local - {"__future__"}
-    assert standard <= {"hashlib", "json", "os", "posixpath", "re", "stat", "sys", "typing", "pathlib"}, standard
+    assert standard <= {"decimal", "hashlib", "json", "os", "posixpath", "re", "stat", "sys", "typing", "pathlib"}, standard
 
 
 def test_the_bytecode_guard_comes_before_every_local_import():
@@ -3314,3 +3421,137 @@ def test_a_reassessment_changes_the_results_and_never_their_keys(rrs, entries, t
     own = lambda result: {key: value for key, value in result.items() if key not in ("ruleId", "partialFingerprints", "locations")}  # noqa: E731
     assert sum(1 for finding_id in first if own(first[finding_id]) != own(second[finding_id])) >= 5, \
         "the re-assessment is not vacuous: it changes what a result says"
+
+
+# =============================================================================
+# 20. The rules both renderers share (PM W3 ruling 2, gap A)
+# =============================================================================
+#
+# ``sarif_common.RULES`` and ``build_rules`` are the one table that ``render-risk-scores.py`` and
+# ``render-compensating-controls.py`` write their rules from. These cases need no renderer: they pin the table to the two
+# 1.1 templates, which is where an adopter reads the output schema.
+
+SCHEMAS = REPO_ROOT / "templates" / "tachi" / "output-schemas"
+RULE_TEMPLATES = ["risk-scores.sarif", "compensating-controls.sarif"]
+RULE_CATEGORIES = [
+    "spoofing", "tampering", "repudiation", "info-disclosure", "denial-of-service", "privilege-escalation", "agentic", "llm"]
+EVERY_CATEGORY = {category: Decimal("7.5") for category in RULE_CATEGORIES}
+RULE_KEYS = ["id", "shortDescription", "fullDescription", "properties", "relationships"]
+
+
+def template_driver(name):
+    return json.loads((SCHEMAS / name).read_text(encoding="utf-8"))["runs"][0]["tool"]["driver"]
+
+
+def relationships_of(taxon_ids):
+    """The architect's form, written out here and not imported: one ``relevant`` link for each ID, in order."""
+    return [
+        {"target": {"id": taxon_id, "toolComponent": {"name": "CWE" if taxon_id.startswith("CWE-") else "OWASP"}},
+         "kinds": ["relevant"]}
+        for taxon_id in taxon_ids
+    ]
+
+
+def test_the_table_has_one_row_for_each_of_the_eight_categories_in_the_rule_maps_order():
+    assert [row[0] for row in sc.RULES] == RULE_CATEGORIES == list(sc.RULE_ID_BY_CATEGORY)
+    assert set(RULE_CATEGORIES) == set(tachi_scoring.PREFIX_CATEGORY.values()), "every category the resolver can return has a rule"
+    for category, short, full, tags, taxon_ids in sc.RULES:
+        assert short and full and tags and taxon_ids, category
+        assert isinstance(tags, tuple) and isinstance(taxon_ids, tuple), "a row can't be changed by a caller"
+        assert len(set(tags)) == len(tags) and len(set(taxon_ids)) == len(taxon_ids), category
+
+
+@pytest.mark.parametrize("name", RULE_TEMPLATES)
+def test_each_shared_rule_equals_the_templates_rule_with_the_same_id_field_for_field_and_in_key_order(name):
+    wanted = {rule["id"]: rule for rule in template_driver(name)["rules"]}
+    built = sc.build_rules(EVERY_CATEGORY)
+    assert sorted(rule["id"] for rule in built) == sorted(wanted), "the same eight rules, no more and no fewer"
+    for rule in built:
+        template = wanted[rule["id"]]
+        where = "%s %s" % (name, rule["id"])
+        assert list(rule) == list(template) == RULE_KEYS, where
+        for field in ("id", "shortDescription", "fullDescription", "relationships"):
+            assert json.dumps(rule[field]) == json.dumps(template[field]), (where, field)  # dumps keeps nested key order
+        assert list(rule["properties"]) == list(template["properties"]) == ["tags", "security-severity"], where
+        assert rule["properties"]["tags"] == template["properties"]["tags"], where
+        # ``security-severity`` is the one field excepted: the template shows a placeholder, and the renderer a score
+        assert rule["properties"]["security-severity"] == "7.5", where
+
+
+def test_each_rule_relates_to_every_taxonomy_id_of_its_row_in_order_in_the_architects_form():
+    built = {rule["id"]: rule for rule in sc.build_rules(EVERY_CATEGORY)}
+    for category, _short, _full, _tags, taxon_ids in sc.RULES:
+        rule = built[sc.RULE_ID_BY_CATEGORY[category]]
+        assert rule["relationships"] == relationships_of(taxon_ids), category
+        assert [link["target"]["id"] for link in rule["relationships"]] == list(taxon_ids), category
+        for link in rule["relationships"]:  # dict equality ignores key order, so the order is pinned here
+            assert list(link) == ["target", "kinds"] and list(link["target"]) == ["id", "toolComponent"], category
+            assert list(link["target"]["toolComponent"]) == ["name"] and link["kinds"] == ["relevant"], category
+
+
+@pytest.mark.parametrize("name", RULE_TEMPLATES)
+def test_the_driver_with_a_version_has_the_key_order_of_the_1_1_templates(name):
+    driver = sc.build_driver(
+        name, semantic_version=tachi_parts.VERSION, rules=sc.build_rules(EVERY_CATEGORY),
+        supported=sc.supported_taxonomies(), version=tachi_parts.VERSION)
+    assert list(driver) == list(template_driver(name)) == [
+        "name", "version", "semanticVersion", "informationUri", "supportedTaxonomies", "rules"]
+
+
+@pytest.mark.parametrize("taxon_id,name", [
+    ("A01", "OWASP"), ("A05", "OWASP"), ("A07", "OWASP"), ("A09", "OWASP"), ("A10", "OWASP"),
+    ("CWE-74", "CWE"), ("CWE-693", "CWE"), ("CWE-1427", "CWE"),
+])
+def test_the_taxonomy_name_map_is_cwe_for_cwe_n_and_owasp_for_a01_to_a10(taxon_id, name):
+    assert sc.taxonomy_name_for(taxon_id) == name
+
+
+@pytest.mark.parametrize("bad", [
+    "", "A00", "A11", "A1", "A001", "a01", "A01 ", " A01", "A01\n", "A0\u0661", "LLM01", "ASI01", "ASI09",
+    "CWE", "CWE-", "CWE-0", "CWE-074", "CWE-x", "CWE-7\n", "cwe-79", "CWE 79", "CWE_79", "CWE-\u0661", "ID",
+    None, 7, ["A01"],
+], ids=repr)
+def test_an_id_that_is_neither_cwe_n_nor_a01_to_a10_is_a_shipped_code_defect_and_raises(bad):
+    with pytest.raises(ValueError):
+        sc.taxonomy_name_for(bad)
+
+
+def test_a_rule_is_written_only_for_a_category_with_results_and_in_the_tables_order():
+    assert sc.build_rules({}) == []
+    assert [rule["id"] for rule in sc.build_rules({"llm": Decimal("3.0")})] == ["tachi/ai/llm-threats"]
+    # the mapping's own order does not matter: the table's does
+    unordered = {"llm": Decimal("3.0"), "spoofing": Decimal("9.1"), "agentic": Decimal("1.0")}
+    assert [rule["id"] for rule in sc.build_rules(unordered)] == [
+        "tachi/stride/spoofing", "tachi/ai/agentic-threats", "tachi/ai/llm-threats"]
+
+
+@pytest.mark.parametrize("score,text", [
+    (Decimal("7.5"), "7.5"), (Decimal("7"), "7.0"), (7, "7.0"), (Decimal("10"), "10.0"), (Decimal("0.0"), "0.0"),
+    (Decimal("4.55"), "4.6"), (Decimal("9.04"), "9.0"), (Decimal("9.05"), "9.1"),
+])
+def test_a_rules_security_severity_is_its_highest_score_as_text_with_one_decimal_rounded_half_up(score, text):
+    (rule,) = sc.build_rules({"tampering": score})
+    assert rule["properties"]["security-severity"] == text
+
+
+@pytest.mark.parametrize("bad", [7.5, "7.5", None, True], ids=repr)
+def test_a_score_that_is_not_a_decimal_or_an_int_is_refused_as_the_scoring_module_refuses_it(bad):
+    with pytest.raises(TypeError):
+        sc.build_rules({"tampering": bad})
+
+
+@pytest.mark.parametrize("bad", ["", "stride", "Spoofing", "tachi/stride/spoofing", "AG", None], ids=repr)
+def test_a_key_that_is_not_one_of_the_eight_categories_raises_and_never_drops_a_rule_silently(bad):
+    with pytest.raises(ValueError) as excinfo:
+        sc.build_rules({"llm": Decimal("1.0"), bad: Decimal("2.0")})
+    assert "not a rule category" in str(excinfo.value)
+
+
+def test_the_rules_are_new_on_every_call_so_a_caller_cannot_change_the_table():
+    before = json.dumps(sc.build_rules(EVERY_CATEGORY))
+    changed = sc.build_rules(EVERY_CATEGORY)
+    changed[0]["properties"]["tags"].append("x")
+    changed[0]["relationships"][0]["target"]["id"] = "A99"
+    changed[0]["relationships"].append({})
+    changed[0]["shortDescription"]["text"] = "changed"
+    assert json.dumps(sc.build_rules(EVERY_CATEGORY)) == before
