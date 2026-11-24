@@ -17,6 +17,7 @@
   - `sarif_common.RULES`, `taxonomy_name_for`, `build_rules` and `COPIED_TEXT_PROPERTIES`, `build_driver(..., version=None)` and `self_check`'s evidence-URI guard (R3a, named in `d0277a3`), and the RESOLVED scan's skip list (`b9b4962`, W3 ruling Q9).
 
   W3's rulings d had already recorded `COUNT_KEYS`' `cell_overwrites` and `forbidden_character`'s lone surrogate. No name is renamed or removed.
+- **Ruled at W4 (2026-11-24), additive:** `tachi_parsers.parse_finding_layers`, from T066's group U-1, which T146 writes (below). No name is renamed or removed.
 
 **Shared conventions.**
 - Every module has `from __future__ import annotations` and runs on Python 3.9 (S-11). Annotations use `typing` forms, so nothing here needs 3.10.
@@ -402,6 +403,28 @@ def match_heading(pattern: str, text: str, *, outside_fences: bool = False) -> O
 
   Every reader that a renderer's from-disk checks or the next run rely on passes `True` (ADR-050 D3, "Finding a section"): `parse_controls_assessment_inputs`, and every section lookup in both renderers' `_check_staged`. The extractors keep the default until their follow-up.
 
+## `scripts/tachi_parsers.py`: one W4 addition (ruled at W4, 2026-11-24, from T066's group U-1; T146 writes it)
+
+```python
+from typing import Dict
+
+def parse_finding_layers(content: str) -> Dict[str, str]: ...  # canonical finding ID -> MAESTRO layer, from the finding-level steps of ADR-050 D2's chain
+```
+
+- **What it returns.** A finding's layer by canonical ID, from the first of two finding-level sources that holds one for it:
+  1. **Section 7's MAESTRO Layer cell**, where `parse_reference_set` finds Section 7, under either of its headings, in the table form;
+  2. **the finding's own row in a per-finding table**: every table outside code fences whose header's first cell is `ID` and that has a `MAESTRO Layer` column. That is the template's §3 and §4 tables, and any table under them, such as `agentic-app`'s bold-labelled sub-tables in §4.2.
+
+  A value is the cell as `parse_markdown_table` gives it: stripped and decoded. A blank cell gives nothing, so the next source is asked. An ID that neither source gives has no entry, and the caller's chain goes on to the component's §1 layer, then `Unclassified`, as both renderers' chains already do (`_identity`, `_overlay_reference`).
+- **How it reads.**
+  - Fences follow `match_heading(outside_fences=True)`'s rule (`_fence_marker`), so a table quoted inside a fence is ignored.
+  - Each table is read with `parse_markdown_table(content, start_line=...)` from the line before its header row. So a short row is skipped, as that function skips it, and a long row is read by the header's positions, as the report and infographic extractors read the same rows (NFR-1).
+  - A row whose first cell isn't an allow-listed finding ID is ignored. The first row of a canonical ID wins, in source order, then file order.
+  - A table whose first header cell isn't `ID` is never read: the Phase 1 inventory (`Component`), §6's `Risk by MAESTRO Layer` (`MAESTRO Layer`) and §4b's tables (`Finding ID`), for example.
+- **What it doesn't do.** It raises nothing on content, and it flags nothing when the two sources disagree: Section 7 wins (ADR-050 D2). It never reads the component's layer or infers one from other findings. The renderers' P0-4 intake checks every value it returns, as the renderers already check `finding_layer`.
+- **Who calls it.** The scorer renderer's `_prepare` and the controls renderer's `_read_reference`, each in place of its own Section 7 loop and keeping its `setdefault`, and the planner's controls unit row (T067b's M3, `layer`). So the unit row's `layer` equals the renderer's structured value, which `_check_cells` compares with the agent's §2 cell.
+- **Tests** go in `tests/scripts/test_tachi_parsers.py`, the ratchet file. The shipped examples are read-only inputs for them (S-12(a)).
+
 ## `scripts/sarif_common.py`: one W2 addition (lane R0b, ruled at W2, 2026-11-23)
 
 ```python
@@ -438,10 +461,10 @@ def self_check(results: Sequence[Mapping[str, Any]], *, tool: str, member_ids: I
   - The controls renderer's from-disk check compares the staged driver's `rules` with it.
 - **`build_driver`'s `version` (PM W3 ruling 2, gap C).** Given, `"version"` is written right after `"name"`, where the 1.1 templates put it. Both PR 1 renderers pass `tachi_parts.VERSION`, the value they pass as `semantic_version` (`sarif-result.md`). Not given, the driver has no `version` key, so `threats.sarif`'s generator, which passes none, keeps its bytes. A value that isn't a non-empty string raises `ValueError`.
 - **`self_check`'s RESOLVED scan (ruled at W3 as Q9, settling P0-10; ADR-050 D8).** It reads `findingId/v1` and every property at any depth, except the top-level properties that `COPIED_TEXT_PROPERTIES` lists for `tool`: the scorer's `risk-owner`, and the controls file's `control-evidence` and `recommendation`. It never reads `message.text`, `message.markdown` or a `relatedLocations` message. An ID in copied text is a mention, not a reference, and ruling C's sentence keeps its own exact check. A driver with no entry, which is `threats.sarif`'s until PR 2, has every property read.
-- **`self_check`'s evidence-URI guard (from R3a; ADR-050 D7).** Each `relatedLocations` entry's `uri` must pass `tachi_parts.path_problem`, the resolver's own relative-path rule. So a scheme, a leading `/`, a drive letter, a backslash or a `..` fails the render, and the problem names the finding and the check.
-  - The URI is checked as written, not percent-decoded, which holds while the emitter encodes `%` (the code's `AOD-SIMPLIFICATION` marker).
+- **`self_check`'s URI guard (from R3a; ADR-050 D7 and D8; both URIs and the decoding from T064's SA-11, landed by T146's FX-4, recorded at W4, 2026-11-24).** Each `artifactLocation.uri` of a result, and each `relatedLocations` URI, must pass `tachi_parts.path_problem`, the resolver's own relative-path rule, as written and as percent-decoded once (strict UTF-8; a colon in a clean first segment, written encoded, is led by `./` first, per RFC 3986 section 4.2). So a scheme, a leading `/`, a drive letter, a backslash or a `..`, written or encoded, fails the render.
+  - The primary URI is named once for the run, as `artifactLocation.uri '<uri>' fails the resolver's <check> check`. An evidence URI names the finding.
   - A malformed entry is a shape problem, never an `AttributeError`.
-  - The primary `artifactLocation.uri` is only compared with the run's `uri`. T064's SA-11, which asks for the check on both URIs and for decoding first, goes to T146.
+  - The primary `artifactLocation.uri` is also compared with the run's `uri`.
 
 ## `scripts/tachi_parts.py`: W3 additions (lane FX0; the first ruled at the P0 checkpoint, the others at W3's rulings and its closing sweep, 2026-11-23)
 
@@ -450,7 +473,8 @@ def forbidden_character(text: str) -> Optional[str]: ...
 ```
 
 - **Published** by FX0's first slice, with this signature, and `tachi_parts`' step 10 now calls it.
-- **What it is.** The first character of `text` in D3's step-10 set, or `None`: a control character other than tab and newline (C0, DEL and C1), U+2028, U+2029, and the bidi controls U+200E, U+200F, U+061C, U+202A–U+202E and U+2066–U+2069. Step 10's length limit isn't part of it.
+- **What it is.** The first character of `text` in D3's step-10 set, or `None`: a control character other than tab and newline (C0, DEL and C1), U+2028, U+2029, the bidi controls U+200E, U+200F, U+061C, U+202A–U+202E and U+2066–U+2069, and the Unicode tag block, U+E0000–U+E007F (added at W4, 2026-11-24, T146, from T064's SA-7). Step 10's length limit isn't part of it.
+  - **`path_problem` agrees (W4, T146, from T064's SA-8).** A path that holds any character this returns fails as `control-char`, as one with any Cc character always did, so no path holds a character that a part's text may not.
 - **A lone surrogate (amended at W3, 2026-11-23, from R3a's planner).** It also returns a surrogate code point, U+D800–U+DFFF (Unicode category `Cs`), which only a JSON escape can spell and no UTF-8 file can carry.
   - A part never reaches step 10 with one, because `load_json` refuses it first ("a string holds a surrogate code point"), so no part's outcome changes. The renderers' intake and backstop refuse it with their usual exits, 2 and 4 (ADR-050 D3).
   - The test that checks the set over the whole Basic Multilingual Plane adds category `Cs`, which is 2,048 code points.
