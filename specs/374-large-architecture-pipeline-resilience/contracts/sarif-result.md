@@ -28,6 +28,7 @@
 
 - **The run:**
   - `tool.driver.name` per D7, with the real `informationUri` (FR-E.9);
+  - **the driver's version fields and the taxa (ruled at W3, 2026-11-23, from the PM's W3 ruling 2c).** In the scorer and controls files, `semanticVersion` and `version` both carry tachi's release version, `tachi_parts.VERSION`, the provenance stamp's `version`; `version` is kept because the templates and both agents' mappings name it (NFR-1). `taxonomies` and `supportedTaxonomies` are `sarif_common`'s taxa table (W1's reading, below). `threats.sarif`'s driver follows its own template in PR 2;
   - no `automationDetails`;
   - no result carries `guid`, `correlationGuid`, `fingerprints` or SARIF's own `baselineState`;
   - **the rules (ruled at W3, 2026-11-23, from the PM's W3 ruling 2, gap A).** The scorer and controls files write one rule per category that has a result. Each has `id`, `shortDescription`, `fullDescription`, `properties` (`tags`, then `security-severity`) and `relationships`, in that order, as all four templates show them.

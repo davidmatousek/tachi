@@ -313,6 +313,22 @@ Each decision names its track. PR 1 rests only on decisions tagged S (the cut li
 
       > a NEW finding's score that v4.48.4 held to its category's ±1.0 bound and that the renderer scores without it, because the run read no usable baseline `risk-scores.md` (ADR-050 D10, as P0-9 amends it), together with the values that follow from that score (composite, band, SLA, review date, the row's position and §1's counts) and the same values on the NEW or UPDATED peers that copy it (R-31). The test: the rendered `cvss_base` equals the finding's chain on its own vector and tags without the bound; the shipped value equals that chain with the bound; and the stage record states the missing or unreadable baseline. A diff in such a finding that fails the test is unattributed.
 
+    - **The sixth class, for the renderers' fixed SARIF values (ruled by the PM at W3, 2026-11-23, ruling 2c)**, verbatim:
+
+      > a fixed value, one that a renderer writes the same way on every run of a release, in `risk-scores.sarif` or `compensating-controls.sarif`, where the shipped file holds another value, whatever its origin (an agent's own value, v4.48.4's placeholder, a passthrough of `threats.sarif`, or the generator that PR 1 retires).
+      > - **The fixed values and their sources**, a closed list:
+      >   - each rule's `shortDescription`, `fullDescription`, `properties.tags` and `relationships`: the rule with the same `id` in that file's 1.1 template;
+      >   - the run's `taxonomies` and the driver's `supportedTaxonomies`: `sarif_common`'s taxa table, as W1's taxa reading fixes it (`contracts/sarif-result.md`);
+      >   - the driver's `informationUri` (FR-E.9) and the document's `$schema`: `sarif_common`'s constants;
+      >   - the driver's `semanticVersion` and `version`: tachi's release version, `tachi_parts.VERSION` at the oracle's commit.
+      > - **The test.** The rendered value equals its source's value exactly, as parsed JSON. It is the same in every rendered file of its kind, per rule `id` for the rules' fields. And `tests/scripts/test_sarif_identity.py`, which pins the taxa table to the catalogs, passes at the oracle's commit.
+      > - **A change from v4.48.4.** Where a source differs from v4.48.4's own value for the field (its 1.0 template or its agent's mapping), the oracle's record cites the F-374 decision that changed it: FR-E.9 for `informationUri`, W1's taxa reading for the taxa, ruling 2's gap A for `relationships`, and ruling 2c for the version fields. A change that no decision names is unattributed.
+      > - **A rule's `security-severity`** follows from its results. Its rendered value is the highest `security-severity` among that rule's results in the same rendered file, as both files' contracts define it, and any result diff that moves it is itself attributed.
+      > - **Not in this class:** the driver's `name`, a rule's `id` and a result's `ruleId`, which are identity under D-5, and every markdown value.
+      > - A diff in a listed field that fails its test is unattributed.
+
+      The driver's `version` is a contract field the renderers keep (PM W3 ruling 2c, gap C), unless a decision here removes it by name.
+
 - **Why.**
   - Agents that have just read third-party text write the parts (D-2, NFR-10, #360). The closed keys, the strict parse and checking IDs before they become paths make NFR-10 executable.
   - Plan scoping gives D-3's "no stale parts" without a delete permission (KB 21).
