@@ -744,9 +744,12 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
 
 def _sarif_vectors(raw: bytes) -> Dict[str, str]:
     """The baseline SARIF's ``cvss-vector`` of each result by canonical ID: R-26's second source of a vector, which
-    Section 6 shows as the stored value when it and the markdown's disagree. A file that doesn't read gives none."""
+    Section 6 shows as the stored value when it and the markdown's disagree. A file that doesn't read gives none.
+
+    It parses through ``tachi_parsers._load_sarif``, D3's bounded loader (T146, from T067a's M3), so an oversized
+    integer literal or a nesting bomb in the baseline fails fast as an unreadable file."""
     try:
-        results = json.loads(raw.decode("utf-8"))["runs"][0]["results"]
+        results = tachi_parsers._load_sarif(raw.decode("utf-8"))["runs"][0]["results"]
     except (ValueError, KeyError, IndexError, TypeError, AttributeError):
         return {}
     found: Dict[str, str] = {}

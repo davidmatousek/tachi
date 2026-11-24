@@ -5038,3 +5038,20 @@ def test_p0_5_the_reachability_default_line_names_at_most_ten_findings_in_s2_ord
     warnings = [warning for warning in project.record["warnings"] if warning["code"] == "reachability-defaulted"]
     assert [warning["detail"] for warning in warnings] == [
         "%d findings had no trust zone data, so their reachability is the default 5.0: %s" % (count, named)], "the stage record's warning follows the same form"
+
+
+def test_the_baseline_sarif_vector_reader_is_bounded_like_the_other_readers(renderer):
+    """T146 (T067a M3, T146 FX-4's unowned site): the renderer reads a baseline SARIF's vectors through D3's bounded
+    loader, so an integer literal over the digit cap or a nesting bomb makes the file unreadable (no vectors), never a
+    stall or an uncaught RecursionError. A well-formed file still gives its vectors."""
+    import tachi_parts
+    vector = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+    over_cap = (b'{"runs": [{"results": [{"partialFingerprints": {"findingId/v1": "S-1"}, "properties": {"cvss-vector": "'
+                + vector.encode("ascii") + b'", "n": ' + b"9" * (tachi_parts.MAX_INT_DIGITS + 1) + b"}}]}]}")
+    assert renderer._sarif_vectors(over_cap) == {}, "an over-cap literal makes the whole file unreadable, as D3 rules"
+    assert renderer._sarif_vectors(b"[" * 200000 + b"]" * 200000) == {}
+    assert renderer._sarif_vectors(b"\xff\xfe not utf-8") == {}
+    well_formed = json.dumps({"runs": [{"results": [{
+        "partialFingerprints": {"findingId/v1": "S-1"},
+        "properties": {"cvss-vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}}]}]}).encode("utf-8")
+    assert renderer._sarif_vectors(well_formed) == {"S-1": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}
