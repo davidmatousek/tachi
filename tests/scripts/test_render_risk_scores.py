@@ -656,9 +656,14 @@ class Project(object):
         """
         err = io.StringIO()
         explicit = self.architecture if architecture is True else (architecture or None)
-        with working_directory(self.root), contextlib.redirect_stderr(err):
-            result = self.stage.plan_stage(stage=STAGE, out=self.out, date=date, threats=self.threats, architecture=explicit,
-                                           baseline_dir=baseline_dir, batch_size=batch_size)
+        saved = self.stage._refuse_forbidden_units
+        self.stage._refuse_forbidden_units = lambda *args: None  # the renderer's own refusal is under test, so the planner's earlier one is off
+        try:
+            with working_directory(self.root), contextlib.redirect_stderr(err):
+                result = self.stage.plan_stage(stage=STAGE, out=self.out, date=date, threats=self.threats, architecture=explicit,
+                                               baseline_dir=baseline_dir, batch_size=batch_size)
+        finally:
+            self.stage._refuse_forbidden_units = saved
         self.plan_stderr = err.getvalue()
         self.plan_id, self.digest = result["plan_id"], result["plan_digest"]
         return result
