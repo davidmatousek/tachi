@@ -267,7 +267,22 @@ def _heading_level(line: str):
     return len(m.group(1)) if m else None
 
 
-def match_heading(pattern: str, text: str):
+def _fence_marker(line: str):
+    """``(character, run length, rest of the line)`` of the code-fence marker that starts ``line``, or ``None``.
+
+    A marker is a run of three or more backticks or tildes after spaces and tabs only (no other whitespace character
+    leads a fence, as in ``tachi_scoring_rules._outline``). The run is the whole run of that one character, and the rest
+    is what follows it.
+    """
+    stripped = line.lstrip(" \t")
+    char = stripped[:1]
+    if char != "`" and char != "~":
+        return None
+    run = len(stripped) - len(stripped.lstrip(char))
+    return (char, run, stripped[run:]) if run >= 3 else None
+
+
+def match_heading(pattern: str, text: str, *, outside_fences: bool = False) -> Optional[int]:
     """Return the 0-indexed line number of the first line matching ``pattern``.
 
     ``pattern`` is matched with ``re.MULTILINE`` (``^``/``$`` anchor to each
@@ -277,11 +292,41 @@ def match_heading(pattern: str, text: str):
     when there is no match. The return value is a line index compatible with
     :func:`parse_markdown_table`'s ``start_line`` argument, not a character
     offset.
+
+    ``outside_fences`` (F-374, ruled at W3 from T087's observation) is for a reader whose result a renderer's from-disk
+    check or the next run relies on. A heading-like line in a fenced code block, such as an evidence snippet that quotes
+    a tachi report, is then not a heading. The text is split on ``\\n`` only, and each line outside a fence is searched
+    on its own, so ``^`` and ``$`` anchor to that line. Every line of a fenced block is skipped, the fence lines
+    included:
+
+    * a fence opens on a run of three or more backticks or tildes after spaces and tabs only, and a backtick run with
+      another backtick later on its line opens none;
+    * it closes only on a run of the same character that is at least as long as the opener's, followed by nothing but
+      spaces, tabs or a carriage return;
+    * a fence that nothing closes runs to the end of the text, so no heading after it is found.
+
+    The default is the one search over the whole text that this function always was, so every caller that doesn't
+    ask is unchanged.
     """
-    m = re.search(pattern, text, re.MULTILINE)
-    if not m:
-        return None
-    return text.count("\n", 0, m.start())
+    if not outside_fences:
+        m = re.search(pattern, text, re.MULTILINE)
+        if not m:
+            return None
+        return text.count("\n", 0, m.start())
+    wanted = re.compile(pattern)
+    fence = None  # (character, run length) of the fence that is open
+    for index, line in enumerate(text.split("\n")):
+        marker = _fence_marker(line)
+        if fence is not None:
+            if marker is not None and marker[0] == fence[0] and marker[1] >= fence[1] and not marker[2].strip(" \t\r"):
+                fence = None
+            continue
+        if marker is not None and not (marker[0] == "`" and "`" in marker[2]):
+            fence = marker[:2]
+            continue
+        if wanted.search(line):
+            return index
+    return None
 
 
 # K11's Control Status classifier (data-model.md §3; FR-K11.3, spec ruling
@@ -2018,9 +2063,13 @@ def parse_controls_assessment_inputs(content: str) -> dict:
     result that it can't trust. An item that is incomplete is left out with an error at its first row. A file with no
     ``### Assessment Inputs`` (a pre-1.1 file) gives ``{"inputs": {}, "errors": []}``, as does one whose table has no
     row. A table without ``ID``, ``Field`` and ``Value`` columns is one error and no input.
+
+    The heading is found outside code fences (ruled at W3). A §3 evidence snippet is written raw inside a fence, and a
+    snippet that quotes a tachi report holds this heading and a table of its own, which must not stand in for §7.
     """
     result: dict = {"inputs": {}, "errors": []}
-    start = match_heading(_ASSESSMENT_INPUTS_HEADING, content) if isinstance(content, str) and content else None
+    start = (match_heading(_ASSESSMENT_INPUTS_HEADING, content, outside_fences=True)
+             if isinstance(content, str) and content else None)
     if start is None:
         return result
     skipped: list = []

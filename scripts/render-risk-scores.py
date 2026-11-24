@@ -51,7 +51,7 @@ import re
 import stat
 from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 sys.dont_write_bytecode = True  # no bytecode cache for the local imports below (ADR-049 D8)
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -424,18 +424,49 @@ def _first_forbidden(value: Any, path: str = "") -> Optional[Tuple[str, str]]:
     return None
 
 
-def _refuse_forbidden(source: str, finding_id: Optional[str], value: Any, remedy: str, kept: str) -> None:
+# The two tables of ``threats.md`` whose cells belong to no finding, as ``(what a message calls the table, its heading,
+# the columns whose text the renderer takes)``: Section 1's components (name, type, layer) and Section 2's trust zones.
+_SCOPE_TABLES = (
+    ("Section 1's component table", "### Components", ("Component", "Type", "MAESTRO Layer")),
+    ("Section 2's trust-zone table", "### Trust Zones", ("Zone", "Trust Level", "Components")),
+)
+
+
+def _scope_place(text: Optional[str], source: str, char: str) -> Optional[str]:
+    """Where in ``threats.md`` a Section 1 or 2 cell holds ``char``, such as ``Section 1's component table, threats.md line 42``.
+
+    It is the first row of those two tables, read the way ``_prepare`` reads them with ``row_lines`` for each row's line, that
+    holds ``char`` in a column that the renderer takes. It names the table and the line and never the text (ruled at W3).
+    ``None`` when there is no markdown to look in (the ``threats.sarif`` fallback) or no such row.
+    """
+    if text is None:
+        return None
+    for table, heading, columns in _SCOPE_TABLES:
+        lines: List[int] = []
+        rows = tachi_parsers.parse_markdown_table(text, heading, row_lines=lines)
+        for row, line in zip(rows, lines):
+            if any(char in row.get(column, "") for column in columns):
+                return "%s, %s line %d" % (table, source, line)
+    return None
+
+
+def _refuse_forbidden(source: str, finding_id: Optional[str], value: Any, remedy: str, kept: str,
+                      place: Optional[Callable[[str], Optional[str]]] = None) -> None:
     """Exit 2 when ``value``, which the renderer takes from an input that isn't a part, holds a character that D3's step 10 forbids.
 
     Step 10 checks a part. Text from ``threats.md``, the baseline ``risk-scores.md`` or ``threats.sarif`` reaches the
     escapers unchecked, and a carriage return, an escape or a bidi control would then forge a heading, drive a terminal
     or reorder what a reader sees (NFR-10, P0-4). So each value is checked where it is taken, before anything is computed.
-    ``finding_id`` names the finding the value belongs to, and ``None`` a Section 1 or 2 name or label. The message gives
-    the character's code point and never the text, so it can't carry the character to a terminal.
+    ``finding_id`` names the finding the value belongs to, and ``None`` a Section 1 or 2 name or label, which ``place``,
+    given the character, names by its table and line when it can. The message gives the character's code point and never
+    the text, so it can't carry the character to a terminal.
     """
     found = _first_forbidden(value)
     if found is not None:
-        where = "the %s of %s" % (ascii(found[0])[1:-1], finding_id) if finding_id else "a component, zone or layer name"
+        if finding_id:
+            where = "the %s of %s" % (ascii(found[0])[1:-1], finding_id)
+        else:
+            where = (place(found[1]) if place is not None else None) or "a component, zone or layer name"
         raise RenderError(2, "%s holds the character U+%04X, which the part contract forbids, in %s" % (source, ord(found[1]), where),
                           remedy, kept=kept)
 
@@ -446,13 +477,15 @@ def _refuse_forbidden_inputs(run: Run, reference: Mapping[str, Any], source: str
     That is every finding's fields (open and RESOLVED), each finding's MAESTRO layer, and the names and labels of
     Sections 1 and 2. It runs once those are read and before any of them is used. The reader strips a cell's edges
     first, so a character that ``str.strip`` removes there never reaches this check, as it never reaches an output.
+    A Section 1 or 2 cell is named by its table and its line in ``threats.md``, never by its text (``_scope_place``).
     """
     remedy = "regenerate %s with /tachi.threat-model, or edit the value to remove the character, then re-run the command" % source
     for finding in list(reference["open"]) + list(reference["resolved"]):
         _refuse_forbidden(source, finding["id"], finding, remedy, kept)
     for canonical, layer in run.finding_layer.items():
         _refuse_forbidden(source, canonical, {"layer": layer}, remedy, kept)
-    _refuse_forbidden(source, None, (run.component_info, run.zones, run.component_zone), remedy, kept)
+    _refuse_forbidden(source, None, (run.component_info, run.zones, run.component_zone), remedy, kept,
+                      place=lambda char: _scope_place(run.threats_text, source, char))
 
 
 def _refuse_forbidden_baseline(run: Run, reference: Mapping[str, Any], kept: str) -> None:
@@ -1524,6 +1557,18 @@ def _canonical_of(cell: Any) -> Optional[str]:
     return tp.canonical_finding_id(cell) if tp.id_matches("finding", cell) else None
 
 
+def _reason_text(reason: Optional[str]) -> str:
+    """A read failure's reason as a message gives it. ``too-large`` names the cap, which is the next run's reader's too.
+
+    A staged file over the cap can't be written as the baseline: the next run would score every finding fresh and
+    carry no owner, SLA or review date (P0-1's harm by another route), so the check fails it. The cap is
+    ``tachi_parts.MAX_AGENT_INPUT_BYTES``, D3 step 2's 16 MiB (ruled at W3).
+    """
+    if reason == "too-large":
+        return "over the next run's %d MiB reader cap" % (tp.MAX_AGENT_INPUT_BYTES >> 20)
+    return str(reason)
+
+
 def _read_back_problems(run: Run, md_path: str) -> List[str]:
     """What the next run would read from the staged markdown, by the reader that run uses (P0-1; KB 22).
 
@@ -1534,7 +1579,7 @@ def _read_back_problems(run: Run, md_path: str) -> List[str]:
     """
     scores = rules.read_baseline_scores(Path(md_path))
     if not scores.readable:
-        return ["the staged %s would not read back as a baseline (%s)" % (MD, scores.reason)]
+        return ["the staged %s would not read back as a baseline (%s)" % (MD, _reason_text(scores.reason))]
 
     def listed(ids: List[str]) -> str:
         return ", ".join(ids[:5]) + (", and more" if len(ids) > 5 else "")
@@ -1562,11 +1607,33 @@ def _read_back_problems(run: Run, md_path: str) -> List[str]:
     return problems
 
 
+def _heading_line(md_text: str, heading: str) -> Optional[int]:
+    """The 0-based index of the line that is exactly ``heading`` (trailing spaces and tabs aside) outside any code fence, or ``None``.
+
+    That is how the next run's reader finds a section (ADR-050 D3, "Finding a section"), and the checks below find it
+    the same way. ``parse_markdown_table`` finds a heading by substring, so a Threat cell, a line of Section 3's prose or a
+    component name that holds a later heading's text would be taken for it. The check would then read the wrong table
+    and fail a file that is right with exit 4, on every re-run for that input, with a message that points at row parity
+    and not at the cause (ruled at W3, from T087's observation).
+    """
+    return tachi_parsers.match_heading("^" + re.escape(heading) + r"[ \t]*$", md_text, outside_fences=True)
+
+
+def _table_under(md_text: str, heading: str, **options: Any) -> List[Dict[str, str]]:
+    """The first table under the ``heading`` line, as ``parse_markdown_table`` reads it (``options`` pass through).
+
+    A file with no such line gives no rows, so a section that the run expects and the file lacks is still a problem.
+    """
+    start = _heading_line(md_text, heading)
+    return [] if start is None else tachi_parsers.parse_markdown_table(md_text, start_line=start, **options)
+
+
 def _check_staged(run: Run, md_text: str, sarif_text: str, digest: str, md_path: str) -> List[str]:
     """Everything that can be wrong with the two files as they now sit on disk. Empty when they are right.
 
     Row parity against the reference set, Section 2's arithmetic, SARIF N/N and the shared self-check, and the two
     files' agreement on decoded values. The markdown is read back through ``tachi_parsers`` and the SARIF through ``json``.
+    Sections 2, 2a and 4 are found as heading lines outside code fences, never as text (``_heading_line``).
     The markdown at ``md_path`` is also read back through ``read_baseline_scores``, the reader the next run uses, so a
     carry that this file would break fails here (P0-1). Neither file may hold a character that D3's step 10 forbids, the
     raw markdown or any decoded SARIF string, whatever path it took to reach them (NFR-10, P0-4).
@@ -1577,7 +1644,7 @@ def _check_staged(run: Run, md_text: str, sarif_text: str, digest: str, md_path:
         problems.append("the staged %s holds the character U+%04X, which the part contract forbids, at line %d"
                         % (MD, ord(forbidden), md_text.count("\n", 0, md_text.find(forbidden)) + 1))
     expected = [row.canon for row in run.ordered]
-    scored = tachi_parsers.parse_markdown_table(md_text, "## 2. Scored Threat Table", keep_bold=True)
+    scored = _table_under(md_text, "## 2. Scored Threat Table", keep_bold=True)
     got = [_canonical_of(row.get("ID", "")) for row in scored]
     if sorted(map(str, got)) != sorted(expected):
         missing = sorted(set(expected) - set(got), key=tp.finding_sort_key)
@@ -1587,11 +1654,11 @@ def _check_staged(run: Run, md_text: str, sarif_text: str, digest: str, md_path:
     elif got != expected:
         problems.append("Section 2 is not in composite-descending, S-2 order")
     expected_resolved = [finding["canon"] for finding in run.resolved]
-    resolved = tachi_parsers.parse_markdown_table(md_text, "## 2a. Resolved Findings") if run.resolved else []
-    if [_canonical_of(row.get("ID", "")) for row in resolved] != expected_resolved or (not run.resolved and "## 2a." in md_text):
+    resolved = _table_under(md_text, "## 2a. Resolved Findings") if run.resolved else []
+    stray = not run.resolved and _heading_line(md_text, "## 2a. Resolved Findings") is not None
+    if [_canonical_of(row.get("ID", "")) for row in resolved] != expected_resolved or stray:
         problems.append("Section 2a does not hold exactly the %d resolved findings of Section 4c" % len(expected_resolved))
-    governed = {_canonical_of(row.get("ID", "")): row
-                for row in tachi_parsers.parse_markdown_table(md_text, "## 4. Governance Fields", keep_bold=True)}
+    governed = {_canonical_of(row.get("ID", "")): row for row in _table_under(md_text, "## 4. Governance Fields", keep_bold=True)}
     if set(governed) != set(expected):
         problems.append("Section 4 does not hold exactly the open findings")
     headings = re.findall(r"(?m)^### (\S+) %s " % DASH, md_text)
@@ -1671,7 +1738,7 @@ def _stage_and_move(run: Run, out: str, plan_id: str, md_text: str, sarif_text: 
     for name in (MD, SARIF):
         raw, reason = _read_text_file(tp.staged_path(out, STAGE, plan_id, name))
         if raw is None:
-            raise RenderError(4, "the staged %s could not be read back (%s)" % (name, reason), RETRY_REMEDY, kept=kept)
+            raise RenderError(4, "the staged %s could not be read back (%s)" % (name, _reason_text(reason)), RETRY_REMEDY, kept=kept)
         try:
             texts.append(raw.decode("utf-8"))
         except UnicodeDecodeError:

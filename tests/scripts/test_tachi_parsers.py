@@ -2910,3 +2910,132 @@ def test_a_recommendation_body_keeps_its_bold_labels_through_the_persisted_table
 def test_an_empty_value_cell_is_a_value_the_writer_wrote_and_the_reader_returns_it_as_it_is():
     item = dict(_FOUND_ITEM, evidence=[dict(_FOUND_ITEM["evidence"][0], summary="")])
     assert parse_controls_assessment_inputs(_controls_with_inputs(_persisted_table({"E-3": item})))["inputs"]["E-3"] == item
+
+
+# =============================================================================
+# Feature 374 (W3, FX0): match_heading(outside_fences=True), a section found as a heading and never as quoted text
+#
+# The architect's W3 ruling on T087's observation (contracts/module-signatures.md, ADR-050 D3 "Finding a section"). A reader that a
+# renderer's from-disk check or the next run relies on must not take a heading-like line of a fenced code block for a section: a
+# controls evidence snippet is written raw inside a fence, and one that quotes a tachi report holds `### Assessment Inputs` and a table
+# of its own. The default stays one `re.search` over the whole text, so every other caller is unchanged.
+# =============================================================================
+
+_QUOTED = r"^###\s+Assessment Inputs\s*$"  # the heading pattern that `parse_controls_assessment_inputs` uses
+_HEADING_LINE = "### Assessment Inputs"
+_NBSP = chr(0xA0)
+
+
+def _quoting(*rows):
+    return "\n".join(rows) + "\n"
+
+
+# (id, the text, the 0-based line that outside_fences=True finds: the first `### Assessment Inputs` line that no fence covers)
+FENCE_CASES = [
+    ("no-fence", _quoting("intro", _HEADING_LINE, "tail"), 1),
+    ("three-backticks", _quoting("```", _HEADING_LINE, "```", _HEADING_LINE), 3),
+    ("four-backticks", _quoting("````", _HEADING_LINE, "````", _HEADING_LINE), 3),
+    ("a-three-backtick-line-does-not-close-a-four-backtick-fence", _quoting("````", "```", _HEADING_LINE, "````", _HEADING_LINE), 4),
+    ("a-shorter-closer-leaves-the-fence-open", _quoting("````", _HEADING_LINE, "```", _HEADING_LINE), None),
+    ("a-longer-closer-closes", _quoting("```", _HEADING_LINE, "`````", _HEADING_LINE), 3),
+    ("tildes", _quoting("~~~", _HEADING_LINE, "~~~", _HEADING_LINE), 3),
+    ("a-tilde-line-does-not-close-a-backtick-fence", _quoting("```", "~~~", _HEADING_LINE, "```", _HEADING_LINE), 4),
+    ("a-backtick-line-does-not-close-a-tilde-fence", _quoting("~~~", "```", _HEADING_LINE, "~~~", _HEADING_LINE), 4),
+    ("a-fence-led-by-spaces", _quoting("   ```", _HEADING_LINE, "   ```", _HEADING_LINE), 3),
+    ("a-fence-led-by-more-spaces-than-markdown-allows", _quoting("      ```", _HEADING_LINE, "      ```", _HEADING_LINE), 3),
+    ("a-fence-led-by-a-tab", _quoting("\t```", _HEADING_LINE, "\t```", _HEADING_LINE), 3),
+    ("a-closer-with-trailing-spaces-and-a-tab", _quoting("```", _HEADING_LINE, "```  \t", _HEADING_LINE), 3),
+    ("a-closer-with-a-carriage-return", _quoting("```\r", _HEADING_LINE + "\r", "```\r", _HEADING_LINE + "\r"), 3),
+    ("a-closer-with-text-after-it-does-not-close", _quoting("```", _HEADING_LINE, "``` done", _HEADING_LINE, "```", _HEADING_LINE), 5),
+    ("a-closer-with-another-character-after-it-does-not-close", _quoting("```", _HEADING_LINE, "```~", _HEADING_LINE, "```", _HEADING_LINE), 5),
+    ("an-info-string-after-an-opener", _quoting("```python title=x", _HEADING_LINE, "```", _HEADING_LINE), 3),
+    ("a-backtick-in-the-info-string-opens-no-fence", _quoting("```a`b", _HEADING_LINE), 1),
+    ("a-backtick-run-with-a-later-backtick-opens-no-fence", _quoting("```code``` and more", _HEADING_LINE), 1),
+    ("a-backtick-in-a-tilde-info-string-is-fine", _quoting("~~~ a`b", _HEADING_LINE, "~~~", _HEADING_LINE), 3),
+    ("a-run-of-two-opens-nothing", _quoting("``", _HEADING_LINE), 1),
+    ("a-run-of-two-tildes-opens-nothing", _quoting("~~", _HEADING_LINE), 1),
+    ("an-unclosed-fence-runs-to-the-end", _quoting("```", _HEADING_LINE, _HEADING_LINE), None),
+    ("a-fence-led-by-another-whitespace-is-prose", _quoting(_NBSP + "```", _HEADING_LINE), 1),
+    ("a-crlf-file", "intro\r\n```\r\n" + _HEADING_LINE + "\r\n```\r\n" + _HEADING_LINE + "\r\n", 4),
+    ("two-fences", _quoting("```", _HEADING_LINE, "```", "~~~", _HEADING_LINE, "~~~", _HEADING_LINE), 6),
+    ("no-heading", _quoting("```", "text", "```"), None),
+]
+
+
+def _first_heading_line(text):
+    """What the default finds: the first line that is the heading, whatever fence holds it."""
+    lines = text.split("\n")
+    return next((index for index, line in enumerate(lines) if line.strip() == _HEADING_LINE), None)
+
+
+@pytest.mark.parametrize("name,text,expected", FENCE_CASES, ids=[case[0] for case in FENCE_CASES])
+def test_outside_fences_skips_every_line_of_a_fenced_block_and_the_default_is_the_one_search_it_always_was(name, text, expected):
+    assert match_heading(_QUOTED, text, outside_fences=True) == expected, name
+    assert match_heading(_QUOTED, text, outside_fences=False) == _first_heading_line(text), "the default finds the first line, fenced or not"
+    assert match_heading(_QUOTED, text) == match_heading(_QUOTED, text, outside_fences=False)
+
+
+@pytest.mark.parametrize("text", ["", "no heading\n", _HEADING_LINE, _HEADING_LINE + "\r\n", "a\n\n" + _HEADING_LINE + "  \nb\n", "x\r\ny\r\n" + _HEADING_LINE + "\r\n"],
+                         ids=["empty", "none", "unterminated-line", "crlf", "trailing-spaces", "crlf-after-lines"])
+def test_a_text_with_no_fence_gives_the_same_line_either_way(text):
+    assert match_heading(_QUOTED, text, outside_fences=True) == match_heading(_QUOTED, text)
+
+
+def test_a_fence_line_is_never_a_match_and_the_line_index_is_the_texts_own():
+    text = _quoting("intro", "```", "body", "```", "## 2. After")
+    assert match_heading(r"^```", text) == 1 and match_heading(r"^```", text, outside_fences=True) is None, "the fence lines are skipped, too"
+    assert match_heading(r"^## 2\. After", text, outside_fences=True) == 4 == text.split("\n").index("## 2. After")
+    assert parse_markdown_table(text + "\n| A | B |\n|---|---|\n| 1 | 2 |\n", start_line=match_heading(r"^## 2\. After", text, outside_fences=True)) == [{"A": "1", "B": "2"}], \
+        "the index is a line index that parse_markdown_table takes as its start_line"
+
+
+def test_the_keyword_is_keyword_only_and_a_bad_pattern_raises_either_way():
+    with pytest.raises(TypeError):
+        match_heading(_QUOTED, _HEADING_LINE, True)
+    for flag in (False, True):
+        with pytest.raises(re.error):
+            match_heading("(", "", outside_fences=flag)
+
+
+def test_a_pattern_is_tested_on_one_line_so_it_anchors_to_that_line_and_never_spans_two():
+    text = _quoting("```", "x", "```", "###", "Assessment Inputs")
+    assert match_heading(r"^###\s+Assessment Inputs\s*$", text) == 3, "the default's \\s runs across the line break"
+    assert match_heading(r"^###\s+Assessment Inputs\s*$", text, outside_fences=True) is None
+
+
+def _controls_quoting(snippet):
+    """A 1.1 controls file whose Section 3 shows ``snippet`` as the evidence of one finding, in the fence that ``tachi_parts`` writes for it."""
+    fence = tachi_parts.fence_for(snippet)
+    return ("## 3. Evidence\n\n#### S-2\n\n**Evidence**:\n\n" + fence + "markdown\n" + snippet + "\n" + fence + "\n\n"
+            + _controls_with_inputs(_persisted_table(_PERSISTED)))
+
+
+_DECOY_TABLE = "| ID | Field | Value |\n|----|-------|-------|\n| E-3 | control_status | missing |"
+
+
+@pytest.mark.parametrize("snippet", [_HEADING_LINE + "\n\n" + _DECOY_TABLE, "```\n" + _HEADING_LINE + "\n\n" + _DECOY_TABLE + "\n```"],
+                         ids=["a-snippet-in-a-three-backtick-fence", "a-snippet-that-holds-a-fence-line-so-the-fence-is-four-backticks"])
+def test_a_quoted_assessment_inputs_heading_in_section_3_does_not_stand_in_for_section_7(snippet, monkeypatch):
+    text = _controls_quoting(snippet)
+    assert tachi_parts.fence_for(snippet) == ("````" if "```" in snippet else "```"), "premise: the fence is the one the renderer writes"
+    quoted_at = text.split("\n").index(_HEADING_LINE)
+    assert match_heading(_QUOTED, text) == quoted_at < match_heading(_QUOTED, text, outside_fences=True), "premise: the default takes the quoted line"
+    read = parse_controls_assessment_inputs(text)
+    assert read["errors"] == []
+    assert list(read["inputs"]) == ["S-2", "T-1", "E-3"] and read["inputs"] == _PERSISTED, "the real Section 7's inputs, whole"
+    original = match_heading  # the mutation check: a reader that finds the heading as text reads the snippet's table, and no input survives
+
+    def as_text(pattern, text, *, outside_fences=False):
+        return original(pattern, text)
+
+    monkeypatch.setattr("tachi_parsers.match_heading", as_text)
+    mutated = parse_controls_assessment_inputs(text)
+    assert mutated["inputs"] == {} and [e["reason"] for e in mutated["errors"]] == ["E-3: it has no control_category row"]
+
+
+def test_a_heading_that_only_a_fenced_snippet_shows_is_no_section_and_so_is_one_after_an_unclosed_fence():
+    snippet = _HEADING_LINE + "\n\n" + _DECOY_TABLE
+    pre_1_1 = "## 3. Evidence\n\n```\n" + snippet + "\n```\n\n## 7. Analysis Integrity\n\nNothing was persisted.\n"
+    assert parse_controls_assessment_inputs(pre_1_1) == {"inputs": {}, "errors": []}
+    unclosed = "## 3. Evidence\n\n```\nA snippet that nothing closes.\n\n" + _controls_with_inputs(_persisted_table(_PERSISTED))
+    assert parse_controls_assessment_inputs(unclosed) == {"inputs": {}, "errors": []}

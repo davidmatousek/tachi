@@ -66,6 +66,10 @@ The groups of tests, by the task that turns them green:
 * ``test_p0_2_*`` (section 30, W3's P0-2): a legacy finding that a run carries and a second run reads back. Run 1 over a v4.48.x
   baseline records the finding's tags and scored-on date in Section 6, and run 2, with the tag removed, reads them: a retag and
   never a correction, ruling A's down-rule date, and all four rationales.
+* ``test_headings_*`` (section 31, the architect's W3 ruling on heading capture): the from-disk check finds Sections 2, 2a and 4 as
+  heading lines and never as text, so a cell, a line of prose or a component name that holds another section's heading doesn't
+  fail a right file with exit 4. The two ``should`` messages of the same ruling: a staged file over the reader's cap, and a
+  Section 1 or 2 cell that holds a forbidden character, named by its table and line.
 
 Standard library and pytest only, and Python 3.9 syntax.
 """
@@ -3398,26 +3402,29 @@ def assert_failed_closed(project, res, *expected):
     assert project.record["status"] == "failed" and project.record["error"]["code"] == "check-failed"
 
 
-# Each leak is in the staged markdown only, and every one of them passes the table readers that the other checks use, which are
-# not fence-aware. Only the reader that the next run uses sees it. The expected text is the read-back's own wording.
+# Each leak is in the staged markdown only, and the reader that the next run uses sees every one of them: the expected text is the read-back's
+# own wording. A fence also hides the later sections from the table lookups, which find a heading outside code fences as that reader does (the
+# architect's W3 ruling, section 31), so for the two fence leaks Section 4's lookup fails first, and the read-back's message follows it. The
+# third leak is no fence, so the read-back is the first check to fail: nothing else sees it. The last field is what comes before the expected text.
+SECTION_4_LOST = "Section 4 does not hold exactly the open findings; "
 READ_BACK_LEAKS = [
     ("a-tilde-fence", first_line_edit("**Threat**:", lambda line: line + "\n~~~\nA fence that nothing closes."),
-     "9 open finding(s) would read back in the legacy form although their sub-scores were written"),
+     "9 open finding(s) would read back in the legacy form although their sub-scores were written", SECTION_4_LOST),
     ("a-backtick-fence", first_line_edit("**Threat**:", lambda line: line + "\n```\nA fence that nothing closes."),
-     "9 open finding(s) would read back in the legacy form although their sub-scores were written"),
+     "9 open finding(s) would read back in the legacy form although their sub-scores were written", SECTION_4_LOST),
     ("a-persisted-sub-score-that-no-longer-reads", first_line_edit("| S-2 | exploitability.known_techniques |", lambda line: line.replace("| 5 |", "| five |")),
-     "1 open finding(s) would read back in the legacy form although their sub-scores were written (S-2)"),
+     "1 open finding(s) would read back in the legacy form although their sub-scores were written (S-2)", ""),
 ]
 
 
-@pytest.mark.parametrize("name,edit,expected", READ_BACK_LEAKS, ids=[case[0] for case in READ_BACK_LEAKS])
-def test_readback_a_leak_that_the_next_runs_reader_would_misread_fails_closed_before_any_move(project, name, edit, expected):
+@pytest.mark.parametrize("name,edit,expected,lead", READ_BACK_LEAKS, ids=[case[0] for case in READ_BACK_LEAKS])
+def test_readback_a_leak_that_the_next_runs_reader_would_misread_fails_closed_before_any_move(project, name, edit, expected, lead):
     project.earlier()
     project.prepare()
     with tampering_with_staged(MD, edit):
         res = project.render()
     assert_failed_closed(project, res, expected)
-    assert "staged files: " + expected in res.err, "the read-back is the first check to fail: nothing else saw the leak"
+    assert "staged files: " + lead + expected in res.err, "the read-back names the leak, and only a fence that hides a section is seen first"
 
 
 def test_readback_a_fence_hides_every_owner_and_review_date_and_the_message_says_so(project):
@@ -3454,13 +3461,16 @@ def test_readback_a_clean_render_reads_back_every_row_in_the_form_it_was_written
 
 def assert_refused(project, res, char, source, finding_id, field):
     """A forbidden character from an input: exit 2 before anything is computed, the input, the finding, the field and the remedy named,
-    the code point given and the character never echoed, and no file written. D4's Step F (the fail step) then runs as it does for any exit 2."""
+    the code point given and the character never echoed, and no file written. D4's Step F (the fail step) then runs as it does for any exit 2.
+
+    A Section 1 or 2 name or label belongs to no finding (``finding_id`` is ``None``), and ``field`` is then the place that the message
+    ends with: the table and the line, such as ``Section 2's trust-zone table, threats.md line 57``, and never the cell's text (ruled at W3)."""
     assert res.code == 2, res.describe()
     assert_failure_message(res, project.plan_id)
     reason = next(line for line in res.err.split("\n") if line.startswith("TACHI RISK-SCORE FAILED:"))
     assert source in reason and "U+%04X" % ord(char) in reason, reason
     if finding_id is None:
-        assert "a component, zone or layer name" in reason, reason
+        assert reason.endswith(", in " + field), reason
     else:
         assert "the %s of %s" % (field, finding_id) in reason, reason
     assert re.search(r"Remedy: .*\b(regenerate|edit)\b", res.err), res.describe()
@@ -3502,21 +3512,29 @@ def test_refusal_every_character_of_the_set_is_refused_in_a_threats_md_field(sta
     assert_refused(project, project.render(), char, "threats.md", "S-2", "threat")
 
 
-SCOPE_CELLS = (  # a Section 1 or 2 name or label, which belongs to no finding
-    ("a-zone-name", "| Edge DMZ | Semi-trusted |", "| Edge{} DMZ | Semi-trusted |"),
-    ("a-trust-label", "| Edge DMZ | Semi-trusted |", "| Edge DMZ | Semi-{}trusted |"),
-    ("a-component-type", "| edge-gateway | Process |", "| edge-gateway | Proc{}ess |"),
+COMPONENT_TABLE, ZONE_TABLE = "Section 1's component table", "Section 2's trust-zone table"
+SCOPE_CELLS = (  # a Section 1 or 2 name or label, which belongs to no finding, and the table that the message names for it
+    ("a-zone-name", "| Edge DMZ | Semi-trusted |", "| Edge{} DMZ | Semi-trusted |", ZONE_TABLE),
+    ("a-trust-label", "| Edge DMZ | Semi-trusted |", "| Edge DMZ | Semi-{}trusted |", ZONE_TABLE),
+    ("a-zone-member", "| edge-gateway, auth-broker |", "| edge-gateway, auth{}-broker |", ZONE_TABLE),
+    ("a-component-type", "| edge-gateway | Process |", "| edge-gateway | Proc{}ess |", COMPONENT_TABLE),
+    ("a-component-layer", "| Process | L4 " + DASH + " Deployment Infrastructure |", "| Process | L4 " + DASH + " Deployment{} Infrastructure |", COMPONENT_TABLE),
 )
 
 
-@pytest.mark.parametrize("name,old,new", SCOPE_CELLS, ids=[case[0] for case in SCOPE_CELLS])
-def test_refusal_a_forbidden_character_in_a_section_1_or_2_name_is_refused_without_a_finding(stage, renderer, tmp_path, name, old, new):
+@pytest.mark.parametrize("name,old,new,table", SCOPE_CELLS, ids=[case[0] for case in SCOPE_CELLS])
+def test_refusal_a_forbidden_character_in_a_section_1_or_2_name_is_refused_naming_its_table_and_line(stage, renderer, tmp_path, name, old, new, table):
+    """The message says which table and which line of ``threats.md`` (``parse_markdown_table``'s ``row_lines``), and never the cell's text."""
     text = make_threats_md()
     assert old in text
-    project = Project(stage, renderer, tmp_path, threats_text=text.replace(old, new.format(RLO), 1))
+    edited = text.replace(old, new.format(RLO), 1)
+    line = next(number for number, row in enumerate(edited.split("\n"), 1) if RLO in row)
+    project = Project(stage, renderer, tmp_path, threats_text=edited)
     project.earlier()
     project.prepare()
-    assert_refused(project, project.render(), RLO, "threats.md", None, None)
+    res = project.render()
+    assert_refused(project, res, RLO, "threats.md", None, "%s, threats.md line %d" % (table, line))
+    assert "Deployment" not in res.err and "DMZ" not in res.err and "Semi-" not in res.err and "-broker" not in res.err, "never the cell's text"
 
 
 BASELINE_CELLS = (  # (finding, the field the message names, the baseline's table, its column, the cell, with {} where the character goes)
@@ -4139,3 +4157,183 @@ def test_p0_2_all_four_rationales_of_a_carried_legacy_finding_survive_both_runs(
         finding_id: ("legacy", (), datetime.date.fromisoformat(LEGACY_SCORED)) for finding_id in CARRIED}, "still legacy, with run 2's own tags (none)"
     assert {finding_id: {name: text for name, text in read.rows[finding_id].legacy_prose.items() if name.startswith("rationale.")} for finding_id in CARRIED} == {
         finding_id: {"rationale." + field: legacy_prose(finding_id, field) for field in LEGACY_PROSE} for finding_id in CARRIED}
+
+
+# =============================================================================
+# 31. A section is found as a heading, never as text (the architect's W3 ruling on T087's observation; lane FX0)
+# =============================================================================
+#
+# ``_check_staged`` found Sections 2, 2a and 4 with ``parse_markdown_table(md_text, "## 4. Governance Fields")``, a search for the text
+# anywhere on a line. The escapers guard only the first ``#`` of a prose line, so a Threat cell, a line of Section 3's prose or a component
+# name that holds another section's heading mid-line was taken for the section. The check then read the wrong table and failed a right
+# file with exit 4, on every re-run for that input, with a message about row parity and not the cause. The lookups now find the heading as a
+# whole line outside code fences, the rule that the next run's reader uses (``_heading_line``, the one seam that the mutation checks replace).
+#
+# Each case puts a heading's text where text from the threat model can reach it. Run 1 on it exits 0, run 2 on run 1's own files keeps every
+# owner that a person set, and the restored substring lookups exit 4. No escaper can write a code fence, so ``outside_fences=True`` shows only
+# in a file that something else has tampered with: the fence leaks of section 28, where Section 4's lookup now fails first. Its rule is
+# pinned in ``test_tachi_parsers.py``.
+#
+# A name that starts with ``##`` is guarded where Section 1 and Section 3 write it, because ``escape_prose`` takes the start of its text for a
+# line start, which is over-guarding and harmless. So the component name of the Section 1 case has a word before the heading's text: it is the
+# ``#`` that follows other text that nothing escapes.
+
+HEADING_2, HEADING_2A, HEADING_4 = "## 2. Scored Threat Table", "## 2a. Resolved Findings", "## 4. Governance Fields"
+SECTION_3 = "## 3. Dimensional Breakdown"
+AG1_THREAT = by_id("AG-1")["threat"]   # 64 characters: Section 2 shows 57 of them and "...", so what follows is Section 3's alone
+HEADING_CASES = {
+    "a-section-2-threat-holds-the-2a-heading": dict(
+        threats={"S-2": "Shared tokens, see " + HEADING_2A}, shown_in=[(HEADING_2, HEADING_2A)],
+        problem="Section 2a does not hold exactly the 3 resolved findings of Section 4c"),
+    "a-section-2-threat-holds-the-4-heading": dict(
+        threats={"S-2": "Shared tokens, see " + HEADING_4}, shown_in=[(HEADING_2, HEADING_4)],
+        problem="Section 4 does not hold exactly the open findings"),
+    "only-a-section-3-line-holds-the-4-heading": dict(
+        threats={"AG-1": AG1_THREAT + " See " + HEADING_4}, shown_in=[(SECTION_3, HEADING_4)], absent_from=[(HEADING_2, HEADING_4)],
+        problem="Section 4 does not hold exactly the open findings"),
+    "the-highest-risk-component-name-holds-the-section-2-heading": dict(
+        renames={"client-portal": "a " + HEADING_2}, shown_in=[("## 1. Executive Summary", HEADING_2)],
+        problem="Section 2 has "),
+    "a-resolved-threat-holds-the-4-heading": dict(
+        resolved_threat="See " + HEADING_4 + " for the old route", shown_in=[(HEADING_2A, HEADING_4)],
+        problem="Section 4 does not hold exactly the open findings"),
+    "all-of-them-at-once": dict(
+        threats={"S-2": HEADING_2A + " and " + HEADING_4}, renames={"client-portal": "a " + HEADING_2, "vector-store": HEADING_4},
+        resolved_threat="See " + HEADING_4 + " for the old route",
+        shown_in=[(HEADING_2, HEADING_2A), (HEADING_2, HEADING_4), ("## 1. Executive Summary", HEADING_2), (HEADING_2A, HEADING_4),
+                  (SECTION_3, "for " + HEADING_4 + ".")],   # the last is AGP-01's rationale: "... for {{name:component}}."
+        problem="Section 2 has "),
+}
+EACH_HEADING_CASE = pytest.mark.parametrize("case", HEADING_CASES.values(), ids=list(HEADING_CASES))
+
+
+def hostile_inputs(case):
+    """``(specs, resolved, renames)`` of one case: SPECS with its threat texts, Section 4c with its RESOLVED threat, and the components to rename."""
+    specs = [dict(item, threat=case.get("threats", {}).get(item["id"], item["threat"])) for item in SPECS]
+    resolved = list(RESOLVED)
+    if "resolved_threat" in case:
+        resolved[0] = resolved[0][:2] + (case["resolved_threat"],) + resolved[0][3:]
+    return specs, resolved, case.get("renames", {})
+
+
+def hostile_threats(specs, resolved, renames, **options):
+    """A ``threats.md`` for ``specs`` in which each component of ``renames`` goes by its new name wherever the file names it."""
+    text = make_threats_md(specs, resolved, **options)
+    for old, new in renames.items():
+        text = text.replace(old, new)
+    return text
+
+
+def hostile_project(stage_module, renderer_module, root, case):
+    specs, resolved, renames = hostile_inputs(case)
+    return Project(stage_module, renderer_module, root, specs=specs, resolved=resolved, threats_text=hostile_threats(specs, resolved, renames))
+
+
+def with_owners_set(md):
+    """Run 1's ``risk-scores.md`` as a person leaves it: an owner in Section 4 for two findings, which only a carry can keep."""
+    for finding_id, owner in HUMAN_OWNERS.items():
+        md = edit_table_cell(md, HEADING_4, finding_id, "Owner", owner)
+    return md
+
+
+def hostile_two_runs(stage_module, renderer_module, root, case):
+    """Run 1 over the case, then run 2 on run 1's own files with every finding UNCHANGED. Returns ``(first, second)``, both finished with exit 0."""
+    specs, resolved, renames = hostile_inputs(case)
+    first = hostile_project(stage_module, renderer_module, Path(root) / "first", case)
+    res = first.run()
+    assert res.code == 0, res.describe()
+    second = second_run(stage_module, renderer_module, Path(root) / "second", first, edit_baseline=with_owners_set, specs=specs, resolved=resolved)
+    second.threats.write_text(hostile_threats([dict(item, status="UNCHANGED") for item in specs], resolved, renames, baseline_source="baseline/threats.md"),
+                              encoding="utf-8")
+    res = second.run()
+    assert res.code == 0, res.describe()
+    return first, second
+
+
+def substring_lookup(md_text, heading):
+    """``_check_staged``'s lookup before W3: the first line that holds ``heading`` anywhere, which is where ``parse_markdown_table(md_text, heading)`` started."""
+    return next((index for index, line in enumerate(md_text.split("\n")) if heading in line), None)
+
+
+@EACH_HEADING_CASE
+def test_headings_text_that_holds_another_sections_heading_is_no_section_and_the_next_run_keeps_every_owner(stage, renderer, tmp_path, case):
+    first, second = hostile_two_runs(stage, renderer, tmp_path, case)
+    for run in (first, second):
+        for title, text in case["shown_in"]:
+            assert text in section(run.md, title), "premise: %r is in %s" % (text, title)
+        for title, text in case.get("absent_from", ()):
+            assert text not in section(run.md, title), "premise: %r is not in %s" % (text, title)
+    assert_the_carry_kept_everything(first, second)
+
+
+@EACH_HEADING_CASE
+def test_headings_mutation_the_restored_substring_lookups_fail_a_right_file_with_exit_4(stage, renderer, tmp_path, monkeypatch, case):
+    project = hostile_project(stage, renderer, tmp_path, case)
+    project.earlier()
+    project.prepare()
+    monkeypatch.setattr(renderer, "_heading_line", substring_lookup)
+    assert_failed_closed(project, project.render(), case["problem"])
+
+
+def test_headings_a_cell_that_holds_the_2a_heading_is_not_a_section_2a_when_nothing_is_resolved(stage, renderer, tmp_path, monkeypatch):
+    specs = [dict(item, threat="Shared tokens, see " + HEADING_2A) if item["id"] == "S-2" else item for item in SPECS]
+    project = Project(stage, renderer, tmp_path / "right", specs=specs, resolved=[])
+    res = project.run()
+    assert res.code == 0, res.describe()
+    assert HEADING_2A in section(project.md, HEADING_2) and not has_section(project.md, HEADING_2A), "premise: the text is in a cell and there is no section"
+    mutated = Project(stage, renderer, tmp_path / "mutated", specs=specs, resolved=[])
+    mutated.earlier()
+    mutated.prepare()
+    monkeypatch.setattr(renderer, "_heading_line", substring_lookup)
+    assert_failed_closed(mutated, mutated.render(), "Section 2a does not hold exactly the 0 resolved findings of Section 4c")
+
+
+@pytest.mark.parametrize("heading,problem", [
+    (HEADING_2, "Section 2 has 0 rows for 9 open findings"),
+    (HEADING_2A, "Section 2a does not hold exactly the 3 resolved findings of Section 4c"),
+    (HEADING_4, "Section 4 does not hold exactly the open findings"),
+], ids=["section-2", "section-2a", "section-4"])
+def test_headings_a_section_whose_heading_line_is_missing_is_still_a_problem(project, heading, problem):
+    project.earlier()
+    project.prepare()
+    with tampering_with_staged(MD, first_line_edit(heading, lambda line: None)):
+        res = project.render()
+    assert_failed_closed(project, res, problem)
+
+
+def test_headings_the_lookup_finds_one_line_and_a_table_under_it_and_nothing_where_there_is_no_such_line(renderer):
+    table = "| ID | Owner |\n|----|-------|\n| S-2 | **Team** |\n"
+    md = "# T\n\n```\n%s\n```\n\n%s later\n\nbefore %s\n\n%s\n\n%s" % (HEADING_4, HEADING_4, HEADING_4, HEADING_4, table)
+    assert renderer._heading_line(md, HEADING_4) == 10, "not the fenced line, the line with text after it or the line with text before it"
+    assert renderer._table_under(md, HEADING_4) == [{"ID": "S-2", "Owner": "Team"}]
+    assert renderer._table_under(md, HEADING_4, keep_bold=True) == [{"ID": "S-2", "Owner": "**Team**"}], "options go to parse_markdown_table"
+    assert renderer._heading_line(md, HEADING_2) is None and renderer._table_under(md, HEADING_2) == [], "no such line, no rows"
+    assert renderer._heading_line(md.replace(HEADING_4 + "\n\n| ID", HEADING_4 + " \t\n\n| ID"), HEADING_4) == 10, "trailing spaces and tabs are allowed"
+
+
+# --------------------------------------------------------------------------- the two ``should`` messages of the same ruling
+
+def test_readback_a_staged_file_over_the_readers_cap_fails_with_exit_4_and_the_message_names_the_cap(project):
+    """Writing it anyway would make the next run score fresh and carry no owner, SLA or review date, which is P0-1's harm by another route."""
+    project.earlier()
+    project.prepare()
+    with tampering_with_staged(MD, lambda text: text + "x" * tp.MAX_AGENT_INPUT_BYTES):
+        res = project.render()
+    assert_failed_closed(project, res, "the staged %s could not be read back (over the next run's 16 MiB reader cap)" % MD)
+
+
+def test_readback_the_baseline_reader_that_the_next_run_uses_names_the_same_cap(renderer, tmp_path):
+    path = tmp_path / MD
+    path.write_bytes(b"x" * (tp.MAX_AGENT_INPUT_BYTES + 1))
+    problems = renderer._read_back_problems(types.SimpleNamespace(ordered=[]), str(path))
+    assert problems == ["the staged %s would not read back as a baseline (over the next run's 16 MiB reader cap)" % MD]
+
+
+def test_refusal_a_section_1_or_2_place_is_found_in_the_markdown_only_and_in_the_columns_the_renderer_takes(renderer):
+    text = make_threats_md().replace("| edge-gateway | Process | L4", "| edge-gateway | Process{} | L4".format(RLO), 1)
+    line = next(number for number, row in enumerate(text.split("\n"), 1) if RLO in row)
+    assert renderer._scope_place(text, "threats.md", RLO) == "%s, threats.md line %d" % (COMPONENT_TABLE, line)
+    assert renderer._scope_place(None, "threats.sarif", RLO) is None, "the threats.sarif fallback has no table to point at"
+    assert renderer._scope_place(make_threats_md(), "threats.md", RLO) is None, "and a character that no such row holds has no place"
+    described = make_threats_md().replace("A synthetic process.", "A synthetic{} process.".format(RLO), 1)
+    assert renderer._scope_place(described, "threats.md", RLO) is None, "a Description cell is not a column that the renderer takes"
