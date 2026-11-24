@@ -836,10 +836,8 @@ def _read_reference(run: Run, kept: str) -> Optional[Dict[str, Any]]:
         name = row.get("Component", "").strip()
         if name and name not in run.component_info:
             run.component_info[name] = (row.get("Type", "").strip(), row.get("MAESTRO Layer", "").strip())
-    for row in tachi_parsers.parse_markdown_table(run.threats_text, tachi_parsers.REFERENCE_SET_SECTION):
-        finding_id = row.get("Finding ID", "").strip()
-        if tp.id_matches("finding", finding_id):
-            run.finding_layer.setdefault(tp.canonical_finding_id(finding_id), row.get("MAESTRO Layer", "").strip())
+    for canonical, layer in tachi_parsers.parse_finding_layers(run.threats_text).items():   # D2's chain, steps 1 and 2: Section 7's cell, else the finding's own row in §3 or §4
+        run.finding_layer.setdefault(canonical, layer)
     for row in tachi_parsers.parse_markdown_table(run.threats_text, "### Trust Zones"):   # the SARIF's logical location names each component's zone
         zone = row.get("Zone", "").strip()
         for member in (part.strip() for part in row.get("Components", "").split(",")):
@@ -866,8 +864,9 @@ def _overlay_reference(run: Run, members: List[Dict[str, Any]], reference: Optio
     """Give each member the identity text of the threat model: the finding ID as Section 7 spells it, its component,
     threat, layer and status, its source attribution, and what its SARIF result repeats (the mitigation, the DFD kind and
     the zone). The layer is the scorer's chain (``_identity``), so that this file's ``maestro-layer`` is the scorer file's
-    for the same finding (gap B): the reference set's MAESTRO Layer cell, else the member's own, else its component's Section 1
-    layer (found by name, then case-folded), else ``Unclassified``. A kind is the component's Section 1 type, as the scorer
+    for the same finding (gap B): the reference set's MAESTRO Layer cell, else the finding's own row in a per-finding table (§3 and §4;
+    both through ``tachi_parsers.parse_finding_layers``, so ``run.finding_layer`` holds them), else the member's own, else its
+    component's Section 1 layer (found by name, then case-folded), else ``Unclassified``. A kind is the component's Section 1 type, as the scorer
     reads it, and a zone is the one that Section 2 lists the component under."""
     by_canon = {tp.canonical_finding_id(finding["id"]): finding for finding in reference["open"]} if reference is not None else {}
     lacking = reference.get("lacking", {}) if reference is not None else {}
@@ -903,13 +902,21 @@ def _prepare_correlation(run: Run) -> None:
     (already in ``run.groups``). With no threat model there is no correlation, and the stage record already says why
     (``_load_threats``). Correlation is a property and a sentence and never part of a key, so no key changes either way.
     Only a group with an ID reaches the emitter, whose roles, ``correlation-*`` properties and ruling C's sentence all name
-    it. A group that the SARIF names no ID for is counted in a warning, and its members carry none of them.
+    it. A group that the SARIF names no ID for is counted in a warning, and its members carry none of them. A finding that two
+    groups of Section 4a list stays in the first, as D8 says, and is never dropped without a word: each one is an Input Issue, and
+    the stage record's warning ``correlation-member-repeated`` counts them (PM W4 ruling R-F).
     """
     if run.threats_text is not None:
         source = os.path.basename(run.threats_path or "threats.md")
         grouped = tachi_parsers.parse_correlation_groups(run.threats_text, member_ids=sorted(run.open_ids, key=tp.finding_sort_key))
         for problem in grouped["errors"]:
             run.issues.append("Section 4a of %s, line %d: the row %s %s, so it is skipped" % (source, problem["line"], repr(problem["row"][:60]), problem["reason"]))
+        for repeat in grouped["repeated"]:   # PM W4 ruling R-F: D8's claim rule keeps an ID in the first group that lists it, and a run says so
+            run.issues.append("Section 4a of %s: %s" % (source, repeat["reason"]))
+        if grouped["repeated"]:
+            count = len(grouped["repeated"])
+            run.warn("correlation-member-repeated", "Section 4a of %s lists %d finding%s in more than one correlation group, and the first group "
+                     "claims each: %s" % (source, count, "" if count == 1 else "s", _named([repeat["id"] for repeat in grouped["repeated"]])))
         run.groups = grouped["groups"]
     named = [(group["group_id"], group["members"]) for group in run.groups if group["group_id"] is not None]
     if len(named) != len(run.groups):

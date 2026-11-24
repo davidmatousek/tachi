@@ -14,7 +14,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Iterable, Optional, Sequence
+from typing import Dict, Iterable, Iterator, Optional, Sequence, Tuple
 
 # The reference-set reader below checks IDs against tachi_parts' allow-list. A sibling is found beside this file,
 # whether this module is imported flat (`tachi_parsers`) or as `scripts.tachi_parsers` (ADR-050 D3, C1).
@@ -282,6 +282,23 @@ def _fence_marker(line: str):
     return (char, run, stripped[run:]) if run >= 3 else None
 
 
+def _unfenced_lines(lines: Sequence[str]) -> Iterator[Tuple[int, str]]:
+    """``(index, line)`` of each line that no fenced code block covers, in order. A fence line is covered, and so is every line up to
+    the one that closes it. This is the one fence rule of :func:`match_heading` (``outside_fences=True``, whose docstring states it)
+    and of :func:`parse_finding_layers`, so a section and a table are found outside a fence by the same reading."""
+    fence = None  # (character, run length) of the fence that is open
+    for index, line in enumerate(lines):
+        marker = _fence_marker(line)
+        if fence is not None:
+            if marker is not None and marker[0] == fence[0] and marker[1] >= fence[1] and not marker[2].strip(" \t\r"):
+                fence = None
+            continue
+        if marker is not None and not (marker[0] == "`" and "`" in marker[2]):
+            fence = marker[:2]
+            continue
+        yield index, line
+
+
 def match_heading(pattern: str, text: str, *, outside_fences: bool = False) -> Optional[int]:
     """Return the 0-indexed line number of the first line matching ``pattern``.
 
@@ -314,16 +331,7 @@ def match_heading(pattern: str, text: str, *, outside_fences: bool = False) -> O
             return None
         return text.count("\n", 0, m.start())
     wanted = re.compile(pattern)
-    fence = None  # (character, run length) of the fence that is open
-    for index, line in enumerate(text.split("\n")):
-        marker = _fence_marker(line)
-        if fence is not None:
-            if marker is not None and marker[0] == fence[0] and marker[1] >= fence[1] and not marker[2].strip(" \t\r"):
-                fence = None
-            continue
-        if marker is not None and not (marker[0] == "`" and "`" in marker[2]):
-            fence = marker[:2]
-            continue
+    for index, line in _unfenced_lines(text.split("\n")):
         if wanted.search(line):
             return index
     return None
@@ -1627,6 +1635,106 @@ def parse_reference_set(content: str, source: str = "threats.md") -> dict:
 
 
 # =============================================================================
+# The MAESTRO layer of each finding (F-374 W4, from T066's group U-1; ADR-050 D2's layer chain, steps 1 and 2)
+# =============================================================================
+
+# The row under a table's header, as `parse_markdown_table` recognizes it.
+_TABLE_SEPARATOR = re.compile(r"^\|[\s\-:|]+\|$")
+# A per-finding table (the template's §3 and §4) opens with `ID`, and Section 7's table with `Finding ID`.
+_PER_FINDING_ID_COLUMN = "ID"
+_LAYER_COLUMN = "MAESTRO Layer"
+
+
+def _section_7_layers(content: str) -> Dict[str, str]:
+    """Section 7's ``MAESTRO Layer`` cell of each finding's first row, by canonical ID, blank or not.
+
+    Section 7 is found where :func:`parse_reference_set` finds it, under either heading, and its table is read as that function reads
+    it, so a row here is a row of the reference set. A row with more cells than its header is read by position, as
+    :func:`parse_markdown_table` reads it: the reference set's refusal of one (M1) is its own and is not applied here. A section with no
+    table (the list form), or a table with no ``Finding ID`` column, gives nothing.
+    """
+    layers: Dict[str, str] = {}
+    start = _reference_set_start(content)
+    if start is not None:
+        for row in parse_markdown_table(content, start_line=start):
+            finding_id = row.get("Finding ID", "").strip()
+            if tachi_parts.id_matches("finding", finding_id):
+                layers.setdefault(tachi_parts.canonical_finding_id(finding_id), row.get(_LAYER_COLUMN, "").strip())
+    return layers
+
+
+def _per_finding_layers(lines: Sequence[str]) -> Dict[str, str]:
+    """The ``MAESTRO Layer`` cell of each finding's first row, by canonical ID, blank or not, over every per-finding table.
+
+    A per-finding table is outside every code fence (:func:`_unfenced_lines`), has ``ID`` as its header's first cell and has a
+    ``MAESTRO Layer`` column: the template's §3 and §4 tables, and any table under them, such as a bold-labelled sub-table in §4.2. A
+    table is a run of lines that start with ``|``, begins after a line that does not, and has a separator row under its header. Its
+    rows are read by the rules of :func:`parse_markdown_table`: each cell is stripped, loses its ``**`` and is decoded; a row with
+    fewer cells than the header has columns is skipped; a longer row is read by the header's positions. The rows are read here, in one
+    pass over ``lines``, and not by one :func:`parse_markdown_table` call per table, because each call splits the whole text again and
+    a hostile file can hold as many tables as it has lines. A test pins the two readings together.
+    """
+    layers: Dict[str, str] = {}
+    for index, line in _unfenced_lines(lines):
+        stripped = line.strip()
+        if not stripped.startswith("|") or (index > 0 and lines[index - 1].strip().startswith("|")):
+            continue   # not the first line of a table
+        if index + 1 >= len(lines) or not _TABLE_SEPARATOR.match(lines[index + 1].strip()):
+            continue   # no separator row under it, so no table: the cheap test comes before the header's cells are read
+        header = [decode_references(strip_bold(cell.strip())) for cell in stripped.split("|")[1:-1]]
+        if header[:1] != [_PER_FINDING_ID_COLUMN] or _LAYER_COLUMN not in header:
+            continue
+        columns = [cell for cell in header if cell]
+        number = index + 2
+        while number < len(lines) and lines[number].strip().startswith("|"):
+            cells = [decode_references(strip_bold(cell.strip())) for cell in lines[number].strip().split("|")[1:-1]]
+            number += 1
+            if len(cells) < len(columns):
+                continue
+            row = dict(zip(columns, cells))
+            finding_id = row.get(_PER_FINDING_ID_COLUMN, "").strip()
+            if tachi_parts.id_matches("finding", finding_id):
+                layers.setdefault(tachi_parts.canonical_finding_id(finding_id), row.get(_LAYER_COLUMN, "").strip())
+    return layers
+
+
+def parse_finding_layers(content: str) -> Dict[str, str]:
+    """Each finding's MAESTRO layer, by canonical ID: the two finding-level steps of ADR-050 D2's layer chain (ruled at W4, T066's U-1).
+
+    A finding's layer is the first of these that holds one for it:
+
+    1. **Section 7's** ``MAESTRO Layer`` cell, where :func:`parse_reference_set` finds Section 7, in the table form;
+    2. **the finding's own row in a per-finding table**: a table outside code fences whose header's first cell is ``ID`` and that has a
+       ``MAESTRO Layer`` column (the template's §3 and §4 tables, and any table under them). v4.48.x threat models hold the layer only
+       there, and the scorer of that version read it there.
+
+    A value is the cell as :func:`parse_markdown_table` gives it (stripped, unbolded and decoded), stripped once more as each caller did
+    before this reader, so whitespace that a reference decodes to at its edge never reaches the caller's checks or an output. A caller never
+    decodes it again. A blank cell gives nothing, so the next source is asked, and an ID that neither source gives has no entry. Within a source, the first row of an
+    ID is the one that counts, in file order, and Section 7 comes first. Tables whose first header cell isn't ``ID`` are never read, such
+    as the Phase 1 inventory (``Component``), §6's ``Risk by MAESTRO Layer`` (``MAESTRO Layer``) and §4b's tables (``Finding ID``),
+    and a row whose first cell isn't an allow-listed finding ID is ignored.
+
+    It raises nothing on content and flags nothing when the two sources disagree: Section 7 wins (ADR-050 D2). It never reads the
+    component's layer or infers one from other findings, so the caller's chain goes on to the component's Section 1 cell, then
+    ``Unclassified``. The caller checks every value it takes for a forbidden character (P0-4), as it checks each other value that
+    ``threats.md`` gives it.
+
+    The reference set's refusal of a row with more cells than its header (M1) is not applied: a long row is read by the header's
+    positions, as the extractors read it (NFR-1). ``examples/agentic-app`` has such rows in §4.2, each with its GFM ``\\|`` after the layer cell.
+
+    The scorer renderer, the controls renderer and the planner's controls unit row each take the layer from here, so the chain's three
+    copies can't drift (the controls file's ``maestro-layer`` is the scorer file's, gap B).
+    """
+    layers: Dict[str, str] = {}
+    for found in (_section_7_layers(content), _per_finding_layers(content.split("\n"))):
+        for finding_id, layer in found.items():
+            if layer:
+                layers.setdefault(finding_id, layer)
+    return layers
+
+
+# =============================================================================
 # Correlation groups (F-374 D8, T048) and the SARIF fallback reader (T142)
 # =============================================================================
 
@@ -1659,10 +1767,52 @@ def _assign_correlation_groups(raw_groups, members) -> list:
     return groups
 
 
+def _group_names(group_ids: Sequence[str]) -> str:
+    """``CG-1``, ``CG-1 and CG-2`` or ``CG-1, CG-2 and CG-3``."""
+    return group_ids[0] if len(group_ids) == 1 else "%s and %s" % (", ".join(group_ids[:-1]), group_ids[-1])
+
+
+def _repeated_members(raw_groups, members, groups) -> list:
+    """The findings that more than one group lists, with what D8's claim rule did to each (PM W4 ruling R-F: never silent).
+
+    ``raw_groups`` and ``members`` are :func:`_assign_correlation_groups`'s, and ``groups`` is what it returned for them. One entry
+    for each finding that two or more groups list, in S-2 order: ``id``, ``claimed_by`` (the first group that lists it, which claims it
+    even if that group then falls away), ``also_in`` (the other groups that list it, in file order), ``falls_away`` (the groups among
+    those that would have been a group of two or more but for what earlier groups claimed, so they emit nothing) and ``reason``, a
+    sentence for Input Issues that names the ID and every group. A group's own repeat of an ID is no second group, so it isn't listed.
+    """
+    claimed_by: dict = {}
+    also_in: dict = {}
+    eligible: dict = {}
+    for group_id, listed in raw_groups:
+        unique = list(dict.fromkeys(listed))
+        eligible[group_id] = sum(1 for member in unique if members is None or member in members)
+        for member in unique:
+            if member in claimed_by:
+                also_in.setdefault(member, []).append(group_id)
+            else:
+                claimed_by[member] = group_id
+    emitted = {group["group_id"] for group in groups}
+    repeated = []
+    for member in sorted(also_in, key=tachi_parts.finding_sort_key):
+        first, later = claimed_by[member], also_in[member]
+        falls = [group_id for group_id in later if group_id not in emitted and eligible[group_id] >= 2]
+        reason = "%s is listed in %s. %s claims it, and %s %s not." % (
+            member, _group_names([first] + later), first, _group_names(later), "does" if len(later) == 1 else "do")
+        if falls:
+            reason += " %s %s left with fewer than two findings and emit%s no correlation." % (
+                _group_names(falls), "is" if len(falls) == 1 else "are", "s" if len(falls) == 1 else "")
+        if first not in emitted:
+            reason += " %s emits no correlation either, so %s is in no group." % (first, member)
+        repeated.append({"id": member, "claimed_by": first, "also_in": list(later), "falls_away": falls, "reason": reason})
+    return repeated
+
+
 def parse_correlation_groups(content: str, member_ids: Optional[Iterable[str]] = None) -> dict:
     """The correlation groups of a ``threats.md`` Section 4a, by D8's rules (ADR-050 D8).
 
-    Returns ``{"groups": [{"group_id", "primary", "members"}], "errors": [{"line", "row", "reason"}]}``.
+    Returns ``{"groups": [{"group_id", "primary", "members"}], "errors": [{"line", "row", "reason"}],
+    "repeated": [{"id", "claimed_by", "also_in", "falls_away", "reason"}]}``.
 
     * **Order.** Groups come in Section 4a's order. ``members`` are canonical IDs in listed order, the primary first.
     * **The claim.** The first group that lists an ID claims it, even if that group then falls away. So a later group
@@ -1674,19 +1824,26 @@ def parse_correlation_groups(content: str, member_ids: Optional[Iterable[str]] =
     SARIF correlation use its result, and ``sarif_common.correlation_assignments``, which re-applies the rules to the
     groups it is given, agrees with it.
 
+    **Never silent (PM W4 ruling R-F).** ``repeated`` has one entry for each finding that two or more groups list, in S-2
+    order, whether or not it is in ``member_ids``: the claim rule drops it from every group but the first, and a reader
+    of the run would otherwise never learn of it. ``claimed_by`` is the first group that lists it, ``also_in`` the others in file
+    order, ``falls_away`` those of them that the loss left with fewer than two members, and ``reason`` a sentence that
+    names the ID and every group, for the renderers' Input Issues. A group's own repeat of an ID is no second group. The rules
+    above are unchanged, and no group differs from what they gave before.
+
     A row is skipped and listed in ``errors`` (``line`` is 1-based, ``row`` is the row as written, cut at 200
     characters) when its group ID isn't ``CG-N`` (``CG-[0-9]{1,6}``), when any member isn't a finding ID, when it lists
     no findings, when it has fewer cells than the table's header, or when it repeats an earlier row's group ID, so
     that each group ID names one group and one primary. A skipped row claims nothing. An empty or dash-only
     placeholder row is dropped without a report. A missing Section 4a, one with no table, and an empty one all give
-    ``{"groups": [], "errors": []}``.
+    ``{"groups": [], "errors": [], "repeated": []}``.
 
     The section is read from its first table: the first column is the group and the second holds the
     comma-separated findings, as in every shipped sample. Its cells are decoded as :func:`parse_markdown_table`
     decodes them. A ``member_ids`` entry that isn't a finding ID raises ``ValueError``, because the caller took it
     from the reference set.
     """
-    result: dict = {"groups": [], "errors": []}
+    result: dict = {"groups": [], "errors": [], "repeated": []}
     start = match_heading(_CORRELATION_SECTION, content) if isinstance(content, str) and content else None
     if start is None:
         return result
@@ -1722,6 +1879,7 @@ def parse_correlation_groups(content: str, member_ids: Optional[Iterable[str]] =
         first_line[group_cell] = line
         raw_groups.append((group_cell, [tachi_parts.canonical_finding_id(token) for token in listed]))
     result["groups"] = _assign_correlation_groups(raw_groups, members)
+    result["repeated"] = _repeated_members(raw_groups, members, result["groups"])
     if problems:
         text_lines = content.split("\n")
         result["errors"] = [{"line": line, "row": text_lines[line - 1].strip()[:200], "reason": reason}

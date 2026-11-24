@@ -2047,6 +2047,51 @@ def test_peers_the_planner_leaves_a_peer_out_and_the_renderer_copies_the_primary
         assert "relatedLocations" not in results[spelled], "a peer is a result and never a related location"
 
 
+REPEATED_GROUPS = GROUPS + [("CG-2", ["S-10", "E-3"])]   # S-10 is in both: CG-1 claims it, and CG-2 is left with E-3 alone and falls away
+
+
+def test_peers_an_id_that_two_groups_list_stays_in_the_first_and_is_listed_warned_and_counted(stage, renderer, tmp_path):
+    """PM W4 ruling R-F: D8's claim rule is unchanged (S-10 is CG-1's peer, and E-3 is in no group), and the run says so. Input Issues has one line
+    that names the ID and both groups, the stage record's warning ``correlation-member-repeated`` counts it, and the run exits 5. A project whose groups
+    don't overlap has neither."""
+    project = Project(stage, renderer, tmp_path / "repeated", groups=REPEATED_GROUPS)
+    res = project.run()
+    assert res.code == 5, res.describe()
+    record = project.record
+    assert record["status"] == "success-with-warnings"
+    warnings = [warning for warning in record["warnings"] if warning["code"] == "correlation-member-repeated"]
+    assert [warning["detail"] for warning in warnings] == ["Section 4a of threats.md lists 1 finding in more than one correlation group, and the first group "
+                                                           "claims each: S-10"]
+    issues = subsection_of(project.md, "## 6. Score Integrity", "### Input Issues")
+    assert ("- Section 4a of threats.md: S-10 is listed in CG-1 and CG-2. CG-1 claims it, and CG-2 does not. "
+            "CG-2 is left with fewer than two findings and emits no correlation.") in issues
+    assert record["counts"]["parse_errors"] == 1, "the stage record counts the issue"
+    results = results_by_id(project.sarif)
+    assert (results["S-10"]["properties"]["correlation-group"], results["S-10"]["properties"]["correlation-role"]) == ("CG-1", "peer")
+    assert not [key for key in results["E-3"]["properties"] if key.startswith("correlation-")], "CG-2 fell away, so E-3 is in no group"
+    clean = Project(stage, renderer, tmp_path / "clean", groups=GROUPS)
+    assert clean.run().code in (0, 5)
+    assert not [warning for warning in clean.record["warnings"] if warning["code"] == "correlation-member-repeated"]
+    assert subsection_of(clean.md, "## 6. Score Integrity", "### Input Issues").strip() == "None." and clean.record["counts"]["parse_errors"] == 0
+
+
+def test_peers_the_warning_names_the_first_ten_repeated_ids_and_counts_the_rest(stage, renderer, tmp_path):
+    """The one form of a list of finding IDs in a rendered file (``sarif_common.PEER_CAP``), and each ID still has its own Input Issues line."""
+    repeated = ["S-%d" % number for number in range(1, 13)]
+    groups = [("CG-1", repeated), ("CG-2", repeated[:2] + ["E-3"]), ("CG-3", repeated[2:] + ["E-5"])]
+    specs = [by_id("E-3"), by_id("E-5")] + [dict(by_id("S-2"), id=finding_id, status="NEW") for finding_id in repeated]
+    project = Project(stage, renderer, tmp_path, specs=specs, resolved=[], groups=groups)
+    project.prepare()
+    res = project.render()
+    assert res.code == 5, res.describe()
+    warning = next(entry for entry in project.record["warnings"] if entry["code"] == "correlation-member-repeated")
+    assert warning["detail"] == ("Section 4a of threats.md lists 12 findings in more than one correlation group, and the first group claims each: "
+                                 + ", ".join(repeated[:10]) + " and 2 more")
+    issues = subsection_of(project.md, "## 6. Score Integrity", "### Input Issues")
+    assert sum(1 for finding_id in repeated if "Section 4a of threats.md: %s is listed in" % finding_id in issues) == 12
+    assert project.record["counts"]["parse_errors"] == 12
+
+
 # =============================================================================
 # 17. S-4's variants: the scenarios, their outcomes, and one render of each (T041; SC-4)
 # =============================================================================
@@ -4964,6 +5009,161 @@ def test_p0_5_a_layer_the_threat_model_leaves_blank_is_unclassified_and_markup_i
     assert shown == tp.escape_prose(hostile) and "<b>" not in shown and "{{" not in shown
     assert decode(shown) == hostile
     assert "| **MAESTRO Layer**: L7 " + DASH + " Agent Ecosystem | " in category_line(project.md, "E-5"), "the others keep their component's layer"
+
+
+# --------------------------------------------------------------------------- the MAESTRO Layer field of a v4.48.x threat model (T066's U-1)
+#
+# A v4.48.x threat model keeps each finding's layer in the MAESTRO Layer column of its own row in a §3 or §4 table, and has no layer column in Section 7
+# or in Section 1: v4.48.4's scorer read it there. ADR-050 D2's chain reads those rows (``tachi_parsers.parse_finding_layers``) between Section 7's
+# cell and the component's Section 1 layer, so that threat model gives the layers that it gave before, and `Unclassified` only where no source holds one.
+
+def drop_column(text, heading, column):
+    """``text`` with ``column`` removed from the first table under ``heading``: its header, its separator row and every row."""
+    lines = text.split("\n")
+    start = next(n for n, line in enumerate(lines) if line.startswith(heading))
+    index = None
+    for n in range(start + 1, len(lines)):
+        if not lines[n].startswith("|"):
+            if index is not None:
+                break
+            continue
+        cells = lines[n].split("|")
+        if index is None:
+            index = [cell.strip() for cell in cells[1:-1]].index(column)
+        del cells[index + 1]
+        lines[n] = "|".join(cells)
+    return "\n".join(lines)
+
+
+V48_HEAD = ["| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |", "|---|---|---|---|---|---|---|---|---|"]
+V48_NO_ROW = "E-5"   # the one finding with no row of its own: client-portal has no layer in Section 1 either (the v4.48.x form has no such column)
+V48_PIPED_THREAT = "Actions taken through the portal \\| logged without the acting identity."   # GFM's pipe, after the layer cell: a row wider than its header
+
+
+def v48_row(finding_id, layer=None, threat=None):
+    """A §3 or §4 row of the finding, with the layer of its component unless ``layer`` is given."""
+    item = by_id(finding_id)
+    return "| %s | [%s] | %s | %s | %s | Medium | High | %s | A fix. |" % (
+        finding_id, item["status"], item["component"], COMPONENTS[item["component"]][1] if layer is None else layer,
+        item["threat"] if threat is None else threat, item["risk"])
+
+
+def v48_tables():
+    """§3 and §4 of the default project, in the v4.48.x form: one table for each category that holds a finding, AGP-01 in a bold-labelled sub-table
+    under §4.2, R-1's row wider than its header, and no row for ``V48_NO_ROW``."""
+    return "\n".join(
+        ["## 3. STRIDE Threat Tables", "", "### 3.1 Spoofing (S)", ""] + V48_HEAD + [v48_row("S-2"), v48_row("S-10"), "", "### 3.2 Tampering (T)", ""]
+        + V48_HEAD + [v48_row("T-1"), "", "### 3.3 Repudiation (R)", ""] + V48_HEAD + [v48_row("R-1", threat=V48_PIPED_THREAT), "",
+                                                                                   "### 3.6 Elevation of Privilege (E)", ""]
+        + V48_HEAD + [v48_row("E-3"), "", "## 4. AI Threat Tables", "", "### 4.1 Agentic Threats (AG)", ""] + V48_HEAD + [v48_row("AG-1"), "",
+                                                                                                                       "### 4.2 LLM Threats (LLM)", ""]
+        + V48_HEAD + [v48_row("LLM-4"), "", "---", "", "**OI Findings (Output Integrity)**:", ""] + V48_HEAD + [v48_row("AGP-01"), ""])
+
+
+def v48_threats_md():
+    """The default project's ``threats.md`` in the v4.48.x form: no MAESTRO Layer column in Section 7 or in Section 1, and the layers in §3 and §4."""
+    text = drop_column(drop_column(make_threats_md(), "## 7. Recommended Actions", "MAESTRO Layer"), "### Components", "MAESTRO Layer")
+    assert "MAESTRO Layer" not in text and "## 6. Risk Summary" in text, "premise: the layer is nowhere in the contract sections that were read before"
+    return text.replace("## 6. Risk Summary", v48_tables() + "\n## 6. Risk Summary", 1)
+
+
+def layer_of_line(md, finding_id):
+    """The MAESTRO layer that a finding's Category line shows, decoded."""
+    return decode(category_line(md, finding_id).split(" | ")[1][len("**MAESTRO Layer**: "):])
+
+
+def test_v48_a_finding_takes_its_layer_from_its_own_row_and_one_with_no_row_is_unclassified_in_both_files(stage, renderer, tmp_path):
+    project = Project(stage, renderer, tmp_path, threats_text=v48_threats_md())
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    results = results_by_id(project.sarif)
+    for finding_id in ORDER:
+        wanted = "Unclassified" if finding_id == V48_NO_ROW else COMPONENTS[by_id(finding_id)["component"]][1]
+        assert results[finding_id]["properties"]["maestro-layer"] == wanted, finding_id
+        assert layer_of_line(project.md, finding_id) == wanted, finding_id
+    assert V48_PIPED_THREAT in project.threats.read_text(encoding="utf-8") and results["R-1"]["properties"]["maestro-layer"] == COMPONENTS["planner-agent"][1], \
+        "the row wider than its header gives the layer that sits before its pipe"
+    assert results["AGP-01"]["properties"]["maestro-layer"] == COMPONENTS["vector-store"][1], "a row of a bold-labelled sub-table"
+
+
+def test_v48_section_7s_cell_comes_first_then_the_findings_own_row_then_its_components_layer(stage, renderer, tmp_path):
+    """S-2's Section 7 cell is set, so a differing row of its own is not asked. S-10's cell is blank, so its row comes ahead of its component's Section 1
+    layer. T-1's cell is blank and it has no row, so its component's layer stands, as it did before the rows were read."""
+    other_row, other_cell = "L5 " + DASH + " Evaluation and Observability", "L1 " + DASH + " Foundation Model"
+    text = edit_table_cell(make_threats_md(), "## 7. Recommended Actions", "S-10", "MAESTRO Layer", "")
+    text = edit_table_cell(text, "## 7. Recommended Actions", "T-1", "MAESTRO Layer", "")
+    text = edit_table_cell(text, "## 7. Recommended Actions", "E-3", "MAESTRO Layer", other_cell)
+    rows = "\n".join(["### 3.1 Spoofing (S)", ""] + V48_HEAD + [v48_row("S-2", layer=other_row), v48_row("S-10", layer=other_row), v48_row("E-3", layer=other_row), ""])
+    project = Project(stage, renderer, tmp_path, threats_text=text.replace("## 6. Risk Summary", rows + "\n## 6. Risk Summary", 1))
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    results = results_by_id(project.sarif)
+    wanted = {"S-2": COMPONENTS["edge-gateway"][1], "S-10": other_row, "T-1": COMPONENTS["auth-broker"][1], "E-3": other_cell}
+    for finding_id, layer in wanted.items():
+        assert results[finding_id]["properties"]["maestro-layer"] == layer == layer_of_line(project.md, finding_id), finding_id
+
+
+def test_v48_a_per_finding_table_that_a_code_fence_quotes_gives_no_layer(stage, renderer, tmp_path):
+    quoted = "```\n" + "\n".join(V48_HEAD + [v48_row("E-5")]) + "\n```\n"
+    text = v48_threats_md().replace("## 6. Risk Summary", quoted + "\n## 6. Risk Summary", 1)
+    project = Project(stage, renderer, tmp_path, threats_text=text)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert results_by_id(project.sarif)["E-5"]["properties"]["maestro-layer"] == "Unclassified" == layer_of_line(project.md, "E-5")
+
+
+def test_v48_refusal_a_forbidden_character_in_the_layer_of_a_per_finding_row_is_refused_naming_the_finding(stage, renderer, tmp_path):
+    clean = COMPONENTS["edge-gateway"][1]
+    project = Project(stage, renderer, tmp_path, threats_text=v48_threats_md().replace(clean, "L4 " + RLO + DASH + " Deployment Infrastructure", 1))
+    project.earlier()
+    project.prepare()
+    assert_refused(project, project.render(), RLO, "threats.md", "S-2", "layer")
+
+
+def shipped_layers(example):
+    """The ``maestro-layer`` of each result of a shipped example's own ``risk-scores.sarif``, by canonical ID: what v4.48.4's scorer wrote."""
+    document = json.loads((REPO_ROOT / "examples" / example / "risk-scores.sarif").read_text(encoding="utf-8"))
+    return {canon(result["partialFingerprints"]["findingId/v1"]): result["properties"]["maestro-layer"] for result in document["runs"][0]["results"]}
+
+
+def shipped_project(stage_module, renderer_module, root, example):
+    """A project over a copy of a shipped example's ``threats.md``, in ``root`` and read-only (nothing under ``examples/`` is touched): its Section 4a is
+    cut, as ``subset_project`` cuts the subset's, and every finding gets a generic item. Returns ``(project, the copy's text, its reference set)``."""
+    text = re.sub(r"(?ms)^## 4a\. Correlated Findings.*?(?=^## )", "", (REPO_ROOT / "examples" / example / "threats.md").read_text(encoding="utf-8"))
+    assert "## 4a." not in text
+    reference = tachi_parsers.parse_reference_set(text)
+    scope = scope_of(text)
+    component = {canon(row["id"]): row["component"] for row in reference["open"]}
+    project = Project(stage_module, renderer_module, root, threats_text=text,
+                      items=lambda finding_id: scorer_item(generic_item(finding_id, component[canon(finding_id)], scope)))
+    project.threats.chmod(0o444)
+    return project, text, reference
+
+
+SHIPPED_SHAPES = [   # (the example, its open findings, how many of them its own scorer file gave a layer other than `Unclassified`, and the ones whose layer
+                     #  no contract section of its threat model holds: they are Unclassified now)
+    ("mobile-banking-app/sample-report", 31, 23, []),
+    ("agentic-app/sample-report", 86, 56, ["AGP-1"]),   # a long row and bold-labelled sub-tables in §4.2; AGP-01's shipped layer, L1, was inferred from its component
+]
+
+
+@pytest.mark.parametrize("example,open_count,classified,unlisted", SHIPPED_SHAPES, ids=[case[0] for case in SHIPPED_SHAPES])
+def test_v48_a_shipped_threat_model_renders_the_layers_that_its_own_scorer_wrote_and_not_unclassified(stage, renderer, tmp_path, example, open_count, classified,
+                                                                                                    unlisted):
+    project, text, reference = shipped_project(stage, renderer, tmp_path, example)
+    res = project.run()
+    assert res.code in (0, 5), res.describe()
+    assert len(reference["open"]) == open_count
+    shipped = shipped_layers(example)
+    results = {canon(finding_id): result for finding_id, result in results_by_id(project.sarif).items()}
+    rendered = {}
+    for row in reference["open"]:
+        finding_id = canon(row["id"])
+        wanted = "Unclassified" if finding_id in unlisted else shipped[finding_id]
+        assert results[finding_id]["properties"]["maestro-layer"] == wanted == layer_of_line(project.md, row["id"]), finding_id
+        rendered[finding_id] = wanted
+    assert sum(layer != "Unclassified" for layer in rendered.values()) == classified, "layers were read, so the check is not vacuous"
+    assert project.threats.read_text(encoding="utf-8") == text, "the render never writes to its input"
 
 
 # --------------------------------------------------------------------------- a copied peer's correlation line

@@ -3571,6 +3571,82 @@ def test_layer_every_controls_result_has_the_scorers_maestro_layer_for_the_same_
         assert {result["properties"]["maestro-layer"] for result in controls.values()} <= {layer for _kind, layer in COMPONENTS.values()}, "the component's layer, never Unclassified"
 
 
+def blank_component_layers(text):
+    """``threats.md`` with the MAESTRO Layer cell of every Section 1 component emptied, so the chain's last step finds nothing."""
+    out, inside = [], False
+    for line in text.split("\n"):
+        if line.startswith("### "):
+            inside = line.startswith("### Components")
+        elif inside and line.startswith("| ") and not line.startswith("| Component") and "|--" not in line:
+            cells = line.split(" | ")
+            cells[2] = ""
+            line = " | ".join(cells)
+        out.append(line)
+    return "\n".join(out)
+
+
+def test_v48_a_controls_result_has_the_scorers_layer_when_only_the_findings_own_rows_hold_it(identity, rrs, entries, tmp_path):
+    """T066's U-1, gap B end to end. The threat model is in the v4.48.x form: Section 7 and Section 1 hold no layer, and each finding's is in its own row of a
+    §3 or §4 table (a row wider than its header, and a bold-labelled sub-table, among them), E-5's excepted, which has no row. Both renderers read those rows through
+    ``tachi_parsers.parse_finding_layers``, so every controls result's ``maestro-layer`` is the scorer's, and an agent that copies the layer into its Section 2
+    cell is not flagged ``input:maestro_layer:sources-disagree``."""
+    project = identity.make_project(identity.CONTROLS_FILE, rrs, entries, tmp_path)
+    text = blank_component_layers(blank_section_7_layers(project.threats.read_text(encoding="utf-8")))
+    project.threats.write_text(text.replace("## 6. Risk Summary", rrs.v48_tables() + "\n## 6. Risk Summary", 1), encoding="utf-8")
+    wanted = {item["id"]: "Unclassified" if item["id"] == rrs.V48_NO_ROW else COMPONENTS[item["component"]][1] for item in rrs.SPECS}
+    res = project.run(mutate=together(*[with_cells(finding_id, {"MAESTRO Layer": layer}) for finding_id, layer in wanted.items()]))
+    assert res.code in (0, 5), res.describe()
+    controls, scorer = identity.results_by(project.sarif), identity.results_by(project.scorer_sarif)
+    assert sorted(controls) == sorted(scorer) == sorted(wanted)
+    for finding_id, layer in wanted.items():
+        assert controls[finding_id]["properties"]["maestro-layer"] == scorer[finding_id]["properties"]["maestro-layer"] == layer, finding_id
+        assert FLAG_OF["MAESTRO Layer"] not in controls[finding_id]["properties"]["integrity-flags"], "the agent's cell is the structured layer: %s" % finding_id
+    assert {layer for layer in wanted.values()} - {"Unclassified"}, "layers were read, so the check is not vacuous"
+
+
+def test_v48_an_agent_cell_that_differs_from_the_row_layer_is_flagged_once_and_the_sarif_follows_the_row(identity, rrs, entries, tmp_path):
+    """The structured value wins (ADR-050 D2): S-2's row says edge-gateway's layer, and an agent that wrote another is flagged, with the SARIF unchanged."""
+    project = identity.make_project(identity.CONTROLS_FILE, rrs, entries, tmp_path)
+    text = blank_component_layers(blank_section_7_layers(project.threats.read_text(encoding="utf-8")))
+    project.threats.write_text(text.replace("## 6. Risk Summary", rrs.v48_tables() + "\n## 6. Risk Summary", 1), encoding="utf-8")
+    wanted = {item["id"]: "Unclassified" if item["id"] == rrs.V48_NO_ROW else COMPONENTS[item["component"]][1] for item in rrs.SPECS}
+    agent = {finding_id: layer for finding_id, layer in wanted.items() if finding_id != "S-2"}
+    agent["S-2"] = "L1 " + DASH + " Foundation Model"
+    res = project.run(mutate=together(*[with_cells(finding_id, {"MAESTRO Layer": layer}) for finding_id, layer in agent.items()]))
+    assert res.code in (0, 5), res.describe()
+    controls = identity.results_by(project.sarif)
+    assert controls["S-2"]["properties"]["maestro-layer"] == wanted["S-2"] != agent["S-2"]
+    layer_flag = FLAG_OF["MAESTRO Layer"]
+    assert controls["S-2"]["properties"]["integrity-flags"].count(layer_flag) == 1, "flagged once"
+    assert [finding_id for finding_id, found in controls.items() if layer_flag in found["properties"]["integrity-flags"]] == ["S-2"]
+
+
+SHIPPED_CONTROLS_SHAPES = [   # (the example, its open findings that no contract section of its threat model gives a layer: they are Unclassified)
+    ("mobile-banking-app/sample-report", []),
+    ("agentic-app/sample-report", ["AGP-1"]),   # a row wider than its header and bold-labelled sub-tables in §4.2
+]
+
+
+@pytest.mark.parametrize("example,unlisted", SHIPPED_CONTROLS_SHAPES, ids=[case[0] for case in SHIPPED_CONTROLS_SHAPES])
+def test_v48_a_shipped_threat_model_gives_each_finding_the_layer_that_its_own_scorer_wrote(renderer, rrs, tmp_path, example, unlisted):
+    """The renderer's own readers (``_read_reference`` and ``_overlay_reference``) over a copy of the example's ``threats.md``, in ``tmp_path`` and read-only:
+    nothing under ``examples/`` is touched. The layers are those of the example's own ``risk-scores.sarif``, which v4.48.4's scorer read from the same rows."""
+    copy = tmp_path / "threats.md"
+    copy.write_bytes((REPO_ROOT / "examples" / example / "threats.md").read_bytes())
+    copy.chmod(0o444)
+    run = renderer.Run()
+    run.threats_text, run.threats_path = copy.read_text(encoding="utf-8"), "threats.md"
+    reference = renderer._read_reference(run, "kept")
+    assert reference is not None, "premise: the example's Section 7 reads"
+    members = [{"id": row["id"], "canon": canon(row["id"]), "component": "Unspecified", "threat": "", "layer": ""} for row in reference["open"]]
+    renderer._overlay_reference(run, members, reference)
+    shipped = rrs.shipped_layers(example)
+    assert members and [member["canon"] for member in members if member["canon"] not in shipped] == []
+    for member in members:
+        assert member["layer"] == ("Unclassified" if member["canon"] in unlisted else shipped[member["canon"]]), member["id"]
+    assert len({member["layer"] for member in members} - {"Unclassified"}) >= 2, "layers were read, so the check is not vacuous"
+
+
 def test_layer_under_the_fallback_a_member_takes_its_own_layer_and_a_blank_or_missing_one_is_unclassified(stage, renderer, tmp_path):
     """sarif-result.md, gap B: "under D8's fallback, the member's ``details.layer`` (P0-3), else ``Unclassified``". A layer that a result lacks, one that
     is blank and one that is not text hold none (``parse_sarif_member_set``), and Section 2 shows the structured value where the agent agrees."""
@@ -3715,6 +3791,49 @@ def test_corr_a_malformed_section_4a_row_is_an_input_issue_and_the_other_groups_
     results = results_by_id(project.sarif)
     assert [results[finding_id]["properties"]["correlation-group"] for finding_id in ("S-2", "S-10")] == ["CG-1", "CG-1"]
     assert not [key for key in results["T-1"]["properties"] if key.startswith("correlation-")] and "not-a-group" not in project.sarif_text
+
+
+REPEATED_GROUPS = GROUPS + [("CG-2", ["S-10", "T-1"])]   # S-10 is in both: CG-1 claims it, and CG-2 is left with T-1 alone and falls away
+
+
+def test_corr_an_id_that_two_groups_list_stays_in_the_first_and_is_listed_warned_and_counted(stage, renderer, tmp_path):
+    """PM W4 ruling R-F: D8's claim rule is unchanged (S-10 is CG-1's peer, and T-1 is in no group), and the run says so. Input Issues (Section 7) has one
+    line that names the ID and both groups, the stage record's warning ``correlation-member-repeated`` counts it, and the run exits 5. A project whose
+    groups don't overlap has neither."""
+    project = Project(stage, renderer, tmp_path / "repeated", groups=REPEATED_GROUPS)
+    res = project.run()
+    assert res.code == 5, res.describe()
+    record = project.record
+    assert record["status"] == "success-with-warnings"
+    warnings = [warning for warning in record["warnings"] if warning["code"] == "correlation-member-repeated"]
+    assert [warning["detail"] for warning in warnings] == ["Section 4a of threats.md lists 1 finding in more than one correlation group, and the first group "
+                                                           "claims each: S-10"]
+    issues = subsection_of(project.md, "## 7. Analysis Integrity", "### Input Issues")
+    assert ("- Section 4a of threats.md: S-10 is listed in CG-1 and CG-2. CG-1 claims it, and CG-2 does not. "
+            "CG-2 is left with fewer than two findings and emits no correlation.") in issues
+    assert record["counts"]["parse_errors"] == 1, "the stage record counts the issue"
+    results = results_by_id(project.sarif)
+    assert (results["S-10"]["properties"]["correlation-group"], results["S-10"]["properties"]["correlation-role"]) == ("CG-1", "peer")
+    assert not [key for key in results["T-1"]["properties"] if key.startswith("correlation-")], "CG-2 fell away, so T-1 is in no group"
+    clean = Project(stage, renderer, tmp_path / "clean", groups=GROUPS)
+    assert clean.run().code in (0, 5)
+    assert not [warning for warning in clean.record["warnings"] if warning["code"] == "correlation-member-repeated"]
+    assert subsection_of(clean.md, "## 7. Analysis Integrity", "### Input Issues").strip() == "None." and clean.record["counts"]["parse_errors"] == 0
+
+
+def test_corr_the_claiming_group_that_emits_nothing_is_named_in_the_issue_and_the_id_stays_uncorrelated(stage, renderer, tmp_path):
+    """D8's literal reading: a group that falls away still claims its IDs. CG-1 lists S-2 and a finding that this run doesn't score, so it emits nothing, and
+    S-2, which CG-2 lists too, is in no group. The Input Issue says so, which the files alone would not."""
+    groups = [("CG-1", ["S-2", "S-99"]), ("CG-2", ["S-2", "S-10", "T-1"])]
+    project = Project(stage, renderer, tmp_path, groups=groups)
+    res = project.run()
+    assert res.code == 5, res.describe()
+    issues = subsection_of(project.md, "## 7. Analysis Integrity", "### Input Issues")
+    assert ("- Section 4a of threats.md: S-2 is listed in CG-1 and CG-2. CG-1 claims it, and CG-2 does not. "
+            "CG-1 emits no correlation either, so S-2 is in no group.") in issues
+    results = results_by_id(project.sarif)
+    assert not [key for key in results["S-2"]["properties"] if key.startswith("correlation-")], "S-2 is claimed by a group that emits nothing"
+    assert [results[finding_id]["properties"]["correlation-group"] for finding_id in ("S-10", "T-1")] == ["CG-2", "CG-2"], "CG-2 keeps two findings"
 
 
 # --------------------------------------------------------------------------- D8's fallback, member by member

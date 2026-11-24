@@ -35,8 +35,8 @@ names (a SARIF names none, so its rows hold each member's own text instead). An 
 baseline's persisted result (``evidence[]``, ``matrix_row``, ``recommendation_body`` and the judgment values, narrative text
 included), decoded, from the baseline's Section 7 ``### Assessment Inputs`` through
 ``tachi_parsers.parse_controls_assessment_inputs``, never from the rendered file (AR-T3). A row built from ``threats.md`` also holds
-the finding's MAESTRO ``layer``, by the renderer's chain (Section 7's cell, else the component's Section 1 layer, else
-``Unclassified``), under the key that the SARIF fallback's rows use. In that fallback, a member that the renderer
+the finding's MAESTRO ``layer``, by the renderer's chain (Section 7's cell, else the finding's own row in a per-finding table,
+else the component's Section 1 layer, else ``Unclassified``), under the key that the SARIF fallback's rows use. In that fallback, a member that the renderer
 could not score ends the plan here, before dispatch (KB 22): one that no result of its own names (a legacy peer reference), or whose
 result gives no composite from 0.0 to 10.0 on the 0.1 grid.
 
@@ -85,7 +85,7 @@ import tachi_parts as tp  # noqa: E402
 import tachi_scoring as ts  # noqa: E402
 import tachi_scoring_rules as rules  # noqa: E402
 from tachi_parsers import (  # noqa: E402
-    REFERENCE_SET_SECTION, ReferenceSetError, parse_baseline_frontmatter, parse_controls_assessment_inputs, parse_correlation_groups,
+    ReferenceSetError, parse_baseline_frontmatter, parse_controls_assessment_inputs, parse_correlation_groups, parse_finding_layers,
     parse_markdown_table, parse_reference_set, parse_sarif_member_set, parse_score)
 
 CONTROLS = "compensating-controls"
@@ -748,9 +748,10 @@ def _finding_layers(text: str, findings: Dict[str, Dict[str, Any]]) -> Dict[str,
     """Each finding's MAESTRO layer, by canonical ID, as the controls renderer takes it.
 
     ``findings`` holds the open rows of ``threats.md``'s Section 7 (``parse_reference_set``) and ``text`` is that file. The chain is the
-    renderer's (``render-compensating-controls.py``, ``_read_reference`` and ``_overlay_reference``), and both read the same two
-    tables the same way: the MAESTRO Layer cell of the finding's own Section 7 row (the first row of an ID), else the MAESTRO Layer of
-    its component's Section 1 row (found by name, then case-folded; ``Unspecified`` for a row with no component, as the scorer writes
+    renderer's (``render-compensating-controls.py``, ``_read_reference`` and ``_overlay_reference``), and ADR-050 D2 gives it one
+    reader for its first two steps (``parse_finding_layers``), so the planner's copy can't drift from the renderers': the MAESTRO Layer
+    cell of the finding's own Section 7 row, else its own row in a per-finding table (§3 and §4), else the MAESTRO Layer of its
+    component's Section 1 row (found by name, then case-folded; ``Unspecified`` for a row with no component, as the scorer writes
     it), else ``Unclassified``. The agent copies it, and the renderer checks the agent's cell against it, so a row without it
     would have the agent guess and every classified finding flagged ``input:maestro_layer:sources-disagree``.
     """
@@ -759,11 +760,7 @@ def _finding_layers(text: str, findings: Dict[str, Dict[str, Any]]) -> Dict[str,
         name = row.get("Component", "").strip()
         if name and name not in by_component:
             by_component[name] = row.get("MAESTRO Layer", "").strip()
-    by_finding: Dict[str, str] = {}
-    for row in parse_markdown_table(text, REFERENCE_SET_SECTION):
-        finding_id = row.get("Finding ID", "").strip()
-        if tp.id_matches("finding", finding_id):
-            by_finding.setdefault(tp.canonical_finding_id(finding_id), row.get("MAESTRO Layer", "").strip())
+    by_finding = parse_finding_layers(text)
     layers: Dict[str, str] = {}
     for canonical, finding in findings.items():
         component = finding["component"] or "Unspecified"

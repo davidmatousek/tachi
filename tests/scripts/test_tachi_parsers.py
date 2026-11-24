@@ -34,6 +34,7 @@ Stdlib-only per PAT-014 — no PyYAML, no Path operations beyond importlib.
 from __future__ import annotations
 
 import ast
+import inspect
 import itertools
 import json
 import random
@@ -84,8 +85,12 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     FORM_LACKS_FLAG,
     strip_bold,
     recommendation_text,
+    parse_finding_layers,
+    _assign_correlation_groups,
     _find_table_with_column,
     _ids_of_a_bolded_lead,
+    _per_finding_layers,
+    _unfenced_lines,
     _FIRST_CELL,
     _TITLE_SEPARATOR,
 )
@@ -1405,7 +1410,7 @@ def test_groups_keep_section_4as_order_and_members_their_listed_order_with_the_p
     content = _section_4a([_group_row("CG-2", "T-2, LLM-4"), _group_row("CG-1", "E-2, R-3, AG-1"), _group_row("CG-3", "I-1, S-5")])
     assert parse_correlation_groups(content) == {
         "groups": [_group("CG-2", ["T-2", "LLM-4"]), _group("CG-1", ["E-2", "R-3", "AG-1"]), _group("CG-3", ["I-1", "S-5"])],
-        "errors": []}, "file order, not number order; listed order, not S-2 order"
+        "errors": [], "repeated": []}, "file order, not number order; listed order, not S-2 order"
 
 
 def test_members_are_canonical_and_the_group_id_is_kept_as_written():
@@ -1429,7 +1434,7 @@ def test_members_are_filtered_to_the_member_set_and_the_first_one_left_is_the_pr
 
 def test_a_group_of_fewer_than_two_emits_nothing_and_it_is_not_an_error():
     result = parse_correlation_groups(_section_4a([_group_row("CG-1", "S-1"), _group_row("CG-2", "T-2, T-2")]))
-    assert result == {"groups": [], "errors": []}
+    assert result == {"groups": [], "errors": [], "repeated": []}, "a group's own repeat of an ID is no second group"
 
 
 def test_a_member_listed_in_two_groups_stays_in_the_first():
@@ -1453,6 +1458,101 @@ def test_a_first_group_that_falls_away_still_claims_its_ids():
 def test_an_id_listed_twice_in_one_group_counts_once_even_under_two_spellings():
     content = _section_4a([_group_row("CG-1", "AGP-01, AGP-1, S-1, S-1")])
     assert parse_correlation_groups(content)["groups"] == [_group("CG-1", ["AGP-1", "S-1"])]
+    assert parse_correlation_groups(content)["repeated"] == [], "a group's own repeat of an ID is no second group, so nothing is reported"
+
+
+# ---- never silent (PM W4 ruling R-F): an ID that two groups list is reported, and the groups are what they were ------------------------
+
+def _repeat(finding_id, claimed_by, also_in, falls_away, reason):
+    return {"id": finding_id, "claimed_by": claimed_by, "also_in": also_in, "falls_away": falls_away, "reason": reason}
+
+
+def test_an_id_listed_in_two_groups_is_reported_with_the_group_that_claims_it_and_each_group_it_leaves():
+    """The shipped maestro-reference shape, with a third group: AG-7 is in CG-1, CG-2 and CG-3. CG-1 claims it. CG-2 is left with E-7 alone and falls
+    away, and CG-3 keeps two findings. The groups are the ones that D8's rules always gave."""
+    content = _section_4a([_group_row("CG-1", "T-7, AG-7"), _group_row("CG-2", "E-7, AG-7"), _group_row("CG-3", "I-7, LLM-1, AG-7")])
+    result = parse_correlation_groups(content)
+    assert result["groups"] == [_group("CG-1", ["T-7", "AG-7"]), _group("CG-3", ["I-7", "LLM-1"])], "the first-group rule is unchanged"
+    assert result["repeated"] == [_repeat("AG-7", "CG-1", ["CG-2", "CG-3"], ["CG-2"],
+                                          "AG-7 is listed in CG-1, CG-2 and CG-3. CG-1 claims it, and CG-2 and CG-3 do not. "
+                                          "CG-2 is left with fewer than two findings and emits no correlation.")]
+    assert result["errors"] == []
+
+
+def test_two_groups_give_the_short_form_and_a_group_that_keeps_two_findings_does_not_fall_away():
+    content = _section_4a([_group_row("CG-1", "S-1, T-2"), _group_row("CG-2", "T-2, I-3, E-4")])
+    result = parse_correlation_groups(content)
+    assert result["groups"] == [_group("CG-1", ["S-1", "T-2"]), _group("CG-2", ["I-3", "E-4"])]
+    assert result["repeated"] == [_repeat("T-2", "CG-1", ["CG-2"], [], "T-2 is listed in CG-1 and CG-2. CG-1 claims it, and CG-2 does not.")]
+
+
+def test_each_repeated_id_has_one_entry_in_s_2_order_under_its_canonical_spelling():
+    content = _section_4a([_group_row("CG-1", "AGP-01, I-3, S-1"), _group_row("CG-2", "S-1, E-4, I-03"), _group_row("CG-3", "AGP-1, E-4, T-9")])
+    result = parse_correlation_groups(content)
+    assert [(entry["id"], entry["claimed_by"], entry["also_in"]) for entry in result["repeated"]] == [
+        ("S-1", "CG-1", ["CG-2"]), ("I-3", "CG-1", ["CG-2"]), ("E-4", "CG-2", ["CG-3"]), ("AGP-1", "CG-1", ["CG-3"])], "S-2's order, canonical IDs"
+    assert [group["group_id"] for group in result["groups"]] == ["CG-1"], "CG-2 and CG-3 keep one finding each"
+    assert [entry["falls_away"] for entry in result["repeated"]] == [["CG-2"], ["CG-2"], ["CG-3"], ["CG-3"]]
+
+
+def test_a_group_that_claims_an_id_and_emits_nothing_is_named_as_such():
+    """D8's literal reading: the first group claims an ID even if it then falls away. CG-1 has one member in the set, so it emits nothing, and S-1 is in
+    no group. The report says so, which the two groups alone would not."""
+    content = _section_4a([_group_row("CG-1", "S-1, T-2"), _group_row("CG-2", "S-1, I-3, E-4")])
+    result = parse_correlation_groups(content, ["S-1", "I-3", "E-4"])
+    assert result["groups"] == [_group("CG-2", ["I-3", "E-4"])]
+    assert result["repeated"] == [_repeat("S-1", "CG-1", ["CG-2"], [],
+                                          "S-1 is listed in CG-1 and CG-2. CG-1 claims it, and CG-2 does not. CG-1 emits no correlation either, so S-1 is in no group.")]
+
+
+def test_a_chain_of_groups_reports_each_hand_over():
+    content = _section_4a([_group_row("CG-1", "S-1, T-2"), _group_row("CG-2", "T-2, I-3"), _group_row("CG-3", "I-3, E-4, D-5")])
+    result = parse_correlation_groups(content)
+    assert result["groups"] == [_group("CG-1", ["S-1", "T-2"]), _group("CG-3", ["E-4", "D-5"])]
+    assert result["repeated"] == [
+        _repeat("T-2", "CG-1", ["CG-2"], ["CG-2"], "T-2 is listed in CG-1 and CG-2. CG-1 claims it, and CG-2 does not. "
+                                                    "CG-2 is left with fewer than two findings and emits no correlation."),
+        _repeat("I-3", "CG-2", ["CG-3"], [], "I-3 is listed in CG-2 and CG-3. CG-2 claims it, and CG-3 does not. CG-2 emits no correlation either, "
+                                              "so I-3 is in no group.")]
+
+
+def test_an_id_that_is_not_a_member_is_reported_too_and_a_group_that_it_does_not_decide_is_unchanged():
+    """The report is about Section 4a, not about this run's findings: D-9 is no member, and two groups list it."""
+    content = _section_4a([_group_row("CG-1", "S-1, T-2, D-9"), _group_row("CG-2", "I-3, E-4, D-9")])
+    result = parse_correlation_groups(content, ["S-1", "T-2", "I-3", "E-4"])
+    assert result["groups"] == [_group("CG-1", ["S-1", "T-2"]), _group("CG-2", ["I-3", "E-4"])]
+    assert result["repeated"] == [_repeat("D-9", "CG-1", ["CG-2"], [], "D-9 is listed in CG-1 and CG-2. CG-1 claims it, and CG-2 does not.")]
+    assert [entry["id"] for entry in parse_correlation_groups(content)["repeated"]] == ["D-9"], "no member set gives the same report"
+
+
+def test_a_group_that_would_not_have_been_one_anyway_does_not_fall_away_as_a_result():
+    """CG-2 lists S-1 and E-4, and E-4 is no member. With S-1 claimed it has nothing left, but it had one eligible finding before, so the loss isn't why it is gone."""
+    content = _section_4a([_group_row("CG-1", "S-1, T-2"), _group_row("CG-2", "S-1, E-4")])
+    result = parse_correlation_groups(content, ["S-1", "T-2"])
+    assert result["groups"] == [_group("CG-1", ["S-1", "T-2"])]
+    assert result["repeated"] == [_repeat("S-1", "CG-1", ["CG-2"], [], "S-1 is listed in CG-1 and CG-2. CG-1 claims it, and CG-2 does not.")]
+
+
+def test_a_row_that_is_skipped_claims_nothing_and_so_repeats_nothing():
+    skipped = [_group_row("CG-2", "S-1, X-9"), _group_row("not-a-group", "S-1, I-3")]
+    content = _section_4a([_group_row("CG-1", "S-1, T-2")] + skipped)
+    result = parse_correlation_groups(content)
+    assert result["groups"] == [_group("CG-1", ["S-1", "T-2"])]
+    lines = content.split("\n")
+    assert [error["line"] for error in result["errors"]] == [lines.index(row) + 1 for row in skipped], "both rows are errors"
+    assert result["repeated"] == [], "and neither lists S-1 as a second group"
+
+
+def test_the_report_changes_no_group_and_no_error_that_the_rules_gave():
+    """The claim rule, the primary, the two-member minimum and the order give what ``_assign_correlation_groups`` gives for the same rows."""
+    rows = [_group_row("CG-1", "S-1, T-2, I-3"), _group_row("CG-2", "I-3, E-4"), _group_row("CG-3", "E-4, D-5, S-1"), _group_row("CG-1", "R-1, R-2")]
+    content = _section_4a(rows)
+    result = parse_correlation_groups(content)
+    raw = [("CG-1", ["S-1", "T-2", "I-3"]), ("CG-2", ["I-3", "E-4"]), ("CG-3", ["E-4", "D-5", "S-1"])]
+    assert result["groups"] == _assign_correlation_groups(raw, None) == [_group("CG-1", ["S-1", "T-2", "I-3"])]
+    first = content.split("\n").index(rows[0]) + 1
+    assert [error["reason"] for error in result["errors"]] == ["repeats group ID CG-1, first listed at line %d" % first]
+    assert [entry["id"] for entry in result["repeated"]] == ["S-1", "I-3", "E-4"], "the repeated group ID's row claims nothing, so R-1 and R-2 are not reported"
 
 
 @pytest.mark.parametrize("row,reason", [
@@ -1512,12 +1612,12 @@ def test_a_placeholder_row_is_dropped_without_a_report_and_a_long_row_is_cut():
     "## 4a. Correlated Findings\n",
 ], ids=["empty", "no-section", "header-only-table", "zero-correlation-form", "prose-only-then-a-later-table", "section-form-prose-only", "heading-only"])
 def test_a_missing_or_empty_section_4a_means_no_groups_and_no_errors(content):
-    assert parse_correlation_groups(content) == {"groups": [], "errors": []}
-    assert parse_correlation_groups(content, ["S-1", "T-2"]) == {"groups": [], "errors": []}
+    assert parse_correlation_groups(content) == {"groups": [], "errors": [], "repeated": []}
+    assert parse_correlation_groups(content, ["S-1", "T-2"]) == {"groups": [], "errors": [], "repeated": []}
 
 
 def test_section_4a_is_not_a_group_table_when_the_text_is_not_a_string():
-    assert parse_correlation_groups(None) == {"groups": [], "errors": []}
+    assert parse_correlation_groups(None) == {"groups": [], "errors": [], "repeated": []}
 
 
 @pytest.mark.parametrize("heading", ["## 4a. Correlated Findings", "### 4a. Correlated Findings", "## Section 4a: Correlated Findings",
@@ -1530,14 +1630,14 @@ def test_the_three_heading_forms_that_the_shipped_samples_show_are_read(heading)
 @pytest.mark.parametrize("heading", ["#### 4a. Correlated Findings", "## 4b. Findings by Agentic Pattern", "## 4ab. Other", "## 4. Coverage",
                                      "## Correlated Findings"])
 def test_a_heading_that_is_not_section_4a_is_not_read(heading):
-    assert parse_correlation_groups(_section_4a([_group_row("CG-1", "S-1, T-2")], heading=heading)) == {"groups": [], "errors": []}
+    assert parse_correlation_groups(_section_4a([_group_row("CG-1", "S-1, T-2")], heading=heading)) == {"groups": [], "errors": [], "repeated": []}
 
 
 def test_only_the_first_table_of_the_section_is_read_and_a_level_three_section_stops_at_the_next_level_three_heading():
     two = _section_4a([_group_row("CG-1", "S-1, T-2"), "", "| Group | Findings |", "|---|---|", "| CG-2 | I-3, E-4 |"])
     assert [g["group_id"] for g in parse_correlation_groups(two)["groups"]] == ["CG-1"]
     stops = _section_4a([], heading="### 4a. Correlated Findings").replace("## 5. Risk Summary", "### 4b. Patterns")
-    assert parse_correlation_groups(stops) == {"groups": [], "errors": []}, "the later table is another section's"
+    assert parse_correlation_groups(stops) == {"groups": [], "errors": [], "repeated": []}, "the later table is another section's"
 
 
 def test_a_section_4a_table_with_one_column_has_no_group_and_no_findings_cells_and_every_row_is_listed():
@@ -1641,12 +1741,26 @@ def test_the_shipped_samples_that_show_the_drift_forms_and_a_shared_member():
     assert maestro[0] == _group("CG-1", ["T-7", "AG-7"])
     predictive = parse_correlation_groups(_example_threats("predictive-ml-app/sample-report"))["groups"]
     assert predictive[0] == _group("CG-1", ["T-10", "LLM-1", "LLM-2"]) and len(predictive) == 4, "a level-3 heading"
-    assert parse_correlation_groups(_example_threats("consumer-agent-app/sample-report")) == {"groups": [], "errors": []}, \
+    assert parse_correlation_groups(_example_threats("consumer-agent-app/sample-report")) == {"groups": [], "errors": [], "repeated": []}, \
         "`## Section 4a:` with prose and no table"
     agentic = parse_correlation_groups(_example_threats("agentic-app"))["groups"]
     assert agentic[2] == _group("CG-3", ["E-2", "R-3", "AG-1"]), "listed order, not S-2 order"
     for relative in ("web-app", "microservices", "ascii-web-api", "mermaid-agentic-app", "free-text-microservice"):
-        assert parse_correlation_groups(_example_threats(relative)) == {"groups": [], "errors": []}, relative
+        assert parse_correlation_groups(_example_threats(relative)) == {"groups": [], "errors": [], "repeated": []}, relative
+
+
+def test_only_the_maestro_reference_sample_lists_an_id_in_two_groups_and_the_report_names_it():
+    """PM W4 ruling R-F, read-only: the sample's AG-7 is in CG-1 and CG-2. CG-1 claims it and CG-2, left with one finding, falls away. T066's oracle
+    saw two correlation diffs here and no trace in the run. No other tracked threat model lists an ID twice."""
+    text = _example_threats("maestro-reference")
+    open_ids = [finding["id"] for finding in parse_reference_set(text)["open"]]
+    expected = [_repeat("AG-7", "CG-1", ["CG-2"], ["CG-2"], "AG-7 is listed in CG-1 and CG-2. CG-1 claims it, and CG-2 does not. "
+                                                            "CG-2 is left with fewer than two findings and emits no correlation.")]
+    assert parse_correlation_groups(text)["repeated"] == parse_correlation_groups(text, open_ids)["repeated"] == expected
+    others = [path for path in sorted((REPO_ROOT / "examples").rglob("threats.md")) + sorted((REPO_ROOT / "tests" / "scripts" / "fixtures").rglob("threats.md"))
+              if path != REPO_ROOT / "examples" / "maestro-reference" / "threats.md"]
+    assert len(others) >= 30
+    assert [path.relative_to(REPO_ROOT).as_posix() for path in others if parse_correlation_groups(path.read_text(encoding="utf-8"))["repeated"]] == []
 
 
 # =============================================================================
@@ -3503,3 +3617,356 @@ def test_the_controls_reader_keeps_its_rules_for_the_blocks_it_hands_to_the_help
         "#### 5. E-3 — Admin again (Composite: 6.0, Medium)", "", "**What to Implement**:", ""])
     found = {finding["id"]: finding["recommendation"] for finding in parse_compensating_controls_md(_controls_with_section_4(section_4))["findings"]}
     assert found == {"T-1": "First text for T-1.", "S-2": "The text for S-2, under a heading that names no ID.", "E-3": ""}
+
+
+# =============================================================================
+# Feature 374 (W4, T146, U-1): parse_finding_layers, a finding's MAESTRO layer from ADR-050 D2's two finding-level steps
+#
+# T066's oracle found 368 values where a render said `Unclassified` for a layer that a v4.48.4 threat model holds. The renderers took a
+# finding's layer from Section 7's cell and from its component's Section 1 cell, and every shipped threat model keeps the layer in the
+# MAESTRO Layer column of the per-finding tables (§3 and §4), where v4.48.4's scorer read it. One reader now gives steps 1 and 2 to the
+# scorer renderer, the controls renderer and the planner's controls unit row, and each of those modules tests the chain end to end.
+#
+#   precedence  Section 7's MAESTRO Layer cell, then the finding's own row in a per-finding table. A blank cell gives nothing, and the
+#               first row of an ID counts. The caller goes on to the component's Section 1 cell, then `Unclassified`.
+#   tables      outside code fences, with `ID` as the header's first cell and a `MAESTRO Layer` column. Rows are read as
+#               parse_markdown_table reads them.
+#   not applied the reference set's refusal of a row wider than its header (T067a's M1): agentic-app's §4.2 has such rows, with the
+#               GFM pipe after the layer cell, and a refusal there would stop that example's render.
+# =============================================================================
+
+_FOUNDATION = "L1 — Foundation Model"
+_DATA_OPS = "L2 — Data Operations"
+_FRAMEWORK = "L3 — Agent Framework"
+_DEPLOYMENT = "L4 — Deployment Infrastructure"
+_ECOSYSTEM = "L7 — Agent Ecosystem"
+_POISON = "L9 — Poison"   # a layer that no test expects: a table that must not be read holds it
+
+_PER_FINDING_HEADER = ["ID", "Status", "Component", "MAESTRO Layer", "Threat", "Risk Level"]
+_SECTION_7_HEADER = ["Finding ID", "Status", "Component", "MAESTRO Layer", "Threat", "Risk Level", "Mitigation"]
+
+
+def _gfm(header, rows):
+    """A GFM table: the header, a separator row and one line for each of ``rows``."""
+    return "\n".join(["| " + " | ".join(header) + " |", "|" + "---|" * len(header)] + ["| " + " | ".join(row) + " |" for row in rows])
+
+
+def _per_finding_table(pairs, header=_PER_FINDING_HEADER):
+    """A per-finding table (§3 or §4): one row for each ``(finding ID, layer cell)``."""
+    return _gfm(header, [[finding_id, "[NEW]", "Gateway", layer, "A threat.", "High"] for finding_id, layer in pairs])
+
+
+def _section_7_table(pairs, heading="## 7. Recommended Actions", with_layer=True):
+    """Section 7 as a table: one row for each ``(finding ID, layer cell)``, and no MAESTRO Layer column when ``with_layer`` is false."""
+    header = _SECTION_7_HEADER if with_layer else [name for name in _SECTION_7_HEADER if name != "MAESTRO Layer"]
+    rows = [[finding_id, "NEW", "Gateway"] + ([layer] if with_layer else []) + ["A threat.", "High", "A fix."] for finding_id, layer in pairs]
+    return heading + "\n\n" + _gfm(header, rows)
+
+
+def _layers_doc(*blocks):
+    return "\n\n".join(blocks) + "\n"
+
+
+def test_parse_finding_layers_takes_one_text_and_an_empty_one_gives_nothing():
+    assert list(inspect.signature(parse_finding_layers).parameters) == ["content"]
+    for text in ("", "\n", "no tables here\n", "| ID |\n", "|", "||\n|--|\n", "| ID | MAESTRO Layer |\n"):
+        assert parse_finding_layers(text) == {}, repr(text)
+
+
+# ---- the chain's two steps ---------------------------------------------------------------------------------------
+
+def test_section_7s_cell_beats_a_differing_row_of_a_per_finding_table_and_a_blank_cell_asks_the_next_source():
+    doc = _layers_doc("### 3.1 Spoofing (S)", _per_finding_table([("S-1", _DEPLOYMENT), ("S-2", _DEPLOYMENT), ("S-3", _DEPLOYMENT)]),
+                      _section_7_table([("S-1", _DATA_OPS), ("S-2", ""), ("S-4", _FOUNDATION)]))
+    layers = parse_finding_layers(doc)
+    assert layers == {"S-1": _DATA_OPS, "S-2": _DEPLOYMENT, "S-3": _DEPLOYMENT, "S-4": _FOUNDATION}
+    assert list(layers) == ["S-1", "S-4", "S-2", "S-3"], "Section 7's findings first, then the tables', each in row order: a stable order for a refusal that names the first"
+
+
+def test_a_row_of_a_per_finding_table_gives_the_layer_when_section_7_has_no_layer_column():
+    """The v4.48.x form: no layer column in Section 7 and none in Section 1, so each finding's layer is in its own §3 or §4 row."""
+    doc = _layers_doc("## 3. STRIDE Threat Tables", "### 3.1 Spoofing (S)", _per_finding_table([("S-1", _DEPLOYMENT)]),
+                      "## 4. AI Threat Tables", "### 4.1 Agentic Threats (AG)", _per_finding_table([("AG-1", _FOUNDATION), ("AGP-01", _FRAMEWORK)]),
+                      _section_7_table([("S-1", ""), ("AG-1", ""), ("AGP-01", "")], with_layer=False))
+    assert parse_finding_layers(doc) == {"S-1": _DEPLOYMENT, "AG-1": _FOUNDATION, "AGP-1": _FRAMEWORK}, "AGP-01 is AGP-1, the canonical ID"
+
+
+def test_a_finding_that_no_source_gives_has_no_entry_and_the_two_blanks_give_nothing():
+    doc = _layers_doc(_per_finding_table([("S-1", ""), ("S-2", "   "), ("S-3", "**  **"), ("S-4", _DATA_OPS)]),
+                      _section_7_table([("S-1", ""), ("S-5", "")]))
+    assert parse_finding_layers(doc) == {"S-4": _DATA_OPS}, "a blank, a space-only and a bold-only cell are no layer, and the caller's chain goes on"
+
+
+def test_the_unclassified_word_is_a_layer_like_any_other_when_a_cell_says_it():
+    """The chain asks whether a cell is blank, never what it says. A finding that v4.48.4 left `Unclassified` keeps that, ahead of its component's layer."""
+    assert parse_finding_layers(_layers_doc(_per_finding_table([("AG-3", "Unclassified")]))) == {"AG-3": "Unclassified"}
+
+
+def test_a_bold_labelled_sub_table_under_a_section_4_heading_is_read():
+    """agentic-app's §4.2: a bold label, a rule or a line of prose between the tables, and a table of the same shape under each."""
+    doc = _layers_doc("### 4.2 LLM Threats (LLM)", _per_finding_table([("LLM-1", _FOUNDATION)]), "---",
+                      "**OI Findings (Output Integrity — OWASP LLM05:2025)**:", _per_finding_table([("OI-1", _ECOSYSTEM)]), "---",
+                      "**MI Findings (Misinformation)**:", "A line of prose, then the table.", _per_finding_table([("MI-1", _ECOSYSTEM), ("MI-2", _DEPLOYMENT)]))
+    assert parse_finding_layers(doc) == {"LLM-1": _FOUNDATION, "OI-1": _ECOSYSTEM, "MI-1": _ECOSYSTEM, "MI-2": _DEPLOYMENT}
+
+
+@pytest.mark.parametrize("heading", ["## 7. Recommended Actions", "## 7. Recommended Actions (Prioritized)", "## Section 7: Recommended Actions",
+                                     "### Section 7. Recommended Actions"])
+def test_a_table_form_section_7_is_read_under_each_heading_that_the_reference_set_reads(heading):
+    doc = _layers_doc(_per_finding_table([("S-1", _DEPLOYMENT)]), _section_7_table([("S-1", _DATA_OPS), ("T-2", _FOUNDATION)], heading))
+    assert parse_finding_layers(doc) == {"S-1": _DATA_OPS, "T-2": _FOUNDATION}
+    assert [finding["id"] for finding in parse_reference_set(doc)["open"]] == ["S-1", "T-2"], "premise: the reference set finds the same section"
+
+
+def test_a_list_form_section_7_has_no_layer_cell_and_the_per_finding_tables_give_them_all():
+    doc = _layers_doc(_per_finding_table([("S-1", _DEPLOYMENT), ("T-2", _FOUNDATION)]),
+                      "## 7. Recommended Actions", "1. **S-1** — Add authentication\n2. **T-2** — Validate input")
+    assert parse_reference_set(doc)["form"] == "list", "premise"
+    assert parse_finding_layers(doc) == {"S-1": _DEPLOYMENT, "T-2": _FOUNDATION}
+
+
+def test_the_first_row_of_an_id_counts_in_each_source_blank_or_not():
+    """A source answers for an ID with its first row, as the reference set does (D-4) and as the renderers' ``setdefault`` loops did. A blank first
+    row is that answer, so a later row of the same ID in the same source is not asked, and the next source is."""
+    section_7 = _section_7_table([("S-1", _DATA_OPS), ("S-1", _FOUNDATION), ("T-2", ""), ("T-2", _FOUNDATION)])
+    tables = _layers_doc(_per_finding_table([("S-1", _DEPLOYMENT), ("S-2", _DEPLOYMENT), ("T-2", _FRAMEWORK)]),
+                         _per_finding_table([("S-2", _FOUNDATION), ("S-3", _FRAMEWORK), ("S-3", _DATA_OPS)]))
+    assert parse_finding_layers(tables + "\n\n" + section_7) == {"S-1": _DATA_OPS, "S-2": _DEPLOYMENT, "S-3": _FRAMEWORK, "T-2": _FRAMEWORK}
+    assert parse_finding_layers(_layers_doc(_per_finding_table([("S-1", ""), ("S-1", _DATA_OPS)]))) == {}, "a blank first row in the tables is the answer, too"
+    assert parse_finding_layers("\n".join(["| ID | MAESTRO Layer |", "|---|---|", "| AGP-01 | %s |" % _DATA_OPS, "| AGP-1 | %s |" % _FOUNDATION])) == {"AGP-1": _DATA_OPS}, \
+        "two spellings of one canonical ID are one finding"
+
+
+def test_a_cell_is_stripped_unbolded_and_decoded_as_parse_markdown_table_gives_it():
+    rows = [["**S-1**", "[NEW]", "Gateway", "**" + _DATA_OPS + "**", "A threat.", "High"],
+            ["S-2", "[NEW]", "Gateway", "   " + _FOUNDATION + "\t", "A threat.", "High"],
+            ["S-3", "[NEW]", "Gateway", "L1 &#124; A &lt;b&gt; &amp;lt; &#35; x", "A threat.", "High"],
+            ["S-4&#10;", "[NEW]", "Gateway", "&#10;L4 &#10;", "A threat.", "High"]]
+    layers = parse_finding_layers(_gfm(_PER_FINDING_HEADER, rows))
+    assert layers == {"S-1": _DATA_OPS, "S-2": _FOUNDATION, "S-3": "L1 | A <b> &lt; # x", "S-4": "L4"}, "one decode, never two"
+    assert layers["S-4"] == "L4", "whitespace that a reference decodes to at a cell's edge is stripped, as every caller's own strip did"
+
+
+@pytest.mark.parametrize("first_cell", ["S-1x", "TBD", "—", "", "S-1234567", "S 1", "ID", "S-١", "s-1", "X-1", "S-1 (NEW)"])
+def test_a_row_whose_first_cell_is_not_an_allow_listed_finding_id_is_ignored(first_cell):
+    doc = _layers_doc(_per_finding_table([(first_cell, _POISON), ("S-2", _DATA_OPS)]))
+    assert parse_finding_layers(doc) == {"S-2": _DATA_OPS}
+
+
+@pytest.mark.parametrize("text", ["| ID | MAESTRO Layer |\n| S-1 | L1 |\n", "x\n| ID | MAESTRO Layer |\n\n| S-1 | L1 |\n"],
+                         ids=["no-separator-row", "a-blank-line-where-the-separator-goes"])
+def test_a_header_with_no_separator_row_under_it_is_no_table(text):
+    assert parse_finding_layers(text) == {}
+
+
+# Each of these holds a row for T-9 that a reader which ignored the header rule would take, so none of them is read.
+UNREAD_TABLES = [
+    ("the-phase-1-inventory", _gfm(["Component", "DFD Type", "MAESTRO Layer", "Description"], [["T-9", "Process", _POISON, "A text."]])),
+    ("sections-6-risk-by-layer", _gfm(["MAESTRO Layer", "Finding Count", "Highest Severity"], [["T-9", "3", "High"]])),
+    ("sections-4b-finding-id-table", _gfm(["Finding ID", "MAESTRO Layer", "Composite"], [["T-9", _POISON, "3.1"]])),
+    ("a-table-with-no-layer-column", _gfm(["ID", "Component", "Threat"], [["T-9", "Gateway", "A threat."]])),
+    ("an-id-column-that-is-not-first", _gfm(["Status", "ID", "MAESTRO Layer"], [["[NEW]", "T-9", _POISON]])),
+    ("a-lower-case-id-header", _gfm(["id", "MAESTRO Layer"], [["T-9", _POISON]])),
+    ("a-key-value-block", _gfm(["Field", "Value"], [["**id**", "T-9"], ["**maestro layer**", _POISON]])),
+    ("a-header-with-no-name-in-its-first-cell", _gfm(["", "ID", "MAESTRO Layer"], [["T-9", "T-9", _POISON]])),
+]
+
+
+@pytest.mark.parametrize("name,table", UNREAD_TABLES, ids=[case[0] for case in UNREAD_TABLES])
+def test_a_table_whose_first_header_cell_is_not_id_or_that_has_no_layer_column_is_never_read(name, table):
+    doc = _layers_doc(table, _per_finding_table([("S-1", _FOUNDATION)]))
+    assert parse_finding_layers(doc) == {"S-1": _FOUNDATION}, name
+
+
+# ---- code fences ---------------------------------------------------------------------------------------------------
+
+_QUOTED_TABLE = _per_finding_table([("T-9", _POISON)])
+_REAL_TABLE = _per_finding_table([("S-1", _FOUNDATION)])
+_AFTER_FENCE = {"S-1": _FOUNDATION}
+FENCED_TABLES = [
+    ("a-backtick-fence", "```\n%s\n```\n\n%s" % (_QUOTED_TABLE, _REAL_TABLE), _AFTER_FENCE),
+    ("a-tilde-fence", "~~~\n%s\n~~~\n\n%s" % (_QUOTED_TABLE, _REAL_TABLE), _AFTER_FENCE),
+    ("a-longer-fence-with-an-info-string", "````markdown\n%s\n````\n\n%s" % (_QUOTED_TABLE, _REAL_TABLE), _AFTER_FENCE),
+    ("a-fence-led-by-spaces", "   ```\n%s\n   ```\n\n%s" % (_QUOTED_TABLE, _REAL_TABLE), _AFTER_FENCE),
+    ("the-table-starts-on-the-line-after-the-closing-fence", "```\n%s\n```\n%s" % (_QUOTED_TABLE, _REAL_TABLE), _AFTER_FENCE),
+    ("a-closer-of-the-other-character-leaves-the-fence-open", "```\n%s\n~~~\n\n%s" % (_QUOTED_TABLE, _REAL_TABLE), {}),
+    ("a-shorter-closer-leaves-the-fence-open", "````\n%s\n```\n\n%s" % (_QUOTED_TABLE, _REAL_TABLE), {}),
+    ("an-unclosed-fence-hides-every-table-after-it", "```\n%s\n\n%s" % (_QUOTED_TABLE, _REAL_TABLE), {}),
+    ("a-fence-ends-the-table-it-interrupts",
+     "| ID | MAESTRO Layer |\n|---|---|\n| S-1 | %s |\n```\n| S-2 | %s |\n```\n| S-3 | %s |" % (_FOUNDATION, _POISON, _POISON), _AFTER_FENCE),
+]
+
+
+@pytest.mark.parametrize("name,fenced,expected", FENCED_TABLES, ids=[case[0] for case in FENCED_TABLES])
+def test_a_per_finding_table_inside_a_code_fence_is_not_read(name, fenced, expected):
+    assert parse_finding_layers(_layers_doc("### 3.1 Spoofing (S)", fenced)) == expected
+    assert parse_finding_layers(_layers_doc("### 3.1 Spoofing (S)", fenced.replace("\n", "\r\n"))) == expected, "a CRLF file reads the same"
+
+
+def test_the_fence_rule_is_the_one_that_match_heading_states_and_each_line_keeps_its_own_index():
+    assert list(_unfenced_lines(["a", "```", "b", "```", "c", "~~~", "d"])) == [(0, "a"), (4, "c")], "an unclosed fence covers the rest"
+    assert list(_unfenced_lines([])) == []
+    for _name, text, expected in FENCE_CASES:
+        again = next((index for index, line in _unfenced_lines(text.split("\n")) if re.search(_QUOTED, line)), None)
+        assert again == expected == match_heading(_QUOTED, text, outside_fences=True), _name
+
+
+# ---- rows ----------------------------------------------------------------------------------------------------------
+
+def test_a_long_row_is_read_by_the_headers_positions_and_a_short_row_is_skipped_without_a_word(capsys):
+    table = "\n".join(["| ID | Status | Component | MAESTRO Layer | Threat | Risk Level |", "|---|---|---|---|---|---|",
+                       "| S-1 | [NEW] | Gateway | %s | Output piped through cat \\| sh | High |" % _FOUNDATION,   # GFM's \| splits the Threat cell: seven cells
+                       "| S-2 | [NEW] | Gateway | %s |" % _DATA_OPS,                                           # four cells: short
+                       "| S-3 | [NEW] | Gateway | %s | A threat. | High |" % _DEPLOYMENT,
+                       "| S-4 | [NEW] | Gateway | %s | A threat. | High | one | two |" % _FRAMEWORK])           # two cells too many
+    assert parse_finding_layers(_layers_doc(table)) == {"S-1": _FOUNDATION, "S-3": _DEPLOYMENT, "S-4": _FRAMEWORK}
+    assert capsys.readouterr().err == "", "this reader flags nothing: no warning for a row that it skips"
+
+
+def test_a_row_with_an_extra_pipe_is_read_by_position_where_the_reference_set_refuses_it():
+    """T067a's M1 belongs to ``parse_reference_set``. Here the same row, in Section 7, reads by position, and so does one in a per-finding table."""
+    wide = _section_7_table([("S-1", _DATA_OPS), ("T-2", _FOUNDATION)]).replace("| A threat. | High | A fix. |", "| Pipes \\| in a threat | High | A fix. |", 1)
+    with pytest.raises(ReferenceSetError, match="more cells than its header"):
+        parse_reference_set(wide)
+    assert parse_finding_layers(wide) == {"S-1": _DATA_OPS, "T-2": _FOUNDATION}
+    tables = _layers_doc(_per_finding_table([("LLM-5", _FOUNDATION)]).replace("| A threat. |", "| Output \\| sh |"), wide)
+    assert parse_finding_layers(tables) == {"LLM-5": _FOUNDATION, "S-1": _DATA_OPS, "T-2": _FOUNDATION}
+
+
+def test_a_table_on_the_first_line_of_the_file_that_runs_to_its_end_and_an_indented_one_are_read():
+    assert parse_finding_layers("| ID | MAESTRO Layer |\n|---|---|\n| S-1 | %s |" % _DATA_OPS) == {"S-1": _DATA_OPS}
+    assert parse_finding_layers("   | ID | MAESTRO Layer |   \n   |---|---|\n   | S-1 | %s |  \n" % _DATA_OPS) == {"S-1": _DATA_OPS}, "an indented table"
+
+
+def test_a_crlf_file_reads_as_the_same_file_with_lf_line_ends():
+    doc = _layers_doc("### 4.1 Agentic Threats (AG)", _per_finding_table([("AG-1", _FOUNDATION), ("AG-2", "")]), _section_7_table([("AG-2", _DATA_OPS)]))
+    assert parse_finding_layers(doc.replace("\n", "\r\n")) == parse_finding_layers(doc) == {"AG-2": _DATA_OPS, "AG-1": _FOUNDATION}
+
+
+# ---- one pass, and the same rows as parse_markdown_table ---------------------------------------------------------
+
+def _by_one_call_per_table(content):
+    """The per-finding tables read the way the spec describes: each through ``parse_markdown_table(content, start_line=<the line before its header>)``,
+    the first row of each ID, blank or not. The table's header is found by the rule that ``_per_finding_layers`` documents."""
+    lines = content.split("\n")
+    found = {}
+    for index, line in _unfenced_lines(lines):
+        if (line.strip().startswith("|") and not (index > 0 and lines[index - 1].strip().startswith("|")) and index + 1 < len(lines)
+                and re.match(r"^\|[\s\-:|]+\|$", lines[index + 1].strip())):
+            header = [decode_references(strip_bold(cell.strip())) for cell in line.strip().split("|")[1:-1]]
+            rows = parse_markdown_table(content, start_line=index - 1)
+            if rows and header[:1] == ["ID"] and "MAESTRO Layer" in header:
+                for row in rows:
+                    if tachi_parts.id_matches("finding", row["ID"].strip()):
+                        found.setdefault(tachi_parts.canonical_finding_id(row["ID"].strip()), row["MAESTRO Layer"].strip())
+    return found
+
+
+_FUZZ_LINES = [
+    "", "A line of prose.", "### 3.1 Spoofing (S)", "**OI Findings**:", "---", "```", "~~~", "````", "```python",
+    "| ID | Status | Component | MAESTRO Layer | Threat |", "|---|---|---|---|---|", "| ID | MAESTRO Layer |", "|:--|--:|",
+    "| **ID** | Component | **MAESTRO Layer** |", "| Finding ID | MAESTRO Layer | x |", "| Component | MAESTRO Layer |", "|---|---|---|",
+    "| S-1 | [NEW] | Gateway | L1 | A threat. |", "| T-2 | [NEW] | Gateway | | A threat. |", "| S-3 | L3 |", "| AGP-01 | L7 |", "| **E-4** | x | y |",
+    "| **L4** | z | extra |", "| nope | x | y | L9 | z |", "| S-5 | [NEW] | Gateway | L2 \\| pipe | A threat. |", "| S-6 | x | y | &#124; | z | w |",
+    "|", "||", "| ID |", "   | ID | MAESTRO Layer |   ", "| S-7 | L7 |   ", "\t| S-8 | L8 |", "| S-1 | [NEW] | Gateway | L5 | A threat. |",
+]
+
+
+def test_the_one_pass_reading_gives_what_one_parse_markdown_table_call_per_table_gives():
+    """The rows are read here by a loop of their own (``_per_finding_layers`` says why), so this pins the two readings together: on every
+    tracked ``threats.md`` and on random documents made of the lines that tell the two apart."""
+    paths = sorted((REPO_ROOT / "examples").rglob("threats.md")) + sorted((REPO_ROOT / "tests" / "scripts" / "fixtures").rglob("threats.md"))
+    assert len(paths) >= 30
+    tables = 0
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        found = _per_finding_layers(text.split("\n"))
+        assert found == _by_one_call_per_table(text), path.relative_to(REPO_ROOT).as_posix()
+        tables += bool(found)
+    assert tables >= 20, "the check read per-finding tables in a good number of files, so it is not vacuous"
+    rng = random.Random(374)
+    for _ in range(400):
+        lines = [rng.choice(_FUZZ_LINES) for _ in range(rng.randint(0, 40))]
+        text = "\n".join(lines)
+        assert _per_finding_layers(lines) == _by_one_call_per_table(text), text
+        parse_finding_layers(text)   # whatever the text, the reader raises nothing
+
+
+def test_parse_finding_layers_reads_section_7_with_one_table_call_and_no_more_whatever_the_file_holds(monkeypatch):
+    calls = []
+    original = parse_markdown_table
+
+    def counting(*args, **kwargs):
+        calls.append(kwargs.get("start_line"))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr("tachi_parsers.parse_markdown_table", counting)
+    tables = [_per_finding_table([("S-%d" % number, _FOUNDATION)]) for number in range(1, 201)]
+    layers = parse_finding_layers(_layers_doc(*tables, _section_7_table([("T-1", _DATA_OPS)])))
+    assert len(layers) == 201 and layers["T-1"] == _DATA_OPS and layers["S-200"] == _FOUNDATION
+    assert len(calls) == 1, "one call for Section 7's table, none for the 200 per-finding tables: each call splits the whole text again"
+    assert parse_finding_layers(_layers_doc(*tables)) == {"S-%d" % number: _FOUNDATION for number in range(1, 201)}
+    assert len(calls) == 1, "a file with no Section 7 makes no call"
+
+
+def test_a_file_of_a_great_many_tables_is_read_in_linear_time():
+    """The sizes are the test, as in S7-1's: one ``parse_markdown_table`` call per table would split these 120,000 lines 30,000 times, a
+    few minutes. The loop reads them in a fraction of a second, and the bound only turns a slow pass into a failure."""
+    started = time.perf_counter()
+    text = "\n".join("| ID | MAESTRO Layer |\n|---|---|\n| S-%d | L1 |\n" % number for number in range(1, 30001))
+    layers = parse_finding_layers(text)
+    assert len(layers) == 30000 and layers["S-30000"] == "L1"
+    assert parse_finding_layers("|" * 200000 + "\n" + "| ID | MAESTRO Layer |\n" * 20000) == {}
+    assert time.perf_counter() - started < 5, "the per-finding tables are no longer read in one linear pass"
+
+
+# ---- the shipped examples, as read-only inputs -------------------------------------------------------------------
+
+def _shipped_layers(relative):
+    """The ``maestro-layer`` of each result of a shipped SARIF file, by canonical finding ID, read with the standard library alone."""
+    layers = {}
+    for result in json.loads(_shipped_sarif(relative))["runs"][0]["results"]:
+        properties = result.get("properties") or {}
+        finding_id = (result.get("partialFingerprints") or {}).get("findingId/v1") or properties.get("id") or properties.get("findingId")
+        if finding_id and tachi_parts.id_matches("finding", finding_id) and "maestro-layer" in properties:
+            layers.setdefault(tachi_parts.canonical_finding_id(finding_id), properties["maestro-layer"])
+    return layers
+
+
+SHIPPED_LAYERS = [
+    # (example, the open findings of its reference set, how many get a layer, the ones that don't, how many of the layers the shipped
+    #  risk-scores.sarif also holds: each of them is equal to it)
+    ("agentic-app/sample-report", 86, 85, ["AGP-1"], 85),
+    ("maestro-reference", 110, 107, ["AGP-1", "AGP-2", "AGP-3"], 32),
+    ("mobile-banking-app/sample-report", 31, 31, [], 31),
+    ("predictive-ml-app/sample-report", 37, 37, [], 0),
+    ("consumer-agent-app/sample-report", 19, 0, _CONSUMER_IDS, 0),
+]
+
+
+@pytest.mark.parametrize("example,open_count,with_layer,without,compared", SHIPPED_LAYERS, ids=[case[0] for case in SHIPPED_LAYERS])
+def test_the_shipped_examples_give_each_finding_the_layer_that_their_own_scorer_wrote(example, open_count, with_layer, without, compared):
+    """T066's U-1, read-only: the layer is in the per-finding tables of four examples and in no contract section of the fifth, whose findings
+    are key-value blocks. Where the shipped scorer file holds a layer for a finding, it is the one that this reader gives."""
+    text = _example_threats(example)
+    open_ids = sorted({tachi_parts.canonical_finding_id(finding["id"]) for finding in parse_reference_set(text)["open"]}, key=tachi_parts.finding_sort_key)
+    layers = parse_finding_layers(text)
+    assert len(open_ids) == open_count
+    assert len([finding_id for finding_id in open_ids if finding_id in layers]) == with_layer
+    assert [finding_id for finding_id in open_ids if finding_id not in layers] == without
+    shipped = _shipped_layers(example + "/risk-scores.sarif")
+    shared = [finding_id for finding_id in open_ids if finding_id in layers and finding_id in shipped]
+    assert len(shared) == compared
+    assert [finding_id for finding_id in shared if shipped[finding_id] != layers[finding_id]] == [], "the layer that v4.48.4's scorer wrote"
+    assert all(layer and layer == layer.strip() for layer in layers.values())
+
+
+def test_the_agentic_app_rows_wider_than_their_header_give_the_layer_that_sits_before_the_pipe():
+    """``sample-report/threats.md:315`` and ``threats.md:230`` (LLM-5): the GFM pipe is in the Threat cell, after the layer cell. A refusal of such a
+    row, as the reference set's, would stop the render of the example."""
+    for relative, line in (("agentic-app/sample-report", 315), ("agentic-app", 230)):
+        text = _example_threats(relative)
+        overlong = []
+        parse_markdown_table(text, "### 4.2 LLM Threats (LLM)", overlong=overlong)
+        assert line in overlong and text.split("\n")[line - 1].startswith("| LLM-5 |"), (relative, "premise: the row is wider than its header")
+        assert parse_finding_layers(text)["LLM-5"] == _FOUNDATION, relative

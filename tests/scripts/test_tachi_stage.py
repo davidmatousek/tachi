@@ -4541,6 +4541,69 @@ def test_a_numbered_list_section_7_gives_every_row_the_unclassified_layer_as_the
     assert layers == {"S-1": "Unclassified", "T-2": "Unclassified"} == renderer_layers(controls_renderer, text)
 
 
+# The v4.48.x form (T066's U-1, ADR-050 D2's chain, step 2): a threat model of that version holds each finding's layer in the MAESTRO Layer column of its
+# own row in a §3 or §4 table, and in no Section 7 or Section 1 cell. ``tachi_parsers.parse_finding_layers`` reads those rows for the planner and both
+# renderers, so a row's ``layer`` and the renderer's ``maestro-layer`` are one value (a second copy of the chain would flag every such finding).
+
+FINDING_TABLE_HEAD = ["| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |", "|---|---|---|---|---|---|---|---|---|"]
+DATA_OPS, ECOSYSTEM, SECURITY, FOUNDATION = ("L2 " + _DASH + " Data Operations", "L7 " + _DASH + " Agent Ecosystem", "L6 " + _DASH + " Security and Compliance",
+                                             "L1 " + _DASH + " Foundation Model")
+FINDING_TABLES = "\n".join(
+    ["## 3. STRIDE Threat Tables", "", "### 3.1 Spoofing (S)", ""] + FINDING_TABLE_HEAD + [
+        "| S-1 | [NEW] | Alpha | %s | A threat. | Medium | High | High | A fix. |" % DATA_OPS,          # Alpha's Section 1 layer is L5: the row comes first
+        "| I-3 | [NEW] | beta | %s | A threat. | Medium | High | High | A fix. |" % ECOSYSTEM,       # Section 7's cell is set too, and comes before it
+        "| D-1 | [NEW] | Delta | | A threat. | Medium | High | High | A fix. |",                       # a blank cell gives nothing
+        "", "## 4. AI Threat Tables", "", "### 4.2 LLM Threats (LLM)", "", "---", "", "**OI Findings (Output Integrity)**:", ""] + FINDING_TABLE_HEAD + [
+        "| D-2 | [NEW] |  | %s | A threat. | Medium | High | High | A fix. |" % SECURITY,              # a bold-labelled sub-table, and a row with no component
+        "| R-1 | [NEW] | GAMMA | %s | Output piped through cat \\| sh | Medium | High | High | A fix. |" % FOUNDATION,   # a GFM pipe after the layer cell
+        "", "```"] + FINDING_TABLE_HEAD + [
+        "| E-1 | [NEW] | Gamma | L3 " + _DASH + " Agent Framework | A threat. | Medium | High | High | A fix. |", "```", ""])
+V48_CELLS = {"S-1": ("Alpha", ""), "T-2": ("Beta", ""), "I-3": ("beta", FOUNDATION), "D-1": ("Delta", ""), "D-2": ("", ""), "E-1": ("Gamma", ""), "R-1": ("GAMMA", "")}
+V48_LAYERS = {"S-1": DATA_OPS,                      # its own row, ahead of Alpha's Section 1 layer
+              "T-2": "L3 " + _DASH + " Agent Frameworks",   # no row of its own: Beta's Section 1 layer, as before
+              "I-3": FOUNDATION,                    # Section 7's cell, ahead of its row's
+              "D-1": "Unclassified",                # a blank cell, and Section 1 doesn't list Delta
+              "D-2": SECURITY,                      # a sub-table's row
+              "E-1": "Unclassified",                # its only row is quoted in a code fence, and Gamma's Section 1 cell is blank
+              "R-1": FOUNDATION}                    # a row wider than its header, read by position, ahead of GAMMA's Section 1 layer
+
+
+def with_finding_tables(text, tables=FINDING_TABLES):
+    """``text`` with the §3 and §4 tables of a v4.48.x threat model, ahead of Section 6."""
+    assert "## 6. Risk Summary" in text
+    return text.replace("## 6. Risk Summary", tables + "\n## 6. Risk Summary", 1)
+
+
+def v48_project(stage, cli, tmp_path, monkeypatch):
+    h = controls_routed(stage, cli, tmp_path, monkeypatch, {finding_id: "NEW" for finding_id in V48_CELLS})
+    text = with_finding_tables(with_layers(h.threats.read_text(encoding="utf-8"), V48_CELLS))
+    h.threats.write_text(text, encoding="utf-8")
+    return h, text
+
+
+def test_a_controls_row_holds_the_layer_of_its_own_row_in_a_per_finding_table_as_the_renderer_gives_it(stage, cli, controls_renderer, tmp_path, monkeypatch):
+    h, text = v48_project(stage, cli, tmp_path, monkeypatch)
+    res = h.plan_cli()
+    assert res.code == 0, res.describe()
+    layers = {finding_id: row["layer"] for finding_id, row in unit_rows(h).items()}
+    assert layers == V48_LAYERS
+    assert layers == renderer_layers(controls_renderer, text), "the planner's layer is the renderer's, finding by finding: one reader gives both steps 1 and 2"
+
+
+def test_a_per_finding_table_that_a_code_fence_quotes_gives_no_layer_in_the_plan_or_the_renderer(stage, cli, controls_renderer, tmp_path, monkeypatch):
+    h, text = v48_project(stage, cli, tmp_path, monkeypatch)
+    assert h.plan_cli().code == 0
+    assert unit_rows(h)["E-1"]["layer"] == renderer_layers(controls_renderer, text)["E-1"] == "Unclassified"
+    unquoted = text.replace("```\n", "")
+    assert "```" not in unquoted and renderer_layers(controls_renderer, unquoted)["E-1"] == "L3 " + _DASH + " Agent Framework", "premise: without the fence, the row is read"
+
+
+def test_a_character_that_step_10_forbids_in_a_layer_that_a_per_finding_row_gives_ends_the_plan_naming_the_finding(stage, cli, tmp_path, monkeypatch):
+    h, text = v48_project(stage, cli, tmp_path, monkeypatch)
+    h.threats.write_text(text.replace(DATA_OPS, "L2 " + ESC + _DASH + " Data Operations", 1), encoding="utf-8")
+    assert_forbidden_refusal(h, h.plan_cli(), ESC, "threats.md", "layer", "S-1", "/tachi.threat-model")
+
+
 def test_a_carried_row_holds_its_layer_too_and_the_layer_is_not_a_carried_key(stage, cli, tmp_path, monkeypatch):
     """The layer is the current threat model's, like the row's other text. It is not in the baseline's persisted result, which holds the
     judgment values only."""

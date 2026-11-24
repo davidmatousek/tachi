@@ -673,10 +673,8 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
             name = row.get("Component", "").strip()
             if name and name not in run.component_info:
                 run.component_info[name] = (row.get("Type", "").strip(), row.get("MAESTRO Layer", "").strip())
-        for row in tachi_parsers.parse_markdown_table(text, tachi_parsers.REFERENCE_SET_SECTION):
-            finding_id = row.get("Finding ID", "").strip()
-            if tp.id_matches("finding", finding_id):
-                run.finding_layer.setdefault(tp.canonical_finding_id(finding_id), row.get("MAESTRO Layer", "").strip())
+        for canonical, layer in tachi_parsers.parse_finding_layers(text).items():   # D2's chain, steps 1 and 2: Section 7's cell, else the finding's own row in §3 or §4
+            run.finding_layer.setdefault(canonical, layer)
         for zone_row in tachi_parsers.parse_scope_data(text)["trust_boundaries"]:
             zone, label = zone_row["zone"], zone_row["trust-level"]
             if not zone:
@@ -688,6 +686,12 @@ def _prepare(run: Run, plan: Mapping[str, Any], inputs: Mapping[str, bytes], ref
         grouped = tachi_parsers.parse_correlation_groups(text, member_ids=open_ids)
         for problem in grouped["errors"]:
             run.issues.append("Section 4a of threats.md, line %d: the row %s %s, so it is skipped" % (problem["line"], repr(problem["row"][:60]), problem["reason"]))
+        for repeat in grouped["repeated"]:   # PM W4 ruling R-F: D8's claim rule keeps an ID in the first group that lists it, and a run says so
+            run.issues.append("Section 4a of threats.md: %s" % repeat["reason"])
+        if grouped["repeated"]:
+            count = len(grouped["repeated"])
+            run.warn("correlation-member-repeated", "Section 4a of threats.md lists %d finding%s in more than one correlation group, and the first group "
+                     "claims each: %s" % (count, "" if count == 1 else "s", _named([repeat["id"] for repeat in grouped["repeated"]])))
         run.groups = grouped["groups"]
     _refuse_forbidden_inputs(run, reference, os.path.basename(run.threats_path), kept)   # NFR-10: a value from an input is checked where it is taken
     # D8 (P0-3): only a group with an ID reaches the emitter, whose role assignment, ``correlation-*`` properties and ruling C's
@@ -848,7 +852,12 @@ def _reachability(trust: Optional[str], zone: Optional[str], auth: int, net: int
 
 
 def _identity(run: Run, finding: Mapping[str, Any]) -> Row:
-    """A row's identity, from the reference set and §1 of threats.md."""
+    """A row's identity, from the reference set and §1 of threats.md.
+
+    The layer is ADR-050 D2's chain: Section 7's cell, else the finding's own row in a per-finding table (both in ``run.finding_layer``,
+    from ``tachi_parsers.parse_finding_layers``), else the finding's own (the SARIF fallback's), else its component's §1 layer, else
+    ``Unclassified``.
+    """
     component = finding["component"] or "Unspecified"
     info = run.component_info.get(component)
     if info is None:
