@@ -62,6 +62,13 @@ sits just above PARTS, so that it merges beside T040's code and never inside it:
                             at and above it
   id-reuse/pr2-no-mark      the same baseline with no mark, as every pre-PR 2 baseline: the first PR 2 run seeds its mark from live IDs
                             and Section 4c (PM-T7)
+PR 2's run directories (T103) sit in pr2-runs/, six scenarios in the same layout (run/, baseline/ and expected-outcomes.json), and their code
+is the block that starts at "T103: PR 2's run directories", just above PARTS. The first four are for check-threat-model.py: forms (every provenance
+form), truncation (a stateless run whose dispatches are cut short and re-dispatched), and reissue-mark and reissue-no-mark (T148's id-reuse runs, with
+the records that make their provenance whole). The last two are the trees stage and the report stage of the forms run, before and after
+assemble-report.py trees. A record's brief, a brief's inputs, a plan and a batch input hold absolute paths, so the committed copy is built for the
+root PR2R_ROOT, a path that exists nowhere, and materialize(scenario, directory) builds the same scenario for a real directory, with every path and
+every digest that binds the files rewritten for it.
 """
 
 from __future__ import annotations
@@ -4714,8 +4721,8 @@ def part_chain_cap(rng: Rng) -> dict:
 
 
 def part_pr2_runs(rng: Rng) -> dict:
-    """T103: threat-model run dirs (records, briefs, ID map, Phase 1 tables), tree batches, report parts."""
-    return {}
+    """T103: threat-model run dirs (records, briefs, ID map, Phase 1 tables), tree batches, report parts (code below the id-reuse part)."""
+    return pr2r_files(PR2R_ROOT)
 
 
 # --------------------------------------------------------------------------- T148: PR 2's fixture cases
@@ -5232,6 +5239,935 @@ def part_id_reuse_pr1_pr2(rng: Rng) -> dict:
     files = part_id_reuse(rng)
     files.update(id_reuse_pr2_files())
     return files
+
+
+# --------------------------------------------------------------------------- T103: PR 2's run directories (pr2-runs/)
+# Six scenarios for the two checks and the two assemblers (spec S-4; ADR-050 D11 to D14). Each is a directory of the committed copy, under
+# pr2-runs/, that holds run/ (the {out} directory of a threat-model run), baseline/ where the run has a baseline, and expected-outcomes.json
+# (tachi.fixture-expected/1). A run's .tachi-build/ is written as tachi-build/, because .gitignore excludes the dotted name. Every name and
+# every finding is invented, and every record, brief, plan, batch input and part follows the contracts' closed key sets: the tests read them
+# back through the shipped validators.
+#   forms             a baseline run in which the findings take every provenance form (FR-N4.5): a dispatch record that keeps the ID, one that
+#                     renumbers it, one whose agent folds into another prefix (OI and MI into LLM, TE into AG: #356's table), a baseline
+#                     carry-forward, a Phase 3.6 pattern finding, and the dispositions that match a carried finding or merge into one
+#   truncation        a run with no baseline in which two planned dispatches are cut short and re-dispatched: a split into one record for each
+#                     component, then a repeat for two of the pieces, with each of the four reasons a record can carry (FR-N4.7, item O-alpha)
+#   reissue-mark      T148's id-reuse/pr2 run (its threats.md, byte for byte) with the records that make its provenance whole, so that the
+#                     check meets ruling B's reissued IDs alone
+#   reissue-no-mark   the same for id-reuse/pr2-no-mark, the first PR 2 run on a baseline with no mark (PM-T7)
+#   trees             the forms run's trees stage, as the planner and the agents leave it before assemble-report.py trees runs: the plan, two
+#                     batch inputs and parts, every generated tree, and the baseline's trees (Rule 2, with Rule 3's decisions in the parts)
+#   report            the same run after that assembly (its attack-trees/ and manifest) and its report stage: the plan, eight batch inputs and
+#                     parts, one narrative that breaks the numeral ban and one that is cut at its limit
+# Everything with an absolute path in it (a record's brief and prompt, a brief's inputs, a plan, a batch input) is built for a root. The
+# committed copy uses PR2R_ROOT, a path that exists nowhere, and materialize() builds a scenario for a real directory, so that the digests
+# that bind the plan, its inputs and its parts hold there too. Names here start pr2r_ or PR2R_.
+PR2R_ROOT = "/synthetic-case"
+PR2R_VERSION = "4.48.5"
+PR2R_IDS = {"trees": "20261123T101500Z-7a1c3e5d9b02", "report": "20261123T103000Z-4e8f2a6c1d07"}
+PR2R_CREATED = {"trees": "2026-11-23T10:15:00Z", "report": "2026-11-23T10:30:00Z"}
+PR2R_STAGE_AGENT = {"trees": "tachi-attack-tree-delta", "report": "tachi-threat-report"}
+PR2R_TREES_BATCH = 12  # the trees stage's batch size (S1P-A57)
+PR2R_SCENARIOS = ("forms", "truncation", "reissue-mark", "reissue-no-mark", "trees", "report")
+PR2R_BASELINE_TREE_NOTE = "Carried from the baseline run."  # the line that tells a baseline's tree from a fresh one
+
+# The Phase 2 roster (.claude/skills/tachi-shared/references/agent-roster-shared.md), in its order: the agent, its dispatch key, the prefix its own
+# findings carry and the prefix Phase 3 files them under today. A fold is a row whose last two cells differ.
+PR2R_ROSTER = (
+    ("tachi-spoofing", "S", "S", "S"), ("tachi-tampering", "T", "T", "T"), ("tachi-repudiation", "R", "R", "R"),
+    ("tachi-info-disclosure", "I", "I", "I"), ("tachi-denial-of-service", "D", "D", "D"),
+    ("tachi-privilege-escalation", "E", "E", "E"), ("tachi-agent-autonomy", "AG", "AG", "AG"), ("tachi-tool-abuse", "AG", "AG", "AG"),
+    ("tachi-human-trust-exploitation", "AG", "TE", "AG"), ("tachi-prompt-injection", "LLM", "LLM", "LLM"),
+    ("tachi-data-poisoning", "LLM", "LLM", "LLM"), ("tachi-model-theft", "LLM", "LLM", "LLM"),
+    ("tachi-output-integrity", "LLM", "OI", "LLM"), ("tachi-misinformation", "LLM", "MI", "LLM"),
+)
+PR2R_EMITS = {row[0]: row[2] for row in PR2R_ROSTER}
+PR2R_FILES_UNDER = {row[0]: row[3] for row in PR2R_ROSTER}
+PR2R_AGENT_OF_STRIDE = {row[1]: row[0] for row in PR2R_ROSTER[:6]}
+PR2R_AGENT_OF_SUB = {"AG:autonomy": "tachi-agent-autonomy", "AG:tool": "tachi-tool-abuse", "TE": "tachi-human-trust-exploitation",
+                     "LLM:inject": "tachi-prompt-injection", "LLM:poison": "tachi-data-poisoning", "LLM:theft": "tachi-model-theft",
+                     "OI": "tachi-output-integrity", "MI": "tachi-misinformation"}
+PR2R_CATEGORY_KEY = {"S": "spoofing", "T": "tampering", "R": "repudiation", "I": "information_disclosure", "D": "denial_of_service",
+                     "E": "elevation_of_privilege", "AG": "agentic", "AGP": "agentic", "TE": "agentic", "LLM": "llm", "OI": "llm", "MI": "llm"}
+PR2R_CATEGORY_KEYS = ("spoofing", "tampering", "repudiation", "information_disclosure", "denial_of_service", "elevation_of_privilege",
+                      "agentic", "llm")
+PR2R_PATTERNS = ("agent_collusion", "emergent_behavior", "temporal_attack", "trust_exploitation", "communication_vulnerability",
+                 "resource_competition")
+# What each scenario does to the gated world. forms: three findings of the folding agents become NEW findings that Phase 3 files under another
+# prefix, and the pattern finding is NEW (the world has them all carried). Matched and merged dispositions name an ID and the symbol that Phase 3's
+# ID map gives it: = matched exactly, ~ matched by similarity, > merged into. The agent that returned the duplicate is the one that owns the target.
+PR2R_FORMS_RELABEL = (("OI-3", "LLM"), ("MI-2", "LLM"), ("TE-2", "AG"))
+PR2R_FORMS_EXTRAS = (("S-1", "="), ("T-2", "~"), ("AG-3", "~"), ("LLM-6", "="), ("T-4", ">"), ("E-2", ">"),
+                     ("I-1", "="), ("I-3", "="), ("I-4", "="), ("I-4", ">"))  # the last four put the one new I finding at its own number: kept as is
+PR2R_TRUNCATION_EXTRAS = (("T-3", ">"), ("S-2", ">"))
+# A planned dispatch that was cut short: (agent, why, findings it had listed, {component of a replacement: (why, findings listed)} for the
+# replacements that were cut short too). The agent's planned dispatch is split into one replacement for each component of its scope, and a
+# replacement that is cut short is repeated once (item O-alpha, "Lineage").
+PR2R_TRUNCATIONS = (
+    ("tachi-agent-autonomy", "no_end_marker", 2, {"planner-agent": ("timed_out", 0)}),
+    ("tachi-human-trust-exploitation", "agent_failed", 0, {"worker-2": ("overflow_error", 1)}),
+)
+# What an earlier run resolved, for the forms baseline's Section 4c: IDs above the baseline's live ones, under prefixes the forms run issues no NEW
+# finding for, so that no ID of the run is reissued.
+PR2R_EARLIER = (
+    ("D-6", "legacy-batch-1", "A nightly export route on legacy-batch-1 accepted requests with no check on the caller.", "Medium",
+     "Component 'legacy-batch-1' removed from architecture"),
+    ("E-5", "report-export-2", "A shared export account on report-export-2 could approve its own report requests.", "Low",
+     "Component 'report-export-2' removed from architecture"),
+)
+_PR2R_CACHE: dict = {}
+
+
+def pr2r_sha(text: str) -> str:
+    """The SHA-256 of a file as the generator writes it, which is what every digest in a plan binds."""
+    return hashlib.sha256(_canonical_text(text)).hexdigest()
+
+
+def pr2r_agent_of(finding: dict) -> str:
+    return PR2R_AGENT_OF_SUB[finding["sub"]] if finding["sub"] else PR2R_AGENT_OF_STRIDE[finding["prefix"]]
+
+
+def pr2r_origin(finding: dict) -> str:
+    """Where FR-N4.5 finds a final finding's provenance: a dispatch record (class 1), a baseline carry-forward (class 2) or a named rule (class 3)."""
+    if finding["status"] != STATUS_NEW:
+        return "carried"
+    return "rule" if finding["prefix"] == "AGP" else "record"
+
+
+def pr2r_rebuild(world: dict, changes: dict) -> dict:
+    """A copy of a world whose findings are re-made: changes maps an old ID to the keys that differ (prefix, num, status). Groups follow, as in D8."""
+    mapping, findings = {}, []
+    for source in world["findings"]:
+        finding = dict(source, **changes.get(source["id"], {}))
+        finding["id"] = finding_id_text(finding["prefix"], finding["num"])
+        mapping[source["id"]] = finding["id"]
+        findings.append(finding)
+    findings.sort(key=lambda f: prefix_rank(f["id"]))
+    by_id = {f["id"]: f for f in findings}
+    groups = []
+    for source in world["groups"]:
+        members = [by_id[mapping[m["id"]]] for m in source["members"]]
+        ordered = (sorted((m for m in members if m["prefix"] in STRIDE_PREFIXES_ORDER), key=lambda m: prefix_rank(m["id"])) +
+                   sorted((m for m in members if m["prefix"] not in STRIDE_PREFIXES_ORDER), key=lambda m: prefix_rank(m["id"])))
+        for position, member in enumerate(ordered):
+            member["group"], member["primary"] = source["id"], position == 0
+        groups.append(dict(source, members=ordered))
+    return clone_world(world, findings=findings, groups=groups)
+
+
+def pr2r_dated(world: dict) -> dict:
+    """The gated world as a run of 2026-11-23 over a baseline of 2026-11-09, whose threats.md names baseline/threats.md as its source."""
+    cfg = dict(world["cfg"], dates=dict(world["cfg"]["dates"], threats=PR2_RUN_DATE, baseline=PR2_BASELINE_DATE),
+               run_ids={"threats": PR2_RUN_ID, "baseline": PR2_BASELINE_RUN_ID}, baseline_source="baseline/threats.md")
+    return clone_world(world, cfg=cfg)
+
+
+def pr2r_forms_world() -> dict:
+    master = pr2r_dated(build_world("gated"))
+    top: dict = {}
+    for finding in master["findings"]:
+        top[finding["prefix"]] = max(top.get(finding["prefix"], 0), finding["num"])
+    changes = {"AGP-01": {"status": STATUS_NEW}}
+    for old_id, prefix in PR2R_FORMS_RELABEL:
+        top[prefix] += 1
+        changes[old_id] = {"prefix": prefix, "num": top[prefix], "status": STATUS_NEW}
+    return pr2r_rebuild(master, changes)
+
+
+def pr2r_stateless_world() -> dict:
+    """The same findings in a first run: all NEW, numbered from 1 for each prefix, the folded three last under the prefix Phase 3 files them in."""
+    master = pr2r_dated(build_world("gated"))
+    moved = dict(PR2R_FORMS_RELABEL)
+    order: dict = {}
+    for finding in master["findings"]:
+        if finding["id"] not in moved:
+            order.setdefault(finding["prefix"], []).append(finding["id"])
+    for old_id, prefix in PR2R_FORMS_RELABEL:
+        order.setdefault(prefix, []).append(old_id)
+    changes = {old_id: {"prefix": prefix, "num": number, "status": STATUS_NEW}
+               for prefix, ids in order.items() for number, old_id in enumerate(ids, start=1)}
+    return clone_world(pr2r_rebuild(master, changes), resolved=[])
+
+
+def pr2r_stateless_text(world: dict) -> str:
+    """threats.md of a run with no baseline, the form a first run leaves: the front matter says so and Sections 4c and 8 are not there. The rest is
+    render_threats_md's own text, cut at the headings."""
+    text = render_threats_md(world)
+    _, marker, rest = text.partition("\n# Threat Model Report")
+    start, stop = rest.index("## 4c. Resolved Findings"), rest.index("## 5. Coverage Matrix")
+    rest = rest[:start] + rest[stop:]
+    start, stop = rest.index("## 8. Delta Summary"), rest.index("## Affected Assets")
+    return "\n".join(pr2_frontmatter(PR2_RUN_DATE, PR2_RUN_ID)) + marker + rest[:start] + rest[stop:]
+
+
+def pr2r_baseline_text(world: dict) -> str:
+    """The forms baseline's threats.md, cut down to Section 4c and Section 7: no mark line, as every baseline that an earlier release wrote."""
+    out = pr2_frontmatter(PR2_BASELINE_DATE, PR2_BASELINE_RUN_ID) + [
+        "# Threat Model Report", "",
+        "This file is a baseline run's threats.md, cut down to Section 4c and Section 7. It has no ID high-water mark line, as every baseline "
+        "that an earlier release wrote.", "",
+        "## 4c. Resolved Findings", "",
+        "Findings from the baseline that no longer apply in the current architecture. Each keeps its original ID, description and last-known risk level.",
+        "", table(("ID", "Component", "Threat", "Last Risk Level", "Resolution Reason"), PR2R_EARLIER), "", "---", "",
+        "## 7. Recommended Actions", "", table(PR2_ACTION_COLUMNS, ir2_baseline_rows(world))]
+    return "\n".join(out)
+
+
+def pr2r_dispatch_row(comp: dict) -> dict:
+    """One row of phase1/dispatch.json: the STRIDE letters that apply to the component, and AG and LLM where a sub-agent of theirs does."""
+    ai = []
+    if any(code.startswith("AG:") or code == "TE" for code in comp["ai"]):
+        ai.append("AG")
+    if any(code.startswith("LLM:") or code in ("OI", "MI") for code in comp["ai"]):
+        ai.append("LLM")
+    return {"component": comp["name"], "stride": [p for p in STRIDE_PREFIXES_ORDER if _stride_eligible(p, comp)], "ai": ai}
+
+
+def pr2r_planned(world: dict) -> list:
+    """The planned set (item O-alpha): one dispatch for each roster agent with a component in scope, a pure function of the dispatch table."""
+    rows = [pr2r_dispatch_row(comp) for comp in world["components"]]
+    planned = []
+    for agent, key, _, _ in PR2R_ROSTER:
+        scope = [row["component"] for row in rows if key in row["stride"] or key in row["ai"]]
+        if scope:
+            planned.append({"agent": agent, "scope": scope})
+    return planned
+
+
+def pr2r_inventory_text(world: dict) -> str:
+    return dumps({
+        "schema": "tachi.phase1-inventory/1",
+        "components": [{"name": c["name"], "dfd_type": c["dfd"], "maestro_layer": "L%d" % c["layer"], "description": c["desc"]} for c in world["components"]],
+        "data_flows": [{"source": s, "destination": d, "data": data, "protocol": proto} for s, d, data, proto in world["flows"]],
+        "trust_zones": [{"name": z["name"], "components": list(z["members"])} for z in world["zones"]]})
+
+
+def pr2r_dispatches(world: dict, truncations: Sequence = ()) -> list:
+    """Every dispatch of the run, in ID order: the planned ones, then each cut-short dispatch's replacements, then the repeats (item O-alpha, "IDs"
+    and "Lineage"). Each is {id, agent, origin, scope, status, reason, supersedes, superseded_by, attempt, partial}; partial is how many findings
+    a cut-short report listed before it stopped."""
+    records = []
+    for number, item in enumerate(pr2r_planned(world), start=1):
+        records.append({"id": "dsp-%03d" % number, "agent": item["agent"], "origin": "planned", "scope": item["scope"], "status": "complete",
+                        "reason": None, "supersedes": None, "superseded_by": [], "attempt": 1, "partial": 0})
+    by_agent = {record["agent"]: record for record in records}
+    follow, issued = [], len(records)
+    for agent, reason, partial, again in truncations:
+        parent = by_agent[agent]
+        parent.update(status="superseded", reason=reason, partial=partial)
+        for component in parent["scope"]:
+            issued += 1
+            child = {"id": "dsp-%03d" % issued, "agent": agent, "origin": "redispatch", "scope": [component], "status": "complete", "reason": None,
+                     "supersedes": parent["id"], "superseded_by": [], "attempt": 2, "partial": 0}
+            parent["superseded_by"].append(child["id"])
+            records.append(child)
+            follow.append((child, again.get(component)))
+    for child, ending in follow:
+        if ending is None:
+            continue
+        issued += 1
+        repeat = {"id": "dsp-%03d" % issued, "agent": child["agent"], "origin": "redispatch", "scope": list(child["scope"]), "status": "complete",
+                  "reason": None, "supersedes": child["id"], "superseded_by": [], "attempt": 3, "partial": 0}
+        child.update(status="superseded", reason=ending[0], partial=ending[1], superseded_by=[repeat["id"]])
+        records.append(repeat)
+    return records
+
+
+def pr2r_returns(world: dict, dispatches: list, extras: Sequence) -> dict:
+    """What each live record's agent listed, as {dispatch ID: [(target ID, kind)]}: kind is kept, =, ~ or >. A finding goes to the one live record of
+    its agent whose scope holds its component (the lineage rule makes that one), and a record lists its findings component by component."""
+    by_id = {f["id"]: f for f in world["findings"]}
+    wanted = [(f["id"], "kept") for f in world["findings"] if pr2r_origin(f) == "record"] + list(extras)
+    out = {d["id"]: [] for d in dispatches if d["status"] == "complete"}
+    for target, kind in wanted:
+        finding = by_id[target]
+        homes = [d for d in dispatches if d["status"] == "complete" and d["agent"] == pr2r_agent_of(finding) and finding["comp"] in d["scope"]]
+        if len(homes) != 1:
+            raise ValueError("%s has %d live records of its agent that cover %s" % (target, len(homes), finding["comp"]))
+        out[homes[0]["id"]].append((target, kind))
+    listed_first = {"kept": 0, "=": 1, "~": 2, ">": 3}  # on one finding, the surviving one comes before the duplicate that merges into it
+    for d in dispatches:
+        if d["id"] in out:
+            out[d["id"]].sort(key=lambda item: (d["scope"].index(by_id[item[0]]["comp"]), prefix_rank(item[0]), listed_first[item[1]]))
+    return out
+
+
+def pr2r_disposition(item: tuple) -> str:
+    target, kind = item
+    return target if kind == "kept" else kind + target
+
+
+def pr2r_local_ids(agent: str, count: int) -> list:
+    """An agent's own provisional IDs for one report: its prefix and a running number from 1, whatever the final IDs are."""
+    return ["%s-%d" % (PR2R_EMITS[agent], n) for n in range(1, count + 1)]
+
+
+def pr2r_provenance(world: dict, dispatches: list, returns: dict) -> dict:
+    """FR-N4.5's entry for every open finding and FR-N4.6's, worked out from the declaration: the class, and for a dispatch record the record, the local
+    ID, the disposition and its form (kept, renumbered or folded). Also the ID map's matched and merged entries, and the check's counts."""
+    kept, side = {}, []
+    for d in dispatches:
+        if d["id"] not in returns:
+            continue
+        for local, item in zip(pr2r_local_ids(d["agent"], len(returns[d["id"]])), returns[d["id"]]):
+            if item[1] == "kept":
+                kept[item[0]] = (d["id"], d["agent"], local)
+            else:
+                side.append({"record": d["id"], "agent": d["agent"], "local_id": local, "disposition": pr2r_disposition(item), "kind": item[1],
+                             "target": item[0]})
+    findings, counts = {}, {"recorded": 0, "carried": 0, "rule": 0, "renumbered": 0, "folded": 0}
+    for f in world["findings"]:
+        origin = pr2r_origin(f)
+        entry = {"class": {"record": 1, "carried": 2, "rule": 3}[origin], "origin": origin, "status": f["status"], "record": None, "agent": None,
+                 "local_id": None, "form": None}
+        if origin == "record":
+            record, agent, local = kept[f["id"]]
+            if local == f["id"]:
+                form = "kept"
+            elif PR2R_EMITS[agent] != f["prefix"] and PR2R_FILES_UNDER[agent] == f["prefix"]:
+                form = "folded"
+            elif local.rpartition("-")[0] == f["prefix"]:
+                form = "renumbered"
+            else:
+                raise ValueError("%s is kept by %s, which is not allowed that prefix" % (f["id"], agent))
+            entry.update(record=record, agent=agent, local_id=local, form=form)
+            counts["recorded"] += 1
+            if form != "kept":
+                counts[form] += 1
+        else:
+            counts["carried" if origin == "carried" else "rule"] += 1
+        findings[f["id"]] = entry
+    return {"findings": findings, "side": side, "counts": counts}
+
+
+def pr2r_batches_summary(dispatches: list) -> dict:
+    """Phase 2's six counts as the check's hand-off carries them (threat-model-records.md, "The stage record"): coverage-gap records are not counted."""
+    lineage = [d for d in dispatches if d["origin"] != "coverage-gap"]
+    planned = sum(1 for d in lineage if d["origin"] == "planned")
+    retried = sum(1 for d in lineage if d["origin"] == "redispatch")
+    return {"planned": planned, "dispatched": planned + retried, "done": sum(1 for d in lineage if d["status"] == "complete"), "retried": retried,
+            "split": sum(1 for d in lineage if d["status"] == "superseded"), "exhausted": sum(1 for d in lineage if d["status"] == "unrecovered")}
+
+
+PR2R_REISSUE = {"reissue-mark": ("pr2", {"LLM-7": "LLM-10"}), "reissue-no-mark": ("pr2-no-mark", {"S-5": "S-6", "T-4": "T-5"})}  # T148's scenarios and remaps
+PR2R_KEY_ORDER = ("S", "T", "R", "I", "D", "E", "AG", "LLM")  # a dispatch key, in the order the contracts list them
+
+
+def pr2r_case(name: str) -> dict:
+    """The part of a provenance scenario that names no root: its world, its texts and the dispatches with what each returned. Pure, and cached."""
+    cached = _PR2R_CACHE.get(name)
+    if cached is not None:
+        return cached
+    if name == "forms":
+        world, extras, truncations = pr2r_forms_world(), PR2R_FORMS_EXTRAS, ()
+        threats, baseline = render_threats_md(world), pr2r_baseline_text(world)
+    elif name == "truncation":
+        world, extras, truncations = pr2r_stateless_world(), PR2R_TRUNCATION_EXTRAS, PR2R_TRUNCATIONS
+        threats, baseline = pr2r_stateless_text(world), None
+    elif name in PR2R_REISSUE:  # T148's runs: the same threats.md and baseline, byte for byte, so that "S-4's PR 2 case" is the case itself
+        scenario, remap = PR2R_REISSUE[name]
+        files = id_reuse_pr2_files()
+        world, extras, truncations = ir2_run_world(remap), (), ()
+        threats, baseline = files["id-reuse/%s/run/threats.md" % scenario], files["id-reuse/%s/baseline/threats.md" % scenario]
+    else:
+        raise ValueError("not a provenance scenario: %r" % name)
+    dispatches = pr2r_dispatches(world, truncations)
+    returns = pr2r_returns(world, dispatches, extras)
+    case = {"name": name, "world": world, "stateless": baseline is None, "threats": threats, "baseline": baseline, "extras": extras,
+            "dispatches": dispatches, "returns": returns, "provenance": pr2r_provenance(world, dispatches, returns)}
+    _PR2R_CACHE[name] = case
+    return case
+
+
+def pr2r_reissued(case: dict) -> list:
+    """The NEW findings that ruling B's check flags in the two reissue scenarios (ADR-050 D7): an ID that the baseline's Section 7 or 4c holds, or
+    that sits at or below the baseline's mark. T148's expected-outcomes.json holds the same list, and a test compares the two."""
+    if case["name"] not in PR2R_REISSUE:
+        return []
+    mark = IR2_MARK if case["name"] == "reissue-mark" else None
+    used = [row[0] for row in ir2_baseline_rows(case["world"])] + [row[0] for row in IR2_EARLIER]
+    return [f["id"] for f in case["world"]["findings"]
+            if f["status"] == STATUS_NEW and (f["id"] in used or (mark is not None and f["num"] <= mark[f["prefix"]]))]
+
+
+def pr2r_provenance_files(name: str, root: str) -> dict:
+    """The files of one provenance scenario for a root, relative to its directory: run/ (threats.md, the architecture snapshot, tachi-build/ with the
+    Phase 1 tables, one brief and one record for each dispatch, and the ID map) and baseline/, where the run has one."""
+    case = pr2r_case(name)
+    world, dispatches, returns = case["world"], case["dispatches"], case["returns"]
+    out = root + "/run"
+    build = out + "/.tachi-build"
+    covered: dict = {}
+    for f in world["findings"]:
+        if f["status"] != STATUS_NEW:  # what the baseline already covers: every open finding that the run carries
+            key = f["prefix"] if f["prefix"] in STRIDE_PREFIXES_ORDER else ("AG" if PREFIX_CATEGORY[f["prefix"]] == "agentic" else "LLM")
+            covered.setdefault(f["comp"], set()).add(key)
+    files = {"run/threats.md": case["threats"], "run/architecture.md": architecture_text(world),
+             "run/tachi-build/phase1/inventory.json": pr2r_inventory_text(world),
+             "run/tachi-build/phase1/dispatch.json": dumps({"schema": "tachi.phase1-dispatch/1",
+                                                            "rows": [pr2r_dispatch_row(c) for c in world["components"]]})}
+    if case["baseline"] is not None:
+        files["baseline/threats.md"] = case["baseline"]
+    if name == "forms":  # the baseline's trees too, the trees scenario's files: a live trees plan on this run then meets Rule 3 units
+        by_id = {f["id"]: f for f in world["findings"]}
+        for finding_id in pr2r_trees_material(world)["with_tree"]:
+            files["baseline/attack-trees/%s-attack-tree.md" % finding_id.lower()] = pr2r_tree_file(world, by_id[finding_id], True)
+    idmap = {}
+    for d in dispatches:
+        brief, live = build + "/briefs/%s.json" % d["id"], d["status"] == "complete"
+        items = returns.get(d["id"], [])
+        count = len(items) if live else d["partial"]
+        files["run/tachi-build/records/%s.json" % d["id"]] = dumps({
+            "schema": "tachi.dispatch-record/1", "dispatch_id": d["id"], "agent_type": d["agent"], "origin": d["origin"],
+            "scope": {"components": d["scope"]}, "brief": brief, "prompt": "Read and follow the brief at %s." % brief, "end_marker": live,
+            "status": d["status"], "supersedes": d["supersedes"], "superseded_by": d["superseded_by"], "reason": d["reason"], "count": count,
+            "local_ids": pr2r_local_ids(d["agent"], count)})
+        files["run/tachi-build/briefs/%s.json" % d["id"]] = dumps({
+            "schema": "tachi.brief/1", "dispatch_id": d["id"], "agent_type": d["agent"], "targets": d["scope"],
+            "inputs": {"architecture": out + "/architecture.md", "inventory": build + "/phase1/inventory.json",
+                       "dispatch_table": build + "/phase1/dispatch.json"},
+            "baseline_focus": None if case["stateless"] else [
+                {"component": c, "covered": [k for k in PR2R_KEY_ORDER if k in covered.get(c, ())]} for c in d["scope"]]})
+        if live:
+            idmap[d["id"]] = [pr2r_disposition(item) for item in items]
+    files["run/tachi-build/idmap.json"] = dumps({"schema": "tachi.idmap/1", "records": idmap})
+    files["expected-outcomes.json"] = pr2r_provenance_expected(case)
+    return files
+
+
+def pr2r_case_notes(case: dict) -> list:
+    """What is particular to one provenance scenario, in words. Worked out from the declaration, so that a note can't name a record or an ID that
+    the scenario does not hold."""
+    name, dispatches, prov, world = case["name"], case["dispatches"], case["provenance"], case["world"]
+    if name == "forms":
+        by_form: dict = {}
+        for finding_id, entry in prov["findings"].items():
+            if entry["form"]:
+                by_form.setdefault(entry["form"], []).append(finding_id)
+        by_kind: dict = {}
+        for item in prov["side"]:
+            by_kind.setdefault(item["kind"], []).append(item["target"])
+        carried = {f["id"] for f in world["findings"] if f["status"] != STATUS_NEW}
+        fold_text = "; ".join("%s, kept by %s as its local %s%s" % (
+            f, prov["findings"][f]["agent"], prov["findings"][f]["local_id"],
+            " (also a carried finding's final ID)" if prov["findings"][f]["local_id"] in carried else "") for f in by_form["folded"])
+        rule = [f for f, entry in prov["findings"].items() if entry["class"] == 3]
+        empty = next(d["id"] for d in dispatches if not case["returns"][d["id"]])
+        new = next(f for f, entry in prov["findings"].items() if entry["class"] == 1 and entry["form"] == "renumbered")
+        home = prov["findings"][new]["record"]
+        recipes = (
+            "Edits that make the negative cases of D12's list, each one change to a materialized copy of this run. No records at all: remove "
+            "tachi-build/records/ and briefs/. A planned agent with no record: remove %s's record and brief (it lists nothing, so the ID map loses "
+            "only an empty list). A finding with two entries: add %s to the ID map under %s, and a local ID and count to that record. An orphan "
+            "finding: remove %s from the ID map under %s, and its local ID and one from the count. An extra key in a brief, or a prompt that "
+            "differs: edit the brief or the record. A Section 6 that disagrees: change one count in threats.md's risk-level table. The truncation "
+            "scenario's last repeat, set to unrecovered, ends a lineage." % (empty, new, empty, new, home))
+        return [
+            "Forms in this run. Kept as its agent numbered it: %s. Renumbered, a local number that differs from the final one: %s. Folded, where Phase "
+            "3 files an agent's own prefix under another (#356's table): %s. NEW with no disposition that names it, Phase 3.6's rule: %s. Every other "
+            "finding is carried, UNCHANGED or UPDATED and in the baseline." % (
+                ", ".join(by_form["kept"]), ", ".join(by_form["renumbered"]), fold_text, ", ".join(rule)),
+            "Dispositions that are not kept ones. Matched exactly: %s. Matched by similarity: %s. Merged into: %s. Such a disposition gives no finding "
+            "a provenance of its own, and a matched target must be a carried finding." % (
+                ", ".join(by_kind["="]), ", ".join(by_kind["~"]), ", ".join(by_kind[">"])),
+            "baseline_focus: every brief lists each target component with the categories that the baseline's carried findings cover. No mark line "
+            "is in the baseline, and no NEW ID is at or under what a seed from its live IDs and Section 4c would give, so the run has no reissued ID.",
+            "baseline/ also holds the baseline's attack-trees/, the same files as the trees scenario's, so that this one run can start a whole offline "
+            "pass: the check on these records, then a live trees plan and a report plan (the trees and report scenarios are that pass's later states, "
+            "built for a fixed plan ID).",
+            recipes,
+        ]
+    if name == "truncation":
+        parts = []
+        for d in (d for d in dispatches if d["status"] == "superseded"):
+            listed = "after %d finding%s" % (d["partial"], "" if d["partial"] == 1 else "s") if d["partial"] else "with no report"
+            kind = "planned dispatch" if d["attempt"] == 1 else "replacement for %s" % d["scope"][0]
+            into = ("split into %s to %s" % (d["superseded_by"][0], d["superseded_by"][-1])) if len(d["superseded_by"]) > 1 else (
+                "repeated by %s" % d["superseded_by"][0])
+            parts.append("%s (%s's %s) ended %s, with reason %s, and is %s" % (d["id"], d["agent"], kind, listed, d["reason"], into))
+        counts = pr2r_batches_summary(dispatches)
+        return [
+            "The run has no baseline, so every finding is NEW and every brief's baseline_focus is null (a stateless run). threats.md has no "
+            "Section 4c or 8 and its front matter has no baseline.",
+            "Two lineages. A planned dispatch is split into one replacement for each component of its scope, and a replacement that ends early is "
+            "repeated once: " + "; ".join(parts) + ". A superseded record's findings are not in the ID map, and no other record names them.",
+            "Phase 2's counts: %(planned)d planned, %(retried)d retried (a split of k components counts k, a repeat one), %(dispatched)d dispatched, "
+            "%(done)d done, %(split)d split and %(exhausted)d exhausted." % counts,
+        ]
+    return [
+        "The threats.md and the baseline are T148's id-reuse/%s files, byte for byte (a test compares them). The records add what a run needs for the "
+        "check to reach ruling B's reissue check: each NEW finding is kept by the one record of its agent, and every carried finding is carried." %
+        PR2R_REISSUE[name][0],
+        "provenance.check.reissued is T148's reissue.flagged: the NEW findings whose ID the baseline used or that sit at or below its mark. The "
+        "check reports them with the code id:reissued and exits 5; nothing else in this run warns or fails.",
+    ]
+
+
+def pr2r_provenance_expected(case: dict) -> str:
+    world, dispatches, prov, name = case["world"], case["dispatches"], case["provenance"], case["name"]
+    flagged = pr2r_reissued(case)
+    counts = dict(prov["counts"], open=len(world["findings"]), resolved=len(world["resolved"]))
+    counts["reused-id"] = len(flagged)
+    counts = {key: counts[key] for key in ("open", "resolved", "recorded", "carried", "rule", "renumbered", "folded", "reused-id")}
+    planned = [d for d in dispatches if d["origin"] == "planned"]
+    stateless = case["stateless"]
+    summary = {
+        "forms": "S-4's PR 2 provenance case on a baseline: every form that FR-N4.5 and FR-N4.6 meet, over 14 planned dispatches that all return.",
+        "truncation": "S-4's PR 2 truncation case in a stateless run: two planned dispatches cut short and re-dispatched, with all four reasons.",
+        "reissue-mark": "S-4's id-reuse/pr2 run, with the records that make its provenance whole: ruling B's reissued IDs, against a baseline mark.",
+        "reissue-no-mark": "S-4's id-reuse/pr2-no-mark run, with its records: the first PR 2 run on a baseline with no mark (PM-T7).",
+    }[name]
+    notes = [
+        "This is a provenance scenario for check-threat-model.py (D12) and the Phase 2 half of the run-level record. run/ is the {out} directory: "
+        "threats.md, the architecture snapshot, and tachi-build/ (named .tachi-build/ in a working directory, which .gitignore excludes here). "
+        "Every absolute path in a record and a brief names the root %s, which materialize() replaces with a real directory. The files hold exactly "
+        "what the contracts' key sets allow, and test_fixture_374.py reads each one back through the shipped validators." % PR2R_ROOT,
+        "The planned set follows from phase1/dispatch.json and the roster alone: %d dispatches, one for each agent with a component in scope, in the "
+        "roster's order (dsp-001 to dsp-%03d). A planned record's scope is that agent's components, in the inventory's order." % (len(planned), len(planned)),
+        "Every finding's provenance is in provenance.findings: class 1 (a dispatch record keeps it), 2 (a baseline carry-forward) or 3 (Phase 3.6's "
+        "rule). A record's local IDs are its agent's own: its emitted prefix and a number from 1 in its report's order, so they can equal another "
+        "finding's final ID. The ID map holds one disposition for each local ID, in order. These values are worked out here from the contracts and "
+        "are not read from any script: no check script exists yet, and T095 and T096 are the first to run one on them.",
+        "run/ holds no run-level plan, no hand-off and no sections.json: tachi-stage.py plan --stage threat-model writes the plan, the check writes its "
+        "hand-off under that plan's checks/ directory, and a test that needs the manifest or the threats-md parts builds them itself. Section 6 and the "
+        "other tables of threats.md are the generator's (render_threats_md), as in every other scenario.",
+    ]
+    notes += pr2r_case_notes(case)
+    doc = {
+        "schema": "tachi.fixture-expected/1", "variant": "pr2-runs", "scenario": name, "stage": "provenance-check", "summary": summary,
+        "run": {"date": PR2_RUN_DATE, "threats": "run/threats.md", "baseline": None if stateless else "baseline/threats.md",
+                "architecture": "run/architecture.md", "tachi_build": "run/tachi-build",
+                "how": "gen.materialize(scenario, directory) writes run/ and baseline/ for that directory, with tachi-build/ renamed .tachi-build/ and "
+                       "every absolute path rewritten, then check-threat-model.py --run-dir <directory>/run --plan <plan> and --baseline "
+                       "<directory>/baseline/threats.md, or --no-baseline for a run with no baseline"},
+        "notes": notes,
+        "provenance": {
+            "stateless": stateless,
+            "open_ids": [f["id"] for f in world["findings"]], "resolved_ids": [r["id"] for r in world["resolved"]],
+            "planned": [{"dispatch_id": d["id"], "agent_type": d["agent"], "scope": d["scope"]} for d in planned],
+            "records": [{"dispatch_id": d["id"], "agent_type": d["agent"], "origin": d["origin"], "status": d["status"], "reason": d["reason"],
+                         "supersedes": d["supersedes"], "superseded_by": d["superseded_by"], "attempt": d["attempt"],
+                         "count": len(case["returns"][d["id"]]) if d["status"] == "complete" else d["partial"]} for d in dispatches],
+            "idmap": {d["id"]: [pr2r_disposition(item) for item in case["returns"][d["id"]]] for d in dispatches if d["status"] == "complete"},
+            "findings": prov["findings"], "side_dispositions": prov["side"],
+            "counts": counts, "batches": pr2r_batches_summary(dispatches),
+            "check": {"exit_code": 5 if flagged else 0, "status": "warn" if flagged else "pass",
+                      "warnings": ["id:reissued"] if flagged else [], "error": None, "reissued": flagged},
+        },
+    }
+    return dumps(doc)
+
+
+# --- the trees and report stages (ADR-050 D14, items O-beta and O-gamma; contracts/part-files.md) --------------------------------------------
+# Both stages run on the forms run. A plan, a batch input and a part are written for a root as the planner and the agents would leave them, with
+# the digests that bind them: each batch input's SHA-256 is in the plan, and the plan's own SHA-256 is the plan_digest that a caller passes.
+def pr2r_reference_rows(world: dict) -> dict:
+    """The world's reference set as tachi_parsers.parse_reference_set reads its threats.md: Section 7's short texts, an em dash for the likelihood and
+    impact it has no column for, and Section 4c's rows. A test compares this with the shipped reader's output, so a change there shows."""
+    return {"open": [{"id": f["id"], "component": f["comp"], "threat": f["short"], "likelihood": EM, "impact": EM, "risk_level": f["risk"],
+                      "mitigation": f["mit_short"], "agentic_pattern": f["pattern"], "delta_status": f["status"]} for f in world["findings"]],
+            "resolved": [{"id": r["id"], "component": r["comp"], "threat": r["short"], "risk_level": r["risk"], "resolution_reason": r["reason"],
+                          "delta_status": "RESOLVED"} for r in world["resolved"]]}
+
+
+def pr2r_reference_digest(world: dict) -> str:
+    """tachi_parts.reference_digest's value: the SHA-256 of the rows' canonical JSON (sorted keys, no spaces, ASCII)."""
+    return hashlib.sha256(dumps(pr2r_reference_rows(world), indent=0).encode("utf-8")).hexdigest()
+
+
+def pr2r_tree_file(world: dict, finding: dict, baseline: bool) -> str:
+    """A tree file. The baseline's copy of a finding's tree carries one more line than the fresh one, so a copy of either shows which it came from."""
+    text = tree_text(world, finding)
+    if not baseline:
+        return text
+    head, _, rest = text.partition("\n\n")
+    return head + "\n\n" + PR2R_BASELINE_TREE_NOTE + "\n\n" + rest
+
+
+def pr2r_trees_material(world: dict) -> dict:
+    """Rule 2's plan for the run (D14; S1P-A43): a tree for every open Critical or High finding, generated fresh, and the part's answer for each
+    UNCHANGED finding whose baseline holds a tree, which is Rule 3's decision. One UNCHANGED finding has no baseline tree, the isolated fallback."""
+    chosen = [f for f in world["findings"] if f["risk"] in ("Critical", "High")]
+    unchanged = [f for f in chosen if f["status"] == STATUS_UNCHANGED]
+    lacking = {unchanged[0]["id"]} if unchanged else set()
+    with_tree = [f["id"] for f in chosen if f["status"] != STATUS_NEW and f["id"] not in lacking]
+    units, items, rule3 = [], {}, 0
+    for f in chosen:
+        planned = "regenerated" if f["status"] == STATUS_UNCHANGED and f["id"] in with_tree else "generated_fresh"
+        units.append({"finding_id": f["id"], "delta_status": f["status"], "action": planned})
+        item = {"finding_id": f["id"], "delta_status": f["status"], "action": planned}
+        if planned == "regenerated":
+            rule3 += 1
+            if rule3 % 3 == 0:  # the fresh tree is materially different: it stands
+                item.update(similarity_score=(40 + label_below("pr2r:sim:" + f["id"], 25)) / 100)
+            else:  # the baseline's tree stands: the part says carried_forward, and the assembler copies the baseline's file
+                item.update(action="carried_forward", similarity_score=(80 + label_below("pr2r:sim:" + f["id"], 19)) / 100)
+        items[f["id"]] = item
+    order = sorted(chosen, key=lambda f: (f["risk"] != "Critical", prefix_rank(f["id"])))  # the merged manifest: Critical first, then High, each in S-2 order
+    entries = []
+    for f in order:
+        entry = {"finding_id": f["id"], "delta_status": f["status"], "action": items[f["id"]]["action"]}
+        if "similarity_score" in items[f["id"]]:
+            entry["similarity_score"] = items[f["id"]]["similarity_score"]
+        entry["file_path"] = "attack-trees/%s-attack-tree.md" % f["id"].lower()
+        entries.append(entry)
+    actions = [entry["action"] for entry in entries]
+    manifest = {"schema_version": "1.0", "rule_applied": "Rule 2", "attack_tree_count": len(entries), "trees": entries,
+                "summary": {"fresh": actions.count("generated_fresh"), "carried_forward": actions.count("carried_forward"),
+                            "regenerated": actions.count("regenerated")}}
+    return {"findings": chosen, "units": units, "items": items, "with_tree": with_tree, "lacking": sorted(lacking), "manifest": manifest}
+
+
+def pr2r_stage_batches(stage: str, plan_id: str, base: str, specs: Sequence, refs: dict, params: dict) -> tuple:
+    """The batch inputs and parts of one stage, as ({path under the plan's directory: text}, the plan's batch entries). base is the plan's directory."""
+    files, entries = {}, []
+    for spec in specs:
+        batch_id = spec["batch_id"]
+        input_text = dumps({
+            "schema": "tachi.batch-input/1", "plan_id": plan_id, "batch_id": batch_id, "stage": stage, "agent_type": PR2R_STAGE_AGENT[stage],
+            "finding_ids": spec["finding_ids"], "attempt": 1, "part_path": "%s/parts/%s.a1.json" % (base, batch_id),
+            "tree_paths": spec.get("tree_paths", {}), "units": spec["units"], "refs": refs, "params": params})
+        files["inputs/%s.json" % batch_id] = input_text
+        files["parts/%s.a1.json" % batch_id] = dumps({
+            "schema": "tachi.part/1", "plan_id": plan_id, "batch_id": batch_id, "stage": stage, "agent_type": PR2R_STAGE_AGENT[stage],
+            "finding_ids": spec["finding_ids"], "items": spec["items"], "fragments": spec.get("fragments", [])})
+        entries.append({"batch_id": batch_id, "parent": None, "attempt": 1, "finding_ids": spec["finding_ids"],
+                        "input_sha256": pr2r_sha(input_text), "state": "done"})
+    return files, entries
+
+
+def pr2r_plan_text(stage: str, inputs: dict, refs: dict, params: dict, batch_size, unit_count: int, entries: list) -> str:
+    return dumps({
+        "schema": "tachi.plan/1", "plan_id": PR2R_IDS[stage], "stage": stage, "agent_type": PR2R_STAGE_AGENT[stage], "created_utc": PR2R_CREATED[stage],
+        "tachi_version": PR2R_VERSION, "inputs": inputs, "refs": refs, "architecture_warning": None, "params": params, "batch_size": batch_size,
+        "unit_count": unit_count, "preimage": {}, "out_snapshot": None, "retry_budget": {"limit": 2 * len(entries), "used": 0}, "batches": entries})
+
+
+def pr2r_plan_input(path: str, text: str) -> dict:
+    return {"path": path, "sha256": pr2r_sha(text), "bytes": len(_canonical_text(text))}
+
+
+def pr2r_trees_stage(root: str) -> dict:
+    """The trees stage of the forms run, as {path under the scenario's directory: text} and the values that its plan and its manifest fix."""
+    case = pr2r_case("forms")
+    world, threats = case["world"], case["threats"]
+    material = pr2r_trees_material(world)
+    out, plan_id = root + "/run", PR2R_IDS["trees"]
+    base, rel = "%s/.tachi-build/trees/%s" % (out, plan_id), "run/tachi-build/trees/%s/" % PR2R_IDS["trees"]
+    by_id = {f["id"]: f for f in world["findings"]}
+    ids = [f["id"] for f in material["findings"]]
+    chunks = [ids[i:i + PR2R_TREES_BATCH] for i in range(0, len(ids), PR2R_TREES_BATCH)]
+    refs, params = {"baseline_dir": root + "/baseline"}, {"scoring_date": PR2_RUN_DATE, "rule_applied": "Rule 2",
+                                                         "reference_digest": pr2r_reference_digest(world)}
+    specs, files = [], {}
+    for number, chunk in enumerate(chunks, start=1):
+        specs.append({"batch_id": "B%03d" % number, "finding_ids": chunk,
+                      "tree_paths": {fid: "%s/trees/%s-attack-tree.md" % (base, fid.lower()) for fid in chunk},
+                      "units": [unit for unit in material["units"] if unit["finding_id"] in chunk], "items": [material["items"][fid] for fid in chunk]})
+        for fid in chunk:
+            files[rel + "trees/%s-attack-tree.md" % fid.lower()] = pr2r_tree_file(world, by_id[fid], False)
+    stage_files, entries = pr2r_stage_batches("trees", plan_id, base, specs, refs, params)
+    files.update({rel + path: text for path, text in stage_files.items()})
+    plan = pr2r_plan_text("trees", {"threats": pr2r_plan_input(out + "/threats.md", threats)}, refs, params, PR2R_TREES_BATCH, len(ids), entries)
+    files[rel + "plan.json"] = plan
+    files["run/tachi-build/trees/current.json"] = dumps({"schema": "tachi.plan-pointer/1", "plan_id": plan_id})
+    return {"files": files, "plan": plan, "plan_digest": pr2r_sha(plan), "material": material, "chunks": chunks, "params": params,
+            "manifest_text": dumps(material["manifest"], indent=2, sort_keys=False)}
+
+
+def pr2r_final_tree(world: dict, finding: dict, item: dict) -> str:
+    """The bytes that attack-trees/<id>-attack-tree.md holds once the trees stage has run: the baseline's file when the part carried it forward."""
+    return pr2r_tree_file(world, finding, item["action"] == "carried_forward")
+
+
+def pr2r_trees_expected(name: str, root: str) -> str:
+    stage = pr2r_trees_stage(root)
+    material, manifest = stage["material"], stage["material"]["manifest"]
+    units = []
+    for unit in material["units"]:
+        item = material["items"][unit["finding_id"]]
+        entry = {"finding_id": unit["finding_id"], "delta_status": unit["delta_status"], "planned_action": unit["action"], "action": item["action"]}
+        if "similarity_score" in item:
+            entry["similarity_score"] = item["similarity_score"]
+        entry["final_tree_comes_from"] = "baseline" if item["action"] == "carried_forward" else "plan"
+        units.append(entry)
+    carried = manifest["summary"]["carried_forward"]
+    doc = {
+        "schema": "tachi.fixture-expected/1", "variant": "pr2-runs", "scenario": name, "stage": "trees-assembly",
+        "summary": ("S-4's PR 2 tree batches: the forms run's trees stage under Rule 2, with its manifests and Rule 3's decisions, before assemble-report.py trees runs."
+                    if name == "trees" else
+                    "S-4's PR 2 report parts: the forms run after assemble-report.py trees (its attack-trees/ and merged manifest), with the report stage's plan, "
+                    "batch inputs and parts."),
+        "run": {"date": PR2_RUN_DATE, "threats": "run/threats.md", "baseline": "baseline/threats.md", "baseline_trees": "baseline/attack-trees",
+                "trees_plan_dir": "run/tachi-build/trees/%s" % PR2R_IDS["trees"],
+                "how": "gen.materialize(scenario, directory) writes the scenario for that directory (plans, batch inputs and their digests hold only for the "
+                       "root they were built for). Then assemble-report.py <mode> --run-dir <directory>/run --plan <plan_id> --plan-digest <plan_digest>"},
+        "notes": [
+            "Rule 2 applies: the baseline exists and the run has NEW, UPDATED and RESOLVED findings. Every open Critical or High finding gets a tree, in "
+            "batches of %d in S-2 order (S1P-A57). A NEW or UPDATED finding is planned generated_fresh. An UNCHANGED finding whose baseline holds a tree "
+            "is a Rule 3 unit, planned regenerated, and its part's item says regenerated (the fresh tree stands) or carried_forward (the baseline's "
+            "stands), each with a similarity_score, which is the one value in which a part may differ from its batch input (S1P-A43). One UNCHANGED "
+            "finding (%s) has no tree in the baseline, so it is planned generated_fresh: Rule 1's isolated fallback, here under Rule 2." % (
+                PR2R_TREES_BATCH, ", ".join(material["lacking"])),
+            "A baseline tree differs from the fresh tree of its finding by one line (%r), so a copy shows its source: the merged tree of a "
+            "carried_forward item is the baseline's file byte for byte (FR-K5.3), and every other is the plan's tree under trees/." % PR2R_BASELINE_TREE_NOTE,
+            "The plan's digests are the contract's: each batch input's SHA-256 is in the plan, the plan's SHA-256 is plan_digest, and params.reference_digest is "
+            "tachi_parts.reference_digest of the run's reference set. The plan's inputs names (threats; for the report plan also trees_plan and tree_manifest) "
+            "follow lane T's tests (RD-4, RD-10), because no ruling names them yet: T092's planner is the one to confirm them.",
+        ],
+        "trees": {
+            "plan_id": PR2R_IDS["trees"], "plan_digest": stage["plan_digest"], "rule_applied": "Rule 2", "batch_size": PR2R_TREES_BATCH,
+            "unit_count": len(material["units"]), "reference_digest": stage["params"]["reference_digest"],
+            "batches": [{"batch_id": "B%03d" % n, "finding_ids": chunk} for n, chunk in enumerate(stage["chunks"], start=1)],
+            "units": units, "baseline_trees": material["with_tree"], "unchanged_without_baseline_tree": material["lacking"],
+            "merged_manifest": manifest,
+            "stage_record_counts": {"units": len(material["units"]), "carried": carried, "rendered": manifest["attack_tree_count"]},
+        },
+    }
+    return dumps(doc)
+
+
+def pr2r_trees_files(root: str) -> dict:
+    stage = pr2r_trees_stage(root)
+    case = pr2r_case("forms")
+    world = case["world"]
+    by_id = {f["id"]: f for f in world["findings"]}
+    files = dict(stage["files"])
+    files["run/threats.md"] = case["threats"]
+    files["baseline/threats.md"] = case["baseline"]
+    for fid in stage["material"]["with_tree"]:
+        files["baseline/attack-trees/%s-attack-tree.md" % fid.lower()] = pr2r_tree_file(world, by_id[fid], True)
+    files["expected-outcomes.json"] = pr2r_trees_expected("trees", root)
+    return files
+
+
+# The report's texts. None holds a numeral outside a slot (ADR-050 D3's ban), apart from the one that breaks it on purpose, and the opening of the
+# executive summary runs past its limit on purpose: the report stage's record then counts one fallback and one truncation.
+PR2R_NARRATIVES = (
+    "{{finding:%(id)s}} affects {{name:component:%(id)s}} and is rated {{band:risk:%(id)s}}. The weakness lets an attacker act with more authority than intended.",
+    "On {{name:component:%(id)s}}, {{finding:%(id)s}} is rated {{band:risk:%(id)s}}. Fixing it closes a path that the attack tree for this finding follows.",
+    "The risk of {{finding:%(id)s}} is {{band:risk:%(id)s}}, and it sits on {{name:component:%(id)s}}. Owners should treat it with the findings around it.",
+)
+PR2R_PATTERN_TEXT = {
+    "agent_collusion": "Agents that coordinate through a shared channel can add up actions that no single limit covers.",
+    "emergent_behavior": "Planning agents that feed each other's output can drift into behavior that no one tested for.",
+    "temporal_attack": "State kept between runs can carry an instruction that acts long after it was written.",
+    "trust_exploitation": "Agents and people that trust a fluent answer pass it on without a check of its source.",
+    "communication_vulnerability": "Messages between agents can be read or changed on the channel that joins them.",
+    "resource_competition": "Agents that share one pool can starve each other, and the slowest one sets the pace.",
+}
+PR2R_PADDING = "The posture also reflects how long these weaknesses have stayed open and how many components share each one. "
+
+
+def pr2r_row(finding: dict) -> dict:
+    return {"finding_id": finding["id"], "component": finding["comp"], "threat": finding["short"], "risk_level": finding["risk"],
+            "mitigation": finding["mit_short"], "agentic_pattern": finding["pattern"], "delta_status": finding["status"]}
+
+
+def pr2r_report_specs(world: dict) -> list:
+    """The report stage's batches in the template's order, as pr2r_stage_batches takes them (plus each batch's section): a section part holds fragments,
+    a findings part one item for each finding. No attack_chains part is planned, because threats.md holds no outcome record (S1P-A58)."""
+    findings = world["findings"]
+    low = ("Medium", "Low", "Note")
+    summarize = len(findings) > 30  # D6: a finding is summarized when the run has more than 30 open findings and its level is Medium or lower
+    narrated = [f for f in findings if not (summarize and f["risk"] in low)]
+    summarized = [f for f in findings if summarize and f["risk"] in low]
+    in_category = {c: [f for f in findings if PR2R_CATEGORY_KEY[f["prefix"]] == c] for c in PR2R_CATEGORY_KEYS}
+    categories = [c for c in PR2R_CATEGORY_KEYS if in_category[c]]
+    summary_categories = [c for c in categories if any(f in summarized for f in in_category[c])]
+    patterns = [p for p in PR2R_PATTERNS if any(f["pattern"] == p for f in findings)]
+    peers = {m["id"] for g in world["groups"] for m in g["members"][1:]}  # D8: a group's row stands for its primary
+    roadmap = [f for f in findings if f["id"] not in peers]
+    group_of = {g["members"][0]["id"]: g for g in world["groups"]}
+    critical = [f["id"] for f in findings if f["risk"] == "Critical"]
+    spoofing = [f["id"] for f in findings if f["prefix"] == "S"]
+    agentic = [f["id"] for f in findings if f["prefix"] == "AG"]
+
+    def section(name: str, pairs: list, extra: dict = None) -> dict:
+        units = [dict({"section": name, "key": key}, **(extra or {}).get(key, {})) for key, _ in pairs]
+        return {"section": name, "kind": "section", "finding_ids": [], "items": [], "units": units,
+                "fragments": [{"slot_key": key, "text": text} for key, text in pairs if text is not None]}
+
+    posture = ("The posture is shaped by {{count:critical}} critical and {{count:high}} high findings among {{count:open}} open findings, and "
+               "{{count:new}} of them are new in this run. ") + PR2R_PADDING * 15
+    ids_of = lambda c, subset: [f["id"] for f in in_category[c] if f in subset]  # noqa: E731
+    category_units = {"category." + c: {"narrated": ids_of(c, narrated), "summarized": ids_of(c, summarized)} for c in categories}
+    category_units.update({"summary." + c: {"narrated": ids_of(c, narrated), "summarized": ids_of(c, summarized)} for c in summary_categories})
+    specs = [
+        section("exec_summary", [
+            ("risk_posture", posture),
+            ("top_threats", "The most serious threats are {{finding:%s}} on {{name:component:%s}} and {{finding:%s}} on {{name:component:%s}}." % (
+                critical[0], critical[0], critical[1], critical[1])),
+            ("key_recommendations", "Close the critical findings first, beginning with {{finding:%s}}, then work through the high findings in the order "
+                                    "of the roadmap." % critical[0]),
+            ("compliance", "Several findings bear on access control, audit and data protection duties, so the owners of those duties should read the roadmap.")]),
+        section("architecture_overview", [
+            ("system_context", "The platform turns operator requests into planned and audited shipment actions, and every agent reaches carrier systems "
+                               "through one tool server."),
+            ("trust_boundaries", "The platform spans 5 trust zones, and requests cross from the public internet into the edge zone first.")]),
+        section("threat_categories", [("overview", "Findings appear in every category, and the agentic and language model categories carry the most severe ones.")] +
+                [("category." + c, "Open findings in this category number {{count:%s}}, and {{count:%s.critical}} of them are critical." % (c, c)) for c in categories] +
+                [("summary." + c, "The remaining findings in this category are of medium or lower severity and are summarized here.") for c in summary_categories],
+                category_units)]
+    rows = [dict(pr2r_row(f), section="threat_analysis", tree=f["risk"] in ("Critical", "High")) for f in narrated]
+    items = [{"finding_id": f["id"], "narrative": PR2R_NARRATIVES[label_below("pr2r:narrative:" + f["id"], len(PR2R_NARRATIVES))] % {"id": f["id"]},
+              "tree_summary": ("The tree for {{finding:%s}} starts at a connected component and ends at the weakness named above." % f["id"])
+              if f["risk"] in ("Critical", "High") else None} for f in narrated]
+    specs.append({"section": "threat_analysis", "kind": "findings", "finding_ids": [f["id"] for f in narrated], "items": items, "units": rows, "fragments": []})
+    specs.append(section("cross_cutting_themes", [("themes", None)]))
+    specs[-1]["fragments"] = [
+        {"slot_key": "theme.1.title", "text": "Shared credentials recur"},
+        {"slot_key": "theme.1.body", "text": "Long-lived tokens and shared accounts appear on several components, for example {{finding:%s}} and {{finding:%s}}." % (
+            spoofing[0], spoofing[1])},
+        {"slot_key": "theme.2.title", "text": "Agent authority is wide"},
+        {"slot_key": "theme.2.body", "text": "Agents hold broad tool access, so one injected instruction reaches far, as {{finding:%s}} shows." % agentic[0]}]
+    specs.append(section("agentic_patterns", [("pattern." + p, PR2R_PATTERN_TEXT[p]) for p in patterns]))
+    rows = []
+    for f in roadmap:
+        row = dict(pr2r_row(f), section="remediation_roadmap")
+        if f["id"] in group_of:  # a group's primary stands for the group: its ID and its members' rows
+            row.update(group=group_of[f["id"]]["id"], members=[pr2r_row(m) for m in group_of[f["id"]]["members"]])
+        rows.append(row)
+    efforts = ("Low", "Medium", "High")
+    items = [{"finding_id": f["id"], "effort": efforts[label_below("pr2r:effort:" + f["id"], 3)],
+              "dependencies": "Depends on the credential rotation work." if label_below("pr2r:deps:" + f["id"], 3) == 0 else None} for f in roadmap]
+    specs.append({"section": "remediation_roadmap", "kind": "findings", "finding_ids": [f["id"] for f in roadmap], "items": items, "units": rows, "fragments": []})
+    specs.append(section("delta_summary", [("progress", "Since the baseline, {{count:new}} findings are new, {{count:updated}} changed and {{count:unchanged}} "
+                                                       "stayed as they were, and {{count:resolved}} were resolved.")]))
+    order = ["exec_summary", "architecture_overview", "threat_categories", "threat_analysis", "cross_cutting_themes", "agentic_patterns",
+             "remediation_roadmap", "delta_summary"]  # the template's order (tachi_parts.REPORT_PARTS), less attack_chains
+    specs.sort(key=lambda spec: order.index(spec["section"]))
+    for number, spec in enumerate(specs, start=1):
+        spec["batch_id"] = "B%03d" % number
+    return specs
+
+
+def pr2r_report_stage(root: str) -> dict:
+    """The report stage of the forms run after assemble-report.py trees: the plan pins the trees plan, the merged manifest and threats.md."""
+    case, trees = pr2r_case("forms"), pr2r_trees_stage(root)
+    world, out, plan_id = case["world"], root + "/run", PR2R_IDS["report"]
+    base, rel = "%s/.tachi-build/report/%s" % (out, plan_id), "run/tachi-build/report/%s/" % plan_id
+    specs = pr2r_report_specs(world)
+    params = {"scoring_date": PR2_RUN_DATE, "reference_digest": pr2r_reference_digest(world), "trees_plan_id": PR2R_IDS["trees"]}
+    stage_files, entries = pr2r_stage_batches("report", plan_id, base, specs, {}, params)
+    unit_count = sum(len(spec["units"]) for spec in specs)
+    inputs = {"threats": pr2r_plan_input(out + "/threats.md", case["threats"]),
+              "trees_plan": pr2r_plan_input("%s/.tachi-build/trees/%s/plan.json" % (out, PR2R_IDS["trees"]), trees["plan"]),
+              "tree_manifest": pr2r_plan_input(out + "/attack-trees/.manifest.json", trees["manifest_text"])}
+    plan = pr2r_plan_text("report", inputs, {}, params, None, unit_count, entries)
+    files = {rel + path: text for path, text in stage_files.items()}
+    files[rel + "plan.json"] = plan
+    files["run/tachi-build/report/current.json"] = dumps({"schema": "tachi.plan-pointer/1", "plan_id": plan_id})
+    return {"files": files, "plan": plan, "plan_digest": pr2r_sha(plan), "specs": specs, "unit_count": unit_count, "params": params, "trees": trees}
+
+
+def pr2r_report_expected(root: str) -> str:
+    stage = pr2r_report_stage(root)
+    case = pr2r_case("forms")
+    world, specs, trees = case["world"], stage["specs"], stage["trees"]
+    findings = world["findings"]
+    peers = sorted({m["id"] for g in world["groups"] for m in g["members"][1:]}, key=prefix_rank)
+    spec_of = {spec["section"]: spec for spec in specs}
+    doc = {
+        "schema": "tachi.fixture-expected/1", "variant": "pr2-runs", "scenario": "report", "stage": "report-assembly",
+        "summary": "S-4's PR 2 report parts: the forms run after assemble-report.py trees, with the report stage's plan, batch inputs and parts.",
+        "run": {"date": PR2_RUN_DATE, "threats": "run/threats.md", "baseline": "baseline/threats.md", "attack_trees": "run/attack-trees",
+                "trees_plan_dir": "run/tachi-build/trees/%s" % PR2R_IDS["trees"], "report_plan_dir": "run/tachi-build/report/%s" % PR2R_IDS["report"],
+                "how": "gen.materialize(scenario, directory) writes the scenario for that directory (plans, batch inputs and their digests hold only for the "
+                       "root they were built for). Then assemble-report.py report --run-dir <directory>/run --plan <plan_id> --plan-digest <plan_digest>. "
+                       "Do not run the trees mode first: the report plan pins this run's merged manifest, and the trees mode would write its own bytes"},
+        "notes": [
+            "This is the forms run after Step 2.9's trees stage: run/attack-trees/ holds each tree as assemble-report.py trees leaves it (a copy of the baseline's "
+            "file for a carried_forward item, the plan's tree otherwise) and the merged manifest. The report plan pins threats.md, the trees plan and that "
+            "manifest by digest, and params.reference_digest is the run's reference set's. Eight batches, in the template's order: six section parts "
+            "(executive summary, architecture overview, threat categories, cross-cutting themes, agentic patterns and the delta summary) and two "
+            "findings parts (the threat analysis and the remediation roadmap).",
+            "The run has more than 30 open findings, so each Medium, Low and Note finding is summarized by its category and the Critical and High findings are "
+            "narrated one by one. No attack_chains part is planned: threats.md holds no outcome record, so the planner plans none and Section 6 would print "
+            "the outcome line (S1P-A58). Each findings part fits in one batch (22 narrated findings and 144 roadmap rows are the sizes), so none is split.",
+            "Two fragments are wrong on purpose. architecture_overview's trust_boundaries holds a digit outside a slot, so it takes the fixed fallback "
+            "sentence (one narrative_fallback). exec_summary's risk_posture is longer than its 1,500 characters, and is cut where plain text stands (one "
+            "truncation). Both parts are valid: a narrative that breaks the rules takes its fixed sentence and an over-limit one is cut, so reconcile "
+            "accepts them (D3), and the report stage's record counts both.",
+            "A section unit holds its section and key, and a category's unit its narrated and summarized IDs; a findings unit holds the finding's Section 7 "
+            "row (a roadmap primary also its group and the members' rows). The contract says more rows go in a section unit, and no script reads them yet: "
+            "T109's plan is what settles them.",
+        ],
+        "report": {
+            "plan_id": PR2R_IDS["report"], "plan_digest": stage["plan_digest"], "trees_plan_id": PR2R_IDS["trees"], "trees_plan_digest": trees["plan_digest"],
+            "reference_digest": stage["params"]["reference_digest"], "unit_count": stage["unit_count"],
+            "batches": [{"batch_id": spec["batch_id"], "section": spec["section"], "kind": spec["kind"],
+                         "units": [unit.get("key") or unit["finding_id"] for unit in spec["units"]]} for spec in specs],
+            "open_ids": [f["id"] for f in findings], "narrated": [item["finding_id"] for item in spec_of["threat_analysis"]["items"]],
+            "summarized": [f["id"] for f in findings if f["risk"] in ("Medium", "Low", "Note")],
+            "roadmap": [item["finding_id"] for item in spec_of["remediation_roadmap"]["items"]], "roadmap_peers": peers,
+            "patterns": [unit["key"].split(".", 1)[1] for unit in spec_of["agentic_patterns"]["units"]],
+            "attack_chains_planned": False,
+            "deliberate": [{"batch_id": spec_of["architecture_overview"]["batch_id"], "slot_key": "trust_boundaries",
+                            "what": "a digit outside a slot: the per-field fallback"},
+                           {"batch_id": spec_of["exec_summary"]["batch_id"], "slot_key": "risk_posture", "what": "longer than its limit: cut and flagged"}],
+            "stage_record_counts": {"units": stage["unit_count"], "narrative_fallbacks": 1, "truncations": 1},
+        },
+    }
+    return dumps(doc)
+
+
+def pr2r_report_files(root: str) -> dict:
+    case = pr2r_case("forms")
+    world = case["world"]
+    by_id = {f["id"]: f for f in world["findings"]}
+    stage = pr2r_report_stage(root)
+    trees = stage["trees"]
+    files = dict(trees["files"])
+    files.update(stage["files"])
+    files["run/threats.md"] = case["threats"]
+    files["baseline/threats.md"] = case["baseline"]
+    for fid in trees["material"]["with_tree"]:
+        files["baseline/attack-trees/%s-attack-tree.md" % fid.lower()] = pr2r_tree_file(world, by_id[fid], True)
+    for fid, item in trees["material"]["items"].items():
+        files["run/attack-trees/%s-attack-tree.md" % fid.lower()] = pr2r_final_tree(world, by_id[fid], item)
+    files["run/attack-trees/.manifest.json"] = trees["manifest_text"]
+    files["expected-outcomes.json"] = pr2r_report_expected(root)
+    return files
+
+
+def pr2r_scenario_files(name: str, root: str) -> dict:
+    """One scenario's files for a root, relative to the scenario's own directory, in the committed copy's naming (tachi-build/)."""
+    if name in ("forms", "truncation", "reissue-mark", "reissue-no-mark"):
+        return pr2r_provenance_files(name, root)
+    if name == "trees":
+        return pr2r_trees_files(root)
+    if name == "report":
+        return pr2r_report_files(root)
+    raise ValueError("unknown scenario: %r" % name)
+
+
+def pr2r_files(root: str) -> dict:
+    """Every scenario for a root, as {path under pr2-runs/: text}."""
+    return {"pr2-runs/%s/%s" % (name, path): text for name in PR2R_SCENARIOS for path, text in pr2r_scenario_files(name, root).items()}
+
+
+_PR2R_ROOT_OK = re.compile(r"/[A-Za-z0-9_.+@=,~-]+(/[A-Za-z0-9_.+@=,~-]+)*")
+
+
+def materialize(scenario: str, dest: str) -> list:
+    """Write one pr2-runs scenario for a real directory, so that a script can run on it: dest/run is the run's {out}, with its tachi-build/ named
+    .tachi-build/, dest/baseline is the baseline run directory where the scenario has one, and expected-outcomes.json sits beside them. Every
+    absolute path in a record, a brief, a plan and a batch input names dest, and each digest that binds them is computed for it (the committed
+    copy holds the same files built for PR2R_ROOT). dest must be an absolute path of plain characters. Returns the files written, relative to dest."""
+    if scenario not in PR2R_SCENARIOS:
+        raise ValueError("unknown scenario: %r" % (scenario,))
+    if not isinstance(dest, str) or not _PR2R_ROOT_OK.fullmatch(dest) or {".", ".."} & set(dest.split("/")):
+        raise ValueError("dest must be an absolute path of letters, digits and . _ + @ = , ~ - only: %r" % (dest,))
+    files, written = pr2r_scenario_files(scenario, dest), []
+    for path in sorted(files):
+        target = "run/.tachi-build/" + path[len("run/tachi-build/"):] if path.startswith("run/tachi-build/") else path
+        full = os.path.join(dest, *target.split("/"))
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        with open(full, "wb") as handle:
+            handle.write(_canonical_text(files[path]))
+        written.append(target)
+    return sorted(written)
 
 
 PARTS = {

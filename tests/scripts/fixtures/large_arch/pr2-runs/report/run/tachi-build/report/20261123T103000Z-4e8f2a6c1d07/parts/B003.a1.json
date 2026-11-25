@@ -1,0 +1,79 @@
+{
+  "agent_type": "tachi-threat-report",
+  "batch_id": "B003",
+  "finding_ids": [],
+  "fragments": [
+    {
+      "slot_key": "overview",
+      "text": "Findings appear in every category, and the agentic and language model categories carry the most severe ones."
+    },
+    {
+      "slot_key": "category.spoofing",
+      "text": "Open findings in this category number {{count:spoofing}}, and {{count:spoofing.critical}} of them are critical."
+    },
+    {
+      "slot_key": "category.tampering",
+      "text": "Open findings in this category number {{count:tampering}}, and {{count:tampering.critical}} of them are critical."
+    },
+    {
+      "slot_key": "category.repudiation",
+      "text": "Open findings in this category number {{count:repudiation}}, and {{count:repudiation.critical}} of them are critical."
+    },
+    {
+      "slot_key": "category.information_disclosure",
+      "text": "Open findings in this category number {{count:information_disclosure}}, and {{count:information_disclosure.critical}} of them are critical."
+    },
+    {
+      "slot_key": "category.denial_of_service",
+      "text": "Open findings in this category number {{count:denial_of_service}}, and {{count:denial_of_service.critical}} of them are critical."
+    },
+    {
+      "slot_key": "category.elevation_of_privilege",
+      "text": "Open findings in this category number {{count:elevation_of_privilege}}, and {{count:elevation_of_privilege.critical}} of them are critical."
+    },
+    {
+      "slot_key": "category.agentic",
+      "text": "Open findings in this category number {{count:agentic}}, and {{count:agentic.critical}} of them are critical."
+    },
+    {
+      "slot_key": "category.llm",
+      "text": "Open findings in this category number {{count:llm}}, and {{count:llm.critical}} of them are critical."
+    },
+    {
+      "slot_key": "summary.spoofing",
+      "text": "The remaining findings in this category are of medium or lower severity and are summarized here."
+    },
+    {
+      "slot_key": "summary.tampering",
+      "text": "The remaining findings in this category are of medium or lower severity and are summarized here."
+    },
+    {
+      "slot_key": "summary.repudiation",
+      "text": "The remaining findings in this category are of medium or lower severity and are summarized here."
+    },
+    {
+      "slot_key": "summary.information_disclosure",
+      "text": "The remaining findings in this category are of medium or lower severity and are summarized here."
+    },
+    {
+      "slot_key": "summary.denial_of_service",
+      "text": "The remaining findings in this category are of medium or lower severity and are summarized here."
+    },
+    {
+      "slot_key": "summary.elevation_of_privilege",
+      "text": "The remaining findings in this category are of medium or lower severity and are summarized here."
+    },
+    {
+      "slot_key": "summary.agentic",
+      "text": "The remaining findings in this category are of medium or lower severity and are summarized here."
+    },
+    {
+      "slot_key": "summary.llm",
+      "text": "The remaining findings in this category are of medium or lower severity and are summarized here."
+    }
+  ],
+  "items": [],
+  "plan_id": "20261123T103000Z-4e8f2a6c1d07",
+  "schema": "tachi.part/1",
+  "stage": "report"
+}

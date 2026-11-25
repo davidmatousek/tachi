@@ -1,0 +1,58 @@
+{
+  "agent_type": "tachi-attack-tree-delta",
+  "attempt": 1,
+  "batch_id": "B002",
+  "finding_ids": [
+    "LLM-2",
+    "LLM-3",
+    "LLM-5",
+    "LLM-6",
+    "LLM-7"
+  ],
+  "params": {
+    "reference_digest": "867b6b5c5fb8e75ab6eb75bd6f454cdc3279a381783c49ec61d005317c3bffbf",
+    "rule_applied": "Rule 2",
+    "scoring_date": "2026-11-23"
+  },
+  "part_path": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/parts/B002.a1.json",
+  "plan_id": "20261123T101500Z-7a1c3e5d9b02",
+  "refs": {
+    "baseline_dir": "/synthetic-case/baseline"
+  },
+  "schema": "tachi.batch-input/1",
+  "stage": "trees",
+  "tree_paths": {
+    "LLM-2": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/llm-2-attack-tree.md",
+    "LLM-3": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/llm-3-attack-tree.md",
+    "LLM-5": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/llm-5-attack-tree.md",
+    "LLM-6": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/llm-6-attack-tree.md",
+    "LLM-7": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/llm-7-attack-tree.md"
+  },
+  "units": [
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "LLM-2"
+    },
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "LLM-3"
+    },
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "LLM-5"
+    },
+    {
+      "action": "generated_fresh",
+      "delta_status": "UPDATED",
+      "finding_id": "LLM-6"
+    },
+    {
+      "action": "generated_fresh",
+      "delta_status": "NEW",
+      "finding_id": "LLM-7"
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "agent_type": "tachi-threat-report",
+  "batch_id": "B004",
+  "finding_ids": [
+    "S-4",
+    "T-1",
+    "I-1",
+    "I-4",
+    "I-5",
+    "D-2",
+    "E-1",
+    "E-3",
+    "AG-1",
+    "AG-2",
+    "AG-3",
+    "LLM-1",
+    "LLM-2",
+    "LLM-3",
+    "LLM-5",
+    "LLM-6",
+    "LLM-7"
+  ],
+  "fragments": [],
+  "items": [
+    {
+      "finding_id": "S-4",
+      "narrative": "The risk of {{finding:S-4}} is {{band:risk:S-4}}, and it sits on {{name:component:S-4}}. Owners should treat it with the findings around it.",
+      "tree_summary": "The tree for {{finding:S-4}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "T-1",
+      "narrative": "On {{name:component:T-1}}, {{finding:T-1}} is rated {{band:risk:T-1}}. Fixing it closes a path that the attack tree for this finding follows.",
+      "tree_summary": "The tree for {{finding:T-1}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "I-1",
+      "narrative": "On {{name:component:I-1}}, {{finding:I-1}} is rated {{band:risk:I-1}}. Fixing it closes a path that the attack tree for this finding follows.",
+      "tree_summary": "The tree for {{finding:I-1}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "I-4",
+      "narrative": "{{finding:I-4}} affects {{name:component:I-4}} and is rated {{band:risk:I-4}}. The weakness lets an attacker act with more authority than intended.",
+      "tree_summary": "The tree for {{finding:I-4}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "I-5",
+      "narrative": "{{finding:I-5}} affects {{name:component:I-5}} and is rated {{band:risk:I-5}}. The weakness lets an attacker act with more authority than intended.",
+      "tree_summary": "The tree for {{finding:I-5}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "D-2",
+      "narrative": "{{finding:D-2}} affects {{name:component:D-2}} and is rated {{band:risk:D-2}}. The weakness lets an attacker act with more authority than intended.",
+      "tree_summary": "The tree for {{finding:D-2}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "E-1",
+      "narrative": "{{finding:E-1}} affects {{name:component:E-1}} and is rated {{band:risk:E-1}}. The weakness lets an attacker act with more authority than intended.",
+      "tree_summary": "The tree for {{finding:E-1}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "E-3",
+      "narrative": "The risk of {{finding:E-3}} is {{band:risk:E-3}}, and it sits on {{name:component:E-3}}. Owners should treat it with the findings around it.",
+      "tree_summary": "The tree for {{finding:E-3}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "AG-1",
+      "narrative": "{{finding:AG-1}} affects {{name:component:AG-1}} and is rated {{band:risk:AG-1}}. The weakness lets an attacker act with more authority than intended.",
+      "tree_summary": "The tree for {{finding:AG-1}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "AG-2",
+      "narrative": "On {{name:component:AG-2}}, {{finding:AG-2}} is rated {{band:risk:AG-2}}. Fixing it closes a path that the attack tree for this finding follows.",
+      "tree_summary": "The tree for {{finding:AG-2}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "AG-3",
+      "narrative": "On {{name:component:AG-3}}, {{finding:AG-3}} is rated {{band:risk:AG-3}}. Fixing it closes a path that the attack tree for this finding follows.",
+      "tree_summary": "The tree for {{finding:AG-3}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "LLM-1",
+      "narrative": "{{finding:LLM-1}} affects {{name:component:LLM-1}} and is rated {{band:risk:LLM-1}}. The weakness lets an attacker act with more authority than intended.",
+      "tree_summary": "The tree for {{finding:LLM-1}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "LLM-2",
+      "narrative": "On {{name:component:LLM-2}}, {{finding:LLM-2}} is rated {{band:risk:LLM-2}}. Fixing it closes a path that the attack tree for this finding follows.",
+      "tree_summary": "The tree for {{finding:LLM-2}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "LLM-3",
+      "narrative": "On {{name:component:LLM-3}}, {{finding:LLM-3}} is rated {{band:risk:LLM-3}}. Fixing it closes a path that the attack tree for this finding follows.",
+      "tree_summary": "The tree for {{finding:LLM-3}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "LLM-5",
+      "narrative": "The risk of {{finding:LLM-5}} is {{band:risk:LLM-5}}, and it sits on {{name:component:LLM-5}}. Owners should treat it with the findings around it.",
+      "tree_summary": "The tree for {{finding:LLM-5}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "LLM-6",
+      "narrative": "The risk of {{finding:LLM-6}} is {{band:risk:LLM-6}}, and it sits on {{name:component:LLM-6}}. Owners should treat it with the findings around it.",
+      "tree_summary": "The tree for {{finding:LLM-6}} starts at a connected component and ends at the weakness named above."
+    },
+    {
+      "finding_id": "LLM-7",
+      "narrative": "The risk of {{finding:LLM-7}} is {{band:risk:LLM-7}}, and it sits on {{name:component:LLM-7}}. Owners should treat it with the findings around it.",
+      "tree_summary": "The tree for {{finding:LLM-7}} starts at a connected component and ends at the weakness named above."
+    }
+  ],
+  "plan_id": "20261123T103000Z-4e8f2a6c1d07",
+  "schema": "tachi.part/1",
+  "stage": "report"
+}

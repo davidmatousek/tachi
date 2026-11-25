@@ -1,0 +1,210 @@
+{
+  "agent_type": "tachi-threat-report",
+  "batch_id": "B007",
+  "finding_ids": [
+    "S-1",
+    "S-3",
+    "S-4",
+    "S-5",
+    "T-1",
+    "T-2",
+    "T-3",
+    "T-4",
+    "R-1",
+    "R-3",
+    "R-4",
+    "I-1",
+    "I-3",
+    "I-4",
+    "I-5",
+    "D-1",
+    "D-2",
+    "D-3",
+    "E-1",
+    "E-3",
+    "AG-4",
+    "AG-5",
+    "AG-6",
+    "AG-7",
+    "AGP-01",
+    "LLM-3",
+    "LLM-4",
+    "LLM-8",
+    "LLM-9",
+    "OI-1",
+    "OI-2",
+    "MI-1",
+    "TE-1"
+  ],
+  "fragments": [],
+  "items": [
+    {
+      "dependencies": "Depends on the credential rotation work.",
+      "effort": "Medium",
+      "finding_id": "S-1"
+    },
+    {
+      "dependencies": null,
+      "effort": "Medium",
+      "finding_id": "S-3"
+    },
+    {
+      "dependencies": "Depends on the credential rotation work.",
+      "effort": "Medium",
+      "finding_id": "S-4"
+    },
+    {
+      "dependencies": null,
+      "effort": "Low",
+      "finding_id": "S-5"
+    },
+    {
+      "dependencies": "Depends on the credential rotation work.",
+      "effort": "Medium",
+      "finding_id": "T-1"
+    },
+    {
+      "dependencies": "Depends on the credential rotation work.",
+      "effort": "Low",
+      "finding_id": "T-2"
+    },
+    {
+      "dependencies": "Depends on the credential rotation work.",
+      "effort": "High",
+      "finding_id": "T-3"
+    },
+    {
+      "dependencies": "Depends on the credential rotation work.",
+      "effort": "Medium",
+      "finding_id": "T-4"
+    },
+    {
+      "dependencies": "Depends on the credential rotation work.",
+      "effort": "Low",
+      "finding_id": "R-1"
+    },
+    {
+      "dependencies": "Depends on the credential rotation work.",
+      "effort": "Low",
+      "finding_id": "R-3"
+    },
+    {
+      "dependencies": "Depends on the credential rotation work.",
+      "effort": "Medium",
+      "finding_id": "R-4"
+    },
+    {
+      "dependencies": null,
+      "effort": "High",
+      "finding_id": "I-1"
+    },
+    {
+      "dependencies": null,
+      "effort": "Medium",
+      "finding_id": "I-3"
+    },
+    {
+      "dependencies": null,
+      "effort": "Medium",
+      "finding_id": "I-4"
+    },
+    {
+      "dependencies": null,
+      "effort": "High",
+      "finding_id": "I-5"
+    },
+    {
+      "dependencies": null,
+      "effort": "High",
+      "finding_id": "D-1"
+    },
+    {
+      "dependencies": null,
+      "effort": "Medium",
+      "finding_id": "D-2"
+    },
+    {
+      "dependencies": null,
+      "effort": "High",
+      "finding_id": "D-3"
+    },
+    {
+      "dependencies": null,
+      "effort": "Medium",
+      "finding_id": "E-1"
+    },
+    {
+      "dependencies": null,
+      "effort": "Medium",
+      "finding_id": "E-3"
+    },
+    {
+      "dependencies": null,
+      "effort": "Low",
+      "finding_id": "AG-4"
+    },
+    {
+      "dependencies": null,
+      "effort": "High",
+      "finding_id": "AG-5"
+    },
+    {
+      "dependencies": null,
+      "effort": "Low",
+      "finding_id": "AG-6"
+    },
+    {
+      "dependencies": "Depends on the credential rotation work.",
+      "effort": "High",
+      "finding_id": "AG-7"
+    },
+    {
+      "dependencies": null,
+      "effort": "Medium",
+      "finding_id": "AGP-01"
+    },
+    {
+      "dependencies": null,
+      "effort": "High",
+      "finding_id": "LLM-3"
+    },
+    {
+      "dependencies": null,
+      "effort": "High",
+      "finding_id": "LLM-4"
+    },
+    {
+      "dependencies": null,
+      "effort": "Medium",
+      "finding_id": "LLM-8"
+    },
+    {
+      "dependencies": "Depends on the credential rotation work.",
+      "effort": "Medium",
+      "finding_id": "LLM-9"
+    },
+    {
+      "dependencies": null,
+      "effort": "Low",
+      "finding_id": "OI-1"
+    },
+    {
+      "dependencies": null,
+      "effort": "High",
+      "finding_id": "OI-2"
+    },
+    {
+      "dependencies": null,
+      "effort": "Medium",
+      "finding_id": "MI-1"
+    },
+    {
+      "dependencies": "Depends on the credential rotation work.",
+      "effort": "Low",
+      "finding_id": "TE-1"
+    }
+  ],
+  "plan_id": "20261123T103000Z-4e8f2a6c1d07",
+  "schema": "tachi.part/1",
+  "stage": "report"
+}

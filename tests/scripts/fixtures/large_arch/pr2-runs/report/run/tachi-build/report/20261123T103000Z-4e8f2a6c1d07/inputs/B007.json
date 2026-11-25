@@ -1,0 +1,548 @@
+{
+  "agent_type": "tachi-threat-report",
+  "attempt": 1,
+  "batch_id": "B007",
+  "finding_ids": [
+    "S-1",
+    "S-3",
+    "S-4",
+    "S-5",
+    "T-1",
+    "T-2",
+    "T-3",
+    "T-4",
+    "R-1",
+    "R-3",
+    "R-4",
+    "I-1",
+    "I-3",
+    "I-4",
+    "I-5",
+    "D-1",
+    "D-2",
+    "D-3",
+    "E-1",
+    "E-3",
+    "AG-4",
+    "AG-5",
+    "AG-6",
+    "AG-7",
+    "AGP-01",
+    "LLM-3",
+    "LLM-4",
+    "LLM-8",
+    "LLM-9",
+    "OI-1",
+    "OI-2",
+    "MI-1",
+    "TE-1"
+  ],
+  "params": {
+    "reference_digest": "867b6b5c5fb8e75ab6eb75bd6f454cdc3279a381783c49ec61d005317c3bffbf",
+    "scoring_date": "2026-11-23",
+    "trees_plan_id": "20261123T101500Z-7a1c3e5d9b02"
+  },
+  "part_path": "/synthetic-case/run/.tachi-build/report/20261123T103000Z-4e8f2a6c1d07/parts/B007.a1.json",
+  "plan_id": "20261123T103000Z-4e8f2a6c1d07",
+  "refs": {},
+  "schema": "tachi.batch-input/1",
+  "stage": "report",
+  "tree_paths": {},
+  "units": [
+    {
+      "agentic_pattern": "none",
+      "component": "edge-gateway",
+      "delta_status": "UNCHANGED",
+      "finding_id": "S-1",
+      "mitigation": "Replace the shared bearer token with per-workload identities that rotate automatically, and alert when one identity authenticates from two...",
+      "risk_level": "Low",
+      "section": "remediation_roadmap",
+      "threat": "A shared or long-lived bearer token on edge-gateway lets anyone who obtains one copy authenticate as every..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "auth-broker",
+      "delta_status": "UNCHANGED",
+      "finding_id": "S-3",
+      "mitigation": "Replace the shared refresh token with per-workload identities that rotate automatically, and alert when one identity authenticates from two...",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "A shared or long-lived refresh token on auth-broker lets anyone who obtains one copy authenticate as every..."
+    },
+    {
+      "agentic_pattern": "trust_exploitation",
+      "component": "tool-server-1",
+      "delta_status": "UNCHANGED",
+      "finding_id": "S-4",
+      "mitigation": "Replace the shared tool API key with per-workload identities that rotate automatically, and alert when one identity authenticates from two...",
+      "risk_level": "High",
+      "section": "remediation_roadmap",
+      "threat": "A shared or long-lived tool API key on tool-server-1 lets anyone who obtains one copy authenticate as every..."
+    },
+    {
+      "agentic_pattern": "trust_exploitation",
+      "component": "tool-server-1",
+      "delta_status": "NEW",
+      "finding_id": "S-5",
+      "mitigation": "Remove implicit trust in route names: authenticate every route of tool-server-1, including callbacks and health checks, and drop requests that...",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "An unauthenticated callback or health route on tool-server-1 accepts requests that downstream code treats as..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "auth-broker",
+      "delta_status": "UNCHANGED",
+      "finding_id": "T-1",
+      "mitigation": "Protect exports and backups of credential assertions and session grants with write-once storage and dual approval for restore, and verify...",
+      "risk_level": "High",
+      "section": "remediation_roadmap",
+      "threat": "Backups and exports of credential assertions and session grants on auth-broker are writable by operators..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "vector-store-a",
+      "delta_status": "UNCHANGED",
+      "finding_id": "T-2",
+      "group": "CG-7",
+      "members": [
+        {
+          "agentic_pattern": "none",
+          "component": "vector-store-a",
+          "delta_status": "UNCHANGED",
+          "finding_id": "T-2",
+          "mitigation": "Replace permissive deserialisation in vector-store-a with a closed schema of allowed types, and reject payloads that name types outside it.",
+          "risk_level": "Low",
+          "threat": "Serialised objects arriving from worker-2 are deserialised by vector-store-a with permissive type handling..."
+        },
+        {
+          "agentic_pattern": "none",
+          "component": "vector-store-a",
+          "delta_status": "UPDATED",
+          "finding_id": "LLM-6",
+          "mitigation": "Restrict write access to the ingestion path of vector-store-a, sign documents from authoritative sources and prefer them when answers conflict.",
+          "risk_level": "Critical",
+          "threat": "Anyone who can write to the ingestion path of vector-store-a can slip in documents that contradict..."
+        }
+      ],
+      "mitigation": "Replace permissive deserialisation in vector-store-a with a closed schema of allowed types, and reject payloads that name types outside it.",
+      "risk_level": "Low",
+      "section": "remediation_roadmap",
+      "threat": "Serialised objects arriving from worker-2 are deserialised by vector-store-a with permissive type handling..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "audit-ledger",
+      "delta_status": "UNCHANGED",
+      "finding_id": "T-3",
+      "mitigation": "Sign messages between tool-server-1 and audit-ledger with a per-service key and verify the signature and a monotonic counter before accepting any...",
+      "risk_level": "Low",
+      "section": "remediation_roadmap",
+      "threat": "An attacker who can write to the channel between tool-server-1 and audit-ledger modifies approval and tool..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "auth-broker",
+      "delta_status": "NEW",
+      "finding_id": "T-4",
+      "mitigation": "Validate credential assertions and session grants against a strict schema at the boundary of auth-broker, reject unknown fields and normalise...",
+      "risk_level": "Low",
+      "section": "remediation_roadmap",
+      "threat": "Unsanitised credential assertions and session grants reach auth-broker and are processed as trusted..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "intake-agent",
+      "delta_status": "UNCHANGED",
+      "finding_id": "R-1",
+      "group": "CG-2",
+      "members": [
+        {
+          "agentic_pattern": "none",
+          "component": "intake-agent",
+          "delta_status": "UNCHANGED",
+          "finding_id": "R-1",
+          "mitigation": "Synchronise intake-agent and edge-gateway to a trusted time source, record monotonic sequence numbers with every event and alert when drift...",
+          "risk_level": "Medium",
+          "threat": "Clock drift between intake-agent and edge-gateway leaves events in inconsistent order, so the sequence of..."
+        },
+        {
+          "agentic_pattern": "none",
+          "component": "intake-agent",
+          "delta_status": "UNCHANGED",
+          "finding_id": "E-2",
+          "mitigation": "Resolve roles for intake-agent from the authoritative directory on each request or from a short cache, and ignore role claims supplied by the caller.",
+          "risk_level": "Medium",
+          "threat": "Role claims carried in the service token presented to intake-agent are honoured without confirmation against..."
+        },
+        {
+          "agentic_pattern": "none",
+          "component": "intake-agent",
+          "delta_status": "UNCHANGED",
+          "finding_id": "AG-1",
+          "mitigation": "Tag memory entries with provenance and trust level, sanitise them on read and let operators review and expire entries written by intake-agent.",
+          "risk_level": "Critical",
+          "threat": "Memory written by intake-agent is trusted on later runs, so one poisoned entry changes the behaviour of..."
+        }
+      ],
+      "mitigation": "Synchronise intake-agent and edge-gateway to a trusted time source, record monotonic sequence numbers with every event and alert when drift...",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "Clock drift between intake-agent and edge-gateway leaves events in inconsistent order, so the sequence of..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "tool-server-1",
+      "delta_status": "UNCHANGED",
+      "finding_id": "R-3",
+      "group": "CG-5",
+      "members": [
+        {
+          "agentic_pattern": "none",
+          "component": "tool-server-1",
+          "delta_status": "UNCHANGED",
+          "finding_id": "R-3",
+          "mitigation": "Bind each approval to the exact change hash it covers, record approver and time in the audit ledger and refuse to execute unbound changes.",
+          "risk_level": "Low",
+          "threat": "Operators approve changes to tool call arguments and results through a chat message or ticket comment that..."
+        },
+        {
+          "agentic_pattern": "none",
+          "component": "tool-server-1",
+          "delta_status": "UPDATED",
+          "finding_id": "AG-3",
+          "mitigation": "Tag memory entries with provenance and trust level, sanitise them on read and let operators review and expire entries written by tool-server-1.",
+          "risk_level": "Critical",
+          "threat": "Memory written by tool-server-1 is trusted on later runs, so one poisoned entry changes the behaviour of..."
+        }
+      ],
+      "mitigation": "Bind each approval to the exact change hash it covers, record approver and time in the audit ledger and refuse to execute unbound changes.",
+      "risk_level": "Low",
+      "section": "remediation_roadmap",
+      "threat": "Operators approve changes to tool call arguments and results through a chat message or ticket comment that..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "tool-server-1",
+      "delta_status": "UNCHANGED",
+      "finding_id": "R-4",
+      "mitigation": "Log the verified principal, request identifier, source address and outcome for every state change in tool-server-1, and ship the records to the...",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "Actions taken through tool-server-1 are logged without the authenticated principal or a request identifier..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "edge-gateway",
+      "delta_status": "UNCHANGED",
+      "finding_id": "I-1",
+      "group": "CG-1",
+      "members": [
+        {
+          "agentic_pattern": "none",
+          "component": "edge-gateway",
+          "delta_status": "UNCHANGED",
+          "finding_id": "I-1",
+          "mitigation": "Pass the bearer token to edge-gateway through a secret manager mount, exclude it from process listings and diagnostics, and rotate it after any...",
+          "risk_level": "High",
+          "threat": "Secrets such as the bearer token for edge-gateway appear in process arguments and environment dumps that..."
+        },
+        {
+          "agentic_pattern": "none",
+          "component": "edge-gateway",
+          "delta_status": "UNCHANGED",
+          "finding_id": "LLM-1",
+          "mitigation": "Re-screen conversation history on each turn in edge-gateway, expire old turns and mark which turns came from untrusted sources.",
+          "risk_level": "Critical",
+          "threat": "edge-gateway passes conversation history from earlier turns into the model unchanged, so an injection..."
+        },
+        {
+          "agentic_pattern": "none",
+          "component": "edge-gateway",
+          "delta_status": "UNCHANGED",
+          "finding_id": "LLM-2",
+          "mitigation": "Mark replayed prompts as untrusted when edge-gateway processes them, and exclude logged content from any privileged instruction slot.",
+          "risk_level": "High",
+          "threat": "Prompt content logged by auth-broker is later replayed to edge-gateway for evaluation, carrying planted..."
+        }
+      ],
+      "mitigation": "Pass the bearer token to edge-gateway through a secret manager mount, exclude it from process listings and diagnostics, and rotate it after any...",
+      "risk_level": "High",
+      "section": "remediation_roadmap",
+      "threat": "Secrets such as the bearer token for edge-gateway appear in process arguments and environment dumps that..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "worker-2",
+      "delta_status": "UNCHANGED",
+      "finding_id": "I-3",
+      "group": "CG-4",
+      "members": [
+        {
+          "agentic_pattern": "none",
+          "component": "worker-2",
+          "delta_status": "UNCHANGED",
+          "finding_id": "I-3",
+          "mitigation": "Redact or tokenise sensitive fields before worker-2 emits logs and traces, and restrict the logging pipeline to the roles that need it.",
+          "risk_level": "Medium",
+          "threat": "Logs and traces emitted by worker-2 include raw work orders and route candidates, so anyone with access to..."
+        },
+        {
+          "agentic_pattern": "none",
+          "component": "worker-2",
+          "delta_status": "NEW",
+          "finding_id": "LLM-7",
+          "mitigation": "Restrict what worker-2 may fetch to an allowlist of domains and types, fetch through a sandbox and present the results as untrusted data.",
+          "risk_level": "Critical",
+          "threat": "worker-2 follows links and files named in work orders and route candidates, which turns a harmless-looking..."
+        }
+      ],
+      "mitigation": "Redact or tokenise sensitive fields before worker-2 emits logs and traces, and restrict the logging pipeline to the roles that need it.",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "Logs and traces emitted by worker-2 include raw work orders and route candidates, so anyone with access to..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "model-gateway",
+      "delta_status": "UNCHANGED",
+      "finding_id": "I-4",
+      "group": "CG-6",
+      "members": [
+        {
+          "agentic_pattern": "none",
+          "component": "model-gateway",
+          "delta_status": "UNCHANGED",
+          "finding_id": "I-4",
+          "mitigation": "Enforce tenant isolation in the data layer with row-level policies or separate keys, and add a regression test that queries across tenants.",
+          "risk_level": "High",
+          "threat": "Cross-tenant filters on model-gateway are applied in application code only, so one missing predicate exposes..."
+        },
+        {
+          "agentic_pattern": "none",
+          "component": "model-gateway",
+          "delta_status": "UNCHANGED",
+          "finding_id": "LLM-5",
+          "mitigation": "Score retrieved passages for instruction-like content before model-gateway uses them, attribute every passage to its source and cap how much any...",
+          "risk_level": "High",
+          "threat": "Indirect injection through documents retrieved for model-gateway lets the author of a retrieved page steer..."
+        }
+      ],
+      "mitigation": "Enforce tenant isolation in the data layer with row-level policies or separate keys, and add a regression test that queries across tenants.",
+      "risk_level": "High",
+      "section": "remediation_roadmap",
+      "threat": "Cross-tenant filters on model-gateway are applied in application code only, so one missing predicate exposes..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "vector-store-a",
+      "delta_status": "NEW",
+      "finding_id": "I-5",
+      "mitigation": "Grant access to embedded documents and metadata per workload identity with least privilege, enforce it at vector-store-a and remove...",
+      "risk_level": "Critical",
+      "section": "remediation_roadmap",
+      "threat": "embedded documents and metadata held by vector-store-a are readable by any service in the Data Zone that..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "edge-gateway",
+      "delta_status": "UNCHANGED",
+      "finding_id": "D-1",
+      "mitigation": "Isolate calls from edge-gateway to the dependency with timeouts and bulkheads, serve degraded results where possible and alert on dependency health.",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "A dependency of edge-gateway becomes unavailable and the failure cascades because edge-gateway waits on it..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "intake-agent",
+      "delta_status": "UNCHANGED",
+      "finding_id": "D-2",
+      "mitigation": "Cap payload size, nesting depth and parse time in intake-agent, and reject requests that exceed the limits before allocation.",
+      "risk_level": "High",
+      "section": "remediation_roadmap",
+      "threat": "A single oversized or deeply nested payload makes intake-agent spend disproportionate memory and CPU parsing..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "vector-store-a",
+      "delta_status": "UNCHANGED",
+      "finding_id": "D-3",
+      "mitigation": "Add jittered exponential backoff and a retry budget to worker-2, and enable a circuit breaker so that vector-store-a can recover.",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "Retry storms from worker-2 multiply the load on vector-store-a when it slows down, turning a brief delay..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "edge-gateway",
+      "delta_status": "UNCHANGED",
+      "finding_id": "E-1",
+      "mitigation": "Check ownership or entitlement for every object reference at edge-gateway on the server, and deny by default when the check cannot be made.",
+      "risk_level": "High",
+      "section": "remediation_roadmap",
+      "threat": "Object identifiers in requests to edge-gateway are trusted without an ownership check, so a caller can read..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "planner-agent",
+      "delta_status": "UNCHANGED",
+      "finding_id": "E-3",
+      "group": "CG-3",
+      "members": [
+        {
+          "agentic_pattern": "none",
+          "component": "planner-agent",
+          "delta_status": "UNCHANGED",
+          "finding_id": "E-3",
+          "mitigation": "Reduce the permissions of planner-agent to the minimum for task plans and tool selections, drop capabilities it does not use and review the grants...",
+          "risk_level": "High",
+          "threat": "planner-agent runs with broader permissions than its function needs, so a flaw in handling task plans and..."
+        },
+        {
+          "agentic_pattern": "emergent_behavior",
+          "component": "planner-agent",
+          "delta_status": "UNCHANGED",
+          "finding_id": "AG-2",
+          "mitigation": "Set hard limits on steps, tool calls, runtime and spend for planner-agent, stop on breach and report the stop reason to the operator.",
+          "risk_level": "Critical",
+          "threat": "planner-agent runs without a budget on steps or spend, so a loop or an adversarial task keeps it acting long..."
+        }
+      ],
+      "mitigation": "Reduce the permissions of planner-agent to the minimum for task plans and tool selections, drop capabilities it does not use and review the grants...",
+      "risk_level": "High",
+      "section": "remediation_roadmap",
+      "threat": "planner-agent runs with broader permissions than its function needs, so a flaw in handling task plans and..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "tool-server-1",
+      "delta_status": "UNCHANGED",
+      "finding_id": "AG-4",
+      "mitigation": "Make the actions of tool-server-1 idempotent with request keys, cap retries and require confirmation before repeating any action with external...",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "tool-server-1 retries failed actions on its own, repeating side effects such as bookings or messages when..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "tool-server-1",
+      "delta_status": "UNCHANGED",
+      "finding_id": "AG-5",
+      "mitigation": "Validate every argument against the tool schema in tool-server-1 before the call, enforce allowlists of values and reject free-form commands.",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "tool-server-1 invokes tools with arguments assembled from model output, so an attacker who shapes the output..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "planner-agent",
+      "delta_status": "NEW",
+      "finding_id": "AG-6",
+      "mitigation": "Apply per-task and per-tool quotas to planner-agent, alert on unusual call patterns and block calls once a cost ceiling is reached.",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "planner-agent does not limit the rate or total number of tool calls per task, so abuse of a costly tool goes..."
+    },
+    {
+      "agentic_pattern": "trust_exploitation",
+      "component": "intake-agent",
+      "delta_status": "NEW",
+      "finding_id": "AG-7",
+      "mitigation": "Neutralise urgency and pressure wording in intake-agent, present alternatives with their trade-offs and require a deliberate action to approve.",
+      "risk_level": "Low",
+      "section": "remediation_roadmap",
+      "threat": "Persuasive phrasing from intake-agent pushes operators to approve proposals quickly, which reduces careful..."
+    },
+    {
+      "agentic_pattern": "agent_collusion",
+      "component": "worker-2",
+      "delta_status": "NEW",
+      "finding_id": "AGP-01",
+      "mitigation": "Monitor combined activity across agents, set aggregate budgets for groups of workers and separate the channels that agents can use to coordinate....",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "Worker agents coordinate through the shared message bus and memory so that each stays under its individual..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "intake-agent",
+      "delta_status": "UNCHANGED",
+      "finding_id": "LLM-3",
+      "mitigation": "Normalise and decode inputs before filtering in intake-agent, apply semantic checks instead of keyword lists and review filter misses weekly.",
+      "risk_level": "High",
+      "section": "remediation_roadmap",
+      "threat": "Encoded or multilingual payloads bypass the keyword filter in front of intake-agent, which only checks plain..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "tool-server-1",
+      "delta_status": "UNCHANGED",
+      "finding_id": "LLM-4",
+      "mitigation": "Normalise and decode inputs before filtering in tool-server-1, apply semantic checks instead of keyword lists and review filter misses weekly.",
+      "risk_level": "Low",
+      "section": "remediation_roadmap",
+      "threat": "Encoded or multilingual payloads bypass the keyword filter in front of tool-server-1, which only checks..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "worker-2",
+      "delta_status": "NEW",
+      "finding_id": "LLM-8",
+      "mitigation": "Strip remote resources from the output of worker-2 before display, proxy images through a controlled service and disable automatic loading.",
+      "risk_level": "Note",
+      "section": "remediation_roadmap",
+      "threat": "Markdown or HTML produced by worker-2 contains remote images that leak data when a client renders it."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "intake-agent",
+      "delta_status": "NEW",
+      "finding_id": "LLM-9",
+      "mitigation": "Stamp every source used by intake-agent with an effective date, suppress answers built on expired sources and alert owners when content ages out.",
+      "risk_level": "Low",
+      "section": "remediation_roadmap",
+      "threat": "Stale data in the knowledge base lets intake-agent present superseded tariffs as current, causing wrong quotes."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "intake-agent",
+      "delta_status": "UNCHANGED",
+      "finding_id": "OI-1",
+      "mitigation": "Validate URLs from intake-agent against an allowlist, resolve and block private ranges before fetching, and fetch from a restricted network.",
+      "risk_level": "Low",
+      "section": "remediation_roadmap",
+      "threat": "intake-agent emits URLs that downstream services fetch, so an attacker can make internal addresses part of..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "intake-agent",
+      "delta_status": "UNCHANGED",
+      "finding_id": "OI-2",
+      "mitigation": "Validate the output of intake-agent against a strict schema in edge-gateway, treat it as untrusted input and reject anything that fails.",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "Structured output from intake-agent is trusted by edge-gateway as already validated, so a malformed field..."
+    },
+    {
+      "agentic_pattern": "none",
+      "component": "intake-agent",
+      "delta_status": "UNCHANGED",
+      "finding_id": "MI-1",
+      "mitigation": "Verify identifiers and citations produced by intake-agent against authoritative systems before display, and mark unverifiable ones clearly.",
+      "risk_level": "Low",
+      "section": "remediation_roadmap",
+      "threat": "intake-agent fabricates reference numbers and clause citations that look real, which operators then paste..."
+    },
+    {
+      "agentic_pattern": "trust_exploitation",
+      "component": "intake-agent",
+      "delta_status": "UNCHANGED",
+      "finding_id": "TE-1",
+      "mitigation": "Disclose that intake-agent is an automated agent at the start of each session and avoid human-like names or personal claims.",
+      "risk_level": "Medium",
+      "section": "remediation_roadmap",
+      "threat": "intake-agent adopts a persona that presents itself as a named colleague, so operators trust its suggestions..."
+    }
+  ]
+}

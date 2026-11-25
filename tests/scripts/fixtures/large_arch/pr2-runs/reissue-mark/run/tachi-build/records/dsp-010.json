@@ -1,0 +1,28 @@
+{
+  "agent_type": "tachi-prompt-injection",
+  "brief": "/synthetic-case/run/.tachi-build/briefs/dsp-010.json",
+  "count": 1,
+  "dispatch_id": "dsp-010",
+  "end_marker": true,
+  "local_ids": [
+    "LLM-1"
+  ],
+  "origin": "planned",
+  "prompt": "Read and follow the brief at /synthetic-case/run/.tachi-build/briefs/dsp-010.json.",
+  "reason": null,
+  "schema": "tachi.dispatch-record/1",
+  "scope": {
+    "components": [
+      "edge-gateway",
+      "intake-agent",
+      "planner-agent",
+      "worker-2",
+      "tool-server-1",
+      "model-gateway",
+      "vector-store-a"
+    ]
+  },
+  "status": "complete",
+  "superseded_by": [],
+  "supersedes": null
+}

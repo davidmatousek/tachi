@@ -1,0 +1,15 @@
+{
+  "agent_type": "tachi-threat-report",
+  "batch_id": "B008",
+  "finding_ids": [],
+  "fragments": [
+    {
+      "slot_key": "progress",
+      "text": "Since the baseline, {{count:new}} findings are new, {{count:updated}} changed and {{count:unchanged}} stayed as they were, and {{count:resolved}} were resolved."
+    }
+  ],
+  "items": [],
+  "plan_id": "20261123T103000Z-4e8f2a6c1d07",
+  "schema": "tachi.part/1",
+  "stage": "report"
+}

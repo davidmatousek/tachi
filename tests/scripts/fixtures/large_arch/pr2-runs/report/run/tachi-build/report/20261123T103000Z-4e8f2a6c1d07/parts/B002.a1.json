@@ -1,0 +1,19 @@
+{
+  "agent_type": "tachi-threat-report",
+  "batch_id": "B002",
+  "finding_ids": [],
+  "fragments": [
+    {
+      "slot_key": "system_context",
+      "text": "The platform turns operator requests into planned and audited shipment actions, and every agent reaches carrier systems through one tool server."
+    },
+    {
+      "slot_key": "trust_boundaries",
+      "text": "The platform spans 5 trust zones, and requests cross from the public internet into the edge zone first."
+    }
+  ],
+  "items": [],
+  "plan_id": "20261123T103000Z-4e8f2a6c1d07",
+  "schema": "tachi.part/1",
+  "stage": "report"
+}

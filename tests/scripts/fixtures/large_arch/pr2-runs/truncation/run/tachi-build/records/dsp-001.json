@@ -1,0 +1,33 @@
+{
+  "agent_type": "tachi-spoofing",
+  "brief": "/synthetic-case/run/.tachi-build/briefs/dsp-001.json",
+  "count": 5,
+  "dispatch_id": "dsp-001",
+  "end_marker": true,
+  "local_ids": [
+    "S-1",
+    "S-2",
+    "S-3",
+    "S-4",
+    "S-5"
+  ],
+  "origin": "planned",
+  "prompt": "Read and follow the brief at /synthetic-case/run/.tachi-build/briefs/dsp-001.json.",
+  "reason": null,
+  "schema": "tachi.dispatch-record/1",
+  "scope": {
+    "components": [
+      "client-portal",
+      "edge-gateway",
+      "auth-broker",
+      "intake-agent",
+      "planner-agent",
+      "worker-2",
+      "tool-server-1",
+      "model-gateway"
+    ]
+  },
+  "status": "complete",
+  "superseded_by": [],
+  "supersedes": null
+}

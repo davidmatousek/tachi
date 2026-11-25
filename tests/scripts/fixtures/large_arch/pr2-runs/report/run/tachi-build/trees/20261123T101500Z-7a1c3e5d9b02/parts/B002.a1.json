@@ -1,0 +1,45 @@
+{
+  "agent_type": "tachi-attack-tree-delta",
+  "batch_id": "B002",
+  "finding_ids": [
+    "LLM-2",
+    "LLM-3",
+    "LLM-5",
+    "LLM-6",
+    "LLM-7"
+  ],
+  "fragments": [],
+  "items": [
+    {
+      "action": "carried_forward",
+      "delta_status": "UNCHANGED",
+      "finding_id": "LLM-2",
+      "similarity_score": 0.96
+    },
+    {
+      "action": "carried_forward",
+      "delta_status": "UNCHANGED",
+      "finding_id": "LLM-3",
+      "similarity_score": 0.81
+    },
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "LLM-5",
+      "similarity_score": 0.6
+    },
+    {
+      "action": "generated_fresh",
+      "delta_status": "UPDATED",
+      "finding_id": "LLM-6"
+    },
+    {
+      "action": "generated_fresh",
+      "delta_status": "NEW",
+      "finding_id": "LLM-7"
+    }
+  ],
+  "plan_id": "20261123T101500Z-7a1c3e5d9b02",
+  "schema": "tachi.part/1",
+  "stage": "trees"
+}

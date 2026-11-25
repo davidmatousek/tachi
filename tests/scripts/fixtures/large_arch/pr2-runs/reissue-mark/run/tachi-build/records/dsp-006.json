@@ -1,0 +1,26 @@
+{
+  "agent_type": "tachi-privilege-escalation",
+  "brief": "/synthetic-case/run/.tachi-build/briefs/dsp-006.json",
+  "count": 0,
+  "dispatch_id": "dsp-006",
+  "end_marker": true,
+  "local_ids": [],
+  "origin": "planned",
+  "prompt": "Read and follow the brief at /synthetic-case/run/.tachi-build/briefs/dsp-006.json.",
+  "reason": null,
+  "schema": "tachi.dispatch-record/1",
+  "scope": {
+    "components": [
+      "edge-gateway",
+      "auth-broker",
+      "intake-agent",
+      "planner-agent",
+      "worker-2",
+      "tool-server-1",
+      "model-gateway"
+    ]
+  },
+  "status": "complete",
+  "superseded_by": [],
+  "supersedes": null
+}

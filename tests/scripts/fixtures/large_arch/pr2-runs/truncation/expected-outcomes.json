@@ -1,0 +1,1039 @@
+{
+  "notes": [
+    "This is a provenance scenario for check-threat-model.py (D12) and the Phase 2 half of the run-level record. run/ is the {out} directory: threats.md, the architecture snapshot, and tachi-build/ (named .tachi-build/ in a working directory, which .gitignore excludes here). Every absolute path in a record and a brief names the root /synthetic-case, which materialize() replaces with a real directory. The files hold exactly what the contracts' key sets allow, and test_fixture_374.py reads each one back through the shipped validators.",
+    "The planned set follows from phase1/dispatch.json and the roster alone: 14 dispatches, one for each agent with a component in scope, in the roster's order (dsp-001 to dsp-014). A planned record's scope is that agent's components, in the inventory's order.",
+    "Every finding's provenance is in provenance.findings: class 1 (a dispatch record keeps it), 2 (a baseline carry-forward) or 3 (Phase 3.6's rule). A record's local IDs are its agent's own: its emitted prefix and a number from 1 in its report's order, so they can equal another finding's final ID. The ID map holds one disposition for each local ID, in order. These values are worked out here from the contracts and are not read from any script: no check script exists yet, and T095 and T096 are the first to run one on them.",
+    "run/ holds no run-level plan, no hand-off and no sections.json: tachi-stage.py plan --stage threat-model writes the plan, the check writes its hand-off under that plan's checks/ directory, and a test that needs the manifest or the threats-md parts builds them itself. Section 6 and the other tables of threats.md are the generator's (render_threats_md), as in every other scenario.",
+    "The run has no baseline, so every finding is NEW and every brief's baseline_focus is null (a stateless run). threats.md has no Section 4c or 8 and its front matter has no baseline.",
+    "Two lineages. A planned dispatch is split into one replacement for each component of its scope, and a replacement that ends early is repeated once: dsp-007 (tachi-agent-autonomy's planned dispatch) ended after 2 findings, with reason no_end_marker, and is split into dsp-015 to dsp-018; dsp-009 (tachi-human-trust-exploitation's planned dispatch) ended with no report, with reason agent_failed, and is split into dsp-019 to dsp-022; dsp-016 (tachi-agent-autonomy's replacement for planner-agent) ended with no report, with reason timed_out, and is repeated by dsp-023; dsp-021 (tachi-human-trust-exploitation's replacement for worker-2) ended after 1 finding, with reason overflow_error, and is repeated by dsp-024. A superseded record's findings are not in the ID map, and no other record names them.",
+    "Phase 2's counts: 14 planned, 10 retried (a split of k components counts k, a repeat one), 24 dispatched, 20 done, 4 split and 0 exhausted."
+  ],
+  "provenance": {
+    "batches": {
+      "dispatched": 24,
+      "done": 20,
+      "exhausted": 0,
+      "planned": 14,
+      "retried": 10,
+      "split": 4
+    },
+    "check": {
+      "error": null,
+      "exit_code": 0,
+      "reissued": [],
+      "status": "pass",
+      "warnings": []
+    },
+    "counts": {
+      "carried": 0,
+      "folded": 3,
+      "open": 42,
+      "recorded": 41,
+      "renumbered": 16,
+      "resolved": 0,
+      "reused-id": 0,
+      "rule": 1
+    },
+    "findings": {
+      "AG-1": {
+        "agent": "tachi-agent-autonomy",
+        "class": 1,
+        "form": "kept",
+        "local_id": "AG-1",
+        "origin": "record",
+        "record": "dsp-015",
+        "status": "NEW"
+      },
+      "AG-2": {
+        "agent": "tachi-agent-autonomy",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "AG-1",
+        "origin": "record",
+        "record": "dsp-023",
+        "status": "NEW"
+      },
+      "AG-3": {
+        "agent": "tachi-agent-autonomy",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "AG-1",
+        "origin": "record",
+        "record": "dsp-018",
+        "status": "NEW"
+      },
+      "AG-4": {
+        "agent": "tachi-agent-autonomy",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "AG-2",
+        "origin": "record",
+        "record": "dsp-018",
+        "status": "NEW"
+      },
+      "AG-5": {
+        "agent": "tachi-tool-abuse",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "AG-2",
+        "origin": "record",
+        "record": "dsp-008",
+        "status": "NEW"
+      },
+      "AG-6": {
+        "agent": "tachi-tool-abuse",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "AG-1",
+        "origin": "record",
+        "record": "dsp-008",
+        "status": "NEW"
+      },
+      "AG-7": {
+        "agent": "tachi-human-trust-exploitation",
+        "class": 1,
+        "form": "folded",
+        "local_id": "TE-1",
+        "origin": "record",
+        "record": "dsp-019",
+        "status": "NEW"
+      },
+      "AGP-01": {
+        "agent": null,
+        "class": 3,
+        "form": null,
+        "local_id": null,
+        "origin": "rule",
+        "record": null,
+        "status": "NEW"
+      },
+      "D-1": {
+        "agent": "tachi-denial-of-service",
+        "class": 1,
+        "form": "kept",
+        "local_id": "D-1",
+        "origin": "record",
+        "record": "dsp-005",
+        "status": "NEW"
+      },
+      "D-2": {
+        "agent": "tachi-denial-of-service",
+        "class": 1,
+        "form": "kept",
+        "local_id": "D-2",
+        "origin": "record",
+        "record": "dsp-005",
+        "status": "NEW"
+      },
+      "D-3": {
+        "agent": "tachi-denial-of-service",
+        "class": 1,
+        "form": "kept",
+        "local_id": "D-3",
+        "origin": "record",
+        "record": "dsp-005",
+        "status": "NEW"
+      },
+      "E-1": {
+        "agent": "tachi-privilege-escalation",
+        "class": 1,
+        "form": "kept",
+        "local_id": "E-1",
+        "origin": "record",
+        "record": "dsp-006",
+        "status": "NEW"
+      },
+      "E-2": {
+        "agent": "tachi-privilege-escalation",
+        "class": 1,
+        "form": "kept",
+        "local_id": "E-2",
+        "origin": "record",
+        "record": "dsp-006",
+        "status": "NEW"
+      },
+      "E-3": {
+        "agent": "tachi-privilege-escalation",
+        "class": 1,
+        "form": "kept",
+        "local_id": "E-3",
+        "origin": "record",
+        "record": "dsp-006",
+        "status": "NEW"
+      },
+      "I-1": {
+        "agent": "tachi-info-disclosure",
+        "class": 1,
+        "form": "kept",
+        "local_id": "I-1",
+        "origin": "record",
+        "record": "dsp-004",
+        "status": "NEW"
+      },
+      "I-2": {
+        "agent": "tachi-info-disclosure",
+        "class": 1,
+        "form": "kept",
+        "local_id": "I-2",
+        "origin": "record",
+        "record": "dsp-004",
+        "status": "NEW"
+      },
+      "I-3": {
+        "agent": "tachi-info-disclosure",
+        "class": 1,
+        "form": "kept",
+        "local_id": "I-3",
+        "origin": "record",
+        "record": "dsp-004",
+        "status": "NEW"
+      },
+      "I-4": {
+        "agent": "tachi-info-disclosure",
+        "class": 1,
+        "form": "kept",
+        "local_id": "I-4",
+        "origin": "record",
+        "record": "dsp-004",
+        "status": "NEW"
+      },
+      "LLM-1": {
+        "agent": "tachi-prompt-injection",
+        "class": 1,
+        "form": "kept",
+        "local_id": "LLM-1",
+        "origin": "record",
+        "record": "dsp-010",
+        "status": "NEW"
+      },
+      "LLM-2": {
+        "agent": "tachi-prompt-injection",
+        "class": 1,
+        "form": "kept",
+        "local_id": "LLM-2",
+        "origin": "record",
+        "record": "dsp-010",
+        "status": "NEW"
+      },
+      "LLM-3": {
+        "agent": "tachi-prompt-injection",
+        "class": 1,
+        "form": "kept",
+        "local_id": "LLM-3",
+        "origin": "record",
+        "record": "dsp-010",
+        "status": "NEW"
+      },
+      "LLM-4": {
+        "agent": "tachi-prompt-injection",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "LLM-5",
+        "origin": "record",
+        "record": "dsp-010",
+        "status": "NEW"
+      },
+      "LLM-5": {
+        "agent": "tachi-prompt-injection",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "LLM-6",
+        "origin": "record",
+        "record": "dsp-010",
+        "status": "NEW"
+      },
+      "LLM-6": {
+        "agent": "tachi-data-poisoning",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "LLM-1",
+        "origin": "record",
+        "record": "dsp-011",
+        "status": "NEW"
+      },
+      "LLM-7": {
+        "agent": "tachi-prompt-injection",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "LLM-4",
+        "origin": "record",
+        "record": "dsp-010",
+        "status": "NEW"
+      },
+      "LLM-8": {
+        "agent": "tachi-output-integrity",
+        "class": 1,
+        "form": "folded",
+        "local_id": "OI-3",
+        "origin": "record",
+        "record": "dsp-013",
+        "status": "NEW"
+      },
+      "LLM-9": {
+        "agent": "tachi-misinformation",
+        "class": 1,
+        "form": "folded",
+        "local_id": "MI-1",
+        "origin": "record",
+        "record": "dsp-014",
+        "status": "NEW"
+      },
+      "MI-1": {
+        "agent": "tachi-misinformation",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "MI-2",
+        "origin": "record",
+        "record": "dsp-014",
+        "status": "NEW"
+      },
+      "OI-1": {
+        "agent": "tachi-output-integrity",
+        "class": 1,
+        "form": "kept",
+        "local_id": "OI-1",
+        "origin": "record",
+        "record": "dsp-013",
+        "status": "NEW"
+      },
+      "OI-2": {
+        "agent": "tachi-output-integrity",
+        "class": 1,
+        "form": "kept",
+        "local_id": "OI-2",
+        "origin": "record",
+        "record": "dsp-013",
+        "status": "NEW"
+      },
+      "R-1": {
+        "agent": "tachi-repudiation",
+        "class": 1,
+        "form": "kept",
+        "local_id": "R-1",
+        "origin": "record",
+        "record": "dsp-003",
+        "status": "NEW"
+      },
+      "R-2": {
+        "agent": "tachi-repudiation",
+        "class": 1,
+        "form": "kept",
+        "local_id": "R-2",
+        "origin": "record",
+        "record": "dsp-003",
+        "status": "NEW"
+      },
+      "R-3": {
+        "agent": "tachi-repudiation",
+        "class": 1,
+        "form": "kept",
+        "local_id": "R-3",
+        "origin": "record",
+        "record": "dsp-003",
+        "status": "NEW"
+      },
+      "S-1": {
+        "agent": "tachi-spoofing",
+        "class": 1,
+        "form": "kept",
+        "local_id": "S-1",
+        "origin": "record",
+        "record": "dsp-001",
+        "status": "NEW"
+      },
+      "S-2": {
+        "agent": "tachi-spoofing",
+        "class": 1,
+        "form": "kept",
+        "local_id": "S-2",
+        "origin": "record",
+        "record": "dsp-001",
+        "status": "NEW"
+      },
+      "S-3": {
+        "agent": "tachi-spoofing",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "S-4",
+        "origin": "record",
+        "record": "dsp-001",
+        "status": "NEW"
+      },
+      "S-4": {
+        "agent": "tachi-spoofing",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "S-5",
+        "origin": "record",
+        "record": "dsp-001",
+        "status": "NEW"
+      },
+      "T-1": {
+        "agent": "tachi-tampering",
+        "class": 1,
+        "form": "kept",
+        "local_id": "T-1",
+        "origin": "record",
+        "record": "dsp-002",
+        "status": "NEW"
+      },
+      "T-2": {
+        "agent": "tachi-tampering",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "T-3",
+        "origin": "record",
+        "record": "dsp-002",
+        "status": "NEW"
+      },
+      "T-3": {
+        "agent": "tachi-tampering",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "T-4",
+        "origin": "record",
+        "record": "dsp-002",
+        "status": "NEW"
+      },
+      "T-4": {
+        "agent": "tachi-tampering",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "T-2",
+        "origin": "record",
+        "record": "dsp-002",
+        "status": "NEW"
+      },
+      "TE-1": {
+        "agent": "tachi-human-trust-exploitation",
+        "class": 1,
+        "form": "renumbered",
+        "local_id": "TE-2",
+        "origin": "record",
+        "record": "dsp-019",
+        "status": "NEW"
+      }
+    },
+    "idmap": {
+      "dsp-001": [
+        "S-1",
+        "S-2",
+        ">S-2",
+        "S-3",
+        "S-4"
+      ],
+      "dsp-002": [
+        "T-1",
+        "T-4",
+        "T-2",
+        "T-3",
+        ">T-3"
+      ],
+      "dsp-003": [
+        "R-1",
+        "R-2",
+        "R-3"
+      ],
+      "dsp-004": [
+        "I-1",
+        "I-2",
+        "I-3",
+        "I-4"
+      ],
+      "dsp-005": [
+        "D-1",
+        "D-2",
+        "D-3"
+      ],
+      "dsp-006": [
+        "E-1",
+        "E-2",
+        "E-3"
+      ],
+      "dsp-008": [
+        "AG-6",
+        "AG-5"
+      ],
+      "dsp-010": [
+        "LLM-1",
+        "LLM-2",
+        "LLM-3",
+        "LLM-7",
+        "LLM-4",
+        "LLM-5"
+      ],
+      "dsp-011": [
+        "LLM-6"
+      ],
+      "dsp-012": [],
+      "dsp-013": [
+        "OI-1",
+        "OI-2",
+        "LLM-8"
+      ],
+      "dsp-014": [
+        "LLM-9",
+        "MI-1"
+      ],
+      "dsp-015": [
+        "AG-1"
+      ],
+      "dsp-017": [],
+      "dsp-018": [
+        "AG-3",
+        "AG-4"
+      ],
+      "dsp-019": [
+        "AG-7",
+        "TE-1"
+      ],
+      "dsp-020": [],
+      "dsp-022": [],
+      "dsp-023": [
+        "AG-2"
+      ],
+      "dsp-024": []
+    },
+    "open_ids": [
+      "S-1",
+      "S-2",
+      "S-3",
+      "S-4",
+      "T-1",
+      "T-2",
+      "T-3",
+      "T-4",
+      "R-1",
+      "R-2",
+      "R-3",
+      "I-1",
+      "I-2",
+      "I-3",
+      "I-4",
+      "D-1",
+      "D-2",
+      "D-3",
+      "E-1",
+      "E-2",
+      "E-3",
+      "AG-1",
+      "AG-2",
+      "AG-3",
+      "AG-4",
+      "AG-5",
+      "AG-6",
+      "AG-7",
+      "AGP-01",
+      "LLM-1",
+      "LLM-2",
+      "LLM-3",
+      "LLM-4",
+      "LLM-5",
+      "LLM-6",
+      "LLM-7",
+      "LLM-8",
+      "LLM-9",
+      "OI-1",
+      "OI-2",
+      "MI-1",
+      "TE-1"
+    ],
+    "planned": [
+      {
+        "agent_type": "tachi-spoofing",
+        "dispatch_id": "dsp-001",
+        "scope": [
+          "client-portal",
+          "edge-gateway",
+          "auth-broker",
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1",
+          "model-gateway"
+        ]
+      },
+      {
+        "agent_type": "tachi-tampering",
+        "dispatch_id": "dsp-002",
+        "scope": [
+          "edge-gateway",
+          "auth-broker",
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1",
+          "model-gateway",
+          "vector-store-a",
+          "audit-ledger"
+        ]
+      },
+      {
+        "agent_type": "tachi-repudiation",
+        "dispatch_id": "dsp-003",
+        "scope": [
+          "client-portal",
+          "edge-gateway",
+          "auth-broker",
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1",
+          "model-gateway",
+          "audit-ledger"
+        ]
+      },
+      {
+        "agent_type": "tachi-info-disclosure",
+        "dispatch_id": "dsp-004",
+        "scope": [
+          "edge-gateway",
+          "auth-broker",
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1",
+          "model-gateway",
+          "vector-store-a",
+          "audit-ledger"
+        ]
+      },
+      {
+        "agent_type": "tachi-denial-of-service",
+        "dispatch_id": "dsp-005",
+        "scope": [
+          "edge-gateway",
+          "auth-broker",
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1",
+          "model-gateway",
+          "vector-store-a",
+          "audit-ledger"
+        ]
+      },
+      {
+        "agent_type": "tachi-privilege-escalation",
+        "dispatch_id": "dsp-006",
+        "scope": [
+          "edge-gateway",
+          "auth-broker",
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1",
+          "model-gateway"
+        ]
+      },
+      {
+        "agent_type": "tachi-agent-autonomy",
+        "dispatch_id": "dsp-007",
+        "scope": [
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1"
+        ]
+      },
+      {
+        "agent_type": "tachi-tool-abuse",
+        "dispatch_id": "dsp-008",
+        "scope": [
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1"
+        ]
+      },
+      {
+        "agent_type": "tachi-human-trust-exploitation",
+        "dispatch_id": "dsp-009",
+        "scope": [
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1"
+        ]
+      },
+      {
+        "agent_type": "tachi-prompt-injection",
+        "dispatch_id": "dsp-010",
+        "scope": [
+          "edge-gateway",
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1",
+          "model-gateway",
+          "vector-store-a"
+        ]
+      },
+      {
+        "agent_type": "tachi-data-poisoning",
+        "dispatch_id": "dsp-011",
+        "scope": [
+          "edge-gateway",
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1",
+          "model-gateway",
+          "vector-store-a"
+        ]
+      },
+      {
+        "agent_type": "tachi-model-theft",
+        "dispatch_id": "dsp-012",
+        "scope": [
+          "edge-gateway",
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1",
+          "model-gateway",
+          "vector-store-a"
+        ]
+      },
+      {
+        "agent_type": "tachi-output-integrity",
+        "dispatch_id": "dsp-013",
+        "scope": [
+          "edge-gateway",
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1",
+          "model-gateway",
+          "vector-store-a"
+        ]
+      },
+      {
+        "agent_type": "tachi-misinformation",
+        "dispatch_id": "dsp-014",
+        "scope": [
+          "edge-gateway",
+          "intake-agent",
+          "planner-agent",
+          "worker-2",
+          "tool-server-1",
+          "model-gateway",
+          "vector-store-a"
+        ]
+      }
+    ],
+    "records": [
+      {
+        "agent_type": "tachi-spoofing",
+        "attempt": 1,
+        "count": 5,
+        "dispatch_id": "dsp-001",
+        "origin": "planned",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-tampering",
+        "attempt": 1,
+        "count": 5,
+        "dispatch_id": "dsp-002",
+        "origin": "planned",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-repudiation",
+        "attempt": 1,
+        "count": 3,
+        "dispatch_id": "dsp-003",
+        "origin": "planned",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-info-disclosure",
+        "attempt": 1,
+        "count": 4,
+        "dispatch_id": "dsp-004",
+        "origin": "planned",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-denial-of-service",
+        "attempt": 1,
+        "count": 3,
+        "dispatch_id": "dsp-005",
+        "origin": "planned",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-privilege-escalation",
+        "attempt": 1,
+        "count": 3,
+        "dispatch_id": "dsp-006",
+        "origin": "planned",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-agent-autonomy",
+        "attempt": 1,
+        "count": 2,
+        "dispatch_id": "dsp-007",
+        "origin": "planned",
+        "reason": "no_end_marker",
+        "status": "superseded",
+        "superseded_by": [
+          "dsp-015",
+          "dsp-016",
+          "dsp-017",
+          "dsp-018"
+        ],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-tool-abuse",
+        "attempt": 1,
+        "count": 2,
+        "dispatch_id": "dsp-008",
+        "origin": "planned",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-human-trust-exploitation",
+        "attempt": 1,
+        "count": 0,
+        "dispatch_id": "dsp-009",
+        "origin": "planned",
+        "reason": "agent_failed",
+        "status": "superseded",
+        "superseded_by": [
+          "dsp-019",
+          "dsp-020",
+          "dsp-021",
+          "dsp-022"
+        ],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-prompt-injection",
+        "attempt": 1,
+        "count": 6,
+        "dispatch_id": "dsp-010",
+        "origin": "planned",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-data-poisoning",
+        "attempt": 1,
+        "count": 1,
+        "dispatch_id": "dsp-011",
+        "origin": "planned",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-model-theft",
+        "attempt": 1,
+        "count": 0,
+        "dispatch_id": "dsp-012",
+        "origin": "planned",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-output-integrity",
+        "attempt": 1,
+        "count": 3,
+        "dispatch_id": "dsp-013",
+        "origin": "planned",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-misinformation",
+        "attempt": 1,
+        "count": 2,
+        "dispatch_id": "dsp-014",
+        "origin": "planned",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": null
+      },
+      {
+        "agent_type": "tachi-agent-autonomy",
+        "attempt": 2,
+        "count": 1,
+        "dispatch_id": "dsp-015",
+        "origin": "redispatch",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": "dsp-007"
+      },
+      {
+        "agent_type": "tachi-agent-autonomy",
+        "attempt": 2,
+        "count": 0,
+        "dispatch_id": "dsp-016",
+        "origin": "redispatch",
+        "reason": "timed_out",
+        "status": "superseded",
+        "superseded_by": [
+          "dsp-023"
+        ],
+        "supersedes": "dsp-007"
+      },
+      {
+        "agent_type": "tachi-agent-autonomy",
+        "attempt": 2,
+        "count": 0,
+        "dispatch_id": "dsp-017",
+        "origin": "redispatch",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": "dsp-007"
+      },
+      {
+        "agent_type": "tachi-agent-autonomy",
+        "attempt": 2,
+        "count": 2,
+        "dispatch_id": "dsp-018",
+        "origin": "redispatch",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": "dsp-007"
+      },
+      {
+        "agent_type": "tachi-human-trust-exploitation",
+        "attempt": 2,
+        "count": 2,
+        "dispatch_id": "dsp-019",
+        "origin": "redispatch",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": "dsp-009"
+      },
+      {
+        "agent_type": "tachi-human-trust-exploitation",
+        "attempt": 2,
+        "count": 0,
+        "dispatch_id": "dsp-020",
+        "origin": "redispatch",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": "dsp-009"
+      },
+      {
+        "agent_type": "tachi-human-trust-exploitation",
+        "attempt": 2,
+        "count": 1,
+        "dispatch_id": "dsp-021",
+        "origin": "redispatch",
+        "reason": "overflow_error",
+        "status": "superseded",
+        "superseded_by": [
+          "dsp-024"
+        ],
+        "supersedes": "dsp-009"
+      },
+      {
+        "agent_type": "tachi-human-trust-exploitation",
+        "attempt": 2,
+        "count": 0,
+        "dispatch_id": "dsp-022",
+        "origin": "redispatch",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": "dsp-009"
+      },
+      {
+        "agent_type": "tachi-agent-autonomy",
+        "attempt": 3,
+        "count": 1,
+        "dispatch_id": "dsp-023",
+        "origin": "redispatch",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": "dsp-016"
+      },
+      {
+        "agent_type": "tachi-human-trust-exploitation",
+        "attempt": 3,
+        "count": 0,
+        "dispatch_id": "dsp-024",
+        "origin": "redispatch",
+        "reason": null,
+        "status": "complete",
+        "superseded_by": [],
+        "supersedes": "dsp-021"
+      }
+    ],
+    "resolved_ids": [],
+    "side_dispositions": [
+      {
+        "agent": "tachi-spoofing",
+        "disposition": ">S-2",
+        "kind": ">",
+        "local_id": "S-3",
+        "record": "dsp-001",
+        "target": "S-2"
+      },
+      {
+        "agent": "tachi-tampering",
+        "disposition": ">T-3",
+        "kind": ">",
+        "local_id": "T-5",
+        "record": "dsp-002",
+        "target": "T-3"
+      }
+    ],
+    "stateless": true
+  },
+  "run": {
+    "architecture": "run/architecture.md",
+    "baseline": null,
+    "date": "2026-11-23",
+    "how": "gen.materialize(scenario, directory) writes run/ and baseline/ for that directory, with tachi-build/ renamed .tachi-build/ and every absolute path rewritten, then check-threat-model.py --run-dir <directory>/run --plan <plan> and --baseline <directory>/baseline/threats.md, or --no-baseline for a run with no baseline",
+    "tachi_build": "run/tachi-build",
+    "threats": "run/threats.md"
+  },
+  "scenario": "truncation",
+  "schema": "tachi.fixture-expected/1",
+  "stage": "provenance-check",
+  "summary": "S-4's PR 2 truncation case in a stateless run: two planned dispatches cut short and re-dispatched, with all four reasons.",
+  "variant": "pr2-runs"
+}

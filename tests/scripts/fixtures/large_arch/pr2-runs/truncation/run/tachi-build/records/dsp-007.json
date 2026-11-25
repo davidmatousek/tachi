@@ -1,0 +1,31 @@
+{
+  "agent_type": "tachi-agent-autonomy",
+  "brief": "/synthetic-case/run/.tachi-build/briefs/dsp-007.json",
+  "count": 2,
+  "dispatch_id": "dsp-007",
+  "end_marker": false,
+  "local_ids": [
+    "AG-1",
+    "AG-2"
+  ],
+  "origin": "planned",
+  "prompt": "Read and follow the brief at /synthetic-case/run/.tachi-build/briefs/dsp-007.json.",
+  "reason": "no_end_marker",
+  "schema": "tachi.dispatch-record/1",
+  "scope": {
+    "components": [
+      "intake-agent",
+      "planner-agent",
+      "worker-2",
+      "tool-server-1"
+    ]
+  },
+  "status": "superseded",
+  "superseded_by": [
+    "dsp-015",
+    "dsp-016",
+    "dsp-017",
+    "dsp-018"
+  ],
+  "supersedes": null
+}

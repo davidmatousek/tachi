@@ -1,0 +1,340 @@
+{
+  "notes": [
+    "Rule 2 applies: the baseline exists and the run has NEW, UPDATED and RESOLVED findings. Every open Critical or High finding gets a tree, in batches of 12 in S-2 order (S1P-A57). A NEW or UPDATED finding is planned generated_fresh. An UNCHANGED finding whose baseline holds a tree is a Rule 3 unit, planned regenerated, and its part's item says regenerated (the fresh tree stands) or carried_forward (the baseline's stands), each with a similarity_score, which is the one value in which a part may differ from its batch input (S1P-A43). One UNCHANGED finding (S-4) has no tree in the baseline, so it is planned generated_fresh: Rule 1's isolated fallback, here under Rule 2.",
+    "A baseline tree differs from the fresh tree of its finding by one line ('Carried from the baseline run.'), so a copy shows its source: the merged tree of a carried_forward item is the baseline's file byte for byte (FR-K5.3), and every other is the plan's tree under trees/.",
+    "The plan's digests are the contract's: each batch input's SHA-256 is in the plan, the plan's SHA-256 is plan_digest, and params.reference_digest is tachi_parts.reference_digest of the run's reference set. The plan's inputs names (threats; for the report plan also trees_plan and tree_manifest) follow lane T's tests (RD-4, RD-10), because no ruling names them yet: T092's planner is the one to confirm them."
+  ],
+  "run": {
+    "baseline": "baseline/threats.md",
+    "baseline_trees": "baseline/attack-trees",
+    "date": "2026-11-23",
+    "how": "gen.materialize(scenario, directory) writes the scenario for that directory (plans, batch inputs and their digests hold only for the root they were built for). Then assemble-report.py <mode> --run-dir <directory>/run --plan <plan_id> --plan-digest <plan_digest>",
+    "threats": "run/threats.md",
+    "trees_plan_dir": "run/tachi-build/trees/20261123T101500Z-7a1c3e5d9b02"
+  },
+  "scenario": "trees",
+  "schema": "tachi.fixture-expected/1",
+  "stage": "trees-assembly",
+  "summary": "S-4's PR 2 tree batches: the forms run's trees stage under Rule 2, with its manifests and Rule 3's decisions, before assemble-report.py trees runs.",
+  "trees": {
+    "baseline_trees": [
+      "T-1",
+      "I-1",
+      "I-4",
+      "D-2",
+      "E-1",
+      "E-3",
+      "AG-1",
+      "AG-2",
+      "AG-3",
+      "LLM-1",
+      "LLM-2",
+      "LLM-3",
+      "LLM-5",
+      "LLM-6"
+    ],
+    "batch_size": 12,
+    "batches": [
+      {
+        "batch_id": "B001",
+        "finding_ids": [
+          "S-4",
+          "T-1",
+          "I-1",
+          "I-4",
+          "I-5",
+          "D-2",
+          "E-1",
+          "E-3",
+          "AG-1",
+          "AG-2",
+          "AG-3",
+          "LLM-1"
+        ]
+      },
+      {
+        "batch_id": "B002",
+        "finding_ids": [
+          "LLM-2",
+          "LLM-3",
+          "LLM-5",
+          "LLM-6",
+          "LLM-7"
+        ]
+      }
+    ],
+    "merged_manifest": {
+      "attack_tree_count": 17,
+      "rule_applied": "Rule 2",
+      "schema_version": "1.0",
+      "summary": {
+        "carried_forward": 8,
+        "fresh": 5,
+        "regenerated": 4
+      },
+      "trees": [
+        {
+          "action": "generated_fresh",
+          "delta_status": "NEW",
+          "file_path": "attack-trees/i-5-attack-tree.md",
+          "finding_id": "I-5"
+        },
+        {
+          "action": "carried_forward",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/ag-1-attack-tree.md",
+          "finding_id": "AG-1",
+          "similarity_score": 0.89
+        },
+        {
+          "action": "carried_forward",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/ag-2-attack-tree.md",
+          "finding_id": "AG-2",
+          "similarity_score": 0.88
+        },
+        {
+          "action": "generated_fresh",
+          "delta_status": "UPDATED",
+          "file_path": "attack-trees/ag-3-attack-tree.md",
+          "finding_id": "AG-3"
+        },
+        {
+          "action": "regenerated",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/llm-1-attack-tree.md",
+          "finding_id": "LLM-1",
+          "similarity_score": 0.63
+        },
+        {
+          "action": "generated_fresh",
+          "delta_status": "UPDATED",
+          "file_path": "attack-trees/llm-6-attack-tree.md",
+          "finding_id": "LLM-6"
+        },
+        {
+          "action": "generated_fresh",
+          "delta_status": "NEW",
+          "file_path": "attack-trees/llm-7-attack-tree.md",
+          "finding_id": "LLM-7"
+        },
+        {
+          "action": "generated_fresh",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/s-4-attack-tree.md",
+          "finding_id": "S-4"
+        },
+        {
+          "action": "carried_forward",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/t-1-attack-tree.md",
+          "finding_id": "T-1",
+          "similarity_score": 0.86
+        },
+        {
+          "action": "carried_forward",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/i-1-attack-tree.md",
+          "finding_id": "I-1",
+          "similarity_score": 0.84
+        },
+        {
+          "action": "regenerated",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/i-4-attack-tree.md",
+          "finding_id": "I-4",
+          "similarity_score": 0.47
+        },
+        {
+          "action": "carried_forward",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/d-2-attack-tree.md",
+          "finding_id": "D-2",
+          "similarity_score": 0.97
+        },
+        {
+          "action": "carried_forward",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/e-1-attack-tree.md",
+          "finding_id": "E-1",
+          "similarity_score": 0.86
+        },
+        {
+          "action": "regenerated",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/e-3-attack-tree.md",
+          "finding_id": "E-3",
+          "similarity_score": 0.57
+        },
+        {
+          "action": "carried_forward",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/llm-2-attack-tree.md",
+          "finding_id": "LLM-2",
+          "similarity_score": 0.96
+        },
+        {
+          "action": "carried_forward",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/llm-3-attack-tree.md",
+          "finding_id": "LLM-3",
+          "similarity_score": 0.81
+        },
+        {
+          "action": "regenerated",
+          "delta_status": "UNCHANGED",
+          "file_path": "attack-trees/llm-5-attack-tree.md",
+          "finding_id": "LLM-5",
+          "similarity_score": 0.6
+        }
+      ]
+    },
+    "plan_digest": "b29b2be4567fe323ee0ef2cccdc69ee1f923d4086111c61457f2b17f2718622d",
+    "plan_id": "20261123T101500Z-7a1c3e5d9b02",
+    "reference_digest": "867b6b5c5fb8e75ab6eb75bd6f454cdc3279a381783c49ec61d005317c3bffbf",
+    "rule_applied": "Rule 2",
+    "stage_record_counts": {
+      "carried": 8,
+      "rendered": 17,
+      "units": 17
+    },
+    "unchanged_without_baseline_tree": [
+      "S-4"
+    ],
+    "unit_count": 17,
+    "units": [
+      {
+        "action": "generated_fresh",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "plan",
+        "finding_id": "S-4",
+        "planned_action": "generated_fresh"
+      },
+      {
+        "action": "carried_forward",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "baseline",
+        "finding_id": "T-1",
+        "planned_action": "regenerated",
+        "similarity_score": 0.86
+      },
+      {
+        "action": "carried_forward",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "baseline",
+        "finding_id": "I-1",
+        "planned_action": "regenerated",
+        "similarity_score": 0.84
+      },
+      {
+        "action": "regenerated",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "plan",
+        "finding_id": "I-4",
+        "planned_action": "regenerated",
+        "similarity_score": 0.47
+      },
+      {
+        "action": "generated_fresh",
+        "delta_status": "NEW",
+        "final_tree_comes_from": "plan",
+        "finding_id": "I-5",
+        "planned_action": "generated_fresh"
+      },
+      {
+        "action": "carried_forward",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "baseline",
+        "finding_id": "D-2",
+        "planned_action": "regenerated",
+        "similarity_score": 0.97
+      },
+      {
+        "action": "carried_forward",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "baseline",
+        "finding_id": "E-1",
+        "planned_action": "regenerated",
+        "similarity_score": 0.86
+      },
+      {
+        "action": "regenerated",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "plan",
+        "finding_id": "E-3",
+        "planned_action": "regenerated",
+        "similarity_score": 0.57
+      },
+      {
+        "action": "carried_forward",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "baseline",
+        "finding_id": "AG-1",
+        "planned_action": "regenerated",
+        "similarity_score": 0.89
+      },
+      {
+        "action": "carried_forward",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "baseline",
+        "finding_id": "AG-2",
+        "planned_action": "regenerated",
+        "similarity_score": 0.88
+      },
+      {
+        "action": "generated_fresh",
+        "delta_status": "UPDATED",
+        "final_tree_comes_from": "plan",
+        "finding_id": "AG-3",
+        "planned_action": "generated_fresh"
+      },
+      {
+        "action": "regenerated",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "plan",
+        "finding_id": "LLM-1",
+        "planned_action": "regenerated",
+        "similarity_score": 0.63
+      },
+      {
+        "action": "carried_forward",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "baseline",
+        "finding_id": "LLM-2",
+        "planned_action": "regenerated",
+        "similarity_score": 0.96
+      },
+      {
+        "action": "carried_forward",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "baseline",
+        "finding_id": "LLM-3",
+        "planned_action": "regenerated",
+        "similarity_score": 0.81
+      },
+      {
+        "action": "regenerated",
+        "delta_status": "UNCHANGED",
+        "final_tree_comes_from": "plan",
+        "finding_id": "LLM-5",
+        "planned_action": "regenerated",
+        "similarity_score": 0.6
+      },
+      {
+        "action": "generated_fresh",
+        "delta_status": "UPDATED",
+        "final_tree_comes_from": "plan",
+        "finding_id": "LLM-6",
+        "planned_action": "generated_fresh"
+      },
+      {
+        "action": "generated_fresh",
+        "delta_status": "NEW",
+        "final_tree_comes_from": "plan",
+        "finding_id": "LLM-7",
+        "planned_action": "generated_fresh"
+      }
+    ]
+  },
+  "variant": "pr2-runs"
+}

@@ -1,0 +1,146 @@
+{
+  "components": [
+    {
+      "description": "Browser front end where operators submit shipment requests and approve agent proposals",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "client-portal"
+    },
+    {
+      "description": "Ingress proxy that terminates TLS, applies request limits and screens prompts before the intake agent",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "edge-gateway"
+    },
+    {
+      "description": "Token broker that validates operator and partner credentials and mints short-lived session grants",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "auth-broker"
+    },
+    {
+      "description": "LLM-backed agent that turns free-text requests into structured shipment tasks and answers operators",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "intake-agent"
+    },
+    {
+      "description": "Planning agent that decomposes tasks, selects tools and assigns subtasks to the router",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "planner-agent"
+    },
+    {
+      "description": "Worker agent that optimises routes and looks up carrier rates through the tool server",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "worker-2"
+    },
+    {
+      "description": "Tool server that exposes carrier rate, booking, label and customs tools to the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-server-1"
+    },
+    {
+      "description": "Gateway that fronts the hosted foundation models and enforces per-agent quotas",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "model-gateway"
+    },
+    {
+      "description": "Vector database holding embedded carrier documents and ticket history",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-store-a"
+    },
+    {
+      "description": "Append-only ledger of approvals, tool calls and administrative actions",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L6",
+      "name": "audit-ledger"
+    }
+  ],
+  "data_flows": [
+    {
+      "data": "Operator requests and session cookies",
+      "destination": "edge-gateway",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "client-portal"
+    },
+    {
+      "data": "Token introspection requests",
+      "destination": "auth-broker",
+      "protocol": "gRPC over mTLS",
+      "source": "edge-gateway"
+    },
+    {
+      "data": "Screened operator requests",
+      "destination": "intake-agent",
+      "protocol": "HTTP/2 over mTLS",
+      "source": "edge-gateway"
+    },
+    {
+      "data": "Prompts and completions",
+      "destination": "model-gateway",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "planner-agent"
+    },
+    {
+      "data": "Tool calls (JSON-RPC)",
+      "destination": "tool-server-1",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "worker-2"
+    },
+    {
+      "data": "Similarity queries",
+      "destination": "vector-store-a",
+      "protocol": "PostgreSQL over TLS",
+      "source": "worker-2"
+    },
+    {
+      "data": "Tool call records",
+      "destination": "audit-ledger",
+      "protocol": "gRPC over mTLS",
+      "source": "tool-server-1"
+    }
+  ],
+  "schema": "tachi.phase1-inventory/1",
+  "trust_zones": [
+    {
+      "components": [
+        "client-portal"
+      ],
+      "name": "Public Internet"
+    },
+    {
+      "components": [
+        "edge-gateway",
+        "auth-broker"
+      ],
+      "name": "Edge DMZ"
+    },
+    {
+      "components": [
+        "intake-agent",
+        "planner-agent",
+        "worker-2",
+        "tool-server-1",
+        "model-gateway"
+      ],
+      "name": "Agent Runtime Zone"
+    },
+    {
+      "components": [
+        "vector-store-a"
+      ],
+      "name": "Data Zone"
+    },
+    {
+      "components": [
+        "audit-ledger"
+      ],
+      "name": "Operations Zone"
+    }
+  ]
+}

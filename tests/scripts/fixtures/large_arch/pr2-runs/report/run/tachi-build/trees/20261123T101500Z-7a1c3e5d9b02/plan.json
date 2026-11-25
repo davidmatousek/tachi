@@ -1,0 +1,69 @@
+{
+  "agent_type": "tachi-attack-tree-delta",
+  "architecture_warning": null,
+  "batch_size": 12,
+  "batches": [
+    {
+      "attempt": 1,
+      "batch_id": "B001",
+      "finding_ids": [
+        "S-4",
+        "T-1",
+        "I-1",
+        "I-4",
+        "I-5",
+        "D-2",
+        "E-1",
+        "E-3",
+        "AG-1",
+        "AG-2",
+        "AG-3",
+        "LLM-1"
+      ],
+      "input_sha256": "877adf10e72255a5a73c5df7e40c133f91544d8a34d89f31ac0e32d50f936242",
+      "parent": null,
+      "state": "done"
+    },
+    {
+      "attempt": 1,
+      "batch_id": "B002",
+      "finding_ids": [
+        "LLM-2",
+        "LLM-3",
+        "LLM-5",
+        "LLM-6",
+        "LLM-7"
+      ],
+      "input_sha256": "e2138efe8dafcd6eaae0acc736a4f67bbf7eab53d2ca6f8158d12050f8cdc9d0",
+      "parent": null,
+      "state": "done"
+    }
+  ],
+  "created_utc": "2026-11-23T10:15:00Z",
+  "inputs": {
+    "threats": {
+      "bytes": 73882,
+      "path": "/synthetic-case/run/threats.md",
+      "sha256": "3cbd113083732edb73fbfb9876dd502650b97d8edfb4177892d5203d8543abf9"
+    }
+  },
+  "out_snapshot": null,
+  "params": {
+    "reference_digest": "867b6b5c5fb8e75ab6eb75bd6f454cdc3279a381783c49ec61d005317c3bffbf",
+    "rule_applied": "Rule 2",
+    "scoring_date": "2026-11-23"
+  },
+  "plan_id": "20261123T101500Z-7a1c3e5d9b02",
+  "preimage": {},
+  "refs": {
+    "baseline_dir": "/synthetic-case/baseline"
+  },
+  "retry_budget": {
+    "limit": 4,
+    "used": 0
+  },
+  "schema": "tachi.plan/1",
+  "stage": "trees",
+  "tachi_version": "4.48.5",
+  "unit_count": 17
+}

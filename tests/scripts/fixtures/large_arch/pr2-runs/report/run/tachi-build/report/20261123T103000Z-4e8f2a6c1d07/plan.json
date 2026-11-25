@@ -1,0 +1,158 @@
+{
+  "agent_type": "tachi-threat-report",
+  "architecture_warning": null,
+  "batch_size": null,
+  "batches": [
+    {
+      "attempt": 1,
+      "batch_id": "B001",
+      "finding_ids": [],
+      "input_sha256": "4faf0eca2c3ce1e92dd3065e9c030ebce82e507cfc8906473cfce916a947db81",
+      "parent": null,
+      "state": "done"
+    },
+    {
+      "attempt": 1,
+      "batch_id": "B002",
+      "finding_ids": [],
+      "input_sha256": "3b8ddb65265d2ba125fd20bcbd9260886ec3aba0ba7bcba10d3d3c7d89e10aa6",
+      "parent": null,
+      "state": "done"
+    },
+    {
+      "attempt": 1,
+      "batch_id": "B003",
+      "finding_ids": [],
+      "input_sha256": "5c6cf489a4e9e5ffdfc84f38d4ce7c0d3b50311634f211cf2ada01498f18d5c6",
+      "parent": null,
+      "state": "done"
+    },
+    {
+      "attempt": 1,
+      "batch_id": "B004",
+      "finding_ids": [
+        "S-4",
+        "T-1",
+        "I-1",
+        "I-4",
+        "I-5",
+        "D-2",
+        "E-1",
+        "E-3",
+        "AG-1",
+        "AG-2",
+        "AG-3",
+        "LLM-1",
+        "LLM-2",
+        "LLM-3",
+        "LLM-5",
+        "LLM-6",
+        "LLM-7"
+      ],
+      "input_sha256": "90155d5672a87741b58dc200b8d6dc3ede81e5191df76a06a1c9e32c4826fd5a",
+      "parent": null,
+      "state": "done"
+    },
+    {
+      "attempt": 1,
+      "batch_id": "B005",
+      "finding_ids": [],
+      "input_sha256": "d3d542d9420b2d2babee442e6eb80bdecff1c70857e4991f96c7d21fc4a5b36c",
+      "parent": null,
+      "state": "done"
+    },
+    {
+      "attempt": 1,
+      "batch_id": "B006",
+      "finding_ids": [],
+      "input_sha256": "bdf5aadc5820fd3a029a6031d66a9f6e42a93aa938509f1c596e8ef07649e399",
+      "parent": null,
+      "state": "done"
+    },
+    {
+      "attempt": 1,
+      "batch_id": "B007",
+      "finding_ids": [
+        "S-1",
+        "S-3",
+        "S-4",
+        "S-5",
+        "T-1",
+        "T-2",
+        "T-3",
+        "T-4",
+        "R-1",
+        "R-3",
+        "R-4",
+        "I-1",
+        "I-3",
+        "I-4",
+        "I-5",
+        "D-1",
+        "D-2",
+        "D-3",
+        "E-1",
+        "E-3",
+        "AG-4",
+        "AG-5",
+        "AG-6",
+        "AG-7",
+        "AGP-01",
+        "LLM-3",
+        "LLM-4",
+        "LLM-8",
+        "LLM-9",
+        "OI-1",
+        "OI-2",
+        "MI-1",
+        "TE-1"
+      ],
+      "input_sha256": "433997d93afde07b13847ec03ddde5bb34f9485298d8494215c9f0be27709654",
+      "parent": null,
+      "state": "done"
+    },
+    {
+      "attempt": 1,
+      "batch_id": "B008",
+      "finding_ids": [],
+      "input_sha256": "5d6f77f2196c9cec6efd3ff1fa95147472d7307e4496effeba37f4dc1800a700",
+      "parent": null,
+      "state": "done"
+    }
+  ],
+  "created_utc": "2026-11-23T10:30:00Z",
+  "inputs": {
+    "threats": {
+      "bytes": 73882,
+      "path": "/synthetic-case/run/threats.md",
+      "sha256": "3cbd113083732edb73fbfb9876dd502650b97d8edfb4177892d5203d8543abf9"
+    },
+    "tree_manifest": {
+      "bytes": 3337,
+      "path": "/synthetic-case/run/attack-trees/.manifest.json",
+      "sha256": "5c3ee36b223fa9948b7204e4d3b54edcb398c2ba4c2ffe6a3d0f1ba609e6ab09"
+    },
+    "trees_plan": {
+      "bytes": 1549,
+      "path": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/plan.json",
+      "sha256": "b29b2be4567fe323ee0ef2cccdc69ee1f923d4086111c61457f2b17f2718622d"
+    }
+  },
+  "out_snapshot": null,
+  "params": {
+    "reference_digest": "867b6b5c5fb8e75ab6eb75bd6f454cdc3279a381783c49ec61d005317c3bffbf",
+    "scoring_date": "2026-11-23",
+    "trees_plan_id": "20261123T101500Z-7a1c3e5d9b02"
+  },
+  "plan_id": "20261123T103000Z-4e8f2a6c1d07",
+  "preimage": {},
+  "refs": {},
+  "retry_budget": {
+    "limit": 16,
+    "used": 0
+  },
+  "schema": "tachi.plan/1",
+  "stage": "report",
+  "tachi_version": "4.48.5",
+  "unit_count": 78
+}

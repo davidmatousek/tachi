@@ -1,0 +1,32 @@
+{
+  "agent_type": "tachi-repudiation",
+  "brief": "/synthetic-case/run/.tachi-build/briefs/dsp-003.json",
+  "count": 3,
+  "dispatch_id": "dsp-003",
+  "end_marker": true,
+  "local_ids": [
+    "R-1",
+    "R-2",
+    "R-3"
+  ],
+  "origin": "planned",
+  "prompt": "Read and follow the brief at /synthetic-case/run/.tachi-build/briefs/dsp-003.json.",
+  "reason": null,
+  "schema": "tachi.dispatch-record/1",
+  "scope": {
+    "components": [
+      "client-portal",
+      "edge-gateway",
+      "auth-broker",
+      "intake-agent",
+      "planner-agent",
+      "worker-2",
+      "tool-server-1",
+      "model-gateway",
+      "audit-ledger"
+    ]
+  },
+  "status": "complete",
+  "superseded_by": [],
+  "supersedes": null
+}

@@ -1,0 +1,27 @@
+{
+  "agent_type": "tachi-threat-report",
+  "batch_id": "B005",
+  "finding_ids": [],
+  "fragments": [
+    {
+      "slot_key": "theme.1.title",
+      "text": "Shared credentials recur"
+    },
+    {
+      "slot_key": "theme.1.body",
+      "text": "Long-lived tokens and shared accounts appear on several components, for example {{finding:S-1}} and {{finding:S-3}}."
+    },
+    {
+      "slot_key": "theme.2.title",
+      "text": "Agent authority is wide"
+    },
+    {
+      "slot_key": "theme.2.body",
+      "text": "Agents hold broad tool access, so one injected instruction reaches far, as {{finding:AG-1}} shows."
+    }
+  ],
+  "items": [],
+  "plan_id": "20261123T103000Z-4e8f2a6c1d07",
+  "schema": "tachi.part/1",
+  "stage": "report"
+}
