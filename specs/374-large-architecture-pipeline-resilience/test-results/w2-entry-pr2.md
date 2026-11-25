@@ -133,7 +133,31 @@ T084's totals were taken at the cut line (`03a8f0d`), before PR 1's W2–W6 test
 - **The integrated state T085 leaves:** M2, `bb0154b` (tree `6ae1713`). The orchestrator names the entry commit when it runs the census.
 - **The reading rule stands:** a run regresses only if a node id that passes at the baseline fails later, or if a gate total drops. Skips are named, so that a new skip is visible. Only the baseline changes.
 
-Totals: pending, filled by the orchestrator from the entry census
+**Totals at the entry commit `a8b0cbe`** (M2's tree plus this record): the integrated tree before T151 (S1P-PM5). Every run used a scratch clone of the committed tip (H1, H6). The commits after it carry records only, so these totals hold for the pre-hoist push's tree.
+
+| Run | Interpreter | Totals |
+|---|---|---|
+| Full census: `tests/scripts` and `tests/schemas` | 3.11.13 | 7,671 passed, 26 failed, 8 errors, 25 skipped (990 s) |
+| f374-offline, with D16's coverage gate | 3.11.13 | 6,014 passed, 20 skipped; TOTAL 96.37% (the gate is 80%) |
+| The `tachi_parsers.py` ratchet | 3.11.13 | 733 passed; 83.6%, against the floor of 44.9 |
+| f374-py39-floor | 3.9.6 | 5,984 passed, 20 skipped |
+| extraction-fidelity, report-posture and manifest-completeness | 3.11.13 | 1,064 passed |
+| The same three jobs | 3.9.6 | 1,063 passed, 1 skipped |
+
+- **Against PR 1's merge candidate.** This is W6's census at `ad64a72`. There are 0 regressions and 0 new failures. The 34 failures and errors are all pre-existing, and all lie outside every gated job, in nine modules:
+  - `test_backward_compatibility.py` (6);
+  - `test_coverage_attestation_audit.py` (2);
+  - `test_coverage_attestation_in_scope.py` (3);
+  - `test_human_trust_exploitation.py` (9);
+  - `test_llm10_unbounded_consumption_enrichment.py` (2);
+  - `test_ml_top_10_coverage_bundle_enrichment.py` (2);
+  - `test_mobile_top_10_coverage_bundle_enrichment.py` (6);
+  - `test_pyyaml_deferred_import.py` (1);
+  - `test_tool_abuse_enrichment.py` (3).
+
+  No gated job fails, so the entry carries no T085 defect (S1P-PM5).
+- **T103's regeneration slice** is a zero diff. The merged generator reproduces all 292 fixture files byte for byte: 212 at the merge base, 71 from PR 1 and 9 from PR 2. T020's byte check passes 190 of 190 on 3.11.13 and on 3.9.6.
+- **The CI half** comes from the pre-hoist push's run (T114 step 1). This corrects the paragraph above, which named the entry push's CI (S1P-PM5). Its totals are added here when the run finishes. The entry push, which carries the hoist, is the first gate read against this pre-state.
 
 ## Rev. 3 cross-read (S1P-A4)
 
