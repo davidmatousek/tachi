@@ -4784,7 +4784,7 @@ def test_the_source_is_what_the_fence_rule_covers_between_the_two_fence_lines(na
 def test_characters_outside_the_forbidden_set_pass_wherever_they_lie():
     """Tab, a no-break space, the joiners, a variation selector, a zero-width space, a soft hyphen, a byte order mark and an astral emoji are not in
     step 10's set, so a label may hold them."""
-    for char in ("\t", _NBSP, "‌", "‍", "️", "​", "­", "﻿", "⁠", "\U0001f600"):
+    for char in ("\t", _NBSP, "\u200c", "\u200d", "\ufe0f", "\u200b", "\u00ad", "\ufeff", "\u2060", "\U0001f600"):
         assert tachi_parts.forbidden_character(char) is None, "premise: %r is not forbidden" % char
         for data in _tree_bytes_with(char.encode("utf-8")):
             assert attack_tree_source(data)[1] is None, repr(char)

@@ -3,8 +3,10 @@
 They target ADR-050 D13 (the chain script, the outcome record and its check), S-2 and S-3 of the spec (the ID order and the
 chain rules), FR-K4.1, FR-K4.1b and R-24, ``contracts/cli.md`` (the three modes and their exit codes),
 ``contracts/threat-model-records.md`` (the outcome record, ``attack-chains.md`` at 1.1, the chain files) and
-``contracts/part-files.md`` section 6 (the check's hand-off file), never an implementation. T116 writes ``plan`` to them and T117
-writes ``render`` and ``check``. Until then they fail: the script does not exist, and each failure names the behavior it needed.
+``contracts/part-files.md`` section 6 (the check's hand-off file), never an implementation. T116 wrote ``plan`` to them and T117 wrote
+``render`` and ``check``. Before the script existed each of them failed, and each failure named the behavior it needed. Sections 13b (T116's
+extra ``plan`` cases, which sit after section 13 because they use its builders) and 14b (T117's own cases, for what the contracts leave open
+and for the guards) were added with the code.
 
 How they run (ADR-050 D16, H15): the entry is loaded through ``tests/conftest.py``'s ``_load_hyphenated_script``, inside a
 fixture, and driven in-process through ``main(argv)``, so pytest-cov counts it. While the script is missing the fixture hands out
@@ -1676,7 +1678,7 @@ def test_set_text_from_section_7_is_escaped_where_it_is_written(chains, tmp_path
     assert decode(detail.recommendation) == "Rotate keys <b>now</b> and | alert on reuse."
 
 
-@pytest.mark.parametrize("character", ["‮", " ", "‏", "\x1b", "\U000e0041"], ids=["bidi-override", "line-separator", "bidi-mark", "escape", "tag-character"])
+@pytest.mark.parametrize("character", ["\u202e", "\u2028", "\u200f", "\x1b", "\U000e0041"], ids=["bidi-override", "line-separator", "bidi-mark", "escape", "tag-character"])
 def test_set_a_forbidden_character_in_section_7_never_reaches_the_chain_file(chains, tmp_path, character):
     """A control, bidi, line-separator or tag character (D3's strings rule) in a component or mitigation is refused or neutralized:
     attack-chains.md never carries it. A run may refuse the input instead (exit 2), and then writes no file."""
@@ -1800,6 +1802,242 @@ def test_record_there_is_exactly_one_and_a_later_render_replaces_it(chains, tmp_
 
 
 # =============================================================================
+# 13b. plan: the outcomes in chains.json, the guards and the edges (T116)
+# =============================================================================
+#
+# T115's cases above observe the chains through render's file or plan's printed IDs. These read ``chains.json`` itself, so they hold
+# plan's own contract with render (``tachi.chains/1``: the three outcomes and their reasons, the counts, the digests) and the guards
+# of its write path, which no render-side case reaches. They use the module's own builders and name no private helper of the script.
+
+
+def read_chains_json(run):
+    return json.loads(run.chains_json.read_text(encoding="utf-8"), object_pairs_hook=no_duplicate_keys)
+
+
+def sha256_of(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def test_plan_the_chain_cap_chains_json_matches_the_oracle(chains, tmp_path, cap_doc):
+    """chains.json of the 120-chain case holds the counts, the five surfaced chains with their converging counts and the first 100 others,
+    each with the oracle's members, layers, severity and breaking target (S1P-A30)."""
+    run = copy_chain_cap(tmp_path)
+    must(run_plan(chains, run), 0, "plan")
+    doc = read_chains_json(run)
+    assert (doc["outcome"], doc["reason"], doc["chain_count"], doc["candidate_count"], doc["surfaced_count"]) == ("written", None, 120, 136, 5)
+    oracle = {c["id"]: c for c in cap_doc["chains"]}
+    listed = [c["chain_id"] for c in doc["chains"]]
+    assert len(listed) == 105 and listed == sorted(listed) and [c["chain_id"] for c in doc["chains"] if c["surfaced"]] == cap_doc["surfaced"]
+    assert [c["chain_id"] for c in doc["chains"] if not c["surfaced"]] == [row.split("|")[1].strip() for row in cap_doc["compact_rows"]]
+    for chain in doc["chains"]:
+        want = oracle[chain["chain_id"]]
+        assert [m["finding_id"] for m in chain["members"]] == want["members"], chain["chain_id"]
+        assert [m["layer"] for m in chain["members"]] == want["layers"], chain["chain_id"]
+        assert (chain["max_severity"], chain["breaking_target"]) == (want["max_severity"], want["breaking_target"]), chain["chain_id"]
+        assert chain["converging"] == (want["converging"] if chain["surfaced"] else None), chain["chain_id"]
+    assert doc["reference_digest"] and doc["inventory_digest"] == sha256_of(run.inventory)
+    assert json.loads(must(run_plan(chains, run), 0, "plan").out)["surfaced"] == [c for c in doc["chains"] if c["surfaced"]]
+
+
+@pytest.mark.parametrize("findings,flows,reason,candidates", [
+    pytest.param([F("AG-1", "planner-agent", 3, "Critical"), F("LLM-1", "model-host", 1, "Critical")], [("planner-agent", "model-host")],
+                 "no STRIDE findings", 0, id="no-stride-findings"),
+    pytest.param([F("T-1", "gateway-a", 3, "High"), F("S-2", "portal-b", 3, "Critical")], [("gateway-a", "portal-b")],
+                 "fewer than two layers with STRIDE findings", 0, id="one-layer"),
+    pytest.param([F("T-1", "gateway-a", None, "High"), F("S-2", "portal-b", None, "Critical")], [("gateway-a", "portal-b")],
+                 "fewer than two layers with STRIDE findings", 0, id="stride-findings-but-no-layer"),
+    pytest.param([F("T-1", "gateway-a", 2, "High"), F("I-2", "portal-b", 3, "Critical")], [("gateway-a", "portal-b")],
+                 "no candidate links", 0, id="no-table-row"),
+    pytest.param(OK_FINDINGS, [], "no candidate links", 0, id="no-flow"),
+    pytest.param([F("T-1", "gateway-a", 5, "Medium"), F("T-2", "portal-b", 6, "Low")], [("gateway-a", "portal-b")],
+                 "no chain with a Critical or High finding", 1, id="no-severe-finding"),
+])
+def test_plan_zero_chains_is_an_outcome_of_chains_json_and_exit_0(chains, tmp_path, findings, flows, reason, candidates):
+    """A run with no chain writes a ``zero`` chains.json with one of the four reasons and the candidate count, both digests and no chain,
+    exits 0, prints no chain and says nothing on stderr (D13, R-24)."""
+    project = Project(tmp_path, findings, flows=flows)
+    result = must(run_plan(chains, project), 0, "plan")
+    doc = read_chains_json(project)
+    assert (doc["outcome"], doc["reason"], doc["chain_count"], doc["candidate_count"], doc["surfaced_count"], doc["chains"]) == (
+        "zero", reason, 0, candidates, 0, [])
+    assert doc["reference_digest"] and doc["inventory_digest"] == sha256_of(project.inventory)
+    printed = json.loads(result.out)
+    assert printed["outcome"] == "zero" and printed["surfaced"] == [] and result.err == ""
+
+
+def skipped_with_a_threats_md(root, writer):
+    project = Project(root, OK_FINDINGS, flows=OK_FLOWS)
+    writer(project)
+    return project
+
+
+@pytest.mark.parametrize("build,reason,code", [
+    pytest.param(skipped_without_section_7, "Section 7 unreadable", 2, id="section-7-missing"),
+    pytest.param(lambda root: skipped_with_a_threats_md(root, lambda p: p.threats.unlink()), "Section 7 unreadable", 1, id="threats-md-missing"),
+    pytest.param(lambda root: skipped_with_a_threats_md(root, lambda p: p.threats.write_bytes(p.text().encode("utf-8") + b"\xff\xfe")),
+                 "Section 7 unreadable", 2, id="threats-md-not-utf-8"),
+    pytest.param(lambda root: Project(root, OK_FINDINGS, flows=OK_FLOWS, threats=make_threats([])), "Section 7 unreadable", 2,
+                 id="section-7-empty"),
+    pytest.param(skipped_without_inventory, "inventory missing", 1, id="inventory-missing"),
+    pytest.param(skipped_with_inventory("this is not json {"), "inventory invalid", 2, id="inventory-not-json"),
+    pytest.param(skipped_with_inventory(make_inventory([("gateway-a", 3), ("portal-b", 7)], OK_FLOWS, schema="tachi.phase1-inventory/9")),
+                 "inventory invalid", 2, id="inventory-wrong-schema"),
+    pytest.param(skipped_with_inventory(make_inventory([], [])), "inventory invalid", 2, id="inventory-no-components"),
+    pytest.param(skipped_with_inventory(make_inventory([("gateway a", 3), ("GATEWAY  A", 7), ("portal b", 7)], [])), "inventory invalid", 2,
+                 id="inventory-repeated-name"),
+])
+def test_plan_an_unusable_input_is_a_skipped_chains_json_and_a_named_failure(chains, tmp_path, build, reason, code):
+    """An input that can't be used still ends in a ``skipped`` chains.json (no count, no chain), which render turns into the record. The
+    exit is 1 for an input that can't be read and 2 for one that is there but unusable, stderr names the reason in D4's banner, and each
+    digest is null exactly when its own input can't be read."""
+    project = build(tmp_path)
+    result = invoke(chains, ["plan", "--run-dir", project.dir])
+    assert result.code == code, result.describe()
+    doc = read_chains_json(project)
+    assert (doc["outcome"], doc["reason"], doc["chain_count"], doc["candidate_count"], doc["surfaced_count"], doc["chains"]) == (
+        "skipped", reason, None, None, None, [])
+    assert (doc["reference_digest"] is None) == (reason == "Section 7 unreadable"), doc
+    if reason == "inventory missing":
+        assert doc["inventory_digest"] is None
+    elif project.inventory.is_file():
+        assert doc["inventory_digest"] == sha256_of(project.inventory)
+    assert result.err.startswith("TACHI ATTACK-CHAINS FAILED: %s" % reason) and "Remedy:" in result.err, result.err
+    printed = json.loads(result.out)
+    assert (printed["outcome"], printed["reason"], printed["surfaced"]) == ("skipped", reason, [])
+    assert not project.md.exists()
+
+
+def test_plan_a_run_dir_that_is_not_a_directory_exits_1_and_writes_nothing(chains, tmp_path):
+    """--run-dir must be a directory (contracts/cli.md, S1P-A42): exit 1, D4's message and remedy on stderr, nothing on stdout."""
+    afile = tmp_path / "a-file"
+    afile.write_text("not a directory", encoding="utf-8")
+    for value in (tmp_path / "nowhere", afile):
+        result = invoke(chains, ["plan", "--run-dir", value])
+        assert result.code == 1 and result.out == "", result.describe()
+        assert "--run-dir is not a directory" in result.err and "create it or correct --run-dir" in result.err, result.err
+    assert not (tmp_path / "nowhere").exists() and afile.read_text(encoding="utf-8") == "not a directory"
+
+
+@pytest.mark.parametrize("target", [".tachi-build", ".tachi-build/chains"])
+def test_plan_refuses_a_linked_directory_under_the_run_and_writes_nothing_through_it(chains, tmp_path, target):
+    """A symlink where .tachi-build or chains belongs is refused with exit 2 and no stdout, and nothing lands where it points."""
+    project = path3(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    link = project.dir / target
+    link.parent.mkdir(parents=True, exist_ok=True)
+    if target == ".tachi-build":
+        os.rename(str(link), str(tmp_path / "moved-build"))
+    try:
+        os.symlink(str(outside), str(link))
+    except (OSError, NotImplementedError):
+        pytest.skip("this platform cannot make a symlink")
+    result = invoke(chains, ["plan", "--run-dir", project.dir])
+    assert result.code == 2 and result.out == "" and "symbolic link or not a directory" in result.err, result.describe()
+    assert not list(outside.rglob("*")), "plan wrote through a link: %s" % [p.name for p in outside.rglob("*")]
+
+
+def test_plan_refuses_a_chains_name_that_is_a_file(chains, tmp_path):
+    """A regular file where the chains directory belongs is refused with exit 2, and the file is left as it was."""
+    project = path3(tmp_path)
+    (project.dir / ".tachi-build" / "chains").write_text("in the way", encoding="utf-8")
+    result = invoke(chains, ["plan", "--run-dir", project.dir])
+    assert result.code == 2 and result.out == "" and "not a directory" in result.err, result.describe()
+    assert (project.dir / ".tachi-build" / "chains").read_text(encoding="utf-8") == "in the way"
+
+
+def test_plan_exits_2_when_chains_json_cannot_be_written(chains, tmp_path):
+    """A directory where chains.json belongs can't be replaced by a file: exit 2 with the file named, and nothing on stdout."""
+    project = path3(tmp_path)
+    project.chains_json.mkdir(parents=True)
+    result = invoke(chains, ["plan", "--run-dir", project.dir])
+    assert result.code == 2 and result.out == "" and "chains/chains.json could not be written" in result.err, result.describe()
+
+
+def test_plan_a_document_that_fails_its_own_contract_is_a_defect_and_writes_nothing(chains, tmp_path, monkeypatch):
+    """What plan computes is checked against tachi.chains/1 before it is written. A failure there is the script's own bug: exit 4 with the cause, and no file."""
+    project = path3(tmp_path)
+    before = project.files()
+
+    def refuse(document):
+        raise shared_module("tachi_parts").PartError("invalid", "a chain that no rule allows")
+
+    monkeypatch.setattr(shared_module("tachi_parts"), "validate_chains", refuse)
+    result = invoke(chains, ["plan", "--run-dir", project.dir])
+    assert result.code == 4 and result.out == "" and "a chain that no rule allows" in result.err and "report this as a bug" in result.err, result.describe()
+    assert project.files() == before
+
+
+def test_plan_replaces_a_linked_chains_json_and_never_writes_through_it(chains, tmp_path):
+    """A symlink at chains.json is replaced by a regular file, and the file it pointed at keeps its bytes (ADR-050 D3's atomic write)."""
+    project = path3(tmp_path)
+    victim = tmp_path / "victim.txt"
+    victim.write_bytes(b"keep me\n")
+    project.chains_json.parent.mkdir(parents=True)
+    try:
+        os.symlink(str(victim), str(project.chains_json))
+    except (OSError, NotImplementedError):
+        pytest.skip("this platform cannot make a symlink")
+    must(run_plan(chains, project), 0, "plan")
+    assert victim.read_bytes() == b"keep me\n" and not project.chains_json.is_symlink()
+    assert read_chains_json(project)["outcome"] == "written"
+
+
+def test_plan_does_not_read_through_a_linked_threats_md_or_inventory(chains, tmp_path):
+    """A symlinked threats.md is an unreadable Section 7 (exit 1), and a symlinked inventory is an invalid one (exit 2, no digest)."""
+    try:
+        one = path3(tmp_path / "threats")
+        real = tmp_path / "real-threats.md"
+        real.write_text(one.text(), encoding="utf-8")
+        one.threats.unlink()
+        os.symlink(str(real), str(one.threats))
+        two = path3(tmp_path / "inventory")
+        real_inventory = tmp_path / "real-inventory.json"
+        real_inventory.write_text(two.inventory.read_text(encoding="utf-8"), encoding="utf-8")
+        two.inventory.unlink()
+        os.symlink(str(real_inventory), str(two.inventory))
+    except (OSError, NotImplementedError):
+        pytest.skip("this platform cannot make a symlink")
+    assert invoke(chains, ["plan", "--run-dir", one.dir]).code == 1 and read_chains_json(one)["reason"] == "Section 7 unreadable"
+    assert invoke(chains, ["plan", "--run-dir", two.dir]).code == 2
+    doc = read_chains_json(two)
+    assert doc["reason"] == "inventory invalid" and doc["inventory_digest"] is None
+
+
+def test_plan_reads_a_risk_level_case_insensitively_and_ranks_an_unknown_one_as_note(chains, tmp_path):
+    """'high' is High, and a level that is none of the five (or blank) ranks as Note, so a chain of such findings fails the filter."""
+    project = Project(tmp_path / "high", [F("T-1", "gateway-a", 5, "high"), F("T-2", "portal-b", 6, "Severe")], flows=[("gateway-a", "portal-b")])
+    must(run_plan(chains, project), 0, "plan")
+    doc = read_chains_json(project)
+    assert doc["outcome"] == "written" and doc["chains"][0]["max_severity"] == "High"
+    project = Project(tmp_path / "note", [F("T-1", "gateway-a", 5, "Severe"), F("T-2", "portal-b", 6, "")], flows=[("gateway-a", "portal-b")])
+    must(run_plan(chains, project), 0, "plan")
+    assert read_chains_json(project)["reason"] == "no chain with a Critical or High finding"
+
+
+def test_plan_a_component_name_with_a_forbidden_character_never_reaches_chains_json(chains, tmp_path):
+    """Section 7's component text is only compared, never copied: a bidi override in it joins no chain and appears in no output."""
+    character = "\u202e"
+    findings = [F("T-1", "ingest-gateway", 5, "High"), F("T-2", "policy%schecker" % character, 6, "Medium"), F("E-1", "agent-core", 3, "Critical")]
+    inventory = make_inventory([("ingest-gateway", 5), ("policy-checker", 6), ("agent-core", 3)],
+                               [("ingest-gateway", "policy-checker"), ("policy-checker", "agent-core")])
+    project = Project(tmp_path, findings, inventory=inventory)
+    result = must(run_plan(chains, project), 0, "plan")
+    assert character not in project.chains_json.read_text(encoding="utf-8") and character not in result.both
+
+
+def test_plan_gives_the_same_bytes_wherever_the_run_is_and_takes_a_relative_run_dir(chains, tmp_path):
+    """The same inputs in two directories give one chains.json and one stdout (no path or clock leaks in), and --run-dir may be relative."""
+    one, two = path3(tmp_path / "one"), path3(tmp_path / "two")
+    first, second = must(run_plan(chains, one), 0, "plan"), must(run_plan(chains, two), 0, "plan")
+    assert one.chains_json.read_bytes() == two.chains_json.read_bytes() and first.out == second.out
+    kept = one.chains_json.read_bytes()
+    one.chains_json.unlink()
+    must(invoke(chains, ["plan", "--run-dir", "run"], cwd=tmp_path / "one"), 0, "plan with a relative run dir")
+    assert one.chains_json.read_bytes() == kept
+
+
+# =============================================================================
 # 14. check: the pass rules, the rewrite, the quarantine and the hand-off (FR-K4.1b, R-24, RR6)
 # =============================================================================
 
@@ -1866,6 +2104,19 @@ def tamper_unreadable(run):
     run.md.write_bytes(b"\xff\xfe\x00 this is not text \xc3\x28")
 
 
+def drop_remainder_line(md):
+    """The file without its last line, the remainder: a write that was cut short."""
+    return re.sub(r"(?m)^\*\*Consolidated chains not listed\*\*: [0-9]+\n\n?", "", md)
+
+
+def repeat_a_chain_section(md):
+    """The file with its first full chain's section written twice: a writer that repeated itself."""
+    lines = md.split("\n")
+    start = next(i for i, line in enumerate(lines) if line.startswith("### CHAIN-"))
+    end = next(i for i in range(start + 1, len(lines)) if lines[i].startswith("### CHAIN-") or lines[i].startswith("## "))
+    return "\n".join(lines[:end] + lines[start:end] + lines[end:])
+
+
 CHECK_CASES = [
     # id, what is done to the finished chain-cap output, the reason that check writes, whether attack-chains.md is renamed
     pytest.param(lambda run: run.set_text(without_record(run.text())), "no outcome recorded", True, id="no-record"),
@@ -1896,6 +2147,13 @@ CHECK_CASES = [
                  id="frontmatter-surfaced-count"),
     pytest.param(lambda run: edit_md(run, lambda md: set_front(md, "candidate_count", 135)), "frontmatter counts differ", True,
                  id="frontmatter-candidate-count"),
+    # T117's cases for the other ways a damaged file can fail to account for its record
+    pytest.param(lambda run: edit_md(run, drop_remainder_line), "remainder missing expected 15", True, id="remainder-line-missing"),
+    pytest.param(lambda run: edit_md(run, lambda md: re.sub(r"(?s)\A---\n.*?\n---\n", "", md)), "frontmatter counts differ", True,
+                 id="frontmatter-missing"),
+    pytest.param(lambda run: edit_md(run, repeat_a_chain_section), "full chains 6 expected 5", True, id="a-full-chain-twice"),
+    pytest.param(lambda run: edit_md(run, lambda md: md.replace("## 3. Other Consolidated Chains", "## 3. Other")), "compact rows 0 expected 100", True,
+                 id="section-3-renamed"),
 ]
 
 
@@ -1951,6 +2209,581 @@ def test_check_exit_2_writes_no_hand_off_file(chains, cap, tmp_path):
     result = invoke(chains, ["check", "--run-dir", run.dir, "--plan"])
     assert result.code == 2, result.describe()
     assert run.files() == before and not run.handoff().exists()
+
+
+# =============================================================================
+# 14b. render and check: the narrative files, the refusals, the record's edges and the guards (T117)
+# =============================================================================
+#
+# The cases above hold what the contracts fix. These hold what T117 decided where a contract leaves a form open, and the guards that no case above reaches:
+# what render prints, how a narratives file that fails as a whole is read, which refusals write nothing, how the record is upserted into an odd threats.md,
+# what a check refuses before it changes anything, and how each mode ends on a defect. They read public behavior only, as the rest of the file does.
+
+MAESTRO_LAYERS = REPO_ROOT / ".claude" / "skills" / "tachi-shared" / "references" / "maestro-layers-shared.md"
+FIXED_TITLE = "Attack chain from "
+
+
+def two_chains(root):
+    """Two islands, so two surfaced chains (CHAIN-001 and CHAIN-002) and no other."""
+    return plain_islands(root, 2)
+
+
+def test_render_prints_the_record_the_chain_file_and_the_chains_that_took_the_fixed_text(chains, tmp_path):
+    """render's stdout is one JSON object: the outcome and its counts, the record it wrote, the chain file's name, and each chain that took the fixed
+    text with the name of its problem (never the agent's text). The orchestrator reads it to rewrite those chains once and render again."""
+    project = with_side_finding(tmp_path)
+    ids = surfaced_ids(must(run_plan(chains, project), 0, "plan").out)
+    write_narratives(project, {ids[0]: (TITLE, "The attacker needs 3 steps to reach the last finding.")})
+    result = must(run_render(chains, project), 0, "render")
+    assert json.loads(result.out) == {
+        "outcome": "written", "reason": None, "chain_count": 1, "candidate_count": 2, "surfaced_count": 1, "record": PATH3_RECORD,
+        "chain_file": "attack-chains.md", "narrative_fallbacks": [{"chain_id": "CHAIN-001", "problem": "numeral"}]}
+    assert "CHAIN-001" in result.err and "needs 3 steps" not in result.both
+    write_narratives(project, default_texts(ids))
+    assert json.loads(must(run_render(chains, project), 0, "second render").out)["narrative_fallbacks"] == []
+
+
+def test_render_prints_no_chain_file_for_an_outcome_without_chains(chains, tmp_path):
+    """A zero outcome prints its record and no chain file, and has no narrative to fall back on."""
+    project = Project(tmp_path, OK_FINDINGS, flows=[])
+    must(run_plan(chains, project), 0, "plan")
+    assert json.loads(must(run_render(chains, project), 0, "render").out) == {
+        "outcome": "zero", "reason": "no candidate links", "chain_count": 0, "candidate_count": 0, "surfaced_count": 0,
+        "record": "0 chains passed filter (no candidate links); candidates 0", "chain_file": None, "narrative_fallbacks": []}
+
+
+BAD_NARRATIVE_FILES = {  # each fails as a whole: a missing file, a file that isn't JSON, a schema or a key set that isn't the contract's
+    "missing": None,
+    "not json": "{ not json",
+    "another schema": json.dumps({"schema": "tachi.chain-narratives/9", "narratives": {}}),
+    "a missing key": json.dumps({"schema": "tachi.chain-narratives/1", "narratives": {"CHAIN-001": {"title": TITLE}}}),
+    "narratives that are no object": json.dumps({"schema": "tachi.chain-narratives/1", "narratives": []}),
+}
+
+
+@pytest.mark.parametrize("kind", sorted(BAD_NARRATIVE_FILES))
+def test_narrative_a_file_that_fails_as_a_whole_gives_every_surfaced_chain_the_fixed_text(chains, tmp_path, kind):
+    """A narratives.json that is missing, or fails its key set or types, fails every surfaced chain at once (D13): each takes its fixed text, render exits 0
+    and names them all, and a valid file on the next render replaces the fixed text."""
+    project = two_chains(tmp_path)
+    ids = surfaced_ids(must(run_plan(chains, project), 0, "plan").out)
+    assert len(ids) == 2
+    if BAD_NARRATIVE_FILES[kind] is not None:
+        project.narratives.parent.mkdir(parents=True, exist_ok=True)
+        project.narratives.write_text(BAD_NARRATIVE_FILES[kind], encoding="utf-8")
+    shown = json.loads(must(run_render(chains, project), 0, "render").out)
+    problem = "narratives-missing" if kind == "missing" else "narratives-invalid"
+    assert shown["narrative_fallbacks"] == [{"chain_id": cid, "problem": problem} for cid in ids]
+    doc = read_md(project.md.read_text(encoding="utf-8"))
+    assert all(doc.details[cid].title.startswith(FIXED_TITLE) and doc.details[cid].narrative for cid in ids)
+    write_narratives(project, default_texts(ids))
+    assert json.loads(must(run_render(chains, project), 0, "second render").out)["narrative_fallbacks"] == []
+    assert not any(read_md(project.md.read_text(encoding="utf-8")).details[cid].title.startswith(FIXED_TITLE) for cid in ids)
+
+
+def test_narrative_a_chain_with_no_entry_takes_the_fixed_text_and_the_other_keeps_its_own(chains, tmp_path):
+    """Validation is per chain: an entry that is missing fails its chain only, and the other chain shows its own title and narrative."""
+    project = two_chains(tmp_path)
+    ids = surfaced_ids(must(run_plan(chains, project), 0, "plan").out)
+    texts = default_texts(ids)
+    write_narratives(project, {ids[0]: texts[ids[0]]})
+    shown = json.loads(must(run_render(chains, project), 0, "render").out)
+    assert shown["narrative_fallbacks"] == [{"chain_id": ids[1], "problem": "missing"}]
+    doc = read_md(project.md.read_text(encoding="utf-8"))
+    assert doc.details[ids[0]].title == texts[ids[0]][0] and doc.details[ids[1]].title.startswith(FIXED_TITLE)
+
+
+@pytest.mark.parametrize("pair,problem", [
+    pytest.param(("  ", NARRATIVE), "title-empty", id="blank-title"),
+    pytest.param((TITLE, "\n\t "), "narrative-empty", id="blank-narrative"),
+    pytest.param((TITLE, "The attacker reaches\u202ethe last finding."), "forbidden-character", id="forbidden-character"),
+    pytest.param(("a" * 121, NARRATIVE), "title-too-long", id="title-too-long"),
+    pytest.param((TITLE, ("word " * 401)[:2001]), "narrative-too-long", id="narrative-too-long"),
+    pytest.param((TITLE, "The attacker needs 3 steps."), "numeral", id="numeral"),
+    pytest.param((TITLE, "The attacker reaches {{finding:T-1 and goes on."), "slot-syntax", id="slot-syntax"),
+    pytest.param((TITLE, "The score is {{score:composite}} here."), "slot-kind", id="slot-kind"),
+    pytest.param((TITLE, "The chain holds {{count:evidence}} entries."), "slot-argument", id="slot-argument"),
+    pytest.param((TITLE, "The attacker also reaches {{finding:S-77}} on the way."), "slot-unresolved", id="slot-unresolved"),
+])
+def test_narrative_render_names_the_problem_of_a_text_that_failed(chains, tmp_path, pair, problem):
+    """The problem of a failed text is one word from a closed list, so that the orchestrator can tell the agent what to change without the text."""
+    project = with_side_finding(tmp_path)
+    ids = surfaced_ids(must(run_plan(chains, project), 0, "plan").out)
+    write_narratives(project, {ids[0]: pair})
+    shown = json.loads(must(run_render(chains, project), 0, "render").out)
+    assert shown["narrative_fallbacks"] == [{"chain_id": "CHAIN-001", "problem": problem}]
+
+
+def test_narrative_two_failures_give_byte_identical_files_stamp_included(chains, tmp_path):
+    """The fixed text and the stamp cover the members and the text that was used, never the failed text: two different failures give one file."""
+    files = []
+    for k, failure in enumerate(((TITLE, "The attacker needs 3 steps."), ("Chain 4", NARRATIVE))):  # a bad narrative with a good title, and the reverse
+        project = with_side_finding(tmp_path / ("run%d" % k))
+        ids = surfaced_ids(must(run_plan(chains, project), 0, "plan").out)
+        write_narratives(project, {ids[0]: failure})
+        must(run_render(chains, project), 0, "render")
+        files.append((project.md.read_bytes(), project.threats.read_bytes()))
+    assert files[0] == files[1]
+
+
+def test_narrative_a_valid_text_moves_the_stamp(chains, tmp_path):
+    """The stamp's digest covers the narratives that were used: another valid text gives another stamp, and a render of the same text gives the same one."""
+    stamps = []
+    for k, text in enumerate((("One title for the chain", NARRATIVE), ("Another title for the chain", NARRATIVE), ("One title for the chain", NARRATIVE))):
+        project = path3(tmp_path / ("run%d" % k))
+        good_flow(chains, project, texts={"CHAIN-001": text})
+        stamps.append(read_md(project.md.read_text(encoding="utf-8")).stamp)
+    assert stamps[0] != stamps[1] and stamps[0] == stamps[2] and all(stamps)
+
+
+def test_render_refuses_a_narratives_key_that_is_no_chain_id_without_echoing_it(chains, tmp_path):
+    """A key that isn't an ID at all is refused like an unknown chain (exit 2, nothing written), and the message doesn't carry it."""
+    project = path3(tmp_path)
+    ids = surfaced_ids(must(run_plan(chains, project), 0, "plan").out)
+    texts = default_texts(ids)
+    texts["../../escape\u202e"] = (TITLE, NARRATIVE)
+    write_narratives(project, texts)
+    before = project.files()
+    result = must(run_render(chains, project), 2, "render")
+    assert "escape" not in result.both and "\u202e" not in result.both and "no chain ID" in result.err
+    assert project.files() == before and not project.md.exists()
+
+
+@pytest.mark.parametrize("what,edit", [
+    pytest.param("a member's layer", lambda chain: chain["members"][0].update(layer="L7"), id="layer"),
+    pytest.param("the maximum severity", lambda chain: chain.update(max_severity="Low"), id="severity"),
+    pytest.param("the breaking target", lambda chain: chain.update(breaking_target="T-1"), id="target"),
+    pytest.param("a member that is no finding", lambda chain: chain["members"][0].update(finding_id="T-99"), id="finding"),
+])
+def test_render_refuses_a_chains_json_that_disagrees_with_section_7(chains, tmp_path, what, edit):
+    """A chains.json that passes its own contract but names a member that isn't a finding on that layer, or a maximum severity or a breaking target that the
+    members don't give, is refused with exit 2 and nothing written, though both digests are right (validate_chains leaves this to render)."""
+    project = path3(tmp_path)
+    ids = surfaced_ids(must(run_plan(chains, project), 0, "plan").out)
+    write_narratives(project, default_texts(ids))
+    doc = json.loads(project.chains_json.read_text(encoding="utf-8"))
+    edit(doc["chains"][0])
+    project.chains_json.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    before = project.files()
+    result = must(run_render(chains, project), 2, "render with %s changed" % what)
+    assert "disagrees with Section 7 at CHAIN-001" in result.err
+    assert project.files() == before and not project.md.exists()
+
+
+@pytest.mark.parametrize("where,character,code_point", [
+    pytest.param("component", "\u2028", "U+2028", id="component"),
+    pytest.param("mitigation", "\u202e", "U+202E", id="mitigation"),
+])
+def test_render_refuses_a_forbidden_character_in_the_section_7_text_it_would_copy(chains, tmp_path, where, character, code_point):
+    """A forbidden character in the component of a surfaced member, or in its breaking target's Mitigation, is refused with exit 2 and nothing written, and
+    the reason names the code point and never carries the character (P0-4). The component case is a line separator, which a comparison that collapses
+    whitespace reads as a space, so Section 7's name still joins the inventory's and the chain forms (the inventory's own names are checked when it loads)."""
+    name = "policy%schecker" % character if where == "component" else "policy checker"
+    mitigation = "Rotate it%snow and watch for reuse." % character if where == "mitigation" else None
+    inventory = make_inventory([("ingest-gateway", 5), ("policy checker", 6), ("agent-core", 3)],
+                               [("ingest-gateway", "policy checker"), ("policy checker", "agent-core")])
+    project = Project(tmp_path, [F("T-1", "ingest-gateway", 5, "High"), F("T-2", name, 6, "Medium", mit=mitigation), F("E-1", "agent-core", 3, "Critical")],
+                      inventory=inventory)
+    ids = surfaced_ids(must(run_plan(chains, project), 0, "plan").out)
+    assert ids == ["CHAIN-001"]
+    write_narratives(project, default_texts(ids))
+    before = project.files()
+    result = must(run_render(chains, project), 2, "render")
+    assert code_point in result.err and character not in result.both and "T-2" in result.err
+    assert project.files() == before and not project.md.exists()
+
+
+@pytest.mark.parametrize("mode,code", [("render", 1), ("check", 2)])
+def test_a_run_dir_that_is_not_a_directory_is_exit_1_for_render_and_exit_2_for_check(chains, tmp_path, mode, code):
+    """The directory option is checked first, in D4's words (S1P-A42): exit 1 for render, and exit 2 for check, whose codes have no 1, even when its
+    plan ID is wrong too. Nothing is written."""
+    afile = tmp_path / "a-file"
+    afile.write_text("not a directory", encoding="utf-8")
+    for value in (tmp_path / "nowhere", afile):
+        result = invoke(chains, [mode, "--run-dir", value] + (["--plan", "not-a-plan"] if mode == "check" else []))
+        assert result.code == code and result.out == "", result.describe()
+        assert "--run-dir is not a directory" in result.err and "create it or correct --run-dir" in result.err, result.err
+    assert not (tmp_path / "nowhere").exists() and afile.read_text(encoding="utf-8") == "not a directory"
+
+
+def test_render_without_a_chains_json_exits_1_and_writes_nothing(chains, tmp_path):
+    """No chains.json means no plan ran: exit 1, with the file named, and nothing is written."""
+    project = path3(tmp_path)
+    before = project.files()
+    result = must(run_render(chains, project), 1, "render")
+    assert "chains/chains.json is missing" in result.err and project.files() == before
+
+
+@pytest.mark.parametrize("forged,bad_inventory", [
+    pytest.param({"outcome": "zero", "reason": "no candidate links", "chain_count": 0, "candidate_count": 0, "surfaced_count": 0}, True,
+                 id="zero-for-an-inventory-that-is-invalid"),
+    pytest.param({"outcome": "skipped", "reason": "inventory invalid", "chain_count": None, "candidate_count": None, "surfaced_count": None,
+                  "chains": []}, False, id="skipped-for-inputs-that-are-usable"),
+])
+def test_render_refuses_a_chains_json_whose_outcome_its_inputs_do_not_give(chains, tmp_path, forged, bad_inventory):
+    """A chains.json that passes its contract and has both digests right, but says what plan couldn't have said of these inputs (no chain where the
+    inventory is invalid, or skipped where they are usable), is damaged or forged: exit 2, nothing written."""
+    project = skipped_with_inventory("this is not json {")(tmp_path) if bad_inventory else path3(tmp_path)
+    must(invoke(chains, ["plan", "--run-dir", project.dir]), 2 if bad_inventory else 0, "plan")
+    doc = read_chains_json(project)
+    doc.update(forged)
+    project.chains_json.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    before = project.files()
+    result = must(run_render(chains, project), 2, "render")
+    assert "does not match what its inputs give" in result.err and project.files() == before and not project.md.exists()
+
+
+def test_render_exits_2_when_an_output_cannot_be_written(chains, tmp_path):
+    """A directory where attack-chains.md belongs can't be replaced by a file: render exits 2 with the file named, and threats.md keeps its bytes."""
+    project = path3(tmp_path)
+    ids = surfaced_ids(must(run_plan(chains, project), 0, "plan").out)
+    write_narratives(project, default_texts(ids))
+    project.md.mkdir()
+    before = project.files()
+    result = must(run_render(chains, project), 2, "render")
+    assert "attack-chains.md could not be written" in result.err and project.files() == before and project.md.is_dir()
+
+
+@pytest.mark.parametrize("damage,code", [
+    pytest.param(lambda p: p.threats.unlink(), 1, id="missing"),
+    pytest.param(lambda p: p.threats.write_bytes(p.text().encode("utf-8") + b"\xff\xfe"), 2, id="not-utf-8"),
+])
+def test_render_cannot_put_a_record_into_a_threats_md_it_cannot_read(chains, tmp_path, damage, code):
+    """When plan found no usable Section 7 because threats.md can't be read, render has nowhere to put the record: exit 1 for a file that is missing and 2 for
+    one that isn't strict UTF-8, with nothing written."""
+    project = skipped_with_a_threats_md(tmp_path, damage)
+    assert invoke(chains, ["plan", "--run-dir", project.dir]).code == code
+    before = project.files()
+    result = must(run_render(chains, project), code, "render")
+    assert "threats.md" in result.err and project.files() == before and not project.md.exists()
+
+
+@pytest.mark.parametrize("date", ["soon", "2026-11-23\u202e", ""])
+def test_render_writes_unknown_for_a_date_that_threats_md_does_not_give_as_a_date(chains, tmp_path, date):
+    """The chain file's date is threats.md's, and only when it reads as YYYY-MM-DD: any other text (a bidi character included) becomes Unknown."""
+    project = path3(tmp_path)
+    project.set_text(make_threats(project.findings, date=date))
+    flow, doc, record = observe(chains, project)
+    assert doc.front["date"] == "Unknown" and "\u202e" not in doc.text
+
+
+def test_render_says_so_when_the_breaking_targets_mitigation_is_blank(chains, tmp_path):
+    """A blank Mitigation is no sentence to copy: the recommendation line says that Section 7 records none, and the chain is still written."""
+    flow, doc, record = observe(chains, path3(tmp_path, mitigation=""))
+    assert doc.details["CHAIN-001"].recommendation == "No mitigation is recorded for this finding in Section 7."
+
+
+def test_render_names_layers_and_categories_as_the_shared_references_do(chains, tmp_path):
+    """Every transition that has no reverse row makes one chain of two, five to a run so that all of them surface: each Member Findings cell carries the
+    layer name of maestro-layers-shared.md and the category name of attack-chain-patterns-shared.md, over all seven layers and all six categories (the
+    script's two name tables are compared with the references here, by what it writes)."""
+    kinds = sorted((a, b) for a, b in TRANSITIONS if (b, a) not in TRANSITIONS)
+    names = dict(re.findall(r"^### (L[1-7]) — (.+)$", MAESTRO_LAYERS.read_text(encoding="utf-8"), re.M))
+    categories = {prefix: name for name, prefix in CATEGORY_OF_NAME.items()}
+    layers_seen, categories_seen = set(), set()
+    for number, start in enumerate(range(0, len(kinds), 5)):
+        batch, numbers, findings, flows = kinds[start:start + 5], collections.Counter(), [], []
+        for k, ((category_a, layer_a), (category_b, layer_b)) in enumerate(batch):
+            ids = []
+            for category in (category_a, category_b):
+                numbers[category] += 1
+                ids.append("%s-%d" % (category, numbers[category]))
+            findings += [F(ids[0], "island-%d-source" % k, layer_a, "Critical"), F(ids[1], "island-%d-target" % k, layer_b, "Critical")]
+            flows.append(("island-%d-source" % k, "island-%d-target" % k))
+        flow, doc, record = observe(chains, Project(tmp_path / ("batch-%d" % number), findings, flows=flows))
+        assert (record["n"], record["s"]) == (str(len(batch)), str(len(batch))), record
+        for detail in doc.details.values():
+            for member in detail.members:
+                code = member["MAESTRO Layer"].partition(" ")[0]
+                assert member["MAESTRO Layer"] == "%s — %s" % (code, names[code]), member
+                assert member["Category"] == categories[member["Finding ID"].partition("-")[0]], member
+                layers_seen.add(code)
+                categories_seen.add(member["Category"])
+    assert layers_seen == {"L%d" % n for n in range(1, 8)} and len(categories_seen) == 6
+
+
+def test_render_keeps_section_7s_spelling_of_an_id_and_resolves_a_slot_to_the_canonical_one(chains, tmp_path):
+    """Section 7 may spell an ID with leading zeros. The chain file keeps the spelling, and a slot that names the finding in either spelling resolves to the
+    canonical ID, as D3's table says."""
+    project = Project(tmp_path, [F("T-01", "ingest-gateway", 5, "High"), F("T-02", "policy-checker", 6, "Medium"), F("E-01", "agent-core", 3, "Critical")],
+                      flows=[("ingest-gateway", "policy-checker"), ("policy-checker", "agent-core")])
+    narrative = "{{finding:T-01}} leads to {{finding:E-1}} on {{name:component:E-01}}."
+    flow, doc, record = observe(chains, project, texts={"CHAIN-001": (TITLE, narrative)})
+    detail = doc.details["CHAIN-001"]
+    assert [member["Finding ID"] for member in detail.members] == ["T-01", "T-02", "E-01"] and detail.target == "T-02"
+    assert detail.narrative == "T-1 leads to E-1 on agent-core." and record["value"] == PATH3_RECORD
+
+
+# ---- the record's edges ------------------------------------------------------------------------------------------------------------------------------
+
+
+def test_record_a_threats_md_with_crlf_lines_gets_a_crlf_record_and_reads_back(chains, tmp_path):
+    """A file whose lines end in CRLF keeps them: the record is written in CRLF, the shipped reader reads it, and a second render changes nothing."""
+    project = path3(tmp_path)
+    project.threats.write_bytes(project.threats.read_bytes().replace(b"\n", b"\r\n"))
+    good_flow(chains, project)
+    data = project.threats.read_bytes()
+    assert re.search(rb"(?<!\r)\n", data) is None, "a line of the file lost its carriage return"
+    read = shared_module("tachi_parsers").parse_chain_outcome(data.decode("utf-8"))
+    assert read["form"] == "written" and read["text"] == PATH3_RECORD and len(read["lines"]) == 1
+    before = project.files()
+    must(run_render(chains, project), 0, "second render")
+    assert project.files() == before
+    must(run_check(chains, project), 0, "check on a file with CRLF lines")
+
+
+def test_record_an_outcome_heading_with_no_record_gets_the_record_and_no_second_heading(chains, tmp_path):
+    """A heading that is left without its record (a record deleted by hand) takes the record under it, and the file has one heading."""
+    project = path3(tmp_path)
+    lines = project.text().split("\n")
+    at = lines.index("## 5. Coverage Matrix")
+    project.set_text("\n".join(lines[:at] + [RECORD_HEADING, ""] + lines[at:]))
+    good_flow(chains, project)
+    text = project.text()
+    where = record_context(text)
+    assert text.count(RECORD_HEADING) == 1 and where.before == RECORD_HEADING and where.after == "## 5. Coverage Matrix"
+    assert the_record(text)["value"] == PATH3_RECORD
+
+
+def test_record_a_fenced_copy_of_the_record_or_of_an_anchor_is_neither_replaced_nor_used(chains, tmp_path):
+    """Evidence that quotes a threat model in a code fence holds a heading and a record line: render leaves both as they are and puts the real record before
+    the real '## 5. Coverage Matrix' (S1P-A22: anchors and records are lines outside fences)."""
+    fence = ["```markdown", "## 5. Coverage Matrix", RECORD_PREFIX + "chains written (9); candidates 9; surfaced 5", "```", ""]
+    project = path3(tmp_path)
+    lines = project.text().split("\n")
+    start = lines.index("A synthetic threat model for the chain script's tests.") + 2
+    project.set_text("\n".join(lines[:start] + fence + lines[start:]))
+    good_flow(chains, project)
+    text = project.text()
+    assert "\n".join(fence) in text, "the fenced lines changed"
+    read = shared_module("tachi_parsers").parse_chain_outcome(text)
+    assert read["form"] == "written" and read["text"] == PATH3_RECORD and len(read["lines"]) == 1
+    after = text.split("\n")
+    at = read["lines"][0]
+    assert at > start + len(fence) and after[at - 2] == RECORD_HEADING
+    assert next(line for line in after[at + 1:] if line.strip() and line.strip() != "---") == "## 5. Coverage Matrix"
+    must(run_check(chains, project), 0, "check")
+
+
+def test_record_a_code_fence_that_nothing_closes_stops_the_upsert_before_anything_is_written(chains, tmp_path):
+    """With no anchor and a fence that is never closed, the end of the file is inside the fence, so a record written there would read as absent: render and
+    check refuse with exit 2 and write nothing, rather than write a record that no reader will find."""
+    findings = [F("T-1", "ingest-gateway", 5, "High"), F("T-2", "policy-checker", 6, "Medium"), F("E-1", "agent-core", 3, "Critical")]
+    project = Project(tmp_path, findings, flows=[("ingest-gateway", "policy-checker"), ("policy-checker", "agent-core")],
+                      threats=make_threats(findings, section5=False, assets=False) + "\n```text\nnever closed\n")
+    ids = surfaced_ids(must(run_plan(chains, project), 0, "plan").out)
+    write_narratives(project, default_texts(ids))
+    project.make_plan_dir()
+    before = project.files()
+    result = must(run_render(chains, project), 2, "render")
+    assert "fence" in result.err and project.files() == before and not project.md.exists()
+    result = must(invoke(chains, ["check", "--run-dir", project.dir, "--plan", PLAN_ID]), 2, "check")
+    assert "fence" in result.err and project.files() == before
+
+
+def test_record_a_file_with_no_final_newline_and_no_anchor_ends_in_the_record(chains, tmp_path):
+    """The record goes at the end of a file that has no anchor and no last newline: after a rule, under its heading, and the file ends in a newline."""
+    findings = [F("T-1", "ingest-gateway", 5, "High"), F("T-2", "policy-checker", 6, "Medium"), F("E-1", "agent-core", 3, "Critical")]
+    project = Project(tmp_path, findings, flows=[("ingest-gateway", "policy-checker"), ("policy-checker", "agent-core")],
+                      threats=make_threats(findings, section5=False, assets=False).rstrip("\n"))
+    good_flow(chains, project)
+    assert project.threats.read_bytes().endswith(("\n\n---\n\n%s\n\n%s%s\n" % (RECORD_HEADING, RECORD_PREFIX, PATH3_RECORD)).encode("utf-8"))
+    must(run_check(chains, project), 0, "check")
+
+
+# ---- check: what it refuses before it changes anything, and what it prints ---------------------------------------------------------------------------
+
+
+def hand_off_has_no_plan_directory(project, outside):
+    pass
+
+
+def hand_off_plan_directory_is_a_link(project, outside):
+    parent = project.dir / ".tachi-build" / "threat-model"
+    parent.mkdir(parents=True)
+    os.symlink(str(outside), str(parent / PLAN_ID))
+
+
+def hand_off_checks_is_a_link(project, outside):
+    project.make_plan_dir()
+    checks = project.handoff().parent
+    checks.rmdir()
+    os.symlink(str(outside), str(checks))
+
+
+def hand_off_checks_is_a_file(project, outside):
+    project.make_plan_dir()
+    checks = project.handoff().parent
+    checks.rmdir()
+    checks.write_text("in the way", encoding="utf-8")
+
+
+@pytest.mark.parametrize("block", [hand_off_has_no_plan_directory, hand_off_plan_directory_is_a_link, hand_off_checks_is_a_link, hand_off_checks_is_a_file],
+                         ids=["no-plan-directory", "plan-directory-is-a-link", "checks-is-a-link", "checks-is-a-file"])
+def test_check_refuses_before_it_changes_anything_when_its_hand_off_has_no_place(chains, tmp_path, block):
+    """A check that couldn't write its hand-off exits 2 before it rewrites the record or renames the file, though it would have had to: the run is left as
+    it was, and nothing lands where a link points."""
+    project = path3(tmp_path / "p")
+    good_flow(chains, project)
+    project.set_text(without_record(project.text()))
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    try:
+        block(project, outside)
+    except (OSError, NotImplementedError):
+        pytest.skip("this platform cannot make a symlink")
+    before = project.files()
+    result = must(invoke(chains, ["check", "--run-dir", project.dir, "--plan", PLAN_ID]), 2, "check")
+    assert result.err.strip() and project.files() == before and not list(outside.iterdir()) and not project.quarantined.exists()
+
+
+@pytest.mark.parametrize("damage", ["missing", "not-utf-8", "link"])
+def test_check_exits_2_and_writes_nothing_when_threats_md_cannot_be_read(chains, tmp_path, damage):
+    """A threats.md that is missing, isn't strict UTF-8 or is a link can't be read, so there is no record to check: exit 2, no hand-off, no change."""
+    project = path3(tmp_path / "p")
+    good_flow(chains, project)
+    project.make_plan_dir()
+    if damage == "missing":
+        project.threats.unlink()
+    elif damage == "not-utf-8":
+        project.threats.write_bytes(project.threats.read_bytes() + b"\xff\xfe")
+    else:
+        real = tmp_path / "real-threats.md"
+        real.write_bytes(project.threats.read_bytes())
+        project.threats.unlink()
+        try:
+            os.symlink(str(real), str(project.threats))
+        except (OSError, NotImplementedError):
+            pytest.skip("this platform cannot make a symlink")
+    before = project.files()
+    result = must(invoke(chains, ["check", "--run-dir", project.dir, "--plan", PLAN_ID]), 2, "check")
+    assert "threats.md" in result.err and project.files() == before and not project.handoff().exists() and project.md.exists()
+
+
+def test_check_makes_checks_when_the_plan_directory_has_none(chains, tmp_path):
+    """The run-level plan's directory is required, and checks/ under it is made when it is absent."""
+    project = path3(tmp_path)
+    good_flow(chains, project)
+    (project.dir / ".tachi-build" / "threat-model" / PLAN_ID).mkdir(parents=True)
+    must(invoke(chains, ["check", "--run-dir", project.dir, "--plan", PLAN_ID]), 0, "check")
+    assert_handoff(project, "pass")
+
+
+def test_check_a_second_check_writes_a_hand_off_that_says_what_it_found(chains, cap, tmp_path):
+    """A check writes its hand-off once per run, and a later one replaces it: after a rewrite the next check finds the record and the file agreeing."""
+    run = fresh_copy(cap.run, tmp_path)
+    run.md.unlink()
+    must(run_check(chains, run), 5, "check")
+    assert_handoff(run, "warn", outcome="skipped (attack-chains.md missing)")
+    must(run_check(chains, run), 0, "second check")
+    assert_handoff(run, "pass")
+
+
+def test_check_prints_one_json_object_with_its_status_the_record_and_the_warnings(chains, cap, tmp_path):
+    """stdout is one JSON object: for a pass the record's own text and no warning, and for a rewrite the new record and the hand-off's warning, which stderr
+    repeats, so that the command can print it on exit 5 without reading the hand-off."""
+    run = fresh_copy(cap.run, tmp_path)
+    assert json.loads(must(run_check(chains, run), 0, "check").out) == {"status": "pass", "outcome": cap.doc["outcome_record"], "warnings": []}
+    run.md.unlink()
+    result = must(run_check(chains, run), 5, "check")
+    shown = json.loads(result.out)
+    assert shown["status"] == "warn" and shown["outcome"] == "skipped (attack-chains.md missing)"
+    assert [w["code"] for w in shown["warnings"]] == ["chain-outcome:rewritten"] and shown["warnings"] == read_handoff(run)["warnings"]
+    assert "chain-outcome:rewritten" in result.err
+
+
+def test_check_reads_a_chain_file_whose_lines_end_in_crlf(chains, cap, tmp_path):
+    """A chain file that a Windows editor saved with CRLF still accounts for its record."""
+    run = fresh_copy(cap.run, tmp_path)
+    run.md.write_bytes(run.md.read_bytes().replace(b"\n", b"\r\n"))
+    must(run_check(chains, run), 0, "check")
+    assert run.md.exists() and not run.quarantined.exists()
+
+
+def test_writes_a_check_replaces_a_linked_hand_off_and_never_writes_through_it(chains, cap, tmp_path):
+    """A symlink where the hand-off belongs is replaced by the new file, and the file it pointed at keeps its bytes."""
+    run = fresh_copy(cap.run, tmp_path)
+    run.make_plan_dir()
+    victim = tmp_path / "victim.txt"
+    victim.write_bytes(b"keep me\n")
+    try:
+        os.symlink(str(victim), str(run.handoff()))
+    except (OSError, NotImplementedError):
+        pytest.skip("this platform cannot make a symlink")
+    must(invoke(chains, ["check", "--run-dir", run.dir, "--plan", PLAN_ID]), 0, "check")
+    assert victim.read_bytes() == b"keep me\n" and not run.handoff().is_symlink()
+    assert_handoff(run, "pass")
+
+
+def test_check_exits_2_when_the_chain_file_cannot_be_renamed_and_a_later_check_finishes_the_job(chains, cap, tmp_path):
+    """A directory named attack-chains.inconsistent.md can't be replaced by the file. The record is already rewritten, and the error says so and what is
+    left to do; the hand-off isn't written. Once the way is clear, a check finds the file where it was and moves it."""
+    run = fresh_copy(cap.run, tmp_path)
+    run.quarantined.mkdir()
+    set_record(run, "skipped (inventory missing)")
+    result = must(run_check(chains, run), 2, "check")
+    assert "skipped (attack-chains.md unexpected)" in result.err and "could not be renamed" in result.err
+    assert the_record(run.text())["value"] == "skipped (attack-chains.md unexpected)" and run.md.exists() and not run.handoff().exists()
+    run.quarantined.rmdir()
+    must(run_check(chains, run), 5, "check once the way is clear")
+    assert run.quarantined.is_file() and not run.md.exists()
+    assert_handoff(run, "warn", outcome="skipped (attack-chains.md unexpected)")
+
+
+def test_check_exits_2_when_checks_cannot_be_made(chains, tmp_path, monkeypatch):
+    """A checks/ that is absent and can't be made is exit 2 with the cause, and no hand-off."""
+    project = path3(tmp_path)
+    good_flow(chains, project)
+    (project.dir / ".tachi-build" / "threat-model" / PLAN_ID).mkdir(parents=True)
+
+    def refuse(path, *args, **kwargs):
+        raise OSError(13, "Permission denied")
+
+    monkeypatch.setattr(os, "makedirs", refuse)
+    result = must(invoke(chains, ["check", "--run-dir", project.dir, "--plan", PLAN_ID]), 2, "check")
+    assert "checks/ could not be made (Permission denied)" in result.err and not project.handoff().exists()
+
+
+def test_a_defect_ends_render_in_exit_4_and_check_in_exit_2(chains, tmp_path, monkeypatch):
+    """An error that no check meant to raise is a bug: render ends as every entry does (D4's exit 4), and check, whose codes are 0, 2 and 5, ends in a 2
+    that says so. Neither has written anything."""
+    project = path3(tmp_path)
+    good_flow(chains, project)
+    project.make_plan_dir()
+    before = project.files()
+
+    def broken(content):
+        raise ZeroDivisionError("a defect that no check meant to raise")
+
+    monkeypatch.setattr(shared_module("tachi_parsers"), "parse_chain_outcome", broken)
+    rendered = run_render(chains, project)
+    assert rendered.code == 4 and "an unexpected error stopped the render (ZeroDivisionError" in rendered.err, rendered.describe()
+    checked = invoke(chains, ["check", "--run-dir", project.dir, "--plan", PLAN_ID])
+    assert checked.code == 2 and "an unexpected error stopped the render (ZeroDivisionError" in checked.err and "report this as a bug" in checked.err
+    assert project.files() == before
+
+
+def test_a_record_that_does_not_read_back_as_written_is_a_defect_and_nothing_is_written(chains, tmp_path, monkeypatch):
+    """The new record is read back through the shipped parser before anything is written. A reader that doesn't return what was written is a bug in one of
+    the two: render ends in exit 4 and check in exit 2, and neither has written a thing."""
+    project = path3(tmp_path)
+    ids = surfaced_ids(must(run_plan(chains, project), 0, "plan").out)
+    write_narratives(project, default_texts(ids))
+    project.make_plan_dir()
+    before = project.files()
+    parsers = shared_module("tachi_parsers")
+    real = parsers.parse_chain_outcome
+
+    def unfaithful(content):
+        read = real(content)
+        return dict(read, text="skipped (something else)") if len(read["lines"]) == 1 else read   # only the read-back finds a record: the file has none yet
+
+    monkeypatch.setattr(parsers, "parse_chain_outcome", unfaithful)
+    rendered = run_render(chains, project)
+    assert rendered.code == 4 and "does not read back as it was written" in rendered.err, rendered.describe()
+    checked = invoke(chains, ["check", "--run-dir", project.dir, "--plan", PLAN_ID])
+    assert checked.code == 2 and "does not read back as it was written" in checked.err, checked.describe()
+    assert project.files() == before
 
 
 # =============================================================================

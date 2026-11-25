@@ -44,11 +44,39 @@ chains, which are the ones the orchestrator writes narratives for. It writes not
   whose digests differ from its own reads. The inventory's digest is taken before its content is read, so a file that changes in
   between can only make ``render`` refuse it.
 
+**render** runs once the orchestrator has written ``chains/narratives.json``: a ``{title, narrative}`` for each surfaced chain, and for those only.
+
+- **What it refuses**, with exit 2 and nothing written: a ``chains.json`` that fails its contract (exit 1 when it is missing); one whose two digests
+  aren't those of its own reads of Section 7 and the inventory; one whose chains disagree with Section 7 (a member that isn't a STRIDE finding on that
+  layer, or a maximum severity or a breaking target that the members don't give); narratives for an ID that isn't a surfaced chain of it; and a component
+  or a Mitigation of a surfaced chain that holds a character that D3 forbids (P0-4).
+- **The narratives** are narrative text (D3): a title of at most 120 characters and a narrative of at most 2,000, the ``chain-narratives`` slots, and no
+  numeral outside a slot. A chain whose text fails takes a fixed title and narrative, built from its members and never from the failed text, and
+  ``render`` names it under ``narrative_fallbacks``, so that the orchestrator can rewrite it once and run ``render`` again. Every surfaced chain fails
+  alike when the file is missing or fails its key set. Valid text is escaped for its place, so it adds no heading, row, fence or markup (NFR-10).
+- **The file.** For ``written`` it writes ``attack-chains.md`` at schema 1.1: the frontmatter (the date of ``threats.md`` and the three counts), the
+  surfaced chains in a summary and in full, a compact row for each other chain that ``chains.json`` lists, the remainder line, and the provenance
+  comment. Section 7 gives each member's component and level, and the breaking target's Mitigation is the recommendation, verbatim.
+- **The record.** For every outcome it upserts the outcome record in ``threats.md``. ``zero`` and ``skipped`` write no chain file, and leave an earlier
+  run's one where it is, for ``check`` to move aside. It replaces exactly the lines that ``tachi_parsers.parse_chain_outcome`` names. With none, the
+  record goes under ``## Attack Chain Outcome``, directly before ``## 5. Coverage Matrix``, else before ``## Affected Assets``, else at the end of the
+  file, and each anchor is a line outside code fences (S1P-A22). The new text is read back through the parser before anything is written.
+
+**check** runs in the main session (FR-K4.1b, R-24). It reads the record through ``parse_chain_outcome``. ``chains written (N)`` passes when
+``attack-chains.md`` has S full chains, ``min(100, N - S)`` compact rows, the remainder line last and frontmatter counts equal to the record's; ``0
+chains`` and ``skipped`` pass when the file is absent. A record that is absent, malformed or repeated, or a file that disagrees, is rewritten as
+``skipped (<reason>)``, the file is renamed to ``attack-chains.inconsistent.md``, and the hand-off (``tachi.check-handoff/1``, under the run-level plan's
+``checks/``) holds one ``chain-outcome:rewritten`` warning. A second check on the rewritten record passes. The hand-off's place is checked before
+anything changes, so a refusal changes nothing.
+
 Exit codes are ``contracts/cli.md``'s. For ``plan``: 0 done (``written`` or ``zero``); 1 an input is missing or unreadable (``--run-dir``
 not a directory, or a ``skipped`` outcome whose input can't be read); 2 a guard or validation failure (``.tachi-build`` or ``chains`` is a
 link, ``chains.json`` can't be written, or a ``skipped`` outcome whose input is there but unusable); 4 a defect in this script (an
 unexpected error, or a document that fails its own contract), which writes nothing. The orchestrator ignores them all (R-24), and a
-``skipped`` outcome writes ``chains.json`` before it exits. Nothing here reads the clock, and the output depends on the inputs' content
+``skipped`` outcome writes ``chains.json`` before it exits. For ``render``: 0 done, whatever the outcome (a ``skipped`` outcome's failure was
+``plan``'s) and narrative fallbacks included; 1 the run directory, ``chains.json`` or ``threats.md`` can't be read; 2 a refusal above, or a write that
+fails; 4 a defect. For ``check``: 0 passes; 5 rewrote the record; 2 anything else, a defect included, because its codes are 0, 2 and 5 and the command
+prints a 2 and goes on. ``render`` and ``check`` print one JSON object. Nothing here reads the clock, and the output depends on the inputs' content
 alone, never on where the run is or on dictionary order. Standard library plus the shared helpers, and Python 3.9 syntax.
 """
 from __future__ import annotations
@@ -63,7 +91,7 @@ import argparse
 import collections
 import os
 import re
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 sys.dont_write_bytecode = True  # no bytecode cache for the local imports below (ADR-049 D8)
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -90,6 +118,33 @@ SKIP_NO_INVENTORY = "inventory missing"
 SKIP_BAD_INVENTORY = "inventory invalid"
 REGENERATE = "regenerate threats.md with /tachi.threat-model, or correct Section 7"
 REPLAN = "run /tachi.threat-model again, so that Phase 1 writes the inventory"
+
+# What ``render`` writes and ``check`` reads (ADR-050 D13, D15; contracts/threat-model-records.md).
+CHAIN_FILE = "attack-chains.md"
+QUARANTINED = "attack-chains.inconsistent.md"   # where ``check`` moves a chain file that its record doesn't account for (a declared path, S1P-A62)
+RECORD_HEADING = "## Attack Chain Outcome"
+REMAINDER_LABEL = "**Consolidated chains not listed**: "
+FILE_VERSION = "1.1"                            # attack-chains.md's schema_version
+TITLE_LIMIT, NARRATIVE_LIMIT = 120, 2000        # ``chain-text``: a title's and a narrative's characters, before their slots resolve
+NARRATIVE_STAGE = "chain-narratives"            # D3's slot table for chain titles and narratives
+WARNING_CODE = "chain-outcome:rewritten"        # the one code of ``check``'s hand-off (S1P-A52)
+ARROW = " → "
+DASH = "—"
+NOTE = "This is a heuristic recommendation based on structural centrality analysis, not verified control effectiveness."
+NO_MITIGATION = "No mitigation is recorded for this finding in Section 7."
+FIXED_NARRATIVE = "No narrative is shown for this chain because the text written for it broke the narrative rules."
+
+# The layer names of ``maestro-layers-shared.md`` and the category names of ``attack-chain-patterns-shared.md``, as today's chain files write them.
+# ``test_chain_script.py`` compares both with the references, through the member tables of a file that ``render`` writes.
+LAYER_NAMES = {"L1": "Foundation Model", "L2": "Data Operations", "L3": "Agent Framework", "L4": "Deployment Infrastructure",
+               "L5": "Evaluation and Observability", "L6": "Security and Compliance", "L7": "Agent Ecosystem"}
+CATEGORY_NAMES = {"S": "Spoofing", "T": "Tampering", "R": "Repudiation", "I": "Info-Disclosure", "D": "Denial-of-Service",
+                  "E": "Privilege-Escalation"}
+
+_DETAIL = re.compile(r"### CHAIN-[0-9]{3,6}: ", re.ASCII)       # a full chain's heading, and a compact row's start, as ``check`` counts them
+_ROW = re.compile(r"\| CHAIN-[0-9]{3,6} \|", re.ASCII)
+_COUNT = re.compile(r"[0-9]{1,6}", re.ASCII)
+_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", re.ASCII)
 
 # S-3(b): (category, layer) -> the (category, layer) pairs that a finding may be followed by. One entry for each source category and layer
 # of ``attack-chain-patterns-shared.md``'s "Transition Lookup Table", whose 40 rows these are (S spoofing, T tampering, R repudiation,
@@ -145,6 +200,7 @@ class Inputs(object):
     """
 
     def __init__(self) -> None:
+        self.text: Optional[str] = None       # threats.md as it was read, once it is: ``render`` upserts its record into this very text
         self.reference: Dict[str, Any] = {}   # ``parse_reference_set``'s dict, once Section 7 is read
         self.layers: Dict[str, str] = {}
         self.reference_digest: Optional[str] = None
@@ -153,16 +209,25 @@ class Inputs(object):
         self.skip: Optional[Tuple[str, int, str, str]] = None
 
 
+def _threats_text(run_dir: str) -> Tuple[Optional[str], int, str]:
+    """``(the text of threats.md, 0, "")``, or ``(None, an exit code, the detail)``: 1 for a file that can't be read, through no link and within the
+    cap, and 2 for one that is there but isn't strict UTF-8."""
+    raw, reason = tp.read_capped(os.path.join(run_dir, THREATS), tp.MAX_AGENT_INPUT_BYTES)
+    if raw is None:
+        return None, 1, "%s could not be read (%s)" % (THREATS, reason)
+    try:
+        return raw.decode("utf-8"), 0, ""
+    except UnicodeDecodeError:
+        return None, 2, "%s is not strict UTF-8" % THREATS
+
+
 def _read_section_7(run_dir: str, found: Inputs) -> Optional[Tuple[str, int, str, str]]:
     """The compiled ``threats.md``: its reference set, each finding's own layer and the set's digest. A file that can't be read is exit 1,
     and one that is there but isn't strict UTF-8 or has no usable Section 7 is exit 2."""
-    raw, reason = tp.read_capped(os.path.join(run_dir, THREATS), tp.MAX_AGENT_INPUT_BYTES)
-    if raw is None:
-        return SKIP_SECTION_7, 1, "%s could not be read (%s)" % (THREATS, reason), REGENERATE
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        return SKIP_SECTION_7, 2, "%s is not strict UTF-8" % THREATS, REGENERATE
+    text, code, detail = _threats_text(run_dir)
+    if text is None:
+        return SKIP_SECTION_7, code, detail, REGENERATE
+    found.text = text
     try:
         found.reference = tachi_parsers.parse_reference_set(text, THREATS)
     except tachi_parsers.ReferenceSetError as exc:
@@ -413,15 +478,421 @@ def _run_plan(args: argparse.Namespace) -> int:
     return code
 
 
+# =============================================================================
+# The outcome record in threats.md (D13, S1P-A22), shared by render and check
+# =============================================================================
+
+def _outcome_text(document: Dict[str, Any]) -> str:
+    """OUTCOME of ``contracts/threat-model-records.md``'s grammar, for a ``chains.json``'s outcome, reason and counts."""
+    if document["outcome"] == "written":
+        return "chains written (%d); candidates %d; surfaced %d" % (document["chain_count"], document["candidate_count"], document["surfaced_count"])
+    if document["outcome"] == "zero":
+        return "0 chains passed filter (%s); candidates %d" % (document["reason"], document["candidate_count"])
+    return "skipped (%s)" % document["reason"]
+
+
+def _upsert_record(text: str, outcome: str) -> str:
+    """``text`` with its outcome record set to ``outcome``, read back through the parser before it is returned (S1P-A22).
+
+    The lines that ``parse_chain_outcome`` names are the record, whatever their form: the first becomes the new line, and any other is dropped, so one
+    record is left. With none, the record goes under ``## Attack Chain Outcome``, found if it is there, else made directly before ``## 5. Coverage
+    Matrix``, else before ``## Affected Assets``, else at the end of the file. Each anchor is a line outside code fences (``match_heading``'s fence rule), so
+    a heading that evidence quotes is no anchor and a fenced record is no record. A file whose lines end in CRLF gets the new lines in CRLF.
+    """
+    eol = "\r" if "\r\n" in text else ""
+    record = tachi_parsers.CHAIN_OUTCOME_LABEL + outcome + eol
+    lines = text.split("\n")
+    named = tachi_parsers.parse_chain_outcome(text)["lines"]
+    if named:
+        dropped = set(named[1:])
+        lines[named[0]] = record
+        lines = [line for place, line in enumerate(lines) if place not in dropped]
+    else:
+        heading = tachi_parsers.match_heading(r"^%s\r?$" % re.escape(RECORD_HEADING), text, outside_fences=True)
+        if heading is not None:
+            lines[heading + 1:heading + 1] = [eol, record]
+        else:
+            anchors = (tachi_parsers.match_heading(pattern, text, outside_fences=True)
+                       for pattern in (r"^## 5\. Coverage Matrix\r?$", r"^## Affected Assets\r?$"))
+            anchor = next((place for place in anchors if place is not None), None)
+            if anchor is not None:
+                lines[anchor:anchor] = [RECORD_HEADING + eol, eol, record, eol, "---" + eol, eol]
+            else:
+                body = lines[:-1] if lines[-1] == "" else lines   # the last newline of a file ends its last line and starts none
+                gap = ([] if not body[-1].strip() else [eol]) + ["---" + eol, eol] if body else []   # one blank line, a rule, one blank line
+                lines = body + gap + [RECORD_HEADING + eol, eol, record, ""]
+    result = "\n".join(lines)
+    read = tachi_parsers.parse_chain_outcome(result)
+    if read["form"] == "absent":
+        raise tp.StageFailure(2, STAGE, "the outcome record would not read back from threats.md: a code fence that nothing closes covers its place",
+                              "close the fence in threats.md, or regenerate it with /tachi.threat-model")
+    if len(read["lines"]) != 1 or read["text"] != outcome:
+        raise RuntimeError("the outcome record does not read back as it was written")
+    return result
+
+
+def _frontmatter(lines: Sequence[str]) -> Dict[str, str]:
+    """The top-level ``key: value`` pairs between a file's opening ``---`` and the next one, with their quotes taken off. It is a linear scan on purpose:
+    ``threats.md`` is a file that the scanned repository can influence, and ``tachi_parsers.parse_frontmatter``'s pattern is quadratic on a long line."""
+    front: Dict[str, str] = {}
+    if lines and lines[0].rstrip("\r") == "---":
+        for line in lines[1:]:
+            line = line.rstrip("\r")
+            if line == "---":
+                break
+            key, colon, value = line.partition(":")
+            if colon and not key[:1].isspace():
+                front[key.strip()] = value.strip().strip('"')
+    return front
+
+
+def _write_text(path: str, text: str) -> None:
+    """Write one output of this script through no link (``atomic_write`` replaces a link and never follows it), or exit 2."""
+    try:
+        tp.atomic_write(path, text)
+    except OSError as exc:
+        raise tp.StageFailure(2, STAGE, "%s could not be written (%s)" % (os.path.basename(path), exc.strerror or "error"),
+                              "re-run the command") from None
+
+
+# =============================================================================
+# render
+# =============================================================================
+
+def _chains_match_section_7(document: Dict[str, Any], nodes: Sequence[Node]) -> None:
+    """``chains.json`` against Section 7 and the inventory, as ``validate_chains`` leaves it to ``render``: each member is a STRIDE finding on the layer it
+    names, and each chain's maximum severity and breaking target are the ones that its members give. A forged or damaged file stops here, with exit 2."""
+    at = {node.id: place for place, node in enumerate(nodes)}
+    for chain in document["chains"]:
+        places = [at.get(member["finding_id"]) for member in chain["members"]]
+        if (None in places or any("L%d" % nodes[place].layer != member["layer"] for place, member in zip(places, chain["members"]))
+                or max(nodes[place].rank for place in places) != tachi_parsers.SEVERITY_ORDINAL[chain["max_severity"]]
+                or nodes[_breaking_target(nodes, places)].id != chain["breaking_target"]):
+            raise tp.StageFailure(2, STAGE, "chains/chains.json disagrees with Section 7 at %s" % chain["chain_id"], "run attack-chains.py plan again")
+
+
+def _refuse_forbidden(document: Dict[str, Any], rows: Dict[str, Dict[str, Any]]) -> None:
+    """P0-4: the component of each member of a surfaced chain, and its target's Mitigation, are the text that reaches the file from ``threats.md``.
+    A character that D3 forbids in any of them is exit 2, and the reason never carries the character."""
+    for chain in document["chains"]:
+        if chain["surfaced"]:
+            for member in chain["members"]:
+                row = rows[member["finding_id"]]
+                value = {"component": row["component"]}
+                if member["finding_id"] == chain["breaking_target"]:
+                    value["mitigation"] = row["mitigation"]
+                problem = tp.forbidden_problem(THREATS, member["finding_id"], value)
+                if problem is not None:
+                    raise tp.StageFailure(2, STAGE, problem, REGENERATE)
+
+
+def _fixed_text(chain: Dict[str, Any]) -> Tuple[str, str]:
+    """The title and the narrative of a chain whose own text failed (D13): built from its members alone, so it can't carry the failed text."""
+    members = chain["members"]
+    steps = ", ".join("%s on %s" % (member["finding_id"], member["layer"]) for member in members)
+    return ("Attack chain from %s to %s" % (members[0]["finding_id"], members[-1]["finding_id"]),
+            "%s Its findings, in order from the initial exploit to the terminal impact, are %s." % (FIXED_NARRATIVE, steps))
+
+
+def _lookup(chain: Dict[str, Any], rows: Dict[str, Dict[str, Any]]) -> Callable[[str, str], Optional[str]]:
+    """What a slot of this chain's title or narrative resolves to (D3's table for chain narratives), or ``None`` when it names nothing that the chain has:
+    a count of its members, layers or converging chains; a finding, a component or a layer of one of its members."""
+    members = {tp.canonical_finding_id(member["finding_id"]): member for member in chain["members"]}
+    layers = {member["layer"] for member in chain["members"]}
+    counts = {"members": len(chain["members"]), "layers": len(layers), "converging": chain["converging"]}
+
+    def lookup(kind: str, argument: str) -> Optional[str]:
+        if kind == "count":
+            return str(counts[argument])
+        if kind == "finding":
+            return argument if argument in members else None
+        if kind == "ref":
+            return argument if argument in layers else None
+        member = members.get(tp.canonical_finding_id(argument.partition(":")[2]))   # name: ``component:<finding ID>``
+        return None if member is None else rows[member["finding_id"]]["component"]
+
+    return lookup
+
+
+def _resolve(entry: Dict[str, str], lookup: Callable[[str, str], Optional[str]]) -> Tuple[Optional[Tuple[str, str]], Optional[str]]:
+    """One chain's ``{title, narrative}``, resolved and escaped (a title for a cell, a narrative for prose): ``((title, narrative), None)``, or ``(None, the
+    first problem)``. The problems are words and never the text: ``title-empty``, ``forbidden-character``, ``narrative-too-long``, one of ``tachi_parts``'
+    grammar problems (``slot-syntax``, ``slot-kind``, ``slot-argument``, ``numeral``), or ``slot-unresolved``."""
+    for name, limit in (("title", TITLE_LIMIT), ("narrative", NARRATIVE_LIMIT)):
+        text = entry[name]
+        if not text.strip():
+            return None, "%s-empty" % name
+        if tp.forbidden_character(text) is not None:
+            return None, "forbidden-character"
+        if len(text) > limit:
+            return None, "%s-too-long" % name
+        problem = tp.narrative_problem(text, NARRATIVE_STAGE)
+        if problem is not None:
+            return None, problem
+    title = tp.resolve_narrative(entry["title"], NARRATIVE_STAGE, lookup, "cell")
+    narrative = tp.resolve_narrative(entry["narrative"], NARRATIVE_STAGE, lookup, "prose")
+    if title is None or narrative is None:
+        return None, "slot-unresolved"
+    return (title.strip(), narrative.strip()), None
+
+
+def _narratives(run_dir: str, document: Dict[str, Any],
+                rows: Dict[str, Dict[str, Any]]) -> Tuple[Dict[str, Tuple[str, str]], Dict[str, Any], List[Dict[str, str]]]:
+    """``(each surfaced chain's title and narrative, the agent text that was used, the chains that took the fixed text)`` (D13).
+
+    A chain whose entry is missing or fails validation takes its fixed text, and so does every surfaced chain when ``narratives.json`` is missing or fails
+    its key set. ``render`` is stateless: the orchestrator's one rewrite is its own, after it reads which chains fell back. An ID that isn't a surfaced chain
+    of ``chains.json`` is refused, because the file maps the surfaced chains and only those."""
+    surfaced = [chain for chain in document["chains"] if chain["surfaced"]]
+    entries: Dict[str, Any] = {}
+    unusable = None
+    try:
+        entries = tp.read_document(os.path.join(run_dir, tp.BUILD_DIR, "chains", "narratives.json"), run_dir, tp.CHAIN_NARRATIVES_SCHEMA)["narratives"]
+    except tp.PartError as exc:
+        unusable = "narratives-missing" if exc.kind == "missing" else "narratives-invalid"
+    wanted = {chain["chain_id"] for chain in surfaced}
+    for key in entries:
+        if key not in wanted:
+            raise tp.StageFailure(2, STAGE, "chains/narratives.json names %s, which is not a surfaced chain of chains.json"
+                                  % (key if tp.id_matches("chain", key) else "a key that is no chain ID"),
+                                  "write narratives for the surfaced chains that plan printed, and for no other chain")
+    texts: Dict[str, Tuple[str, str]] = {}
+    used: Dict[str, Any] = {}
+    fallbacks: List[Dict[str, str]] = []
+    for chain in surfaced:
+        chain_id, entry = chain["chain_id"], entries.get(chain["chain_id"])
+        resolved, problem = (None, unusable or "missing") if entry is None else _resolve(entry, _lookup(chain, rows))
+        if resolved is None:
+            fallbacks.append({"chain_id": chain_id, "problem": str(problem)})
+            resolved = _fixed_text(chain)
+        else:
+            used[chain_id] = entry
+        texts[chain_id] = resolved
+    return texts, used, fallbacks
+
+
+def _side(group: Sequence[Dict[str, Any]], word: str) -> str:
+    """``1 upstream finding (S-1 at L7)``: how many findings a breaking target cuts off, the way today's chain files say it."""
+    listed = " (%s)" % ", ".join("%s at %s" % (member["finding_id"], member["layer"]) for member in group) if group else ""
+    return "%d %s %s%s" % (len(group), word, "finding" if len(group) == 1 else "findings", listed)
+
+
+def _detail(chain: Dict[str, Any], title: str, narrative: str, rows: Dict[str, Dict[str, Any]], nodes: Dict[str, Node]) -> List[str]:
+    """One surfaced chain's section of ``attack-chains.md``: today's keys, and its converging count."""
+    members, target = chain["members"], chain["breaking_target"]
+    place = [member["finding_id"] for member in members].index(target)
+    mitigation = rows[target]["mitigation"]
+    lines = ["### %s: %s" % (chain["chain_id"], title), "", "**Layers**: %s" % _layers(chain), "**Max Severity**: %s" % chain["max_severity"],
+             "**Surfaced**: Yes", "**Converging chains**: %d" % chain["converging"], "", "#### Member Findings", "",
+             "| Finding ID | MAESTRO Layer | Role | Component | Category | Severity |", "|---|---|---|---|---|---|"]
+    for member in members:
+        found = member["finding_id"]
+        lines.append("| %s | %s | %s | %s | %s | %s |" % (found, _layer_cell(member["layer"]), member["role"], tp.escape_cell(rows[found]["component"]),
+                                                         CATEGORY_NAMES[found.partition("-")[0]], nodes[found].risk))
+    lines += ["", "#### Attack Progression", "", narrative, "", "#### Chain-Breaking Controls", "",
+              "**Target**: %s (%s)" % (target, _layer_cell(members[place]["layer"])),
+              "**Rationale**: Removing this finding at %s disconnects %s from %s in the chain"
+              % (members[place]["layer"], _side(members[:place], "upstream"), _side(members[place + 1:], "downstream")),
+              "**Recommendation**: %s" % (tp.escape_cell(mitigation) if mitigation.strip() else NO_MITIGATION), "**Note**: %s" % NOTE, ""]
+    return lines
+
+
+def _layers(chain: Dict[str, Any]) -> str:
+    return ARROW.join(member["layer"] for member in chain["members"])
+
+
+def _layer_cell(layer: str) -> str:
+    return "%s %s %s" % (layer, DASH, LAYER_NAMES[layer])
+
+
+def _chain_file(document: Dict[str, Any], found: Inputs, rows: Dict[str, Dict[str, Any]], nodes: Dict[str, Node],
+                texts: Dict[str, Tuple[str, str]], digest: str) -> str:
+    """``attack-chains.md`` at 1.1 (S-3(g)): the surfaced chains in a summary and in full, a compact row for each other chain that ``chains.json`` lists, the
+    remainder line last, and the provenance comment. The date is ``threats.md``'s, or ``Unknown`` when its frontmatter has none that reads as a date."""
+    surfaced = [chain for chain in document["chains"] if chain["surfaced"]]
+    others = [chain for chain in document["chains"] if not chain["surfaced"]]
+    date = _frontmatter((found.text or "").split("\n")).get("date", "")
+    lines = ["---", 'schema_version: "%s"' % FILE_VERSION, 'date: "%s"' % (date if _DATE.fullmatch(date) else "Unknown"),
+             "chain_count: %d" % document["chain_count"], "surfaced_count: %d" % document["surfaced_count"],
+             "candidate_count: %d" % document["candidate_count"], "---", "", "# Cross-Layer Attack Chains", "", "## 1. Chain Summary", "",
+             "| Chain ID | Title | Layers | Max Severity | Finding Count | Chain-Breaking Target | Converging Chains |", "|---|---|---|---|---|---|---|"]
+    for chain in surfaced:
+        lines.append("| %s | %s | %s | %s | %d | %s | %d |" % (chain["chain_id"], texts[chain["chain_id"]][0], _layers(chain), chain["max_severity"],
+                                                              len(chain["members"]), chain["breaking_target"], chain["converging"]))
+    lines += ["", "---", "", "## 2. Chain Details", ""]
+    for chain in surfaced:
+        lines += _detail(chain, texts[chain["chain_id"]][0], texts[chain["chain_id"]][1], rows, nodes) + ["---", ""]
+    lines += ["## 3. Other Consolidated Chains", "", "| Chain ID | Layers | Findings | Max Severity | Chain-Breaking Target |", "|---|---|---|---|---|"]
+    for chain in others:
+        lines.append("| %s | %s | %s | %s | %s |" % (chain["chain_id"], _layers(chain), ARROW.join(member["finding_id"] for member in chain["members"]),
+                                                    chain["max_severity"], chain["breaking_target"]))
+    lines += ["", REMAINDER_LABEL + str(document["chain_count"] - document["surfaced_count"] - len(others)), "", tp.stamp_comment(RENDERER, digest)]
+    return "\n".join(lines) + "\n"
+
+
+def _refuse_changed_inputs(document: Dict[str, Any], found: Inputs) -> None:
+    """The digests of ``chains.json`` are those of ``render``'s own reads of Section 7 and the inventory, and the document's outcome is what the inputs
+    give: a ``skipped`` one has the first unusable input's reason. Anything else is a stale or damaged ``chains.json``: exit 2, nothing written."""
+    if (document["reference_digest"], document["inventory_digest"]) != (found.reference_digest, found.inventory_digest):
+        raise tp.StageFailure(2, STAGE, "chains/chains.json is stale: Section 7 or the inventory changed since plan", "run attack-chains.py plan again")
+    skipped = document["outcome"] == "skipped"
+    if skipped != (found.skip is not None) or (found.skip is not None and found.skip[0] != document["reason"]):
+        raise tp.StageFailure(2, STAGE, "chains/chains.json does not match what its inputs give", "run attack-chains.py plan again")
+
+
 def _run_render(args: argparse.Namespace) -> int:
-    tp.directory_argument(STAGE, args.run_dir, option="--run-dir")
-    raise tp.StageFailure(4, STAGE, "render is not built yet (F-374 T117)", "this build of %s has plan only" % RENDERER)
+    run_dir = tp.directory_argument(STAGE, args.run_dir, option="--run-dir")
+    document = tp.entry_document(STAGE, os.path.join(run_dir, tp.BUILD_DIR, "chains", "chains.json"), run_dir, tp.CHAINS_SCHEMA, "chains/chains.json")
+    found = _read_inputs(run_dir)
+    _refuse_changed_inputs(document, found)
+    if found.text is None:   # nowhere to put the record: threats.md can't be read, so Section 7 is the unusable input, and ``skip`` says how (1 or 2)
+        reason, code, detail, remedy = found.skip or (SKIP_SECTION_7, 1, "%s could not be read" % THREATS, REGENERATE)
+        raise tp.StageFailure(code, STAGE, "%s: %s" % (reason, detail[:300]), remedy)
+    outcome = _outcome_text(document)
+    chain_file, fallbacks = None, []
+    if document["outcome"] == "written":
+        nodes = _finding_set(found)[1]
+        _chains_match_section_7(document, nodes)
+        rows = {row["id"]: row for row in found.reference["open"]}
+        _refuse_forbidden(document, rows)
+        texts, used, fallbacks = _narratives(run_dir, document, rows)
+        digest = tp.input_digest({"chains": document, "narratives": used})
+        chain_file = _chain_file(document, found, rows, {node.id: node for node in nodes}, texts, digest)
+    threats = _upsert_record(found.text, outcome)
+    if chain_file is not None:
+        _write_text(os.path.join(run_dir, CHAIN_FILE), chain_file)
+    _write_text(os.path.join(run_dir, THREATS), threats)
+    shown = {key: document[key] for key in ("outcome", "reason", "chain_count", "candidate_count", "surfaced_count")}
+    shown.update(record=outcome, chain_file=CHAIN_FILE if chain_file is not None else None, narrative_fallbacks=fallbacks)
+    sys.stdout.write(tp.dump_json(shown))
+    for fallback in fallbacks:
+        sys.stderr.write("WARNING narrative-fallback: the text of %s broke the narrative rules (%s), so its fixed text is used; "
+                         "rewrite it once and run render again\n" % (fallback["chain_id"], fallback["problem"]))
+    return 0
+
+
+# =============================================================================
+# check
+# =============================================================================
+
+# AOD-SIMPLIFICATION: counts a chain file's headings and rows by their text, blind to code fences like ``parse_attack_chains`` — upgrade: skip fenced lines if a chain file ever holds a fence
+def _read_chain_file(text: str) -> Tuple[Dict[str, str], int, int, Optional[int]]:
+    """``(the frontmatter's keys, the full chains, the compact rows, the remainder)`` of an ``attack-chains.md``, as the check counts them: a full chain is a
+    ``### CHAIN-`` heading under ``## 2. Chain Details``, a compact row a ``| CHAIN-`` line under ``## 3. Other Consolidated Chains``, and the remainder
+    the number on the last line that isn't blank or the provenance comment, or ``None`` when that line isn't the remainder line."""
+    lines = [line.rstrip("\r") for line in text.split("\n")]
+    front = _frontmatter(lines)
+    section, full, rows = "", 0, 0
+    for line in lines:
+        if line.startswith("## "):
+            section = line.rstrip()
+        elif section == "## 2. Chain Details" and _DETAIL.match(line):
+            full += 1
+        elif section == "## 3. Other Consolidated Chains" and _ROW.match(line):
+            rows += 1
+    content = [line for line in lines if line.strip()]
+    if content and tp.read_stamp(content[-1]) is not None:
+        content.pop()
+    last = content[-1].rstrip() if content else ""
+    remainder = int(last[len(REMAINDER_LABEL):]) if last.startswith(REMAINDER_LABEL) and _COUNT.fullmatch(last[len(REMAINDER_LABEL):]) else None
+    return front, full, rows, remainder
+
+
+def _file_problem(path: str, outcome: Dict[str, Any]) -> Optional[str]:
+    """Why ``attack-chains.md`` doesn't account for a ``chains written (N)`` record, in the check's words, or ``None`` when it does (FR-K4.1b): S full
+    chains, ``min(100, N - S)`` compact rows, a last line that states the rest, and frontmatter counts that are the record's."""
+    raw, reason = tp.read_capped(path, tp.MAX_AGENT_INPUT_BYTES)
+    if raw is None:
+        return "%s %s" % (CHAIN_FILE, "missing" if reason == "missing" else "unreadable")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return "%s unreadable" % CHAIN_FILE
+    front, full, rows, remainder = _read_chain_file(text)
+    chains, surfaced, candidates = outcome["chain_count"], outcome["surfaced_count"], outcome["candidate_count"]
+    listed = min(COMPACT_LIMIT, chains - surfaced)
+    if full != surfaced:
+        return "full chains %d expected %d" % (full, surfaced)
+    if rows != listed:
+        return "compact rows %d expected %d" % (rows, listed)
+    if remainder != chains - surfaced - listed:
+        return "remainder %s expected %d" % ("missing" if remainder is None else remainder, chains - surfaced - listed)
+    if [front.get(key) for key in ("chain_count", "surfaced_count", "candidate_count")] != [str(chains), str(surfaced), str(candidates)]:
+        return "frontmatter counts differ"
+    return None
+
+
+def _disagreement(path: str, outcome: Dict[str, Any]) -> Optional[str]:
+    """What the record and the artifacts disagree about, as the reason of a rewritten ``skipped (<reason>)``, or ``None`` when they agree (D13)."""
+    form = outcome["form"]
+    if form in ("absent", "malformed", "multiple"):
+        return {"absent": "no outcome recorded", "malformed": "outcome record malformed", "multiple": "multiple outcome records"}[form]
+    if form == "written":
+        return _file_problem(path, outcome)
+    return "%s unexpected" % CHAIN_FILE if os.path.lexists(path) else None   # 0 chains and skipped need the file to be absent
+
+
+def _handoff_directory(run_dir: str, plan_id: str) -> str:
+    """``threat-model/<plan_id>/checks`` under ``.tachi-build``: the run-level plan's directory must be there, through no link, and ``checks`` must be a
+    directory or absent. Checked before the check changes anything, so a refusal (exit 2) leaves the run as it was."""
+    directory = run_dir
+    for name in (tp.BUILD_DIR, "threat-model", plan_id):
+        directory = os.path.join(directory, name)
+        if os.path.islink(directory) or not os.path.isdir(directory):
+            raise tp.StageFailure(2, STAGE, "the run-level plan %s has no directory under %s/threat-model" % (plan_id, tp.BUILD_DIR),
+                                  "pass the run-level plan's ID, which Step 1.5 printed")
+    checks = os.path.join(directory, "checks")
+    if os.path.islink(checks) or (os.path.lexists(checks) and not os.path.isdir(checks)):
+        raise tp.StageFailure(2, STAGE, "%s/threat-model/%s/checks is a symbolic link or not a directory" % (tp.BUILD_DIR, plan_id), "remove it and re-run")
+    return checks
+
+
+def _check(run_dir: str, plan_id: str) -> int:
+    handoff = _handoff_directory(run_dir, plan_id)
+    text, _, detail = _threats_text(run_dir)
+    if text is None:
+        raise tp.StageFailure(2, STAGE, detail, REGENERATE)
+    outcome = tachi_parsers.parse_chain_outcome(text)
+    chain_path = os.path.join(run_dir, CHAIN_FILE)
+    problem = _disagreement(chain_path, outcome)
+    record, warnings = outcome["text"], []
+    if problem is not None:
+        record = "skipped (%s)" % problem
+        rewritten = _upsert_record(text, record)
+        moved = os.path.lexists(chain_path)
+        _write_text(os.path.join(run_dir, THREATS), rewritten)
+        if moved:
+            try:
+                os.replace(chain_path, os.path.join(run_dir, QUARANTINED))   # a link is renamed, never followed
+            except OSError as exc:
+                raise tp.StageFailure(2, STAGE, "the record is now '%s', but %s could not be renamed (%s)" % (record, CHAIN_FILE, exc.strerror or "error"),
+                                      "rename it to %s, or run the check again" % QUARANTINED) from None
+        warnings.append(tp.record_warning(WARNING_CODE, "the outcome record was rewritten as '%s'; %s" % (
+            record, "%s was renamed to %s" % (CHAIN_FILE, QUARANTINED) if moved else "there was no %s to rename" % CHAIN_FILE)))
+    document = {"schema": tp.HANDOFF_SCHEMA, "check": "attack-chains", "plan_id": plan_id, "status": "warn" if warnings else "pass", "counts": None,
+                "batches": None, "warnings": warnings, "error": None}
+    tp.validate_check_handoff(document)
+    try:
+        os.makedirs(handoff, exist_ok=True)
+    except OSError as exc:
+        raise tp.StageFailure(2, STAGE, "checks/ could not be made (%s)" % (exc.strerror or "error"), "re-run the command") from None
+    _write_text(os.path.join(handoff, "attack-chains.json"), tp.dump_json(document))
+    sys.stdout.write(tp.dump_json({"status": document["status"], "outcome": record, "warnings": warnings}))
+    for warning in warnings:
+        sys.stderr.write("WARNING %s: %s\n" % (warning["code"], warning["detail"]))
+    return 5 if warnings else 0
 
 
 def _run_check(args: argparse.Namespace) -> int:
-    tp.directory_argument(STAGE, args.run_dir, option="--run-dir", code=2)   # cli.md gives check no exit 1
+    run_dir = tp.directory_argument(STAGE, args.run_dir, option="--run-dir", code=2)   # cli.md gives check no exit 1
     tp.plan_id_argument(STAGE, args.plan)
-    raise tp.StageFailure(4, STAGE, "check is not built yet (F-374 T117)", "this build of %s has plan only" % RENDERER)
+    try:
+        return _check(run_dir, args.plan)
+    except tp.StageFailure:
+        raise
+    except Exception as exc:   # check's codes are 0, 2 and 5 (D4's exception), so a defect is a 2 that says so, never a 4
+        failure = tp.entry_defect(STAGE, RENDERER, exc, None)
+        raise tp.StageFailure(2, STAGE, failure.reason, failure.remedy) from None
 
 
 def _build_parser() -> argparse.ArgumentParser:
