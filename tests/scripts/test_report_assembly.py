@@ -75,6 +75,13 @@ lane's results file, "For the code halves", for the architect and for T092's pla
   run ``trees`` again (it replaces every file it writes), not the staged writers' "the earlier outputs were left or put back".
 * **RD-21, the staged-file backstop** (P0-4's, and D4's from-disk check) can't be reached through a part, because the intake refuses what it checks. So these tests
   replace ``_assemble`` with a copy that damages the text, and require exit 4, the agent's report left where it was, and nothing in the run but the staged copy.
+* **RD-28, an earlier run's files in ``attack-trees/``** (S1P-A91, ruled at W2' batch; RD-22 to RD-27 are section 5's). ``trees`` applies FR-K5.7 before it
+  writes anything: a name that ends in ``.md``, a directory's included, and that this run doesn't write is exit 4, and the file stays where it is and as it
+  is, with the remedy ``move the file out of attack-trees/ and re-run the command``. An earlier file under a name that the run writes is replaced, and a link
+  under it too, never followed. A name that doesn't end in ``.md`` is left alone, and an earlier manifest is replaced. ``report`` keeps the rule for a file
+  that appears after ``trees``, with the same remedy, and keeps its own plan's directory (S1P-A89).
+* **RD-29, a name in that message** is shown as ``ascii`` writes it, which the contract (the first five names, then a count) leaves open: a name from a
+  directory listing can't then carry a character that drives a terminal or reorders text into the message.
 
 Standard library, PyYAML (the tests' own dependency) and pytest only, and Python 3.9 syntax.
 """
@@ -1254,6 +1261,63 @@ def test_guard_a_plan_that_current_json_does_not_name_exits_2(assembler, make, m
 
 
 @pytest.mark.parametrize("mode", MODES)
+def test_guard_the_plan_the_command_line_names_is_refused_in_the_command_lines_words(assembler, make, mode):
+    """S1P-A90: the guard is ``tachi_parts.trusted_plan``, and for the plan that ``--plan`` and ``--plan-digest`` name (``pinned_by`` is ``None``) its refusals read as
+    they always have: the pointer, the digest, and a plan that is not complete (the shared ``then render``)."""
+    moved, wrong, pending = make("report"), make("report"), make("report")
+    write_json(moved.pointer_path(mode), {"schema": tp.POINTER_SCHEMA, "plan_id": OTHER_ID})
+    res = run_refused(moved, assembler, mode, 2)
+    assert "--plan %s disagrees with current.json, which names %s" % (moved.plan_id(mode), OTHER_ID) in res.err, res.describe()
+    assert "Remedy: pass the plan ID that plan printed" in res.err, res.describe()
+    res = run_refused(wrong, assembler, mode, 2, digest="0" * 64)
+    assert "the plan file's digest differs from --plan-digest" in res.err, res.describe()
+    assert "Remedy: pass the digest that the last plan or reconcile printed" in res.err, res.describe()
+    pending.rewrite_plan(mode, lambda doc: doc["batches"][0].update(state="pending"))
+    res = run_refused(pending, assembler, mode, 2)
+    assert "batch B001 is pending, so the plan is not complete" in res.err and "Remedy: run reconcile until it exits 0, then render" in res.err, res.describe()
+
+
+def kept_for_diagnosis(res):
+    found = re.search(r"(?m)^Kept for diagnosis: (.*)$", res.err)
+    assert found is not None, res.describe()
+    return found.group(1)
+
+
+def test_report_a_pinned_trees_plans_pointer_that_names_another_plan_says_which_plan_pins_it(assembler, make):
+    """S1P-A90: the user passed no ``--plan`` for the trees plan, so its refusal says that the report plan pins it. It is a ``report`` failure (``banner``) that keeps the
+    trees plan's directory (S1P-A47)."""
+    world = make("report")
+    write_json(world.pointer_path("trees"), {"schema": tp.POINTER_SCHEMA, "plan_id": OTHER_ID})
+    res = run_refused(world, assembler, "report", 2)
+    assert "the trees plan %s that the report plan pins disagrees with current.json, which names %s" % (TREES_ID, OTHER_ID) in res.err, res.describe()
+    assert "Remedy: re-run the command" in res.err and "--plan" not in res.err, res.describe()
+    kept = kept_for_diagnosis(res)
+    assert world.plan_id("trees") in kept and world.plan_id("report") not in kept, res.describe()
+
+
+def test_report_a_pinned_trees_plan_file_that_stops_matching_the_digest_the_report_plan_pins_says_so(assembler, make, monkeypatch):
+    """S1P-A90. The report plan's own guard has just read the trees plan's bytes against the digest that it pins, so the file can differ from it only by changing
+    between the two reads. The second read is made to see another digest."""
+    world = make("report")
+    changing, real = os.path.realpath(str(world.plan_path("trees"))), tp.file_digest
+    monkeypatch.setattr(tp, "file_digest", lambda path: "0" * 64 if os.path.realpath(os.fspath(path)) == changing else real(path))
+    res = run_refused(world, assembler, "report", 2)
+    assert "the plan file's digest differs from the digest that the report plan pins" in res.err, res.describe()
+    assert "Remedy: re-run the command" in res.err and "--plan-digest" not in res.err, res.describe()
+    kept = kept_for_diagnosis(res)
+    assert world.plan_id("trees") in kept and world.plan_id("report") not in kept, res.describe()
+
+
+def test_report_attack_chains_md_may_change_after_the_plan_because_the_guard_does_not_pin_its_digest(assembler, make):
+    """RR3 (``unpinned``): the final outcome record and the chain file's own content govern it, so bytes that differ from the plan's input are no guard failure."""
+    world = make("report", planned_chains=True, outcome=OUTCOME_WRITTEN)
+    assert "attack_chains" in read_json(world.plan_path("report"))["inputs"], "premise: the plan pins the chain file"
+    world.append(world.chains_path, "\n")
+    report_ok(world, assembler)
+    assert marker("attack_chains", "chain.CHAIN-001") in section_text(world.report_text, 6)
+
+
+@pytest.mark.parametrize("mode", MODES)
 def test_guard_a_plan_file_that_names_another_plan_exits_2(assembler, make, mode):
     world = make("report")
     world.rewrite_plan(mode, lambda doc: doc.update(plan_id=OTHER_ID))  # re-pinned, so only the content check refuses it
@@ -1635,8 +1699,7 @@ def broken_tree_text(variant, finding_id):
         "two blocks": good + "\n" + good,
         "not mermaid": good.replace("```mermaid", "```text"),
         "unclosed": good[:good.rindex("```")],  # reading: a fence that never closes is not a Mermaid block
-        # S1P-A70: a block with no line between its fences holds no diagram, whatever copy of ``attack_tree_source`` is loaded (the parser names it
-        # ``empty-block``, and until that copy lands the script fails a source of ``""`` itself).
+        # S1P-A70, S1P-A75: a block with no line between its fences holds no diagram, and ``attack_tree_source`` names it ``empty-block`` (T159).
         "empty block": "# Attack Tree: %s\n\n```mermaid\n```\n" % finding_id,
     }[variant]
 
@@ -1654,6 +1717,8 @@ def test_trees_a_tree_file_without_exactly_one_mermaid_block_exits_2_naming_the_
     path.write_bytes(broken_tree_text(variant, finding_id).encode("utf-8"))
     res = run_refused(world, assembler, "trees", 2)
     assert finding_id in res.err, res.describe()
+    if variant == "empty block":
+        assert "(empty-block)" in res.err, "the parser's word for it, with no copy of it in the script: " + res.describe()
 
 
 def test_trees_a_mermaid_block_with_an_inner_backtick_run_is_still_one_block(assembler, make):
@@ -1838,6 +1903,123 @@ def test_trees_a_write_that_fails_part_way_exits_4_with_the_manifest_unwritten_a
     assert "the trees could not be written (No space left on device)" in res.err and "run assemble-report.py trees again" in res.err, res.describe()
     assert not world.manifest_path.exists() and not world.record_path("trees").exists()
     assert sorted(p.name for p in (world.out / "attack-trees").iterdir()) == sorted(tree_name(i) for i in world.ch_ids[:2]), "the two before the failure, whole"
+
+
+# ---- S1P-A91 (RD-28, RD-29): an earlier run's files in a reused --run-dir. ``trees`` applies FR-K5.7 before it writes anything, and nothing is ever deleted.
+# ---- ``report`` keeps the rule for a file that appears after ``trees``, through the one predicate, so the cases that name no mode run in both.
+
+STALE = b"a file that an earlier run left, which this run does not write\n"
+UNLISTED_WHY = {"trees": "which this run does not write", "report": "which the manifest does not list"}   # the message's tail, by mode
+MOVE_REMEDY = "Remedy: move the file out of attack-trees/ and re-run the command"
+
+
+def leave_stale(world, *names, data=STALE):
+    """Put ``names`` under ``attack-trees/`` as an earlier run in the same ``--run-dir`` left them, and return their paths."""
+    directory = world.out / "attack-trees"
+    directory.mkdir(exist_ok=True)
+    paths = [directory / name for name in names]
+    for path in paths:
+        path.write_bytes(data)
+    return paths
+
+
+def test_trees_an_earlier_tree_that_this_run_does_not_write_exits_4_before_anything_is_written_and_moving_it_lets_the_plan_run(assembler, make):
+    world = make("trees")
+    (stale,) = leave_stale(world, "zz-9-attack-tree.md")
+    res = run_refused(world, assembler, "trees", 4)   # no tree, no manifest and no record, and the earlier file as it was
+    assert "FR-K5.7: attack-trees/ holds zz-9-attack-tree.md, which this run does not write" in res.err, res.describe()
+    assert MOVE_REMEDY in res.err and "trees again" not in res.err, res.describe()
+    assert kept_for_diagnosis(res).endswith(world.plan_id("trees")), "a refusal in this mode keeps its own plan's directory: " + res.describe()
+    assert [p.name for p in stale.parent.iterdir()] == [stale.name] and stale.read_bytes() == STALE, "never deleted and never edited"
+    assert not world.manifest_path.exists() and not world.record_path("trees").exists()
+    moved = world.root / "moved-out.md"
+    shutil.move(str(stale), str(moved))   # the remedy: the plan is whole, so the same command passes
+    trees_ok(world, assembler)
+    assert read_json(world.manifest_path) == world.expected_manifest() and moved.read_bytes() == STALE
+
+
+@pytest.mark.parametrize("how", ["a file", "a link"])
+def test_trees_an_earlier_file_under_a_name_this_run_writes_is_replaced_and_a_link_is_never_followed(assembler, make, how):
+    world = make("trees")
+    (world.out / "attack-trees").mkdir()
+    elsewhere = world.root / "elsewhere-tree.md"
+    elsewhere.write_bytes(STALE)
+    if how == "a file":
+        world.tree_path("S-1").write_bytes(STALE)
+    else:
+        world.tree_path("S-1").symlink_to(elsewhere)
+    trees_ok(world, assembler)
+    assert not world.tree_path("S-1").is_symlink() and world.tree_path("S-1").read_bytes() == world.expected_bytes("S-1")
+    assert elsewhere.read_bytes() == STALE, "what the link named is untouched"
+    assert read_json(world.manifest_path) == world.expected_manifest()
+
+
+def test_trees_a_name_that_does_not_end_in_md_is_left_alone_and_an_earlier_manifest_is_replaced(assembler, make):
+    """The manifest and an image beside a tree are no tree file to FR-K5.7 (the shipped samples keep a ``.png`` beside a tree)."""
+    world = make("trees")
+    kept = leave_stale(world, "s-1-attack-tree.png", "notes.txt")
+    world.manifest_path.write_text("{}\n", encoding="utf-8")   # an earlier run's manifest
+    trees_ok(world, assembler)
+    assert [p.read_bytes() for p in kept] == [STALE, STALE]
+    assert read_json(world.manifest_path) == world.expected_manifest()
+
+
+def test_trees_run_again_over_its_own_outputs_replaces_them_with_the_same_bytes(assembler, make):
+    """The remedy for a write that failed part way is to run ``trees`` again (RD-20), so the early listing must not take this run's own earlier trees for strangers."""
+    world = make("trees", rule="rule2")
+    trees_ok(world, assembler)
+    first = tree_state(world.out / "attack-trees")
+    trees_ok(world, assembler)
+    assert tree_state(world.out / "attack-trees") == first and len(first) == len(world.ch_ids) + 1
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_listing_a_directory_named_like_a_tree_file_exits_4_in_both_modes(assembler, make, mode):
+    world = make(mode)
+    (world.out / "attack-trees" / "x.md").mkdir(parents=True)
+    res = run_refused(world, assembler, mode, 4)
+    assert "FR-K5.7: attack-trees/ holds x.md, %s" % UNLISTED_WHY[mode] in res.err and MOVE_REMEDY in res.err, res.describe()
+    assert (world.out / "attack-trees" / "x.md").is_dir()
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_listing_names_the_first_five_in_order_and_then_a_count(assembler, make, mode):
+    world = make(mode)
+    names = ["z-%d-attack-tree.md" % number for number in range(7)]
+    leave_stale(world, *reversed(names))
+    res = run_refused(world, assembler, mode, 4)
+    assert "FR-K5.7: attack-trees/ holds %s and 2 more, %s" % (", ".join(names[:5]), UNLISTED_WHY[mode]) in res.err, res.describe()
+
+
+@pytest.mark.parametrize("name,char", [sample for sample in FORBIDDEN_SAMPLES if sample[0] in ("escape", "carriage-return", "right-to-left-override", "tag-letter-a")])
+@pytest.mark.parametrize("mode", MODES)
+def test_listing_a_name_reaches_the_message_as_ascii_writes_it(assembler, make, mode, name, char):
+    """RD-29: a file name is untrusted text, and a character that drives a terminal or reorders what a reader sees must not ride in on it."""
+    world = make(mode)
+    leave_stale(world, "x%sy.md" % char)
+    res = run_refused(world, assembler, mode, 4)
+    assert "FR-K5.7: attack-trees/ holds x%sy.md, %s" % (ascii(char)[1:-1], UNLISTED_WHY[mode]) in res.err, res.describe()
+    assert char not in res.err, "the character itself never reaches the message"
+
+
+def test_listing_an_attack_trees_directory_that_is_a_link_is_refused_before_it_is_listed(assembler, make):
+    """The listing follows ``attack-trees/``'s own checks (exit 2), so a link whose target holds an earlier tree is still the link's refusal."""
+    world = make("trees")
+    target = world.root / "elsewhere-trees"
+    target.mkdir()
+    (target / "zz-9-attack-tree.md").write_bytes(STALE)
+    (world.out / "attack-trees").symlink_to(target)
+    res = run_refused(world, assembler, "trees", 2)
+    assert "attack-trees/ is a symbolic link" in res.err and "FR-K5.7" not in res.err, res.describe()
+
+
+def test_listing_a_missing_tree_is_reported_before_an_earlier_file_is_listed(assembler, make):
+    """FR-K5.5's early check comes first (S1P-A44), and the listing is made over the set that it has just confirmed."""
+    world = make("trees")
+    leave_stale(world, "zz-9-attack-tree.md")
+    world.source_tree_path("LLM-1").unlink()
+    res = run_refused(world, assembler, "trees", 4)
+    assert "FR-K5.5" in res.err and "LLM-1" in res.err and "FR-K5.7" not in res.err, res.describe()
 
 
 # ---- S1P-A18: the forbidden-character predicate, at the tree checks (exit 2, D4)
@@ -2276,6 +2458,40 @@ def test_report_a_markdown_file_in_attack_trees_that_the_manifest_does_not_list_
     (world.out / "attack-trees" / "zz-9-attack-tree.md").write_bytes(world.expected_bytes("S-1"))
     res = run_refused(world, assembler, "report", 4)
     assert "zz-9-attack-tree.md" in res.err, res.describe()
+
+
+def test_report_an_unlisted_tree_file_says_to_move_it_and_never_to_run_trees_again(assembler, make):
+    """S1P-A91: ``trees`` refuses such a file now, so a file that ``report`` finds appeared after it, and running ``trees`` again is no remedy."""
+    world = make("report")
+    (world.out / "attack-trees" / "zz-9-attack-tree.md").write_bytes(world.expected_bytes("S-1"))
+    res = run_refused(world, assembler, "report", 4)
+    assert "FR-K5.7: attack-trees/ holds zz-9-attack-tree.md, which the manifest does not list" in res.err, res.describe()
+    assert MOVE_REMEDY in res.err and "trees again" not in res.err, res.describe()
+
+
+def _carried_tree_edited(world):
+    world.tree_path("S-1").write_bytes(world.tree_path("S-1").read_bytes() + b"\n")
+
+
+FR_K5_CHECKS = {
+    "FR-K5.3, a carried tree that differs from its baseline file": ("rule1", _carried_tree_edited),
+    "FR-K5.5, a tree file that the manifest lists and is gone": ("no-baseline", lambda world: world.tree_path("T-1").unlink()),
+    "FR-K5.7, a markdown file that the manifest does not list": ("no-baseline", lambda world: leave_stale(world, "zz-9-attack-tree.md")),
+}
+
+
+@pytest.mark.parametrize("case", sorted(FR_K5_CHECKS))
+def test_report_what_attack_trees_fails_is_the_report_stages_own_check_and_keeps_the_report_plans_directory(assembler, make, case):
+    """S1P-A89: the checks of ``attack-trees/`` and of the merged manifest are made by the report stage, and no plan directory holds what they read, so a refusal
+    names the report plan's directory. (A refusal about the trees plan's own file, pointer, ``params``, ``refs`` or parts names the trees plan's, which
+    ``test_report_what_it_refuses_about_the_trees_plan_is_kept_for_diagnosis_where_that_plan_is`` pins.)"""
+    rule, damage = FR_K5_CHECKS[case]
+    world = make("report", rule=rule)
+    damage(world)
+    res = run_refused(world, assembler, "report", 4)
+    assert case.split(",")[0] in res.err, res.describe()
+    kept = kept_for_diagnosis(res)
+    assert world.plan_id("report") in kept and world.plan_id("trees") not in kept, res.describe()
 
 
 def test_report_a_file_that_is_not_markdown_is_not_an_unlisted_tree(assembler, make):

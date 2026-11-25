@@ -12,7 +12,9 @@ Two modes, each on its own stage's plan (``contracts/cli.md``):
 (FR-K5.6). Everything is checked before anything is written (RD-7): a tree that fails a per-file check (one Mermaid block, the size cap,
 no character that ``tachi_parts.forbidden_character`` returns, the ID on the allow-list before it becomes a path, no link) is exit 2, and a
 tree that is still missing, or a Critical and High set that differs from the generated and carried trees, is exit 4, which applies FR-K5.5
-early. It stages nothing: once every check has passed it writes ``attack-trees/`` with the atomic write (``STAGED_OUTPUTS["trees"]`` is ``()``).
+early. So is a ``.md`` name in ``attack-trees/`` that this run does not write, as an earlier run's tree would be: FR-K5.7 applied early (S1P-A91). Nothing
+is moved or deleted, and an earlier file under a name that this run writes is replaced. It stages nothing: once every check has passed it writes
+``attack-trees/`` with the atomic write (``STAGED_OUTPUTS["trees"]`` is ``()``).
 
 **``report``** runs at Step 2.9, after the chain check and the provenance check. It checks the report plan and the trees plan that it pins as
 D3 checks any plan, except that ``threats.md`` and ``attack-chains.md``, which Steps 2.5 to 2.8 change by design, are checked by the reference
@@ -48,7 +50,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Collection, Dict, List, Mapping, Optional, Sequence, Tuple
 
 sys.dont_write_bytecode = True  # no bytecode cache for the local imports below (ADR-049 D8)
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -163,47 +165,17 @@ def _named(ids: Sequence[str], limit: int = 5) -> str:
     return ", ".join(ids[:limit]) + (" and %d more" % (len(ids) - limit) if len(ids) > limit else "")
 
 
-def _guard(run: Run, stage: str, plan_id: str, digest: str, unpinned: Sequence[str] = (),
-           what: str = "--plan") -> Tuple[Dict[str, Any], Dict[str, bytes]]:
-    """D3's guard for one plan, complete, with its pinned inputs read: ``(plan, bytes of each pinned input)``.
+def _guard(run: Run, stage: str, plan_id: str, digest: str, unpinned: Tuple[str, ...] = (),
+           pinned_by: Optional[str] = None) -> Tuple[Dict[str, Any], Dict[str, bytes]]:
+    """D3's guard for one plan, complete, with its pinned inputs read: ``(plan, bytes of each pinned input)``. It is ``tachi_parts.trusted_plan`` (S1P-A90).
 
-    ``trees`` takes the shared guard as it is. ``report`` has to let two inputs change after the plan (RR3, ``UNPINNED_REPORT``), and
-    ``tachi_parts.trusted_plan`` has no keyword for that, so this is its sequence with one difference: the inputs named in ``unpinned`` are
-    skipped, and the caller checks them by the reference set's digest. The messages and codes are ``trusted_plan``'s, under this mode's banner,
-    so the pinned trees plan, which ``report`` holds to the same checks as its own, fails as a ``report`` failure (S1P-A47).
+    Every refusal is named under this mode's banner, so the trees plan that ``report`` holds to the same checks as its own fails as a ``report``
+    failure, and keeps its own directory (S1P-A47). ``unpinned`` names the inputs that change after the plan by design (RR3, ``UNPINNED_REPORT``): the
+    guard neither checks nor reads them, and the caller checks them by the reference set's digest. ``pinned_by`` is the plan that pins this one, for the
+    two refusals that would otherwise name a ``--plan`` and a ``--plan-digest`` that the user never passed for it.
     """
-    if not unpinned:
-        return tp.trusted_plan(stage, run.out, plan_id, digest, complete=True, read_inputs=True, kept=True)
-    held = tp.plan_dir(run.out, stage, plan_id)
-    pointer = tp.entry_document(run.stage, tp.pointer_path(run.out, stage), run.out, tp.POINTER_SCHEMA, "the plan pointer")
-    if pointer["plan_id"] != plan_id:
-        raise tp.StageFailure(2, run.stage, "%s %s disagrees with current.json, which names %s" % (what, plan_id, pointer["plan_id"]),
-                              "pass the plan ID that plan printed", kept=held)
-    path = tp.plan_path(run.out, stage, plan_id)
-    problem = tp.path_guard_problem(path, run.out)
-    if problem == "missing":
-        raise tp.StageFailure(1, run.stage, "plan.json is missing", "re-run the plan step", kept=held)
-    if problem is not None:
-        raise tp.StageFailure(2, run.stage, "plan.json failed the path guard (%s)" % problem, "re-run the command", kept=held)
-    if tp.file_digest(path) != digest:
-        raise tp.StageFailure(2, run.stage, "the plan file's digest differs from %s" % (
-            "--plan-digest" if what == "--plan" else "the digest that the report plan pins"),
-            "pass the digest that the last plan or reconcile printed; if the plan was edited, re-run the command", kept=held)
-    plan = tp.entry_document(run.stage, path, run.out, tp.PLAN_SCHEMA, "plan.json", held)
-    if (plan["plan_id"], plan["stage"]) != (plan_id, stage):
-        raise tp.StageFailure(2, run.stage, "plan.json is for another plan or stage", "re-run the command", kept=held)
-    unfinished = [entry for entry in plan["batches"] if entry["state"] in ("pending", "failed")]
-    if unfinished:
-        first = unfinished[0]
-        raise tp.StageFailure(2, run.stage, "batch %s is %s, so the plan is not complete" % (first["batch_id"], first["state"]),
-                              "run reconcile until it exits 0, then assemble", batch=(first["batch_id"], ", ".join(first["finding_ids"])), kept=held)
-    inputs = {name: tp.plan_input_bytes(run.stage, entry, name, held)
-              for name, entry in sorted(plan["inputs"].items()) if name not in unpinned}
-    for entry in plan["batches"]:
-        stored = tp.input_path(run.out, stage, plan_id, entry["batch_id"])
-        if tp.path_guard_problem(stored, run.out) is not None or tp.file_digest(stored) != entry["input_sha256"]:
-            raise tp.StageFailure(2, run.stage, "the batch input %s changed after plan" % entry["batch_id"], "re-run the command", kept=held)
-    return plan, inputs
+    return tp.trusted_plan(stage, run.out, plan_id, digest, complete=True, read_inputs=True, kept=True, unpinned=unpinned, banner=run.stage,
+                           pinned_by=pinned_by)
 
 
 def _batches(run: Run, stage: str, plan: Mapping[str, Any]) -> List[Tuple[Dict[str, Any], Dict[str, Any], Any]]:
@@ -331,6 +303,21 @@ def tree_name(finding_id: str) -> str:
     return "%s-attack-tree.md" % finding_id.lower()
 
 
+def _check_listing(run: Run, directory: str, written: Collection[str], why: str) -> None:
+    """FR-K5.7's listing rule, one predicate for both modes (S1P-A91): a name in ``directory`` that ends in ``.md``, a directory's included, is in ``written``.
+
+    ``trees`` applies it before it writes anything, over the trees it is about to write, so that an earlier run's tree, or a file that a helper put
+    there during the tree batches, stops the run before the report batches. ``report`` applies it over the manifest's trees, for a file that appeared
+    after ``trees``. Exit 4 names the first five. Nothing is moved or deleted: ``attack-trees/`` has no pre-image (D4), so a move would leave a failed
+    run's earlier directory short of its trees, and the remedy is the user's. A name that doesn't end in ``.md``, the manifest or an image, is no tree
+    file to FR-K5.7. A name reaches the message as ``ascii`` writes it, so that a character which drives a terminal can't ride in on a file name.
+    """
+    unlisted = [name for name in sorted(os.listdir(directory)) if name.endswith(".md") and name not in written]
+    if unlisted:
+        raise run.stop(4, "FR-K5.7: attack-trees/ holds %s, which %s" % (_named([ascii(name)[1:-1] for name in unlisted]), why),
+                       "move the file out of attack-trees/ and re-run the command")
+
+
 def _tree_file(run: Run, path: str, root: str, finding_id: str, where: str) -> Optional[Tuple[bytes, str]]:
     """One tree file after D14's per-file checks: ``(its bytes, its Mermaid source)``, or ``None`` when the file is missing.
 
@@ -348,8 +335,6 @@ def _tree_file(run: Run, path: str, root: str, finding_id: str, where: str) -> O
     if data is None:   # the guard found a regular file, so this is a file over the cap, or one that changed while we read it
         raise run.stop(2, "the %s tree of %s can't be read (%s)" % (where, finding_id, reason), "regenerate the tree")
     source, problem = tachi_parsers.attack_tree_source(data)
-    if problem is None and not source:   # a block with no line between its fences holds no diagram. S1P-A70 has the parser name it `empty-block`; until that copy is in, this does
-        problem = "empty-block"
     if problem is not None:
         raise run.stop(2, "the %s tree of %s fails its check (%s)" % (where, finding_id, problem),
                        "regenerate the tree with /tachi.threat-model, or edit the file")
@@ -492,6 +477,7 @@ def _trees(run: Run, args: argparse.Namespace) -> int:
         raise run.stop(4, "attack-trees/ could not be created (%s)" % (exc.strerror or "error"), WRITE_REMEDY) from None
     if os.path.islink(directory) or not tp.under(run.out, directory):
         raise run.stop(2, "attack-trees/ is a symbolic link or lies outside --run-dir", "remove it and re-run")
+    _check_listing(run, directory, {tree_name(entry["finding_id"]) for entry in manifest["trees"]}, "this run does not write")   # FR-K5.7, early (S1P-A91)
     try:   # the trees first and the manifest last, so the manifest that this run writes lists only trees that are already in place
         for entry in manifest["trees"]:
             tp.atomic_write(os.path.join(run.out, entry["file_path"]), found[entry["finding_id"]])
@@ -693,11 +679,7 @@ def _verify_trees(run: Run, reference: Reference, raw_manifest: bytes, tplan: Ma
     directory = os.path.join(run.out, TREE_DIR)
     if os.path.islink(directory):
         raise run.stop(2, "attack-trees/ is a symbolic link", "remove it and run assemble-report.py trees again")
-    names = {tree_name(fid) for fid in listed}
-    unlisted = [name for name in sorted(os.listdir(directory)) if name.endswith(".md") and name not in names]
-    if unlisted:
-        raise run.stop(4, "FR-K5.7: attack-trees/ holds %s, which the manifest does not list" % _named(unlisted),
-                       "remove the file, or run assemble-report.py trees again")
+    _check_listing(run, directory, {tree_name(fid) for fid in listed}, "the manifest does not list")
     if manifest != _merge(_plan_rule(run, tplan), wanted, items, reference):
         raise run.stop(4, "FR-K5.7: the tree manifest is not the merge of the batch manifests that the trees plan holds",
                        "run assemble-report.py trees again")
@@ -1179,7 +1161,7 @@ def _report(run: Run, args: argparse.Namespace) -> int:
     for name, own in (("trees_plan", tp.plan_path(run.out, "trees", trees_id)), ("tree_manifest", os.path.join(run.out, MANIFEST))):
         if os.path.realpath(plan["inputs"][name]["path"]) != os.path.realpath(own):   # a pinned input is read where the plan says, so it must be the run's own file
             raise run.stop(2, "the report plan's %s input is not the file that --run-dir holds" % name, "re-run the plan step")
-    tplan, _ = _guard(run, "trees", trees_id, pinned["sha256"], UNPINNED_TREES_IN_REPORT, "the pinned trees plan")
+    tplan, _ = _guard(run, "trees", trees_id, pinned["sha256"], UNPINNED_TREES_IN_REPORT, "the report plan")
     tbatches, rbatches = _batches(run, "trees", tplan), _batches(run, "report", plan)
     titems, _ = _tree_items(run, tbatches)
 
