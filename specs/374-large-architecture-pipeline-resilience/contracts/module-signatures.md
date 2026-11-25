@@ -29,6 +29,7 @@
   - **Who calls it.** The planner (`plan`'s snapshot, and `fail`'s declared-paths check) and each renderer's declared-paths check, so a file that was there at plan time and hasn't changed is found by one key in all three. Before EC-2 each renderer looked up the raw path, so a name such as macOS's `Icon` and a carriage return made a clean run warn `undeclared-paths-unrecordable` and exit 5. Only the key is shared: the walk and the undeclared check stay three copies, which SA-12's follow-up (T080) hoists.
 - **Ruled at W2′'s entry (S1′, 2026-11-24), additive:** `tachi_parsers.parse_chain_outcome` and `tachi_parsers.CHAIN_OUTCOME_LABEL`, the first slice of T116 (lane OC, in `f94dabb`; S1P-A22, S1P-A23). No name is renamed or removed. They are described below.
 - **Ruled at W2′'s entry (#443, items 1–4; S1′, 2026-11-24), additive: the shared stage-entry path in `tachi_parts`** (S1P-A40). T151 wrote 27 names in `ee1e3e3`, and R3b-1 added the argument checks, `entry_arguments` and `plan_arguments`, in `db8c7c3` (S1P-PM7). Two more names, `directory_argument` and `plan_id_argument`, and an `option` keyword on `entry_arguments` and `run_entry`, follow for the `--run-dir` entries (S1P-A42). `STAGED_OUTPUTS` follows for PR 2's batch stages (S1P-A57), and `tachi_parsers.attack_tree_source` for the tree files (S1P-A48). The walk and the undeclared check, which EC-2 left as three copies, are now `walk_out` and `undeclared_paths`. No name is renamed or removed, and each entry keeps its own names (the section below).
+- **Ruled at T090 (S1′, 2026-11-25; S1P-A38 item 5) and recorded at T162, additive:** `tachi-stage.py`'s `watch`, `WATCH_SECONDS` and `WATCH_POLL_SECONDS`, which T156 wrote in `95c6a04` (S1P-A71, the section below). At T162 too, `tachi_parsers.attack_tree_source`, which T159 wrote in `1e2c28d`, gains a seventh problem word, `empty-block`, checked last, and its readings are ruled (S1P-A73 to S1P-A75, its section). No caller exists yet, and each one maps every problem to its own refusal. No name is renamed or removed.
 
 **Shared conventions.**
 - Every module has `from __future__ import annotations` and runs on Python 3.9 (S-11). Annotations use `typing` forms, so nothing here needs 3.10.
@@ -506,16 +507,31 @@ def parse_chain_outcome(content: str) -> dict: ...  # the attack-chain outcome r
 def attack_tree_source(data: bytes) -> Tuple[Optional[str], Optional[str]]: ...  # (the Mermaid source, None), or (None, problem)
 ```
 
-- **What it checks.** D14's checks on a tree file's content (`part-files.md`, "The tree files"), in this order:
+T159 wrote it in `1e2c28d` (lane OC). Its three readings were ruled at T162 (2026-11-25), below.
+
+- **What it checks.** D14's checks on a tree file's content (`part-files.md`, "The tree files"), in this order, and the first that fails names the problem:
   - `data` is strict UTF-8, or the problem is `not-utf-8`;
   - no character that `tachi_parts.forbidden_character` returns, or `forbidden-character`;
   - exactly one fenced code block, by `_unfenced_lines`' fence rule, or `no-block` or `several-blocks`;
-  - that block's opening info string, without spaces or tabs, is `mermaid`, or `not-mermaid`;
-  - a closing fence ends it, or `unclosed`.
-- **What it returns.** The source is the lines strictly between the two fence lines, joined by `\n`, as the file holds them. A problem never quotes the file's text.
+  - that block's opening info string is `mermaid`, or `not-mermaid`;
+  - a closing fence ends it, or `unclosed`;
+  - a line between its fences holds something other than spaces and tabs, or `empty-block` (S1P-A75).
+- **The readings (ruled at T162, from T159's three questions).**
+  - **A block is counted at its opening fence (S1P-A73, confirmed).** Every fence that opens is a block, closed or not, so a closed Mermaid block followed by a fence that nothing closes is `several-blocks`. CommonMark runs an unclosed fence to the end of the file, so a renderer shows that file as two blocks, and the trailing one's text would reach the copied `attack-trees/` file unchecked. S1P-A48's "an unclosed fence is no block" means that it never counts as the tree's Mermaid block, not that the count skips it. A lone Mermaid fence that nothing closes is still `unclosed`, and a lone non-Mermaid one `not-mermaid`.
+  - **The info string is CommonMark's (S1P-A74, reversed in part).** It is the text after the opening fence's run, trimmed of leading and trailing spaces and tabs, and it must equal `mermaid` exactly. A space or tab inside it stays, so `mer maid` is `not-mermaid`, as are `mermaid title` and `mermaid{theme: dark}`. "Without spaces or tabs" in S1P-A48 and `part-files.md` means CommonMark's trim: a renderer takes the info string's first word as the language, so `mer maid` would draw no diagram. The comparison stays case-sensitive (confirmed), so `Mermaid` and `MERMAID` are `not-mermaid`. Every shipped tree file writes `mermaid`.
+  - **An empty block is a problem (S1P-A75, reversed).** A block with no line between its fences, or only blank lines (spaces and tabs only, CommonMark's blank line), is `empty-block`. It is checked last, after `unclosed`. An empty block is an agent that wrote no diagram. At `reconcile` it makes the batch `invalid`, so the batch is retried with the same units, where `("", None)` would ship a tree with no diagram into `attack-trees/` and Section 5, and leave the failure to whatever draws it later. A line of other whitespace, such as a no-break space, isn't blank by this rule: the check is structural, and the diagram's syntax stays with the Mermaid renderer.
+- **What it returns.** The source is the lines strictly between the two fence lines, joined by `\n`, as the file holds them: no line is trimmed and nothing is added. Since S1P-A75 it always holds a line that isn't blank. A problem is one of seven fixed words, and never quotes the file's text. It raises `TypeError` for anything but `bytes` or `bytearray`, which is a caller's bug, and nothing on content.
+- **The fence rule** is written once, in the private `_fence_roles`, which gives each line's role: none, `open`, `inside` or `close`. `_unfenced_lines` is its lines with no role, with the same output as before. Neither is a signature of record.
 - **What it doesn't do.** It reads no file and builds no path. Each caller allow-lists the ID, builds and guards the path, and reads the bytes through `tachi_parts.read_capped`, at most `MAX_PART_BYTES`.
 - **Who calls it.** `tachi-stage.py reconcile --stage trees`, for each named tree (T092), and `assemble-report.py trees`, for each tree it copies, and `report`, for Section 5's source (T108, T109). So both layers hold a tree to one rule (D14).
 - **Tests** go in `tests/scripts/test_tachi_parsers.py`, the ratchet file: one case per problem and per fence form, inner backtick runs and a tilde fence included. It lands before T092's `trees` reconcile and T108's code. The team-lead names its lane, because `tachi_parsers.py` is OC's file in W2′.
+- **Lane OC's follow-up for S1P-A74 and S1P-A75,** before T092's `trees` reconcile and T108's code call the function:
+  - the info check compares `info.strip(" \t")` with `mermaid`, in place of removing every space and tab;
+  - `empty-block` is checked after `unclosed`: a problem when no line between the fences holds anything but spaces and tabs;
+  - the pinned case `every-space-and-tab-in-the-info-string-is-removed` moves to the `not-mermaid` cases, and `an-empty-block-gives-an-empty-source` and `two-blank-lines-give-one-newline` become `empty-block` cases, beside one block of spaces and a tab;
+  - `empty-block` joins the test module's problem list, last, and the docstring and the module's comment follow.
+
+  The ratchet floor doesn't drop. Neither change touches the shared fence rule, so `match_heading` and `parse_finding_layers` are unchanged.
 
 ## `scripts/sarif_common.py`: one W2 addition (lane R0b, ruled at W2, 2026-11-23)
 
@@ -730,6 +746,29 @@ STAGED_OUTPUTS: Dict[str, Tuple[str, ...]]  # stage -> the names its writer stag
 | `tachi-stage.py` | its own `--out` check, then `plan_arguments` |
 
 The banner name is what each entry passes as `StageFailure`'s `stage`, which its own task sets.
+
+## `scripts/tachi-stage.py`: the watch (ruled at T090, S1′, 2026-11-25; S1P-A38 item 5. T156 wrote it in `95c6a04`, recorded at T162: S1P-A71)
+
+```python
+# Phase 2's deadline, 90 minutes (ADR-050 D6), and the time between two looks at the records
+WATCH_SECONDS: int = 5400
+WATCH_POLL_SECONDS: int = 5
+
+def watch(out: Any, dispatch_ids: Any, seconds: float = WATCH_SECONDS,
+          poll: float = WATCH_POLL_SECONDS) -> Tuple[int, Dict[str, Any]]: ...
+```
+
+- **What it is.** The work of `tachi-stage.py watch`, which `main(argv)` routes to behind the thin `__main__` guard (`cli.md`; `threat-model-records.md`, "The watch"). It returns `(code, printed)`, and the command prints `printed` as its one JSON object:
+  - `(0, {"status": "done", "pending": []})` once every named dispatch has its record;
+  - `(3, {"status": "timed-out", "pending": [...]})` when the deadline passes first, with the IDs that have no record, in the order given.
+- **What it refuses.** Before it waits, it checks `out` and then the IDs, and raises `StageError` (`tp.StageFailure`) with code 2 and the stage `threat-model`, so the command prints D4's message and exits 2 (S1P-A70):
+  - `out` goes through the entry's own `_out_dir(..., missing_code=2)`, as every `tachi-stage.py` subcommand checks `--out` (S1P-A42): D7's path rule, then a directory, and a directory that isn't there is 2 as well. T156's task line named the shared helper, but the contract's reading stands, because `tp.directory_argument` makes no D7 vet;
+  - the IDs are 1 to `WAVE_SIZE` (16), each a full match of `tachi_parts`' dispatch pattern, none named twice. A bad ID is named as `repr` writes it, cut at 60 characters.
+- **How it waits.** The deadline is `seconds` on `time.monotonic()`, from the end of the checks. It looks once before the first sleep, so a wave that is already recorded returns at once, and once more after each sleep of `poll`. The last sleep is cut to what is left, so it returns at the deadline, and a record that lands during that sleep still counts. A record counts when its path passes D3's guard under `out` (`tp.path_guard_problem` is `None`): a regular file, with no link in its place or in the place of `records/` or `.tachi-build/`. The file is never opened.
+- **What it doesn't do.** It writes nothing: no record, no stage record and no directory. The orchestrator writes each `timed_out` record from exit 3 (ADR-050 D6). It reads no environment variable, and the command line takes no deadline, so `seconds` and `poll` are the one way a test sets smaller ones.
+- **`WATCH_SECONDS`' line.** In the script it is the one line `WATCH_SECONDS = 5400`, unannotated and with nothing after it, because T160's live demonstration lowers the deadline to 300 by editing that line in an installed copy (ADR-050 D6). A W5′ re-amendment changes the value here, in ADR-050 D6 and in its Known limitations together.
+- **Private names.** `_watch_ids(dispatch_ids) -> List[str]`, `_recorded(out, dispatch_id) -> bool`, `_run_watch(args) -> int` and `WATCH_STAGE`, the refusals' banner, aren't signatures of record. If T161 fires, it removes this section's names with the code.
+- **Tests** are in `tests/scripts/test_tachi_stage.py`, in-process with `time.monotonic` and `time.sleep` replaced (H15), with one real-interpreter case for the exit codes.
 
 ## The persisted-inputs format: `risk-scores.md` §6 and `compensating-controls.md` §7
 

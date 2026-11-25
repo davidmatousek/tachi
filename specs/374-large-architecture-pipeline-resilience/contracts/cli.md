@@ -19,7 +19,7 @@ Orchestrator fences pass literal arguments only (C6). `PLAN` below stands for `-
 | 0 | done | continue |
 | 1 | an input is missing or unreadable | stop and print the error |
 | 2 | a validation, usage or guard failure; a plan digest or pointer mismatch; a forbidden character in an input (P0-4); or Python below 3.9 | stop, and run the fail step if a plan exists, with three exceptions (below) |
-| 3 | batches are pending (`reconcile` only) | dispatch exactly the listed batches, then reconcile |
+| 3 | batches are pending (`reconcile`), or a Phase 2 wave's deadline passed (`watch`) | after `reconcile`, dispatch exactly the listed batches, then reconcile. After `watch`, write a `timed_out` record for each listed dispatch that still has none, and the lineage rules go on (`threat-model-records.md`, "The watch") |
 | 4 | unrecoverable: a cap or the budget is exhausted, or a completeness or parity check failed | run the fail step |
 | 5 | done, with warnings (undeclared paths, FR-E.10, R-24, a reissued ID) | print the warnings and continue |
 
@@ -42,6 +42,7 @@ Orchestrator fences pass literal arguments only (C6). `PLAN` below stands for `-
 | `python3 scripts/tachi-stage.py architecture-source --threats FILE --architecture PATH`: upserts the FR-E.18 body line, or removes a stale one (D7) | R | 0, 1, 2; 5 with a carrier warning |
 | `python3 scripts/tachi-stage.py id-mark --threats FILE (--baseline FILE \| --no-baseline)`: upserts the ID high-water mark line at Step 2.7 (D7, ruling B) | O | 0, 1, 2 |
 | `python3 scripts/tachi-stage.py close --stage threat-model --out DIR PLAN`: folds in the checks' hand-off files, runs the declared-paths check, then writes the stage record (D4). The fold and its exit 2 cases are `part-files.md` §6's | O | 0, 2, 5 |
+| `python3 scripts/tachi-stage.py watch --out DIR DSP [DSP ...]`: Phase 2's bound (D6, "A dispatch that never returns"; S1P-A33). It waits until each named dispatch has its record, or until `WATCH_SECONDS` have passed, and writes nothing → `{status: done \| timed-out, pending: [DSP]}`: `pending` is empty on 0, and on 3 it lists the IDs that have no record, in argument order. Every refusal is exit 2, before anything waits ("Readings ruled at T162", below). Its contract is `threat-model-records.md`, "The watch" | O | 0, 2, 3 |
 | `python3 scripts/join-threats-md.py --out DIR PLAN`: joins the `threats-md` parts (FR-O.1; the payload is item O-β, D6), and writes the `threats-md` stage record on 0 (RR3) | O | 0, 1, 2, 4 |
 | `python3 scripts/attack-chains.py plan\|render\|check --run-dir DIR`. `check` also takes `--plan ID`, the run-level plan, for its hand-off file, `threat-model/<plan_id>/checks/attack-chains.json` (D13; `part-files.md` §6) | O | `plan` and `render`: 0, 1, 2, which the orchestrator ignores (R-24); `check`: 0, 2 (argparse's usage error), 5 |
 | `python3 scripts/check-threat-model.py --run-dir DIR --plan ID (--baseline FILE \| --no-baseline)`: FR-N4.5, FR-N4.6, P-11, FR-E.10, FR-E.19's reissue check and D8's repeated-member report (R-F; erratum S1P-A19), with its hand-off file, `threat-model/<plan_id>/checks/provenance.json` (D12; `part-files.md` §6) | O | 0, 2, 4, 5 |
@@ -129,3 +130,11 @@ From R3b-1's question and lanes T's and OS's tests-first readings (S1P-A42 onwar
   Any other pointer flag (`--threats`, `--risk-scores`, `--baseline-dir`, `--architecture`, `--target`, `--trees-plan` or `--trees-plan-digest`) is exit 2, and nothing is written, so a stale pointer in a command line is refused, never ignored. PR 1's two stages don't change.
 - **`id-mark` refuses a mark it can't compute (S1P-A54).** It exits 2 and writes nothing when this run's Section 7 can't be read, and when the baseline has no mark line and its reference set can't be read. So it never writes a mark below ruling B's rule (ADR-050 D7). A `--threats` or `--baseline` file that is missing is exit 1. A baseline whose mark line reads is enough, whatever its Section 7 holds.
 - **`assemble-report.py`'s two modes (S1P-A44, S1P-A47).** `trees` exits 2 for a tree that fails a per-file check and 4 for one that is missing (FR-K5.5, early). `report` checks the trees plan it pins as it checks its own, and for both plans it compares `params.reference_digest` in place of `threats.md`'s bytes. `trees` checks `threats.md` by its bytes, because nothing writes it between the trees plan and `trees` (`part-files.md`).
+
+### Readings ruled at T162 (S1′, 2026-11-25)
+
+From T156's build of `watch` (`95c6a04`). `threat-model-records.md`, "The watch", holds the rest, and `module-signatures.md` the function.
+
+- **`watch`'s codes are 0, 2 and 3 (S1P-A70).** It has no exit 1. `--out` goes through `tachi-stage.py`'s own check, D7's path rule and then a directory, but a directory that isn't there is exit 2 as well: the orchestrator starts a watch after it has written the wave's briefs into `{out}`, so a missing one is a defect in the call, not a missing input. No ID, more than 16, an ID that isn't a full match of the dispatch pattern, and an ID named twice are exit 2 too. Each refusal prints D4's message on stderr, under the banner `TACHI THREAT-MODEL FAILED`, and nothing on stdout. On 0 and 3, stderr is empty. The orchestrator treats any exit other than 0 and 3 as its own error, and the run fails.
+- **Exit 3 has one meaning per subcommand** (the exit table, row 3). Its caller knows which subcommand it ran, and in both cases it has work to do before it goes on, so `watch` takes no new code, and no command's routing table changes.
+- **`watch`'s stdout** is one JSON object, printed as every subcommand prints one, with sorted keys and a two-space indent. So `pending` comes before `status`, and no reader depends on the order.
