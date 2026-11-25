@@ -157,7 +157,7 @@ T084's totals were taken at the cut line (`03a8f0d`), before PR 1's W2–W6 test
 
   No gated job fails, so the entry carries no T085 defect (S1P-PM5).
 - **T103's regeneration slice** is a zero diff. The merged generator reproduces all 292 fixture files byte for byte: 212 at the merge base, 71 from PR 1 and 9 from PR 2. T020's byte check passes 190 of 190 on 3.11.13 and on 3.9.6.
-- **The CI half** comes from the pre-hoist push's run (T114 step 1). This corrects the paragraph above, which named the entry push's CI (S1P-PM5). Its totals are added here when the run finishes. The entry push, which carries the hoist, is the first gate read against this pre-state.
+- **The CI half** comes from the pre-hoist push's run (T114 step 1). This corrects the paragraph above, which named the entry push's CI (S1P-PM5). **It ran green, 8 of 8, at `6a16de2`:** gitleaks, the gitleaks full-repo scan, and tachi install fidelity's extraction-fidelity, f374-macos, f374-offline, f374-py39-floor, manifest-completeness and report-posture. #425 became mergeable. Fewer workflows run than before the merge, because the PR's diff now holds only PR 2's own paths and the path filters follow it. TW-CI doesn't fire. The entry push, which carries the hoist, is the first gate read against this pre-state.
 
 ## Rev. 3 cross-read (S1P-A4)
 
@@ -262,3 +262,21 @@ These are contract readings only. None changes a decision of ADR-050, and the de
 - **S1P-A28.** `threats.sarif` keeps `tags`, `maestro-layer`, `severity`, `baselineState` and `affected_assets`, plus `baseline-run-id` and the correlation keys. The uncontracted keys are dropped and listed (`sarif-result.md`).
 - **S1P-A29.** T100 migrates `test_affected_assets_wiring.py` and `test_owasp_2026_contract.py` (D1, D16).
 - **S1P-A30.** The `tachi.chains/1` and `tachi.chain-narratives/1` key sets are closed, and T115's narratives form stands (`threat-model-records.md`).
+
+## The hoist's evidence (T152, T155; S1P-A15)
+
+#443's items 1–4 landed as T151, T152a, R3b-1 and T152b, on PR 2's branch at `1d727ca`, `b13b1e5`, `01dddd6` and `dbded59`. Every run compares the hoist's candidate `dbded59` with the pre-state above, in scratch clones of committed tips (H1, H6).
+
+| Check | Result at `dbded59` |
+|---|---|
+| E1, the full census (3.11.13) | 7,842 passed, 26 failed, 8 errors, 25 skipped. Against the entry: 0 regressions, 0 new failures, the same 34 pre-existing out-of-gate failures |
+| E1, the gated jobs | f374-offline 6,184 passed and 20 skipped; f374-py39-floor (3.9.6) 6,154 passed and 20 skipped; the other gated jobs 1,064 passed on 3.11 and 1,063 passed with 1 skipped on 3.9. The increase over the entry is `test_tachi_parts.py`'s new cases only, and no node ID or outcome changed |
+| E2, coverage | 97.56% (96.37% at the entry; the gate is 80%). `tachi_parts.py` 99.05%, with no missed line in the shared section. The `tachi_parsers.py` ratchet is unchanged at 83.6% |
+| E3, the goldens | Inside E1: the renderer goldens and the shipped-example parse tests pass unchanged |
+| E4, the oracle | T066's harness and T065's driver: 0 differences against both entry runs, after the eight run-varying masks. That is 378 files, 19 stage records and 60 calls, and 4,636 files, 178 stage records and 679 calls. The driver's own verdict is 2,592 checks with 0 failed, on 3.11.13 and on 3.9.6 |
+| E5, static checks | Every touched script's tachi-module imports are unchanged (C1). The only test file changed is `test_tachi_parts.py` |
+| E5b, what no test pins (S1P-PM2) | Messages, reasons, Input Issues, caps, link handling and write sets are unchanged for every caller. Read flags are equal on 1,814 nodes, and 3,279 probe records match. The one difference, the internal base class that moved code raises, isn't user-visible (S1P-A41) |
+
+- **TW-HL didn't fire.** T151 committed about 0.36 plan-days after its dispatch, at the measured ratio, against the trip-wire's 0.70.
+- **The entry push (T114 step 2)** carries this evidence. It is #443's own F-374 CI cycle, and the first gate read against the pre-state.
+
