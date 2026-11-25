@@ -4048,9 +4048,10 @@ def test_a_part_file_whose_body_has_no_effort_reads_as_invalid(tmp_path):
 # =============================================================================
 
 ENTRY_PATH_NAMES = (
-    "StageFailure", "run_entry", "entry_defect", "build_parser", "trusted_plan", "entry_document", "plan_input_bytes", "digest_or_none", "read_parts",
-    "RunCore", "read_capped", "RENDERER_READ_REASONS", "first_forbidden", "forbidden_problem", "stage_and_move", "stage_record", "write_stage_record",
-    "output_entries", "walk_out", "undeclared_paths", "utc_now", "dump_json", "record_warning", "shorten", "relative_path", "yaml_quoted", "RETRY_REMEDY")
+    "StageFailure", "run_entry", "entry_defect", "build_parser", "entry_arguments", "plan_arguments", "trusted_plan", "entry_document", "plan_input_bytes",
+    "digest_or_none", "read_parts", "RunCore", "read_capped", "RENDERER_READ_REASONS", "first_forbidden", "forbidden_problem", "stage_and_move",
+    "stage_record", "write_stage_record", "output_entries", "walk_out", "undeclared_paths", "utc_now", "dump_json", "record_warning", "shorten",
+    "relative_path", "yaml_quoted", "RETRY_REMEDY")
 
 
 @pytest.mark.parametrize("name", ENTRY_PATH_NAMES)
@@ -4851,6 +4852,120 @@ def test_an_entry_that_takes_no_plan_or_no_out_leaves_those_arguments_out():
     assert [action.dest for action in _api("build_parser")("x.py", "d", plan=False)._actions] == ["help", "version", "out"]
     assert [action.dest for action in _api("build_parser")("x.py", "d", out=False)._actions] == ["help", "version", "plan", "plan_digest"]
     assert [action.dest for action in _api("build_parser")("x.py", "d", out=False, plan=False)._actions] == ["help", "version"]
+
+
+# --- an entry's first checks: --out, then --plan, then --plan-digest (S1P-PM7)
+#
+# Both renderers ran these inline at the top of `_run`, and `tachi-stage.py` ran the last two as its `_plan_arguments` after an `--out` check of its own.
+# Every new entry that takes a plan would have copied them. The messages, remedies and exit codes below are the callers' own, word for word, and the
+# first check to fail is the one reported, so no caller's first error changes (S1P-PM2).
+
+RENDERER_STAGES = ("risk-score", "compensating-controls")
+OUT_REFUSAL = ("--out is not a directory", "create it or correct --out")
+PLAN_REFUSAL = ("--plan is not a plan ID", "pass the plan ID that plan printed")
+DIGEST_REFUSAL = ("--plan-digest is not a SHA-256 in lowercase hex", "pass the digest that the last plan or reconcile printed")
+BAD_DIGESTS = ["", "0" * 63, "0" * 65, HEX.upper(), "g" * 64, HEX + "\n", " " + HEX[1:], "sha256:" + HEX, "\uff10" * 64, "\u0660" * 64, "0" * 63 + "\u0661"]
+
+
+def refusal_lines(stage, refusal):
+    return ["TACHI %s FAILED: %s" % (stage.upper(), refusal[0]), "Remedy: %s" % refusal[1]]
+
+
+def refused(call, *args):
+    """The ``StageFailure`` that ``call(*args)`` raises."""
+    with pytest.raises(_api("StageFailure")) as caught:
+        call(*args)
+    return caught.value
+
+
+@pytest.mark.parametrize("digest", [HEX, "0" * 64, "f" * 64, "0123456789abcdef" * 4])
+def test_plan_arguments_pass_a_plan_id_and_a_digest_that_match_their_allow_lists(digest):
+    assert _api("plan_arguments")("risk-score", PLAN, digest) is None
+
+
+@pytest.mark.parametrize("plan_id", INVALID_IDS["plan"] + NON_STRINGS, ids=repr)
+def test_plan_arguments_refuse_a_plan_id_outside_the_allow_list_with_exit_2(plan_id):
+    error = refused(_api("plan_arguments"), "risk-score", plan_id, HEX)
+    assert error.code == 2 and stop_lines(error) == refusal_lines("risk-score", PLAN_REFUSAL)
+
+
+@pytest.mark.parametrize("digest", BAD_DIGESTS + NON_STRINGS, ids=repr)
+def test_plan_arguments_refuse_a_digest_that_is_not_64_lowercase_hex_characters_with_exit_2(digest):
+    """A value that isn't a ``str`` is refused the same way: a library caller (the planner's functions are called as functions) never meets a ``TypeError``."""
+    error = refused(_api("plan_arguments"), "risk-score", PLAN, digest)
+    assert error.code == 2 and stop_lines(error) == refusal_lines("risk-score", DIGEST_REFUSAL)
+
+
+def test_plan_arguments_check_the_plan_id_before_the_digest():
+    error = refused(_api("plan_arguments"), "compensating-controls", "not-a-plan-id", "not-a-digest")
+    assert stop_lines(error) == refusal_lines("compensating-controls", PLAN_REFUSAL)
+
+
+@pytest.mark.parametrize("stage", RENDERER_STAGES)
+def test_each_refusal_is_its_callers_message_with_the_stage_that_the_entry_passes(tmp_path, stage):
+    """The banner names the stage as the entry spelled it, and the reason, remedy and exit code are what the renderers and the planner printed."""
+    check = _api("entry_arguments")
+    for bad, code, refusal in ((("absent", PLAN, HEX), 1, OUT_REFUSAL), ((".", "plan", HEX), 2, PLAN_REFUSAL), ((".", PLAN, "digest"), 2, DIGEST_REFUSAL)):
+        out, plan_id, digest = bad
+        error = refused(check, stage, tmp_path / out, plan_id, digest)
+        assert (error.code, error.stage) == (code, stage)
+        assert (error.reason, error.remedy) == refusal and (error.batch, error.agent, error.kept) == (None, None, None)
+        assert stop_lines(error) == refusal_lines(stage, refusal), "D4's two lines and no more: no batch, agent or kept directory"
+
+
+def test_entry_arguments_return_out_as_an_absolute_path_and_write_nothing(tmp_path, monkeypatch):
+    (tmp_path / "run").mkdir()
+    monkeypatch.chdir(tmp_path)
+    expected = os.path.join(os.getcwd(), "run")
+    for given in ("run", "./run", "run/../run", "run/", str(tmp_path / "run"), tmp_path / "run", os.path.join(os.getcwd(), "run") + "/."):
+        assert _api("entry_arguments")("risk-score", given, PLAN, HEX) == expected, repr(given)
+    assert sorted(os.listdir(tmp_path)) == ["run"] and os.listdir(tmp_path / "run") == []
+
+
+@pytest.mark.parametrize("make", ["missing", "a file", "a dangling link"])
+def test_entry_arguments_refuse_an_out_that_is_not_a_directory_with_exit_1_and_create_nothing(tmp_path, make):
+    target = tmp_path / "run"
+    if make == "a file":
+        target.write_text("not a directory", encoding="utf-8")
+    elif make == "a dangling link":
+        target.symlink_to(tmp_path / "nowhere")
+    before = sorted(os.listdir(tmp_path))
+    error = refused(_api("entry_arguments"), "risk-score", target, PLAN, HEX)
+    assert error.code == 1 and stop_lines(error) == refusal_lines("risk-score", OUT_REFUSAL)
+    assert sorted(os.listdir(tmp_path)) == before
+
+
+def test_entry_arguments_accept_a_link_to_a_directory_and_return_it_as_spelled(tmp_path):
+    """``isdir`` follows the link and ``abspath`` does not resolve it, as the renderers' own lines did. The path guard that comes later decides what a link means."""
+    (tmp_path / "real").mkdir()
+    (tmp_path / "alias").symlink_to(tmp_path / "real")
+    assert _api("entry_arguments")("risk-score", tmp_path / "alias", PLAN, HEX) == str(tmp_path / "alias")
+
+
+@pytest.mark.parametrize("out_ok,plan_ok,digest_ok,refusal,code", [
+    (False, False, False, OUT_REFUSAL, 1), (False, True, True, OUT_REFUSAL, 1), (False, True, False, OUT_REFUSAL, 1), (False, False, True, OUT_REFUSAL, 1),
+    (True, False, False, PLAN_REFUSAL, 2), (True, False, True, PLAN_REFUSAL, 2), (True, True, False, DIGEST_REFUSAL, 2)],
+    ids=["all bad", "only out bad", "out and digest bad", "out and plan bad", "plan and digest bad", "only plan bad", "only digest bad"])
+def test_entry_arguments_report_the_first_failing_check_in_the_order_out_plan_digest(tmp_path, out_ok, plan_ok, digest_ok, refusal, code):
+    error = refused(_api("entry_arguments"), "compensating-controls", tmp_path if out_ok else tmp_path / "absent", PLAN if plan_ok else "plan",
+                    HEX if digest_ok else "digest")
+    assert error.code == code and stop_lines(error) == refusal_lines("compensating-controls", refusal)
+
+
+def test_an_entry_that_opens_with_entry_arguments_ends_a_bad_argument_in_d4s_message_and_the_checks_exit_code(tmp_path, capsys):
+    """The refusal is a ``StageFailure``, which ``run_entry`` prints and maps: it is never the unexpected error (exit 4) that any other exception would be."""
+    def run(parsed):
+        _api("entry_arguments")("risk-score", parsed.out, parsed.plan, parsed.plan_digest)
+        return 0
+
+    parser = _api("build_parser")("render-x.py", "Render x.")
+    for argv, code, refusal in ((["--out", str(tmp_path / "absent"), "--plan", PLAN, "--plan-digest", HEX], 1, OUT_REFUSAL),
+                                (["--out", str(tmp_path), "--plan", "not-a-plan-id", "--plan-digest", HEX], 2, PLAN_REFUSAL),
+                                (["--out", str(tmp_path), "--plan", PLAN, "--plan-digest", "not-a-digest"], 2, DIGEST_REFUSAL)):
+        assert _api("run_entry")("risk-score", "render-x.py", parser.parse_args(argv), run) == code
+        assert capsys.readouterr() == ("", "\n".join(refusal_lines("risk-score", refusal)) + "\n")
+    assert _api("run_entry")("risk-score", "render-x.py", parser.parse_args(["--out", str(tmp_path), "--plan", PLAN, "--plan-digest", HEX]), run) == 0
+    assert capsys.readouterr() == ("", "")
 
 
 def test_run_entry_returns_the_runs_code_and_prints_a_stop_in_d4s_four_lines(capsys):

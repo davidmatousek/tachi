@@ -102,7 +102,9 @@ message, exit code, reason string and cap it had (S1P-A11):
   ``tachi-stage.py``'s ``StageError`` is this class, and a renderer's ``RenderError`` is a subclass that fixes the stage.
   ``run_entry(stage, renderer, args, run, defect=True)`` is an entry's ``main``: it prints the message and returns the code, and turns an unexpected
   exception into ``entry_defect(stage, renderer, exc, kept)``'s exit 4. ``build_parser(renderer, description, out=True, plan=True)`` is the arguments
-  entries share (``--version``, ``--out``, ``--plan`` and ``--plan-digest``).
+  entries share (``--version``, ``--out``, ``--plan`` and ``--plan-digest``), and ``entry_arguments(stage, out, plan_id, digest)`` is the first thing an
+  entry does with them: ``--out`` is a directory (exit 1), then ``--plan`` and ``--plan-digest`` pass their allow-lists (exit 2), and it returns ``--out``
+  as an absolute path. ``plan_arguments(stage, plan_id, digest)`` is its last two checks, for an entry that checks ``--out`` in its own way.
 * D3's guard: ``trusted_plan(stage, out, plan_id, digest, complete=False, read_inputs=False, kept=False)`` returns ``(plan, inputs)`` once the pointer,
   the digest, the inputs and the batch inputs check out, with ``entry_document(stage, path, out, schema, what, kept=None)`` (``read_document`` with D4's
   exit codes), ``plan_input_bytes(stage, entry, name, kept=None)`` and ``digest_or_none(path, out=None)``. ``read_parts(stage, out, plan)`` returns
@@ -2352,6 +2354,31 @@ def build_parser(renderer: str, description: str, out: bool = True, plan: bool =
         parser.add_argument("--plan", required=True, help="the plan ID that plan printed")
         parser.add_argument("--plan-digest", required=True, help="the plan_digest that the last plan or reconcile printed")
     return parser
+
+
+def plan_arguments(stage: str, plan_id: object, digest: object) -> None:
+    """D3's allow-lists for ``--plan`` and ``--plan-digest``, as ASCII full matches, before either becomes a path or is compared: exit 2, ``--plan`` first.
+
+    A value that isn't a ``str`` is refused the same way, so a library caller that passes the wrong type gets D4's message and never a ``TypeError``.
+    """
+    if not id_matches("plan", plan_id):
+        raise StageFailure(2, stage, "--plan is not a plan ID", "pass the plan ID that plan printed")
+    if not isinstance(digest, str) or _HEX64.fullmatch(digest) is None:
+        raise StageFailure(2, stage, "--plan-digest is not a SHA-256 in lowercase hex", "pass the digest that the last plan or reconcile printed")
+
+
+def entry_arguments(stage: str, out: object, plan_id: object, digest: object) -> str:
+    """The checks that an entry with ``--out``, ``--plan`` and ``--plan-digest`` runs before it reads anything, in this order, so the first to fail is the one
+    reported: ``--out`` is a directory (exit 1, D4's "an input is missing"), then ``plan_arguments``'s two (exit 2). Returns ``--out`` as an absolute path.
+
+    This is both renderers' form, and the form for a new entry. An entry whose ``--out`` has a check of its own calls ``plan_arguments`` after it
+    (``tachi-stage.py`` vets the path, and names it in its message, before it checks a plan).
+    """
+    text = os.path.abspath(os.fspath(out))
+    if not os.path.isdir(text):
+        raise StageFailure(1, stage, "--out is not a directory", "create it or correct --out")
+    plan_arguments(stage, plan_id, digest)
+    return text
 
 
 def entry_defect(stage: str, renderer: str, exc: Exception, kept: Optional[str]) -> StageFailure:
