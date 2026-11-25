@@ -27,10 +27,12 @@ Inputs (read-only; repository-relative; every one matches an existing ``paths:``
   ``scripts/extract-report-data.py``, ``scripts/extract-infographic-data.py`` and ``scripts/tachi_parsers.py``,
   read as text for their imports (section 11).
 
-Two inputs sit outside that rule: no ``paths:`` glob covers ``docs/architecture/02_ADRs/ADR-050-*.md`` (the completion
-rule, section 12, and the end marker's words and recorded frame, section 7) or ``specs/374-large-architecture-pipeline-
-resilience/contracts/threat-model-records.md`` (the recorded frame and the class table, section 7). A change to only one
-of them reaches these pins when another input next runs the job.
+T114's wiring gave two more inputs a ``paths:`` entry of their own, because no glob covered them:
+``docs/architecture/02_ADRs/ADR-050-*.md`` (the completion rule, section 12, and the end marker's words and recorded
+frame, section 7) and ``specs/374-large-architecture-pipeline-resilience/contracts/threat-model-records.md`` (the
+recorded frame and the class table, section 7, and PR 2's key sets, section 9). One input still has none: ``part-files.md``
+in the same folder (PR 2's stages, counts and key sets, section 9), so a change to only that file reaches these pins when
+another input next runs the job.
 
 What each section proves:
 
@@ -61,6 +63,12 @@ What each section proves:
    ``threats.sarif`` is PR 1's too, and PR 2 (T101) flips it.
 9. ``part-file-contract-shared.md`` equals ``tachi_parts`` (T006): the 24 key sets, the closed
    values, the slot table, the 24 fixed sentences, the 28 flag fields, the identifiers and the limits.
+   That reference describes PR 1's two stages, so these comparisons read the code's PR 1 slice (``PR1_STAGES``, and the 24
+   names that its tables define). PR 2's entries of the same tables are compared with the texts that state them (T091's
+   integration step): the 12 key sets of the record and brief reference's templates, the 6 of ``part-files.md`` and the 12
+   of ``threat-model-records.md``; PR 2's four stages, with their agents and closed counts; and the reserved slots, which
+   each later stage must accept. One test keeps the names whole, so a key set, a stage or a slot table that no text pins
+   fails it.
 10. The same reference against the validator's behavior: each field is cut where the table says, and
    each narrative slip takes the table's sentence.
 11. The two extraction preflights (report assembler, infographic agent) check the extractor and every
@@ -144,6 +152,7 @@ DISPATCH_RULES = ORCHESTRATION + "/references/dispatch-rules.md"
 COVERAGE_CHECKLISTS = "schemas/coverage-checklists.yaml"
 ADR_050 = "docs/architecture/02_ADRs/ADR-050-large-architecture-output-authority.md"
 THREAT_MODEL_RECORDS = "specs/374-large-architecture-pipeline-resilience/contracts/threat-model-records.md"
+PART_FILES_CONTRACT = "specs/374-large-architecture-pipeline-resilience/contracts/part-files.md"
 INSTALL_MANIFEST = "INSTALL_MANIFEST.md"
 ADAPTER_README = "adapters/claude-code/README.md"
 ADAPTER_AGENTS = "adapters/claude-code/agents"
@@ -1128,14 +1137,19 @@ RECORD_VALUES = {
 }
 
 
-def template_of(anchor: str) -> Tuple[Any, Table]:
-    """A template's example object and its key table, both read from the record and brief reference."""
-    text = text_of(DISPATCH_RECORD_BRIEF)
+def template_json(text: str, anchor: str) -> Any:
+    """A template's one JSON example, from the record and brief reference's text."""
     section = section_text(text, anchor, DISPATCH_RECORD_BRIEF, keep_fences=True)
     blocks = [fence.body for fence in fences(section) if fence.label == "json"]
     if len(blocks) != 1:
         raise ReferenceDrift("%s: %r holds %d json examples, not one" % (DISPATCH_RECORD_BRIEF, anchor, len(blocks)))
-    return json.loads(blocks[0]), table_after(text, anchor, where=DISPATCH_RECORD_BRIEF)
+    return json.loads(blocks[0])
+
+
+def template_of(anchor: str) -> Tuple[Any, Table]:
+    """A template's example object and its key table, both read from the record and brief reference."""
+    text = text_of(DISPATCH_RECORD_BRIEF)
+    return template_json(text, anchor), table_after(text, anchor, where=DISPATCH_RECORD_BRIEF)
 
 
 def nested_keys(example: Any) -> Set[str]:
@@ -1891,16 +1905,28 @@ INLINE_KEY_SETS = {
     "error": ("stage-record", "error"),
 }
 
+# The two stages that part-file-contract-shared.md describes, the two that PR 1 ships. The families below that read it compare it with the
+# code's slice for these stages. PR 2's four stages, and the key sets and counts that came with them, are pinned further down.
+PR1_STAGES = ("risk-score", "compensating-controls")
+
 
 def key_table(text: str, name: str) -> Table:
     return table_after(text, KEY_SET_TABLES[name], where="part-file-contract-shared.md")
 
 
-def key_row(table: Table, key: str) -> List[str]:
+def key_row(table: Table, key: str, where: str = "part-file-contract-shared.md") -> List[str]:
     rows = [row for row in table.rows if strip_ticks(row[0]) == key]
     if len(rows) != 1:
-        raise ReferenceDrift("part-file-contract-shared.md: expected one row for %r, found %d" % (key, len(rows)))
+        raise ReferenceDrift("%s: expected one row for %r, found %d" % (where, key, len(rows)))
     return rows[0]
+
+
+def brace_keys(cell: str, where: str, label: str) -> List[str]:
+    """The names in the one ``{a, b, c}`` that a table cell holds in backticks."""
+    braces = re.findall(r"`\{([^}]*)\}`", cell)
+    if len(braces) != 1:
+        raise ReferenceDrift("%s: the %s row has %d brace lists" % (where, label, len(braces)))
+    return [k.strip() for k in braces[0].split(",")]
 
 
 def parse_key_sets(text: str) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
@@ -1915,16 +1941,18 @@ def parse_key_sets(text: str) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]
         out[name] = (frozenset(required), frozenset(optional))
     for name, (table_name, row_key) in INLINE_KEY_SETS.items():
         cell = key_row(key_table(text, table_name), row_key)[1]
-        braces = re.findall(r"`\{([^}]*)\}`", cell)
-        if len(braces) != 1:
-            raise ReferenceDrift("part-file-contract-shared.md: the %s row has %d brace lists" % (row_key, len(braces)))
-        keys = [k.strip() for k in braces[0].split(",")]
-        out[name] = (frozenset(keys), frozenset())
+        out[name] = (frozenset(brace_keys(cell, "part-file-contract-shared.md", row_key)), frozenset())
     return out
 
 
+def code_key_sets_named(names: Sequence[str]) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
+    """The code's key sets with these names, each as (required, optional). A name that the code lacks is left out, so the diff names it."""
+    return {name: (frozenset(req), frozenset(opt)) for name, (req, opt) in tachi_parts.KEY_SETS.items() if name in names}
+
+
 def code_key_sets() -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
-    return {name: (frozenset(req), frozenset(opt)) for name, (req, opt) in tachi_parts.KEY_SETS.items()}
+    """PR 1's 24: the sets that the reference's tables define. PR 2's are compared with the texts that state them, further down."""
+    return code_key_sets_named(tuple(KEY_SET_TABLES) + tuple(INLINE_KEY_SETS))
 
 
 def parse_closed_values(text: str) -> Dict[str, FrozenSet[str]]:
@@ -1954,9 +1982,12 @@ def parse_closed_values(text: str) -> Dict[str, FrozenSet[str]]:
 
 def code_closed_values() -> Dict[str, FrozenSet[str]]:
     names = ("SUBSCORE_NAMES", "METRIC_NAMES", "ASSESSMENT_DIMENSIONS", "CONTROL_CATEGORIES", "CONTROL_STATUSES",
-             "CONFIDENCES", "TRUST_LEVELS", "OVERFLOW_REASONS", "BATCH_STATES", "RECORD_STATUSES", "OVERFLOW_EVENT_KINDS",
-             "COUNT_KEYS")
-    return {name: frozenset(getattr(tachi_parts, name)) for name in names}
+             "CONFIDENCES", "TRUST_LEVELS", "OVERFLOW_REASONS", "BATCH_STATES", "RECORD_STATUSES", "OVERFLOW_EVENT_KINDS")
+    values = {name: frozenset(getattr(tachi_parts, name)) for name in names}
+    # The reference's ``counts`` row is PR 1's: the union of the two PR 1 stages' sets, which one test below holds equal. The
+    # code's own ``COUNT_KEYS`` also holds PR 2's four stages' keys, which ``part-files.md`` states.
+    values["COUNT_KEYS"] = frozenset().union(*(tachi_parts.STAGE_COUNT_KEYS[stage] for stage in PR1_STAGES))
+    return values
 
 
 def parse_stage_agents(text: str) -> Dict[str, str]:
@@ -1985,16 +2016,20 @@ def parse_slots(text: str) -> Dict[str, Dict[str, Optional[FrozenSet[str]]]]:
     return out
 
 
-def parse_reserved_slots(text: str) -> List[Tuple[str, str]]:
-    """The ``(kind, argument)`` samples of the slots the reference reserves for later stages."""
+def parse_reserved_slots(text: str) -> List[Tuple[str, str, Tuple[str, ...]]]:
+    """The ``(kind, argument, stages)`` samples of the slots the reference reserves for later stages, with the stages that it names.
+
+    A stage's name is the reference's words with a hyphen for each space, which is the code's name for it: ``chain narratives``."""
     table = table_after(text, "### Slots reserved for later stages", where="part-file-contract-shared.md")
-    samples: List[Tuple[str, str]] = []
-    for kind_cell, argument_cell, _resolves, _stage in table.rows:
+    samples: List[Tuple[str, str, Tuple[str, ...]]] = []
+    for kind_cell, argument_cell, _resolves, stage_cell in table.rows:
         kind = strip_ticks(kind_cell)
+        stages = tuple(strip_ticks(stage).replace(" ", "-") for stage in stage_cell.split(", "))
         for argument in ticks(argument_cell):
-            samples.append((kind, argument.replace("<finding ID>", "S-1")))
+            samples.append((kind, argument.replace("<finding ID>", "S-1"), stages))
         if "a band name" in argument_cell:
-            samples.append((kind, "Critical"))
+            samples.append((kind, "critical", stages))  # a band as a ``count`` or ``pct`` slot spells it (part-files.md, "Slots")
+            samples.append((kind, "Critical", ()))  # a risk level's spelling is no argument in any stage
     return samples
 
 
@@ -2063,6 +2098,190 @@ def parse_escape_references(text: str) -> FrozenSet[str]:
     return frozenset(re.findall(r"&#?[A-Za-z0-9]+;", section_text(text, "## Output Escaping", "part-file-contract-shared.md")))
 
 
+# --- PR 2's entries of the same tables (T091; the integration step of tasks.md) ---------------------------------------------------------
+# The reference above describes PR 1's two stages, and says that later stages join its tables when they ship. T091 put PR 2's four stages
+# and 30 key sets in ``tachi_parts``, so the families below read the code's PR 1 slice, and these parsers read the texts that state PR 2's
+# entries: the record and brief reference (shipped), and two contracts under ``specs/`` (build-time documents).
+
+# KEY_SETS name -> (the record and brief reference's heading, the steps from that template's JSON example to the object that has the keys).
+TEMPLATE_KEY_SETS = {
+    "dispatch-record": ("## Dispatch Record", ()),
+    "record-scope": ("## Dispatch Record", ("scope",)),
+    "brief": ("## Brief", ()),
+    "brief-inputs": ("## Brief", ("inputs",)),
+    "idmap": ("## ID Map", ()),
+    "phase1-inventory": ("## Phase 1 Inventory", ()),
+    "inventory-component": ("## Phase 1 Inventory", ("components", 0)),
+    "inventory-flow": ("## Phase 1 Inventory", ("data_flows", 0)),
+    "inventory-zone": ("## Phase 1 Inventory", ("trust_zones", 0)),
+    "phase1-dispatch": ("## Dispatch Table", ()),
+    "dispatch-row": ("## Dispatch Table", ("rows", 0)),
+}
+# The brief's ``baseline_focus`` is null in its example, so the keys of its entry come from the key table: the twelfth set.
+TEMPLATE_NAMES = tuple(TEMPLATE_KEY_SETS) + ("brief-focus",)
+PART_FILES_NAMES = ("check-handoff", "handoff-counts", "handoff-error", "fragment", "analysis-item", "roadmap-item")
+RECORDS_NAMES = ("sections", "sections-frontmatter", "sections-baseline", "sections-gate", "sections-gap", "sections-rows",
+                 "chains", "chain", "chain-member", "chain-narratives", "chain-text", "trees-item")
+# The section manifest's objects inside ``frontmatter``, by the path of keys that leads to each: the KEY_SETS name.
+SECTIONS_NESTED = {(): "sections-frontmatter", ("baseline",): "sections-baseline", ("coverage_gate",): "sections-gate",
+                   ("coverage_gate", "gaps"): "sections-gap"}
+SECTION_SIGN = chr(0xA7)  # part-files.md opens its first six parts with it ("**<sign>6 Check hand-off"); this source stays ASCII
+
+
+def required_only(keys: Sequence[str]) -> Tuple[FrozenSet[str], FrozenSet[str]]:
+    """A key set whose keys are all required, which is what the code holds for every PR 2 set but one."""
+    return (frozenset(keys), frozenset())
+
+
+def parse_template_key_sets(text: str) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
+    """The 12 key sets of the record and brief reference's templates: each template's example, and the objects nested in it."""
+    out = {name: required_only(list(get_at(template_json(text, anchor), steps))) for name, (anchor, steps) in TEMPLATE_KEY_SETS.items()}
+    focus = key_row(table_after(text, "## Brief", where=DISPATCH_RECORD_BRIEF), "baseline_focus", DISPATCH_RECORD_BRIEF)[1]
+    out["brief-focus"] = required_only(re.findall(r'"([a-z_]+)":', focus))
+    return out
+
+
+def parse_part_files_key_sets(text: str) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
+    """The 6 key sets that part-files.md gives in its tables: the check hand-off (section 6) and the two findings items."""
+    where = "part-files.md"
+    handoff = table_after(text, "**" + SECTION_SIGN + "6 Check hand-off", where=where)
+    findings = table_after(text, "**The findings items.**", where=where)
+    counts = key_row(handoff, "counts", where)[1]
+    if "exactly these keys" not in counts:
+        raise ReferenceDrift("%s: the hand-off's counts row no longer says 'exactly these keys'" % where)
+    envelope = table_after(text, "**" + SECTION_SIGN + "1 Part", where=where)
+    return {
+        "check-handoff": required_only([strip_ticks(row[0]) for row in handoff.rows]),
+        "handoff-counts": required_only(ticks(counts.split("exactly these keys", 1)[1])),
+        "handoff-error": required_only(brace_keys(key_row(handoff, "error", where)[1], where, "error")),
+        "fragment": required_only(brace_keys(key_row(envelope, "fragments", where)[1], where, "fragments")),
+        "analysis-item": required_only(ticks(key_row(findings, "threat_analysis", where)[1])),
+        "roadmap-item": required_only(ticks(key_row(findings, "remediation_roadmap", where)[1])),
+    }
+
+
+def contract_block(text: str, schema: str, where: str) -> str:
+    """The one fenced block of a contract whose first line names ``schema``."""
+    blocks = [fence.body for fence in fences(text) if schema in fence.body.split("\n", 1)[0]]
+    if len(blocks) != 1:
+        raise ReferenceDrift("%s: expected one fenced block that opens with %s, found %d" % (where, schema, len(blocks)))
+    return blocks[0]
+
+
+def pseudo_json_keys(text: str, where: str) -> Dict[Tuple[str, ...], List[str]]:
+    """The keys of each object in a contract's JSON-like text, by the path of keys that leads to it. A list stands for its element.
+
+    ``{"a": 1, "b": {"c": [{"d": 2}]}}`` gives ``{(): [a, b], (b,): [c], (b, c): [d]}``. A quoted word is a key when a colon follows it,
+    and a value otherwise, as in ``"pass"|"warn"``."""
+    found: Dict[Tuple[str, ...], List[str]] = {}
+    open_ones: List[Tuple[Tuple[str, ...], bool]] = []  # the path of each open ``{`` or ``[``, and whether it is an object
+    last_key = ""
+    for match in re.finditer(r'"([^"]*)"(\s*:)?|[{}\[\]]', text):
+        token = match.group(0)
+        if token in ("{", "["):
+            path = (open_ones[-1][0] + ((last_key,) if open_ones[-1][1] else ())) if open_ones else ()
+            open_ones.append((path, token == "{"))
+            if token == "{":
+                found.setdefault(path, [])
+        elif token in ("}", "]"):
+            if not open_ones:
+                raise ReferenceDrift("%s: a closing bracket with no opening one in the manifest's frontmatter" % where)
+            open_ones.pop()
+        elif match.group(2) and open_ones and open_ones[-1][1]:
+            found[open_ones[-1][0]].append(match.group(1))
+            last_key = match.group(1)
+    return found
+
+
+def parse_section_manifest(text: str) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
+    """The 6 key sets of the section manifest (``sections.json``): its top level, the frontmatter's objects and the 14 row-count names."""
+    where = "threat-model-records.md"
+    body = contract_block(text, '"tachi.sections/1"', where)
+    rows = re.search(r"(?m)^rows \{([^}]*)\}", body)
+    start = body.find("frontmatter {")
+    if rows is None or start < 0:
+        raise ReferenceDrift("%s: the section manifest's frontmatter or rows moved" % where)
+    start += len("frontmatter ")
+    depth = 0
+    for end in range(start, len(body)):
+        depth += {"{": 1, "}": -1}.get(body[end], 0)
+        if depth == 0:
+            break
+    else:
+        raise ReferenceDrift("%s: the section manifest's frontmatter has no closing brace" % where)
+    out = {"sections": required_only(re.findall(r"(?m)^([a-z_]+) ", body)),
+           "sections-rows": required_only(re.findall(r'"([a-z_]+)"', rows.group(1)))}
+    for path, keys in pseudo_json_keys(body[start:end + 1], where).items():
+        if path not in SECTIONS_NESTED:
+            raise ReferenceDrift("%s: the section manifest has an object at %s that this module doesn't map to a key set" % (where, path))
+        out[SECTIONS_NESTED[path]] = required_only(keys)
+    return out
+
+
+def parse_records_key_sets(text: str) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
+    """The 12 key sets that threat-model-records.md gives in prose and fenced blocks: the section manifest's six, the chain files' five
+    and the tree item. The chain block names its nested sets itself, in its ``chain (chain):`` and ``member (chain-member):`` lines."""
+    where = "threat-model-records.md"
+    out = parse_section_manifest(text)
+    sets: Dict[str, List[str]] = {"chains": []}
+    current = "chains"
+    for line in contract_block(text, '"tachi.chains/1"', where).splitlines():
+        header = re.match(r"^[a-z_]+ \(([a-z-]+)\):$", line)
+        keyed = re.match(r"^(?:  )?([a-z_]+) +\S", line)  # a key, at the block's margin or one step in; a continuation line is far in
+        if header:
+            current = header.group(1)
+            sets[current] = []
+        elif keyed:
+            sets[current].append(keyed.group(1))
+    out.update({name: required_only(keys) for name, keys in sets.items()})
+    narratives = re.search(r'`(\{"schema": "tachi\.chain-narratives/1"[^`]*)`', text)
+    chain_text = re.search(r"exactly the keys ((?:`[a-z_]+`(?:, | and )?)+) \(`chain-text`\)", text)
+    tree_item = re.search(r"`\{([a-z_, ]+)\}` \(the last under Rule 3 only\)", text)
+    if not (narratives and chain_text and tree_item):
+        raise ReferenceDrift("%s: the chain narratives' form, the chain-text sentence or the tree item's keys moved" % where)
+    out["chain-narratives"] = required_only(re.findall(r'"([a-z_]+)":', narratives.group(1).split("{CHAIN-ID", 1)[0]))
+    out["chain-text"] = required_only(ticks(chain_text.group(1)))
+    keys = [key.strip() for key in tree_item.group(1).split(",")]
+    out["trees-item"] = (frozenset(keys[:-1]), frozenset(keys[-1:]))  # the last, ``similarity_score``, is the Rule 3 unit's alone
+    return out
+
+
+def parse_pr2_stage_agents(text: str) -> Dict[str, str]:
+    """PR 2's stages and their agents, from the sentence ``STAGE_AGENTS gains ...``: an agent's name follows the stage(s) it serves."""
+    sentences = re.findall(r"`STAGE_AGENTS` gains ([^\n]+)", text)
+    if len(sentences) != 1:
+        raise ReferenceDrift("part-files.md: expected one sentence that says what STAGE_AGENTS gains, found %d" % len(sentences))
+    agents: Dict[str, str] = {}
+    waiting: List[str] = []
+    for token in ticks(sentences[0]):
+        if token.startswith("tachi-"):
+            agents.update((stage, token) for stage in waiting)
+            waiting = []
+        else:
+            waiting.append(token)
+    if waiting or not agents:
+        raise ReferenceDrift("part-files.md: the STAGE_AGENTS sentence leaves %s with no agent" % (waiting or "every stage"))
+    return agents
+
+
+def parse_pr2_counts(text: str) -> Dict[str, FrozenSet[str]]:
+    """The closed ``counts`` keys of PR 2's four stages, from the table of PR 2's stage records."""
+    out: Dict[str, FrozenSet[str]] = {}
+    for row in table_after(text, "**PR 2's stage records**", where="part-files.md").rows:
+        if not ticks(row[0]):
+            raise ReferenceDrift("part-files.md: a row of PR 2's stage records names no stage")
+        out[ticks(row[0])[0]] = frozenset(ticks(row[1]))
+    return out
+
+
+def code_pr2_stage_agents() -> Dict[str, str]:
+    return {stage: agent for stage, agent in tachi_parts.STAGE_AGENTS.items() if stage not in PR1_STAGES}
+
+
+def code_pr2_counts() -> Dict[str, FrozenSet[str]]:
+    return {stage: frozenset(keys) for stage, keys in tachi_parts.STAGE_COUNT_KEYS.items() if stage not in PR1_STAGES}
+
+
 PART_FAMILIES = (
     Family("key sets (24)", PART_CONTRACT, parse_key_sets, code_key_sets,
            ("| `cvss_vector` |", "| `cvss_vectors` |"),
@@ -2070,10 +2289,12 @@ PART_FAMILIES = (
     Family("closed values", PART_CONTRACT, parse_closed_values, code_closed_values,
            ("`found`, `partial` or `missing`", "`found`, `partially` or `missing`"),
            lambda v: dict(v, CONTROL_CATEGORIES=v["CONTROL_CATEGORIES"] | frozenset(["extra"]))),
-    Family("stage agents", PART_CONTRACT, parse_stage_agents, lambda: dict(tachi_parts.STAGE_AGENTS),
+    Family("stage agents", PART_CONTRACT, parse_stage_agents,
+           lambda: {stage: tachi_parts.STAGE_AGENTS[stage] for stage in PR1_STAGES if stage in tachi_parts.STAGE_AGENTS},
            ("| `risk-score` | `tachi-risk-scorer` |", "| `risk-score` | `tachi-risk-scorers` |"),
            lambda v: dict(v, **{"risk-score": "tachi-other"})),
-    Family("slots in use", PART_CONTRACT, parse_slots, lambda: tachi_parts.SLOT_TABLE,
+    Family("slots in use", PART_CONTRACT, parse_slots,
+           lambda: {stage: tachi_parts.SLOT_TABLE[stage] for stage in PR1_STAGES if stage in tachi_parts.SLOT_TABLE},
            ("`auth_barriers`, `network_boundaries` | your own count", "`auth_barriers` | your own count"),
            lambda v: dict(v, **{"risk-score": dict(v["risk-score"], band=frozenset(["severity", "extra"]))})),
     Family("fixed fallback sentences (24)", PART_CONTRACT, parse_fallbacks, lambda: dict(tachi_parts.FALLBACK_SENTENCES),
@@ -2094,14 +2315,38 @@ PART_FAMILIES = (
            lambda v: v | frozenset(["&extra;"])),
 )
 
+# PR 2's entries, each compared with the one text that states them. A key set is (required, optional), as the families above hold them.
+PR2_KEY_SET_FAMILIES = (
+    Family("PR 2 key sets, templates (12)", DISPATCH_RECORD_BRIEF, parse_template_key_sets, lambda: code_key_sets_named(TEMPLATE_NAMES),
+           ('"end_marker": true,', '"end_markers": true,'),
+           lambda v: dict(v, brief=(v["brief"][0] | frozenset(["extra"]), v["brief"][1]))),
+    Family("PR 2 key sets, part-files.md (6)", PART_FILES_CONTRACT, parse_part_files_key_sets,
+           lambda: code_key_sets_named(PART_FILES_NAMES),
+           ("`{code, message, finding_ids, remedy}`", "`{code, message, finding_id, remedy}`"),
+           lambda v: dict(v, fragment=(v["fragment"][0] | frozenset(["extra"]), v["fragment"][1]))),
+    Family("PR 2 key sets, threat-model-records.md (12)", THREAT_MODEL_RECORDS, parse_records_key_sets,
+           lambda: code_key_sets_named(RECORDS_NAMES),
+           ('"missing_category": TOKEN', '"missing_categories": TOKEN'),
+           lambda v: dict(v, chain=(v["chain"][0] | frozenset(["extra"]), v["chain"][1]))),
+)
+PR2_FAMILIES = (
+    Family("PR 2 stage agents", PART_FILES_CONTRACT, parse_pr2_stage_agents, code_pr2_stage_agents,
+           ("`trees` (`tachi-attack-tree-delta`)", "`trees` (`tachi-attack-tree-deltas`)"),
+           lambda v: dict(v, trees="tachi-other")),
+    Family("PR 2 count keys", PART_FILES_CONTRACT, parse_pr2_counts, code_pr2_counts,
+           ("`rule`, `renumbered`", "`rules`, `renumbered`"),
+           lambda v: dict(v, trees=v["trees"] | frozenset(["extra"]))),
+) + PR2_KEY_SET_FAMILIES
+ALL_PART_FAMILIES = PART_FAMILIES + PR2_FAMILIES
 
-@pytest.mark.parametrize("family", PART_FAMILIES, ids=lambda f: f.name)
+
+@pytest.mark.parametrize("family", ALL_PART_FAMILIES, ids=lambda f: f.name)
 def test_part_file_contract_equals_tachi_parts(family):
     problems = diff(family.name, family.parse(text_of(family.path)), family.code())
     assert not problems, "\n".join(problems)
 
 
-@pytest.mark.parametrize("family", PART_FAMILIES, ids=lambda f: f.name)
+@pytest.mark.parametrize("family", ALL_PART_FAMILIES, ids=lambda f: f.name)
 def test_a_drifted_part_reference_is_noticed(family):
     text = text_of(family.path)
     old, new = family.doc_edit
@@ -2109,14 +2354,19 @@ def test_a_drifted_part_reference_is_noticed(family):
     assert diff(family.name, family.parse(text.replace(old, new, 1)), family.code())
 
 
-@pytest.mark.parametrize("family", PART_FAMILIES, ids=lambda f: f.name)
+@pytest.mark.parametrize("family", ALL_PART_FAMILIES, ids=lambda f: f.name)
 def test_drifted_part_code_is_noticed(family):
     assert diff(family.name, family.parse(text_of(family.path)), family.code_edit(family.code()))
 
 
 def test_the_key_set_tables_are_15_and_the_inline_sets_are_9_and_together_all_of_key_sets():
     assert len(KEY_SET_TABLES) == 15 and len(INLINE_KEY_SETS) == 9
-    assert set(KEY_SET_TABLES) | set(INLINE_KEY_SETS) == set(tachi_parts.KEY_SETS)
+    # PR 1's 24 names are the reference's. PR 2's 30 are the parses of the three PR 2 key-set families, so a key set that no text
+    # pins, or that two texts pin, fails here.
+    groups = [set(KEY_SET_TABLES) | set(INLINE_KEY_SETS)] + [set(family.parse(text_of(family.path))) for family in PR2_KEY_SET_FAMILIES]
+    assert [len(group) for group in groups] == [24, 12, 6, 12]
+    assert len(set().union(*groups)) == sum(len(group) for group in groups), "a key set is pinned twice"
+    assert set().union(*groups) == set(tachi_parts.KEY_SETS)
 
 
 def test_the_part_parsers_find_the_counts_the_reference_states():
@@ -2129,6 +2379,50 @@ def test_the_part_parsers_find_the_counts_the_reference_states():
     assert len(identifiers["patterns"]) == 7 and len(identifiers["prefix_order"]) == 12
     closed = parse_closed_values(text)
     assert len(closed) == 12 and all(closed.values()) and len(closed["COUNT_KEYS"]) == 16
+
+
+def test_the_pr2_parsers_find_the_counts_the_contracts_state():
+    contract = text_of(PART_FILES_CONTRACT)
+    templates = parse_template_key_sets(text_of(DISPATCH_RECORD_BRIEF))
+    part_files = parse_part_files_key_sets(contract)
+    records = parse_records_key_sets(text_of(THREAT_MODEL_RECORDS))
+    assert len(templates) == 12 and len(part_files) == 6 and len(records) == 12
+    assert all(required for required, _optional in {**templates, **part_files, **records}.values()), "a parse that found no key"
+    assert len(templates["dispatch-record"][0]) == 14
+    assert [len(part_files[name][0]) for name in ("check-handoff", "handoff-counts", "handoff-error")] == [8, 8, 4]
+    assert [len(records[name][0]) for name in ("sections-rows", "chains", "chain", "chain-member")] == [14, 9, 6, 3]
+    assert records["trees-item"] == (frozenset(["finding_id", "delta_status", "action"]), frozenset(["similarity_score"]))
+    assert sorted(parse_pr2_stage_agents(contract)) == ["report", "threat-model", "threats-md", "trees"]
+    sizes = {stage: len(keys) for stage, keys in parse_pr2_counts(contract).items()}
+    assert sizes == {"threat-model": 8, "threats-md": 4, "trees": 3, "report": 4}
+
+
+def test_the_pr2_readers_find_what_they_name_and_fail_loudly_otherwise():
+    assert pseudo_json_keys('{"a": 1, "b": {"c": [{"d": 2}], "e": "x"|"y"}}', "sample") == {
+        (): ["a", "b"], ("b",): ["c", "e"], ("b", "c"): ["d"]}
+    with pytest.raises(ReferenceDrift):
+        pseudo_json_keys('{"a": 1}}', "sample")
+    blocks = '```\nschema "x/1" | a\n```\n\n```\nschema "x/1" | b\n```\n'
+    assert contract_block(blocks, "| b", "sample") == 'schema "x/1" | b'
+    for schema in ('"x/1"', '"y/1"'):  # two blocks name it, or none does
+        with pytest.raises(ReferenceDrift):
+            contract_block(blocks, schema, "sample")
+    assert parse_pr2_stage_agents("- `STAGE_AGENTS` gains `a` and `b`, both `tachi-x`, `c` (`tachi-y`).\n") == {
+        "a": "tachi-x", "b": "tachi-x", "c": "tachi-y"}
+    for sentence in ("- `STAGE_AGENTS` gains `a`, `b` (`tachi-x`) and `c`.\n", "- `STAGE_AGENTS` gains nothing.\n", "no such sentence"):
+        with pytest.raises(ReferenceDrift):
+            parse_pr2_stage_agents(sentence)
+
+
+def test_every_stage_of_the_code_is_pinned_and_the_pr1_stages_keep_one_set_of_count_keys():
+    pr2 = set(parse_pr2_stage_agents(text_of(PART_FILES_CONTRACT)))
+    assert set(tachi_parts.STAGE_AGENTS) == set(PR1_STAGES) | pr2
+    assert set(tachi_parts.STAGE_COUNT_KEYS) == set(tachi_parts.STAGE_AGENTS), "each stage has its own closed counts"
+    assert set(parse_pr2_counts(text_of(PART_FILES_CONTRACT))) == pr2
+    # The reference's ``counts`` row is one set, so PR 1's two stages must hold the same one, or the union that the family compares
+    # with it would hide a drift in either.
+    assert len({tachi_parts.STAGE_COUNT_KEYS[stage] for stage in PR1_STAGES}) == 1
+    assert tachi_parts.COUNT_KEYS == frozenset().union(*tachi_parts.STAGE_COUNT_KEYS.values())
 
 
 def test_the_fixed_sentences_and_the_truncation_table_agree_on_the_24_narrative_paths():
@@ -2149,18 +2443,26 @@ def test_every_fixed_sentence_has_no_digit_and_no_slot():
 def test_the_reserved_slots_are_not_accepted_and_the_slots_in_use_are_accepted_in_their_stages_alone():
     text = text_of(PART_CONTRACT)
     in_use = parse_slots(text)
+    assert set(in_use) <= set(tachi_parts.SLOT_TABLE), "the reference lists a stage that the code has no slot table for"
     samples = {"finding": "S-1", "ref": "CWE-89"}
     every_pair = {(kind, argument) for kinds in in_use.values() for kind, args in kinds.items()
                   for argument in ([samples[kind]] if args is None else sorted(args))}
-    for stage in tachi_parts.SLOT_TABLE:
+    for stage in in_use:
         for kind, argument in sorted(every_pair):
             slot = "{{%s:%s}}" % (kind, argument)
             listed = kind in in_use[stage] and (in_use[stage][kind] is None or argument in in_use[stage][kind])
             accepted = tachi_parts.narrative_problem(slot, stage) is None
             assert accepted == listed, "%s in stage %s: accepted=%s, listed=%s" % (slot, stage, accepted, listed)
-    for kind, argument in parse_reserved_slots(text):
+    # A reserved slot is accepted by the later stage that the reference names for it, and by no other stage: PR 2's `report` and chain
+    # narratives now have slot tables, so "reserved" ends there, and the stages of the two tables are every slot table the code has.
+    reserved = parse_reserved_slots(text)
+    named = set(in_use) | {stage for _kind, _argument, stages in reserved for stage in stages}
+    assert set(tachi_parts.SLOT_TABLE) == named, "the code's slot tables and the stages that the reference's two slot tables name differ"
+    for kind, argument, stages in reserved:
         for stage in tachi_parts.SLOT_TABLE:
-            assert tachi_parts.narrative_problem("{{%s:%s}}" % (kind, argument), stage) is not None, (kind, argument, stage)
+            accepted = tachi_parts.narrative_problem("{{%s:%s}}" % (kind, argument), stage) is None
+            assert accepted == (stage in stages), "{{%s:%s}} in stage %s: accepted=%s, the reference reserves it for %s" % (
+                kind, argument, stage, accepted, list(stages))
 
 
 # =============================================================================
@@ -2250,7 +2552,7 @@ def stage_of(field: str) -> str:
 
 
 def test_the_base_items_are_valid_for_both_stages():
-    for stage in tachi_parts.STAGE_AGENTS:
+    for stage in PR1_STAGES:  # ``base_item`` builds the scorer's item and the controls' item alone
         result = classify(stage, base_item(stage))
         assert result.state == "done" and result.flags == {}, (stage, result.state, result.detail)
 
