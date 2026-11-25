@@ -92,7 +92,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 
 - A batch stage's plan records `out_snapshot` `null`, and its record carries no `declared-paths-skipped` warning, because `close` checks the run.
 - A batch stage's `fail` writes its failed record and moves nothing. Only `fail --stage threat-model` moves and restores the four canonical files (ADR-050 D4).
-- The `threat-model` record's `outputs` are the four canonical files that are present in `{out}`, with their digests. With no hand-off, `fail` writes its `counts` as `{}` and its `batches` as zeros.
+- `close`'s `threat-model` record lists in `outputs` the four canonical files that are present in `{out}`, with their digests. `fail`'s record lists the files that it moved into `failed/`, at their paths there, as PR 1's does (ruled at W2′'s entry, S1P-A51). With no hand-off, `fail` writes its `counts` as `{}` and its `batches` as zeros.
 - `STAGE_AGENTS` gains `threat-model` and `threats-md`, both `tachi-orchestrator`, `trees` (`tachi-attack-tree-delta`) and `report` (`tachi-threat-report`).
 
 **§6 Check hand-off, `tachi.check-handoff/1`** (PR 2; Architect re-review RR5; its key set ruled at ADR-050 rev. 3, by T088). One file per main-session check, written by that check at a fixed name under the run-level plan's `threat-model/<plan_id>/checks/`:
@@ -446,3 +446,120 @@ A field that falls back or is cut is counted in the report stage's record (`narr
 - **Exit 0:** the stamped file, staged under `report/<plan_id>/staged/`, replaces `{out}/threat-report.md` (`os.replace`), overwriting any file an agent wrote, and the report stage's record is written. On any other code the canonical file isn't written.
 
 **Sizes (ADR-050 D6).** Each size is ⌊8,000 × 2.598 ÷ p90⌋ items: 22 for `threat_analysis` (p90 931 bytes) and 144 for `remediation_roadmap` (p90 144 bytes). The p90 is an item's bytes at two-space indentation, measured on the seven shipped example reports (115 analysis items and 160 roadmap rows), with each digit-bearing word written as a slot. The analysis items still held today's risk wording, which moves to the lead, so the size is conservative. A section part is one batch at planning. T130's fixture run confirms the sizes from the live parts.
+
+## Readings ruled at W2′'s entry, pass 3 (S1′, 2026-11-24)
+
+These come from lane T's tests for T108 and T109 (`d81657f`, readings RD-n) and lane OS's for T092 (`f24cae3`, readings R1 to R13). The rulings are S1P-A43 onward. T091, T092, T106, T108, T109 and T113 follow them. `cli.md` holds the command-line readings, and `module-signatures.md` the shared names.
+
+### The `trees` payload (S1P-A43, RD-6)
+
+Rule 3 is the agent's judgment: D14's Rule 2 regenerates every tree, "with Rule 3 reconciling the UNCHANGED ones". So a Rule 3 unit's `action` is the one value in which a part may differ from its batch input, and `threat-model-records.md`'s "`delta_status` and `action` equal the batch input's" reads with this exception (erratum S1P-A43).
+- **The planner's `action`,** per unit:
+  - `no-baseline`: `generated_fresh`;
+  - `Rule 1`: `generated_fresh`, for each finding whose baseline has no tree file, today's isolated fallback;
+  - `Rule 2`: `generated_fresh` for a NEW or UPDATED finding, and for an UNCHANGED one whose baseline has no tree file; `regenerated` for an UNCHANGED finding whose baseline has one. That is a **Rule 3 unit**;
+  - `no-op` plans no unit.
+- **The item** is `{finding_id, delta_status, action}`, and a Rule 3 unit's item, and no other, adds `similarity_score`.
+  - `delta_status` equals the batch input's. So does `action`, except on a Rule 3 unit, whose item says `regenerated` (the fresh tree stands) or `carried_forward` (the baseline's tree stands).
+  - `similarity_score` is a JSON number from 0 to 1, never a boolean. The loader reads it as a `Decimal`, or an `int` for 0 and 1. The merged manifest and the input digest carry `float()` of it, so `input_digest` never meets a `Decimal`.
+  - Code checks no threshold. Rule 3's three tests (`attack-tree-construction.md`) stay the agent's, and the score is its report of them.
+  - Any other item makes the part `invalid`, and the batch is retried with the same units. The check needs the batch input's units, as the `threats-md` row check does, so it uses what T091 gives `read_part` for that.
+- **The agent (T113)** writes every tree its batch input names, a Rule 3 unit's included: its fresh tree, at the `tree_paths` path. It compares that tree with the baseline's, under `refs.baseline_dir`. It never copies a file.
+- **The copy (`assemble-report.py trees`, D14).** A `carried_forward` item's tree is the baseline's file, `<refs.baseline_dir>/attack-trees/<id-lowercase>-attack-tree.md`, copied byte for byte, and the fresh one stays under the plan, for diagnosis. Every other unit's tree is copied from the path its batch input names.
+- **The merge.** Each entry's `action` and `similarity_score` are its item's, and `summary` counts the merged entries' actions.
+- **The `trees` record's `counts`.** `units` is the plan's `unit_count`. `carried` is the merged manifest's `summary.carried_forward`: Rule 1's copies and Rule 3's together. `rendered` is its `attack_tree_count`.
+
+### The tree files (S1P-A44, S1P-A48 and S1P-A60; RD-8, RD-16, R11)
+
+`reconcile` holds each generated tree to these checks. `assemble-report.py trees` holds every tree it copies to them, the carried ones included (D14, S1P-A18):
+- **The path.** The finding ID passes the allow-list before it becomes a path. A generated tree's path is built from `--out`, the stage, the plan ID and the ID, `<plan_id>/trees/<id-lowercase>-attack-tree.md`, and the batch input's `tree_paths` entry must equal it. It passes `path_guard_problem` under `--out`. A carried tree passes the same guard under `refs.baseline_dir`, once that directory has passed R-6's checks.
+- **The read.** The file is read as bytes, through `read_capped`, at most `MAX_PART_BYTES` (512 KiB, a part's cap, since a tree is one Write within S-1's 8,000 tokens). It must be strict UTF-8.
+- **The characters.** It holds no character that `tachi_parts.forbidden_character` returns, a carriage return included (S1P-A18).
+- **One Mermaid block.** It holds exactly one fenced code block, by `tachi_parsers`' fence rule (`_unfenced_lines`, as `match_heading(outside_fences=True)` states it), and that block is a Mermaid block: its opening fence's info string, without spaces or tabs, is `mermaid`, and a closing fence ends it. A fence that nothing closes is no block (RD-16). Section 5's source is the lines between the two fences, byte for byte.
+- **One function.** `tachi_parsers.attack_tree_source` makes the content checks, strict UTF-8, the characters and the one Mermaid block, for both callers, so `reconcile` and `trees` can't disagree (`module-signatures.md`). Each caller builds and guards the path and reads the bytes itself.
+- **The codes.**
+  - At `reconcile`, a named tree that fails a check makes the batch `invalid`, so it is retried with the same units. A named tree that is missing makes the batch `missing`, so it is halved (D6's `trees` row; R11).
+  - At `trees`, a tree that fails a check is exit 2. A tree that is missing, and a Critical and High set that differs from the generated and carried trees, are exit 4, FR-K5.5 applied early (D14; RD-8). A generated tree that fails at `trees` has changed since `reconcile`, so it is exit 2 too.
+  - `trees` validates everything before it writes anything (RD-7). It stages nothing: once every check has passed, it writes `attack-trees/` directly, with the atomic write. So `STAGED_OUTPUTS["trees"]` is `()`.
+
+### `report`'s check of the trees plan (S1P-A47, RD-15)
+
+`report` holds the trees plan that its plan pins to D3's checks, as it holds its own: the pointer names that plan, its digest is the one `inputs.trees_plan` records, every batch is `done`, and every batch input and part re-validates. RR3's exemption covers every plan that `report` checks. For both plans, `threats.md` is checked through `params.reference_digest`, never by its bytes, because Steps 2.5 to 2.8 rewrite it. Both digests must equal the current file's, so they equal each other. A refusal about the trees plan names that plan's directory in `Kept for diagnosis`, and any other refusal the report plan's. `trees` checks `threats.md` by its bytes, as D3 checks every input, because nothing writes the file between the trees plan and `trees`: both run inside Phase 5.
+
+### The report's layout (S1P-A45 and S1P-A49; RD-11, RD-17)
+
+- **Numbering (RD-11).** Sections are numbered by position, as `## <n>. <title>`, with no lettered suffix. Sections 1 to 6 are on every run (Section 6 since rev. 3), so their numbers never move, and `extract-report-data.py`'s `## 1.` and `## 5.` anchors hold. Agentic Pattern Analysis, when it is planned, takes 7, and the roadmap, the appendix and the Delta Summary follow it. The appendix cites these numbers.
+- **Section 5 with no tree (RD-17).** When the merged manifest holds no tree, Section 5 holds only the template's note, verbatim: `> No Critical or High findings identified. Attack trees are generated only for Critical and High severity findings.` The frontmatter's `attack_tree_count` is 0.
+
+### The stage records (S1P-A46, S1P-A51 and S1P-A59; RD-13, R2, R10)
+
+- **`outputs`.** Each `path` is relative to `{out}`, with `/` separators:
+  - `threats-md`, from the joiner: `threats.md`;
+  - `trees`: `attack-trees/.manifest.json` alone. The manifest lists the trees, `report` pins it, and FR-K5.7 checks the files against it. `validate_stage_record` caps `outputs` at 100 entries, which a large run's trees would pass (RD-13);
+  - `report`: `threat-report.md`;
+  - `threat-model`, from `close`: the canonical files present in `{out}`, by their names, in D4's order (R2);
+  - every `fail` record, PR 1's included: the files that it moved into `failed/`, each at its path there, `.tachi-build/<stage>/<plan_id>/failed/<name>`. A batch stage's `fail` moves nothing, so its `outputs` is `[]` (OS's open question 2).
+- **A batch stage's failed record (R10).** Its `counts` is `{units}`, the plan's `unit_count`, which is the one key of the stage's closed set (§5) that a failed run knows. Its `batches`, `overflow_events` and `retries` are the plan's. Its `warnings` are only `fail`'s own trust warnings, `plan-digest-mismatch` and `pointer-mismatch`. It has no `declared-paths-skipped`, no `move-refused` and no undeclared path, because its plan takes no snapshot and `close` checks the run (RR3).
+
+### The check hand-off (S1P-A52 and S1P-A53; R3, R4)
+
+- **Validity (R3).** §6's `status` rule is part of a file's validity, as the rules for `check` and `plan_id` are: a `status` other than the one that `error` and `warnings` give fails the load. The warning codes are closed per check:
+  - `attack-chains`: `chain-outcome:rewritten`;
+  - `provenance`: `section6:mismatch`, `id:reissued`, `coverage-gap:unrecovered:no_end_marker`, `coverage-gap:unrecovered:overflow_error` and `correlation-member-repeated`.
+
+  Any other code fails the load, the other check's codes included. The validator is T091's, and each check validates its own file before it writes it.
+- **`fail`'s fold (R4).** `fail` folds each file that exists and loads, in §6's order. A file that exists but doesn't load, one of another plan included, is left out, and the run still fails. In that file's place, `fail` records the warning `handoff-invalid:<check>`, with the loader's reason as the detail and never the file's text, so the record shows why its counts are missing. A missing file still raises no warning (§6). `close` keeps its exit 2 for both cases.
+
+### `fail` restores into an empty name (S1P-A55, R6)
+
+D4's "any canonical file whose bytes have changed since the plan" includes a file that is gone. When a canonical name is empty and the plan recorded a pre-image digest for it, nothing is moved, and the pre-image goes back if its copy still matches, with the copy's bits (P1-2). The name is listed in `restored` only. An empty name for which the plan recorded no pre-image stays empty.
+- This is D13's case: the chain check renamed this run's `attack-chains.md` to `attack-chains.inconsistent.md`, which stays where the check put it, and the earlier run's file comes back.
+- The rule is `_move_and_restore`'s, for every stage. For PR 1's two stages it can arise only when a canonical file is deleted while its stage runs.
+
+### The `threats-md` units (S1P-A56; R7, OS's open question 4)
+
+- **A row unit** is `{section, row}`, and `row` is the row's 1-based number in its section's table, as the manifest counts the rows. A batch's units are contiguous, so a second part starts at the row after the first part's last. A wave entry's `rows` is `[first, last]`, both included.
+- **A halving** splits a batch's units contiguously, and `<parent>-1` takes the extra unit of an odd count, ⌈n/2⌉, as PR 1's planner splits finding IDs.
+- **`problem`** is `missing`, or the earlier attempt's `read_part` detail, unchanged. D3's details name the item and the key, and never echo a value. No other wording is pinned.
+
+### PR 2's plans (S1P-A57, R8)
+
+- **`params`** are closed per stage:
+  - `threat-model` and `threats-md`: `{scoring_date}`;
+  - `trees`: `{scoring_date, rule_applied, reference_digest}`. `rule_applied` is `Rule 1`, `Rule 2`, `no-baseline` or `no-op`, the rule the planner applied (D14), and the merged manifest copies it;
+  - `report`: `{scoring_date, reference_digest, trees_plan_id}`.
+
+  `scoring_date` is `--date`, as in PR 1, and `reference_digest` comes from the one shared helper. These agree with lane T's RD-4 and RD-10.
+- **`batch_size`.** A `trees` plan records 12 when it plans units and `null` when it plans none, as PR 1's stages do. `threats-md` and `report` record `null` (§4).
+- **`preimage`.** `CANONICAL_OUTPUTS` holds D4's four names for `threat-model`, in D4's order, and `()` for the three batch stages. So a batch stage's plan records `preimage` `{}` and copies nothing, and its `fail` moves nothing by construction (RR3). The names that a writer stages are in `STAGED_OUTPUTS` (`module-signatures.md`): `threats.md` for `threats-md`, and `threat-report.md` for `report`.
+
+### The report plan's chain units (S1P-A58, R9)
+
+The planner reads the outcome record through `parse_chain_outcome`.
+- **For `written`,** it reads `attack-chains.md` through `tachi_parsers.parse_attack_chains`, the shipped reader, and plans `chain.<chain ID>` for each chain that it returns with `surfaced` true, in file order, which is rank order. These are the Chain Details sections. The Chain Summary table isn't read a second time. The planner records the file in `inputs`.
+- **When that file is missing or unreadable, or holds no surfaced chain,** the planner plans no `attack_chains` part, records no file, says so on stderr and exits 0. Step 2.8's check then rewrites the record (D13), and the run goes on (R-24).
+- **For any other form,** it plans no `attack_chains` part.
+
+`assemble-report.py report` checks that the file holds exactly the planned surfaced chains with the same reader.
+
+### The run's declared-paths grammar (S1P-A62, R13)
+
+`close` checks the whole run once (RR3). So `tachi_parts.is_declared_path(relpath, "threat-model", P)`, where P is the run-level plan's ID, gains one branch. `relpath` is relative to `{out}`, with `/` separators, and it is declared when it is one of these:
+1. `threats.md`, `threats.sarif`, `threat-report.md` or `attack-chains.md` (D4's set); `architecture.md` (the run's snapshot); or `attack-chains.inconsistent.md` (D13's quarantine name);
+2. `attack-trees/.manifest.json`, or `attack-trees/<t>-attack-tree.md`;
+3. under `.tachi-build/`, flat (D3's Track O run files): `sections.json`, `idmap.json`, `phase1/inventory.json`, `phase1/dispatch.json`, `briefs/<d>.json`, `records/<d>.json`, `chains/chains.json` or `chains/narratives.json`;
+4. `.tachi-build/threat-model/current.json`, or, under `.tachi-build/threat-model/P/`, `plan.json`, `stage-record.json`, `checks/attack-chains.json` or `checks/provenance.json`, or `preimage/<name>` or `failed/<name>` for a name in D4's set;
+5. for each batch stage B of `threats-md`, `trees` and `report`: `.tachi-build/B/current.json`, or, under `.tachi-build/B/<q>/` for any `<q>` that passes the plan pattern:
+   - `plan.json`, `stage-record.json`, `inputs/<b>.json` or `parts/<b>.a<n>.json`, as in PR 1's grammar;
+   - `staged/<name>`, for a name in `STAGED_OUTPUTS[B]`;
+   - in `trees` only, `trees/<t>-attack-tree.md`.
+
+`<t>` is a finding ID in lowercase, `(s|t|r|i|d|e|ag|agp|llm|oi|mi|te)-[0-9]{1,6}`, an ASCII full match, so `agp-01` is one, as the shipped examples spell it. `<d>` passes the dispatch pattern, `<b>` the batch pattern, and `<n>` is 1, 2 or 3.
+
+Everything else is undeclared. That includes:
+- a `gen.py` anywhere, `.tachi-build/records/gen.py` and `.tachi-build/chains/notes.md`;
+- a file in `checks/` with any other name;
+- another run-level plan's directory, and a PR 1 stage's directory;
+- anything under `.tachi-build/phase2/`, which item O-α leaves with no plan.
+
+PR 1's two stages keep their branch. R3b writes the new branch with T091's stage enums (T091b), and pins each clause in `test_tachi_parts.py`. It narrows D4's shorthand `attack-trees/*` to the files that `assemble-report.py trees` writes, and ADR-050 D4 follows (erratum S1P-A62).

@@ -49,13 +49,13 @@ Orchestrator fences pass literal arguments only (C6). `PLAN` below stands for `-
 | `python3 scripts/generate-threats-sarif.py --threats FILE --out DIR [--architecture PATH]`: the shipped generator on the shared emitter. The path is the command's own, resolved in code (D1, D7, D8). `--architecture` is optional (S1P-A26). Step 2.10 always passes the command's `{architecture_path}`, as Step 2.7 does, and without the flag D7's chain starts at the body line. A refused candidate prints the resolver's warnings on stderr, and the exit stays 0, because Step 2.7's `architecture-source` has already reported the same refusal with exit 5 | O | 0, 1, 2, 4 |
 
 **Helpers** (imported, never run directly; each is installed and listed under F-373's S-13 import gate):
-- `tachi_parts.py`: loader, validator, identifier patterns, guards, atomic write, digest, stamp and version (D3, D4);
+- `tachi_parts.py`: loader, validator, identifier patterns, guards, atomic write, digest, stamp, version and the shared stage-entry path (D3, D4);
 - `tachi_scoring.py`: CVSS 3.1, constants, `q1`, `band`, largest remainder and the prefix resolver (D5, D10);
 - `tachi_scoring_rules.py`: R-6, R-25, R-26 and R-31 (D5, D9);
 - `sarif_common.py`: the shared emitter (D7, D8);
-- `tachi_parsers.py`: extended with the reference-set wrapper, `parse_correlation_groups`, the shared reference decoder (D3) and (PR 2) `parse_chain_outcome`.
+- `tachi_parsers.py`: extended with the reference-set wrapper, `parse_correlation_groups`, the shared reference decoder (D3) and (PR 2) `parse_chain_outcome` and `attack_tree_source`.
 
-The signatures of `tachi_scoring_rules.py` and of lane P's new `tachi_parsers` functions are frozen in [module-signatures.md](module-signatures.md) (W1, T023), together with the persisted-inputs format of `risk-scores.md` §6 and `compensating-controls.md` §7.
+The signatures of `tachi_scoring_rules.py` and of lane P's new `tachi_parsers` functions are frozen in [module-signatures.md](module-signatures.md) (W1, T023), together with the persisted-inputs format of `risk-scores.md` §6 and `compensating-controls.md` §7. The shared stage-entry path's names are there too (#443, items 1–4, ruled at W2′'s entry).
 
 ### Readings ruled at W1 (2026-11-22, T023)
 
@@ -113,3 +113,19 @@ ADR-050 D6's items O-β and O-γ and its RR3 ruling set these. T092, T097, T106,
   - the command's Step F, with the returned report PLAN, when `assemble-report.py report` exits with anything but 0.
 - **Step F's order.** On every failure path, Step F runs `fail --stage threat-model` with the run-level PLAN last, whatever an earlier `fail` returned. Only that `fail`'s 2 means stop with the error. A report plan whose digest was copied wrong still gets its record, with `fail`'s `plan-digest-mismatch` warning.
 - **`assemble-report.py report` at Step 2.9** checks every input's digest except `threats.md`'s and `attack-chains.md`'s, which Steps 2.5–2.8 change by design. For `threats.md` it compares `params.reference_digest`, and for the chain file it follows the final outcome record (`part-files.md`, "Stage payload: `report`").
+
+### Readings ruled at W2′'s entry, pass 3 (S1′, 2026-11-24)
+
+From R3b-1's question and lanes T's and OS's tests-first readings (S1P-A42 onward). `part-files.md` holds the rest. T092, T096, T100, T106, T108, T109, T116 and T117 follow them.
+
+- **The directory option (S1P-A42).** Every entry checks its directory option first, through `tachi_parts`' shared checks (`module-signatures.md`), so the words are one: `<option> is not a directory`, with the remedy `create it or correct <option>`. It is exit 1 for each entry whose codes include 1. It is exit 2 for `attack-chains.py check` and `check-threat-model.py`, whose codes have no 1. Then PLAN's two checks follow, exit 2, in PR 1's renderers' words. `check` and `check-threat-model.py` take `--plan ID` alone: it passes the plan allow-list (exit 2) before it becomes part of the hand-off's path. `tachi-stage.py` keeps its own `--out` check.
+- **`close`'s stdout (S1P-A50).** One JSON object, `{record, warnings, undeclared_paths}`. `record` is the stage record's path, as `fail`'s is. The two lists are the record's own, so on exit 5 the command prints them without reading the record.
+- **`close` has no exit 1 (S1P-A61).** A run-level plan or pointer that is missing is exit 2, with the D3 guard's message. So is a plan of another stage, a digest that differs and a pointer that disagrees.
+- **PR 2's plans take only their own pointers (S1P-A63).**
+  - `plan --stage threat-model` and `plan --stage threats-md` take `--out` and `--date` only;
+  - `trees` also takes `--threats` and, optionally, `--baseline-dir`;
+  - `report` also takes `--threats`, `--trees-plan` and `--trees-plan-digest`.
+
+  Any other pointer flag (`--threats`, `--risk-scores`, `--baseline-dir`, `--architecture`, `--target`, `--trees-plan` or `--trees-plan-digest`) is exit 2, and nothing is written, so a stale pointer in a command line is refused, never ignored. PR 1's two stages don't change.
+- **`id-mark` refuses a mark it can't compute (S1P-A54).** It exits 2 and writes nothing when this run's Section 7 can't be read, and when the baseline has no mark line and its reference set can't be read. So it never writes a mark below ruling B's rule (ADR-050 D7). A `--threats` or `--baseline` file that is missing is exit 1. A baseline whose mark line reads is enough, whatever its Section 7 holds.
+- **`assemble-report.py`'s two modes (S1P-A44, S1P-A47).** `trees` exits 2 for a tree that fails a per-file check and 4 for one that is missing (FR-K5.5, early). `report` checks the trees plan it pins as it checks its own, and for both plans it compares `params.reference_digest` in place of `threats.md`'s bytes. `trees` checks `threats.md` by its bytes, because nothing writes it between the trees plan and `trees` (`part-files.md`).
