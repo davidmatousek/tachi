@@ -5,6 +5,12 @@ extracted_from: SARIF Output Generation section lines 1224-1718
 version: "1.0"
 ---
 
+> **Status (F-374).** This guide no longer tells any agent to author `risk-scores.sarif` or `compensating-controls.sarif`. Shipped renderers write both (`scripts/render-risk-scores.py` and `scripts/render-compensating-controls.py`), through the shared emitter, `scripts/sarif_common.py`.
+>
+> - **If you are the risk scorer or the control analyzer, you write no SARIF.** Nothing in this guide changes that, and the sections about `threats.sarif` are not yours. "Renderer-Owned SARIF Files", at the end, documents what the renderers write.
+> - **`.claude/skills/tachi-shared/references/sarif-identity-shared.md` is the one contract** for identity (tools, categories, rule IDs, `primaryLocationLineHash`, `artifactLocation.uri`) and for membership (one result for each open finding) in all three SARIF files. Where this guide and that reference differ, the reference governs.
+> - **The sections down to "Renderer-Owned SARIF Files" describe `threats.sarif`**, the one SARIF file that an agent still writes: the orchestrator writes it until the shipped generator takes it over. Their identity and membership text ("Correlated Finding Mapping", "Fingerprint Computation" and the result counts) is that file's legacy rule, which `sarif-specification.md` keeps in force until then. The shared reference replaces it when the generator ships.
+
 ### SARIF Output Generation
 
 After the `threats.md` output is structurally validated, produce a `threats.sarif` file in the same output directory. The SARIF file contains the same findings in SARIF 2.1.0 format for integration with GitHub Code Scanning, VS Code SARIF Viewer, Azure DevOps, and other SARIF-compatible security tools.
@@ -278,6 +284,8 @@ Every SARIF result MUST include both a `physicalLocation` and a `logicalLocation
 
 #### Fingerprint Computation
 
+> **`threats.sarif` only, and only until the generator ships.** `risk-scores.sarif` and `compensating-controls.sarif` don't use this recipe. Their renderers write tachi's own hash, `sha256("tachi-plh/1|" + tool + "|" + id)` (first 16 hex digits, then `:1`), so no two results in those files share a hash, and `findingId/v1` is only a cross-reference to `threats.md`. The shared reference replaces this section, and its claim below that a shared hash is intentional, when the generator takes `threats.sarif` over.
+
 Every SARIF result MUST include a `partialFingerprints` object with deterministic values that enable GitHub Code Scanning to track findings across runs. **Same inputs MUST produce same outputs** — given identical `ruleId` and `component_name` values, the fingerprint output must be identical across separate invocations.
 
 **1. `primaryLocationLineHash`** — the key GitHub uses for alert deduplication:
@@ -500,24 +508,24 @@ After the self-check passes, write the `threats.sarif` file to the output direct
 
 ---
 
-### Risk Scoring SARIF Extension
+### Renderer-Owned SARIF Files
 
-When the `/tachi.risk-score` command processes `threats.sarif` (or `threats.md`) into `risk-scores.sarif`, the scored SARIF output extends the base `threats.sarif` structure with quantitative risk scoring properties. This section documents the differences between the two SARIF files.
+`risk-scores.sarif` and `compensating-controls.sarif` are written by the shipped renderers (`scripts/render-risk-scores.py` and `scripts/render-compensating-controls.py`) through the shared emitter (`scripts/sarif_common.py`). No agent authors either file. The risk scorer and the control analyzer supply judgment in part files, the renderer computes every value in the files it writes, and each markdown file and its SARIF agree by construction. This section records how the two files differ from `threats.sarif`. `sarif-identity-shared.md` has the identity and membership rules for all three.
 
 #### Semantic Shift: `security-severity`
 
-The meaning of `security-severity` differs between the two SARIF files:
+The meaning of `security-severity` differs between the three SARIF files:
 
-| Property | `threats.sarif` | `risk-scores.sarif` |
-|----------|----------------|---------------------|
-| **Rule-level** `security-severity` | Static category-level value from the Severity Mapping Table (e.g., `"8.0"` for all High findings in a category) | **MAX composite score** among that rule's findings (e.g., `"8.4"` if the highest-scored spoofing finding has composite 8.4) |
-| **Result-level** `security-severity` | Not present (severity lives only on the rule) | **Per-finding composite score** as a numeric string (e.g., `"7.8"`) — each finding gets its own calculated value |
+| Property | `threats.sarif` | `risk-scores.sarif` | `compensating-controls.sarif` |
+|----------|----------------|---------------------|-------------------------------|
+| **Rule-level** `security-severity` | Static category-level value from the Severity Mapping Table (e.g., `"8.0"` for all High findings in a category) | **MAX composite score** among that rule's findings (e.g., `"8.4"` if the highest-scored spoofing finding has composite 8.4) | **MAX residual score** among that rule's findings |
+| **Result-level** `security-severity` | Not present (severity lives only on the rule) | **Per-finding composite score** as a numeric string (e.g., `"7.8"`) — each finding gets its own calculated value | **Per-finding residual score** as a numeric string: the composite score after the control's reduction |
 
 This shift enables GitHub Code Scanning to display granular, per-finding severity rather than flat category-level severity, allowing differentiation between findings that previously shared the same rating.
 
 #### Extended Property Bag Schema
 
-Each result in `risk-scores.sarif` includes these additional properties in its `properties` object:
+Each result in `risk-scores.sarif` includes these properties in its `properties` object, in this order. The renderer writes them, from the values it computed for the finding. A result with a correction or a tag-driven change also carries `score-corrections` after `score-flags`, objects `{field, from, to, cause}`:
 
 ```json
 {
@@ -529,11 +537,15 @@ Each result in `risk-scores.sarif` includes these additional properties in its `
     "scalability": "<0.0-10.0 as string>",
     "reachability": "<0.0-10.0 as string>",
     "composite-weights": "0.35/0.30/0.15/0.20",
+    "score-source": "<inherited|fresh>",
+    "score-flags": [],
     "severity-band": "<Critical|High|Medium|Low>",
     "risk-owner": "Unassigned",
     "remediation-sla": "<24h|7d|30d|90d>",
     "risk-disposition": "<Mitigate|Review>",
-    "review-date": "<YYYY-MM-DD>"
+    "review-date": "<YYYY-MM-DD>",
+    "maestro-layer": "<layer name or Unclassified>",
+    "affected_assets": []
   }
 }
 ```
@@ -542,42 +554,49 @@ Each result in `risk-scores.sarif` includes these additional properties in its `
 |----------|------|-------------|
 | `security-severity` | numeric string | Composite risk score (weighted sum of four dimensions). Replaces the static category value from `threats.sarif`. |
 | `cvss-base-score` | numeric string | CVSS 3.1 base score (0.0-10.0) |
-| `cvss-vector` | string | Full CVSS 3.1 vector string for auditability |
+| `cvss-vector` | string, or `null` | Full CVSS 3.1 vector string for auditability. `null` when a carried finding has no vector to verify |
 | `exploitability` | numeric string | Exploitability assessment (0.0-10.0) |
 | `scalability` | numeric string | Scalability assessment (0.0-10.0) |
 | `reachability` | numeric string | Reachability assessment (0.0-10.0), derived from trust zone placement |
 | `composite-weights` | string | Weight allocation used: `"cvss/exploitability/scalability/reachability"` |
+| `score-source` | string | `inherited` when the finding's inputs were carried from a baseline, `fresh` when they were scored in this run |
+| `score-flags` | array | Sorted `kind:field:cause` strings for the finding's integrity flags. Always present, and empty when nothing is flagged |
 | `severity-band` | string | Severity classification mapped from composite: Critical (9.0-10.0), High (7.0-8.9), Medium (4.0-6.9), Low (0.0-3.9) |
-| `risk-owner` | string | Assigned remediation owner. Default: `"Unassigned"` |
+| `risk-owner` | string | Remediation owner. Default: `"Unassigned"`, and a baseline's owner is carried forward |
 | `remediation-sla` | string | Severity-driven deadline: Critical=24h, High=7d, Medium=30d, Low=90d |
 | `risk-disposition` | string | Risk treatment decision: Critical/High=Mitigate, Medium/Low=Review |
 | `review-date` | string | ISO 8601 date: scoring date + SLA duration |
+| `maestro-layer` | string | The finding's MAESTRO layer, or `Unclassified` |
+| `affected_assets` | array | The asset-sensitivity tags the asset-modifier step used for the finding. Emitting it changes no score |
 
-#### Fingerprint Preservation Rules
+`compensating-controls.sarif` carries the same `maestro-layer` property on every result, with these control properties beside it: `control-status`, `control-evidence`, `control-carry-forward`, `control-effectiveness`, `inherent-risk`, `residual-risk`, `recommendation` and `effort-estimate`, and `integrity-flags`, a sorted array of `kind:field:cause` strings that is always present. `control-carry-forward` is a JSON boolean, `true` for a result carried forward from the baseline. The renderer takes `recommendation` and `effort-estimate` from the finding's Section 4 block, so the two files agree. `templates/tachi/output-schemas/compensating-controls.sarif` lists the whole property bag.
 
-`risk-scores.sarif` MUST preserve all fingerprint values from the source `threats.sarif`:
+#### The Result Message
 
-- `partialFingerprints["findingId/v1"]` — finding ID (e.g., `"S-1"`) preserved for cross-reference continuity between `threats.md`, `threats.sarif`, and `risk-scores.sarif`
-- `partialFingerprints["primaryLocationLineHash"]` — deterministic hash preserved for GitHub Code Scanning alert tracking. Using the same hash enables `risk-scores.sarif` to supersede `threats.sarif` without creating duplicate alerts.
-- `partialFingerprints["correlationGroup"]` — correlation group ID preserved on primary findings
+Every result's `message` carries `text`, and the renderer always writes `markdown` beside it, the empty string included. A finding with no mitigation text keeps the key with an empty value, and no result drops it. In `risk-scores.sarif`, `markdown` is the finding's mitigation text.
 
-#### Taxonomy Preservation
+#### Identity and Membership
 
-`risk-scores.sarif` MUST preserve all taxonomy declarations from the source `threats.sarif`:
+Neither renderer-owned file copies a fingerprint from an upstream file. The renderer computes every key, and `sarif-identity-shared.md` has the recipes and the test vectors.
 
-- `run.taxonomies[]` — OWASP and CWE taxonomy framework declarations
-- `tool.driver.supportedTaxonomies[]` — supported taxonomy references
-- Rule `relationships[]` — per-rule taxonomy mappings (OWASP Top 10, CWE entries)
+- **`primaryLocationLineHash`** is tachi's own hash on every result: `sha256("tachi-plh/1|" + tool + "|" + id)`, the first 16 hex digits, then `:1`. `tool` is the file's own driver name and `id` is the canonical finding ID, so the three files never share a hash, and no two results in one file do.
+- **`partialFingerprints`** holds exactly two keys, `primaryLocationLineHash` and `findingId/v1`. `findingId/v1` is a cross-reference to `threats.md`, not a key. A correlation group is recorded in the result's `properties` (`correlation-group`, `correlation-role` and `correlation-primary`), and never in `partialFingerprints`.
+- **`artifactLocation.uri`** is the user's architecture file, set by one shared resolver, so it is the same on every result of a run chain. A score, a rationale, a regroup or a re-run changes no key.
+- **Membership.** Each file has one result for each open finding, correlated peers included, and a RESOLVED finding appears nowhere. The number of results is the number of open findings.
 
-Taxonomies are passed through unchanged. The risk-scorer does not modify, add, or remove taxonomy data.
+#### Taxonomies
+
+Each renderer-owned file declares its taxonomies itself, from the shared emitter's own list (`sarif_common.TAXONOMIES`, which a test keeps equal to the catalogs): `run.taxonomies[]`, `tool.driver.supportedTaxonomies[]` and the rules' `relationships[]`. It never copies them from an upstream file.
 
 #### Tool Metadata Differences
 
-| Field | `threats.sarif` | `risk-scores.sarif` |
-|-------|----------------|---------------------|
-| `tool.driver.name` | `"Tachi"` | `"tachi-risk-scorer"` |
-| `tool.driver.version` | Schema version from `output.yaml` | `"1.0"` (risk-scoring schema version) |
+| Field | `threats.sarif` | `risk-scores.sarif` | `compensating-controls.sarif` |
+|-------|----------------|---------------------|-------------------------------|
+| `tool.driver.name` | `"Tachi"` | `"tachi-risk-scorer"` | `"tachi-control-analyzer"` |
+| Recommended upload `category` | `threat-model` | `risk-score` | `compensating-controls` |
+
+The tool name is verbatim: the threats tool has a capital T. Each name is an input to every alert's hash, and the three differ on purpose.
 
 #### SARIF Supersession
 
-`risk-scores.sarif` is designed to supersede `threats.sarif` for GitHub Code Scanning uploads. Because fingerprints are preserved, uploading `risk-scores.sarif` will update existing alerts with quantitative scores rather than creating duplicate alert sets. The `security-severity` shift from static category values to per-finding composite scores enables more granular severity display in the GitHub Security tab.
+No SARIF file supersedes another. `risk-scores.sarif` does not supersede `threats.sarif`, and `compensating-controls.sarif` does not supersede `risk-scores.sarif`: the three files carry different tool names and upload under different categories, and the tool and the category are part of an alert's key. Each file therefore keeps its own alerts, and uploading one never updates or closes another's. Upload each file under its own category, and use the per-finding `security-severity` shift above for granular severity display in the GitHub Security tab. An earlier version of this guide said that a later file supersedes an earlier one because fingerprints are preserved. That stopped being true when each file took its own tool name and tachi's own hash (ADR-050 D7).

@@ -47,10 +47,16 @@
 # `schemas/finding.yaml`) — wired through both paths and invocation in lock-step.
 # F-362 (T017) added `test_owasp_2026_contract.py` (normalize_owasp_id D2
 # covering matrix + FR-012a derived-taxa contract) plus its guarded source
-# surfaces `generate-risk-scores-sarif.py` and `schemas/taxonomy/owasp.yaml`
-# (architect MEDIUM-1: the emitter FR-012a fixed, and its catalog derive-
-# source, must trigger their own gate) — wired through both paths and
-# invocation in lock-step.
+# surfaces, the SARIF emitter FR-012a fixed and `schemas/taxonomy/owasp.yaml`
+# (architect MEDIUM-1: the emitter, and its catalog derive-source, must
+# trigger their own gate) — wired through both paths and invocation in
+# lock-step. F-374 (T054, T039) retired that emitter (the generator script
+# for `risk-scores.sarif`): `render-risk-scores.py` now writes the file and
+# carries FR-012a's taxa contract (ADR-050 D16). `test_owasp_2026_contract.py`
+# and `test_affected_assets_wiring.py` run the renderer in-process, after
+# `tachi-stage.py` has planned, on the project harness of
+# `test_render_risk_scores.py`, so the renderer, the planner,
+# `tachi_scoring_rules.py` and that harness are guarded surfaces too.
 # F-373 (T009/T010) added the K3 installer suite
 # (`test_install_sh_symlink_preflight.py` + `test_install_sh_ref_restore.py`)
 # covering `scripts/install.sh`'s destination-containment pre-flight and its
@@ -115,7 +121,10 @@ on:
       - scripts/populate-affected-assets.py                    # F-302 (260b) — deterministic populator (value authority)
       - scripts/sarif_common.py                                # F-302 (260b) — affected_assets extractor (verification tier)
       - scripts/generate-threats-sarif.py                      # F-295 (292 T026) — FR-014 input-path-derived artifactLocation.uri
-      - scripts/generate-risk-scores-sarif.py                  # F-362 (T017) — FR-012a derived-taxa emitter (architect MEDIUM-1)
+      - scripts/render-risk-scores.py                          # F-374 (T039) — FR-012a derived-taxa emitter since T054 retired the generator (architect MEDIUM-1)
+      - scripts/tachi-stage.py                                 # F-374 (T039) — the planner that runs before the renderer in test_owasp_2026_contract.py and test_affected_assets_wiring.py
+      - scripts/tachi_scoring_rules.py                         # F-374 (T039) — the rules module that the planner and the renderer both load
+      - tests/scripts/test_render_risk_scores.py               # F-374 (T039) — the project harness that those two modules import
       - schemas/finding.yaml                                   # F-302 (260b) — affected_assets schema contract (1.9)
       - schemas/taxonomy/owasp.yaml                            # F-362 (T017) — FR-012a derive-source for the taxa above
       - tests/scripts/test_owasp_2026_contract.py              # F-362 (T017) — normalize_owasp_id D2 matrix + FR-012a taxa contract

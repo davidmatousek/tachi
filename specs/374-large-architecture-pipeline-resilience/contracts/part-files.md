@@ -10,7 +10,7 @@ Every key is required, and an absent value is written as `null` or `[]`. IDs pas
 - batch: `B[0-9]{3}(-[12]){0,2}`;
 - finding: `(S|T|R|I|D|E|AG|AGP|LLM|OI|MI|TE)-[0-9]{1,6}`.
 
-Scripts recompute every path from `--out` and these IDs, never from a path stored in a file, except the plan's digest-checked `inputs` (ADR-050 D3).
+Scripts recompute every path from `--out` and these IDs, never from a path stored in a file, except the plan's digest-checked `inputs` and its `refs`, which are re-checked before any use (ADR-050 D3; `refs` ruled at W2).
 
 **§1 Part, `tachi.part/1`** (agent-written; untrusted)
 
@@ -39,7 +39,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `part_path` | an absolute path under `<plan_id>/parts/` |
 | `tree_paths` | in `trees`, `{finding_id: absolute path under <plan_id>/trees/}`, one per ID; `{}` elsewhere |
 | `units` | the batch's unit rows, as verbatim data. In `compensating-controls`, an UNCHANGED unit's row also holds its baseline's persisted narrative text and its evidence-class values (`evidence[]`, `matrix_row`, `recommendation_body`), all decoded, for the agent to copy. So a carried string is escaped once per render (ADR-050 D2, RR1). In `threats-md`, each unit is `{section, finding_id}` or `{section, row}` (item O-β). In `report`, a section part's unit is `{section, key, …}` and a findings part's is `{section, finding_id, …}` (item O-γ) |
-| `refs` | an object mapping the stage's closed pointer names (architecture, threats, baseline files, target) to absolute paths that the command validated |
+| `refs` | an object mapping the stage's closed pointer names (architecture, threats, baseline files, target) to absolute paths that the command validated. It is a verbatim copy of the plan's `refs` (§4), written for the agent, and no script reads it (ruled at W2) |
 | `params` | an object of the stage's closed parameters, for example `scoring_date` as `YYYY-MM-DD` |
 
 **§4 Batch plan, `tachi.plan/1`** (written only by `tachi-stage.py`, and replaced atomically)
@@ -50,6 +50,8 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `created_utc` | ISO 8601, ending in `Z` |
 | `tachi_version` | `X.Y.Z` |
 | `inputs` | `{logical name: {path, sha256, bytes}}` |
+| `refs` | the stage's pointers, with §3's rules. `plan` writes them once here and copies them into each batch input, and every script reads them from here, so a plan with no units keeps them (ruled at W2) |
+| `architecture_warning` | `null`, or the one warning `{code, detail}` that `plan` raised when it refused the `--architecture` candidate. Its code is `architecture-path:explicit:<check>`, and it follows the rules of a stage record's `warnings` entry (§5). Every stage record of the plan lists it first (ADR-050 D7, ruled at W2) |
 | `params` | as in §3 |
 | `batch_size` | an integer, 1–500, or `null` for a plan with no units (the run-level `threat-model` plan) and for a stage whose sizes are per section, `threats-md` and `report`, whose sizes are `tachi-stage.py` constants (items O-β and O-γ) |
 | `unit_count` | an integer, 0 or more |
@@ -70,7 +72,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `tachi_version` | `X.Y.Z` |
 | `started_utc`, `finished_utc` | ISO 8601 |
 | `input_digest` | `sha256:<hex>` |
-| `counts` | non-negative integers, under the stage's closed keys: `units`, `open`, `resolved`, `rendered`, `parse_errors`, `narrative_fallbacks`, `truncations`, plus D2's and D9's flag counts by kind, `retagged` and `reused-id` included |
+| `counts` | non-negative integers, under the stage's closed keys: `units`, `open`, `resolved`, `rendered`, `parse_errors`, `narrative_fallbacks`, `truncations`, `cell_overwrites` (controls only, ruled at W3), plus D2's and D9's flag counts by kind, `retagged` and `reused-id` included |
 | `batches` | `{planned, dispatched, done, retried, split, exhausted}` |
 | `overflow_events` | `[{batch_id, attempt, kind: missing \| overflow-reported \| unparseable \| invalid}]` |
 | `retries` | `[{batch_id, attempt, cause, children}]` |
@@ -141,8 +143,8 @@ Both payloads use closed key sets, and any other key is rejected, renderer-compu
 | `confidence` | `High`, `Medium` or `Low`; null exactly when `missing` |
 | `carried_forward` | boolean |
 | `evidence` | array of 1–5 entries for found or partial, empty for missing. Each entry has `file` (1–300, relative to the target, passing ADR-050 D7's resolver checks: no scheme, leading `/`, backslash, drive letter or `..`), `line` (integer ≥ 1), `language` (`[a-z0-9+#-]{1,20}`, a `tachi_parts` full match), `snippet` (at most 5 lines and 600), `summary` (prose up to 160, cut at 160) and an optional `assessment` (coverage, configuration, currency and completeness, each a rating of High, Medium or Low with a rationale of prose up to 160, cut at 160) |
-| `matrix_row` | one line of up to 1,200, the 11 K8 cells (R-34) |
-| `recommendation_body` | up to 2,000, required for partial or missing, null for found (R-34) |
+| `matrix_row` | one line of up to 1,200, the 11 K8 cells (R-34), in the form `module-signatures.md` pins (W3). Step 9 checks only the cell count and the Threat ID cell |
+| `recommendation_body` | up to 2,000, required for partial or missing, null for found (R-34). Step 9 checks its four keys, its Effort level and its line starts (`module-signatures.md`, `tachi_parts`' W3 additions) |
 
 **String classes (ADR-050 D3):**
 - **Narrative:** `rationale.*`, `metric_rationale.*`, `subscore_rationale.*` and each `evidence[].assessment.*` rationale.
@@ -170,14 +172,28 @@ Each reading is one the sources left open. `tachi_parts` (T012, T013), `tachi-st
 - **A `tachi.overflow/1` object is `overflow` only when its `plan_id`, `batch_id`, `stage` and `agent_type` match the planned batch**, step 7's match. Otherwise it is `invalid`. "Well-formed" in ADR-050 D3 includes that match.
 - **Step 10 runs on the strings that step 9 kept.** Over-limit prose is cut and flagged at any length, even above 16,384 characters. A forbidden character beyond the cut is cut away with the rest, and one inside the kept text rejects the part.
 - **A snippet is cut to 5 lines first, then to 600 characters,** and flagged `input:evidence.snippet:truncated` once.
+- **Edge whitespace is removed at intake** (ruled at W1, from T033).
+  - **The rule.** In step 9, after any cut, every narrative and evidence-class string loses its edge whitespace, by `str.strip()`, the same predicate the table readers apply to a cell before they decode. A snippet is dedented first (`textwrap.dedent`), so its lines keep their relative indentation.
+  - **Why.** No value begins or ends with whitespace, so a table cell loses nothing on the round trip. A carried value is then byte-identical on every later run: T056's UNCHANGED controls results, and RR1's carried scorer prose. The rule is idempotent, because a value that is normalized again doesn't change.
+  - **What it doesn't do.** Removing edge whitespace isn't a cut and raises no flag. A required prose field that is empty afterwards rejects the part, just as an empty one does.
+  - **Step 10 judges only what step 9 kept** (confirmed from `c37b353`; T061 and T064 re-check it). `str.strip()` removes some characters that step 10 forbids: `\r`, VT, FF, the C0 separators U+001C–U+001F, NEL (U+0085), U+2028 and U+2029. At an edge they are stripped away and never reach output, as text beyond a cut is. Inside the kept text they still reject the part. Bidi controls aren't whitespace, so they reject wherever they appear.
+  - **Not chosen:**
+    - stripping only on write, inside `escape_cell` and `escape_prose`, because SARIF strings and code fences would keep the whitespace and drift between runs;
+    - escaping edge whitespace as references, because that would turn D3's closed set of references, nine since P0-1 added `&#126;`, into an open whitespace class.
+  - **Owner.** R0a makes the edit, as a T013 follow-up slice before W1's push, since it owns `tachi_parts.py` and `test_tachi_parts.py` in W1. Its test carries a value with edge spaces, a tab, a newline and an indented snippet through two write-and-read round trips.
 - **A cut that lands inside a slot token** leaves an unterminated slot, so that field takes the per-field fallback. This is accepted, with no extra rule: the field is flagged both `truncated` and `narrative-fallback`, and the part is never rejected.
 
 **Values.**
 - **`evidence[].file` and `line` are closed values.** Each is checked against its pattern and range: the 1–300 range and the relative-path rule for `file`, and an integer of at least 1 for `line`. A closed value is never cut, so a `file` over 300 characters rejects the part.
 - **A `file` is checked, never rewritten.** `./a//b.py` is kept as written in the validated part. The resolver canonicalizes it at render time (ADR-050 D7), and both rendered files use that canonical spelling, so `.md` and `.sarif` agree. Like all agent text, it is escaped on output.
+- **A `file` that the resolver refuses at render time (ruled at W3, 2026-11-23, from T052 and T056)** is flagged, never refused. The resolver refuses a `file` that is missing, a link or not a regular file.
+  - **Why.** A carried UNCHANGED result's evidence is copied verbatim, so after a file moves a refusal would fail every later run, and no re-run could clear it.
+  - **Where the entry goes.** It stays in §3, in `control-evidence` and in §7 with its `file` as written, escaped, because it has no canonical spelling. `relatedLocations` leaves it out, and a result left with none has no `relatedLocations` key.
+  - **The record.** The finding carries `input:evidence.file:unresolved` once, and §7 names each failed entry with the resolver's check. The stage record warns `evidence-file-unresolved`, with up to 10 IDs, so the run exits 5.
+  - **The judgment.** The control status and every computed value follow the part.
 - **The validated part carries canonical finding IDs** (ADR-050 D3). `findingId/v1`, and any other place that prints Section 7's spelling, takes it from the reference set.
 - **The total order on finding IDs (S-2)** is defined once in code, `tachi_parts`, and once in a shared reference, `part-file-contract-shared.md`'s "Identifiers". Every other file cites one of the two.
-- **`atomic_write`** gives the replaced file the mode an ordinary write would, `0666 & ~umask`, never the temporary file's `0600`.
+- **`atomic_write`** keeps the `rwx` bits of the regular file that it replaces, or of the file that its `mode_of` names (a renderer's staged write names its canonical file, and `fail`'s restore names the pre-image), and gives a new file, or anything that isn't a regular file, `0666 & ~umask`, never the temporary file's `0600`.
 
 **Slots and escaping** (T013's slice 2).
 - **A `finding` slot's argument** must pass `tachi_parts`' finding-ID pattern when the grammar is checked, or the field takes the fallback. It is then canonicalized, and its lookup decides membership: an ID outside the reference set, or outside the chain in a chain narrative, returns `None` and takes the fallback (D3's table; step 8's "before any other use").
@@ -201,7 +217,11 @@ Each reading is one the sources left open. `tachi_parts` (T012, T013), `tachi-st
 - **`preimage`** has exactly one key per canonical output in the stage's closed set (D4), each mapped to a SHA-256 or `null`.
 - **`STAGE_AGENTS`** holds only PR 1's two stages, `risk-score` and `compensating-controls`, and PR 1 rejects every other stage. PR 2 adds its stages with the code that handles them.
 - **A batch's `parent`** is the batch its ID derives from (`B003-1` → `B003`), and `null` for a planned batch.
-- **The stage record's `counts` keys** are the seven base counts plus one per D9 flag kind: `corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `resolved`, `retagged`, `reused-id` and `input`. `resolved` is both the base count and the flag kind, because the flag marks exactly the RESOLVED rows.
+- **The stage record's `counts` keys** are the base counts plus one per D9 flag kind: `corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `resolved`, `retagged`, `reused-id` and `input`. `resolved` is both the base count and the flag kind, because the flag marks exactly the RESOLVED rows.
+  - **`cell_overwrites` (ruled at W3, 2026-11-23, from T056 and T059)** is the eighth base count: the computed controls §2 cells, over every row, that held anything but their own slot token (ADR-050 D2). `CF` isn't counted.
+    - The controls renderer always writes it, `0` included. The scorer never does, because its agent writes no table cell.
+    - It raises no flag, because a computed cell is right by construction. It isn't added to `corrected`, which counts `corrected` flags, and the controls file raises none.
+    - One commit lands it: `tachi_parts.COUNT_KEYS`, `test_tachi_parts.py`'s key set, the shared reference's §5 `counts` row and `test_contract_text_374.py`'s key count.
 - **The layout path builders** live in `tachi_parts`, as the one copy that `tachi-stage.py` and both renderers call. They build every D3 path only from `--out`, the stage and pattern-checked IDs, and they never take a path read from a file, except the plan's digest-checked `inputs`.
 
 **The batch plan (§4), as T017's tests pin it for T018.**
@@ -209,6 +229,26 @@ Each reading is one the sources left open. `tachi_parts` (T012, T013), `tachi-st
 - **Retries.** An `invalid` retry keeps the batch ID and raises `attempt`. Each retry rewrites the batch input with its new `attempt` and `part_path`, and the plan's `input_sha256` follows it. So two retries per lineage fit `attempt` 1–3 and the batch-ID pattern.
 - **A one-unit batch can't halve.** When it is `missing`, `overflow` or `unparseable`, it is retried once more with the same member and batch ID, `attempt` + 1, at a cost of 1, as an `invalid` retry is. No batch ever has zero units.
 - **The budget.** A retry costs 1 against `retry_budget.used`, and a halving costs 2. A retry is refused when `used + cost > limit`, or when the batch is already at attempt 3, and either way `reconcile` exits 4.
+
+## Readings ruled at W2 (2026-11-23, before T045 and T046)
+
+**The plan's `refs` (§4).**
+- **Why.** A plan whose findings are all carried has no batches, so pointers kept only in batch inputs were lost. That run then resolved its URI without the command's `--architecture-path`, warned and exited 5. Worse, its URI could differ from the one an earlier run with units used, which re-keys every alert (ADR-050 D7).
+- **The rule.** `plan` builds `refs` once, after routing, because the scorer's routing adds `baseline_dir`. It writes them into the plan, and copies them verbatim into each batch input it writes. `reconcile` writes each retry's batch input from the plan's `refs`, not from its parent's input. The renderers, `fail` and PR 2's `close` read the plan's copy. A `refs` path is a candidate: the renderer re-checks it with the shared resolver (D7) or R-6's checks before it reads anything.
+- **`params`** already lives at plan level, and each batch input copies it. Nothing changes there.
+
+**The plan's `architecture_warning` (§4).**
+- It holds the warning the shared resolver's first step (`sarif_common.resolve_explicit`) built when `plan` refused the candidate, and `null` when the flag was absent or accepted.
+- The renderer's stage record lists it first, then its own resolver's warnings, so the record keeps D7's order: explicit, then the body line, then the default. `fail`'s record lists it too, when the plan passes its trust checks.
+- It is plan-level only. A batch input's `refs` hold only validated paths, and an agent reads every path that `refs` names.
+
+**One commit.** `validate_plan` requires every §4 key, so four edits land in one commit:
+- `tachi_parts.KEY_SETS["plan"]` and `validate_plan` gain the two keys;
+- the shared reference's "Plan keys" table gains them (its drift test reads that table);
+- `test_tachi_parts.py`'s plan key list and valid plan gain them;
+- `plan` writes them.
+
+The renderer's read lands in that commit or after it. The schema string stays `tachi.plan/1`, because no release has shipped the old key set.
 
 ## Stage payload: `threats-md` (item O-β; ADR-050 D6, rev. 3)
 

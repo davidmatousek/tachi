@@ -28,11 +28,13 @@ Sections
 from __future__ import annotations
 
 import ast
+import inspect
 import json
 import os
 import re
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 import pytest
@@ -214,6 +216,10 @@ PATHS_REFUSED = [
     ("a`b", "backtick"), ("`cmd`", "backtick"),
     ("a\x00b", "control-char"), ("a\nb", "control-char"), ("a\tb", "control-char"), ("a\rb", "control-char"),
     ("a\x7fb", "control-char"), ("a\x85b", "control-char"), ("a\x9fb", "control-char"), ("a\x1bb", "control-char"),
+    # a character that step 10 forbids and Cc does not cover (SA-8): the separators, the bidi controls, a tag character
+    ("a" + chr(0x2028) + "b", "control-char"), ("a" + chr(0x2029) + "b", "control-char"),
+    ("a" + chr(0x200E) + "b", "control-char"), ("a" + chr(0x061C) + "b", "control-char"),
+    ("a" + chr(0x202E) + "b", "control-char"), ("a" + chr(0xE0041) + "b", "control-char"),
     ("../x", "parent-reference"), ("a/../b", "parent-reference"), ("a/..", "parent-reference"),
     ("a/b/../../..", "parent-reference"), ("./../x", "parent-reference"),
     ("a/" + "b" * 4095, "too-long"), ("\u00e9" * 2100, "too-long"),
@@ -257,6 +263,41 @@ def test_an_absolute_candidate_passes_only_when_the_caller_allows_it(value):
 ])
 def test_allowing_an_absolute_path_relaxes_only_the_leading_slash(value, problem):
     assert tachi_parts.path_problem(value, allow_absolute=True) == problem
+
+
+# --- SA-8: `path_problem` refused Cc only, so a path with a line separator or a bidi control passed it and failed
+# `forbidden_character`, and each sink that took the path after `path_problem` alone (the architecture source line, the typed
+# `--out`, `--threats`, `--risk-scores` and `--target`, the run-file checks and the resolver) let the character through.
+
+@pytest.mark.parametrize("code", [0x2028, 0x2029, 0x200E, 0x061C, 0x202E], ids=lambda code: "U+%04X" % code)
+def test_a_path_with_a_separator_or_a_bidi_control_is_refused_as_a_control_character(code):
+    char = chr(code)
+    for value in ("a" + char + "b.md", "src/a" + char + "/b.md", char + "a.md", "a.md" + char, "docs/" + char):
+        assert tachi_parts.path_problem(value) == "control-char", ascii(value)
+        assert tachi_parts.path_problem(value, allow_absolute=True) == "control-char", ascii(value)
+    for value in ("/work/a" + char + "b.md", "/work/" + char):
+        assert tachi_parts.path_problem(value, allow_absolute=True) == "control-char", ascii(value)
+    with pytest.raises(ValueError) as excinfo:
+        tachi_parts.path_parts("src/a" + char + "/b.md")
+    assert str(excinfo.value) == "control-char"
+
+
+def test_path_problem_refuses_exactly_the_cc_characters_and_the_ones_step_10_forbids():
+    """Worked out from Unicode and the contract, not from either function: every Cc character (a tab and a newline too, which
+    prose may hold and a path may not) and the contract's separators, bidi controls and tag characters. A lone surrogate is
+    refused first, as an encoding problem, and any other character is no control-char problem."""
+    contract = {code for code in range(0x10000) if unicodedata.category(chr(code)) == "Cc"}
+    contract |= {0x2028, 0x2029, 0x200E, 0x200F, 0x061C} | set(range(0x202A, 0x202F)) | set(range(0x2066, 0x206A))
+    contract |= set(range(0xE0000, 0xE0080))
+    assert {0x09, 0x0A} <= contract, "the path rule is wider than step 10 by the tab and the newline"
+    disagree = []
+    for code in list(range(0xD800)) + list(range(0xE000, 0x10000)) + list(range(0xE0000, 0xE0080)):
+        if (tachi_parts.path_problem("a" + chr(code) + "b") == "control-char") != (code in contract):
+            disagree.append("U+%04X" % code)
+    assert disagree == []
+    assert tachi_parts.path_problem("a" + chr(0xD800) + "b") == "encoding"
+    assert tachi_parts.path_problem("a" + chr(0x1F600) + "b") is None, "a valid astral character is a fine file name"
+    assert tachi_parts.path_problem("a" + chr(0xFE0F) + "b") is None, "and so is a variation selector"
 
 
 def test_path_parts_drops_dot_and_empty_components():
@@ -323,6 +364,21 @@ def test_tachi_parts_parses_at_the_python_39_floor_and_defers_annotations():
     assert "from __future__ import annotations" in source
 
 
+def test_no_source_holds_an_invisible_format_or_separator_character():
+    """A bidi control or a line separator typed into source reorders or splits what a reviewer reads (Trojan Source,
+    CVE-2021-42574), GitHub warns on the file, and `install.sh` copies each script into an adopter's repository, where a
+    hidden-Unicode linter flags it. So no script, and not this file, holds a character of category Cf (format: the bidi
+    controls, the joiners, the zero-width space and the tag characters), Zl or Zp. A character that a test needs is built
+    with `chr()`, or written as an escape. Lines are split on a newline alone, so a separator inside one can't move the
+    count, and a failure names the file, the line and the code point, never the text."""
+    found = []
+    for path in sorted(SCRIPTS_DIR.glob("*.py")) + [Path(__file__).resolve()]:
+        for number, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+            found.extend("%s:%d U+%04X" % (path.name, number, ord(char)) for char in line
+                         if unicodedata.category(char) in ("Cf", "Zl", "Zp"))
+    assert found == []
+
+
 def test_importing_tachi_parts_turns_bytecode_writing_off(tmp_path):
     """T012: the module sets ``sys.dont_write_bytecode`` before any local import.
 
@@ -374,19 +430,51 @@ def scorer_item(fid="S-1"):
     }
 
 
+MATRIX_COLUMNS = ("Threat ID", "CF", "Component", "MAESTRO Layer", "Threat", "Inherent Score", "Inherent Severity",
+                  "Control Status", "Control Category", "Residual Score", "Residual Severity")
+
+
+def matrix_cells(fid="S-1"):
+    """The 11 cells of K8's section 2 row for ``fid``, in the order ``contracts/module-signatures.md`` pins, with the
+    computed cells as the slot tokens an agent writes there."""
+    return [fid, "\u2014", "Gateway", "L1", "A threat", "{{score:inherent}}", "{{band:inherent}}", "Control Found",
+            "authentication", "{{score:residual}}", "{{band:residual}}"]
+
+
+def row_of(cells, outer=True):
+    """``cells`` as a GFM table line: with its outer pipes, or without them (a reader takes either)."""
+    line = " | ".join(cells)
+    return "| " + line + " |" if outer else line
+
+
+BODY_KEYS = ("What to Implement", "Where to Implement", "Reference Patterns", "Effort Estimate")
+
+
+def body_lines(effort="Low"):
+    """The four lines of a valid ``recommendation_body``: the keys of the 1.1 template's section 4 block, each once, in order."""
+    return ["**What to Implement**: Add the missing check to the login path.",
+            "**Where to Implement**: `src/auth/login.py`, beside the call to `check`.",
+            "**Reference Patterns**: Extend the validation library that the other routes use.",
+            "**Effort Estimate**: " + effort]
+
+
+def body_of(effort="Low"):
+    return "\n".join(body_lines(effort))
+
+
 def controls_item(fid="S-1", status="found"):
     entry = {"file": "src/auth/login.py", "line": 42, "language": "python",
              "snippet": "def login(user):\n    check(user)", "summary": "Login path calls the check at line 42."}
     item = {
         "finding_id": fid, "control_status": status, "control_category": "authentication",
         "confidence": "High", "carried_forward": False, "evidence": [entry],
-        "matrix_row": "| " + fid + " | Spoofing | found |",
+        "matrix_row": row_of(matrix_cells(fid)),
         "recommendation_body": None,
     }
     if status == "partial":
-        item["recommendation_body"] = "What: add the missing check. Where: the login path. Effort: Low."
+        item["recommendation_body"] = body_of("Low")
     if status == "missing":
-        item.update(confidence=None, evidence=[], recommendation_body="What: add a control. Effort: Medium.")
+        item.update(confidence=None, evidence=[], recommendation_body=body_of("Medium"))
     return item
 
 
@@ -711,7 +799,7 @@ def test_two_spellings_of_one_canonical_id_are_a_duplicate(pair):
     assert classify(part, ids=(pair[0], "R-9")).state == "invalid"
 
 
-@pytest.mark.parametrize("bad", ["S-١", "S-１", "S-1\n", "S-1 ", "s-1", "S-", "S-1234567", "X-1", "S-1​"])
+@pytest.mark.parametrize("bad", ["S-١", "S-１", "S-1\n", "S-1 ", "s-1", "S-", "S-1234567", "X-1", "S-1" + chr(0x200B)])
 def test_a_hostile_id_is_invalid_wherever_it_appears(bad):
     assert classify(make_part(ids=(bad, "T-2")), ids=("S-1", "T-2")).state == "invalid"
     part = make_part()
@@ -734,9 +822,11 @@ def test_a_planned_spelling_and_a_canonical_equal_spelling_in_the_part_agree():
 HOSTILE_CHARS = [
     "\x00", "\x01", "\x07", "\x08", "\x0b", "\x0c", "\r", "\x1b", "\x1f", "\x7f",
     "\x80", "\x85", "\x9b", "\x9f",
-    " ", " ",
-    "‎", "‏", "؜", "‪", "‫", "‬", "‭", "‮",
-    "⁦", "⁧", "⁨", "⁩",
+    chr(0x2028), chr(0x2029),
+    chr(0x200E), chr(0x200F), chr(0x061C), chr(0x202A), chr(0x202B), chr(0x202C), chr(0x202D), chr(0x202E),
+    chr(0x2066), chr(0x2067), chr(0x2068), chr(0x2069),
+    # the Unicode tag block (SA-7): the first, the language tag, a tag space, a tag letter and the cancel tag
+    chr(0xE0000), chr(0xE0001), chr(0xE0020), chr(0xE0041), chr(0xE007F),
 ]
 
 
@@ -760,6 +850,167 @@ def test_newline_and_tab_are_the_only_control_characters_prose_may_hold():
 def test_a_closed_value_over_sixteen_thousand_characters_is_invalid():
     part = put(make_part(), ("items", 0, "reachability", "zone"), "z" * 16385)
     assert classify(part).state == "invalid"
+
+
+# --- P0-4: step 10's character set is published as `forbidden_character`, so a renderer that takes a value from an input
+# that isn't a part (`threats.md`, a baseline file, `threats.sarif`) asks the same question a part's strings are asked.
+
+# The separators, the bidi controls, the lone surrogates and the tag characters are written with chr(), so that no
+# invisible character sits in this file's source (`test_no_source_holds_an_invisible_format_or_separator_character`
+# holds it to that).
+LINE_SEPARATOR, PARAGRAPH_SEPARATOR = chr(0x2028), chr(0x2029)
+RIGHT_TO_LEFT_MARK, RIGHT_TO_LEFT_OVERRIDE = chr(0x200F), chr(0x202E)
+FORBIDDEN_CLASSES = {
+    "C0": ["\x00", "\x01", "\x07", "\x08", "\x0b", "\x0c", "\r", "\x1b", "\x1c", "\x1f"],
+    "DEL and C1": ["\x7f", "\x80", "\x85", "\x9b", "\x9f"],
+    "separators": [LINE_SEPARATOR, PARAGRAPH_SEPARATOR],
+    "bidi controls": [chr(code) for code in (0x200E, 0x200F, 0x061C, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
+                                             0x2066, 0x2067, 0x2068, 0x2069)],
+    # a lone surrogate (ADR-050 D3, ruled at W3), which only a JSON escape can spell. The first and last of the range, the
+    # last high half and first low half either side of its middle, and one half of the pair that spells U+1F600.
+    "lone surrogates": [chr(code) for code in (0xD800, 0xD83D, 0xDBFF, 0xDC00, 0xDE00, 0xDFFF)],
+    # the Unicode tag block (SA-7), which shows as nothing and stands for ASCII. The first and last of the block, the
+    # language tag, a tag space, and a tag capital and small letter, which carry "A" and "a".
+    "tag characters": [chr(code) for code in (0xE0000, 0xE0001, 0xE0020, 0xE0041, 0xE0061, 0xE007F)],
+}
+
+
+@pytest.mark.parametrize("char", [char for chars in FORBIDDEN_CLASSES.values() for char in chars],
+                         ids=["U+%04X" % ord(char) for chars in FORBIDDEN_CLASSES.values() for char in chars])
+def test_forbidden_character_returns_the_character_wherever_it_stands(char):
+    forbidden = _api("forbidden_character")
+    assert forbidden(char) == char
+    assert forbidden("Public tooling" + char + " exists.") == char
+    assert forbidden(char + "x") == char and forbidden("x" + char) == char
+
+
+def test_forbidden_character_returns_the_first_one_of_several():
+    forbidden = _api("forbidden_character")
+    assert forbidden("a\x1bb\x00c") == "\x1b"
+    assert forbidden("a" + RIGHT_TO_LEFT_OVERRIDE + "b\x7fc") == RIGHT_TO_LEFT_OVERRIDE
+    assert forbidden(LINE_SEPARATOR + PARAGRAPH_SEPARATOR) == LINE_SEPARATOR
+    assert forbidden("ok\tok\nok" + RIGHT_TO_LEFT_MARK + "ok\r") == RIGHT_TO_LEFT_MARK
+
+
+@pytest.mark.parametrize("text", [
+    "", "plain text", "\t", "\n", "tab\there", "line one\nline two", "tab\tand\nnewline together\n\n\t",
+    "caf" + chr(0xE9) + " " + chr(0x2014) + " quoted " + chr(0x65E5) + chr(0x672C) + chr(0x8A9E), "emoji \U0001f600",
+    "~~~ # | ` & < > {{score:cvss_base}}",
+    # the neighbours of each forbidden range, which are allowed: below DEL, the no-break space above C1, the characters just
+    # before U+2028 and U+2066 and after U+202E and U+2069, the two around U+061C, the zero-width joiner before U+200E, and the
+    # two either side of the surrogate range, U+D7FF and U+E000, and the first, an emoji and the last of the astral characters
+    # (a valid surrogate pair spells one, and arrives from JSON as one character). Beside the tag block (SA-7): the characters
+    # either side of it, U+DFFFF and U+E0080, and the variation selectors, which stay out of the set (U+FE0F is in ordinary
+    # emoji text, and U+E0100 is the first of the supplement)
+    "\x7e", chr(0xA0), chr(0x2027), chr(0x202F), chr(0x2065), chr(0x206A), chr(0x061B) + chr(0x061D), chr(0x200D),
+    chr(0xD7FF), chr(0xE000), chr(0x10000), chr(0x1F600), chr(0x10FFFF),
+    chr(0xDFFFF), chr(0xE0080), chr(0xFE0F), chr(0xE0100), "emoji " + chr(0x1F600) + chr(0xFE0F),
+])
+def test_forbidden_character_is_none_for_clean_text_a_tab_and_a_newline(text):
+    assert _api("forbidden_character")(text) is None
+
+
+def test_forbidden_character_is_exactly_the_contracts_set_over_the_whole_basic_multilingual_plane():
+    """Worked out from Unicode, not from the regex: Cc other than tab and newline, the separators, the bidi controls and the
+    surrogates (Cs, ADR-050 D3 as ruled at W3). The Unicode tag block (SA-7) is not in this plane, so the next test counts it."""
+    expected = {code for code in range(0x10000) if unicodedata.category(chr(code)) == "Cc" and code not in (0x09, 0x0A)}
+    expected |= {code for code in range(0x10000) if unicodedata.category(chr(code)) == "Cs"}
+    expected |= {0x2028, 0x2029} | {0x200E, 0x200F, 0x061C} | set(range(0x202A, 0x202F)) | set(range(0x2066, 0x206A))
+    found = {code for code in range(0x10000) if _api("forbidden_character")(chr(code)) is not None}
+    assert found == expected
+    assert len(expected) == 63 + 2 + 12 + 2048, "63 controls, 2 separators, 12 bidi controls and 2,048 surrogates: 2,125 in the plane"
+
+
+def test_forbidden_character_over_the_astral_planes_is_exactly_the_unicode_tag_block():
+    """SA-7: U+E0000 to U+E007F is the contract's one range beyond the basic multilingual plane. Each of its 128 characters
+    is returned. No other astral character is: the 1,048,448 others are joined into one text and scanned at once. With the
+    2,125 of the plane, 2,253 characters are forbidden in all."""
+    forbidden = _api("forbidden_character")
+    tags = range(0xE0000, 0xE0080)
+    assert len(tags) == 128
+    assert [code for code in tags if forbidden(chr(code)) != chr(code)] == []
+    outside = "".join(chr(code) for code in range(0x10000, 0x110000) if code not in tags)
+    assert len(outside) == 0x100000 - 128
+    assert forbidden(outside) is None
+
+
+def test_forbidden_character_returns_a_tag_character_and_not_the_valid_astral_characters_beside_it():
+    forbidden = _api("forbidden_character")
+    tag_a = chr(0xE0041)  # TAG LATIN CAPITAL LETTER A: invisible, and it stands for "A"
+    assert forbidden("Public" + tag_a + " tooling") == tag_a
+    assert forbidden(chr(0xE0001) + tag_a) == chr(0xE0001), "the first one wins"
+    assert forbidden("emoji " + chr(0x1F600) + " and " + chr(0x1F468) + chr(0x200D) + chr(0x1F4BB)) is None, "a ZWJ sequence is clean"
+    assert forbidden(chr(0xDFFFF)) is None and forbidden(chr(0xE0080)) is None, "the characters either side of the block"
+    assert forbidden(chr(0xFE0F)) is None and forbidden(chr(0xE0100)) is None, "the variation selectors stay out of the set"
+    assert forbidden("a" + chr(0x1F600) + tag_a) == tag_a, "a valid astral character before a tag character"
+    # The one legitimate use of tag characters is the emoji flag of England, Scotland or Wales: a black flag, the letters of
+    # the subdivision code as tag characters, and the cancel tag. SA-7 takes the whole block, with no exception for them.
+    england = chr(0x1F3F4) + "".join(chr(0xE0000 + ord(letter)) for letter in "gbeng") + chr(0xE007F)
+    assert forbidden(england) == chr(0xE0067), "the subdivision flags are refused with the rest of the block"
+    assert forbidden(chr(0x1F3F4)) is None, "the black flag itself is clean"
+
+
+def test_a_tag_character_is_forbidden_as_the_escaped_pair_that_spells_it_too():
+    """Unlike a lone surrogate, a tag character is a valid scalar value, so JSON spells it as UTF-8 or as the escaped pair
+    that `json.loads` joins into it, and the one character reaches step 10 either way."""
+    forbidden = _api("forbidden_character")
+    spelled = json.loads('"a\\udb40\\udc41b"')
+    assert spelled == "a" + chr(0xE0041) + "b" and len(spelled) == 3, "the pair arrives as the one astral character"
+    assert forbidden(spelled) == chr(0xE0041)
+    assert forbidden(json.loads('"\\udb40\\udc01"')) == chr(0xE0001)
+    assert forbidden(json.loads('"\\udb40\\udc7f"')) == chr(0xE007F)
+    assert forbidden(json.loads('"\\udb40\\udc80"')) is None, "U+E0080 is beside the block, not in it"
+
+
+@pytest.mark.parametrize("ensure_ascii", [True, False], ids=["escaped pair", "raw UTF-8"])
+def test_a_part_file_with_a_tag_character_is_invalid_however_the_file_spells_it(tmp_path, ensure_ascii):
+    part = put(make_part(), ("items", 0, "rationale", "exploitability"), "Public tooling" + chr(0xE0041) + " exists.")
+    text = json.dumps(part, ensure_ascii=ensure_ascii)
+    assert ("\\udb40\\udc41" in text) == ensure_ascii, "the file holds the escaped pair, or the character itself"
+    result = read(tmp_path, text)
+    assert result.state == "invalid", result.detail
+    assert result.part is None
+    assert read(tmp_path / "clean", json.dumps(make_part(), ensure_ascii=ensure_ascii)).state == "done"
+
+
+def test_forbidden_character_returns_a_lone_surrogate_and_not_the_astral_character_that_a_pair_spells():
+    """ADR-050 D3, as ruled at W3: only a JSON escape can spell a lone surrogate, and `json.loads` joins an escaped valid
+    pair into the one astral character, which is clean. So the lone half is returned wherever it stands, and U+1F600 isn't."""
+    forbidden = _api("forbidden_character")
+    lone = json.loads('"\\ud83d"')
+    assert lone == chr(0xD83D) and len(lone) == 1, "a lone escape arrives as one surrogate code point"
+    assert forbidden(lone) == lone and forbidden("a" + lone + "b") == lone
+    assert forbidden("\U0001f600") is None, "a valid astral character is clean"
+    pair = json.loads('"\\ud83d\\ude00"')
+    assert pair == "\U0001f600" and forbidden(pair) is None, "an escaped valid pair arrives as the astral character, so it is clean"
+    assert forbidden("\U0001f600" + lone) == lone and forbidden(lone + "\U0001f600") == lone, "a clean one beside a lone half"
+    assert forbidden(chr(0xD83D) + chr(0xDE00)) == chr(0xD83D), "two halves that were never joined are two lone surrogates"
+    assert forbidden("a\x1b" + chr(0xD800)) == "\x1b", "the first forbidden character wins, a surrogate included"
+    assert forbidden(chr(0xD800) + "\x1b") == chr(0xD800)
+
+
+def test_step_10_refuses_a_lone_surrogate_through_the_published_predicate():
+    """A part never reaches step 10 with one (`load_json` refuses the escape first, as `unparseable`), so step 10's refusal is
+    reached by a direct call: the predicate is the one definition, so the string checks follow it."""
+    with pytest.raises(_api("PartError")) as excinfo:
+        _api("closed_string")("a zone" + chr(0xD800), "zone")
+    assert excinfo.value.kind == "invalid"
+    assert _api("closed_string")("a zone \U0001f600", "zone") == "a zone \U0001f600"
+
+
+def test_step_10_asks_the_published_predicate_so_the_character_set_has_one_definition(monkeypatch):
+    """Replace the predicate and step 10 follows it: no second copy of the set decides what a part may hold."""
+    monkeypatch.setattr(tachi_parts, "forbidden_character", lambda text: "X" if "banned" in text else None)
+    assert _api("closed_string")("a clean zone", "zone") == "a clean zone"
+    assert _api("closed_string")("bell\x07", "zone") == "bell\x07", "the real set no longer applies"
+    with pytest.raises(_api("PartError")) as excinfo:
+        _api("closed_string")("a banned zone", "zone")
+    assert excinfo.value.kind == "invalid"
+    assert classify(put(make_part(), ("items", 0, "rationale", "exploitability"), "A banned phrase.")).state == "invalid"
+
+
+def test_the_module_docstring_names_the_published_predicate():
+    assert "forbidden_character" in tachi_parts.__doc__
 
 
 # =============================================================================
@@ -945,9 +1196,7 @@ def truncation_cases():
         (SCORER, ("subscore_rationale", "known_techniques"), 160, "subscore_rationale.known_techniques"),
         (CONTROLS, ("evidence", 0, "summary"), 160, "evidence.summary"),
         (CONTROLS, ("evidence", 0, "snippet"), 600, "evidence.snippet"),
-        (CONTROLS, ("matrix_row",), 1200, "matrix_row"),
-        (CONTROLS, ("recommendation_body",), 2000, "recommendation_body"),
-    ]
+    ]  # `matrix_row` and `recommendation_body` have their own cut cases in section 22: a run of `a` is neither a row nor a body
 
 
 def with_text(kind, path, text):
@@ -1230,12 +1479,18 @@ def test_digits_and_any_text_are_allowed_in_evidence_fields_and_never_flagged():
     part = make_part(kind=CONTROLS, ids=("S-1",), items=[controls_item("S-1", "partial")])
     entry = part["items"][0]["evidence"][0]
     entry.update(summary="Line 42 of auth.py calls check() 3 times.", snippet="x = 1\nreturn 0x2A")
-    part["items"][0]["matrix_row"] = "| S-1 | 9.8 | Critical |"
+    cells = matrix_cells("S-1")
+    cells[5:7], cells[9:11] = ["9.8", "Critical"], ["3.2", "High"]  # the agent's numbers in the computed cells
+    part["items"][0]["matrix_row"] = row_of(cells)
+    lines = body_lines("Low \u2014 about 2 days")
+    lines[0] = "**What to Implement**: Check the 3 admin routes on port 8080."
+    part["items"][0]["recommendation_body"] = "\n".join(lines)
     result = classify(part, ids=("S-1",), kind=CONTROLS)
     assert result.state == "done"
     assert result.flags.get("S-1", []) == []
     assert result.counts["narrative_fallbacks"] == 0
     assert result.part["items"][0]["evidence"][0]["summary"] == "Line 42 of auth.py calls check() 3 times."
+    assert result.part["items"][0]["recommendation_body"] == "\n".join(lines)
 
 
 @pytest.mark.parametrize("field", ["summary", "snippet"])
@@ -1251,6 +1506,8 @@ def test_a_literal_double_brace_in_an_evidence_field_is_kept_as_text_for_the_ren
 EVIDENCE_FILES_REFUSED = [
     "https://example.test/x", "file:///etc/passwd", "javascript:alert", "/etc/passwd", "//host/x", "a\\b.py",
     "C:/Windows/x", "c:rel", "C:\\Windows\\x", "../x", "a/../b", "a/b/..", "a`b`", "a\x00b", "a\nb", "", ".",
+    # a separator, a bidi control and a tag character (SA-8): the path rule and step 10 now refuse the same characters
+    "src/a" + chr(0x2028) + ".py", "src/a" + chr(0x202E) + ".py", "src/a" + chr(0xE0041) + ".py",
 ]
 EVIDENCE_FILES_ACCEPTED = ["src/a.py", "./src//a.py", "src/a:b.py", "docs/security/architecture.md", "src/\u00fcn\u00ef.py"]
 
@@ -1286,11 +1543,12 @@ def test_the_evidence_file_rule_is_the_identifier_slices_rule_not_a_second_copy(
 # SARIF strings go through ``json.dumps`` only, so no helper here escapes them.
 # =============================================================================
 
-REFERENCES = {"&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#"}
+REFERENCES = {"&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#",
+              "&#126;": "~"}
 
 
 def decode_references(text):
-    """A test-local closed decoder: one pass, exactly the eight references."""
+    """A test-local closed decoder: one pass, exactly the nine references."""
     return re.sub("|".join(re.escape(ref) for ref in REFERENCES), lambda m: REFERENCES[m.group(0)], text)
 
 
@@ -1317,7 +1575,7 @@ def test_a_cell_never_holds_a_raw_pipe_backtick_angle_bracket_or_newline():
 
 def test_a_literal_reference_in_agent_text_survives_one_decode():
     """The round trip includes a literal ``&lt;``, so a double decode would fail it."""
-    for raw in ("&lt;", "&amp;lt;", "&#124;", "&amp;#35;", "&#10;"):
+    for raw in ("&lt;", "&amp;lt;", "&#124;", "&amp;#35;", "&#10;", "&#126;", "&amp;#126;"):
         assert decode_references(_api("escape_cell")(raw)) == raw
         assert decode_references(_api("escape_prose")(raw)) == raw
 
@@ -1344,6 +1602,159 @@ def test_prose_cannot_forge_a_provenance_stamp_or_a_heading():
     assert _api("read_stamp")(out) is None
     assert not re.search(r"(?m)^\s*#", out)
     assert decode_references(out) == forged
+
+
+# --- P0-1: a prose line that starts with `~` would open a code fence for the next run's reader (ruled as a D3 amendment) ---
+# A narrative that holds a `~~~` line passes steps 9 to 11, because step 10 allows `\n`. The sink is where it is stopped:
+# the first `~` of a line, after any spaces or tabs, is written `&#126;`, as `#` is written `&#35;`. A `~` anywhere else
+# stays, and so does every `~` in a table cell (a cell never starts a line, and its newlines are `&#10;`). The W3 ruling
+# further down widens "spaces or tabs" to any whitespace but a newline.
+
+@pytest.mark.parametrize("raw,escaped", [
+    ("~~~", "&#126;~~"), (" ~~~", " &#126;~~"), ("\t~~~", "\t&#126;~~"), ("  \t ~~~python", "  \t &#126;~~python"),
+    ("~", "&#126;"), ("~~~~", "&#126;~~~"), ("~ one", "&#126; one"), ("~5 users", "&#126;5 users"),
+    ("first\n~~~\nthird", "first\n&#126;~~\nthird"), ("a\n\n  ~~~", "a\n\n  &#126;~~"),
+    ("~~~\n~~~\n~~~", "&#126;~~\n&#126;~~\n&#126;~~"),
+    ("~~~\n# h\n~~~", "&#126;~~\n&#35; h\n&#126;~~"), ("# a\n~ b\n| c", "&#35; a\n&#126; b\n&#124; c"),
+])
+def test_prose_never_starts_a_line_with_a_tilde(raw, escaped):
+    out = _api("escape_prose")(raw)
+    assert out == escaped
+    assert not re.search(r"(?m)^[ \t]*~", out)
+    assert decode_references(out) == raw
+
+
+@pytest.mark.parametrize("raw", [
+    "a ~ b", "x~~~", "about ~5 users", "line one ~~~\nline two", "end~\nnext", "wave ~ tilde", "",
+    "- ~~~",            # text before the tilde, a list marker included: it is not a line start, and the ruling guards only that
+])
+def test_a_tilde_that_does_not_start_a_line_is_left_as_it_is(raw):
+    assert _api("escape_prose")(raw) == raw
+
+
+def test_a_tilde_in_a_table_cell_is_left_as_it_is():
+    for raw in ("~~~", " ~~~", "~", "a ~ b", "first\n~~~\nthird"):
+        assert _api("escape_cell")(raw) == raw.replace("\n", "&#10;")
+
+
+def test_a_kept_slot_does_not_change_where_the_tilde_guard_applies():
+    escape = _api("escape_prose")
+    assert escape("~~~ {{score:cvss_base}}", keep_slots=True) == "&#126;~~ {{score:cvss_base}}"
+    assert escape("{{score:cvss_base}}\n~~~", keep_slots=True) == "{{score:cvss_base}}\n&#126;~~"
+    assert escape("{{score:cvss_base}} ~~~", keep_slots=True) == "{{score:cvss_base}} ~~~"
+
+
+@pytest.mark.parametrize("name", ["escape_cell", "escape_prose"])
+@pytest.mark.parametrize("text", [
+    "~~~", " ~~~", "\t~~~\nx", "a\n~~~\nb ~~~", "~ lone", "&#126;", "&amp;#126;", "{{{score:cvss_base}}\n~~~", "~~~\n~~~",
+])
+def test_escaping_a_tilde_decodes_and_re_renders_to_the_same_bytes_on_the_next_run(name, text):
+    once = _api(name)(text, keep_slots=True)
+    assert decode_references(once) == text
+    assert _api(name)(decode_references(once), keep_slots=True) == once
+
+
+def test_the_prose_sink_guards_a_line_that_a_resolved_value_would_turn_into_a_code_fence():
+    lookup = lookup_from({("name", "component"): "~~~ Gate"})
+    prose = _api("resolve_narrative")("{{name:component}} is exposed.\n~~~\nEnd.", SCORER_STAGE, lookup, sink="prose")
+    assert prose == "&#126;~~ Gate is exposed.\n&#126;~~\nEnd."
+    cell = _api("resolve_narrative")("{{name:component}} is exposed.\n~~~\nEnd.", SCORER_STAGE, lookup)
+    assert cell == "~~~ Gate is exposed.&#10;~~~&#10;End."
+
+
+def test_a_narrative_with_a_tilde_fence_line_is_a_valid_part_and_the_sink_writes_no_fence_line():
+    result = classify(with_text(SCORER, ("rationale", "cvss"), "Reachable.\n~~~\nMore."), ids=("S-1",))
+    assert result.state == "done", result.detail
+    text = result.part["items"][0]["rationale"]["cvss"]
+    assert text == "Reachable.\n~~~\nMore.", "step 10 allows a newline, so the part keeps the text and the sink does the guarding"
+    written = _api("escape_prose")(text, keep_slots=True)
+    assert written == "Reachable.\n&#126;~~\nMore."
+    assert not re.search(r"(?m)^[ \t]*~", written)
+
+
+# --- P0-1's residual (ruled at W3, 2026-11-23): a Unicode space before the `~` or the `#` ---
+# `_outline` and the extractors' tests strip every `str.isspace()` character, and step 10 lets the Unicode space separators
+# through (U+00A0, U+1680, U+2000 to U+200A, U+202F, U+205F and U+3000). A line led by one of them and then `~~~` or `#` was
+# a fence or a heading to tachi's reader and to nothing else. The guard now looks past any whitespace but a newline and
+# keeps that leading run byte for byte. Line boundaries stay a newline alone: the last test here says why that is safe.
+# Every non-ASCII character is built with chr(), so no separator character sits in this file's source.
+
+SPACE_LEADS = [
+    pytest.param(chr(0x00A0), id="U+00A0"), pytest.param(chr(0x1680), id="U+1680"), pytest.param(chr(0x2003), id="U+2003"),
+    pytest.param(chr(0x202F), id="U+202F"), pytest.param(chr(0x205F), id="U+205F"), pytest.param(chr(0x3000), id="U+3000"),
+    pytest.param(" " + chr(0x00A0) + "\t", id="space+U+00A0+tab"),
+]
+
+
+def structural_lines(text):
+    """The lines a stripping reader (``_outline``, the extractors) would take for a heading or a code fence."""
+    return [line for line in text.split("\n") if line.strip().startswith(("#", "~"))]
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_a_unicode_space_before_a_tilde_fence_is_guarded_and_kept(lead):
+    raw = "x\n" + lead + "~~~\ny"
+    out = _api("escape_prose")(raw)
+    assert out == "x\n" + lead + "&#126;~~\ny"
+    assert structural_lines(out) == []
+    assert decode_references(out) == raw
+    assert structural_lines(raw) == [lead + "~~~"], "the raw line is one that a stripping reader takes for a fence"
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_a_unicode_space_before_a_heading_is_guarded_and_kept(lead):
+    for raw, escaped in (("x\n" + lead + "## 6. Score Integrity", "x\n" + lead + "&#35;# 6. Score Integrity"),
+                         (lead + "# first", lead + "&#35; first")):
+        out = _api("escape_prose")(raw)
+        assert out == escaped
+        assert structural_lines(out) == [] and structural_lines(raw) != []
+        assert decode_references(out) == raw
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_a_tilde_or_a_hash_after_text_on_a_unicode_space_line_is_left_as_it_is(lead):
+    for raw in (lead + "a ~~~", "x" + lead + "~~~", lead + "see #5\n" + lead + "end~", "text" + lead + "# not a heading"):
+        assert _api("escape_prose")(raw) == raw
+        assert _api("escape_cell")(raw) == raw.replace("\n", "&#10;")
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_a_unicode_space_line_decodes_and_re_renders_to_the_same_bytes_on_the_next_run(lead):
+    for text in (lead + "~~~", "x\n" + lead + "## 6. Score Integrity", lead + "~~~\n" + lead + "# h\n" + lead + "~ x"):
+        once = _api("escape_prose")(text, keep_slots=True)
+        assert decode_references(once) == text
+        assert _api("escape_prose")(decode_references(once), keep_slots=True) == once
+
+
+def test_the_guard_looks_past_every_whitespace_character_but_a_newline():
+    """The leading class is ``str.isspace()`` less a newline, which is what ``strip()`` drops, so the writer lets no
+    line through that a stripping reader would take for a heading or a fence."""
+    leads = [chr(code) for code in range(0x110000) if chr(code).isspace() and chr(code) != "\n"]
+    assert {" ", "\t", chr(0x00A0), chr(0x1680), chr(0x2003), chr(0x202F), chr(0x205F), chr(0x3000)} <= set(leads)
+    assert len(leads) > 20
+    for lead in leads:
+        out = _api("escape_prose")(lead + "~~~\n" + lead + "## h\n" + lead + "~ x")
+        assert out == lead + "&#126;~~\n" + lead + "&#35;# h\n" + lead + "&#126; x", "U+%04X" % ord(lead)
+        assert structural_lines(out) == [], "U+%04X" % ord(lead)
+
+
+@pytest.mark.parametrize("lead", SPACE_LEADS)
+def test_the_prose_sink_guards_a_unicode_space_line_that_a_resolved_value_would_turn_into_a_code_fence(lead):
+    lookup = lookup_from({("name", "component"): "~~~ Gate"})
+    text = "Exposed.\n" + lead + "{{name:component}}\n" + lead + "~~~\nEnd."
+    prose = _api("resolve_narrative")(text, SCORER_STAGE, lookup, sink="prose")
+    assert prose == "Exposed.\n" + lead + "&#126;~~ Gate\n" + lead + "&#126;~~\nEnd."
+    assert structural_lines(prose) == []
+    cell = _api("resolve_narrative")(text, SCORER_STAGE, lookup)
+    assert cell == "Exposed.&#10;" + lead + "~~~ Gate&#10;" + lead + "~~~&#10;End."
+
+
+def test_every_line_boundary_but_a_newline_is_a_character_step_10_forbids():
+    """The guard starts a line after a newline alone (the W3 ruling). That holds only while no part can carry another
+    boundary that ``str.splitlines()`` knows, and step 10 forbids each of them."""
+    others = [char for char in map(chr, range(0x110000)) if char != "\n" and len(("a" + char + "b").splitlines()) == 2]
+    assert {"\r", chr(0x0B), chr(0x0C), chr(0x1C), chr(0x85), chr(0x2028), chr(0x2029)} <= set(others)
+    assert [char for char in others if _api("forbidden_character")(char) is None] == []
 
 
 def max_backtick_run(text):
@@ -1464,6 +1875,26 @@ def test_atomic_write_fails_when_the_directory_is_missing_and_creates_nothing(tm
     assert list(tmp_path.iterdir()) == []
 
 
+@pytest.mark.parametrize("data", [None, 5, 1.5, ["x"], {"a": 1}])
+def test_atomic_write_takes_text_or_bytes_and_creates_nothing_for_anything_else(tmp_path, data):
+    with pytest.raises(TypeError):
+        _api("atomic_write")(tmp_path / "f.md", data)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_a_failed_write_raises_its_own_error_even_when_the_temp_file_cannot_be_removed(tmp_path, monkeypatch):
+    def failing_replace(src, dst):
+        raise OSError("disk full")
+
+    def failing_unlink(path):
+        raise OSError("busy")
+
+    monkeypatch.setattr(os, "replace", failing_replace)
+    monkeypatch.setattr(os, "unlink", failing_unlink)
+    with pytest.raises(OSError, match="disk full"):
+        _api("atomic_write")(tmp_path / "f.md", "data")
+
+
 def test_atomic_write_replaces_a_symlink_at_the_destination_without_following_it(tmp_path):
     victim = tmp_path / "victim.txt"
     victim.write_text("keep", encoding="utf-8")
@@ -1475,13 +1906,215 @@ def test_atomic_write_replaces_a_symlink_at_the_destination_without_following_it
 
 
 @pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
-def test_a_written_file_gets_the_modes_an_ordinary_write_would(tmp_path):
-    previous = os.umask(0o022)
+@pytest.mark.parametrize("umask,mode", [(0o022, 0o644), (0o077, 0o600), (0o002, 0o664), (0o000, 0o666)])
+def test_a_new_file_gets_the_mode_an_ordinary_write_would_under_the_umask_the_module_was_imported_with(
+        tmp_path, umask, mode):
+    """The umask is read once, at import (S7-3), so only a process shows it: set it, import, set another, then write. The new
+    file follows the first, and the write leaves the second as it found it, where it used to set the umask to 0 and back."""
+    code = ("import os, sys\nos.umask(%d)\nsys.path.insert(0, %r)\nimport tachi_parts\nos.umask(0o027)\n"
+            "tachi_parts.atomic_write(sys.argv[1], 'x')\nprint(oct(os.umask(0o027)))\n" % (umask, str(SCRIPTS_DIR)))
+    proc = subprocess.run(
+        [sys.executable, "-I", "-X", "pycache_prefix=%s" % (tmp_path / "pyc"), "-c", code, str(tmp_path / "f.md")],
+        capture_output=True, encoding="utf-8", timeout=60)
+    assert proc.returncode == 0, proc.stderr
+    assert (tmp_path / "f.md").stat().st_mode & 0o777 == mode
+    assert proc.stdout.strip() == oct(0o027), "atomic_write left the process's umask as it was"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+@pytest.mark.parametrize("mode", [0o600, 0o640, 0o664, 0o666, 0o755, 0o400])
+def test_atomic_write_keeps_the_permission_bits_of_the_regular_file_it_replaces(tmp_path, mode):
+    """SA-4: a replace gives the file the temp file's mode, so an adopter's `chmod 600` on `risk-scores.md` was undone by the
+    next run. The file that replaces another now has the other's bits, and keeps them run after run."""
+    target = tmp_path / "risk-scores.md"
+    target.write_text("old", encoding="utf-8")
+    os.chmod(str(target), mode)
+    for run in ("first", "second"):
+        _api("atomic_write")(target, "new " + run)
+        assert target.stat().st_mode & 0o777 == mode, run
+    assert target.read_text(encoding="utf-8") == "new second"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["risk-scores.md"]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+@pytest.mark.parametrize("umask,mode", [(0o000, 0o600), (0o077, 0o644), (0o022, 0o664)])
+def test_the_mode_a_replaced_file_keeps_does_not_depend_on_the_umask(tmp_path, umask, mode):
+    """The old code gave a replacement `0666 & ~umask`, so a umask of 0 made a `0600` file world-writable and a umask of 077
+    made a `0644` file private. The replaced file's own bits decide now."""
+    target = tmp_path / "f.md"
+    target.write_text("old", encoding="utf-8")
+    os.chmod(str(target), mode)
+    previous = os.umask(umask)
     try:
-        _api("atomic_write")(tmp_path / "f.md", "x")
+        _api("atomic_write")(target, "new")
     finally:
         os.umask(previous)
-    assert (tmp_path / "f.md").stat().st_mode & 0o777 == 0o644
+    assert target.stat().st_mode & 0o777 == mode
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_atomic_write_does_not_carry_a_setuid_bit_to_the_file_that_replaces_another(tmp_path):
+    """Only the `rwx` bits for user, group and other are kept: the file that is written is data, never a program."""
+    target = tmp_path / "f.md"
+    target.write_text("old", encoding="utf-8")
+    os.chmod(str(target), 0o4755)
+    if target.stat().st_mode & 0o7777 != 0o4755:
+        pytest.skip("this file system does not keep a setuid bit")
+    _api("atomic_write")(target, "new")
+    assert target.stat().st_mode & 0o7777 == 0o755
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_a_file_that_replaces_a_symlink_gets_the_ordinary_mode_and_the_links_target_is_left_alone(tmp_path):
+    """A symlink at the destination is replaced and never followed, so neither the link's own mode nor its target's mode is
+    the new file's: it gets what an ordinary write gives, which a file written the ordinary way beside it shows."""
+    ordinary = tmp_path / "ordinary.txt"
+    ordinary.write_text("x", encoding="utf-8")
+    victim = tmp_path / "victim.txt"
+    victim.write_text("keep", encoding="utf-8")
+    os.chmod(str(victim), 0o620)  # a mode that no umask gives a new file
+    target = tmp_path / "out.md"
+    target.symlink_to(victim)
+    _api("atomic_write")(target, "new")
+    assert not target.is_symlink() and target.read_text(encoding="utf-8") == "new"
+    assert target.stat().st_mode & 0o777 == ordinary.stat().st_mode & 0o777 != 0o620
+    assert victim.stat().st_mode & 0o777 == 0o620 and victim.read_text(encoding="utf-8") == "keep"
+
+
+def test_atomic_write_has_the_additive_mode_of_keyword_last_and_defaulting_to_none():
+    """``contracts/module-signatures.md`` lists P1-2's keyword: a new parameter with a default, added after the two it had, so no caller changes."""
+    parameters = list(inspect.signature(_api("atomic_write")).parameters.values())
+    assert [parameter.name for parameter in parameters] == ["path", "data", "mode_of"]
+    assert parameters[2].default is None and all(parameter.default is parameter.empty for parameter in parameters[:2])
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+@pytest.mark.parametrize("mode", [0o600, 0o640, 0o755, 0o400])
+def test_atomic_write_takes_the_permission_bits_of_the_file_that_mode_of_names(tmp_path, mode):
+    """P1-2, the rest of SA-4: a renderer writes each output beside its canonical name, in ``staged/``, and moves it onto that name, so the
+    file it writes has to carry the canonical file's bits and not the ordinary mode of a new file. ``mode_of`` names that file, and its bits
+    come through the rule a replaced file's own bits follow, whether the target is new or holds other bits (a path or a string both name it)."""
+    canonical = tmp_path / "risk-scores.md"
+    canonical.write_text("old", encoding="utf-8")
+    os.chmod(str(canonical), mode)
+    write = _api("atomic_write")
+    fresh = tmp_path / "fresh.md"
+    write(fresh, "new", mode_of=canonical)
+    assert fresh.read_text(encoding="utf-8") == "new" and fresh.stat().st_mode & 0o777 == mode
+    held = tmp_path / "held.md"
+    held.write_text("old", encoding="utf-8")
+    os.chmod(str(held), 0o666)
+    write(held, b"newer", mode_of=str(canonical))
+    assert held.read_bytes() == b"newer" and held.stat().st_mode & 0o777 == mode, "the bits of mode_of's file, not the replaced file's own"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["fresh.md", "held.md", "risk-scores.md"]
+    assert "mode_of" in tachi_parts.__doc__ and "mode_of" in tachi_parts.atomic_write.__doc__
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_atomic_write_without_a_mode_of_keeps_its_targets_own_bits_and_one_that_is_no_regular_file_gives_the_ordinary_mode(tmp_path, monkeypatch):
+    """No ``mode_of`` and ``mode_of=None`` are one call: the replaced file's own bits, as before. A ``mode_of`` with nothing at that path, a
+    symlink (never followed) or a directory is no regular file, so the write gets what an ordinary write gives, ``0666 & ~umask``."""
+    monkeypatch.setattr(tachi_parts, "_UMASK", 0o022)
+    write = _api("atomic_write")
+    held = tmp_path / "held.md"
+    held.write_text("old", encoding="utf-8")
+    os.chmod(str(held), 0o640)
+    write(held, "a")
+    assert held.stat().st_mode & 0o777 == 0o640
+    write(held, "b", mode_of=None)
+    assert held.stat().st_mode & 0o777 == 0o640
+    private = tmp_path / "private.md"
+    private.write_text("x", encoding="utf-8")
+    os.chmod(str(private), 0o600)
+    link = tmp_path / "link.md"
+    link.symlink_to(private)
+    directory = tmp_path / "directory"
+    directory.mkdir()
+    os.chmod(str(directory), 0o700)
+    for name, named in (("absent", tmp_path / "absent.md"), ("a symlink", link), ("a directory", directory)):
+        os.chmod(str(held), 0o640)
+        write(held, "c", mode_of=named)
+        assert held.stat().st_mode & 0o777 == 0o644, name
+    assert private.read_text(encoding="utf-8") == "x" and private.stat().st_mode & 0o777 == 0o600, "the link's target is left alone"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_atomic_write_with_a_mode_of_still_sets_the_mode_on_the_descriptor_and_a_failed_write_leaves_the_old_file(tmp_path, monkeypatch):
+    """S7-3 holds for ``mode_of`` too: no chmod of a path and no read of the umask, and a write that fails leaves the old file and no temp file."""
+    canonical = tmp_path / "canonical.md"
+    canonical.write_text("old", encoding="utf-8")
+    os.chmod(str(canonical), 0o600)
+    target = tmp_path / "target.md"
+    target.write_text("keep", encoding="utf-8")
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("atomic_write used os.umask or os.chmod")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "umask", refuse)
+        patch.setattr(os, "chmod", refuse)
+        _api("atomic_write")(tmp_path / "fresh.md", "new", mode_of=canonical)
+    assert (tmp_path / "fresh.md").stat().st_mode & 0o777 == 0o600
+
+    def failing_replace(src, dst):
+        raise OSError("disk full")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "replace", failing_replace)
+        with pytest.raises(OSError):
+            _api("atomic_write")(target, "new", mode_of=canonical)
+    assert target.read_text(encoding="utf-8") == "keep"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["canonical.md", "fresh.md", "target.md"]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_atomic_write_sets_the_mode_on_the_descriptor_and_never_chmods_a_path_or_reads_the_umask(tmp_path, monkeypatch):
+    """S7-3: a chmod of the temp file's path after its descriptor closed would follow a link swapped in at that name, and a
+    umask read sets it to 0 for a moment, which a thread or a signal handler could see. Neither call may be made."""
+    kept = tmp_path / "kept.md"
+    kept.write_text("old", encoding="utf-8")
+    os.chmod(str(kept), 0o640)
+    ordinary = tmp_path / "ordinary.txt"
+    ordinary.write_text("x", encoding="utf-8")
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("atomic_write used os.umask or os.chmod")
+
+    monkeypatch.setattr(os, "umask", refuse)
+    monkeypatch.setattr(os, "chmod", refuse)
+    _api("atomic_write")(kept, "new")
+    _api("atomic_write")(tmp_path / "fresh.md", "new")
+    assert kept.stat().st_mode & 0o777 == 0o640
+    assert (tmp_path / "fresh.md").stat().st_mode & 0o777 == ordinary.stat().st_mode & 0o777
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_a_write_that_cannot_set_the_mode_fails_whole_and_leaves_the_old_file_and_no_temp_file(tmp_path, monkeypatch):
+    target = tmp_path / "f.md"
+    target.write_text("old", encoding="utf-8")
+    os.chmod(str(target), 0o600)
+
+    def refuse(descriptor, mode):
+        raise PermissionError("not permitted")
+
+    monkeypatch.setattr(os, "fchmod", refuse)
+    with pytest.raises(PermissionError):
+        _api("atomic_write")(target, "new")
+    assert target.read_text(encoding="utf-8") == "old" and target.stat().st_mode & 0o777 == 0o600
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["f.md"]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_where_there_is_no_fchmod_the_mode_is_set_by_path_as_it_was_before(tmp_path, monkeypatch):
+    """Python before 3.13 has no `os.fchmod` on Windows, where a mode is the read-only flag and a swapped link is no hazard.
+    The guard falls back to the path there, and the file still keeps the mode of the one it replaces."""
+    target = tmp_path / "f.md"
+    target.write_text("old", encoding="utf-8")
+    os.chmod(str(target), 0o640)
+    monkeypatch.delattr(os, "fchmod")
+    _api("atomic_write")(target, "new")
+    assert target.read_text(encoding="utf-8") == "new" and target.stat().st_mode & 0o777 == 0o640
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["f.md"]
 
 
 def test_digests_are_lowercase_sha256_hex(tmp_path):
@@ -1563,15 +2196,16 @@ PART_KEYS = ["schema", "plan_id", "batch_id", "stage", "agent_type", "finding_id
 OVERFLOW_KEYS = ["schema", "plan_id", "batch_id", "stage", "agent_type", "reason"]
 BATCH_INPUT_KEYS = ["schema", "plan_id", "batch_id", "stage", "agent_type", "finding_ids", "attempt", "part_path",
                     "tree_paths", "units", "refs", "params"]
-PLAN_KEYS = ["schema", "plan_id", "stage", "agent_type", "created_utc", "tachi_version", "inputs", "params", "batch_size",
-             "unit_count", "preimage", "out_snapshot", "retry_budget", "batches"]
+PLAN_KEYS = ["schema", "plan_id", "stage", "agent_type", "created_utc", "tachi_version", "inputs", "refs",
+             "architecture_warning", "params", "batch_size", "unit_count", "preimage", "out_snapshot", "retry_budget",
+             "batches"]
 POINTER_KEYS = ["schema", "plan_id"]
 STAGE_RECORD_KEYS = ["schema", "stage", "plan_id", "status", "tachi_version", "started_utc", "finished_utc", "input_digest",
                      "counts", "batches", "overflow_events", "retries", "warnings", "undeclared_paths", "outputs", "error"]
 PLAN_BATCH_KEYS = ["batch_id", "parent", "attempt", "finding_ids", "input_sha256", "state"]
 ASSESSMENT_DIMENSIONS = ["coverage", "configuration", "currency", "completeness"]
 METRICS = ["AV", "AC", "PR", "UI", "S", "C", "I", "A"]
-COUNT_KEYS = {"units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations",
+COUNT_KEYS = {"units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations", "cell_overwrites",
               "corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input"}
 EXPECTED_KEY_SETS = {
     "part": (PART_KEYS, []), "overflow": (OVERFLOW_KEYS, []), "batch-input": (BATCH_INPUT_KEYS, []),
@@ -1664,6 +2298,8 @@ def valid_plan():
     return {"schema": "tachi.plan/1", "plan_id": PLAN, "stage": "risk-score", "agent_type": "tachi-risk-scorer",
             "created_utc": "2026-11-22T10:15:00Z", "tachi_version": "4.48.4",
             "inputs": {"threats": {"path": "/work/run/threats.md", "sha256": HEX, "bytes": 1234}},
+            "refs": {"threats": "/work/run/threats.md", "architecture": "/work/docs/architecture.md"},
+            "architecture_warning": None,
             "params": {"scoring_date": "2026-11-22"}, "batch_size": 40, "unit_count": 3,
             "preimage": {"risk-scores.md": None, "risk-scores.sarif": HEX},
             "out_snapshot": {"threats.md": [1234, 1700000000000000000]}, "retry_budget": {"limit": 2, "used": 0},
@@ -1696,6 +2332,33 @@ PLAN_VIOLATIONS = {
     "input path with a dot-dot": setter(("inputs", "threats", "path"), "/work/../x"),
     "input path with a newline": setter(("inputs", "threats", "path"), "/work/a\nb"),
     "input name with a space": setter(("inputs",), {"a b": {"path": "/x", "sha256": HEX, "bytes": 1}}),
+    # `refs` is the plan's own copy of the stage's pointers (ruled at W2): the batch input's rule, once more.
+    "refs not an object": setter(("refs",), []), "refs null": setter(("refs",), None),
+    "refs over 20 names": setter(("refs",), {"r%d" % n: "/work/x%d.md" % n for n in range(21)}),
+    "refs name with a capital": setter(("refs",), {"Threats": "/work/run/threats.md"}),
+    "refs name with a space": setter(("refs",), {"a b": "/work/run/threats.md"}),
+    "ref relative": setter(("refs", "threats"), "run/threats.md"),
+    "ref with a dot-dot": setter(("refs", "threats"), "/work/../x"),
+    "ref with a backslash": setter(("refs", "threats"), "/work/a\\b"),
+    "ref with a backtick": setter(("refs", "threats"), "/work/`x`"),
+    "ref with a newline": setter(("refs", "threats"), "/work/a\nb"),
+    "ref empty": setter(("refs", "threats"), ""), "ref not text": setter(("refs", "threats"), 7),
+    # `architecture_warning` is null, or one warning under a stage record's entry rules.
+    "warning a string": setter(("architecture_warning",), "architecture-path:explicit:missing"),
+    "warning a list": setter(("architecture_warning",), []),
+    "warning unknown key": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing", "detail": "d", "level": 1}),
+    "warning missing detail": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing"}),
+    "warning missing code": setter(("architecture_warning",), {"detail": "d"}),
+    "warning code empty": setter(("architecture_warning",), {"code": "", "detail": "d"}),
+    "warning code with a capital": setter(("architecture_warning",), {"code": "Architecture-path", "detail": "d"}),
+    "warning code with a space": setter(("architecture_warning",), {"code": "architecture path", "detail": "d"}),
+    "warning code over 64": setter(("architecture_warning",), {"code": "a" * 65, "detail": "d"}),
+    "warning code with a trailing newline": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing\n", "detail": "d"}),
+    "warning code not text": setter(("architecture_warning",), {"code": 7, "detail": "d"}),
+    "warning detail not text": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing", "detail": None}),
+    "warning detail over 500": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing", "detail": "d" * 501}),
+    "warning detail with a control character": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing", "detail": "a\x00b"}),
+    "warning detail with a bidi control": setter(("architecture_warning",), {"code": "architecture-path:explicit:missing", "detail": "a\u202eb"}),
     "params nested object": setter(("params", "scoring_date"), {"a": 1}),
     "params list": setter(("params", "extra"), [1]),
     "params key with a capital": setter(("params", "Bad"), 1),
@@ -1745,6 +2408,40 @@ def test_a_plan_that_follows_the_contract_validates_and_comes_back_as_it_was():
     assert _api("validate_plan")(plan) is plan
     plan.update(out_snapshot=None, batch_size=None, unit_count=0, batches=[])   # a plan with no units
     assert _api("validate_plan")(plan) is plan
+
+
+def test_a_plan_with_no_units_keeps_its_pointers_and_may_carry_the_architecture_warning():
+    """Ruled at W2: ``refs`` and ``architecture_warning`` are plan-level, so an all-carried run (no batch input) still has them."""
+    plan = valid_plan()
+    plan.update(out_snapshot=None, batch_size=None, unit_count=0, batches=[],
+                refs={name: "/work/%s" % name for name in ("threats", "risk_scores", "baseline_dir", "architecture", "target")},
+                architecture_warning={"code": "architecture-path:explicit:outside-root", "detail": "d" * 500})
+    assert _api("validate_plan")(plan) is plan
+
+
+def test_the_pointers_and_the_warning_of_a_plan_have_the_limits_of_a_batch_input_and_a_stage_record():
+    plan = valid_plan()
+    plan["refs"] = {"r%d" % n: "/work/x%d.md" % n for n in range(20)}
+    assert _api("validate_plan")(plan) is plan, "twenty pointer names is the limit"
+    plan["refs"] = {}
+    assert _api("validate_plan")(plan) is plan, "which names the planner writes is the planner's rule, not the schema's"
+    plan["architecture_warning"] = {"code": "a" * 64, "detail": ""}
+    assert _api("validate_plan")(plan) is plan, "a code of 1 to 64 characters, and a detail of 0 to 500"
+
+
+@pytest.mark.parametrize("refs,valid", [
+    ({"threats": "/work/run/threats.md", "architecture": "/work/docs/a.md"}, True), ({}, True),
+    ({"threats": "run/threats.md"}, False), ({"threats": "/work/../x"}, False), ({"Threats": "/work/x"}, False),
+    ({"threats": "/work/a\\b"}, False), ({"threats": 7}, False), (["/work/x"], False),
+], ids=["good", "empty", "relative", "dot-dot", "capital", "backslash", "not-text", "not-an-object"])
+def test_a_plan_and_its_batch_inputs_apply_one_rule_to_refs(refs, valid):
+    plan, batch_input = valid_plan(), valid_batch_input()
+    plan["refs"] = batch_input["refs"] = refs
+    for validator, document in ((_api("validate_plan"), plan), (_api("validate_batch_input"), batch_input)):
+        if valid:
+            assert validator(document) is document
+        else:
+            raises_invalid(validator, document)
 
 
 @pytest.mark.parametrize("label", sorted(PLAN_VIOLATIONS))
@@ -1874,6 +2571,8 @@ STAGE_RECORD_VIOLATIONS = {
     "warning detail over 500": setter(("warnings", 0, "detail"), "d" * 501),
     "warning detail with a control character": setter(("warnings", 0, "detail"), "a\x00b"),
     "warning unknown key": setter(("warnings", 0, "level"), "high"),
+    "warning code with a capital": setter(("warnings", 0, "code"), "Undeclared-paths"),
+    "warning code empty": setter(("warnings", 0, "code"), ""), "warning code over 64": setter(("warnings", 0, "code"), "a" * 65),
     "undeclared path with a dot-dot": setter(("undeclared_paths",), ["../x"]),
     "undeclared paths over 1000": setter(("undeclared_paths",), ["f%d.py" % n for n in range(1001)]),
     "undeclared path absolute": setter(("undeclared_paths",), ["/etc/x"]),
@@ -1884,7 +2583,7 @@ STAGE_RECORD_VIOLATIONS = {
     "error missing key": setter(("error",), {"code": "x", "message": "m", "batch_id": None, "finding_ids": []}),
     "error batch id bad": setter(("error",), {"code": "x", "message": "m", "batch_id": "B1", "finding_ids": [], "remedy": "r"}),
     "error id hostile": setter(("error",), {"code": "x", "message": "m", "batch_id": None, "finding_ids": ["S-١"], "remedy": "r"}),
-    "error message with a bidi control": setter(("error",), {"code": "x", "message": "a‮b", "batch_id": None, "finding_ids": [], "remedy": "r"}),
+    "error message with a bidi control": setter(("error",), {"code": "x", "message": "a" + RIGHT_TO_LEFT_OVERRIDE + "b", "batch_id": None, "finding_ids": [], "remedy": "r"}),
 }
 
 
@@ -2004,11 +2703,11 @@ def test_step_10_judges_the_text_that_is_left_after_step_9s_cut():
     the kept text rejects the part. Run in the other order, the first would reject a part that RR2 says
     to cut.
     """
-    beyond = "a" * 400 + "‮" + "b" * 50
+    beyond = "a" * 400 + RIGHT_TO_LEFT_OVERRIDE + "b" * 50
     result = classify(with_text(SCORER, ("rationale", "cvss"), beyond), ids=("S-1",))
     assert result.state == "done"
     assert result.part["items"][0]["rationale"]["cvss"] == "a" * 400
-    inside = "a" * 399 + "‮" + "b" * 50
+    inside = "a" * 399 + RIGHT_TO_LEFT_OVERRIDE + "b" * 50
     assert classify(with_text(SCORER, ("rationale", "cvss"), inside), ids=("S-1",)).state == "invalid"
 
 
@@ -2440,15 +3139,16 @@ def test_closed_string_is_the_published_name_and_the_old_private_name_still_work
 @pytest.mark.parametrize("value,low,high", [
     (None, 0, 500), (7, 0, 500), (b"x", 0, 500), (["x"], 0, 500), ("x" * 501, 0, 500), ("", 1, 500), ("a", 2, 500),
     ("x" * 16385, 0, None), ("a\x00b", 0, 500), ("a\x1fb", 0, 500), ("a\rb", 0, 500), ("a\x7fb", 0, 500), ("a\x85b", 0, 500),
-    ("a b", 0, 500), ("a b", 0, 500), ("a‎b", 0, 500), ("a‏b", 0, 500), ("a؜b", 0, 500),
-    ("a‮b", 0, 500), ("a⁦b", 0, 500), ("a⁩b", 0, 500),
-])
+] + [("a" + chr(code) + "b", 0, 500) for code in (
+    0x2028, 0x2029, 0x200E, 0x200F, 0x061C, 0x202E, 0x2066, 0x2069,  # a separator or a bidi control
+    0xE0001, 0xE0041, 0xE007F,  # a tag character (SA-7): the language tag, a tag letter and the cancel tag
+)])
 def test_closed_string_rejects_what_the_contract_forbids_and_never_echoes_the_value(value, low, high):
     with pytest.raises(_api("PartError")) as excinfo:
         _api("closed_string")(value, "--detail", low, high)
     assert excinfo.value.kind == "invalid"
     assert "--detail" in excinfo.value.detail
-    assert "‮" not in excinfo.value.detail and "x" * 20 not in excinfo.value.detail
+    assert RIGHT_TO_LEFT_OVERRIDE not in excinfo.value.detail and "x" * 20 not in excinfo.value.detail
 
 
 DECLARED_PATHS = [
@@ -2513,6 +3213,22 @@ def test_every_path_the_layout_builders_make_is_declared_by_the_grammar(tmp_path
         built += [_api(builder)(out, "risk-score", PLAN, name) for builder in ("preimage_path", "staged_path", "failed_path")]
     for path in built:
         assert _api("is_declared_path")(os.path.relpath(path, out).replace(os.sep, "/"), "risk-score", PLAN) is True, path
+
+
+def test_snapshot_key_is_a_files_path_and_for_a_name_no_record_can_hold_a_stand_in_that_the_planner_and_both_renderers_look_up():
+    """EC-2: the planner keys ``out_snapshot`` through this function (SA-5), and each renderer's declared-paths check has to look a file up through the
+    same one. A name that ``path_problem`` refuses and so no plan could hold takes ``./unrecordable:`` and the SHA-256 of its bytes: stable, unique,
+    valid in a plan (the ``./`` keeps a colon out of the first component) and never equal to a path that a walk of ``--out`` yields."""
+    key = _api("snapshot_key")
+    ordinary = ["threats.md", "a/b.txt", ".tachi-build/risk-score/current.json", "a b/c d.txt"]
+    assert [key(name) for name in ordinary] == ordinary
+    odd = ["Icon\r", "note:final.txt", "back\\slash.txt", "tick`name.txt", "tab\tname", "bad" + chr(0xDCFF) + ".txt", "bidi" + chr(0x202E) + "name.txt"]
+    keys = [key(name) for name in odd]
+    assert keys == [key(name) for name in odd] and len(set(keys)) == len(odd)
+    for name, each in zip(odd, keys):
+        assert re.fullmatch(r"\./unrecordable:[0-9a-f]{64}", each) and _api("path_problem")(name) is not None
+        assert _api("path_problem")(each) is None and each == "./unrecordable:" + _api("sha256_hex")(os.fsencode(name))
+    assert "snapshot_key" in tachi_parts.__doc__, "the module docstring lists it"
 
 
 def history_entry(batch_id, attempt, state, parent=None, ids=("S-1", "T-2")):
@@ -2599,3 +3315,720 @@ def test_the_derived_history_is_a_valid_stage_record_body(tmp_path):
     events, retries = history_of(tmp_path, batches, parts)
     record = dict(valid_stage_record(), overflow_events=events, retries=retries)
     assert _api("validate_stage_record")(record) is record
+
+
+# =============================================================================
+# 21. Edge whitespace is removed at intake (ruled at W1, from T033; contracts/part-files.md, "Validation order")
+#
+# Lane P's decoder reads a table cell with its edges stripped, so a carried value that kept edge whitespace would
+# come back different on its second run, and T056 needs carried values byte-identical. In step 9, after any cut,
+# every narrative and evidence-class string is `strip()`ped, a snippet is `textwrap.dedent`ed first, no flag is
+# raised, and a required field that is empty afterwards still rejects the part. Closed values are left as written.
+# =============================================================================
+
+def stored_at(result, *path):
+    value = result.part["items"][0]
+    for key in path:
+        value = value[key]
+    return value
+
+
+PROSE_FIELDS = [
+    ("rationale.cvss", SCORER, ("rationale", "cvss")),
+    ("rationale.reachability", SCORER, ("rationale", "reachability")),
+    ("metric_rationale.AV", SCORER, ("metric_rationale", "AV")),
+    ("subscore_rationale.known_techniques", SCORER, ("subscore_rationale", "known_techniques")),
+    ("evidence.summary", CONTROLS, ("evidence", 0, "summary")),
+]  # `matrix_row` and `recommendation_body` follow the same rules with a row and a body for a value: section 22 repeats these cases
+
+
+def assessment_part(text):
+    part = make_part(kind=CONTROLS, ids=("S-1",), items=[controls_item("S-1", "partial")])
+    part["items"][0]["evidence"][0]["assessment"] = {
+        d: {"rating": "High", "rationale": text} for d in ("coverage", "configuration", "currency", "completeness")}
+    return part
+
+
+@pytest.mark.parametrize("raw", [" \t x \n ", "\n\n  x", "x\t\t", " x ", "　x　", "   x", "x   ", "\tx\n", "x\n\n\n"])
+@pytest.mark.parametrize("field,kind,path", PROSE_FIELDS, ids=[f[0] for f in PROSE_FIELDS])
+def test_a_prose_string_loses_its_edge_whitespace_and_raises_no_flag(field, kind, path, raw):
+    result = classify(with_text(kind, path, raw), ids=("S-1",), kind=kind)
+    assert result.state == "done", result.detail
+    assert stored_at(result, *path) == "x"
+    assert result.flags.get("S-1", []) == []
+    assert result.counts == {"narrative_fallbacks": 0, "truncations": 0}
+
+
+def test_an_assessment_rationale_loses_its_edge_whitespace_too():
+    result = classify(assessment_part("  \t Covers the main path.\n "), ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done", result.detail
+    assessment = stored_at(result, "evidence", 0, "assessment")
+    assert {cell["rationale"] for cell in assessment.values()} == {"Covers the main path."}
+    assert result.flags.get("S-1", []) == []
+
+
+def test_slots_at_the_edges_survive_the_strip_and_the_field_is_still_checked_as_narrative():
+    result = classify(with_text(SCORER, ("rationale", "cvss"), "  {{score:cvss_base}} is {{band:severity}}.  "), ids=("S-1",))
+    assert stored_at(result, "rationale", "cvss") == "{{score:cvss_base}} is {{band:severity}}."
+    broken = classify(with_text(SCORER, ("rationale", "cvss"), "  Score 9.8 is high.  "), ids=("S-1",))
+    assert stored_at(broken, "rationale", "cvss") == _api("narrative_fallback")("rationale.cvss")
+
+
+def test_whitespace_inside_the_text_is_left_alone():
+    for text in ("a  b\t c", "line one\n  line two\n\nline four", "x   y"):
+        result = classify(with_text(SCORER, ("rationale", "exploitability"), text), ids=("S-1",))
+        assert stored_at(result, "rationale", "exploitability") == text
+
+
+def test_the_strip_follows_the_cut_and_the_cut_is_still_flagged():
+    text = "a" * 399 + " " + "b" * 50          # the cut at 400 ends on the space
+    result = classify(with_text(SCORER, ("rationale", "cvss"), text), ids=("S-1",))
+    assert stored_at(result, "rationale", "cvss") == "a" * 399
+    assert result.flags["S-1"] == ["input:rationale.cvss:truncated"]
+    assert result.counts["truncations"] == 1
+
+
+def test_a_required_field_that_is_empty_after_the_strip_rejects_the_part_and_an_optional_one_may_be_empty():
+    for blank in ("   ", "\t\n ", " 　"):
+        assert classify(with_text(SCORER, ("rationale", "cvss"), blank), ids=("S-1",)).state == "invalid", repr(blank)
+        for kind, path in ((CONTROLS, ("evidence", 0, "summary")), (SCORER, ("metric_rationale", "AV"))):
+            result = classify(with_text(kind, path, blank), ids=("S-1",), kind=kind)
+            assert result.state == "done", (path, result.detail)
+            assert stored_at(result, *path) == ""
+
+
+def test_closed_values_are_checked_and_never_stripped():
+    part = with_text(SCORER, ("reachability", "zone"), " Public Zone ")
+    assert stored_at(classify(part, ids=("S-1",)), "reachability", "zone") == " Public Zone "
+    part = put(make_part(kind=CONTROLS, ids=("S-1",)), ("items", 0, "evidence", 0, "file"), " src/a.py ")
+    result = classify(part, ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done" and stored_at(result, "evidence", 0, "file") == " src/a.py "
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("    def f():\n        return 1\n", "def f():\n    return 1"),
+    ("\tfoo\n\t\tbar", "foo\n\tbar"),
+    ("\n    x\n      y\n", "x\n  y"),
+    ("  a\n\tb", "a\n\tb"),                                       # no common margin: only the edges go
+    ("    a\n        \n    b", "a\n\nb"),                           # textwrap.dedent empties a whitespace-only line
+    ("  one\n  two  \n  three", "one\ntwo  \nthree"),               # trailing spaces inside the text stay
+    ("x = 1", "x = 1"),
+])
+def test_a_snippet_is_dedented_so_its_lines_keep_their_relative_indentation_and_then_stripped(raw, expected):
+    result = classify(with_text(CONTROLS, ("evidence", 0, "snippet"), raw), ids=("S-1",), kind=CONTROLS)
+    assert result.state == "done", result.detail
+    assert stored_at(result, "evidence", 0, "snippet") == expected
+    assert result.flags.get("S-1", []) == []
+
+
+def test_a_snippet_is_cut_first_and_the_lines_that_are_kept_are_the_ones_dedented():
+    lines = ["        kept %s" % name for name in "abcde"] + ["    cut %s" % name for name in "fgh"]
+    result = classify(with_text(CONTROLS, ("evidence", 0, "snippet"), "\n".join(lines)), ids=("S-1",), kind=CONTROLS)
+    assert stored_at(result, "evidence", 0, "snippet") == "\n".join("kept %s" % name for name in "abcde")
+    assert result.flags["S-1"] == ["input:evidence.snippet:truncated"]
+
+
+@pytest.mark.parametrize("char", [chr(code) for code in range(0x110000) if chr(code).isspace()])
+def test_every_character_that_str_strip_removes_is_removed_from_the_edges(char):
+    """The predicate is the table readers' own, so no stored value can lose an edge on the next read.
+
+    A separator or control that D3 forbids is stripped at the edge, before step 10 looks, and one inside still rejects.
+    """
+    result = classify(with_text(SCORER, ("rationale", "cvss"), char + "x" + char), ids=("S-1",))
+    assert result.state == "done", (hex(ord(char)), result.detail)
+    assert stored_at(result, "rationale", "cvss") == "x"
+
+
+@pytest.mark.parametrize("raw", [" \t x \n ", "\n\n  Network reachable, so {{score:cvss_base}}.  \t", "a  b \n c"])
+@pytest.mark.parametrize("field,kind,path", PROSE_FIELDS, ids=[f[0] for f in PROSE_FIELDS])
+def test_normalizing_a_normalized_value_changes_nothing(field, kind, path, raw):
+    first = classify(with_text(kind, path, raw), ids=("S-1",), kind=kind)
+    if first.state != "done":
+        pytest.skip("not a valid value for this field")
+    again = classify(with_text(kind, path, stored_at(first, *path)), ids=("S-1",), kind=kind)
+    assert stored_at(again, *path) == stored_at(first, *path)
+
+
+def read_back(cell_text):
+    """What lane P's reader does with a persisted row: split on raw `|`, strip the cell's edges, decode the references."""
+    row = "| %s |" % cell_text
+    return decode_references(row.split("|")[1].strip())
+
+
+MESSY_PROSE = [" \t Network reachable with no privileges.\n ", "\n\n  A | pipe, a `tick`, <b>, & {{braces}}  \t", "x "]
+MESSY_SNIPPETS = ["    def login(user):\n        check(user)\n\n    return 1\n", "\n\n\tfoo()\n\t\tbar()\t\n", "  a | b `c` <d> & {{e}}  "]
+
+
+@pytest.mark.parametrize("raw", MESSY_PROSE)
+@pytest.mark.parametrize("field,kind,path", PROSE_FIELDS, ids=[f[0] for f in PROSE_FIELDS])
+def test_a_carried_value_is_byte_identical_across_two_write_and_read_round_trips(field, kind, path, raw):
+    """T056: write a value as the renderer does, read it back as the next run does, and validate it again, twice over."""
+    first = classify(with_text(kind, path, raw), ids=("S-1",), kind=kind)
+    assert first.state == "done", first.detail
+    first_value = stored_at(first, *path)
+    first_cell = _api("escape_cell")(first_value, keep_slots=True)
+    value = first_value
+    for _ in range(2):
+        value = read_back(_api("escape_cell")(value, keep_slots=True))
+        assert value == first_value
+        again = classify(with_text(kind, path, value), ids=("S-1",), kind=kind)
+        assert stored_at(again, *path) == first_value
+        assert _api("escape_cell")(stored_at(again, *path), keep_slots=True) == first_cell
+
+
+def test_without_the_strip_an_edge_would_not_survive_the_read():
+    """The failure this rule prevents: a value written with edge spaces comes back without them."""
+    assert read_back(_api("escape_cell")(" x ")) == "x"
+
+
+@pytest.mark.parametrize("raw", MESSY_SNIPPETS)
+def test_an_indented_snippet_is_byte_identical_across_two_write_and_read_round_trips(raw):
+    path = ("evidence", 0, "snippet")
+    first_value = stored_at(classify(with_text(CONTROLS, path, raw), ids=("S-1",), kind=CONTROLS), *path)
+    assert first_value == first_value.strip()
+    value = first_value
+    for _ in range(2):
+        value = read_back(_api("escape_cell")(value))
+        assert value == first_value
+        assert stored_at(classify(with_text(CONTROLS, path, value), ids=("S-1",), kind=CONTROLS), *path) == first_value
+
+
+def test_a_narrative_with_edge_whitespace_and_slots_round_trips_byte_for_byte():
+    raw = "\t\n  {{name:component}} sits in {{name:zone}}, behind {{count:auth_barriers}} barriers.  \n "
+    first_value = stored_at(classify(with_text(SCORER, ("rationale", "reachability"), raw), ids=("S-1",)), "rationale", "reachability")
+    assert first_value == "{{name:component}} sits in {{name:zone}}, behind {{count:auth_barriers}} barriers."
+    value = first_value
+    for _ in range(2):
+        cell = _api("escape_cell")(value, keep_slots=True)
+        assert cell == first_value                              # nothing to escape, and the slots are kept
+        value = read_back(cell)
+        assert value == first_value
+        again = classify(with_text(SCORER, ("rationale", "reachability"), value), ids=("S-1",))
+        assert stored_at(again, "rationale", "reachability") == first_value
+
+
+# =============================================================================
+# 22. The controls matrix_row: 11 cells, and the item's own ID first (W3; ADR-050 D2 and D3 step 9)
+#
+# ``contracts/module-signatures.md`` pins the form: K8's section 2 header, in order, written as a GFM table line that a reader
+# takes with or without its outer pipes. A row that doesn't split into 11 cells on raw ``|``, or whose first cell isn't the
+# item's own finding ID, rejects the item (D2), so ``reconcile`` re-dispatches its batch and the renderer never meets it.
+# Every other cell is the renderer's to check or to overwrite (D2): a mismatch there never rejects an item here.
+# =============================================================================
+
+def classify_row(row, fid="S-1", status="found"):
+    """The result of a one-item controls part whose ``matrix_row`` is ``row``."""
+    item = controls_item(fid, status)
+    item["matrix_row"] = row
+    return classify(make_part(kind=CONTROLS, ids=(fid,), items=[item]), ids=(fid,), kind=CONTROLS)
+
+
+def stored_row(result):
+    return result.part["items"][0]["matrix_row"]
+
+
+OUTER_PIPES = [(True, True), (True, False), (False, True), (False, False)]
+
+
+def with_outer(cells, outer):
+    return ("| " if outer[0] else "") + " | ".join(cells) + (" |" if outer[1] else "")
+
+
+def test_the_row_is_the_11_cells_of_k8s_section_2_header():
+    assert _api("MATRIX_ROW_CELLS") == 11 == len(MATRIX_COLUMNS) == len(matrix_cells())
+
+
+@pytest.mark.parametrize("outer", OUTER_PIPES)
+def test_matrix_row_cells_reads_a_row_with_or_without_its_outer_pipes(outer):
+    cells = matrix_cells("S-1")
+    row = with_outer(cells, outer)
+    assert _api("matrix_row_cells")(row) == cells
+    assert _api("matrix_row_cells")("  \t" + row + " \n") == cells, "the line's edge whitespace goes first"
+    assert _api("matrix_row_cells")(row.replace(" | ", "|")) == cells, "the spaces round a pipe are the cells' edges"
+
+
+def test_matrix_row_cells_splits_on_raw_pipes_only_and_decodes_nothing():
+    cells_of = _api("matrix_row_cells")
+    assert cells_of("| a &#124; b | c |") == ["a &#124; b", "c"], "a reference holds no pipe: one cell, still encoded"
+    assert cells_of("| a \\| b | c |") == ["a \\", "b", "c"], "GFM's backslash pipe is not decoded, so it splits (NFR-1)"
+    assert cells_of("| a |  | c |") == ["a", "", "c"], "an empty cell is a cell"
+    assert cells_of("|| a | b ||") == ["", "a", "b", ""], "one outer pipe at each end goes, and no more"
+    assert cells_of("") == cells_of("   ") == cells_of("|") == cells_of("||") == [""]
+
+
+@pytest.mark.parametrize("cells", [
+    matrix_cells("S-1"),
+    ["T-2", "CF", "Gate &#124; way", "L3 \u2014 Agent Frameworks", "A &lt;threat&gt; &amp; `tick`", "{{score:inherent}}",
+     "{{band:inherent}}", "Partial Control", "Input Validation", "{{score:residual}}", "{{band:residual}}"],
+    ["E-3", "", "", "", "", "9.8", "", "", "", "", "High"],
+], ids=["plain", "references", "empty cells"])
+def test_matrix_row_cells_agree_with_the_table_reader(cells):
+    """The persisted-inputs reader and the renderers split a table line on raw ``|`` and decode after the split, so the
+    part check counts the cells that they read."""
+    import tachi_parsers
+    separator = row_of(["---"] * len(MATRIX_COLUMNS))
+    document = "\n".join(["## 2. Coverage Matrix", "", row_of(MATRIX_COLUMNS), separator, row_of(cells), ""])
+    read = tachi_parsers.parse_markdown_table(document, "## 2. Coverage Matrix", keep_bold=True)
+    assert len(read) == 1
+    ours = [decode_references(cell) for cell in _api("matrix_row_cells")(row_of(cells))]
+    assert [read[0][name] for name in MATRIX_COLUMNS] == ours
+
+
+@pytest.mark.parametrize("outer", OUTER_PIPES)
+def test_a_row_of_11_cells_for_the_items_own_id_is_accepted_with_or_without_its_outer_pipes(outer):
+    row = with_outer(matrix_cells("S-1"), outer)
+    result = classify_row(row)
+    assert result.state == "done", result.detail
+    assert stored_row(result) == row, "kept as the agent wrote it: the renderer rebuilds the canonical row"
+    assert "{{score:inherent}}" in stored_row(result), "a slot token in evidence text is never resolved"
+    assert result.flags.get("S-1", []) == [] and result.counts == {"narrative_fallbacks": 0, "truncations": 0}
+
+
+@pytest.mark.parametrize("count", [1, 2, 5, 10, 12, 13, 22])
+def test_a_row_without_11_cells_rejects_the_part_and_the_detail_names_the_item_the_field_and_the_cause(count):
+    cells = (matrix_cells("S-1") * 2)[:count]
+    cells[0] = "S-1"
+    if count > 4:
+        cells[4] = "text-the-detail-must-not-echo"
+    result = classify_row(row_of(cells))
+    assert result.state == "invalid" and result.part is None
+    assert "matrix_row" in result.detail and "S-1" in result.detail and "cell count of %d, not 11" % count in result.detail
+    assert "text-the-detail-must-not-echo" not in result.detail
+
+
+@pytest.mark.parametrize("row", ["", "   ", "\n\t", "A plain sentence.", "S-1", "|", "||", "| |", "|||"])
+def test_a_matrix_row_that_is_blank_or_prose_rejects_the_part(row):
+    result = classify_row(row)
+    assert result.state == "invalid", repr(row)
+    assert "cell count of" in result.detail and ", not 11" in result.detail
+
+
+def test_a_raw_pipe_inside_a_cell_makes_a_twelfth_cell_and_rejects_the_row():
+    cells = matrix_cells("S-1")
+    cells[4] = "Reads A | B"
+    result = classify_row(row_of(cells))
+    assert result.state == "invalid" and "cell count of 12, not 11" in result.detail
+
+
+def test_a_gfm_backslash_pipe_still_splits_the_row_as_it_does_for_every_reader():
+    cells = matrix_cells("S-1")
+    cells[4] = "Reads A \\| B"
+    result = classify_row(row_of(cells))
+    assert result.state == "invalid" and "cell count of 12, not 11" in result.detail
+
+
+def test_a_pipe_written_as_its_reference_stays_inside_its_cell_and_is_kept_undecoded():
+    cells = matrix_cells("S-1")
+    cells[4] = "Reads A &#124; B"
+    result = classify_row(row_of(cells))
+    assert result.state == "done", result.detail
+    assert stored_row(result) == row_of(cells)
+
+
+@pytest.mark.parametrize("cell", [
+    "T-2", "S-2", "S-11", "S-10", "AG-1", "T-1", "s-1", "S-", "S-1234567", "S1", "S 1", "", "S-1 (spoofing)", "**S-1**", "`S-1`",
+    "S-\u0661", "S-\uff11", "S-1\u200b", "cell 1", "{{finding:S-1}}",
+])
+def test_a_threat_id_cell_that_is_not_the_items_own_id_rejects_the_part(cell):
+    cells = matrix_cells("S-1")
+    cells[0] = cell
+    result = classify_row(row_of(cells))
+    assert result.state == "invalid", repr(cell)
+    assert "matrix_row of S-1 has a Threat ID cell" in result.detail
+
+
+def test_the_detail_tells_another_findings_id_from_a_cell_that_is_no_id_at_all_and_never_echoes_the_cell():
+    other = matrix_cells("S-1")
+    other[0] = "T-2"
+    assert "for another finding" in classify_row(row_of(other)).detail
+    junk = matrix_cells("S-1")
+    junk[0] = "cell-text-the-detail-must-not-echo"
+    result = classify_row(row_of(junk))
+    assert "not an allow-listed finding ID" in result.detail
+    assert "cell-text-the-detail-must-not-echo" not in result.detail
+
+
+@pytest.mark.parametrize("fid,cell", [
+    ("S-1", "S-1"), ("S-1", "S-01"), ("S-1", "S-000001"), ("AGP-1", "AGP-01"), ("AGP-12", "AGP-012"), ("LLM-3", "LLM-3"),
+])
+def test_a_threat_id_cell_may_spell_the_items_id_in_any_allow_listed_form(fid, cell):
+    cells = matrix_cells(fid)
+    cells[0] = cell
+    result = classify_row(row_of(cells), fid=fid)
+    assert result.state == "done", result.detail
+    assert stored_row(result) == row_of(cells), "not rewritten here: the renderer rebuilds the canonical row"
+
+
+def test_the_item_and_its_row_may_each_use_a_different_spelling_of_one_canonical_id():
+    item = controls_item("AGP-01")
+    item["matrix_row"] = row_of(matrix_cells("AGP-0001"))
+    result = classify(make_part(kind=CONTROLS, ids=("AGP-01",), items=[item]), ids=("AGP-1",), kind=CONTROLS)
+    assert result.state == "done", result.detail
+
+
+@pytest.mark.parametrize("index,value", [
+    (1, "CF"), (1, "\u2014"), (1, "yes"), (1, ""),
+    (2, "A component that is not in the input"), (2, ""),
+    (3, "L7"), (3, "Unclassified"), (3, "L3 \u2014 Agent Frameworks"), (3, "no layer"), (3, ""),
+    (4, ""), (4, "x" * 80),
+    (7, "Partial Control"), (7, "No Control Found"), (7, "Missing"), (7, ""),
+    (8, "input-validation"), (8, "Input Validation"), (8, "Not A Category"), (8, ""),
+], ids=lambda value: repr(value)[:24])
+def test_a_mismatch_in_a_cell_the_renderer_checks_never_rejects_the_item(index, value):
+    """Component, MAESTRO Layer, Status and Category are flagged by the renderer against the input and the structured
+    judgment, CF is the renderer's own cell, and Threat is model text (D2): none of them can reject an item here."""
+    cells = matrix_cells("S-1")
+    cells[index] = value
+    result = classify_row(row_of(cells))
+    assert result.state == "done", result.detail
+    assert stored_row(result) == row_of(cells)
+
+
+@pytest.mark.parametrize("computed", [
+    ["9.8", "Critical", "3.2", "High"], ["", "", "", ""], ["n/a", "unknown", "n/a", "unknown"],
+    ["{{score:residual}}", "{{band:residual}}", "{{score:inherent}}", "{{band:inherent}}"],
+], ids=["numbers", "empty", "text", "swapped tokens"])
+def test_numbers_and_text_in_the_four_computed_cells_never_reject_the_item(computed):
+    """The renderer overwrites those cells by column position and counts each overwrite (D2)."""
+    cells = matrix_cells("S-1")
+    cells[5:7], cells[9:11] = computed[:2], computed[2:]
+    result = classify_row(row_of(cells))
+    assert result.state == "done", result.detail
+    assert stored_row(result) == row_of(cells)
+    assert result.flags.get("S-1", []) == []
+
+
+def test_one_bad_row_rejects_the_whole_part_and_the_detail_names_its_item():
+    part = make_part(kind=CONTROLS)
+    part["items"][1]["matrix_row"] = row_of(matrix_cells("T-2")[:10])
+    result = classify(part, kind=CONTROLS)
+    assert result.state == "invalid" and result.part is None
+    assert result.detail == "matrix_row of T-2 has a cell count of 10, not 11"
+
+
+def test_a_part_file_whose_row_has_10_cells_reads_as_invalid(tmp_path):
+    """The path ``reconcile`` takes: ``read_part`` on the file, then the batch is retried as it was."""
+    item = controls_item("S-1")
+    item["matrix_row"] = row_of(matrix_cells("S-1")[:10])
+    result = read(tmp_path, make_part(kind=CONTROLS, ids=("S-1",), items=[item]), ids=("S-1",), kind=CONTROLS)
+    assert result.state == "invalid" and result.part is None
+
+
+# --- the two fields are prose, so each is cut at its limit first (RR2), and the check reads what is kept ---
+
+def classify_field(field, value, fid="S-1", status="partial"):
+    """The result of a one-item controls part whose ``field`` is ``value``."""
+    item = controls_item(fid, status)
+    item[field] = value
+    return classify(make_part(kind=CONTROLS, ids=(fid,), items=[item]), ids=(fid,), kind=CONTROLS)
+
+
+def stored_field(result, field):
+    return result.part["items"][0][field]
+
+
+def padded_row(length, fid="S-1"):
+    """A row of exactly ``length`` characters whose last cell is padding, so a cut anywhere in it leaves 11 cells."""
+    head = "| " + " | ".join(matrix_cells(fid)[:10]) + " | "
+    return head + "a" * (length - len(head))
+
+
+def padded_body(length):
+    """A body of exactly ``length`` characters whose Effort Estimate ends in padding, so a cut in it keeps the structure."""
+    head = "\n".join(body_lines()[:3] + ["**Effort Estimate**: Low \N{EM DASH} "])
+    return head + "a" * (length - len(head))
+
+
+def row_that_loses_cells():
+    """A long Threat cell pushes the computed cells past the cut."""
+    cells = matrix_cells("S-1")
+    cells[4] = "a" * 1300
+    return row_of(cells)
+
+
+def body_that_loses_keys():
+    """A long first key pushes the other three past the cut."""
+    return "\n".join(["**What to Implement**: " + "a" * 2100] + body_lines()[1:])
+
+
+# field, limit, a valid value, a valid value of a given length, a value whose cut loses its structure, what the detail says then
+STRUCTURED_FIELDS = [
+    ("matrix_row", 1200, lambda: row_of(matrix_cells("S-1")), padded_row, row_that_loses_cells, "cell count of 5, not 11"),
+    ("recommendation_body", 2000, body_of, padded_body, body_that_loses_keys, "keys [What to Implement]"),
+]
+FIELD_IDS = [case[0] for case in STRUCTURED_FIELDS]
+
+
+@pytest.mark.parametrize("field,limit,valid,padded,loses,says", STRUCTURED_FIELDS, ids=FIELD_IDS)
+def test_a_value_over_its_limit_is_cut_flagged_and_counted_when_the_cut_keeps_its_structure(field, limit, valid, padded, loses, says):
+    value = padded(limit + 50)
+    result = classify_field(field, value)
+    assert result.state == "done", result.detail
+    assert stored_field(result, field) == value[:limit]
+    assert "input:%s:truncated" % field in result.flags["S-1"]
+    assert result.counts["truncations"] == 1
+
+
+@pytest.mark.parametrize("field,limit,valid,padded,loses,says", STRUCTURED_FIELDS, ids=FIELD_IDS)
+def test_a_value_of_exactly_its_limit_is_kept_unflagged(field, limit, valid, padded, loses, says):
+    value = padded(limit)
+    assert len(value) == limit
+    result = classify_field(field, value)
+    assert result.state == "done", result.detail
+    assert stored_field(result, field) == value
+    assert result.flags.get("S-1", []) == [] and result.counts["truncations"] == 0
+
+
+@pytest.mark.parametrize("field,limit,valid,padded,loses,says", STRUCTURED_FIELDS, ids=FIELD_IDS)
+def test_a_value_whose_cut_loses_its_structure_is_rejected(field, limit, valid, padded, loses, says):
+    """The cut comes first (RR2) and the check reads what is kept, so the renderer never meets a row or a body that the
+    cut has broken: the batch is re-dispatched instead."""
+    result = classify_field(field, loses())
+    assert result.state == "invalid" and result.part is None
+    assert says in result.detail
+
+
+# --- the same rules as every other prose field (section 21), with a row and a body for a value ---
+
+EDGES = [(" \t", " \n "), ("\n\n  ", ""), ("", "\t\t"), ("\N{IDEOGRAPHIC SPACE}", "\N{IDEOGRAPHIC SPACE}")]
+
+
+@pytest.mark.parametrize("edges", EDGES)
+@pytest.mark.parametrize("field,limit,valid,padded,loses,says", STRUCTURED_FIELDS, ids=FIELD_IDS)
+def test_a_structured_value_loses_its_edge_whitespace_and_raises_no_flag(field, limit, valid, padded, loses, says, edges):
+    result = classify_field(field, edges[0] + valid() + edges[1])
+    assert result.state == "done", result.detail
+    assert stored_field(result, field) == valid()
+    assert result.flags.get("S-1", []) == [] and result.counts == {"narrative_fallbacks": 0, "truncations": 0}
+
+
+@pytest.mark.parametrize("field,limit,valid,padded,loses,says", STRUCTURED_FIELDS, ids=FIELD_IDS)
+def test_a_structured_value_that_is_blank_is_rejected(field, limit, valid, padded, loses, says):
+    """Unlike an optional prose field, a row and a body have a form: nothing is not one."""
+    for blank in ("", "   ", "\t\n "):
+        assert classify_field(field, blank).state == "invalid", repr(blank)
+
+
+MESSY_ROWS = [
+    "\n\n  | S-1 | CF | Gate &#124; way | L3 \N{EM DASH} Agent Frameworks | A `tick`, <b>, & {{braces}} | {{score:inherent}} | "
+    "{{band:inherent}} | Partial Control | input-validation | {{score:residual}} | {{band:residual}} |  \t",
+    row_of(matrix_cells("S-1"), outer=False) + " ",
+]
+MESSY_BODIES = [
+    "\n\n  " + "\n".join([
+        "**What to Implement**: A | pipe, a `tick`, <b>, & {{braces}} and C# \N{EM DASH} fine.",
+        "  **Where to Implement**: `src/a.py#L10` and a continuation",
+        "that runs on.",
+        "",
+        "**Reference Patterns**: &#124; stays one reference, and &amp; stays one.",
+        "**Effort Estimate**: Low \N{EM DASH} 2 days"]) + " \t\n",
+    body_of("Medium") + "\n",
+]
+MESSY = [("matrix_row", raw) for raw in MESSY_ROWS] + [("recommendation_body", raw) for raw in MESSY_BODIES]
+
+
+@pytest.mark.parametrize("field,raw", MESSY, ids=["row-references", "row-no-outer-pipes", "body-messy", "body-plain"])
+def test_a_carried_structured_value_is_byte_identical_across_two_write_and_read_round_trips(field, raw):
+    """T056 for the row and the body: written as the renderer writes a persisted value, read back as the next run reads
+    it and validated again, twice over. The reader splits the table line on raw ``|``, so the value's own pipes are escaped."""
+    first = classify_field(field, raw)
+    assert first.state == "done", first.detail
+    first_value = stored_field(first, field)
+    first_cell = _api("escape_cell")(first_value, keep_slots=True)
+    assert "|" not in first_cell
+    value = first_value
+    for _ in range(2):
+        value = read_back(_api("escape_cell")(value, keep_slots=True))
+        assert value == first_value
+        again = classify_field(field, value)
+        assert again.state == "done", again.detail
+        assert stored_field(again, field) == first_value
+        assert _api("escape_cell")(stored_field(again, field), keep_slots=True) == first_cell
+
+
+# =============================================================================
+# 23. The controls recommendation_body: the four keys, the Effort level, and no heading or table line (W3; ADR-050 D2)
+#
+# The 1.1 template's section 4 ("Who writes what") has the agent write the four lines after the block's heading and
+# ``Current Status`` line, as the ``recommendation_body``: ``**What to Implement**:``, ``**Where to Implement**:``,
+# ``**Reference Patterns**:`` and ``**Effort Estimate**:``, each once and in this order. The Effort Estimate starts with
+# ``Low``, ``Medium`` or ``High``, and the body holds no heading and no table line. A body that breaks these rules rejects
+# the item, so ``reconcile`` re-dispatches its batch. Lines that aren't a key, a heading or a table row are a key's own text.
+# =============================================================================
+
+def classify_body(body, fid="S-1", status="partial"):
+    return classify_field("recommendation_body", body, fid, status)
+
+
+def test_the_four_keys_and_the_effort_levels_are_the_templates():
+    assert tuple(_api("RECOMMENDATION_KEYS")) == BODY_KEYS
+    assert tuple(_api("EFFORT_LEVELS")) == ("Low", "Medium", "High")
+
+
+def indented(lines):
+    return [line if n == 0 else "  " + line for n, line in enumerate(lines)]
+
+
+ACCEPTED_BODIES = {
+    "one key to a line": body_of(),
+    "blank lines between the keys": "\n\n".join(body_lines()),
+    "a value that runs on over lines": "\n".join(body_lines()[:1] + ["It also covers the admin routes."] + body_lines()[1:]),
+    "indented keys": "\n".join(indented(body_lines())),
+    "a preamble line": "Recommendation:\n" + body_of(),
+    "a line that is another label": "**Current Status**: Partial Control\n" + body_of(),
+    "Medium": body_of("Medium"),
+    "High": body_of("High"),
+    "a rationale after a dash": body_of("Low \N{EM DASH} a configuration change"),
+    "a rationale after a full stop": body_of("Low. A flag to toggle."),
+    "a rationale after a comma": body_of("Medium, one new middleware"),
+    "a rationale in brackets": body_of("High (an architectural change)"),
+    "a rationale after a colon": body_of("High: it touches every service"),
+    "no space after a key": "\n".join(line.replace("**: ", "**:") for line in body_lines()),
+    "a hash and a pipe inside a line": "\n".join(
+        ["**What to Implement**: Use A | B and C# on the path src/a.py#L10.", *body_lines()[1:]]),
+    "a continuation that begins with a code span or a digit": "\n".join(
+        body_lines()[:2] + ["`validate()` runs first,", "2 routes follow."] + body_lines()[2:]),
+    "a key named inside a value": "\n".join(
+        ["**What to Implement**: See **Where to Implement**: below, and **Effort Estimate**: Low too.", *body_lines()[1:]]),
+}
+
+
+@pytest.mark.parametrize("label", sorted(ACCEPTED_BODIES))
+def test_a_body_with_the_four_keys_once_each_in_order_and_an_effort_level_is_accepted(label):
+    body = ACCEPTED_BODIES[label]
+    result = classify_body(body)
+    assert result.state == "done", (label, result.detail)
+    assert stored_field(result, "recommendation_body") == body.strip(), "kept as the agent wrote it, less its edge whitespace"
+    assert result.flags.get("S-1", []) == [] and result.counts == {"narrative_fallbacks": 0, "truncations": 0}
+
+
+def test_the_agent_texts_own_example_body_is_accepted():
+    """The body that ``control-analyzer.md`` shows in its worked part, one key to a line."""
+    body = ("**What to Implement**: Apply the schema check to the admin routes and to the query parameters.\n"
+            "**Where to Implement**: `src/api/admin.ts`, beside the order routes' call to `validateOrder`.\n"
+            "**Reference Patterns**: Extend the schema library the order routes already use.\n"
+            "**Effort Estimate**: Low")
+    assert classify_body(body).state == "done"
+
+
+@pytest.mark.parametrize("status", ["partial", "missing"])
+def test_a_partial_and_a_missing_result_take_a_valid_body(status):
+    assert classify_body(body_of(), status=status).state == "done"
+
+
+def test_the_structure_is_never_checked_on_a_null_body_and_a_body_on_a_found_result_is_still_rejected():
+    found = controls_item("S-1", "found")
+    assert found["recommendation_body"] is None
+    assert classify(make_part(kind=CONTROLS, ids=("S-1",), items=[found]), ids=("S-1",), kind=CONTROLS).state == "done"
+    found["recommendation_body"] = body_of()
+    assert classify(make_part(kind=CONTROLS, ids=("S-1",), items=[found]), ids=("S-1",), kind=CONTROLS).state == "invalid"
+
+
+@pytest.mark.parametrize("missing", BODY_KEYS)
+def test_a_body_without_one_of_the_keys_is_rejected_and_the_detail_lists_the_keys_found(missing):
+    lines = [line for line in body_lines() if not line.startswith("**%s**" % missing)]
+    result = classify_body("\n".join(lines))
+    assert result.state == "invalid" and result.part is None
+    kept = [key for key in BODY_KEYS if key != missing]
+    assert result.detail == "recommendation_body of S-1 has the keys [%s], not the four once each and in order" % ", ".join(kept)
+
+
+@pytest.mark.parametrize("repeated", range(4))
+def test_a_body_that_repeats_a_key_is_rejected(repeated):
+    lines = body_lines()
+    lines.insert(repeated + 1, lines[repeated])
+    assert classify_body("\n".join(lines)).state == "invalid"
+    lines = body_lines() + [body_lines()[repeated]]
+    assert classify_body("\n".join(lines)).state == "invalid"
+
+
+@pytest.mark.parametrize("swap", [(0, 1), (1, 2), (2, 3), (0, 3), (0, 2), (1, 3)])
+def test_a_body_with_its_keys_out_of_order_is_rejected(swap):
+    lines = body_lines()
+    lines[swap[0]], lines[swap[1]] = lines[swap[1]], lines[swap[0]]
+    result = classify_body("\n".join(lines))
+    assert result.state == "invalid" and "not the four once each and in order" in result.detail
+
+
+NOT_THE_KEYS = {
+    "empty": "",
+    "blank": "  \n ",
+    "a plain sentence": "A plain sentence.",
+    "the old unlabelled shape": "What: add the missing check. Where: the login path. Effort: Low.",
+    "all four keys on one line": " ".join(body_lines()),
+    "the colon inside the bold": "\n".join(line.replace("**:", ":**", 1) for line in body_lines()),
+    "a lower case label": "\n".join(body_lines()).replace("**Reference Patterns**:", "**reference patterns**:"),
+    "a label that is not the key": "\n".join(body_lines()).replace("**Effort Estimate**:", "**Effort**:"),
+    "no bold": "\n".join(line.replace("**", "") for line in body_lines()),
+    "keys as list items": "\n".join("- " + line for line in body_lines()),
+    "keys in a block quote": "\n".join("> " + line for line in body_lines()),
+    **{"only the %s as a list item" % key: "\n".join("- " + line if line.startswith("**%s**" % key) else line for line in body_lines())
+       for key in BODY_KEYS},
+    "a key only mentioned inside a value": "**What to Implement**: Do the **Where to Implement**: and the rest.",
+}
+
+
+@pytest.mark.parametrize("label", sorted(NOT_THE_KEYS))
+def test_a_body_that_does_not_hold_the_four_keys_at_line_starts_is_rejected(label):
+    assert classify_body(NOT_THE_KEYS[label]).state == "invalid", label
+
+
+@pytest.mark.parametrize("effort", [
+    "", "low", "LOW", "medium", "Lowest", "Highly", "Mediumish", "Low2", "Low_", "Low\N{LATIN SMALL LETTER E WITH ACUTE}", "Critical", "None",
+    "n/a", "1 day", "**Low**", "`Low`", "\N{EM DASH} Low", "Very Low", "Hi",
+])
+def test_an_effort_estimate_that_does_not_start_with_a_level_is_rejected(effort):
+    result = classify_body(body_of(effort))
+    assert result.state == "invalid", repr(effort)
+    assert result.detail == "recommendation_body of S-1 has an Effort Estimate that does not start with Low, Medium or High"
+
+
+def test_the_effort_level_has_to_start_on_the_estimates_own_line():
+    lines = body_lines()
+    lines[3] = "**Effort Estimate**:\nLow"
+    assert classify_body("\n".join(lines)).state == "invalid"
+
+
+@pytest.mark.parametrize("heading", [
+    "# Recommendation", "## Where", "###### Deep", "#", "#hashtag", "   # indented", "\t# tabbed",
+    "\N{IDEOGRAPHIC SPACE}# wide", "\N{NO-BREAK SPACE}# no-break", "\N{EM SPACE}## em space",
+])
+@pytest.mark.parametrize("place", [0, 2, 4])
+def test_a_body_with_a_heading_line_is_rejected_wherever_the_line_sits(heading, place):
+    lines = body_lines()
+    lines.insert(place, heading)
+    result = classify_body("\n".join(lines))
+    assert result.state == "invalid"
+    assert result.detail == "recommendation_body of S-1 has a heading line"
+
+
+@pytest.mark.parametrize("row", ["| a | b |", "|---|---|", "  | indented |", "\t|x", "|", "\N{IDEOGRAPHIC SPACE}| wide |"])
+@pytest.mark.parametrize("place", [0, 2, 4])
+def test_a_body_with_a_table_line_is_rejected_wherever_the_line_sits(row, place):
+    lines = body_lines()
+    lines.insert(place, row)
+    result = classify_body("\n".join(lines))
+    assert result.state == "invalid"
+    assert result.detail == "recommendation_body of S-1 has a table line"
+
+
+def test_a_heading_or_a_table_line_rejects_a_body_whose_keys_are_otherwise_right():
+    """The heading and table checks come first, so the detail names the line shape and not the keys."""
+    assert classify_body("# Title\n" + body_of()).detail.endswith("has a heading line")
+    assert classify_body(body_of() + "\n| a | b |").detail.endswith("has a table line")
+
+
+def test_a_detail_never_echoes_the_body():
+    for body in ("body-text-the-detail-must-not-echo", "# heading-text-the-detail-must-not-echo\n" + body_of(),
+                 "| table-text-the-detail-must-not-echo |\n" + body_of(), body_of("effort-text-the-detail-must-not-echo")):
+        result = classify_body(body)
+        assert result.state == "invalid"
+        assert "must-not-echo" not in result.detail
+
+
+def test_a_part_file_whose_body_has_no_effort_reads_as_invalid(tmp_path):
+    """The path ``reconcile`` takes: ``read_part`` on the file, then the batch is retried as it was."""
+    item = controls_item("S-1", "partial")
+    item["recommendation_body"] = "\n".join(body_lines()[:3])
+    result = read(tmp_path, make_part(kind=CONTROLS, ids=("S-1",), items=[item]), ids=("S-1",), kind=CONTROLS)
+    assert result.state == "invalid" and result.part is None

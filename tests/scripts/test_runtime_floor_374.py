@@ -48,12 +48,15 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 SUBPROCESS_TIMEOUT = 120
 
 # --------------------------------------------------------------------------- the script lists
-# W1's scripts. A missing file is a failure: T012, T013, T014, T015, T016, T018 and T140 write them.
+# W1's, W2's and W3's scripts. A missing file is a failure: T012, T013, T014, T015, T016, T018, T140, T028, T042 and T035 write them.
 REQUIRED_NOW = (
     "tachi_parts.py",
     "tachi_scoring.py",
     "sarif_common.py",  # exists today; W1 rewrites it as the shared emitter and installs it
     "tachi-stage.py",
+    "tachi_scoring_rules.py",  # W2 (lane R1b): T042 to T044
+    "render-risk-scores.py",  # W2 (lane R1): T028, T045, T046 and T050
+    "render-compensating-controls.py",  # W3 (lane R2): T035, T053 and T059; its core-path driver is T036's
 )
 
 # Scripts a later wave adds, with the wave that lands each. While one is missing its checks skip with
@@ -61,9 +64,6 @@ REQUIRED_NOW = (
 # one-line edit. T150 (PR 2) adds scripts/generate-threats-sarif.py to REQUIRED_NOW, because that
 # file exists today and is not "new" until PR 2 rewrites it on the shared emitter.
 PLANNED = {
-    "tachi_scoring_rules.py": "W2 (lane R1b)",
-    "render-risk-scores.py": "W2 (lane R1)",
-    "render-compensating-controls.py": "W3 (lane R2)",
     "join-threats-md.py": "PR 2, W2' (lane OS)",
     "attack-chains.py": "PR 2, W2' (lane OC)",
     "assemble-report.py": "PR 2, W2' (lane T)",
@@ -80,7 +80,7 @@ def _resolve(name):
         return path
     if name in PLANNED:
         pytest.skip("scripts/%s is planned for %s and does not exist yet" % (name, PLANNED[name]))
-    pytest.fail("scripts/%s is a W1 script and must exist (S-11, T149)" % name, pytrace=False)
+    pytest.fail("scripts/%s is a required script and must exist (S-11, T149)" % name, pytrace=False)
 
 
 # --------------------------------------------------------------------------- 1. grammar
@@ -459,7 +459,8 @@ def _scorer_item(finding_id):
     }
 
 
-def _write_valid_part(batch_input_path):
+def _write_valid_part(batch_input_path, make_item=None):
+    make_item = _scorer_item if make_item is None else make_item
     batch_input = json.loads(Path(batch_input_path).read_text(encoding="utf-8"))
     part = {
         "schema": "tachi.part/1",
@@ -468,7 +469,7 @@ def _write_valid_part(batch_input_path):
         "stage": batch_input["stage"],
         "agent_type": batch_input["agent_type"],
         "finding_ids": list(batch_input["finding_ids"]),
-        "items": [_scorer_item(fid) for fid in batch_input["finding_ids"]],
+        "items": [make_item(fid) for fid in batch_input["finding_ids"]],
         "fragments": [],
     }
     target = Path(batch_input["part_path"])
@@ -492,14 +493,14 @@ def _threats_md():
     )
 
 
-def _seed(workdir):
+def _seed(workdir, threats=None):
     """A fresh working tree: byte-identical inputs and fixed mtimes, so out_snapshot repeats too."""
     if workdir.exists():
         shutil.rmtree(str(workdir))
     (workdir / "run").mkdir(parents=True)
     (workdir / "docs" / "security").mkdir(parents=True)
     files = {
-        workdir / "run" / "threats.md": _threats_md().encode("utf-8"),
+        workdir / "run" / "threats.md": (_threats_md() if threats is None else threats).encode("utf-8"),
         workdir / "run" / "risk-scores.md": b"# earlier run\n",
         workdir / "run" / "risk-scores.sarif": b'{"earlier": true}\n',
         workdir / "docs" / "security" / "architecture.md": b"# Architecture\n",
@@ -559,12 +560,186 @@ def _drive_tachi_stage(interp, workdir):
     return steps, _tree(workdir)
 
 
-# Exit codes of the steps above: --version, plan, reconcile (halves), reconcile (complete), fail, architecture-source.
-EXPECTED_CODES = {"tachi-stage.py": [0, 0, 3, 0, 0, 0]}
+# ---- render-risk-scores.py (T050): the reference set gets a trust zone and an Affected Assets block, so a clean run
+# ---- exits 0 and the two runs compare on a whole render, the SARIF and the stage record included.
+
+_FLOOR_ZONE = "Edge DMZ"
+
+
+def _floor_threats_md():
+    zones = (
+        "## 2. Trust Boundaries\n\n### Trust Zones\n\n| Zone | Trust Level | Components |\n|------|-------------|------------|\n"
+        "| %s | Semi-Trusted | %s |\n\n" % (_FLOOR_ZONE, ", ".join("Gateway %d" % n for n in range(1, len(_FINDINGS) + 1))))
+    assets = ("\n## Affected Assets\n\n| Finding ID | Affected Assets |\n|------------|-----------------|\n"
+              + "\n".join("| %s | [] |" % fid for fid in _FINDINGS) + "\n")
+    return _threats_md().replace("## 7. Recommended Actions", zones + "## 7. Recommended Actions") + assets
+
+
+def _floor_item(finding_id):
+    """A scorer item that names the zone, and whose prose uses a slot, so the renderer's resolver runs in the child."""
+    item = _scorer_item(finding_id)
+    item["reachability"] = {"zone": _FLOOR_ZONE, "trust_level": "Semi-Trusted", "auth_barriers": 1, "network_boundaries": 1}
+    item["rationale"]["cvss"] = "The base score is {{score:cvss_base}} for {{name:component}}."
+    return item
+
+
+def _carry_threats_md():
+    """The first run's threat model with every finding UNCHANGED, and one NEW finding (S-2) beside them."""
+    new_row = "| S-2 | NEW | Category | \u2014 | Gateway 1 | L4 | Threat text for S-2 | High | Mitigation for S-2 |\n"
+    text = _floor_threats_md().replace("| NEW |", "| UNCHANGED |")
+    return text.replace("|\n\n## Affected Assets", "|\n" + new_row + "\n## Affected Assets") + "| S-2 | [] |\n"
+
+
+def _drive_render_risk_scores(interp, workdir):
+    """--version -> plan -> reconcile (complete) -> render, then the same three steps again beside it as a baseline-aware run.
+
+    The render replaces the seeded earlier outputs. The second run reads the first's own ``risk-scores.md``, so the tolerant
+    reader, the vector check, the recompute and the governance of a carried finding run under the same block (T045, T046),
+    and one NEW finding gives the agent a unit to score.
+    """
+    _seed(workdir, _floor_threats_md())
+    stage, render = SCRIPTS_DIR / "tachi-stage.py", SCRIPTS_DIR / "render-risk-scores.py"
+    out = workdir / "run"
+    steps = []
+
+    def step(script, args):
+        proc = interp.run(script, args, workdir)
+        steps.append({"args": _normalize(" ".join(str(a) for a in args)), "code": proc.returncode,
+                      "stdout": _normalize(proc.stdout), "stderr": _normalize(proc.stderr)})
+        return proc
+
+    def run_stage(directory, date, extra):
+        planned = json.loads(step(stage, ["plan", "--stage", "risk-score", "--out", directory, "--date", date, "--threats", directory / "threats.md",
+                                          "--architecture", "docs/security/architecture.md"] + extra).stdout)
+        for wave in planned["waves"]:
+            for batch in wave:
+                _write_valid_part(batch["input_path"], _floor_item)
+        reconciled = step(stage, ["reconcile", "--stage", "risk-score", "--out", directory, "--plan", planned["plan_id"],
+                                  "--plan-digest", planned["plan_digest"]])
+        step(render, ["--out", directory, "--plan", planned["plan_id"], "--plan-digest", json.loads(reconciled.stdout)["plan_digest"]])
+
+    step(render, ["--version"])
+    run_stage(out, "2026-11-22", [])
+    second = workdir / "run2"
+    second.mkdir()
+    (second / "threats.md").write_bytes(_carry_threats_md().encode("utf-8"))
+    os.utime(str(second / "threats.md"), ns=(1700000000 * 10 ** 9, 1700000000 * 10 ** 9))
+    run_stage(second, "2026-11-23", ["--baseline-dir", out])
+    return steps, _tree(workdir)
+
+
+# ---- render-compensating-controls.py (T036, for T035): the controls stage over the scorer's own risk-scores.md. The planner's
+# ---- two readers (risk-scores.md through its source_file, and the baseline's persisted results) run in the blocked interpreter too.
+
+_FLOOR_CATEGORIES = ("authentication", "input-validation", "rate-limiting", "encryption", "logging-audit", "csrf-protection",
+                     "csp-security-headers", "access-control")
+_FLOOR_CARRIED = ("control_status", "control_category", "confidence", "evidence", "matrix_row", "recommendation_body")
+
+
+def _floor_controls_item(finding_id, row):
+    """What the controls agent writes for one unit row: an UNCHANGED finding's result, copied from its row, or a fresh judgment.
+
+    The fresh one follows the readings of ``test_sarif_identity.py`` for the shapes the contract leaves to the agent: a
+    pipe-bordered ``matrix_row`` of 11 cells in the K8 order with slot tokens in the four computed ones, and a body of the
+    four keys. Its evidence cites ``src/gateway.py``, which the driver makes under the scanned directory.
+    """
+    if row.get("delta_status") == "UNCHANGED" and all(key in row for key in _FLOOR_CARRIED):
+        return dict({key: row[key] for key in _FLOOR_CARRIED}, finding_id=finding_id, carried_forward=True)
+    seed = sum(ord(char) for char in finding_id)
+    status = ("found", "partial", "missing")[seed % 3]
+    category = _FLOOR_CATEGORIES[seed % len(_FLOOR_CATEGORIES)]
+    display = {"found": "Control Found", "partial": "Partial Control", "missing": "No Control Found"}[status]
+    cells = [finding_id, "\u2014", row.get("component", "Gateway"), "L4", "A synthetic threat to the component.", "{{score:inherent}}",
+             "{{band:inherent}}", display, category.replace("-", " ").title(), "{{score:residual}}", "{{band:residual}}"]
+    return {
+        "finding_id": finding_id, "control_status": status, "control_category": category, "carried_forward": False,
+        "confidence": None if status == "missing" else "High",
+        "evidence": [] if status == "missing" else [{
+            "file": "src/gateway.py", "line": 3, "language": "python",
+            "snippet": "def check(request):\n    return verify(request.token)  # a < b & c",
+            "summary": "The handler verifies the caller before it runs."}],
+        "matrix_row": "| " + " | ".join(cells) + " |",
+        "recommendation_body": None if status == "found" else (
+            "**What to Implement**: Add a check in front of every handler.\n\n**Where to Implement**: src/gateway.py\n\n"
+            "**Reference Patterns**: One shared middleware that every route passes through.\n\n"
+            "**Effort Estimate**: Medium \u2014 one new module."),
+    }
+
+
+def _write_controls_part(batch_input_path):
+    batch_input = json.loads(Path(batch_input_path).read_text(encoding="utf-8"))
+    rows = {row["finding_id"]: row for row in batch_input["units"]}
+    part = {
+        "schema": "tachi.part/1", "plan_id": batch_input["plan_id"], "batch_id": batch_input["batch_id"], "stage": batch_input["stage"],
+        "agent_type": batch_input["agent_type"], "finding_ids": list(batch_input["finding_ids"]),
+        "items": [_floor_controls_item(fid, rows[fid]) for fid in batch_input["finding_ids"]], "fragments": [],
+    }
+    target = Path(batch_input["part_path"])
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(part), encoding="utf-8")
+
+
+def _drive_render_compensating_controls(interp, workdir):
+    """--version, then for a first run and again for a second run that carries the first's findings: the scorer (plan, reconcile,
+    render), then the controls stage (plan, reconcile, render) over the risk-scores.md it wrote.
+
+    The second run names the first as its baseline, so the controls planner reads the first run's persisted results from its
+    ``compensating-controls.md`` (T143's reader) and puts each UNCHANGED finding's result in its unit row, where the agent copies it.
+    What this assumes of ``render-compensating-controls.py`` (T035's) is the clean case: it exits 0 on both runs, because the
+    architecture file is named and valid, every evidence file exists under the scanned directory, and the first run persisted
+    its results. If a reading of T035's differs, change the item here and not the planner.
+    """
+    _seed(workdir, _floor_threats_md())
+    (workdir / "app" / "src").mkdir(parents=True)
+    (workdir / "app" / "src" / "gateway.py").write_text("# a synthetic module of the scanned codebase\n", encoding="utf-8")
+    stage, scorer, render = SCRIPTS_DIR / "tachi-stage.py", SCRIPTS_DIR / "render-risk-scores.py", SCRIPTS_DIR / "render-compensating-controls.py"
+    out = workdir / "run"
+    steps = []
+
+    def step(script, args):
+        proc = interp.run(script, args, workdir)
+        steps.append({"args": _normalize(" ".join(str(a) for a in args)), "code": proc.returncode,
+                      "stdout": _normalize(proc.stdout), "stderr": _normalize(proc.stderr)})
+        return proc
+
+    def run_stage(name, script, directory, date, pointers, write_part):
+        planned = json.loads(step(stage, ["plan", "--stage", name, "--out", directory, "--date", date, "--architecture", "docs/security/architecture.md"]
+                                  + pointers).stdout)
+        for wave in planned["waves"]:
+            for batch in wave:
+                write_part(batch["input_path"])
+        reconciled = step(stage, ["reconcile", "--stage", name, "--out", directory, "--plan", planned["plan_id"], "--plan-digest", planned["plan_digest"]])
+        step(script, ["--out", directory, "--plan", planned["plan_id"], "--plan-digest", json.loads(reconciled.stdout)["plan_digest"]])
+
+    def run_both(directory, date, baseline):
+        extra = ["--baseline-dir", baseline] if baseline is not None else []
+        run_stage("risk-score", scorer, directory, date, ["--threats", directory / "threats.md"] + extra,
+                  lambda path: _write_valid_part(path, _floor_item))
+        run_stage("compensating-controls", render, directory, date, ["--risk-scores", directory / "risk-scores.md", "--target", workdir / "app"] + extra,
+                  _write_controls_part)
+
+    step(render, ["--version"])
+    run_both(out, "2026-11-22", None)
+    second = workdir / "run2"
+    second.mkdir()
+    (second / "threats.md").write_bytes(_carry_threats_md().encode("utf-8"))
+    os.utime(str(second / "threats.md"), ns=(1700000000 * 10 ** 9, 1700000000 * 10 ** 9))
+    run_both(second, "2026-11-23", out)
+    return steps, _tree(workdir)
+
+
+# Exit codes of the steps above. tachi-stage.py: --version, plan, reconcile (halves), reconcile (complete), fail,
+# architecture-source. render-risk-scores.py: --version, then plan, reconcile (complete) and render for a first run and again
+# for a second run that carries the first's findings. render-compensating-controls.py: --version, then for each of those two
+# runs the scorer's three steps and the controls stage's three.
+EXPECTED_CODES = {"tachi-stage.py": [0, 0, 3, 0, 0, 0], "render-risk-scores.py": [0, 0, 0, 0, 0, 0, 0],
+                  "render-compensating-controls.py": [0] + [0] * 6 + [0] * 6}
 
 # One driver per entry script, each `(Interpreter, workdir) -> (steps, tree)`. A later wave adds its entry's
-# driver here: render-risk-scores.py (W2), render-compensating-controls.py (W3), and PR 2's entries.
-CORE_PATH_DRIVERS = {"tachi-stage.py": _drive_tachi_stage}
+# driver here: PR 2's entries. The controls renderer's driver (T036) was written first and skipped while the script was
+# PLANNED and missing. W3 (T039) moved the script to REQUIRED_NOW, so the driver runs and a missing script fails.
+CORE_PATH_DRIVERS = {"tachi-stage.py": _drive_tachi_stage, "render-risk-scores.py": _drive_render_risk_scores,
+                     "render-compensating-controls.py": _drive_render_compensating_controls}
 
 
 def _entry_scripts():

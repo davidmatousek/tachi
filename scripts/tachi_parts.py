@@ -33,16 +33,22 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
   ``classify_part(obj, ...)``: steps 1 to 10, returning a ``PartResult`` whose ``state`` is
   ``done``, ``missing``, ``overflow``, ``unparseable`` or ``invalid``. A ``done`` part comes back
   with canonical IDs and its items in the planned order; ``flags`` maps each canonical ID to its
-  sorted ``input:<field>:truncated`` flags and ``counts`` totals the cuts. Step 11 (the narrative
-  grammar, numeral ban and fallback) is T013's and plugs into ``_narrative``.
+  sorted ``input:<field>:truncated`` flags and ``counts`` totals the cuts. Every narrative and
+  evidence-class string also loses its edge whitespace at intake, after any cut (a snippet is
+  dedented first) and with no flag, so a value that a renderer writes and reads back is the same
+  bytes on every run. Step 11 (the narrative grammar, numeral ban and fallback) plugs into
+  ``_narrative``.
 * ``validate_plan``, ``validate_pointer``, ``validate_batch_input`` and ``validate_stage_record``
   return the object they were given, or raise ``PartError("invalid", ...)``.
   ``read_document(path, out, schema)`` loads one of those four documents and validates it.
 
 **I/O helpers and D3's layout (T013, slice 1):**
 
-* ``atomic_write(path, data)``: a temp file in the target's directory, then ``os.replace``. The file gets the
-  mode an ordinary write would (``0666 & ~umask``), and ``str`` is written as UTF-8 with no newline translation.
+* ``atomic_write(path, data, mode_of=None)``: a temp file in the target's directory, then ``os.replace``. A regular
+  file that it replaces keeps its permission bits (SA-4); a new file gets the mode an ordinary write would (``0666 &
+  ~umask``, the umask read once at import). ``mode_of``, a path, takes the bits from that file instead, by the same
+  rule: a renderer's staged write names its canonical file, and ``fail``'s restore names the pre-image (P1-2).
+  ``str`` is written as UTF-8 with no newline translation.
 * ``sha256_hex(data)``; ``file_digest(path)``, lowercase hex with no prefix, the form of ``plan_digest`` and of
   the plan's ``sha256`` fields; ``input_digest(obj)``, ``sha256:`` and the hex digest of ``obj``'s canonical JSON
   (sorted keys, no spaces, ASCII), the form of the stamp's and the stage record's ``input_digest``.
@@ -84,7 +90,24 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
 * ``closed_string(value, what, low=1, high=None)``: the one closed-value string check (D3 step 10), once private as
   ``_closed``, which stays as an alias.
 * ``is_declared_path(relpath, stage, plan_id)``: D4's declared-paths grammar.
+* ``snapshot_key(relpath)``: a file's key in the plan's ``out_snapshot``, which the planner and both renderers look a file up
+  by (EC-2): its path, or a digest stand-in for a name that no plan can hold (SA-5).
 * ``retry_history(stage, out, plan)``: a plan's ``(overflow_events, retries)``, read back from its parts on disk.
+
+**Added at W3 (P0-4):**
+
+* ``forbidden_character(text)``: the first character of ``text`` that D3's step 10 forbids, or ``None``. Step 10 uses it,
+  and a renderer calls it where it takes a value from an input that isn't a part, so the set has one definition.
+
+**Added at W3 (the two structured text fields of a controls item, ADR-050 D2):**
+
+* ``MATRIX_ROW_CELLS`` (11) and ``matrix_row_cells(row)``: the cells of a controls ``matrix_row``, split the one way that a
+  reader splits a table line, so the part check and the renderer count the same cells (``contracts/module-signatures.md``).
+  Step 9 uses them: a controls item whose ``matrix_row`` has any other count of cells, or whose first (Threat ID) cell isn't
+  the item's own finding ID, rejects the part, and ``reconcile`` re-dispatches its batch. No other cell can reject an item.
+* ``RECOMMENDATION_KEYS`` and ``EFFORT_LEVELS``: the four keys of the section 4 block and the levels that its Effort
+  Estimate starts with. Step 9 rejects a ``recommendation_body`` that doesn't hold the keys once each and in order, whose
+  Effort Estimate doesn't start with a level, or that has a heading line or a table line (the 1.1 template's "Who writes what").
 """
 from __future__ import annotations
 
@@ -98,6 +121,7 @@ import re
 import stat
 import sys
 import tempfile
+import textwrap
 import unicodedata
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
@@ -171,7 +195,8 @@ def path_problem(value: object, allow_absolute: bool = False) -> Optional[str]:
 
     The checks run in this order, and the first failure names the problem:
     ``type``, ``empty``, ``encoding``, ``too-long`` (over ``PATH_MAX_BYTES`` bytes of UTF-8),
-    ``control-char`` (any Cc character), ``backslash``, ``backtick``, ``leading-slash``
+    ``control-char`` (any Cc character, and any character that ``forbidden_character`` refuses: a line or paragraph
+    separator, a bidi control or a tag character, SA-8), ``backslash``, ``backtick``, ``leading-slash``
     (unless ``allow_absolute``), ``drive-letter``, ``scheme``, ``parent-reference`` (a ``..``
     component) and ``empty`` again when no component is left after dropping ``.`` and empty ones.
 
@@ -190,7 +215,10 @@ def path_problem(value: object, allow_absolute: bool = False) -> Optional[str]:
         return "encoding"
     if size > PATH_MAX_BYTES:
         return "too-long"
-    if any(unicodedata.category(ch) == "Cc" for ch in value):
+    # Two definitions of an unsafe character agree here: a path is refused for any Cc character (a tab and a newline
+    # included, which prose may hold) and for each one step 10 forbids, so no path holds a character that a part's text
+    # may not (SA-8). A lone surrogate was refused above as "encoding".
+    if any(unicodedata.category(ch) == "Cc" for ch in value) or forbidden_character(value) is not None:
         return "control-char"
     if "\\" in value:
         return "backslash"
@@ -254,9 +282,10 @@ BATCH_STATES = ("pending", "done", "failed", "split")
 RECORD_STATUSES = ("success", "success-with-warnings", "failed")
 OVERFLOW_EVENT_KINDS = ("missing", "overflow-reported", "unparseable", "invalid")
 
-# The stage record's closed `counts` keys: the base counts, and one count per flag kind (ADR-050 D9).
+# The stage record's closed `counts` keys: the base counts and the flag kinds (ADR-050 D2, D9). `cell_overwrites` is the
+# eighth base count, the controls renderer's: the computed §2 cells that held anything but their own slot token.
 COUNT_KEYS = frozenset((
-    "units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations",
+    "units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations", "cell_overwrites",
     "corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input"))
 
 # name -> (required keys, optional keys), in the contracts' order. Every key is required unless listed optional.
@@ -265,8 +294,9 @@ KEY_SETS: Dict[str, Tuple[Tuple[str, ...], Tuple[str, ...]]] = {
     "overflow": (("schema", "plan_id", "batch_id", "stage", "agent_type", "reason"), ()),
     "batch-input": (("schema", "plan_id", "batch_id", "stage", "agent_type", "finding_ids", "attempt", "part_path",
                      "tree_paths", "units", "refs", "params"), ()),
-    "plan": (("schema", "plan_id", "stage", "agent_type", "created_utc", "tachi_version", "inputs", "params",
-              "batch_size", "unit_count", "preimage", "out_snapshot", "retry_budget", "batches"), ()),
+    "plan": (("schema", "plan_id", "stage", "agent_type", "created_utc", "tachi_version", "inputs", "refs",
+              "architecture_warning", "params", "batch_size", "unit_count", "preimage", "out_snapshot", "retry_budget",
+              "batches"), ()),
     "plan-pointer": (("schema", "plan_id"), ()),
     "stage-record": (("schema", "stage", "plan_id", "status", "tachi_version", "started_utc", "finished_utc",
                       "input_digest", "counts", "batches", "overflow_events", "retries", "warnings",
@@ -632,13 +662,19 @@ FALLBACK_SENTENCES: Dict[str, str] = {
         "No completeness assessment rationale is shown because the text the agent wrote broke the narrative rules.",
 }
 
+# D3's closed set of nine references (P0-1 added ``&#126;``). ``tachi_parsers.decode_references`` is built from it, and
+# ``part-file-contract-shared.md`` lists it, which T010's drift test compares.
 ESCAPE_REFERENCES: Dict[str, str] = {
-    "&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#"}
+    "&amp;": "&", "&lt;": "<", "&gt;": ">", "&#124;": "|", "&#96;": "`", "&#123;": "{", "&#10;": "\n", "&#35;": "#",
+    "&#126;": "~"}
 _REFERENCE_OF = {char: reference for reference, char in ESCAPE_REFERENCES.items()}
 _CELL_TRANSLATION = {ord(char): _REFERENCE_OF[char] for char in "&<>|`\n"}
 _PROSE_TRANSLATION = {ord(char): _REFERENCE_OF[char] for char in "&<>|`"}
 _BRACE_OF_A_PAIR = re.compile(r"\{(?=\{)|(?<=\{)\{")
-_HEADING_START = re.compile(r"(?m)^([ \t]*)#")
+# The first ``#`` (a heading) or ``~`` (a code fence, as ``~~~``) of a prose line, after any whitespace but a newline.
+# On a ``str`` pattern ``\s`` is ``str.isspace()``, which is what ``strip()`` drops, and leaving the newline out means a
+# match can't span lines. The leading run is group 1, so the replacement keeps it byte for byte.
+_LINE_START_GUARD = re.compile(r"(?m)^([^\S\n]*)([#~])")
 
 
 def _tokens(text: str, stage: str) -> List[Tuple[str, ...]]:
@@ -742,7 +778,15 @@ def _escape(text: str, keep_slots: bool, cell: bool) -> str:
 
 
 def _guard_headings(text: str) -> str:
-    return _HEADING_START.sub(lambda match: match.group(1) + _REFERENCE_OF["#"], text)
+    """Write the first ``#`` or ``~`` of each line as its reference, so prose forges neither a heading nor a code fence.
+
+    A line that starts with ``~~~``, after any whitespace but a newline, opens a code fence for the next run's tolerant
+    reader, and every heading after it, §4 and §6 included, is then read as part of the fence (P0-1). Spaces and tabs
+    do that for GitHub as well. A Unicode space (a no-break space, an ideographic space) does it for a reader that
+    strips every whitespace character, so the guard looks past those too (ruled at W3). The whitespace before the
+    ``#`` or ``~`` stays as it was, byte for byte. A ``~`` anywhere else stays as it is.
+    """
+    return _LINE_START_GUARD.sub(lambda match: match.group(1) + _REFERENCE_OF[match.group(2)], text)
 
 
 def escape_cell(text: str, keep_slots: bool = False) -> str:
@@ -757,10 +801,11 @@ def escape_cell(text: str, keep_slots: bool = False) -> str:
 
 
 def escape_prose(text: str, keep_slots: bool = False) -> str:
-    """Escape untrusted text for prose: the cell rules, but line breaks stay and no line starts with ``#`` or ``|``.
+    """Escape untrusted text for prose: the cell rules, but line breaks stay and no line starts with ``#``, ``~`` or ``|``.
 
-    A line that would start with ``#`` (after any spaces or tabs) starts with ``&#35;`` instead, and a ``|`` is
-    always ``&#124;``, so agent text can neither forge a heading nor a table row.
+    A line that would start with ``#`` or ``~`` (after any whitespace but a newline, which is kept as it is) has
+    ``&#35;`` or ``&#126;`` in its place, and a ``|`` is always ``&#124;``, so agent text can forge neither a
+    heading, a code fence nor a table row. A ``~`` anywhere else, and any ``~`` in a cell, is left as it is.
     """
     return _guard_headings(_escape(text, keep_slots, False))
 
@@ -838,8 +883,40 @@ class _ItemState(object):
 
 
 _CVSS_VECTOR = re.compile(r"CVSS:3\.1/AV:[NALP]/AC:[LH]/PR:[NLH]/UI:[NR]/S:[UC]/C:[NLH]/I:[NLH]/A:[NLH]", re.ASCII)
-# Cc other than tab and newline, then U+2028, U+2029, U+200E, U+200F, U+061C, U+202A-U+202E and U+2066-U+2069 (step 10).
-_FORBIDDEN_CHARACTERS = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f  ‎‏؜‪-‮⁦-⁩]")
+# Step 10's set: Cc other than tab and newline, the separators U+2028 and U+2029, the bidi controls U+200E, U+200F,
+# U+061C, U+202A-U+202E and U+2066-U+2069, a lone surrogate (U+D800-U+DFFF, ADR-050 D3 as ruled at W3) and the Unicode
+# tag block (U+E0000-U+E007F, SA-7). Each is written as an escape: a bidi control or a separator typed into this line
+# would reorder or split what a reviewer reads (Trojan Source, CVE-2021-42574), and the line defines the very set.
+_FORBIDDEN_CHARACTERS = re.compile(
+    "[\x00-\x08\x0b-\x1f\x7f-\x9f"  # C0, DEL and C1 but not tab and newline
+    "\u2028\u2029"  # the line and paragraph separators
+    "\u200e\u200f\u061c\u202a-\u202e\u2066-\u2069"  # the bidi controls
+    "\ud800-\udfff"  # a lone surrogate
+    "\U000e0000-\U000e007f]"  # the Unicode tag block
+)
+
+
+def forbidden_character(text: str) -> Optional[str]:
+    """The first character of ``text`` that D3's step 10 forbids, or ``None`` (P0-4). ``text`` must be a ``str``.
+
+    The set is the contract's: a control character other than tab and newline (C0, DEL and C1), the separators
+    U+2028 and U+2029, the bidi controls U+200E, U+200F, U+061C, U+202A to U+202E and U+2066 to U+2069, a lone
+    surrogate, U+D800 to U+DFFF (ADR-050 D3, ruled at W3), and a Unicode tag character, U+E0000 to U+E007F
+    (SA-7: a tag shows as nothing, yet each one stands for an ASCII character, so it can carry text past a reader
+    to a later agent). The variation selectors and the joiners are not in it.
+
+    Only a JSON escape can spell a lone surrogate, and no UTF-8 file can carry one, so a part never reaches step 10
+    with one: ``load_json`` refuses it first, as ``unparseable``. A tag character is another matter: it is a valid
+    scalar value, so a part can hold it as UTF-8 or as an escaped surrogate pair, and step 10 refuses it either way.
+
+    Step 10 uses this on every string of a part. A renderer calls it where it takes a value from an input that
+    isn't a part (``threats.md``, a baseline file, ``threats.sarif``), so the character set has one definition,
+    and a surrogate that such an input's JSON escape spells is refused where it is taken, before a write can fail
+    on it. ``path_problem`` asks it too, so a path holds no character that a part's text may not. The length limit
+    is step 10's too, but it isn't part of this predicate.
+    """
+    found = _FORBIDDEN_CHARACTERS.search(text)
+    return found.group(0) if found is not None else None
 
 
 def _check_keys(obj: Any, name: str) -> None:
@@ -859,8 +936,8 @@ def _int(value: Any, low: int, high: Optional[int], what: str) -> int:
 
 
 def _check_characters(text: str, what: str) -> None:
-    """Step 10: at most 16,384 characters, and none of the forbidden control, bidi or separator characters."""
-    if len(text) > MAX_STRING_CHARS or _FORBIDDEN_CHARACTERS.search(text):
+    """Step 10: at most 16,384 characters, and none of the characters ``forbidden_character`` names."""
+    if len(text) > MAX_STRING_CHARS or forbidden_character(text) is not None:
         _fail("%s is over %d characters or holds a character the contract forbids" % (what, MAX_STRING_CHARS))
 
 
@@ -868,8 +945,9 @@ def closed_string(value: Any, what: str, low: int = 1, high: Optional[int] = Non
     """The one check for a closed-value string (ADR-050 D3 steps 6 and 10). Returns ``value``, or raises.
 
     ``value`` must be text of ``low`` to ``high`` characters (no upper limit but the 16,384 of step 10 when ``high``
-    is ``None``), with no control character other than tab and newline and none of the bidi or separator characters
-    that D3 forbids. A closed value is checked and never cut, so a string over its range is rejected, not shortened.
+    is ``None``), with no control character other than tab and newline and none of the bidi, separator, surrogate
+    or tag characters that D3 forbids. A closed value is checked and never cut, so a string over its range is
+    rejected, not shortened.
     Raises ``PartError("invalid")`` whose detail names ``what`` and never echoes ``value``.
     """
     if not isinstance(value, str) or len(value) < low or (high is not None and len(value) > high):
@@ -901,10 +979,14 @@ def _narrative(text: str, field: str, state: _ItemState) -> str:
 
 
 def _prose(value: Any, limit: int, field: str, state: _ItemState, narrative: bool = False,
-           minimum: int = 0, lines: Optional[int] = None) -> str:
+           minimum: int = 0, lines: Optional[int] = None, dedent: bool = False) -> str:
     """A prose field: cut at its limit (and at ``lines`` lines) and flagged, never rejected for length (RR2).
 
-    The cut comes first, then step 10 on what is left, then step 11 for a narrative field.
+    Step 9's order is the cut, then the edge whitespace: a snippet (``dedent``) is dedented with ``textwrap.dedent``
+    so its lines keep their relative indentation, and every prose string is then ``strip()``ped, the predicate the
+    table readers apply to a cell, so a carried value reads back byte for byte (T033, T056). The strip raises no
+    flag, and a required field (``minimum``) that is empty afterwards rejects the part. Then step 10 on what is
+    left, then step 11 for a narrative field.
     """
     if not isinstance(value, str):
         _fail("%s is not text" % field)
@@ -916,6 +998,9 @@ def _prose(value: Any, limit: int, field: str, state: _ItemState, narrative: boo
     if cut:
         state.flags.add("input:%s:truncated" % field)
         state.truncations += 1
+    if dedent:
+        value = textwrap.dedent(value)
+    value = value.strip()
     if len(value) < minimum:
         _fail("%s is empty" % field)
     _check_characters(value, field)
@@ -960,7 +1045,7 @@ def _evidence_entry(entry: Dict[str, Any], state: _ItemState) -> None:
     _int(entry["line"], 1, None, "evidence.line")
     if not id_matches("language", entry["language"]):
         _fail("evidence.language does not match the language pattern")
-    entry["snippet"] = _prose(entry["snippet"], 600, "evidence.snippet", state, lines=5)
+    entry["snippet"] = _prose(entry["snippet"], 600, "evidence.snippet", state, lines=5, dedent=True)
     entry["summary"] = _prose(entry["summary"], 160, "evidence.summary", state)
     if "assessment" in entry:
         _check_keys(entry["assessment"], "assessment")
@@ -969,6 +1054,82 @@ def _evidence_entry(entry: Dict[str, Any], state: _ItemState) -> None:
             _check_keys(cell, "assessment-dimension")
             _enum(cell["rating"], CONFIDENCES, "evidence.assessment.%s.rating" % dimension)
             cell["rationale"] = _prose(cell["rationale"], 160, "evidence.assessment." + dimension, state, narrative=True)
+
+
+# The controls `matrix_row` (ADR-050 D2; `contracts/module-signatures.md`, "The controls `matrix_row`"): the 11 cells of
+# K8's section 2 table, the finding's ID first. Only the count and the ID cell are structural, so only they reject an item.
+MATRIX_ROW_CELLS = 11
+
+
+def matrix_row_cells(row: str) -> List[str]:
+    """The cells of a controls ``matrix_row``, split the one way that a reader splits a table line (ADR-050 D3).
+
+    The line's edge whitespace goes first, then one leading and one trailing ``|`` where present, so a row reads the
+    same with or without its outer pipes. The rest splits on raw ``|``, and each cell loses its edge whitespace, as
+    ``tachi_parsers.parse_markdown_table`` strips a cell. A reference such as ``&#124;`` holds no ``|``, so it never
+    splits a row; GFM's ``\\|`` does, as it always has (NFR-1). Nothing is decoded here: the readers decode a cell after
+    the split, and no check on a row reads a decoded value, because no reference decodes to a character that a finding
+    ID holds. ``row`` must be a ``str``.
+    """
+    line = row.strip()
+    if line.startswith("|"):
+        line = line[1:]
+    if line.endswith("|"):
+        line = line[:-1]
+    return [cell.strip() for cell in line.split("|")]
+
+
+def _check_matrix_row(row: str, finding_id: str) -> None:
+    """ADR-050 D2's two structural checks on a controls ``matrix_row``: 11 cells, and the item's own ID in the first.
+
+    ``finding_id`` is the item's canonical ID, which ``_classify`` has checked against the allow-list, so a detail may
+    name it. The row's own text is never echoed. A mismatch in any other cell is the renderer's to flag, or to overwrite
+    and count (D2), so it never rejects the item here.
+    """
+    cells = matrix_row_cells(row)
+    if len(cells) != MATRIX_ROW_CELLS:
+        _fail("matrix_row of %s has a cell count of %d, not %d" % (finding_id, len(cells), MATRIX_ROW_CELLS))
+    if not id_matches("finding", cells[0]):
+        _fail("matrix_row of %s has a Threat ID cell that is not an allow-listed finding ID" % finding_id)
+    if canonical_finding_id(cells[0]) != finding_id:
+        _fail("matrix_row of %s has a Threat ID cell for another finding" % finding_id)
+
+
+# The controls `recommendation_body` (ADR-050 D2, "The §4 body"; the 1.1 template's "Who writes what"): the four keys of
+# the section 4 block, each once and in this order, each at the start of a line. The Effort Estimate starts with a level.
+RECOMMENDATION_KEYS = ("What to Implement", "Where to Implement", "Reference Patterns", "Effort Estimate")
+EFFORT_LEVELS = ("Low", "Medium", "High")
+_EFFORT_LEVEL = re.compile(r"(?:%s)(?!\w)" % "|".join(EFFORT_LEVELS))
+
+
+def _check_recommendation_body(body: str, finding_id: str) -> None:
+    """ADR-050 D2's structural checks on a controls ``recommendation_body``: its keys, its Effort, and no heading or table.
+
+    A key is a line that starts, after any whitespace, with ``**<key>**:``. The four have to come once each and in
+    order. Other lines are the keys' own text, so a value may run on over more than one line. The Effort Estimate has
+    to start with ``Low``, ``Medium`` or ``High``, and no line may start with ``#`` or ``|``, as a heading or a table
+    row does (``escape_prose`` guards the same line start). ``finding_id`` is the item's canonical ID, which a detail may
+    name. A key name comes from the closed set, so a detail may list the ones found. The body's own text is never echoed.
+    """
+    found: List[str] = []
+    effort = ""
+    for line in body.split("\n"):
+        text = line.lstrip()
+        if text.startswith("#"):
+            _fail("recommendation_body of %s has a heading line" % finding_id)
+        if text.startswith("|"):
+            _fail("recommendation_body of %s has a table line" % finding_id)
+        for key in RECOMMENDATION_KEYS:
+            label = "**%s**:" % key
+            if text.startswith(label):
+                found.append(key)
+                if key == RECOMMENDATION_KEYS[-1]:
+                    effort = text[len(label):].lstrip()
+                break
+    if found != list(RECOMMENDATION_KEYS):
+        _fail("recommendation_body of %s has the keys [%s], not the four once each and in order" % (finding_id, ", ".join(found)))
+    if _EFFORT_LEVEL.match(effort) is None:
+        _fail("recommendation_body of %s has an Effort Estimate that does not start with Low, Medium or High" % finding_id)
 
 
 def _controls_item(item: Dict[str, Any], state: _ItemState) -> None:
@@ -987,10 +1148,12 @@ def _controls_item(item: Dict[str, Any], state: _ItemState) -> None:
     for entry in evidence:
         _evidence_entry(entry, state)
     item["matrix_row"] = _prose(item["matrix_row"], 1200, "matrix_row", state)
+    _check_matrix_row(item["matrix_row"], item["finding_id"])  # after the cut, so it checks the row that is kept
     if (item["recommendation_body"] is None) != (status == "found"):
         _fail("recommendation_body is null exactly when the status is found")
     if item["recommendation_body"] is not None:
         item["recommendation_body"] = _prose(item["recommendation_body"], 2000, "recommendation_body", state)
+        _check_recommendation_body(item["recommendation_body"], item["finding_id"])  # after the cut, as the row's check is
 
 
 # Stage -> its payload validator. PR 2's stages join this table with their payloads.
@@ -1168,13 +1331,36 @@ def _params(value: Any) -> None:
             _fail("params.%s is not a scalar" % key)
 
 
+def _refs(value: Any) -> None:
+    """The stage's pointers: at most 20 closed names, each an absolute path that passes D7's syntactic rule.
+
+    The plan holds them once (the authority) and each batch input holds a verbatim copy, so both are checked here.
+    """
+    if not isinstance(value, dict) or len(value) > 20:
+        _fail("refs is not a small object")
+    for name, path in value.items():
+        _stamp(name, _NAME, "a refs name")
+        _path_text(path, "refs.%s" % name, absolute=True)
+
+
+def _warning_entry(entry: Any, what: str) -> None:
+    """One ``{code, detail}`` warning, as a stage record lists it: a code of ``[a-z0-9:_.-]{1,64}`` and a detail of 0 to 500 characters."""
+    _check_keys(entry, "warning")
+    _stamp(entry["code"], _CODE, "%s.code" % what)
+    closed_string(entry["detail"], "%s.detail" % what, 0, 500)
+
+
 def _stage_pair(stage: Any, agent_type: Any) -> None:
     if not isinstance(stage, str) or STAGE_AGENTS.get(stage) != agent_type:
         _fail("stage is unknown, or agent_type is not the stage's agent")
 
 
 def validate_plan(obj: Any) -> Dict[str, Any]:
-    """``tachi.plan/1`` (contracts/part-files.md section 4). Returns ``obj``, or raises ``PartError("invalid")``."""
+    """``tachi.plan/1`` (contracts/part-files.md section 4). Returns ``obj``, or raises ``PartError("invalid")``.
+
+    ``refs`` is the stage's pointers, as a batch input has them, and ``architecture_warning`` is ``null`` or the one
+    warning that ``plan`` raised when it refused the ``--architecture`` candidate (ruled at W2).
+    """
     _check_keys(obj, "plan")
     if obj["schema"] != PLAN_SCHEMA:
         _fail("schema is not %s" % PLAN_SCHEMA)
@@ -1191,6 +1377,9 @@ def validate_plan(obj: Any) -> Dict[str, Any]:
             _fail("inputs.%s.path is not an acceptable path" % name)
         _stamp(entry["sha256"], _HEX64, "inputs.%s.sha256" % name)
         _int(entry["bytes"], 0, None, "inputs.%s.bytes" % name)
+    _refs(obj["refs"])
+    if obj["architecture_warning"] is not None:
+        _warning_entry(obj["architecture_warning"], "architecture_warning")
     _params(obj["params"])
     if obj["batch_size"] is not None:
         _int(obj["batch_size"], 1, MAX_IDS, "batch_size")
@@ -1262,11 +1451,7 @@ def validate_batch_input(obj: Any) -> Dict[str, Any]:
         _fail("tree_paths is {} outside the trees stage")
     if not isinstance(obj["units"], list) or len(obj["units"]) > MAX_IDS or not all(isinstance(u, dict) for u in obj["units"]):
         _fail("units is not a list of at most %d objects" % MAX_IDS)
-    if not isinstance(obj["refs"], dict) or len(obj["refs"]) > 20:
-        _fail("refs is not a small object")
-    for name, path in obj["refs"].items():
-        _stamp(name, _NAME, "a refs name")
-        _path_text(path, "refs.%s" % name, absolute=True)
+    _refs(obj["refs"])
     _params(obj["params"])
     return obj
 
@@ -1311,9 +1496,7 @@ def validate_stage_record(obj: Any) -> Dict[str, Any]:
         for child in children:
             _id("batch", child, "retries.children")
     for warning in obj["warnings"]:
-        _check_keys(warning, "warning")
-        _stamp(warning["code"], _CODE, "warnings.code")
-        closed_string(warning["detail"], "warnings.detail", 0, 500)
+        _warning_entry(warning, "warnings")
     for relpath in obj["undeclared_paths"]:
         _path_text(relpath, "an undeclared path")
     for output in obj["outputs"]:
@@ -1379,13 +1562,54 @@ def input_digest(obj: Any) -> str:
     return "sha256:" + sha256_hex(text.encode("utf-8"))
 
 
-def atomic_write(path: object, data: Any) -> None:
+def _read_umask() -> int:
+    """The process umask. Python reads it only by setting it to 0 and putting it back, so this runs once (below)."""
+    mask = os.umask(0)
+    os.umask(mask)
+    return mask
+
+
+# A new file's mode needs the umask, and reading it leaves the process's umask at 0 for the moment between the two
+# calls in ``_read_umask``, which a thread or a signal handler could observe. So it is read once, here at import,
+# while the process is still starting up, and never in ``atomic_write`` (S7-3).
+_UMASK = _read_umask()
+
+
+def _mode_for(target: str) -> int:
+    """The permission bits a file written in place of ``target`` gets (SA-4).
+
+    A regular file at ``target`` hands over its own ``rwx`` bits for user, group and other, so a replace does not undo
+    an adopter's ``chmod 600``. Anything else, such as nothing at all, a symlink (the replace removes the link and its
+    own mode says nothing about the new file) or a device, gets what an ordinary write would give: ``0666 & ~umask``.
+    """
+    try:
+        old = os.lstat(target)
+    except OSError:
+        old = None  # nothing is there yet, or nothing can be read: the replace itself says which
+    if old is not None and stat.S_ISREG(old.st_mode):
+        return stat.S_IMODE(old.st_mode) & 0o777
+    return 0o666 & ~_UMASK
+
+
+def atomic_write(path: object, data: Any, mode_of: Optional[object] = None) -> None:
     """Write ``data`` to ``path`` all at once: a temp file in the same directory, then ``os.replace``.
 
-    ``str`` is written as UTF-8 with no newline translation, ``bytes`` as they are. The file gets the mode an
-    ordinary write would (``0666 & ~umask``), not the temp file's ``0600``. A symlink at ``path`` is replaced,
-    never followed. If anything fails, the temp file is removed and the error propagates, so a failed write
-    leaves the old file and no stray file behind.
+    ``str`` is written as UTF-8 with no newline translation, ``bytes`` as they are. A regular file that is replaced
+    keeps its permission bits, so an adopter's ``chmod 600`` survives the next run (SA-4). A file that is new, a
+    symlink or anything else that is not a regular file gets the mode an ordinary write would (``0666 & ~umask``,
+    the umask as it was when this module was imported), not the temp file's ``0600``. The mode is set on the open
+    descriptor, never on the temp file's path (S7-3). Ownership is not kept, because keeping it takes privilege: the
+    new file belongs to the user who writes it. The old file's setuid, setgid and sticky bits, ACLs, extended
+    attributes and hard links are not kept either. A symlink at ``path`` is replaced, never followed. If anything
+    fails, the temp file is removed and the error propagates, so a failed write leaves the old file and no stray
+    file behind.
+
+    ``mode_of``, when given, is a path whose permission bits the new file takes in place of ``path``'s own, through
+    the same rule (``_mode_for``): a regular file hands over its ``rwx`` bits, and anything else, nothing at all
+    included, gives the ordinary mode. It is for a file that is written under one name and moved onto another. A
+    renderer stages its output beside the canonical name and passes that name, and ``fail`` writes a pre-image back
+    onto a name that no longer exists and passes the pre-image's path (P1-2, the rest of SA-4). ``None`` is the
+    default, and then ``path`` names the file whose bits are kept.
     """
     if isinstance(data, str):
         payload = data.encode("utf-8")
@@ -1399,10 +1623,12 @@ def atomic_write(path: object, data: Any) -> None:
         with os.fdopen(descriptor, "wb") as handle:
             handle.write(payload)
             handle.flush()
+            mode = _mode_for(target if mode_of is None else os.fspath(mode_of))
+            if hasattr(os, "fchmod"):
+                os.fchmod(handle.fileno(), mode)
+            else:  # Windows before Python 3.13: a mode there is the read-only flag, and a symlink swap is no hazard
+                os.chmod(temporary, mode)
             os.fsync(handle.fileno())
-        mask = os.umask(0)
-        os.umask(mask)
-        os.chmod(temporary, 0o666 & ~mask)
         os.replace(temporary, target)
     except BaseException:
         try:
@@ -1545,6 +1771,24 @@ def failed_path(out: object, stage: str, plan_id: str, name: str) -> str:
 # =============================================================================
 # Shared by the stage entry and the renderers (W1 addendum: moved from `tachi-stage.py`, byte for byte)
 # =============================================================================
+
+def snapshot_key(relpath: str) -> str:
+    """A file's key in the plan's ``out_snapshot``: its path, or, for a name that D7's rule refuses and so no plan could hold, a stand-in (SA-5; EC-2).
+
+    The test is ``path_problem`` itself, the rule that the plan's own validator applies to each key, so the stand-in is for any name that the
+    rule refuses, whatever it comes to refuse (SA-8 widened it to the separators, bidi controls and tag characters), and no list of cases is
+    kept here. The stand-in is ``./unrecordable:`` and the SHA-256 of the name's bytes. It passes the plan's own path check, because the ``./``
+    keeps the colon out of the first component, and no path that a walk of ``--out`` yields can equal it, because those never start with
+    ``./``. So an odd name that was there when the plan was made is found again unchanged and is not reported, while a file planted beside it is.
+
+    The planner keys the snapshot by it and looks each file up by it at ``fail``, and both renderers look each file up by it before the declared-paths
+    check, so the three are one key (before EC-2 the renderers looked up the raw path, and a clean run that left such a name in place warned
+    ``undeclared-paths-unrecordable`` and exited 5). Before SA-5, one such name skipped the whole check, which a repository could use to hide a file.
+    """
+    if path_problem(relpath) is None:
+        return relpath
+    return "./unrecordable:" + sha256_hex(os.fsencode(relpath))
+
 
 def is_declared_path(relpath: str, stage: str, plan_id: str) -> bool:
     """D4's declared-paths grammar for a stage: its canonical files and D3's exact layout, nothing else.

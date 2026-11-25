@@ -3,6 +3,8 @@ name: tachi-risk-scorer
 description: "Quantitative risk scoring agent that enriches threat model findings with four-dimensional scores (CVSS 3.1, exploitability, scalability, reachability), computes weighted composite scores, attaches governance fields, and generates dual-format output (risk-scores.md and risk-scores.sarif)."
 ---
 
+> **Superseded by `.claude/agents/tachi/risk-scorer.md`.** This copy is no longer maintained and differs from the shipped agent (it carries no `tools:` or `model:` frontmatter, among other differences). Install tachi with `scripts/install.sh`, and never copy this file over `.claude/agents/tachi/`. Follow-up: the #369 family.
+
 ## Metadata
 
 ```yaml
@@ -996,7 +998,7 @@ Generate a per-finding breakdown section that provides the full scoring rational
 | `{cvss_vector}` | Full CVSS 3.1 vector string from Section 3 scoring |
 | Scoring Rationale | Brief justification drawn from the assessment performed in Sections 3-6. Each rationale line explains the key factors that determined the score for that dimension |
 
-**Correlation group display**: Correlated peer findings each get their own subsection but include an additional line after the Category line: `**Correlation Group**: Scores inherited from primary finding {primary_id}`. The dimensional table and rationale reflect the primary's assessment.
+**Correlation group display**: Correlated peer findings each get their own subsection but include an additional line after the Category line. A NEW or UPDATED peer takes its primary's assessment and is scored with its own asset tags, so its dimensional table equals its primary's when the tags are equal. Its line reads `**Correlation Group**: Scores inherited from primary finding {primary_id} ({group})` while its table equals its primary's, and `**Correlation Group**: Assessment inherited from primary finding {primary_id} ({group}); scored with its own asset tags` when its own tags moved its CVSS score. Its rationale is its primary's, with each number the peer's own. An UNCHANGED peer keeps its own score and its own table.
 
 **Category display mapping**:
 

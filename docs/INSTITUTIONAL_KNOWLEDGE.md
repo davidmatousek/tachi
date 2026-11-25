@@ -818,3 +818,47 @@ F-292 reused F-260's community-merge precedent (4 mechanical artifacts: CHANGELO
 - Entry 23 (F-362; its sweep covered authored surfaces, not adopters' carried baselines).
 - Entry 1 (a substitution-target edit regenerates the init-baseline fixture in the same commit; applied to this entry).
 - Entry 3 (the lock-step rule for path filters and invocations).
+
+---
+
+### Entry 27: F-374 PR 1 Large-Architecture Pipeline Resilience — Output-Cap Overflow (a batch size bounds the write, not the thinking)
+
+**Date**: 2026-11-24 | **Category**: Pattern | **Feature**: F-374 (PR 1) | **Issues**: #374 (lead), #397 (tracking), PR #423 (PR 1), #428, #429 and #430 (spec S-16's follow-ups), #431 (max-effort stops)
+
+**Context**:
+- **The failure.** Two stock runs on large real-world architectures overflowed single responses. tachi wrote `risk-scores.md`, `compensating-controls.md`, their SARIF files and the threat report each in one response, and the agents hit the 64k output cap: a risk scorer spent its whole budget in one reasoning turn and handed back an unrun program, and the report agent stopped while emitting every Critical attack tree inline. Each overflow was recovered only by assembling the missing output by hand (the PRD's §1).
+- **PR 1's design (ADR-050 D1, D3 and D6).** For the scorer and controls stages, shipped renderers own every output file, and the agents write judgment-only part files, one per batch.
+  - Spec S-1 sizes a batch so that its largest single write is at most 8,000 tokens and all its writes at most 32,000. That is a quarter of the smallest documented default cap (32,000 tokens), which was meant to leave three quarters of each response for reasoning.
+  - W1's calibration set the sizes at 13 scorer findings and 11 controls findings per batch.
+  - A missing or truncated part makes `reconcile` halve the batch and re-dispatch it, under a retry cap (P-8).
+- **The evidence: W5's live matrix at true max effort.** The main session and the agents both ran at max, on Claude Code 2.1.331, and every request carried `max_tokens` 128,000.
+  - The scorer stage used 4.30M output tokens, 90% of it thinking. 9 of its 26 agents each had one response that stopped at `max_tokens` after exactly 128,000 tokens of thinking only, before the agent's Write.
+  - Claude Code appended its output-limit notice and resumed each agent in the same run. The next response held the Write, so every part was valid at the first `reconcile`, and no part was lost.
+  - tachi's stage record showed 0 overflow events, 0 retries and 0 splits. So tachi's own overflow and retry path was never exercised live, and PR 1 claims the overflow stories (US-1a #4 and #5) from the offline run only.
+  - The two largest Write responses were 127,334 and 127,026 tokens, 666 and 974 under the cap. A stop inside a Write call would have lost the part.
+  - The controls stage at max had no stop. Its largest response was 111,990 tokens, 87.5% of the cap. In the default-effort controls runs, the largest agent response was about 8,600 tokens.
+
+**Lesson — At max effort, thinking fills the response. A batch size bounds the write, not the thinking, and a stop that the client absorbs never reaches the disk.**
+
+- **Problem**: S-1's arithmetic assumed that reasoning fits in what the write leaves of a response. At max effort, an agent's thinking alone can fill a 128,000-token response, whatever its batch size, so D6's sizing bounds the writes and not the thinking. The client's own recovery then hides the stops. A reconciler that reads only the disk sees a valid part and reports a clean run, and the only record of the near-miss is the session transcript.
+- **What we learned**:
+  1. **Thinking counts against the cap, and the batch size doesn't bound it.** The part files stayed small (19 to 28 KB), but per-agent thinking at max reached 128,000 tokens in a single response. The margin to the cap has to be measured per response, thinking included, at the highest effort that a release claims.
+  2. **"No overflow event" is a claim about tachi's path only.** Claude Code resumes an agent after a thinking-only `max_tokens` stop, so a stage can pass with stops that no tachi record shows. Claim only what the record measures, and read the session's usage records (stop reasons, and output and thinking tokens per response) before saying that a run had no overflow.
+  3. **The effort flag doesn't reach the agents.** `claude --effort max` sets only the main session: W5's first "max" runs had every agent at medium (116 of 116 scorer responses, and 203 of 203 controls responses). Agents follow `CLAUDE_CODE_EFFORT_LEVEL`. The relaunch with `CLAUDE_CODE_EFFORT_LEVEL=max` beside the flag put 36 of 36 main-session responses and 310 of 310 agent responses at max.
+  4. **Max is a cost step.** Against the default run, the scorer at true max used 18.4 times the output tokens (4,295,809 against 233,319) and 17 times the wall time (46:24 against 2:44), for the same structural result.
+- **How to apply**:
+  - Size a batch by its visible write, then check the thinking headroom at the highest effort that you claim: record per-response output and thinking tokens on the largest fixture, and the smallest margin to the cap.
+  - Keep the dispatching layer's retry path for a lost part (halve and re-dispatch, with a cap), even if no live run exercises it. A stop inside a Write loses the part, and the offline run is the evidence that the path works.
+  - For a live run at a given effort level, set both `--effort` and `CLAUDE_CODE_EFFORT_LEVEL`, and check the per-response effort of the main session and of the agents in the transcripts before counting the run. Pin the default level (`--effort medium`) when the account's settings open higher.
+  - Treat a clean stage record at max as necessary, not sufficient: audit the transcripts' stop reasons too.
+  - **Follow-ups.** Recording the stops that the client absorbs, or sizing max-effort batches narrower, is #431. Spec S-16's three are the architecture snapshot's file name (#428), a deny rule for the `general-purpose` agent type in the isolated-operation profile (#429), and dispatching Phase 2 from the command layer (#430).
+
+**Evidence**:
+- **Feature records:** `specs/374-large-architecture-pipeline-resilience/test-results/` (`live-risk-score-max-a2.md` sections 3 and 6, `live-risk-score-max.md`, `live-compensating-controls-max-a2.md`, `w5-gate-pr1.md` G-2 and G-8, and `prefix-baseline.md`), and `spec.md` S-1 and S-16.
+- **Design:** ADR-050 D6: the sizes, the overflow error, the retry cap, and the note that the response cap depends on the environment.
+- **PR:** #423 (PR 1, the `fix(374)` patch release).
+
+**Related**:
+- Entry 22 (gate on the compiled artifact, never on intermediate agent output; here the disk record and the transcript disagree).
+- Entry 25 (spike the environment's refusal signals, not only its success path; here the client's own recovery hid the signal).
+- Entry 1 (a substitution-target edit regenerates the init-baseline fixture in the same commit; applied to this entry).

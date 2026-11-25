@@ -1,0 +1,250 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "aod-security",
+          "version": "1.0.0",
+          "informationUri": "https://github.com/anthropics/agentic-oriented-development",
+          "rules": [
+            {
+              "id": "A04",
+              "name": "Insecure Design",
+              "shortDescription": {
+                "text": "Unbounded algorithmic or resource cost on untrusted input (CWE-1333, CWE-770)"
+              },
+              "helpUri": "https://owasp.org/Top10/"
+            },
+            {
+              "id": "A03",
+              "name": "Injection",
+              "shortDescription": {
+                "text": "Injection through shell commands built from untrusted text (CWE-78)"
+              },
+              "helpUri": "https://owasp.org/Top10/"
+            },
+            {
+              "id": "A01",
+              "name": "Broken Access Control",
+              "shortDescription": {
+                "text": "Link-following and permission handling on paths the program creates (CWE-367)"
+              },
+              "helpUri": "https://owasp.org/Top10/"
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "A04",
+          "message": {
+            "text": "The Section 7 numbered-list reader splits each bold lead with an unanchored pattern (_TITLE_SEPARATOR, then a plus-sign split). A run of n whitespace characters costs O(n^2): 40,000 characters took 9.2 s through parse_reference_set, scaling 16x per 4x length, and input is capped at 16 MiB rather than per line."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/tachi_parsers.py"
+                },
+                "region": {
+                  "startLine": 1465
+                }
+              }
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/tachi_parsers.py"
+                },
+                "region": {
+                  "startLine": 1468
+                }
+              },
+              "message": {
+                "text": "The second quadratic split, on the same text."
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "cbbec3afc9a4ab54f76919c34f76a073"
+          },
+          "level": "warning",
+          "properties": {
+            "severity": "MEDIUM",
+            "cwe": "CWE-1333",
+            "finding-key": "S7-1",
+            "vuln-id": "tachi-VULN-04622b75c906",
+            "cvss-estimated": "5.5"
+          }
+        },
+        {
+          "ruleId": "A03",
+          "message": {
+            "text": "The command texts put {input_dir} and {output_dir} into shell commands without quotes. The input directory is auto-detected from directory names under docs/security/, which the scanned repository controls, and the output directory defaults to it. A name with shell metacharacters reaches the shell before any script validates it."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".claude/commands/tachi.risk-score.md"
+                },
+                "region": {
+                  "startLine": 150
+                }
+              }
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".claude/commands/tachi.compensating-controls.md"
+                },
+                "region": {
+                  "startLine": 127
+                }
+              },
+              "message": {
+                "text": "The same unquoted placeholders on the controls stage's plan call."
+              }
+            },
+            {
+              "id": 1,
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".claude/commands/tachi.threat-model.md"
+                },
+                "region": {
+                  "startLine": 216
+                }
+              },
+              "message": {
+                "text": "The architecture-source call."
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "19b2d65c4d995753c3c3378e00facb60"
+          },
+          "level": "warning",
+          "properties": {
+            "severity": "MEDIUM",
+            "cwe": "CWE-78",
+            "finding-key": "S7-2",
+            "vuln-id": "tachi-VULN-0b32c5afe282",
+            "cvss-estimated": "6.2"
+          }
+        },
+        {
+          "ruleId": "A01",
+          "message": {
+            "text": "atomic_write closes the temp file and then calls os.chmod on its path, so a link swapped in at that name in the output directory would have its target's mode changed. It also reads the umask by setting it to 0 and restoring it. Both need write access to the output directory."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/tachi_parts.py"
+                },
+                "region": {
+                  "startLine": 1563
+                }
+              }
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/tachi_parts.py"
+                },
+                "region": {
+                  "startLine": 1561
+                }
+              },
+              "message": {
+                "text": "The process-wide umask is read by setting it to 0 and restoring it."
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "f139db5edf6a4175159be4768830ec36"
+          },
+          "level": "note",
+          "properties": {
+            "severity": "LOW",
+            "cwe": "CWE-367",
+            "finding-key": "S7-3",
+            "vuln-id": "tachi-VULN-0bbf78df23ef",
+            "cvss-estimated": "2.5"
+          }
+        },
+        {
+          "ruleId": "A04",
+          "message": {
+            "text": "_input_entry reads a whole file with open() and read(), with no size cap and no no-follow guard, where every other input read uses the 16 MiB cap and no-follow reader. The risk-score stage reaches it through an operator-named --risk-scores file that nothing else reads first."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/tachi-stage.py"
+                },
+                "region": {
+                  "startLine": 350
+                }
+              }
+            }
+          ],
+          "relatedLocations": [
+            {
+              "id": 0,
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/tachi-stage.py"
+                },
+                "region": {
+                  "startLine": 342
+                }
+              },
+              "message": {
+                "text": "The --risk-scores pointer read, with no earlier capped read."
+              }
+            },
+            {
+              "id": 1,
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/tachi-stage.py"
+                },
+                "region": {
+                  "startLine": 500
+                }
+              },
+              "message": {
+                "text": "The baseline risk-scores re-read after the capped reader."
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "e2380340fef1e563ae19d13ac46d4d18"
+          },
+          "level": "note",
+          "properties": {
+            "severity": "INFO",
+            "cwe": "CWE-770",
+            "finding-key": "S7-4",
+            "vuln-id": "tachi-VULN-e29065b7c07a"
+          }
+        }
+      ]
+    }
+  ]
+}

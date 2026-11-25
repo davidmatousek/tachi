@@ -1,0 +1,5722 @@
+{
+  "baseline": {
+    "files": [
+      "threats.md",
+      "risk-scores.md"
+    ],
+    "form": "legacy",
+    "frontmatter_date": "2026-11-09",
+    "note": "pre-fix form (v4.48.4), no SARIF"
+  },
+  "counts": {
+    "findings": 110,
+    "findings_with_flags": 80,
+    "flags_by_kind": {
+      "corrected": 73,
+      "input": 12,
+      "override": 2,
+      "resolved": 2,
+      "unchecked": 14,
+      "unverifiable": 12
+    },
+    "normalized": 3
+  },
+  "findings": {
+    "AG-1": {
+      "case": "missing-vector",
+      "component": "intake-agent",
+      "d10_step": 1,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
+          "kind": "unverifiable",
+          "rendered": "9.6",
+          "stored": "9.6"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AG",
+      "rendered": {
+        "composite_score": "6.4",
+        "cvss_base": "9.6",
+        "cvss_vector": null,
+        "exploitability": "6.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.4",
+        "cvss_base": "9.6",
+        "cvss_vector": null,
+        "exploitability": "6.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": null,
+        "sarif": null
+      }
+    },
+    "AG-2": {
+      "case": "wrong-composite",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "5.1",
+          "stored": "5.5"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AG",
+      "rendered": {
+        "composite_score": "5.1",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:L",
+        "exploitability": "4.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.5",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:L",
+        "exploitability": "4.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:L",
+        "sarif": null
+      }
+    },
+    "AG-3": {
+      "case": "wrong-band",
+      "component": "planner-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "High"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "7d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "risk_disposition",
+          "flag": "corrected:risk_disposition:follows-band",
+          "kind": "corrected",
+          "rendered": "Review",
+          "stored": "Mitigate"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2026-11-16"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AG",
+      "rendered": {
+        "composite_score": "6.1",
+        "cvss_base": "9.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "4.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.1",
+        "cvss_base": "9.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "4.5",
+        "reachability": "2.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "AG-4": {
+      "case": "reach-out-of-range",
+      "component": "planner-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "out-of-range",
+          "field": "reachability",
+          "flag": "input:reachability:out-of-range",
+          "kind": "input",
+          "rendered": null,
+          "stored": "6.5"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AG",
+      "rendered": {
+        "composite_score": "6.1",
+        "cvss_base": "6.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:L/I:H/A:N",
+        "exploitability": "5.5",
+        "reachability": "6.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.1",
+        "cvss_base": "6.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:L/I:H/A:N",
+        "exploitability": "5.5",
+        "reachability": "6.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:L/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "AG-5": {
+      "case": "cascade-band",
+      "component": "planner-agent",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "6.6",
+          "stored": "3.7"
+        },
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "4.7",
+          "stored": "3.6"
+        },
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "Low"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "90d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2027-02-07"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AG",
+      "rendered": {
+        "composite_score": "4.7",
+        "cvss_base": "6.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:L/I:L/A:L",
+        "exploitability": "4.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "3.6",
+        "cvss_base": "3.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:L/I:L/A:L",
+        "exploitability": "4.0",
+        "reachability": "2.0",
+        "remediation_sla": "90d",
+        "review_date": "2027-02-07",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Low"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:L/I:L/A:L",
+        "sarif": null
+      }
+    },
+    "AG-6": {
+      "case": "clean",
+      "component": "worker-2",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AG",
+      "rendered": {
+        "composite_score": "5.2",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:L",
+        "exploitability": "3.5",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.2",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:L",
+        "exploitability": "3.5",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "AG-7": {
+      "case": "clamp-control",
+      "component": "worker-2",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AG",
+      "rendered": {
+        "composite_score": "5.4",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:R/S:C/C:L/I:H/A:L",
+        "exploitability": "4.5",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.4",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:R/S:C/C:L/I:H/A:L",
+        "exploitability": "4.5",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:L/PR:N/UI:R/S:C/C:L/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "AG-8": {
+      "case": "n17-bound",
+      "component": "tool-server-1",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "bound-n17c",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:bound-n17c",
+          "kind": "unchecked",
+          "rendered": "7.5",
+          "stored": "7.5"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AG",
+      "rendered": {
+        "composite_score": "5.4",
+        "cvss_base": "7.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:L/A:H",
+        "exploitability": "5.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.4",
+        "cvss_base": "7.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:L/A:H",
+        "exploitability": "5.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:L/A:H",
+        "sarif": null
+      }
+    },
+    "AG-9": {
+      "case": "bad-vector",
+      "component": "tool-server-1",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "10.0",
+          "stored": "7.9"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AG",
+      "rendered": {
+        "composite_score": "6.1",
+        "cvss_base": "10.0",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N",
+        "exploitability": "4.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.1",
+        "cvss_base": "7.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N",
+        "exploitability": "4.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "AGP-01": {
+      "case": "wrong-band",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "High"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "7d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "risk_disposition",
+          "flag": "corrected:risk_disposition:follows-band",
+          "kind": "corrected",
+          "rendered": "Review",
+          "stored": "Mitigate"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2026-11-16"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AGP",
+      "rendered": {
+        "composite_score": "5.4",
+        "cvss_base": "7.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+        "exploitability": "4.0",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.4",
+        "cvss_base": "7.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+        "exploitability": "4.0",
+        "reachability": "3.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "AGP-02": {
+      "case": "wrong-composite",
+      "component": "planner-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "5.2",
+          "stored": "4.7"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AGP",
+      "rendered": {
+        "composite_score": "5.2",
+        "cvss_base": "7.7",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:L",
+        "exploitability": "4.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "4.7",
+        "cvss_base": "7.7",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:L",
+        "exploitability": "4.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "AGP-03": {
+      "case": "n17-bound",
+      "component": "planner-agent",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "bound-n17c",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:bound-n17c",
+          "kind": "unchecked",
+          "rendered": "8.3",
+          "stored": "8.3"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AGP",
+      "rendered": {
+        "composite_score": "5.4",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:H/UI:R/S:C/C:L/I:N/A:N",
+        "exploitability": "5.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.4",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:H/UI:R/S:C/C:L/I:N/A:N",
+        "exploitability": "5.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:H/PR:H/UI:R/S:C/C:L/I:N/A:N",
+        "sarif": null
+      }
+    },
+    "AGP-04": {
+      "case": "bad-vector",
+      "component": "worker-2",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "8.5",
+          "stored": "5.6"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AGP",
+      "rendered": {
+        "composite_score": "5.5",
+        "cvss_base": "8.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N",
+        "exploitability": "4.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.5",
+        "cvss_base": "5.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N",
+        "exploitability": "4.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "AGP-05": {
+      "case": "missing-vector",
+      "component": "worker-2",
+      "d10_step": 1,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
+          "kind": "unverifiable",
+          "rendered": "9.9",
+          "stored": "9.9"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AGP",
+      "rendered": {
+        "composite_score": "5.8",
+        "cvss_base": "9.9",
+        "cvss_vector": null,
+        "exploitability": "4.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.8",
+        "cvss_base": "9.9",
+        "cvss_vector": null,
+        "exploitability": "4.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": null,
+        "sarif": null
+      }
+    },
+    "AGP-06": {
+      "case": "clamp-control",
+      "component": "tool-server-1",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AGP",
+      "rendered": {
+        "composite_score": "5.6",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:L/UI:R/S:U/C:H/I:H/A:N",
+        "exploitability": "4.5",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.6",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:L/UI:R/S:U/C:H/I:H/A:N",
+        "exploitability": "4.5",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:H/PR:L/UI:R/S:U/C:H/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "AGP-07": {
+      "case": "reach-out-of-range",
+      "component": "tool-server-1",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "out-of-range",
+          "field": "reachability",
+          "flag": "input:reachability:out-of-range",
+          "kind": "input",
+          "rendered": null,
+          "stored": "8.0"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "AGP",
+      "rendered": {
+        "composite_score": "7.1",
+        "cvss_base": "9.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:H",
+        "exploitability": "4.0",
+        "reachability": "8.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.1",
+        "cvss_base": "9.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:H",
+        "exploitability": "4.0",
+        "reachability": "8.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:H",
+        "sarif": null
+      }
+    },
+    "D-1": {
+      "case": "bad-vector",
+      "component": "edge-gateway",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "7.5",
+          "stored": "6.2"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "D",
+      "rendered": {
+        "composite_score": "7.6",
+        "cvss_base": "7.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "exploitability": "9.0",
+        "reachability": "5.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.6",
+        "cvss_base": "6.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "exploitability": "9.0",
+        "reachability": "5.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "sarif": null
+      }
+    },
+    "D-2": {
+      "case": "clamp-control",
+      "component": "auth-broker",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "D",
+      "rendered": {
+        "composite_score": "7.7",
+        "cvss_base": "8.5",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "8.0",
+        "reachability": "5.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.7",
+        "cvss_base": "8.5",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "8.0",
+        "reachability": "5.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "D-3": {
+      "case": "clean",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "D",
+      "rendered": {
+        "composite_score": "5.9",
+        "cvss_base": "6.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+        "exploitability": "7.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.9",
+        "cvss_base": "6.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+        "exploitability": "7.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+        "sarif": null
+      }
+    },
+    "D-4": {
+      "case": "wrong-band",
+      "component": "planner-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "Low"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "90d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2027-02-07"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "D",
+      "rendered": {
+        "composite_score": "6.2",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:H",
+        "exploitability": "6.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.2",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:H",
+        "exploitability": "6.5",
+        "reachability": "2.5",
+        "remediation_sla": "90d",
+        "review_date": "2027-02-07",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Low"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:H",
+        "sarif": null
+      }
+    },
+    "D-5": {
+      "case": "n17-bound",
+      "component": "worker-2",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "bound-n17c",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:bound-n17c",
+          "kind": "unchecked",
+          "rendered": "7.2",
+          "stored": "7.2"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "D",
+      "rendered": {
+        "composite_score": "6.1",
+        "cvss_base": "7.2",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:H/UI:N/S:C/C:H/I:N/A:L",
+        "exploitability": "7.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.1",
+        "cvss_base": "7.2",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:H/UI:N/S:C/C:H/I:N/A:L",
+        "exploitability": "7.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:H/PR:H/UI:N/S:C/C:H/I:N/A:L",
+        "sarif": null
+      }
+    },
+    "D-6": {
+      "case": "missing-vector",
+      "component": "tool-server-1",
+      "d10_step": 1,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
+          "kind": "unverifiable",
+          "rendered": "6.5",
+          "stored": "6.5"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "D",
+      "rendered": {
+        "composite_score": "5.7",
+        "cvss_base": "6.5",
+        "cvss_vector": null,
+        "exploitability": "7.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.7",
+        "cvss_base": "6.5",
+        "cvss_vector": null,
+        "exploitability": "7.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": null,
+        "sarif": null
+      }
+    },
+    "D-7": {
+      "case": "reach-out-of-range",
+      "component": "model-gateway",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "out-of-range",
+          "field": "reachability",
+          "flag": "input:reachability:out-of-range",
+          "kind": "input",
+          "rendered": null,
+          "stored": "7.0"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "D",
+      "rendered": {
+        "composite_score": "6.2",
+        "cvss_base": "5.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+        "exploitability": "7.0",
+        "reachability": "7.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.2",
+        "cvss_base": "5.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+        "exploitability": "7.0",
+        "reachability": "7.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+        "sarif": null
+      }
+    },
+    "D-8": {
+      "case": "wrong-composite",
+      "component": "vector-store-a",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "6.7",
+          "stored": "6.9"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "D",
+      "rendered": {
+        "composite_score": "6.7",
+        "cvss_base": "9.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:L/A:H",
+        "exploitability": "7.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.9",
+        "cvss_base": "9.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:L/A:H",
+        "exploitability": "7.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:L/A:H",
+        "sarif": null
+      }
+    },
+    "D-9": {
+      "case": "override-disposition",
+      "component": "audit-ledger",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "human",
+          "field": "risk_disposition",
+          "flag": "override:risk_disposition:human",
+          "kind": "override",
+          "rendered": "Accept",
+          "stored": "Accept"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "D",
+      "rendered": {
+        "composite_score": "5.6",
+        "cvss_base": "5.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "exploitability": "6.5",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Accept",
+        "risk_owner": "risk-office",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.6",
+        "cvss_base": "5.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "exploitability": "6.5",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Accept",
+        "risk_owner": "risk-office",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        "sarif": null
+      }
+    },
+    "E-1": {
+      "case": "bad-vector",
+      "component": "edge-gateway",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "8.2",
+          "stored": "9.5"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "E",
+      "rendered": {
+        "composite_score": "7.5",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:L/I:H/A:L",
+        "exploitability": "7.0",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.5",
+        "cvss_base": "9.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:L/I:H/A:L",
+        "exploitability": "7.0",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:L/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "E-2": {
+      "case": "n17-bound",
+      "component": "edge-gateway",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "bound-n17c",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:bound-n17c",
+          "kind": "unchecked",
+          "rendered": "7.2",
+          "stored": "7.2"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "E",
+      "rendered": {
+        "composite_score": "6.8",
+        "cvss_base": "7.2",
+        "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:H",
+        "exploitability": "7.0",
+        "reachability": "5.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.8",
+        "cvss_base": "7.2",
+        "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:H",
+        "exploitability": "7.0",
+        "reachability": "5.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:P/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:H",
+        "sarif": null
+      }
+    },
+    "E-3": {
+      "case": "reach-out-of-range",
+      "component": "auth-broker",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "out-of-range",
+          "field": "reachability",
+          "flag": "input:reachability:out-of-range",
+          "kind": "input",
+          "rendered": null,
+          "stored": "9.0"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "E",
+      "rendered": {
+        "composite_score": "8.3",
+        "cvss_base": "9.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:H",
+        "exploitability": "7.0",
+        "reachability": "9.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "8.3",
+        "cvss_base": "9.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:H",
+        "exploitability": "7.0",
+        "reachability": "9.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:H",
+        "sarif": null
+      }
+    },
+    "E-4": {
+      "case": "clean",
+      "component": "auth-broker",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "E",
+      "rendered": {
+        "composite_score": "7.4",
+        "cvss_base": "7.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:C/C:H/I:L/A:H",
+        "exploitability": "7.0",
+        "reachability": "6.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.4",
+        "cvss_base": "7.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:C/C:H/I:L/A:H",
+        "exploitability": "7.0",
+        "reachability": "6.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:C/C:H/I:L/A:H",
+        "sarif": null
+      }
+    },
+    "E-5": {
+      "case": "missing-vector",
+      "component": "intake-agent",
+      "d10_step": 1,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
+          "kind": "unverifiable",
+          "rendered": "8.5",
+          "stored": "8.5"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "E",
+      "rendered": {
+        "composite_score": "6.1",
+        "cvss_base": "8.5",
+        "cvss_vector": null,
+        "exploitability": "5.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.1",
+        "cvss_base": "8.5",
+        "cvss_vector": null,
+        "exploitability": "5.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": null,
+        "sarif": null
+      }
+    },
+    "E-6": {
+      "case": "cascade-composite",
+      "component": "planner-agent",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "8.2",
+          "stored": "5.8"
+        },
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "5.7",
+          "stored": "4.9"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "E",
+      "rendered": {
+        "composite_score": "5.7",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:L",
+        "exploitability": "5.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "4.9",
+        "cvss_base": "5.8",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:L",
+        "exploitability": "5.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "E-7": {
+      "case": "wrong-band",
+      "component": "worker-2",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "High"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "7d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "risk_disposition",
+          "flag": "corrected:risk_disposition:follows-band",
+          "kind": "corrected",
+          "rendered": "Review",
+          "stored": "Mitigate"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2026-11-16"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "E",
+      "rendered": {
+        "composite_score": "5.9",
+        "cvss_base": "8.7",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:C/C:L/I:H/A:H",
+        "exploitability": "5.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.9",
+        "cvss_base": "8.7",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:C/C:L/I:H/A:H",
+        "exploitability": "5.5",
+        "reachability": "2.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:C/C:L/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "E-8": {
+      "case": "wrong-composite",
+      "component": "tool-server-1",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "6.0",
+          "stored": "6.4"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "E",
+      "rendered": {
+        "composite_score": "6.0",
+        "cvss_base": "8.8",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:H",
+        "exploitability": "4.5",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.4",
+        "cvss_base": "8.8",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:H",
+        "exploitability": "4.5",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:H",
+        "sarif": null
+      }
+    },
+    "E-9": {
+      "case": "clamp-control",
+      "component": "model-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "E",
+      "rendered": {
+        "composite_score": "5.9",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:N",
+        "exploitability": "5.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.9",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:N",
+        "exploitability": "5.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:P/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "I-1": {
+      "case": "clean",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "I",
+      "rendered": {
+        "composite_score": "7.1",
+        "cvss_base": "5.7",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+        "exploitability": "8.0",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.1",
+        "cvss_base": "5.7",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+        "exploitability": "8.0",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+        "sarif": null
+      }
+    },
+    "I-2": {
+      "case": "wrong-composite",
+      "component": "auth-broker",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "7.1",
+          "stored": "7.4"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "I",
+      "rendered": {
+        "composite_score": "7.1",
+        "cvss_base": "5.4",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N",
+        "exploitability": "9.0",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.4",
+        "cvss_base": "5.4",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N",
+        "exploitability": "9.0",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "I-3": {
+      "case": "wrong-band",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "Low"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "90d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2027-02-07"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "I",
+      "rendered": {
+        "composite_score": "4.6",
+        "cvss_base": "3.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:N/A:L",
+        "exploitability": "6.5",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "4.6",
+        "cvss_base": "3.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:N/A:L",
+        "exploitability": "6.5",
+        "reachability": "3.0",
+        "remediation_sla": "90d",
+        "review_date": "2027-02-07",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Low"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:L/I:N/A:L",
+        "sarif": null
+      }
+    },
+    "I-4": {
+      "case": "reach-out-of-range",
+      "component": "planner-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "out-of-range",
+          "field": "reachability",
+          "flag": "input:reachability:out-of-range",
+          "kind": "input",
+          "rendered": null,
+          "stored": "7.5"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "I",
+      "rendered": {
+        "composite_score": "7.1",
+        "cvss_base": "7.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+        "exploitability": "7.0",
+        "reachability": "7.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.1",
+        "cvss_base": "7.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+        "exploitability": "7.0",
+        "reachability": "7.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+        "sarif": null
+      }
+    },
+    "I-5": {
+      "case": "clamp-control",
+      "component": "worker-2",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "I",
+      "rendered": {
+        "composite_score": "6.1",
+        "cvss_base": "7.5",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:C/C:H/I:N/A:H",
+        "exploitability": "7.5",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.1",
+        "cvss_base": "7.5",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:C/C:H/I:N/A:H",
+        "exploitability": "7.5",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:C/C:H/I:N/A:H",
+        "sarif": null
+      }
+    },
+    "I-6": {
+      "case": "bad-vector",
+      "component": "tool-server-1",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "6.6",
+          "stored": "9.7"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "I",
+      "rendered": {
+        "composite_score": "5.5",
+        "cvss_base": "6.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:C/C:H/I:L/A:N",
+        "exploitability": "6.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.5",
+        "cvss_base": "9.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:C/C:H/I:L/A:N",
+        "exploitability": "6.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:C/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "I-7": {
+      "case": "missing-vector",
+      "component": "model-gateway",
+      "d10_step": 1,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
+          "kind": "unverifiable",
+          "rendered": "3.8",
+          "stored": "3.8"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "I",
+      "rendered": {
+        "composite_score": "4.1",
+        "cvss_base": "3.8",
+        "cvss_vector": null,
+        "exploitability": "5.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "4.1",
+        "cvss_base": "3.8",
+        "cvss_vector": null,
+        "exploitability": "5.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": null,
+        "sarif": null
+      }
+    },
+    "I-8": {
+      "case": "rounding-only",
+      "component": "vector-store-a",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": true,
+      "prefix": "I",
+      "rendered": {
+        "composite_score": "6.3",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:L",
+        "exploitability": "8.8",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "3.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.2",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:L",
+        "exploitability": "8.8",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "3.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:L",
+        "sarif": null
+      }
+    },
+    "I-9": {
+      "case": "n17-bound",
+      "component": "audit-ledger",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "bound-n17c",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:bound-n17c",
+          "kind": "unchecked",
+          "rendered": "8.9",
+          "stored": "8.9"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "I",
+      "rendered": {
+        "composite_score": "6.5",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:L/UI:R/S:U/C:H/I:H/A:L",
+        "exploitability": "7.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.5",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:L/UI:R/S:U/C:H/I:H/A:L",
+        "exploitability": "7.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:P/AC:L/PR:L/UI:R/S:U/C:H/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "LLM-1": {
+      "case": "bad-vector",
+      "component": "edge-gateway",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "7.5",
+          "stored": "4.6"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "LLM",
+      "rendered": {
+        "composite_score": "8.0",
+        "cvss_base": "7.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:H/A:N",
+        "exploitability": "9.0",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "8.0",
+        "cvss_base": "4.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:H/A:N",
+        "exploitability": "9.0",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "LLM-2": {
+      "case": "clamp-control",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "LLM",
+      "rendered": {
+        "composite_score": "8.3",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:R/S:C/C:H/I:L/A:H",
+        "exploitability": "9.0",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "8.3",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:R/S:C/C:H/I:L/A:H",
+        "exploitability": "9.0",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:L/AC:H/PR:N/UI:R/S:C/C:H/I:L/A:H",
+        "sarif": null
+      }
+    },
+    "LLM-3": {
+      "case": "n17-bound",
+      "component": "intake-agent",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "bound-n17c",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:bound-n17c",
+          "kind": "unchecked",
+          "rendered": "7.5",
+          "stored": "7.5"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "LLM",
+      "rendered": {
+        "composite_score": "6.1",
+        "cvss_base": "7.5",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:H/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "7.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.1",
+        "cvss_base": "7.5",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:H/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "7.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:H/PR:H/UI:N/S:C/C:H/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "LLM-4": {
+      "case": "reach-out-of-range",
+      "component": "planner-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "out-of-range",
+          "field": "reachability",
+          "flag": "input:reachability:out-of-range",
+          "kind": "input",
+          "rendered": null,
+          "stored": "7.0"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "LLM",
+      "rendered": {
+        "composite_score": "6.5",
+        "cvss_base": "6.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+        "exploitability": "7.0",
+        "reachability": "7.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.5",
+        "cvss_base": "6.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+        "exploitability": "7.0",
+        "reachability": "7.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "LLM-5": {
+      "case": "clean",
+      "component": "worker-2",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "LLM",
+      "rendered": {
+        "composite_score": "6.5",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+        "exploitability": "7.5",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.5",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+        "exploitability": "7.5",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "LLM-6": {
+      "case": "wrong-band",
+      "component": "tool-server-1",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "High"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "7d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "risk_disposition",
+          "flag": "corrected:risk_disposition:follows-band",
+          "kind": "corrected",
+          "rendered": "Review",
+          "stored": "Mitigate"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2026-11-16"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "LLM",
+      "rendered": {
+        "composite_score": "6.0",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
+        "exploitability": "7.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.0",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
+        "exploitability": "7.0",
+        "reachability": "1.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "LLM-7": {
+      "case": "missing-vector",
+      "component": "model-gateway",
+      "d10_step": 1,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
+          "kind": "unverifiable",
+          "rendered": "8.7",
+          "stored": "8.7"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "LLM",
+      "rendered": {
+        "composite_score": "6.5",
+        "cvss_base": "8.7",
+        "cvss_vector": null,
+        "exploitability": "7.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.5",
+        "cvss_base": "8.7",
+        "cvss_vector": null,
+        "exploitability": "7.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": null,
+        "sarif": null
+      }
+    },
+    "LLM-8": {
+      "case": "clean",
+      "component": "model-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "LLM",
+      "rendered": {
+        "composite_score": "6.8",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N",
+        "exploitability": "8.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.8",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N",
+        "exploitability": "8.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "LLM-9": {
+      "case": "wrong-composite",
+      "component": "vector-store-a",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "7.1",
+          "stored": "7.6"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "LLM",
+      "rendered": {
+        "composite_score": "7.1",
+        "cvss_base": "9.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
+        "exploitability": "7.5",
+        "reachability": "3.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.6",
+        "cvss_base": "9.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
+        "exploitability": "7.5",
+        "reachability": "3.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "MI-1": {
+      "case": "clamp-control",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "MI",
+      "rendered": {
+        "composite_score": "6.8",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:C/C:L/I:L/A:H",
+        "exploitability": "7.5",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.8",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:C/C:L/I:L/A:H",
+        "exploitability": "7.5",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:C/C:L/I:L/A:H",
+        "sarif": null
+      }
+    },
+    "MI-2": {
+      "case": "wrong-composite",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "7.3",
+          "stored": "7.7"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "MI",
+      "rendered": {
+        "composite_score": "7.3",
+        "cvss_base": "10.0",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:L",
+        "exploitability": "7.0",
+        "reachability": "3.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.7",
+        "cvss_base": "10.0",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:L",
+        "exploitability": "7.0",
+        "reachability": "3.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "MI-3": {
+      "case": "reach-out-of-range",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "out-of-range",
+          "field": "reachability",
+          "flag": "input:reachability:out-of-range",
+          "kind": "input",
+          "rendered": null,
+          "stored": "7.0"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "MI",
+      "rendered": {
+        "composite_score": "7.9",
+        "cvss_base": "8.8",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:L",
+        "exploitability": "8.0",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.9",
+        "cvss_base": "8.8",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:L",
+        "exploitability": "8.0",
+        "reachability": "7.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:L",
+        "sarif": null
+      }
+    },
+    "MI-4": {
+      "case": "bad-vector",
+      "component": "intake-agent",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "8.2",
+          "stored": "6.1"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "MI",
+      "rendered": {
+        "composite_score": "7.1",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:H/A:L",
+        "exploitability": "8.5",
+        "reachability": "3.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.1",
+        "cvss_base": "6.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:H/A:L",
+        "exploitability": "8.5",
+        "reachability": "3.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "MI-5": {
+      "case": "n17-bound",
+      "component": "intake-agent",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "bound-n17c",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:bound-n17c",
+          "kind": "unchecked",
+          "rendered": "5.3",
+          "stored": "5.3"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "MI",
+      "rendered": {
+        "composite_score": "5.8",
+        "cvss_base": "5.3",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+        "exploitability": "7.0",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.8",
+        "cvss_base": "5.3",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+        "exploitability": "7.0",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "MI-6": {
+      "case": "wrong-band",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "Low"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "90d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2027-02-07"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "MI",
+      "rendered": {
+        "composite_score": "6.6",
+        "cvss_base": "8.8",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:H/A:L",
+        "exploitability": "6.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.6",
+        "cvss_base": "8.8",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:H/A:L",
+        "exploitability": "6.5",
+        "reachability": "2.5",
+        "remediation_sla": "90d",
+        "review_date": "2027-02-07",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Low"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "MI-7": {
+      "case": "missing-vector",
+      "component": "intake-agent",
+      "d10_step": 1,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
+          "kind": "unverifiable",
+          "rendered": "8.2",
+          "stored": "8.2"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "MI",
+      "rendered": {
+        "composite_score": "6.8",
+        "cvss_base": "8.2",
+        "cvss_vector": null,
+        "exploitability": "8.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.8",
+        "cvss_base": "8.2",
+        "cvss_vector": null,
+        "exploitability": "8.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": null,
+        "sarif": null
+      }
+    },
+    "MI-8": {
+      "case": "clean",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "MI",
+      "rendered": {
+        "composite_score": "7.1",
+        "cvss_base": "9.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
+        "exploitability": "7.5",
+        "reachability": "2.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.1",
+        "cvss_base": "9.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
+        "exploitability": "7.5",
+        "reachability": "2.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "MI-9": {
+      "case": "clean",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "MI",
+      "rendered": {
+        "composite_score": "6.7",
+        "cvss_base": "8.0",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:H/A:N",
+        "exploitability": "8.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.7",
+        "cvss_base": "8.0",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:H/A:N",
+        "exploitability": "8.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "OI-1": {
+      "case": "wrong-composite",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "6.5",
+          "stored": "6.7"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "OI",
+      "rendered": {
+        "composite_score": "6.5",
+        "cvss_base": "6.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:L/A:N",
+        "exploitability": "8.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.7",
+        "cvss_base": "6.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:L/A:N",
+        "exploitability": "8.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "OI-2": {
+      "case": "missing-vector",
+      "component": "intake-agent",
+      "d10_step": 1,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
+          "kind": "unverifiable",
+          "rendered": "8.2",
+          "stored": "8.2"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "OI",
+      "rendered": {
+        "composite_score": "6.4",
+        "cvss_base": "8.2",
+        "cvss_vector": null,
+        "exploitability": "7.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.4",
+        "cvss_base": "8.2",
+        "cvss_vector": null,
+        "exploitability": "7.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": null,
+        "sarif": null
+      }
+    },
+    "OI-3": {
+      "case": "wrong-band",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "High"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "7d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "risk_disposition",
+          "flag": "corrected:risk_disposition:follows-band",
+          "kind": "corrected",
+          "rendered": "Review",
+          "stored": "Mitigate"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2026-11-16"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "OI",
+      "rendered": {
+        "composite_score": "6.8",
+        "cvss_base": "8.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:N",
+        "exploitability": "7.0",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.8",
+        "cvss_base": "8.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:N",
+        "exploitability": "7.0",
+        "reachability": "3.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "OI-4": {
+      "case": "clamp-control",
+      "component": "planner-agent",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "OI",
+      "rendered": {
+        "composite_score": "6.4",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:L/UI:N/S:C/C:N/I:H/A:H",
+        "exploitability": "6.5",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.4",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:P/AC:L/PR:L/UI:N/S:C/C:N/I:H/A:H",
+        "exploitability": "6.5",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:P/AC:L/PR:L/UI:N/S:C/C:N/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "OI-5": {
+      "case": "reach-out-of-range",
+      "component": "planner-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "out-of-range",
+          "field": "reachability",
+          "flag": "input:reachability:out-of-range",
+          "kind": "input",
+          "rendered": null,
+          "stored": "8.0"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "OI",
+      "rendered": {
+        "composite_score": "8.0",
+        "cvss_base": "8.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:N",
+        "exploitability": "7.5",
+        "reachability": "8.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "8.0",
+        "cvss_base": "8.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:N",
+        "exploitability": "7.5",
+        "reachability": "8.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "OI-6": {
+      "case": "n17-bound",
+      "component": "worker-2",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "bound-n17c",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:bound-n17c",
+          "kind": "unchecked",
+          "rendered": "5.3",
+          "stored": "5.3"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "OI",
+      "rendered": {
+        "composite_score": "5.5",
+        "cvss_base": "5.3",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:H/UI:N/S:C/C:H/I:H/A:N",
+        "exploitability": "8.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.5",
+        "cvss_base": "5.3",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:H/UI:N/S:C/C:H/I:H/A:N",
+        "exploitability": "8.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:L/PR:H/UI:N/S:C/C:H/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "OI-7": {
+      "case": "bad-vector",
+      "component": "worker-2",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "6.9",
+          "stored": "8.4"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "OI",
+      "rendered": {
+        "composite_score": "6.0",
+        "cvss_base": "6.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:L/A:N",
+        "exploitability": "7.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.0",
+        "cvss_base": "8.4",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:L/A:N",
+        "exploitability": "7.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:C/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "OI-8": {
+      "case": "clean",
+      "component": "model-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "OI",
+      "rendered": {
+        "composite_score": "6.4",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N",
+        "exploitability": "6.5",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.4",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N",
+        "exploitability": "6.5",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "OI-9": {
+      "case": "clean",
+      "component": "model-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "OI",
+      "rendered": {
+        "composite_score": "6.1",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:L/I:H/A:N",
+        "exploitability": "7.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.1",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:L/I:H/A:N",
+        "exploitability": "7.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:L/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "R-1": {
+      "case": "bad-vector",
+      "component": "client-portal",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "7.1",
+          "stored": "5.2"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "R",
+      "rendered": {
+        "composite_score": "6.8",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:H/A:N",
+        "exploitability": "6.0",
+        "reachability": "8.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.8",
+        "cvss_base": "5.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:H/A:N",
+        "exploitability": "6.0",
+        "reachability": "8.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "R-10": {
+      "case": "compound-label",
+      "component": "partner-sandbox",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "compound-trust-label",
+          "field": "reachability",
+          "flag": "unchecked:reachability:compound-trust-label",
+          "kind": "unchecked",
+          "rendered": null,
+          "stored": "5.5"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "R",
+      "rendered": {
+        "composite_score": "4.9",
+        "cvss_base": "2.4",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:R/S:U/C:N/I:L/A:N",
+        "exploitability": "6.5",
+        "reachability": "5.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "4.9",
+        "cvss_base": "2.4",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:R/S:U/C:N/I:L/A:N",
+        "exploitability": "6.5",
+        "reachability": "5.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:H/UI:R/S:U/C:N/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "R-2": {
+      "case": "clamp-control",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "R",
+      "rendered": {
+        "composite_score": "6.0",
+        "cvss_base": "5.3",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:C/C:L/I:N/A:H",
+        "exploitability": "6.0",
+        "reachability": "7.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.0",
+        "cvss_base": "5.3",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:C/C:L/I:N/A:H",
+        "exploitability": "6.0",
+        "reachability": "7.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:L/AC:H/PR:H/UI:R/S:C/C:L/I:N/A:H",
+        "sarif": null
+      }
+    },
+    "R-3": {
+      "case": "override-sla",
+      "component": "auth-broker",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "human",
+          "field": "remediation_sla",
+          "flag": "override:remediation_sla:human",
+          "kind": "override",
+          "rendered": "14d",
+          "stored": "14d"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "R",
+      "rendered": {
+        "composite_score": "5.7",
+        "cvss_base": "4.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:L/I:L/A:L",
+        "exploitability": "5.5",
+        "reachability": "7.0",
+        "remediation_sla": "14d",
+        "review_date": "2026-11-23",
+        "risk_disposition": "Review",
+        "risk_owner": "platform-team",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.7",
+        "cvss_base": "4.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:L/I:L/A:L",
+        "exploitability": "5.5",
+        "reachability": "7.0",
+        "remediation_sla": "14d",
+        "review_date": "2026-11-23",
+        "risk_disposition": "Review",
+        "risk_owner": "platform-team",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:L/I:L/A:L",
+        "sarif": null
+      }
+    },
+    "R-4": {
+      "case": "wrong-band",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Low",
+          "stored": "Medium"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "90d",
+          "stored": "30d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2027-02-07",
+          "stored": "2026-12-09"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "R",
+      "rendered": {
+        "composite_score": "3.6",
+        "cvss_base": "4.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L",
+        "exploitability": "3.0",
+        "reachability": "2.0",
+        "remediation_sla": "90d",
+        "review_date": "2027-02-07",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Low"
+      },
+      "stored": {
+        "composite_score": "3.6",
+        "cvss_base": "4.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L",
+        "exploitability": "3.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L",
+        "sarif": null
+      }
+    },
+    "R-5": {
+      "case": "wrong-composite",
+      "component": "planner-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "3.5",
+          "stored": "3.2"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "R",
+      "rendered": {
+        "composite_score": "3.5",
+        "cvss_base": "3.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N",
+        "exploitability": "2.5",
+        "reachability": "3.0",
+        "remediation_sla": "90d",
+        "review_date": "2027-02-07",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Low"
+      },
+      "stored": {
+        "composite_score": "3.2",
+        "cvss_base": "3.7",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N",
+        "exploitability": "2.5",
+        "reachability": "3.0",
+        "remediation_sla": "90d",
+        "review_date": "2027-02-07",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Low"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "R-6": {
+      "case": "n17-bound",
+      "component": "worker-2",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "bound-n17c",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:bound-n17c",
+          "kind": "unchecked",
+          "rendered": "6.1",
+          "stored": "6.1"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "R",
+      "rendered": {
+        "composite_score": "4.1",
+        "cvss_base": "6.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:R/S:C/C:N/I:N/A:N",
+        "exploitability": "3.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "4.1",
+        "cvss_base": "6.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:R/S:C/C:N/I:N/A:N",
+        "exploitability": "3.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:H/UI:R/S:C/C:N/I:N/A:N",
+        "sarif": null
+      }
+    },
+    "R-7": {
+      "case": "clean",
+      "component": "tool-server-1",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "R",
+      "rendered": {
+        "composite_score": "3.3",
+        "cvss_base": "3.5",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+        "exploitability": "3.0",
+        "reachability": "2.0",
+        "remediation_sla": "90d",
+        "review_date": "2027-02-07",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Low"
+      },
+      "stored": {
+        "composite_score": "3.3",
+        "cvss_base": "3.5",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+        "exploitability": "3.0",
+        "reachability": "2.0",
+        "remediation_sla": "90d",
+        "review_date": "2027-02-07",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Low"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "R-8": {
+      "case": "missing-vector",
+      "component": "model-gateway",
+      "d10_step": 1,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
+          "kind": "unverifiable",
+          "rendered": "6.5",
+          "stored": "6.5"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "R",
+      "rendered": {
+        "composite_score": "4.8",
+        "cvss_base": "6.5",
+        "cvss_vector": null,
+        "exploitability": "3.5",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "4.8",
+        "cvss_base": "6.5",
+        "cvss_vector": null,
+        "exploitability": "3.5",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": null,
+        "sarif": null
+      }
+    },
+    "R-9": {
+      "case": "reach-out-of-range",
+      "component": "audit-ledger",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "out-of-range",
+          "field": "reachability",
+          "flag": "input:reachability:out-of-range",
+          "kind": "input",
+          "rendered": null,
+          "stored": "8.0"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "R",
+      "rendered": {
+        "composite_score": "4.6",
+        "cvss_base": "3.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:N/I:L/A:N",
+        "exploitability": "3.0",
+        "reachability": "8.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "4.6",
+        "cvss_base": "3.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:N/I:L/A:N",
+        "exploitability": "3.0",
+        "reachability": "8.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:N/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "S-1": {
+      "case": "reach-out-of-range",
+      "component": "client-portal",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "out-of-range",
+          "field": "reachability",
+          "flag": "input:reachability:out-of-range",
+          "kind": "input",
+          "rendered": null,
+          "stored": "2.0"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "6.4",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
+        "exploitability": "7.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.4",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
+        "exploitability": "7.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "S-10": {
+      "case": "missing-vector",
+      "component": "model-gateway",
+      "d10_step": 1,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
+          "kind": "unverifiable",
+          "rendered": "8.2",
+          "stored": "8.2"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "6.5",
+        "cvss_base": "8.2",
+        "cvss_vector": null,
+        "exploitability": "7.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.5",
+        "cvss_base": "8.2",
+        "cvss_vector": null,
+        "exploitability": "7.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": null,
+        "sarif": null
+      }
+    },
+    "S-11": {
+      "case": "compound-label",
+      "component": "partner-sandbox",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "compound-trust-label",
+          "field": "reachability",
+          "flag": "unchecked:reachability:compound-trust-label",
+          "kind": "unchecked",
+          "rendered": null,
+          "stored": "6.5"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "7.8",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",
+        "exploitability": "8.0",
+        "reachability": "6.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.8",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",
+        "exploitability": "8.0",
+        "reachability": "6.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "S-2": {
+      "case": "rounding-only",
+      "component": "client-portal",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": true,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "7.1",
+        "cvss_base": "7.3",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+        "exploitability": "5.5",
+        "reachability": "9.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "6.3",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.0",
+        "cvss_base": "7.3",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+        "exploitability": "5.5",
+        "reachability": "9.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "6.3",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "S-3": {
+      "case": "n17-bound",
+      "component": "edge-gateway",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "bound-n17c",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:bound-n17c",
+          "kind": "unchecked",
+          "rendered": "8.9",
+          "stored": "8.9"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "7.9",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:R/S:U/C:L/I:L/A:H",
+        "exploitability": "7.5",
+        "reachability": "6.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.9",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:R/S:U/C:L/I:L/A:H",
+        "exploitability": "7.5",
+        "reachability": "6.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:H/UI:R/S:U/C:L/I:L/A:H",
+        "sarif": null
+      }
+    },
+    "S-4": {
+      "case": "wrong-composite",
+      "component": "auth-broker",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "7.9",
+          "stored": "7.6"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "7.9",
+        "cvss_base": "7.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:L/A:N",
+        "exploitability": "9.0",
+        "reachability": "6.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "9.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.6",
+        "cvss_base": "7.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:L/A:N",
+        "exploitability": "9.0",
+        "reachability": "6.0",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "9.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "S-5": {
+      "case": "clean",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "6.1",
+        "cvss_base": "8.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:L",
+        "exploitability": "5.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.1",
+        "cvss_base": "8.6",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:L",
+        "exploitability": "5.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:L",
+        "sarif": null
+      }
+    },
+    "S-6": {
+      "case": "clamp-control",
+      "component": "planner-agent",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "5.6",
+        "cvss_base": "7.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N",
+        "exploitability": "5.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.6",
+        "cvss_base": "7.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N",
+        "exploitability": "5.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:H/I:N/A:N",
+        "sarif": null
+      }
+    },
+    "S-7": {
+      "case": "bad-vector",
+      "component": "worker-2",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "6.5",
+          "stored": "4.9"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "5.3",
+        "cvss_base": "6.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N",
+        "exploitability": "6.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.3",
+        "cvss_base": "4.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N",
+        "exploitability": "6.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "S-8": {
+      "case": "wrong-band",
+      "component": "tool-server-1",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "Low"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "90d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2027-02-07"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "5.5",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+        "exploitability": "5.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.5",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+        "exploitability": "5.5",
+        "reachability": "2.5",
+        "remediation_sla": "90d",
+        "review_date": "2027-02-07",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Low"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "S-9": {
+      "case": "resolved-wrong-composite",
+      "component": "edge-gateway",
+      "d10_step": null,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": null,
+          "field": null,
+          "flag": "resolved",
+          "kind": "resolved",
+          "rendered": null,
+          "stored": null
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "S",
+      "rendered": {
+        "composite_score": "7.6",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
+        "exploitability": "8.5",
+        "reachability": "5.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.6",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
+        "exploitability": "8.5",
+        "reachability": "5.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "8.5",
+        "severity_band": "High"
+      },
+      "treatment": "resolved",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
+        "sarif": null
+      }
+    },
+    "T-1": {
+      "case": "wrong-band",
+      "component": "edge-gateway",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "Low"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "90d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2027-02-07"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "6.2",
+        "cvss_base": "5.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:R/S:U/C:N/I:H/A:L",
+        "exploitability": "6.5",
+        "reachability": "7.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.2",
+        "cvss_base": "5.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:R/S:U/C:N/I:H/A:L",
+        "exploitability": "6.5",
+        "reachability": "7.0",
+        "remediation_sla": "90d",
+        "review_date": "2027-02-07",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "Low"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:H/UI:R/S:U/C:N/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "T-10": {
+      "case": "clean",
+      "component": "audit-ledger",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "4.4",
+        "cvss_base": "5.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:H/A:L",
+        "exploitability": "4.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "4.4",
+        "cvss_base": "5.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:H/A:L",
+        "exploitability": "4.0",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:N/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "T-2": {
+      "case": "resolved-wrong-composite",
+      "component": "vector-store-a",
+      "d10_step": null,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": null,
+          "field": null,
+          "flag": "resolved",
+          "kind": "resolved",
+          "rendered": null,
+          "stored": null
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "4.9",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:L",
+        "exploitability": "4.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "4.9",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:L",
+        "exploitability": "4.0",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "resolved",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "T-3": {
+      "case": "clamp-control",
+      "component": "auth-broker",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "7.1",
+        "cvss_base": "8.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:H",
+        "exploitability": "6.5",
+        "reachability": "6.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "High"
+      },
+      "stored": {
+        "composite_score": "7.1",
+        "cvss_base": "8.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:H",
+        "exploitability": "6.5",
+        "reachability": "6.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "7.0",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:H",
+        "sarif": null
+      }
+    },
+    "T-4": {
+      "case": "bad-vector",
+      "component": "intake-agent",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "8.2",
+          "stored": "6.9"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "5.4",
+        "cvss_base": "8.2",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:H/A:L",
+        "exploitability": "5.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.4",
+        "cvss_base": "6.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:H/A:L",
+        "exploitability": "5.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "T-5": {
+      "case": "wrong-composite",
+      "component": "planner-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "5.4",
+          "stored": "5.9"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "5.4",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L",
+        "exploitability": "6.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.9",
+        "cvss_base": "7.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L",
+        "exploitability": "6.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "T-6": {
+      "case": "reach-out-of-range",
+      "component": "worker-2",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "out-of-range",
+          "field": "reachability",
+          "flag": "input:reachability:out-of-range",
+          "kind": "input",
+          "rendered": null,
+          "stored": "8.0"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "5.5",
+        "cvss_base": "5.3",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:N/I:H/A:L",
+        "exploitability": "5.0",
+        "reachability": "8.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "3.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.5",
+        "cvss_base": "5.3",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:N/I:H/A:L",
+        "exploitability": "5.0",
+        "reachability": "8.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "3.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:N/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "T-7": {
+      "case": "missing-vector",
+      "component": "tool-server-1",
+      "d10_step": 1,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
+          "kind": "unverifiable",
+          "rendered": "6.3",
+          "stored": "6.3"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "5.0",
+        "cvss_base": "6.3",
+        "cvss_vector": null,
+        "exploitability": "4.5",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.0",
+        "cvss_base": "6.3",
+        "cvss_vector": null,
+        "exploitability": "4.5",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": null,
+        "sarif": null
+      }
+    },
+    "T-8": {
+      "case": "n17-bound",
+      "component": "model-gateway",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "bound-n17c",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:bound-n17c",
+          "kind": "unchecked",
+          "rendered": "8.9",
+          "stored": "8.9"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "6.0",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:C/C:L/I:L/A:L",
+        "exploitability": "5.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.0",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:C/C:L/I:L/A:L",
+        "exploitability": "5.5",
+        "reachability": "2.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:C/C:L/I:L/A:L",
+        "sarif": null
+      }
+    },
+    "T-9": {
+      "case": "rounding-only",
+      "component": "vector-store-a",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": true,
+      "prefix": "T",
+      "rendered": {
+        "composite_score": "5.6",
+        "cvss_base": "6.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:L",
+        "exploitability": "5.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.5",
+        "cvss_base": "6.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:L",
+        "exploitability": "5.5",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "7.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:L",
+        "sarif": null
+      }
+    },
+    "TE-1": {
+      "case": "clean",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "TE",
+      "rendered": {
+        "composite_score": "5.5",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+        "exploitability": "4.5",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.5",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+        "exploitability": "4.5",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "TE-2": {
+      "case": "bad-vector",
+      "component": "intake-agent",
+      "d10_step": 6,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "vector",
+          "field": "cvss_base",
+          "flag": "corrected:cvss_base:vector",
+          "kind": "corrected",
+          "rendered": "6.3",
+          "stored": "9.4"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "TE",
+      "rendered": {
+        "composite_score": "5.1",
+        "cvss_base": "6.3",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:L",
+        "exploitability": "5.5",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.1",
+        "cvss_base": "9.4",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:L",
+        "exploitability": "5.5",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:L/A:L",
+        "sarif": null
+      }
+    },
+    "TE-3": {
+      "case": "wrong-band",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "band-mapping",
+          "field": "severity_band",
+          "flag": "corrected:severity_band:band-mapping",
+          "kind": "corrected",
+          "rendered": "Medium",
+          "stored": "High"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "remediation_sla",
+          "flag": "corrected:remediation_sla:follows-band",
+          "kind": "corrected",
+          "rendered": "30d",
+          "stored": "7d"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "risk_disposition",
+          "flag": "corrected:risk_disposition:follows-band",
+          "kind": "corrected",
+          "rendered": "Review",
+          "stored": "Mitigate"
+        },
+        {
+          "basis": "pinned",
+          "cause": "follows-band",
+          "field": "review_date",
+          "flag": "corrected:review_date:follows-band",
+          "kind": "corrected",
+          "rendered": "2026-12-09",
+          "stored": "2026-11-16"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "TE",
+      "rendered": {
+        "composite_score": "5.9",
+        "cvss_base": "9.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "5.0",
+        "reachability": "2.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.9",
+        "cvss_base": "9.1",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "5.0",
+        "reachability": "2.5",
+        "remediation_sla": "7d",
+        "review_date": "2026-11-16",
+        "risk_disposition": "Mitigate",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "High"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:H/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "TE-4": {
+      "case": "n17-bound",
+      "component": "intake-agent",
+      "d10_step": 5,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "bound-n17c",
+          "field": "cvss_base",
+          "flag": "unchecked:cvss_base:bound-n17c",
+          "kind": "unchecked",
+          "rendered": "8.3",
+          "stored": "8.3"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "TE",
+      "rendered": {
+        "composite_score": "5.8",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:L/I:H/A:N",
+        "exploitability": "5.0",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.8",
+        "cvss_base": "8.3",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:L/I:H/A:N",
+        "exploitability": "5.0",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:L/I:H/A:N",
+        "sarif": null
+      }
+    },
+    "TE-5": {
+      "case": "wrong-composite",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "arithmetic",
+          "field": "composite_score",
+          "flag": "corrected:composite_score:arithmetic",
+          "kind": "corrected",
+          "rendered": "6.3",
+          "stored": "6.0"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "TE",
+      "rendered": {
+        "composite_score": "6.3",
+        "cvss_base": "9.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+        "exploitability": "4.5",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.0",
+        "cvss_base": "9.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+        "exploitability": "4.5",
+        "reachability": "3.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "TE-6": {
+      "case": "clean",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "TE",
+      "rendered": {
+        "composite_score": "6.3",
+        "cvss_base": "8.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "6.0",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.3",
+        "cvss_base": "8.5",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+        "exploitability": "6.0",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+        "sarif": null
+      }
+    },
+    "TE-7": {
+      "case": "missing-vector",
+      "component": "intake-agent",
+      "d10_step": 1,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "no-vector",
+          "field": "cvss_base",
+          "flag": "unverifiable:cvss_base:no-vector",
+          "kind": "unverifiable",
+          "rendered": "7.9",
+          "stored": "7.9"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "TE",
+      "rendered": {
+        "composite_score": "5.5",
+        "cvss_base": "7.9",
+        "cvss_vector": null,
+        "exploitability": "5.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "5.5",
+        "cvss_base": "7.9",
+        "cvss_vector": null,
+        "exploitability": "5.0",
+        "reachability": "1.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "6.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": null,
+        "sarif": null
+      }
+    },
+    "TE-8": {
+      "case": "reach-out-of-range",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [
+        {
+          "basis": "pinned",
+          "cause": "out-of-range",
+          "field": "reachability",
+          "flag": "input:reachability:out-of-range",
+          "kind": "input",
+          "rendered": null,
+          "stored": "8.0"
+        }
+      ],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "TE",
+      "rendered": {
+        "composite_score": "6.9",
+        "cvss_base": "9.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+        "exploitability": "3.5",
+        "reachability": "8.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.9",
+        "cvss_base": "9.9",
+        "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+        "exploitability": "3.5",
+        "reachability": "8.0",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "5.0",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:L",
+        "sarif": null
+      }
+    },
+    "TE-9": {
+      "case": "clamp-control",
+      "component": "intake-agent",
+      "d10_step": 3,
+      "flags": [],
+      "form": "legacy",
+      "normalized": false,
+      "prefix": "TE",
+      "rendered": {
+        "composite_score": "6.1",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:H",
+        "exploitability": "5.5",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "stored": {
+        "composite_score": "6.1",
+        "cvss_base": "8.9",
+        "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:H",
+        "exploitability": "5.5",
+        "reachability": "3.5",
+        "remediation_sla": "30d",
+        "review_date": "2026-12-09",
+        "risk_disposition": "Review",
+        "risk_owner": "Unassigned",
+        "scalability": "4.5",
+        "severity_band": "Medium"
+      },
+      "treatment": "carried",
+      "vector_sources": {
+        "markdown": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:H",
+        "sarif": null
+      }
+    }
+  },
+  "flag_reading": [
+    "A flag is kind:field:cause, and the field is the value whose status the flag describes, by its schemas/risk-scoring.yaml name: cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability.",
+    "The cause of a 'corrected' flag names the step that produced the field's new value: a changed cvss_base is 'vector', a changed composite_score is 'arithmetic', a changed severity_band is 'band-mapping' (or 'rounding' when only rounding moved the band), and a changed remediation_sla, risk_disposition or review_date is 'follows-band'. Where a fallback set the review date, 'baseline-date' or 'clock-restarted' replaces 'follows-band'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves (ruling A). A finding carries at most one flag per kind and field.",
+    "A rounding-only composite difference is normalized and counted and never flagged: only a band that it moves is flagged, as severity_band:rounding.",
+    "basis 'pinned': the string is in the closed vocabulary of contracts/module-signatures.md, and a test requires it. 'optional': the renderer may add the flag or not, and a test accepts both. Only the flags on a value that the input's form lacks are optional, because the cause for those is open (S-12(b), named by T032).",
+    "A flag that the renderer adds and that is not listed is a defect of one side: the list is complete for the cases here."
+  ],
+  "notes": [
+    "Every finding of run/threats.md is UNCHANGED and has a row in the baseline: the renderer carries all of them. Nothing is routed to the agent.",
+    "baseline/threats.md is the baseline run's file cut to Sections 2, 4c and 7 and the Affected Assets block. R-6's resolver needs it to exist; the scorer reads only baseline/risk-scores.md.",
+    "The baseline has no risk-scores.sarif, so a missing vector has no second source and stays missing.",
+    "Case 'bad-vector' stores a CVSS cell that its vector does not give, with the composite the right cell gives: one flag, no cascade. Cases 'cascade-composite' and 'cascade-band' store the composite that the wrong cell gives, so the correction moves the composite, and for 'cascade-band' the band: the composite and band flags are the ones that flag_reading's causes name.",
+    "Case 'rounding-only' stores the lower neighbour of an exact x.x5 composite, in the middle of a band: the difference is normalized and counted, never flagged (R-11).",
+    "Case 'resolved-wrong-composite': these two baseline rows belong to findings that Section 4c of the run lists as RESOLVED. R-30 keeps their last-known values verbatim, so the wrong composite is neither recomputed nor flagged; the row is marked resolved.",
+    "Case 'compound-label': Section 2 labels the zone 'Semi-trusted / Trusted', so the reachability range check is N17-dependent and is reported as unchecked, never as a violation (R-10).",
+    "Overrides: 'override-sla' and 'override-disposition' carry a human owner and a value that differs from the stored band's default; they are carried verbatim and flagged, and the review date is kept."
+  ],
+  "populator_fixed_point": true,
+  "routing": {
+    "carried": [
+      "S-1",
+      "S-2",
+      "S-3",
+      "S-4",
+      "S-5",
+      "S-6",
+      "S-7",
+      "S-8",
+      "S-10",
+      "S-11",
+      "T-1",
+      "T-3",
+      "T-4",
+      "T-5",
+      "T-6",
+      "T-7",
+      "T-8",
+      "T-9",
+      "T-10",
+      "R-1",
+      "R-2",
+      "R-3",
+      "R-4",
+      "R-5",
+      "R-6",
+      "R-7",
+      "R-8",
+      "R-9",
+      "R-10",
+      "I-1",
+      "I-2",
+      "I-3",
+      "I-4",
+      "I-5",
+      "I-6",
+      "I-7",
+      "I-8",
+      "I-9",
+      "D-1",
+      "D-2",
+      "D-3",
+      "D-4",
+      "D-5",
+      "D-6",
+      "D-7",
+      "D-8",
+      "D-9",
+      "E-1",
+      "E-2",
+      "E-3",
+      "E-4",
+      "E-5",
+      "E-6",
+      "E-7",
+      "E-8",
+      "E-9",
+      "AG-1",
+      "AG-2",
+      "AG-3",
+      "AG-4",
+      "AG-5",
+      "AG-6",
+      "AG-7",
+      "AG-8",
+      "AG-9",
+      "AGP-01",
+      "AGP-02",
+      "AGP-03",
+      "AGP-04",
+      "AGP-05",
+      "AGP-06",
+      "AGP-07",
+      "LLM-1",
+      "LLM-2",
+      "LLM-3",
+      "LLM-4",
+      "LLM-5",
+      "LLM-6",
+      "LLM-7",
+      "LLM-8",
+      "LLM-9",
+      "OI-1",
+      "OI-2",
+      "OI-3",
+      "OI-4",
+      "OI-5",
+      "OI-6",
+      "OI-7",
+      "OI-8",
+      "OI-9",
+      "MI-1",
+      "MI-2",
+      "MI-3",
+      "MI-4",
+      "MI-5",
+      "MI-6",
+      "MI-7",
+      "MI-8",
+      "MI-9",
+      "TE-1",
+      "TE-2",
+      "TE-3",
+      "TE-4",
+      "TE-5",
+      "TE-6",
+      "TE-7",
+      "TE-8",
+      "TE-9"
+    ],
+    "carried_peers": {},
+    "copy_primary": {},
+    "to_agent": []
+  },
+  "run": {
+    "architecture": "architecture/architecture.md",
+    "baseline_dir": "baseline",
+    "baseline_source": "baseline/threats.md",
+    "date": "2026-11-23",
+    "how": "copy the scenario directory to a working directory and run from there: the front matter's baseline.source and every path here are relative to it",
+    "threats": "run/threats.md"
+  },
+  "scenario": "main",
+  "schema": "tachi.fixture-expected/1",
+  "stage": "risk-score",
+  "summary": "S-4's seeded-error variant. A baseline written by the pre-fix scorer holds, for each of the 12 prefixes, a wrong composite, a wrong band, a CVSS score that its vector does not give, an out-of-range reachability under an unambiguous label and a missing vector, plus the documented exceptions as controls and the N17 cases. Every finding is UNCHANGED, so every one is carried and recomputed.",
+  "tag_source": {
+    "block_equals_recomputation": true,
+    "source": "block",
+    "tags": {},
+    "warning": false
+  },
+  "unflagged": [
+    "S-5",
+    "S-6",
+    "T-3",
+    "T-10",
+    "R-2",
+    "R-7",
+    "I-1",
+    "I-5",
+    "D-2",
+    "D-3",
+    "E-4",
+    "E-9",
+    "AG-6",
+    "AG-7",
+    "AGP-06",
+    "LLM-2",
+    "LLM-5",
+    "LLM-8",
+    "OI-4",
+    "OI-8",
+    "OI-9",
+    "MI-1",
+    "MI-8",
+    "MI-9",
+    "TE-1",
+    "TE-6",
+    "TE-9"
+  ],
+  "variant": "seeded-error"
+}

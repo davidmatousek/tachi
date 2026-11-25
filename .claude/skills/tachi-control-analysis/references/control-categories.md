@@ -8,6 +8,10 @@ version: 1.0.0
 
 This reference defines the 8 compensating control categories, their STRIDE-to-control mapping, and detection patterns for Phase A scanning.
 
+**Who does what.** Everything below is the control-analyzer agent's judgment: where to look, what counts as a control, and which of the eight categories a finding's control belongs to. The renderer, `scripts/render-compensating-controls.py`, computes nothing from this reference. It reads only the result: each finding's `control_category`, one of the eight slugs below (the closed enum of `schemas/compensating-controls.yaml`), which it groups Section 3's control details by, in the output template's category order, and the display name that the agent writes in Section 2's `matrix_row`, such as `Input Validation` for `input-validation`.
+
+**Which row of the mapping a finding uses.** The mapping is keyed by a finding's category. The category comes from the finding's ID prefix, as `tachi_scoring.category_for_prefix` resolves all 12 prefixes: `S`, `T`, `R`, `I`, `D` and `E` to the six STRIDE categories, `AG`, `AGP` and `TE` to Agentic, and `LLM`, `OI` and `MI` to LLM. The renderer resolves each finding's SARIF rule ID from the same category.
+
 ## STRIDE-to-Control-Category Mapping
 
 This canonical mapping determines which control categories to search for when analyzing threats in each STRIDE/AI category. When a threat of a given category is being analyzed, search the component's files for controls in ALL mapped categories.

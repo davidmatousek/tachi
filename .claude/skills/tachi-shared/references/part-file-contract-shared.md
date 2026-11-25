@@ -139,7 +139,7 @@ The eight sub-score names are the four exploitability keys and the four scalabil
 | `control_status` | `found`, `partial` or `missing` |
 | `control_category` | one of `authentication`, `input-validation`, `rate-limiting`, `encryption`, `logging-audit`, `csrf-protection`, `csp-security-headers` or `access-control` |
 | `confidence` | `High`, `Medium` or `Low`, and `null` exactly when `control_status` is `missing` |
-| `carried_forward` | boolean. Accepted only for an UNCHANGED finding with a resolved baseline controls file, and otherwise cleared with the reason recorded |
+| `carried_forward` | boolean. Accepted only for an UNCHANGED finding whose result the resolved baseline controls file holds (its persisted values in a 1.1 file, its Section 2 row in a 1.0 file), and otherwise cleared with the reason recorded |
 | `evidence` | an array of 1 to 5 entries for `found` or `partial`, and empty for `missing`. Each entry has exactly the keys in "Evidence entry keys" |
 | `matrix_row` | prose, one line of up to 1,200 characters, cut at 1,200: the 11 cells of the finding's row in the controls section 2 table |
 | `recommendation_body` | prose up to 2,000, cut at 2,000. Required for `partial` or `missing`, and `null` for `found` |
@@ -189,7 +189,7 @@ Every payload string has exactly one class.
 
 **Carried text.** The renderers persist each narrative field's validated, slotted text, escaped on write, in `risk-scores.md` section 6, `### Scoring Inputs`, and in `compensating-controls.md` section 7, `### Assessment Inputs`. Carried text is decoded first, then re-validated as narrative and re-resolved against this run's values, with the per-field fallback. Only legacy prose, which has no slots, is evidence.
 
-**Every string** is at most 16,384 characters. It holds no control character except newline and tab, and none of U+2028, U+2029, U+200E, U+200F, U+061C, U+202A to U+202E or U+2066 to U+2069. A string that breaks this rejects the part, with one exception: over-limit prose is cut at its own limit first, at any length, and these checks run on what is kept. A forbidden character beyond a cut is cut away with the rest, and one inside the kept text rejects the part.
+**Every string** is at most 16,384 characters. It holds no control character except newline and tab, and none of U+2028, U+2029, U+200E, U+200F, U+061C, U+202A to U+202E, U+2066 to U+2069 or the Unicode tag characters U+E0000 to U+E007F. A string that breaks this rejects the part, with one exception: over-limit prose is cut at its own limit first, at any length, and these checks run on what is kept. A forbidden character beyond a cut is cut away with the rest, and one inside the kept text rejects the part.
 
 ---
 
@@ -393,7 +393,7 @@ One allow-list module in `tachi_parts` holds every identifier pattern, and every
 The stage is `risk-score` or `compensating-controls`.
 
 - **Only the planner and the reconciler compute paths.** Each batch input carries an absolute `part_path`, and no path is ever built from part content.
-- **Scripts recompute, never trust.** Every script recomputes each path from `--out`, the stage, and plan and batch IDs that pass the patterns above. It ignores paths stored in files, except the plan's digest-checked `inputs` paths, which the renderer reads.
+- **Scripts recompute, never trust.** Every script recomputes each path from `--out`, the stage, and plan and batch IDs that pass the patterns above. It ignores paths stored in files, except the plan's digest-checked `inputs` paths and its `refs` paths, which the renderer reads.
 - **The plan digest.** `plan` and `reconcile` print the plan file's SHA-256 as `plan_digest`, and the command passes the latest one back as `--plan-digest`. `reconcile`, the renderer, `fail` and `close` refuse a plan file with another digest, with exit code 2.
 - **The plan pointer.** `--plan` names the plan ID and overrides `current.json`. When the two disagree, the script exits 2.
 - **Document caps.** A part is at most 512 KiB (validation step 2). A plan is at most 8 MiB, a batch input 4 MiB, the plan pointer 4 KiB and a stage record 1 MiB, and a writer never writes a document over its own cap.
@@ -419,7 +419,7 @@ The renderer validates a part in this order. A failure in steps 1 to 10 rejects 
 
 The renderer escapes only untrusted strings: agent text, and text read from untrusted inputs. Template constants are written as they are. Truncation comes first, so no reference is cut. Per sink:
 
-- **Markdown table cells and prose:** `&` as `&amp;`, `<` as `&lt;`, `>` as `&gt;`, `|` as `&#124;`, a backtick as `&#96;`, each `{` of a `{{` that isn't a slot as `&#123;`, and a newline in a cell as `&#10;`. A prose line that would start with `#` or `|` starts with `&#35;` or `&#124;` instead.
+- **Markdown table cells and prose:** `&` as `&amp;`, `<` as `&lt;`, `>` as `&gt;`, `|` as `&#124;`, a backtick as `&#96;`, each `{` of a `{{` that isn't a slot as `&#123;`, and a newline in a cell as `&#10;`. A prose line that would start with `#`, `~` or `|` starts with `&#35;`, `&#126;` or `&#124;` instead.
 - **Code snippets:** unescaped, inside a fence longer than their longest backtick run.
 - **SARIF strings:** through `json.dumps` only.
 
@@ -442,6 +442,8 @@ A plan is `tachi.plan/1`, with a closed key set.
 | `created_utc` | UTC, ending in `Z`, and no other form is accepted |
 | `tachi_version` | `X.Y.Z` |
 | `inputs` | an object mapping each logical input name to `{path, sha256, bytes}` |
+| `refs` | an object mapping the stage's closed pointer names (architecture, threats, baseline files, target) to absolute paths that the command validated, as in the batch input, with at most 20 names. `plan` writes them once, here, after routing, and copies them verbatim into each batch input. Every script reads them from here, never from a batch input, so a plan with no units keeps them. A `refs` path is a candidate: the shared resolver, or the baseline checks, re-check it before any use |
+| `architecture_warning` | `null`, or the one `{code, detail}` that `plan` raised when it refused the `--architecture` candidate. Its code is `architecture-path:explicit:<check>`, and it follows the rules of a stage record's `warnings` entry. Every stage record of the plan lists it first |
 | `params` | as in the batch input |
 | `batch_size` | an integer from 1 to 500, or `null` for a plan with no units |
 | `unit_count` | an integer, 0 or more |
@@ -496,7 +498,7 @@ The model keeps no state of its own. The reconciler classifies each batch from t
 ### Limits
 
 - At most 16 batches are in flight per wave, which leaves margin under the platform's limit of 20.
-- Every dispatch runs in the foreground, and the dispatcher waits for it.
+- **Wait for completion.** The Agent tool has no option to wait for an agent inline, so every dispatch runs in the background, and a dispatcher waits by ending its turn and resuming on each completion notice. The rule is ADR-050 D6's (its dated note under "Limits"), word for word: "Dispatch every wave that `plan` or the latest `reconcile` listed, in order, before you run `reconcile`. Run `reconcile` once, after every agent of those waves has reported completion. While an agent you dispatched is still running, don't run the renderer, report a result or end the stage. If you end your turn to wait, resume this loop on each completion notice."
 - The scorer and controls dispatch one layer below the main session.
 
 ### Stage record keys
@@ -513,7 +515,7 @@ Every stage writes one stage record, `tachi.stage-record/1`, with a closed key s
 | `started_utc` | UTC, ending in `Z`, and no other form is accepted |
 | `finished_utc` | UTC, ending in `Z`, and no other form is accepted |
 | `input_digest` | `sha256:` and the hex digest |
-| `counts` | non-negative integers under exactly these keys: `units`, `open`, `resolved`, `rendered`, `parse_errors`, `narrative_fallbacks`, `truncations`, `corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `retagged`, `reused-id` and `input`. The seven base counts come first, then one count per flag kind, and `resolved` is both the base count and the flag kind, because the flag marks exactly the RESOLVED rows |
+| `counts` | non-negative integers under exactly these keys: `units`, `open`, `resolved`, `rendered`, `parse_errors`, `narrative_fallbacks`, `truncations`, `cell_overwrites`, `corrected`, `unverifiable`, `unchecked`, `divergent`, `override`, `retagged`, `reused-id` and `input`. The eight base counts come first, then one count per flag kind, and `resolved` is both the base count and the flag kind, because the flag marks exactly the RESOLVED rows |
 | `batches` | `{planned, dispatched, done, retried, split, exhausted}` |
 | `overflow_events` | an array of `{batch_id, attempt, kind}`, where `kind` is `missing`, `overflow-reported`, `unparseable` or `invalid` |
 | `retries` | an array of `{batch_id, attempt, cause, children}` |

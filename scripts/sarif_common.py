@@ -3,19 +3,22 @@
 This module has two layers.
 
 **The legacy helpers.** The canonical `PREFIX_TO_RULE` mapping (rule URIs for
-`generate-threats-sarif.py` and `generate-risk-scores-sarif.py`), the severity-to-SARIF-level
-mapping, finding-ID prefix extraction, a threats.md -> component metadata parser and the SARIF
-envelope. Per-script emit shape (logicalLocations array vs logicalLocation object, kind label
-vocabulary) remains in each generator to preserve byte-identity (ADR-021). They keep their
-names, values and behavior while those generators exist. `PREFIX_TO_RULE`'s AI values are the
-short forms those generators emit (`tachi/ai/agentic`); the shared emitter below never emits them.
+`generate-threats-sarif.py`), the severity-to-SARIF-level mapping, finding-ID prefix extraction,
+a threats.md -> component metadata parser and the SARIF envelope. The other user of these,
+`generate-risk-scores-sarif.py`, was retired at PR 1 (ADR-050 D1, #357): `render-risk-scores.py`
+writes `risk-scores.sarif` through the shared emitter below. The emit shape of the generator
+that remains (logicalLocations array vs logicalLocation object, kind label vocabulary) stays in
+it to preserve byte-identity (ADR-021). The helpers keep their names, values and behavior while
+it exists, and PR 2 rewrites it onto the shared emitter. `PREFIX_TO_RULE`'s AI values are the
+short forms it emits (`tachi/ai/agentic`); the shared emitter below never emits them.
 
 **The shared emitter** (ADR-050 D7 and D8). It implements the rules in
 `.claude/skills/tachi-shared/references/sarif-identity-shared.md`, and a drift test keeps the two
 in step. It holds:
 
-* the URI resolver (D7): `resolve_architecture`, `resolve_file` and the body-line reader. One
-  shared resolver sets `artifactLocation.uri`, and no script takes a finished URI;
+* the URI resolver (D7): `resolve_architecture`, `resolve_explicit` (its first step, which
+  `tachi-stage.py plan` runs too), `resolve_file` and the body-line reader. One shared resolver
+  sets `artifactLocation.uri`, and no script takes a finished URI;
 * identity (D7): `RULE_ID_BY_PREFIX` (twelve prefixes, eight rule IDs), the `tachi-plh/1` hash
   and the two partial fingerprints;
 * membership and correlation (D8): `correlation_assignments`, ruling C's sentence and the
@@ -23,7 +26,9 @@ in step. It holds:
 * the result, the run and the document, in one key order, with the real `informationUri` and the
   `tachi_provenance` stamp;
 * the OWASP-LLM, OWASP-ASI and CWE taxa that the scorer and controls files carry, embedded so
-  the core path needs no PyYAML.
+  the core path needs no PyYAML;
+* the eight rules those two files share, each with its taxonomy `relationships` (`RULES` and
+  `build_rules`), so the two renderers emit one table (PM W3 ruling 2, gap A).
 
 Standard library plus the local helpers `tachi_parsers`, `tachi_parts` and `tachi_scoring`. The
 module sets `sys.dont_write_bytecode` before any of them loads (ADR-049 D8).
@@ -37,8 +42,10 @@ import posixpath
 import re
 import stat
 import sys
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional, Sequence, Tuple
+from urllib.parse import unquote
 
 # Turn bytecode writing off before any local module loads (feature 391, FR-007; ADR-049 D8).
 # The guarantee lives in the module, so it holds for a paraphrased command and for a person
@@ -100,8 +107,9 @@ def parse_component_metadata(threats_md: str) -> dict[str, dict[str, str]]:
     (Trust Zones) via `tachi_parsers.parse_scope_data`. Replaces the
     hardcoded `COMPONENT_ZONE` dict in `generate-threats-sarif.py` (which
     silently desynced from threats.md when components changed) and the
-    bespoke regex parsers `parse_trust_zones` + `parse_component_kinds` in
-    `generate-risk-scores-sarif.py`. Caller is responsible for translating
+    bespoke regex parsers `parse_trust_zones` + `parse_component_kinds` that
+    `generate-risk-scores-sarif.py` carried (retired at PR 1, #357). Caller is
+    responsible for translating
     `dfd_type` (e.g. "Data Store") into its emit-specific kind label
     ("data" vs "data-store") to preserve per-script SARIF byte-identity.
     """
@@ -143,9 +151,9 @@ def parse_affected_assets(threats_content: str) -> dict[str, list[str]]:
     `{finding_id: [tags]}`, the exact round-trip of the block the populator
     emits (`| S-1 | [phi, pii] |` → `{"S-1": ["phi", "pii"]}`; `| T-2 | [] |`
     → `{"T-2": []}`). This is the single canonical extractor the SARIF
-    regeneration scripts (`generate-threats-sarif.py`,
-    `generate-risk-scores-sarif.py`) and the cross-format test consume, so the
-    verification tier reads one value source instead of independently
+    regeneration script (`generate-threats-sarif.py`), `render-risk-scores.py`
+    and the cross-format test consume, so the verification tier reads one
+    value source instead of independently
     re-deriving from `component_asset_map` (mirrors the `parse_component_metadata`
     desync-fix precedent above). Order is preserved verbatim from the block
     (already sorted ascending by the populator — this does NOT re-sort or dedup).
@@ -155,7 +163,9 @@ def parse_affected_assets(threats_content: str) -> dict[str, list[str]]:
     if not match:
         return {}
     out: dict[str, list[str]] = {}
-    for line in match.group("body").splitlines():
+    # Rows split on "\n" only (SA-13, T064): str.splitlines() also breaks at U+2028, NEL and the other separators, so one
+    # cell that holds one would forge a second, phantom row. The row pattern runs on line.strip(), so a CRLF file reads the same.
+    for line in match.group("body").split("\n"):
         row = _AFFECTED_ASSETS_ROW_PATTERN.match(line.strip())
         if not row:
             continue
@@ -573,6 +583,32 @@ def _check_snapshot(run_dir: Optional[str], resolved: ResolvedPath, root: str, f
         raise PathCheckError("is-snapshot", _short(basename))
 
 
+def resolve_explicit(
+    candidate: object,
+    *,
+    root: Optional[str] = None,
+    fs: Any = None,
+) -> Tuple[Optional[ResolvedPath], Optional[Dict[str, str]]]:
+    """D7's first candidate, the explicit ``--architecture-path``, checked as the resolver checks it.
+
+    It is the first step of ``resolve_architecture``, split out so that ``tachi-stage.py plan`` runs the same
+    step, and so ``plan`` and the renderer agree on every check and on the warning's code and text (ruled at W2).
+    Returns ``(resolved, None)`` when ``resolve_file(candidate, root=root, allow_absolute=True, fs=fs)`` passes.
+    Otherwise it returns ``(None, warning)``, the ``{code, detail}`` that ``resolve_architecture`` lists for that
+    failure: the code is ``architecture-path:explicit:<check>``, so the failed check's name is its last part, and
+    the detail names the candidate in its escaped short form (``_short``), the check and ``--architecture-path``.
+    Every check refuses alike, the syntactic ones (a control character, backslash or backtick) included.
+
+    A candidate that isn't text fails the ``type`` check. ``None`` means "the flag was not given" to
+    ``resolve_architecture``, which never asks here in that case. A ``root`` that isn't absolute is a caller's
+    bug and raises ``ValueError``, as it does in ``resolve_file``.
+    """
+    try:
+        return resolve_file(candidate, root=root, allow_absolute=True, fs=fs), None
+    except PathCheckError as failure:
+        return None, _warning("explicit", failure.check, candidate, "trying the architecture-source line")
+
+
 def resolve_architecture(
     explicit: Optional[str] = None,
     *,
@@ -584,7 +620,7 @@ def resolve_architecture(
     """Choose the architecture path for a run, in D7's order. Nothing here stops a run.
 
     1. ``explicit``: the ``--architecture-path`` flag, which reaches a script as
-       ``--architecture PATH``. ``None`` means the flag was not given.
+       ``--architecture PATH``, checked by ``resolve_explicit``. ``None`` means the flag was not given.
     2. The body line of ``threats_text``, the ``threats.md`` that was read, if it passes the
        checks and NFR-10's name check against the snapshot in ``run_dir``.
     3. ``DEFAULT_ARCHITECTURE_PATH``, in its canonical spelling if it validates, otherwise
@@ -598,13 +634,11 @@ def resolve_architecture(
     warnings: List[Dict[str, str]] = []
 
     if explicit is not None:
-        try:
-            resolved = resolve_file(explicit, root=root, allow_absolute=True, fs=fs)
+        resolved, refusal = resolve_explicit(explicit, root=root, fs=fs)
+        if resolved is not None:
             return ArchitectureResolution(resolved.path, resolved.uri, "explicit", tuple(warnings))
-        except PathCheckError as failure:
-            warnings.append(
-                _warning("explicit", failure.check, explicit, "trying the architecture-source line")
-            )
+        if refusal is not None:  # a refusal always comes with its warning
+            warnings.append(refusal)
 
     line = read_architecture_source(threats_text) if threats_text is not None else None
     if line is None:
@@ -685,6 +719,15 @@ HASH_SUFFIX = ":1"
 REGION = {"startLine": 1}
 FINGERPRINT_KEYS = ("primaryLocationLineHash", "findingId/v1")
 FLAG_PROPERTIES = {"risk-scores.sarif": "score-flags", "compensating-controls.sarif": "integrity-flags"}
+# D8, ruled at W3 (2026-11-23, from T053; it settles P0-10). The self-check's RESOLVED scan reads what a renderer
+# composes or takes as a closed value. A property that carries text copied from an input is skipped, in the one
+# file that writes it: the scorer's owner (a person's text) and the controls file's evidence (the scanned
+# repository's own snippets and paths) and recommendation. An ID in copied text is a mention, not a reference.
+# Keyed by driver name, as `self_check` takes it. The threats file has none until PR 2.
+COPIED_TEXT_PROPERTIES = {
+    TOOL_NAMES["risk-scores.sarif"]: ("risk-owner",),
+    TOOL_NAMES["compensating-controls.sarif"]: ("control-evidence", "recommendation"),
+}
 EVIDENCE_MESSAGE = "Control evidence: {category} detected in {file}"
 LEVELS = ("error", "warning", "note", "none")
 FORBIDDEN_RESULT_KEYS = ("guid", "correlationGuid", "fingerprints", "baselineState")
@@ -860,6 +903,7 @@ def build_result(
     properties: Optional[Mapping[str, Any]] = None,
     correlation: Optional[Correlation] = None,
     related_locations: Sequence[Mapping[str, Any]] = (),
+    markdown: Optional[str] = None,
 ) -> Dict[str, Any]:
     """One SARIF result, in the shared shape and key order (ADR-050 D7, D8).
 
@@ -869,12 +913,21 @@ def build_result(
     ``correlation`` is given, and the three ``correlation-*`` properties follow ``properties``.
     No result carries ``guid``, ``correlationGuid``, ``fingerprints`` or SARIF's own
     ``baselineState``. ``properties`` may not hold a ``correlation-*`` key: the emitter owns them.
+
+    ``markdown`` is the optional ``message.markdown`` that a file whose contract maps it keeps
+    (the scorer's mitigation text; NFR-1 keeps adopter fields). Given, the message is
+    ``{text, markdown}`` in that order, and ruling C's sentence is added to ``text`` alone. Not
+    given, the message is ``{text}`` and the result is byte-for-byte what it was without the
+    parameter. Any string is accepted, an empty one included: shipped scorer files carry empty
+    mitigations. ``self_check`` refuses a local path in it.
     """
     for name, value in (("uri", uri), ("component", component), ("zone", zone), ("kind", kind)):
         if not isinstance(value, str) or not value:
             raise ValueError("%s must be a non-empty string, not %s" % (name, _short(value)))
     if level not in LEVELS:
         raise ValueError("not a SARIF level: %s" % _short(level))
+    if markdown is not None and not isinstance(markdown, str):
+        raise ValueError("markdown must be a string, not %s" % _short(markdown))
     props: Dict[str, Any] = dict(properties or {})
     clash = [key for key in CORRELATION_KEYS if key in props]
     if clash:
@@ -883,9 +936,12 @@ def build_result(
         props["correlation-group"] = correlation.group
         props["correlation-role"] = correlation.role
         props["correlation-primary"] = correlation.primary
+    message_object: Dict[str, str] = {"text": correlated_message(message, correlation)}
+    if markdown is not None:
+        message_object["markdown"] = markdown
     result: Dict[str, Any] = {
         "ruleId": rule_id_for(finding_id),
-        "message": {"text": correlated_message(message, correlation)},
+        "message": message_object,
         "level": level,
         "locations": [
             {
@@ -927,17 +983,26 @@ def build_driver(
     semantic_version: str,
     rules: Sequence[Mapping[str, Any]],
     supported: Optional[Sequence[Mapping[str, Any]]] = None,
+    version: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """The ``tool.driver`` of a file: its verbatim tool name and the real ``informationUri``."""
+    """The ``tool.driver`` of a file: its verbatim tool name and the real ``informationUri``.
+
+    ``version`` is optional (PM W3 ruling 2, gap C). Given, ``"version"`` is written right after
+    ``"name"``, where the 1.1 templates put it, and the two PR 1 renderers pass the same
+    ``tachi_parts.VERSION`` that ``semantic_version`` holds. Not given, there is no ``"version"`` key:
+    ``threats.sarif``'s driver passes none, and its bytes don't move.
+    """
     if sarif_file not in TOOL_NAMES:
         raise ValueError(
             "not a tachi SARIF file: %s; expected one of %s" % (_short(sarif_file), sorted(TOOL_NAMES))
         )
-    driver: Dict[str, Any] = {
-        "name": TOOL_NAMES[sarif_file],
-        "semanticVersion": semantic_version,
-        "informationUri": INFORMATION_URI,
-    }
+    if version is not None and not _is_text(version):
+        raise ValueError("version must be a non-empty string, not %s" % _short(version))
+    driver: Dict[str, Any] = {"name": TOOL_NAMES[sarif_file]}
+    if version is not None:
+        driver["version"] = version
+    driver["semanticVersion"] = semantic_version
+    driver["informationUri"] = INFORMATION_URI
     if supported is not None:
         driver["supportedTaxonomies"] = [dict(entry) for entry in supported]
     driver["rules"] = [dict(rule) for rule in rules]
@@ -1000,9 +1065,48 @@ class SelfCheckError(ValueError):
 _HASH_FORM = re.compile(r"[0-9a-f]{16}:1")
 _LEGACY_PEER_REFERENCE = re.compile(r"([A-Za-z]+-[0-9]+): ")
 
+# A local path: an absolute path that starts at one of H8's roots (NFR-6's list, as in
+# ``test_fixture_374.py``), or a Windows drive path. The root must start the path, so a relative path or a
+# URL path with a segment of that name is not a hit, and a ``file:`` URL on a root is. Built in pieces, so
+# this file holds no path itself.
+_LOCAL_PATH_ROOTS = ("Us" + "ers", "ho" + "me", "pri" + "vate", "t" + "mp", "var/fol" + "ders")
+_LOCAL_PATH = re.compile(
+    "(?<![A-Za-z0-9_.~-])/(%s)/|(?<![A-Za-z0-9])[A-Za-z]:\\\\[A-Za-z]" % "|".join(_LOCAL_PATH_ROOTS)
+)
+
 
 def _is_text(value: object) -> bool:
     return isinstance(value, str) and value != ""
+
+
+def _uri_problem(uri: str) -> Optional[str]:
+    """The first ``tachi_parts.path_problem`` check that an ``artifactLocation.uri`` fails, or ``None`` (D7, SA-11).
+
+    A result's URI is relative: to the working directory (the primary) or to the target directory (evidence). It
+    passes the resolver's own relative-path rule, called here and never restated, as written and as decoded,
+    because a consumer that decodes it reads ``%2e%2e`` as ``..`` and ``%2F`` as ``/``. The decode is strict, so an
+    escape that isn't UTF-8 fails as ``encoding``, and it runs once: ``%252e``, how the emitter writes a file named
+    ``%2e``, stays text.
+
+    A colon is the one thing the decode may add. RFC 3986 section 4.2 has a relative path write a colon in its first
+    segment encoded, and ``percent_encode`` does: ``a%3Ab/x.md`` is a directory named ``a:b``, which the resolver
+    reaches through an absolute path. The written form was checked first, so a colon in the decoded first segment
+    was encoded. That path is led by ``./``, the RFC's other remedy, and the rule's scheme and drive-letter checks
+    look past it. A segment that also holds an encoded ``/`` (``https%3A%2F%2Fx``) gets no lead and fails as
+    ``scheme``.
+    """
+    failed = tachi_parts.path_problem(uri)
+    if failed is not None:
+        return failed
+    try:
+        decoded = unquote(uri, errors="strict")
+    except UnicodeDecodeError:
+        return "encoding"
+    if decoded == uri:
+        return None
+    first = unquote(uri.split("/", 1)[0], errors="strict")  # the first segment alone, decoded
+    lead = "./" if ":" in first and "/" not in first else ""
+    return tachi_parts.path_problem(lead + decoded)
 
 
 def _shape_problems(result: object) -> List[str]:
@@ -1018,8 +1122,19 @@ def _shape_problems(result: object) -> List[str]:
         out.append("its keys are %s, not %s" % (list(result), expected))
     out += ["it carries %s" % key for key in FORBIDDEN_RESULT_KEYS if key in result]
     message = result.get("message")
-    if not (isinstance(message, dict) and list(message) == ["text"] and _is_text(message["text"])):
-        out.append("message is not {text: <non-empty string>}")
+    if not (
+        isinstance(message, dict)
+        and list(message) in (["text"], ["text", "markdown"])
+        and _is_text(message["text"])
+    ):
+        out.append("message is not {text: <non-empty string>} or {text, markdown}, in that order")
+    elif "markdown" in message:
+        if not isinstance(message["markdown"], str):
+            out.append("message.markdown is not a string")
+        else:
+            local = _LOCAL_PATH.search(message["markdown"])
+            if local:
+                out.append("message.markdown holds a local path (%s)" % _short(local.group(0)))
     if result.get("level") not in LEVELS:
         out.append("level is not a SARIF level")
     locations = result.get("locations")
@@ -1059,6 +1174,7 @@ def _shape_problems(result: object) -> List[str]:
                     list(entry) == ["id", "message", "physicalLocation"]
                     and isinstance(entry["message"], dict)
                     and _is_text(entry["message"].get("text"))
+                    and isinstance(physical, dict)
                     and isinstance(physical.get("artifactLocation"), dict)
                     and _is_text(physical["artifactLocation"].get("uri"))
                     and isinstance(region, dict)
@@ -1079,11 +1195,21 @@ def _shape_problems(result: object) -> List[str]:
     return out
 
 
-def _strings_that_name_findings(result: Mapping[str, Any]) -> Iterable[Tuple[str, str]]:
-    """``(where, text)`` for every place a result may name a finding: message, properties, evidence."""
-    yield "message", result["message"]["text"]
+def _strings_that_name_findings(
+    result: Mapping[str, Any], copied: Sequence[str] = ()
+) -> Iterable[Tuple[str, str]]:
+    """``(where, text)`` for every string that a renderer composes or takes as a closed value (D8).
+
+    That is ``findingId/v1`` and every property, except the top-level ones in ``copied``
+    (``COPIED_TEXT_PROPERTIES``). Text copied from an input is not read, because an ID in it is a
+    mention and not a reference: ``message.text`` and ``message.markdown`` (the reference set's
+    threat and mitigation; ruling C's sentence has its own exact check), the ``relatedLocations``
+    messages, and the ``copied`` properties.
+    """
     yield "findingId/v1", result["partialFingerprints"][FINGERPRINT_KEYS[1]]
-    stack: List[Tuple[str, Any]] = [("properties", result["properties"])]
+    stack: List[Tuple[str, Any]] = [
+        ("properties.%s" % key, item) for key, item in result["properties"].items() if key not in copied
+    ]
     while stack:
         where, value = stack.pop()
         if isinstance(value, str):
@@ -1092,8 +1218,6 @@ def _strings_that_name_findings(result: Mapping[str, Any]) -> Iterable[Tuple[str
             stack.extend(("%s.%s" % (where, key), item) for key, item in value.items())
         elif isinstance(value, (list, tuple)):
             stack.extend(("%s[%d]" % (where, index), item) for index, item in enumerate(value))
-    for entry in result.get("relatedLocations", ()):
-        yield "relatedLocations", entry["message"]["text"]
 
 
 def _id_token_pattern(ids: Iterable[str]) -> "re.Pattern[str]":
@@ -1119,14 +1243,24 @@ def self_check(
     Raises ``SelfCheckError`` listing every problem. It asserts that:
 
     * each result has the shared shape and key order, and no ``guid``, ``correlationGuid``,
-      ``fingerprints`` or ``baselineState``;
+      ``fingerprints`` or ``baselineState``; its message is ``{text}`` or ``{text, markdown}``,
+      and a ``markdown`` is a string (an empty one passes) that holds no local path;
     * the result count equals the number of distinct finding IDs, which equals the member set;
     * every ``primaryLocationLineHash`` is tachi's own for ``tool`` and the ID, and no two
       present results share one (the error names both IDs); every ``ruleId`` is the ID's rule;
-    * every result has the one ``uri`` (``uri``, when given);
-    * no RESOLVED ID (``resolved_ids`` less the member set) appears in a message, a property or
-      a ``relatedLocations`` entry, and no ``relatedLocations`` entry names a finding or sits
-      outside the controls file;
+    * every result has the one ``uri`` (``uri``, when given), and that URI passes ``tachi_parts.path_problem``, the
+      resolver's own relative-path rule, as written and as percent-decoded (``_uri_problem``; SA-11). The error names
+      the URI and the failed check, once for the run and not once per result;
+    * no RESOLVED ID (``resolved_ids`` less the member set) appears in a string that a renderer
+      composes or takes as a closed value: ``findingId/v1`` and every property, except copied
+      text. An ID in copied text is a mention, not a reference (ruled at W3, settling P0-10), so
+      the scan skips ``message.text`` and ``message.markdown`` (ruling C's sentence keeps its own
+      exact check, below), the ``relatedLocations`` messages, and the properties that
+      ``COPIED_TEXT_PROPERTIES`` lists for ``tool``: the scorer's ``risk-owner``, and the
+      controls file's ``control-evidence`` and ``recommendation``;
+    * no ``relatedLocations`` entry names a finding or sits outside the controls file, and every
+      ``relatedLocations`` uri passes the same rule, as written and as percent-decoded (the error
+      names the finding and the failed check);
     * every ``correlation-primary`` and every group member is a result, with one primary per
       group, every correlated result's message ends with ruling C's sentence, and an
       uncorrelated result carries neither the keys nor the sentence.
@@ -1185,6 +1319,10 @@ def self_check(
         problems.append(
             "artifactLocation.uri is %s, not the run's %s" % (_short(next(iter(uris))), _short(uri))
         )
+    for written in sorted(uris):  # the primary URI is relative too (D7, SA-11); the run's one URI is named once, not per result
+        failed = _uri_problem(written)
+        if failed is not None:
+            problems.append("artifactLocation.uri %s fails the resolver's %s check" % (_short(written), failed))
 
     ordered = tachi_parts.finding_sort_key
     missing = sorted(members - set(by_id), key=ordered)
@@ -1196,8 +1334,9 @@ def self_check(
 
     if resolved:
         pattern = _id_token_pattern(resolved)
+        copied = COPIED_TEXT_PROPERTIES.get(tool, ())
         for finding_id, result in by_id.items():
-            for where, text in _strings_that_name_findings(result):
+            for where, text in _strings_that_name_findings(result, copied):
                 hit = pattern.search(text)
                 if hit:
                     problems.append(
@@ -1213,6 +1352,16 @@ def self_check(
             if lead and tachi_parts.id_matches("finding", lead.group(1)):
                 problems.append(
                     "%s: a relatedLocations entry names the finding %s" % (finding_id, lead.group(1))
+                )
+            # D7: an evidence URI is relative to the target. The test is the resolver's own syntactic
+            # rule, `tachi_parts.path_problem` (a leading slash, scheme, drive letter, backslash and
+            # `..` among its checks), called here and never restated, on the URI as written and decoded.
+            evidence_uri = entry["physicalLocation"]["artifactLocation"]["uri"]
+            failed = _uri_problem(evidence_uri)
+            if failed is not None:
+                problems.append(
+                    "%s: a relatedLocations uri %s fails the resolver's %s check"
+                    % (finding_id, _short(evidence_uri), failed)
                 )
 
     primaries: Dict[str, List[str]] = {}
@@ -1326,4 +1475,106 @@ def supported_taxonomies() -> List[Dict[str, Any]]:
             "informationUri": taxonomy["informationUri"],
         }
         for index, taxonomy in enumerate(TAXONOMIES)
+    ]
+
+
+# =============================================================================
+# The rules (one table for risk-scores.sarif and compensating-controls.sarif)
+# =============================================================================
+#
+# What each rule says, in the 1.1 templates' order (`templates/tachi/output-schemas/`): (category, short
+# description, full description, tags, taxonomy IDs the rule relates to). Both renderers write their rules from
+# here, so the two files can't drift apart, and `tests/scripts/test_sarif_identity.py` pins every field to both
+# templates. The IDs are what a `{{ref:...}}` slot may cite for a finding of that category (ADR-050 D3's table),
+# and each rule writes them as its `relationships` (PM W3 ruling 2, gap A).
+RULES = (
+    ("spoofing", "Identity spoofing threats",
+     "Threats where an attacker pretends to be something or someone else, such as forging authentication credentials, "
+     "replaying tokens, or impersonating trusted components to gain unauthorized access.",
+     ("security", "stride", "spoofing", "authentication", "owasp", "cwe"), ("A07", "CWE-287")),
+    ("tampering", "Data tampering threats",
+     "Threats where an attacker modifies data, code, or configuration without authorization, violating integrity "
+     "guarantees and causing systems to operate on corrupted inputs or persist falsified records.",
+     ("security", "stride", "tampering", "data-integrity", "owasp", "cwe"), ("A08", "CWE-345")),
+    ("repudiation", "Repudiation threats",
+     "Threats where a user or system can deny having performed an action, and the system lacks sufficient evidence to "
+     "prove otherwise, undermining accountability and forensic investigation.",
+     ("security", "stride", "repudiation", "logging", "accountability", "owasp", "cwe"), ("A09", "CWE-778")),
+    ("info-disclosure", "Information disclosure threats",
+     "Threats where sensitive information is exposed to unauthorized parties through direct data leaks, verbose error "
+     "messages, side-channel observations, or insufficient access controls on stored data.",
+     ("security", "stride", "information-disclosure", "data-exposure", "owasp", "cwe"), ("A01", "CWE-200")),
+    ("denial-of-service", "Denial of service threats",
+     "Threats where an attacker degrades or eliminates system availability through resource exhaustion, flooding, "
+     "algorithmic complexity exploitation, or cascading dependency failures.",
+     ("security", "stride", "denial-of-service", "availability", "owasp", "cwe"), ("A05", "CWE-400")),
+    ("privilege-escalation", "Privilege escalation threats",
+     "Threats where an attacker gains higher privileges than authorized, performing actions reserved for "
+     "administrators, accessing other users' resources, or bypassing access control boundaries.",
+     ("security", "stride", "elevation-of-privilege", "access-control", "owasp", "cwe"), ("A01", "CWE-269")),
+    ("agentic", "AI agent autonomy and misuse threats",
+     "Threats arising from autonomous agent behavior, including uncontrolled tool use, excessive autonomy, "
+     "agent-to-agent trust violations, and lack of human oversight in high-impact operations.",
+     ("security", "ai", "agentic", "autonomy", "tool-use", "mcp"), ("CWE-693",)),
+    ("llm", "LLM-specific threats",
+     "Threats from prompt injection vulnerabilities, data poisoning risks, and model theft in LLM-integrated "
+     "components, covering direct and indirect injection, RAG pipeline manipulation, and model extraction.",
+     ("security", "ai", "llm", "prompt-injection", "data-poisoning", "model-theft"), ("CWE-74",)),
+)
+
+_CWE_TAXON = re.compile(r"CWE-[1-9][0-9]*")
+_OWASP_TAXON = re.compile(r"A(?:0[1-9]|10)")
+
+
+def taxonomy_name_for(taxon_id: str) -> str:
+    """The ``toolComponent`` name of a rule's relationship to this taxonomy ID: ``CWE`` or ``OWASP``.
+
+    The map is closed: ``CWE-<n>`` is ``CWE`` and ``A01`` to ``A10`` is ``OWASP``. Any other ID is a
+    defect in shipped code and raises ``ValueError``. ``OWASP`` is the 1.0 files' name-only form, and
+    no ``taxonomies`` entry carries it, so these links don't resolve inside the file; aligning them is
+    a follow-up (T080).
+    """
+    if isinstance(taxon_id, str):
+        if _CWE_TAXON.fullmatch(taxon_id):
+            return "CWE"
+        if _OWASP_TAXON.fullmatch(taxon_id):
+            return "OWASP"
+    raise ValueError(
+        "not a taxonomy ID that a rule may relate to: %s; expected CWE-<n> or A01 to A10" % _short(taxon_id)
+    )
+
+
+def build_rules(highest: Mapping[str, Decimal]) -> List[Dict[str, Any]]:
+    """The driver's ``rules``: one for each category in ``highest``, in ``RULES``' order.
+
+    ``highest`` maps a category to the highest score among that category's results in the file: the
+    composite in ``risk-scores.sarif``, the residual in ``compensating-controls.sarif``. That score is
+    the rule's ``security-severity``, rounded half-up to one decimal and written as text. A category with
+    no results has no rule, and a key that isn't one of the eight categories raises ``ValueError``.
+
+    A rule is ``id``, ``shortDescription``, ``fullDescription``, ``properties`` (``tags``, then
+    ``security-severity``) and ``relationships``, the keys and the order the 1.1 templates use. There is
+    one ``relationships`` entry for each taxonomy ID in the rule's ``RULES`` row, in that row's order.
+    Every list and object is new on each call.
+    """
+    unknown = [category for category in highest if category not in RULE_ID_BY_CATEGORY]
+    if unknown:
+        raise ValueError(
+            "not a rule category: %s; expected some of %s"
+            % (", ".join(_short(category) for category in unknown[:5]), list(RULE_ID_BY_CATEGORY))
+        )
+    return [
+        {
+            "id": RULE_ID_BY_CATEGORY[category],
+            "shortDescription": {"text": short},
+            "fullDescription": {"text": full},
+            "properties": {"tags": list(tags), "security-severity": str(tachi_scoring.q1(highest[category]))},
+            "relationships": [
+                {"target": {"id": taxon_id, "toolComponent": {"name": taxonomy_name_for(taxon_id)}},
+                 "kinds": ["relevant"]}
+                for taxon_id in taxon_ids
+            ],
+        }
+        for category, short, full, tags, taxon_ids in RULES
+        if category in highest
     ]

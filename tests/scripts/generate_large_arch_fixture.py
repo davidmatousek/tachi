@@ -1,8 +1,9 @@
 """Deterministic generator for F-374's synthetic large-architecture fixture (spec S-4).
 
-Built in two steps. W0 (T003) wrote the CLI, the seeded helpers, the serializer and the part
-registry. T019 (W1) fills the base parts: the architecture, the baseline run directory, the stub
-codebase and the gated subset. T040, T148 and T103 fill the variant parts that are still stubs.
+Built in steps. W0 (T003) wrote the CLI, the seeded helpers, the serializer and the part
+registry. T019 (W1) filled the base parts: the architecture, the baseline run directory, the stub
+codebase and the gated subset. T040 (W2) fills the PR 1 variants, listed below. T148 and T103 fill
+the parts that are still stubs (chain-cap, pr2-runs, and the PR 2 half of id-reuse).
 Standard library only, Python 3.9 syntax.
 
     python3 tests/scripts/generate_large_arch_fixture.py --out DIR [--variant NAME|all]
@@ -33,6 +34,21 @@ The base set (T019), as committed:
   stub-codebase/  one short, never-run module per security control. The controls report quotes its file and line.
   gated-subset/   the same run directory at 42 findings, a text architecture and no trees: no Mermaid anywhere,
                   for jobs that have no mmdc. Tests pass a small batch size so that each batched path runs twice.
+The PR 1 variants (T040) sit beside the base set and never move a byte of it. Each is a directory of scenarios, and a scenario is one
+scorer run: baseline/ (the baseline run directory the renderer reads), run/threats.md, architecture/ when the case has one, and
+expected-outcomes.json (format tachi.fixture-expected/1, described at the variants' code below). The base set's tree digest
+(W1's digest_tree.py over the five base directories) is d35f160950e1c8459c3d4bca, and a test pins it.
+  seeded-error/main                a pre-fix baseline with, for each of the 12 prefixes, a wrong composite, a wrong band, an out-of-clamp
+                                   CVSS score, an out-of-range reachability and a missing vector; clamp, N17, rounding, override,
+                                   compound-label and RESOLVED controls (S-4, SC-4, R-9, R-10, R-11, R-30, R-31)
+  legacy-format/main               the compact form with no sub-score tables, vectors on only some rows, full vectors in the SARIF, one
+                                   disagreement and seeded errors; legacy-format/no-baseline-date holds the review-date fallback rungs (R-26)
+  tagged/renderer-form, legacy-form ruling A in both directions, PM-T7's band that holds, and R-25's outcomes, on a baseline that records its
+                                   tags and on one that does not
+  tagged/s13-*                     S-13's five branches: block equal, stale block, no architecture file, neither source, a drift form
+  id-reuse/pr1                     a NEW finding whose ID the baseline risk-scores.md used (ruling B); id-reuse/pr2 is T148's
+  ties/scorer, ties/controls       band-moving and rounding-only composite ties, boundary composites, and residual ties (R-11)
+  regroup-pair/main                correlation regroups carried findings and changes a primary, with a NEW and an UPDATED peer, and a re-run
 Scale of the base set: 408 open findings over all 12 prefixes (56 Critical), 6 RESOLVED, 21 correlation groups
 (13 span three or more categories). Each of its six targeted outputs is over twice the 64k cap by UTF-8 bytes / 4.
 Every score is internally consistent (CVSS from its vector, composite from its parts, no rounding tie), so the
@@ -53,6 +69,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import hashlib
+import itertools
 import math
 import os
 import random
@@ -235,6 +252,17 @@ def composite_is_tie(c: int, e: int, s: int, r: int) -> bool:
     return (35 * c + 30 * e + 15 * s + 20 * r) % 100 == 50
 
 
+# Section 3's weighted table, as the 1.1 template and the renderer write it: the dimension's label, its key in a score row and its weight in hundredths.
+WEIGHT_ROWS = (("CVSS Base", "cvss", 35), ("Exploitability", "expl", 30), ("Scalability", "scale", 15), ("Reachability", "reach", 20))
+
+
+def weighted_cell(tenths: int, weight: int) -> str:
+    """A Weighted cell for a score in tenths and a weight in hundredths: exact in thousandths, then half up to two decimals.
+
+    8.3 x 0.35 is 2.905 and shows 2.91, and 2.5 x 0.20 shows 0.50."""
+    return "%d.%02d" % divmod(half_up(tenths * weight, 10), 100)
+
+
 def composite_on_boundary(t: int) -> bool:
     return t in (40, 70, 90)
 
@@ -389,6 +417,7 @@ ZONES = (
     ("Agent Runtime Zone", "Trusted", 25),
     ("Data Zone", "Trusted", 25),
     ("Operations Zone", "Trusted", 25),
+    ("Partner Exchange", "Semi-trusted", 55),  # empty in the base and gated profiles; T040's variant worlds use it
 )
 ZONE_LEVEL = {name: level for name, level, _ in ZONES}
 ZONE_REACH = {name: reach for name, _, reach in ZONES}
@@ -473,6 +502,13 @@ COMPONENT_ROWS = (
      "approval and tool call records", "ledger credential"),
 )
 
+# Components that only the variant worlds (T040) use. The base profile (components None) never reads them.
+VARIANT_COMPONENT_ROWS = (
+    ("partner-sandbox", "External Entity", 7, "Partner Exchange", (), (),
+     "Carrier test harness that submits trial manifests and replays recorded webhooks against the gateway",
+     "trial manifests and recorded webhooks", "sandbox token"),
+)
+
 # (source, destination, data, protocol). A directed acyclic graph: request paths only, so that the
 # structural-connection test of Phase 3.5 sees a pipeline and not a clique.
 FLOW_ROWS = (
@@ -512,6 +548,7 @@ FLOW_ROWS = (
     ("eval-runner", "feature-store-2", "Evaluation features", "PostgreSQL over TLS"),
     ("feature-store-2", "summarizer-llm", "Fine-tuning examples", "gRPC over mTLS"),
     ("audit-ledger", "s3-archive", "Ledger exports", "HTTPS (TLS 1.3)"),
+    ("partner-sandbox", "edge-gateway", "Trial manifests and replayed webhooks", "HTTPS (TLS 1.3)"),
 )
 
 TECHNOLOGY_ROWS = (
@@ -780,6 +817,19 @@ AGP_ROWS = (
     ("emergent_behavior", "planner-agent", "ASI-08",
      "Interacting planning and routing agents amplify each other's outputs through feedback until their combined behaviour diverges from what any single agent was tested for, and per-agent safety checks never see the divergence.",
      "Add fail-safe stop conditions for the planning loop, bound the actions each cycle may take and evaluate collective behaviour in staging. Recommended controls: bounded action scopes and behavioural baselining of the whole system."),
+    # Rows 4 to 7 serve only the variant worlds (T040), which need more than three AGP findings; the base profiles never reach them.
+    ("trust_exploitation", "worker-2", "ASI-09",
+     "Operators and downstream agents start to accept worker output without checking it because earlier results were reliable, so one confidently stated wrong result passes straight into shipments and documents.",
+     "Require evidence for each recommendation, sample outputs for independent review and show uncertainty to operators so that reliance stays proportionate. Recommended controls: confidence attestation and periodic human spot checks."),
+    ("resource_competition", "tool-server-1", "ASI-04",
+     "Several agents compete for the same carrier rate and booking tools, and the heaviest user starves the others, so low priority work stalls or is retried until a limit is hit.",
+     "Give each agent a quota on shared tools, queue work fairly and alert when one agent holds a tool for longer than its slot. Recommended controls: per-agent rate limits and fair scheduling."),
+    ("communication_vulnerability", "planner-agent", "ASI-07",
+     "Messages between the planner and its workers travel over a shared channel with no per-sender signature, so a compromised participant can forge or replay instructions that other agents act on.",
+     "Sign each inter-agent message with the sender's key, include a nonce and reject replays. Recommended controls: authenticated channels between agents and message integrity checks."),
+    ("emergent_behavior", "intake-agent", "ASI-08",
+     "The intake and planning agents adjust to each other's phrasing over many runs until requests are structured in ways no test covered, and the drift is invisible in any single exchange.",
+     "Track the distribution of structured requests over time and alert on drift. Recommended controls: behavioural baselining and periodic replay against a fixed test set."),
 )
 
 CONTEXT_CLAUSES = (
@@ -979,7 +1029,7 @@ def build_world(profile_name: str) -> dict:
     profile = PROFILES[profile_name]
     wanted = profile["components"]
     comps = []
-    for row in COMPONENT_ROWS:
+    for row in COMPONENT_ROWS + (VARIANT_COMPONENT_ROWS if wanted is not None else ()):
         if wanted is not None and row[0] not in wanted:
             continue
         name, dfd, layer, zone, ai, traits, desc, asset, tok = row
@@ -1014,6 +1064,17 @@ _WORLD_CACHE: dict = {}
 def _allocate_findings(world: dict) -> None:
     """Decide how many findings of each prefix sit on which component and sub-agent."""
     comps, counts = world["components"], world["cfg"]["counts"]
+    explicit = world["cfg"].get("explicit")
+    if explicit is not None:  # a variant world (T040) names every finding: (prefix, component, sub-agent)
+        findings, agp_seen = [], 0
+        for prefix, comp_name, sub in explicit:
+            entry = {"prefix": prefix, "sub": sub, "comp": comp_name, "cidx": world["by_name"][comp_name]["index"]}
+            if prefix == "AGP":
+                entry["agp"] = agp_seen
+                agp_seen += 1
+            findings.append(entry)
+        world["findings"] = findings
+        return
     rng = Rng("world/%s/allocate" % world["profile"])
     quota = {}  # (prefix, component name, sub) -> findings
     anchors_needed = {}
@@ -1230,6 +1291,12 @@ def _write_texts(world: dict) -> None:
 
 def _build_groups(world: dict) -> None:
     """Section 4a: one correlation group per component, merging every rule that matches there."""
+    if world["cfg"].get("no_groups"):  # a variant world (T040) that sets its own groups, or has none
+        for finding in world["findings"]:
+            finding["group"] = None
+            finding["primary"] = False
+        world["groups"] = []
+        return
     groups = []
     by_comp = {}
     for finding in world["findings"]:
@@ -1621,7 +1688,7 @@ def render_architecture_tables(world: dict) -> str:
              "", "---", "", "## 2. Trust Boundaries", "",
              "Trust zones group components that share a security posture. Each crossing between zones is a priority target for analysis.",
              "", "### Trust Zones", "",
-             table(("Zone", "Trust Level", "Components"), [(z["name"], z["level"], ", ".join(z["members"])) for z in world["zones"]]),
+             table(("Zone", "Trust Level", "Components"), [(z["name"], z.get("label", z["level"]), ", ".join(z["members"])) for z in world["zones"]]),
              "", "### Boundary Crossings", ""]
     crossings = []  # (from zone, to zone) -> flows, in first-seen order
     for source, dest, _, _ in world["flows"]:
@@ -1656,7 +1723,8 @@ def render_threats_md(world: dict) -> str:
     first = [
         "---", 'schema_version: "1.4"', 'date: "%s"' % dates["threats"],
         'input_format: "%s"' % ("mermaid" if cfg["mermaid"] else "free-text"), 'classification: "confidential"',
-        'run_id: "%s"' % runs["threats"], "baseline:", '  source: "baseline-runs/%s/threats.md"' % dates["baseline"],
+        'run_id: "%s"' % runs["threats"], "baseline:",
+        '  source: "%s"' % cfg.get("baseline_source", "baseline-runs/%s/threats.md" % dates["baseline"]),
         '  date: "%s"' % dates["baseline"], "  finding_count: %d" % baseline_count(world), '  run_id: "%s"' % runs["baseline"],
         "coverage_gate:", '  status: "pass"', "  gaps: []", "---", "",
         "# Threat Model Report", "", render_architecture_tables(world), "", "---", "",
@@ -1803,6 +1871,12 @@ def _risk_summary(world: dict) -> list:
             table(("Risk Level", "Count", "Percentage"), rows), "", "---", ""]
 
 
+def _assets_cell(world: dict, finding: dict) -> str:
+    """The populator's value for one finding: the sorted tags of its component, as '[a, b]', or '[]'."""
+    tags = world.get("block_tags", world.get("asset_tags", {})).get(finding["comp"], ())  # block_tags: a block that differs from the architecture's
+    return "[" + ", ".join(sorted(tags)) + "]"
+
+
 def _actions_and_delta(world: dict) -> list:
     findings = world["findings"]
     ranked = sorted(findings, key=lambda f: (-RISK_RANK[f["risk"]], TABLE_ORDER.index(f["prefix"]), f["num"]))
@@ -1824,12 +1898,12 @@ def _actions_and_delta(world: dict) -> list:
                ("RESOLVED", resolved, "Baseline findings no longer applicable (see Section 4c for details)"),
                ("**Total**", "**%d**" % (len(findings) + resolved), "Sum of all findings (active + resolved)"))),
            "", "### Baseline Reference", "",
-           table(("Field", "Value"), (("Source", "baseline-runs/%s/threats.md" % cfg["dates"]["baseline"]), ("Date", cfg["dates"]["baseline"]),
+           table(("Field", "Value"), (("Source", cfg.get("baseline_source", "baseline-runs/%s/threats.md" % cfg["dates"]["baseline"])), ("Date", cfg["dates"]["baseline"]),
                                       ("Baseline Findings", baseline_count(world)), ("Run ID", cfg["run_ids"]["baseline"]))),
            # The block exactly as scripts/populate-affected-assets.py renders it (no introduction, one row per finding in
            # Section 7's order), so that Step 1.5 of /tachi.risk-score rewrites nothing. No component carries a tag.
            "", "---", "", "## Affected Assets", "",
-           table(("Finding ID", "Affected Assets"), [(f["id"], "[]") for f in ranked])]
+           table(("Finding ID", "Affected Assets"), [(f["id"], _assets_cell(world, f)) for f in ranked])]
     return out
 
 # --------------------------------------------------------------------------- SARIF, stub code, trees, architecture
@@ -1970,6 +2044,12 @@ def render_threats_sarif(world: dict) -> str:
     return dumps(sarif_document(driver, results), indent=2, sort_keys=False)
 
 
+def _sarif_vector(score: dict) -> dict:
+    """The SARIF result's cvss-vector property: the row's vector, a vector that disagrees with the markdown's, or none."""
+    vector = score.get("sarif_vector", score["vector"])
+    return {} if vector is None else {"cvss-vector": vector}
+
+
 def render_risk_scores_sarif(world: dict) -> str:
     scores = build_scores(world)
     results, worst = [], {}
@@ -1981,11 +2061,12 @@ def render_risk_scores_sarif(world: dict) -> str:
             "ruleId": rule, "message": {"text": first_sentence(f["threat"]), "markdown": first_sentence(f["mit"])},
             "level": LEVEL_OF_BAND[s["band"]], "locations": location_block(world, f["comp"]),
             "partialFingerprints": {"primaryLocationLineHash": digest16("%s|%s" % (rule, f["comp"])), "findingId/v1": f["id"]},
-            "properties": {"security-severity": fmt1(s["composite"]), "cvss-base-score": fmt1(s["cvss"]), "cvss-vector": s["vector"],
+            "properties": {"security-severity": fmt1(s["composite"]), "cvss-base-score": fmt1(s["cvss"]),
+                           **_sarif_vector(s),
                            "exploitability": fmt1(s["expl"]), "scalability": fmt1(s["scale"]), "reachability": fmt1(s["reach"]),
-                           "composite-weights": "0.35/0.30/0.15/0.20", "score-source": "fresh",
+                           "composite-weights": "0.35/0.30/0.15/0.20", "score-source": s.get("source", "fresh"),
                            "baseline-state": {STATUS_NEW: "new", STATUS_UNCHANGED: "unchanged", STATUS_UPDATED: "updated"}[f["status"]],
-                           "severity-band": s["band"], "risk-owner": "Unassigned", "remediation-sla": s["sla"],
+                           "severity-band": s["band"], "risk-owner": s.get("owner", "Unassigned"), "remediation-sla": s["sla"],
                            "risk-disposition": s["disposition"], "review-date": s["review"],
                            "maestro-layer": layer_label(f["layer"]), "affected_assets": []}})
     driver = {"name": "tachi-risk-scorer", "version": "1.0", "semanticVersion": "1.0", "informationUri": INFO_URI,
@@ -2117,7 +2198,9 @@ def architecture_text(world: dict) -> str:
         for zone in zones:
             lines.append('    subgraph %s["%s"]' % (zone["name"].replace(" ", "_"), zone["name"]))
             for name in zone["members"]:
-                lines.append('        %s["%s"]' % (name.replace("-", "_"), name))
+                tags = world.get("asset_tags", {}).get(name, ())
+                label = "%s<br/>[asset:%s]" % (name, ",".join(sorted(tags))) if tags else name
+                lines.append('        %s["%s"]' % (name.replace("-", "_"), label))
             lines.append("    end")
         for source, dest, data, _ in world["flows"]:
             lines.append('    %s -->|"%s"| %s' % (source.replace("-", "_"), clip(data, 40), dest.replace("-", "_")))
@@ -2131,8 +2214,9 @@ def architecture_text(world: dict) -> str:
     lines += ["", "## Data flows", ""]
     for source, dest, data, proto in world["flows"]:
         lines.append("- %s sends %s to %s over %s." % (source, data.lower(), dest, proto))
-    lines += ["", "## Notes", "",
-              "No component in this description carries an asset-sensitivity tag. The platform and every name in it are invented for testing."]
+    note = ("A component whose diagram label ends in an asset block carries those asset-sensitivity tags."
+            if world.get("asset_tags") else "No component in this description carries an asset-sensitivity tag.")
+    lines += ["", "## Notes", "", note + " The platform and every name in it are invented for testing."]
     return "\n".join(lines)
 
 # --------------------------------------------------------------------------- risk-scores.md
@@ -2216,7 +2300,7 @@ def render_risk_scores_md(world: dict) -> str:
            "## 2. Scored Threat Table", "",
            "Findings sorted by Composite score descending (highest risk first). Boundary values map to the higher severity band.", "",
            table(("ID", "Source", "Component", "Threat", "CVSS", "Exploit.", "Scale.", "Reach.", "Composite", "Severity", "SLA", "Disposition"),
-                 [(f["id"], "fresh", f["comp"], clip(f["short"], 64), fmt1(scores[f["id"]]["cvss"]), fmt1(scores[f["id"]]["expl"]),
+                 [(f["id"], scores[f["id"]].get("source", "fresh"), f["comp"], clip(f["short"], 64), fmt1(scores[f["id"]]["cvss"]), fmt1(scores[f["id"]]["expl"]),
                    fmt1(scores[f["id"]]["scale"]), fmt1(scores[f["id"]]["reach"]), fmt1(scores[f["id"]]["composite"]),
                    scores[f["id"]]["band"], scores[f["id"]]["sla"], scores[f["id"]]["disposition"]) for f in order]),
            "", "> **Correlated findings**: for correlation groups (Section 4a of the source threat model), the primary finding is scored "
@@ -2226,19 +2310,21 @@ def render_risk_scores_md(world: dict) -> str:
     for f in order:
         s = scores[f["id"]]
         comp = world["by_name"][f["comp"]]
+        vector_text = "`%s`" % s["vector"] if s["vector"] is not None else EM  # a seeded variant row may have no vector
         out += ["### %s %s %s" % (f["id"], EM, f["comp"]), "", "**Threat**: %s" % first_sentence(f["threat"]), "",
                 "**Category**: %s | **Original Risk Level**: %s | **Composite**: %s (%s)" % (
                     _category_name(f["prefix"]), f["risk"], fmt1(s["composite"]), s["band"]), ""]
         if f["id"] in peer_of:
             lead, group_id = peer_of[f["id"]]
             out += ["**Correlation Group**: Scores inherited from primary finding %s (%s). Dimensional detail is recorded on the primary." % (lead, group_id),
-                    "", "**Score**: %s | **Vector**: `%s`" % (fmt1(s["cvss"]), s["vector"]), "", "---", ""]
+                    "", "**Score**: %s | **Vector**: %s" % (fmt1(s["cvss"]), vector_text), "", "---", ""]
             continue
-        metrics = dict(part.split(":") for part in s["vector"].split("/")[1:])
-        out += ["#### CVSS 3.1 Base", "", "**Score**: %s | **Vector**: `%s`" % (fmt1(s["cvss"]), s["vector"]), "",
-                table(("Metric", "Value", "Rationale"),
-                      [(label, names[metrics[key]], why[metrics[key]]) for key, label, names, why in CVSS_METRICS]), "",
-                "#### Exploitability", "", "**Score**: %s (average of sub-dimensions)" % fmt1(s["expl"]), "",
+        metrics = dict(part.split(":") for part in s["vector"].split("/")[1:]) if s["vector"] is not None else {}
+        out += ["#### CVSS 3.1 Base", "", "**Score**: %s | **Vector**: %s" % (fmt1(s["cvss"]), vector_text), ""]
+        if metrics:
+            out += [table(("Metric", "Value", "Rationale"),
+                          [(label, names[metrics[key]], why[metrics[key]]) for key, label, names, why in CVSS_METRICS]), ""]
+        out += ["#### Exploitability", "", "**Score**: %s (average of sub-dimensions)" % fmt1(s["expl"]), "",
                 table(("Sub-Dimension", "Score", "Rationale"),
                       [(name, v, phrases[_tier(v)]) for (name, phrases), v in zip(EXPLOIT_PARTS, s["expl_sub"])]), "",
                 "#### Scalability", "", "**Score**: %s (average of sub-dimensions)" % fmt1(s["scale"]), "",
@@ -2250,7 +2336,7 @@ def render_risk_scores_md(world: dict) -> str:
     out += ["## 4. Governance Fields", "",
             "Remediation tracking metadata for each scored finding. Defaults are severity-driven and intended for manual override during risk review.", "",
             table(("ID", "Severity", "Owner", "SLA", "Disposition", "Review Date"),
-                  [(f["id"], scores[f["id"]]["band"], "Unassigned", scores[f["id"]]["sla"], scores[f["id"]]["disposition"],
+                  [(f["id"], scores[f["id"]]["band"], scores[f["id"]].get("owner", "Unassigned"), scores[f["id"]]["sla"], scores[f["id"]]["disposition"],
                     scores[f["id"]]["review"]) for f in order]), "", "---", "", SCORING_METHOD]
     return "\n".join(out)
 
@@ -2476,6 +2562,2052 @@ def render_controls_md(world: dict) -> str:
             "", "---", "", CONTROLS_METHOD]
     return "\n".join(out)
 
+# --------------------------------------------------------------------------- T040: the PR 1 variants
+# A variant is a directory of scenarios. A scenario is one scorer run: the baseline directory the renderer reads, the
+# run's own threats.md, the architecture file when the case has one, and expected-outcomes.json, which states what the
+# renderer must correct, flag or leave alone, field by field. Every expected value is worked out here from first
+# principles (the CVSS calculator above, half-up composites, ADR-050 D9 and D10), never read from a renderer.
+#
+# The file format is tachi.fixture-expected/1:
+#   scenario, variant, stage, run{...}, baseline{...}, tag_source{...}, routing{...}, agent_inputs{id: payload},
+#   findings{id: {case, treatment, stored{...}, rendered{...}, flags[...], normalized}}, unflagged[ids],
+#   counts{...}, notes[...], flag_reading[...]
+# A flag object is {flag, kind, field, cause, stored, rendered, basis}. basis is "pinned" (the string is in the scorer's
+# closed flag vocabulary, contracts/module-signatures.md, which the architect ruled at W1) or "optional" (the renderer
+# may add it or not, and a test accepts both). A finding carries at most one flag per kind and field.
+RUN_DATE = "2026-11-23"   # the --date input of every scenario
+SCORED_ON = "2026-11-09"  # the day the baselines scored: their own front-matter date
+
+METRIC_ORDER = ("AV", "AC", "PR", "UI", "S", "C", "I", "A")
+METRIC_CHOICES = (("AV", "NALP"), ("AC", "LH"), ("PR", "NLH"), ("UI", "NR"), ("S", "UC"), ("C", "HLN"), ("I", "HLN"), ("A", "HLN"))
+TAG_FORCES = {  # schemas/risk-scoring.yaml, asset_modifiers.tags
+    "pii": (("C", "H"),), "phi": (("C", "H"),), "auth": (("C", "H"), ("I", "H")),
+    "secrets": (("C", "H"), ("I", "H")), "financial": (("I", "H"),), "safety": (("A", "H"),),
+}
+LEVEL_RANK = {"N": 0, "L": 1, "H": 2}
+CEILING = 92  # the asset-modifier ceiling, in tenths
+BAND_ORDER = ("Low", "Medium", "High", "Critical")  # ascending
+REACH_BASELINE = {"Untrusted": 90, "Semi-trusted": 55, "Trusted": 25}  # reachability-analysis.md, in tenths
+REACH_KEYWORDS = (  # zone-name substrings and their adjustments, in tenths; every matching keyword counts
+    (("internet", "public", "external"), 5), (("user", "client"), 5), (("dmz", "perimeter", "gateway"), 5),
+    (("internal", "backend", "core"), -5), (("database", "storage", "data store"), -5),
+)
+PART_TRUST = {"Untrusted": "Untrusted", "Semi-trusted": "Semi-Trusted", "Trusted": "Trusted"}  # the part contract's spelling
+
+# D9's four causes name the step that produced a field's new value. The architect ruled them at W1 and closed the scorer's flag
+# vocabulary in contracts/module-signatures.md. They live here, once: a rename is these four lines and a regeneration.
+CAUSE_VECTOR = "vector"              # cvss_base
+CAUSE_ARITHMETIC = "arithmetic"      # composite_score
+CAUSE_BAND_MAPPING = "band-mapping"  # severity_band
+CAUSE_FOLLOWS_BAND = "follows-band"  # remediation_sla, risk_disposition, review_date
+
+FLAG_READING = (
+    "A flag is kind:field:cause, and the field is the value whose status the flag describes, by its schemas/risk-scoring.yaml name: "
+    "cvss_base, composite_score, severity_band, remediation_sla, risk_disposition, review_date, reachability.",
+    "The cause of a 'corrected' flag names the step that produced the field's new value: a changed cvss_base is '%s', a changed "
+    "composite_score is '%s', a changed severity_band is '%s' (or 'rounding' when only rounding moved the band), and a changed "
+    "remediation_sla, risk_disposition or review_date is '%s'. Where a fallback set the review date, 'baseline-date' or 'clock-restarted' "
+    "replaces '%s'. A change that the asset tags alone explain takes 'retagged' and the cause 'asset-tags' on every field it moves "
+    "(ruling A). A finding carries at most one flag per kind and field." % (
+        CAUSE_VECTOR, CAUSE_ARITHMETIC, CAUSE_BAND_MAPPING, CAUSE_FOLLOWS_BAND, CAUSE_FOLLOWS_BAND),
+    "A rounding-only composite difference is normalized and counted and never flagged: only a band that it moves is flagged, "
+    "as severity_band:rounding.",
+    "basis 'pinned': the string is in the closed vocabulary of contracts/module-signatures.md, and a test requires it. 'optional': the "
+    "renderer may add the flag or not, and a test accepts both. Only the flags on a value that the input's form lacks are optional, because "
+    "the cause for those is open (S-12(b), named by T032).",
+    "A flag that the renderer adds and that is not listed is a defect of one side: the list is complete for the cases here.",
+)
+
+
+def vector_parts(vector: str) -> dict:
+    return dict(part.split(":") for part in vector.split("/")[1:])
+
+
+def vector_text(parts: dict) -> str:
+    return "CVSS:3.1/" + "/".join("%s:%s" % (key, parts[key]) for key in METRIC_ORDER)
+
+
+def elevate_vector(vector: str, tags: Sequence) -> str:
+    """The vector with every tag's forced bits raised to H (floor only), as asset-modifiers.md and tachi_scoring.elevate do."""
+    parts = vector_parts(vector)
+    for tag in tags:
+        for key, level in TAG_FORCES[tag]:
+            if LEVEL_RANK[level] > LEVEL_RANK[parts[key]]:
+                parts[key] = level
+    return vector_text(parts)
+
+
+_CVSS_CACHE: dict = {}
+
+
+def cvss_of(vector: str) -> int:
+    if vector not in _CVSS_CACHE:
+        _CVSS_CACHE[vector] = cvss_tenths(vector)
+    return _CVSS_CACHE[vector]
+
+
+_ALL_VECTORS: list = []
+
+
+def every_vector() -> list:
+    """All 2,592 base vectors in one fixed order (the metric choices, left to right)."""
+    if not _ALL_VECTORS:
+        for choice in itertools.product(*(values for _, values in METRIC_CHOICES)):
+            _ALL_VECTORS.append("CVSS:3.1/" + "/".join("%s:%s" % (key, value) for (key, _), value in zip(METRIC_CHOICES, choice)))
+    return _ALL_VECTORS
+
+
+def category_bounds(category: str) -> tuple:
+    """The finding's own category bound: its default score minus and plus 1.0, in tenths (max(0, d - 10), min(100, d + 10))."""
+    default = _CATEGORY_DEFAULT_TENTHS[category]
+    return max(0, default - 10), min(100, default + 10)
+
+
+def clamp(value: int, bounds: tuple) -> int:
+    return max(bounds[0], min(bounds[1], value))
+
+
+def chain_tenths(vector: str, tags: Sequence, bounds) -> int:
+    """D10's chain for a fresh finding or a renderer-form row: base(v), clamped to the stored bounds when there are some,
+    then R-25: when a tag forces a bit, the larger of that and the elevated score capped at 9.2."""
+    assessed = cvss_of(vector)
+    if bounds is not None:
+        assessed = clamp(assessed, bounds)
+    if tags:
+        assessed = max(assessed, min(cvss_of(elevate_vector(vector, tags)), CEILING))
+    return assessed
+
+
+def legacy_check(stored: int, vector, category: str, tags: Sequence) -> tuple:
+    """D10's legacy list, in order, the first matching step deciding. Returns (rendered tenths, (kind, field, cause) or None, step)."""
+    if vector is None:
+        return stored, ("unverifiable", "cvss_base", "no-vector"), 1
+    base = cvss_of(vector)
+    candidates = (base, clamp(base, category_bounds(category)))
+    forcing = bool(tags)
+    elevated = elevate_vector(vector, tags) if forcing else vector
+    elevated_base = cvss_of(elevated)
+
+    def outcome(assessed: int) -> int:
+        return max(assessed, min(elevated_base, CEILING)) if forcing else assessed
+
+    if forcing and elevated == vector and CEILING < stored <= base:
+        return stored, ("unchecked", "cvss_base", "assessed-unrecorded"), 2
+    if any(stored == outcome(a) for a in candidates) or (forcing and stored == CEILING and elevated_base > CEILING):
+        return stored, None, 3
+    if forcing:
+        for a in candidates:
+            if stored == a and a < outcome(a):
+                return outcome(a), ("retagged", "cvss_base", "asset-tags"), 4
+    others = [clamp(base, category_bounds(other)) for other in sorted(_CATEGORY_DEFAULT_TENTHS) if other != category]
+    if stored in others:
+        return stored, ("unchecked", "cvss_base", "bound-n17c"), 5
+    if forcing and CEILING < stored < elevated_base:
+        return stored, ("unchecked", "cvss_base", "assessed-unrecorded"), 5
+    return outcome(base), ("corrected", "cvss_base", CAUSE_VECTOR), 6
+
+
+def reach_value(zone_name: str, level: str, auth: int, net: int) -> int:
+    """Reachability in tenths: the trust level's baseline, the zone-name keywords, then the barrier counts, clamped to the level's range."""
+    value = REACH_BASELINE[level]
+    lowered = zone_name.lower()
+    for words, adjustment in REACH_KEYWORDS:
+        value += adjustment * sum(1 for word in words if word in lowered)
+    rng = REACH_RANGE[level]
+    return clamp(clamp(value, rng) - 15 * min(auth, 3) - 10 * min(net, 3), rng)
+
+
+def sla_day_count(sla: str) -> int:
+    number = int(sla[:-1])
+    return -(-number // 24) if sla.endswith("h") else number
+
+
+def mean_tenths(values: Sequence) -> int:
+    """The mean of four 0-10 sub-scores in tenths, half-up (the scorer's q1 over an exact quarter)."""
+    return half_up(25 * sum(values), 10)
+
+
+def make_flag(kind: str, field, cause, stored=None, rendered=None, basis="pinned") -> dict:
+    """A flag object. basis: pinned (in the closed vocabulary) or optional (see the header)."""
+    text = ":".join(part for part in (kind, field, cause) if part is not None)
+    return {"flag": text, "kind": kind, "field": field, "cause": cause, "stored": stored, "rendered": rendered, "basis": basis}
+
+
+def stored_values(row: dict) -> dict:
+    """A row's values in the renderer's field names, as text (a missing vector is null)."""
+    return {"cvss_vector": row["vector"], "cvss_base": fmt1(row["cvss"]), "exploitability": fmt1(row["expl"]),
+            "scalability": fmt1(row["scale"]), "reachability": fmt1(row["reach"]), "composite_score": fmt1(row["composite"]),
+            "severity_band": row["band"], "remediation_sla": row["sla"], "risk_disposition": row["disposition"],
+            "review_date": row["review"], "risk_owner": row.get("owner", "Unassigned")}
+
+
+def carried_expectation(row: dict, ctx: dict) -> dict:
+    """What the renderer does with one carried finding (ADR-050 D9 steps 1 to 4, D10, ruling A), from its stored row.
+
+    ctx: tags (this run's tags on the finding's component), baseline_date (the baseline file's front-matter date or None),
+    compound_zones (zones whose Section 2 label is ambiguous). Returns {rendered, flags, normalized, step, band_change}."""
+    tags = tuple(ctx.get("tags", ()))
+    category = PREFIX_CATEGORY[row["prefix"]]
+    flags = []
+    stored = stored_values(row)
+
+    # The CVSS chain. cvss_baseline is the value that the baseline's own tags give, to tell a retag from a correction.
+    cvss_retagged = False
+    if row["form"] == "renderer":
+        cvss = chain_tenths(row["vector"], tags, row.get("bounds"))
+        cvss_baseline = chain_tenths(row["vector"], row["tags_used"], row.get("bounds"))
+        step = "renderer"
+        if cvss != row["cvss"]:
+            cvss_retagged = cvss_baseline == row["cvss"]
+            flags.append(make_flag("retagged" if cvss_retagged else "corrected", "cvss_base", "asset-tags" if cvss_retagged else CAUSE_VECTOR,
+                                   fmt1(row["cvss"]), fmt1(cvss)))
+    else:
+        cvss, found, step = legacy_check(row["cvss"], row["vector"], category, tags)
+        cvss_baseline = row["cvss"]
+        if found is not None:
+            cvss_retagged = found[0] == "retagged"
+            flags.append(make_flag(found[0], found[1], found[2], fmt1(row["cvss"]), fmt1(cvss)))  # an unchecked or unverifiable score is kept
+        if row.get("md_vector") is not None and row.get("sarif_vector") not in (None, row.get("md_vector")):
+            flags.append(make_flag("input", "cvss_vector", "sources-disagree", row["sarif_vector"], row["md_vector"]))
+
+    # Reachability (a legacy row's only range check, R-10).
+    if row["form"] == "legacy":
+        level = ZONE_LEVEL[row["zone"]]
+        if row["zone"] in ctx.get("compound_zones", ()):
+            flags.append(make_flag("unchecked", "reachability", "compound-trust-label", fmt1(row["reach"]), None))
+        elif not REACH_RANGE[level][0] <= row["reach"] <= REACH_RANGE[level][1]:
+            flags.append(make_flag("input", "reachability", "out-of-range", fmt1(row["reach"]), None))
+
+    # The composite and the band.
+    total = 35 * cvss + 30 * row["expl"] + 15 * row["scale"] + 20 * row["reach"]
+    composite = half_up(total, 100)
+    rounding_only = total % 100 == 50 and row["composite"] == composite - 1
+    baseline_composite = composite_tenths(cvss_baseline, row["expl"], row["scale"], row["reach"])
+    new_band = band_of(composite)
+    normalized = False
+    if composite != row["composite"] and not rounding_only:
+        tags_explain = cvss_retagged and row["composite"] == baseline_composite
+        flags.append(make_flag("retagged" if tags_explain else "corrected", "composite_score", "asset-tags" if tags_explain else CAUSE_ARITHMETIC,
+                               fmt1(row["composite"]), fmt1(composite)))
+    band_change = "none"
+    if new_band != row["band"]:
+        if rounding_only:
+            band_change = "rounding"
+            flags.append(make_flag("corrected", "severity_band", "rounding", row["band"], new_band))  # the composite's own change is normalized
+        elif cvss_retagged and band_of(baseline_composite) == row["band"]:
+            band_change = "retagged-up" if BAND_ORDER.index(new_band) > BAND_ORDER.index(row["band"]) else "retagged-down"
+            flags.append(make_flag("retagged", "severity_band", "asset-tags", row["band"], new_band))
+        else:
+            band_change = "corrected"
+            flags.append(make_flag("corrected", "severity_band", CAUSE_BAND_MAPPING, row["band"], new_band))
+    elif rounding_only:
+        normalized = True
+
+    # Governance (R-5, R-31, ruling A).
+    defaults = BAND_GOVERNANCE[row["band"]]
+    # A missing SLA is a gap in the baseline, not a human's choice, so it is no override (R-31).
+    sla_override, disposition_override = row["sla"] is not None and row["sla"] != defaults[0], row["disposition"] != defaults[2]
+    if sla_override:
+        flags.append(make_flag("override", "remediation_sla", "human", row["sla"], row["sla"]))
+    if disposition_override:
+        flags.append(make_flag("override", "risk_disposition", "human", row["disposition"], row["disposition"]))
+    new_defaults = BAND_GOVERNANCE[new_band]
+    sla = row["sla"] if sla_override else new_defaults[0]
+    disposition = row["disposition"] if disposition_override else new_defaults[2]
+    review = row["review"]
+    follows = "asset-tags" if band_change.startswith("retagged") else CAUSE_FOLLOWS_BAND
+    kind = "retagged" if band_change.startswith("retagged") else "corrected"
+    rung = None
+    if band_change != "none" and not sla_override:
+        days = sla_day_count(sla)
+        if band_change == "retagged-up":
+            candidate = add_days(ctx["run_date"], days)
+            review = row["review"] if row["review"] is not None and row["review"] < candidate else candidate
+        else:  # a correction, a rounding move or a lowering: the original scoring date plus the new SLA (R-5)
+            if row["form"] == "renderer":
+                original = row["scored_on"]
+            elif row["review"] is not None and row["sla"] is not None and re.fullmatch(r"[0-9]+[hd]", row["sla"]):
+                original = add_days(row["review"], -sla_day_count(row["sla"]))
+            else:
+                original = None
+            if original is not None:
+                review = add_days(original, days)
+            elif ctx.get("baseline_date"):
+                review, rung = add_days(ctx["baseline_date"], days), ("corrected", "review_date", "baseline-date")
+            elif row["review"] is not None:
+                review, rung = row["review"], ("unchecked", "review_date", "scoring-date-unknown")
+            else:
+                review, rung = add_days(ctx["run_date"], days), ("corrected", "review_date", "clock-restarted")
+    if sla != row["sla"] and not sla_override:
+        # a missing SLA is a value that the input's form lacks: the cause for that is open (S-12(b)), so its flag is optional
+        flags.append(make_flag(kind, "remediation_sla", follows, row["sla"], sla, basis="optional" if row["sla"] is None else "pinned"))
+    if disposition != row["disposition"] and not disposition_override:
+        flags.append(make_flag(kind, "risk_disposition", follows, row["disposition"], disposition))
+    if rung is not None:  # a fallback's flag replaces follows-band: the review date carries one flag per kind
+        flags.append(make_flag(rung[0], rung[1], rung[2], row["review"], review))
+    elif review != row["review"]:
+        flags.append(make_flag(kind, "review_date", follows, row["review"], review))
+
+    rendered = dict(stored)
+    rendered.update({"cvss_base": fmt1(cvss), "composite_score": fmt1(composite), "severity_band": new_band,
+                     "remediation_sla": sla, "risk_disposition": disposition, "review_date": review})
+    return {"rendered": rendered, "flags": flags, "normalized": normalized, "step": step, "band_change": band_change}
+
+
+# --- worlds and rows -------------------------------------------------------------------------------------------------
+GATED_COMPONENTS = PROFILES["gated"]["components"]
+COMPOUND_LABEL = "Semi-trusted / Trusted"  # a Section 2 label that normalizes to two trust levels (N17)
+
+
+def variant_profile(explicit: list, components: Sequence, resolved: Sequence = (), no_groups: bool = True) -> dict:
+    """A profile whose findings are named one by one. Dates: the baselines scored on SCORED_ON, this run is RUN_DATE."""
+    return {
+        "components": tuple(components), "counts": {}, "resolved": tuple(resolved), "new_pm": 0, "updated_pm": 0, "critical_min": 0,
+        "dates": {"threats": RUN_DATE, "baseline": SCORED_ON, "scores": SCORED_ON, "controls": SCORED_ON},
+        "run_ids": {"threats": "2026-11-23T10-00-00", "baseline": "2026-11-09T10-00-00"},
+        "trees": False, "mermaid": False, "architecture_file": "docs/security/architecture.md",
+        "explicit": list(explicit), "no_groups": no_groups, "baseline_source": "baseline/threats.md",
+    }
+
+
+def spread(prefix: str, count: int, component_names: Sequence) -> list:
+    """count findings of one prefix, dealt round-robin over the components that can carry it (inventory order)."""
+    if prefix == "AGP":
+        cycle = [name for name in ("planner-agent", "worker-2", "tool-server-1", "intake-agent") if name in component_names]
+        return [("AGP", cycle[i % len(cycle)], None) for i in range(count)]
+    comps = [comp for comp in COMPONENT_ROWS if comp[0] in component_names]
+    pool = [{"name": row[0], "dfd": row[1], "ai": row[4], "traits": row[5], "index": index} for index, row in enumerate(comps)]
+    slots = _slots(prefix, pool)
+    return [(prefix, slots[i % len(slots)][0]["name"], slots[i % len(slots)][1]) for i in range(count)]
+
+
+def settle(row: dict) -> dict:
+    """Recompute a row's composite from its own cells, and its band and governance from the composite."""
+    row["composite"] = composite_tenths(row["cvss"], row["expl"], row["scale"], row["reach"])
+    return set_band(row, band_of(row["composite"]), row.get("scored_on", SCORED_ON))
+
+
+def set_band(row: dict, band: str, scored_on: str = SCORED_ON) -> dict:
+    sla, days, disposition = BAND_GOVERNANCE[band]
+    row.update({"band": band, "sla": sla, "sla_days": days, "disposition": disposition, "review": add_days(scored_on, days)})
+    return row
+
+
+def awkward(row: dict) -> bool:
+    """True when a row's composite is a rounding tie or sits on a band boundary: a clean role must be neither."""
+    return composite_is_tie(row["cvss"], row["expl"], row["scale"], row["reach"]) or composite_on_boundary(row["composite"])
+
+
+def sub_scores(total: int) -> tuple:
+    """Four 1-10 sub-scores that sum to total, as even as they can be."""
+    return tuple(total // 4 + (1 if i < total % 4 else 0) for i in range(4))
+
+
+MEAN_OF = {total: mean_tenths(sub_scores(total)) for total in range(4, 41)}  # a sub-score total's mean, in tenths, worked out once
+
+
+def make_rows(world: dict) -> dict:
+    """The natural, internally consistent legacy row of every open finding: the baseline of a clean run."""
+    scores = build_scores(world)
+    rows = {}
+    for f in world["findings"]:
+        row = dict(scores[f["id"]])
+        row.update({"id": f["id"], "prefix": f["prefix"], "comp": f["comp"], "zone": world["by_name"][f["comp"]]["zone"], "form": "legacy",
+                    "md_vector": row["vector"], "sarif_vector": row["vector"], "owner": "Unassigned", "source": "fresh",
+                    "md_form": "AB"[label_below("md-form:" + f["id"], 2)]})
+        rows[f["id"]] = row
+    return rows
+
+
+def resolved_as_finding(world: dict, item: dict) -> dict:
+    """A RESOLVED item as the baseline knew it: an open finding, so that the baseline's files can hold its row."""
+    comp = world["by_name"][item["comp"]]
+    return {"id": item["id"], "prefix": item["prefix"], "sub": item["sub"], "comp": item["comp"], "num": item["num"],
+            "threat": item["threat"], "short": item["short"], "risk": item["risk"], "status": STATUS_UNCHANGED, "group": None,
+            "primary": False, "layer": comp["layer"], "pattern": "none", "mit": "Remediate as described in the baseline report.",
+            "mit_short": "Remediate as described in the baseline report.", "like": "MEDIUM", "imp": "MEDIUM", "ref": ""}
+
+
+def clone_world(master: dict, **replace) -> dict:
+    """A shallow copy of a cached world with some keys replaced, so that no scenario touches the cache."""
+    world = dict(master)
+    world.update(replace)
+    return world
+
+
+def baseline_world(master: dict, rows: dict, extra: Sequence = ()) -> dict:
+    """The world as the baseline run saw it: the open findings and the ones that were resolved since, with the stored rows."""
+    findings = sorted(list(master["findings"]) + [resolved_as_finding(master, item) for item in extra], key=lambda f: prefix_rank(f["id"]))
+    return clone_world(master, findings=findings, resolved=[], groups=[], scores=rows)
+
+
+def vector_choice(label: str, predicate) -> list:
+    """Every vector that passes predicate, rotated to start at the label's hash, so that two labels rarely share a first pick."""
+    matches = [v for v in every_vector() if predicate(v)]
+    if not matches:
+        raise ValueError("no vector passes the predicate for %s" % label)
+    start = label_below(label, len(matches))
+    return matches[start:] + matches[:start]
+
+
+# --- roles: each takes a natural row and returns the row as a baseline stored it ---------------------------------------
+def role_clean(row: dict, label: str) -> dict:
+    return dict(row)
+
+
+def role_wrong_composite(row: dict, label: str) -> dict:
+    """The stored composite is off by 0.2 to 0.5 and stays in the right band, so only the arithmetic is wrong."""
+    deltas = (3, -3, 4, -4, 5, -5, 2, -2)
+    start = label_below(label, len(deltas))
+    for i in range(len(deltas)):
+        wrong = row["composite"] + deltas[(start + i) % len(deltas)]
+        if 0 <= wrong <= 100 and wrong not in (40, 70, 90) and band_of(wrong) == band_of(row["composite"]):
+            return dict(row, composite=wrong)
+    raise ValueError("no in-band wrong composite for %s" % row["id"])
+
+
+def role_wrong_band(row: dict, label: str) -> dict:
+    """The composite is right and the band is the neighbour below or above it; the SLA, disposition and review date follow the wrong
+    band, so none of them is an override."""
+    index = BAND_ORDER.index(row["band"])
+    options = [BAND_ORDER[j] for j in (index - 1, index + 1) if 0 <= j < len(BAND_ORDER)]
+    return set_band(dict(row), options[label_below(label, len(options))])
+
+
+def role_bad_vector(row: dict, label: str, cascade: str = "") -> dict:
+    """The stored CVSS cell is far from what its vector gives and is no documented clamp: D10's step 6.
+    cascade '' keeps the composite as the right score gives it (one flag); 'composite' computes it from the wrong cell with the band held;
+    'band' computes it from the wrong cell and moves the band."""
+    category = PREFIX_CATEGORY[row["prefix"]]
+    deltas = (17, -19, 23, -21, 15, -16, 28, -24, 13, -13, 31, -29)
+    start = label_below(label, len(deltas))
+    for i in range(len(deltas)):
+        wrong = row["cvss"] + deltas[(start + i) % len(deltas)]
+        if not 0 <= wrong <= 100:
+            continue
+        _, _, step = legacy_check(wrong, row["vector"], category, ())
+        if step != 6:
+            continue
+        out = dict(row, cvss=wrong)
+        if cascade:
+            out["composite"] = composite_tenths(wrong, row["expl"], row["scale"], row["reach"])
+            if awkward(out) or out["composite"] == row["composite"]:
+                continue
+            if (band_of(out["composite"]) == row["band"]) != (cascade == "composite"):
+                continue
+            set_band(out, band_of(out["composite"]))
+        return out
+    raise ValueError("no step-6 vector error for %s (%s)" % (row["id"], cascade))
+
+
+def role_reach_out_of_range(row: dict, label: str) -> dict:
+    """The stored reachability is outside its trust level's range; the composite follows it, so only the range is wrong."""
+    level = ZONE_LEVEL[row["zone"]]
+    options = {"Trusted": (70, 75, 80, 65), "Semi-trusted": (15, 20, 25, 90), "Untrusted": (30, 35, 25, 20)}[level]
+    start = label_below(label, len(options))
+    for i in range(len(options)):
+        out = settle(dict(row, reach=options[(start + i) % len(options)]))
+        if not awkward(out):
+            return out
+    raise ValueError("no out-of-range reachability for %s" % row["id"])
+
+
+def role_missing_vector(row: dict, label: str) -> dict:
+    return dict(row, vector=None, md_vector=None, sarif_vector=None)
+
+
+def role_clamp_control(row: dict, label: str) -> dict:
+    """A vector whose score is outside the finding's own category bound, stored as that bound: a documented clamp, never flagged."""
+    category = PREFIX_CATEGORY[row["prefix"]]
+    bounds = category_bounds(category)
+    for v in vector_choice("%s/vector" % label, lambda vec: cvss_of(vec) != clamp(cvss_of(vec), bounds)):
+        out = settle(dict(row, vector=v, md_vector=v, sarif_vector=v, cvss=clamp(cvss_of(v), bounds)))
+        if not awkward(out):
+            return out
+    raise ValueError("no clamp control for %s" % row["id"])
+
+
+def n17_values(vector: str, category: str) -> list:
+    """The scores that another category's bound would clamp this vector to, and that neither the vector nor its own bound gives."""
+    base = cvss_of(vector)
+    own = clamp(base, category_bounds(category))
+    return sorted({clamp(base, category_bounds(other)) for other in sorted(_CATEGORY_DEFAULT_TENTHS) if other != category} - {base, own})
+
+
+def role_n17_bound(row: dict, label: str) -> dict:
+    """The stored score is another category's bound clamp of the vector: a possible cross-category peer, so unchecked (D10 step 5)."""
+    category = PREFIX_CATEGORY[row["prefix"]]
+    for v in vector_choice("%s/vector" % label, lambda vec: bool(n17_values(vec, category))):
+        values = n17_values(v, category)
+        out = settle(dict(row, vector=v, md_vector=v, sarif_vector=v, cvss=values[label_below(label + "/value", len(values))]))
+        if not awkward(out):
+            return out
+    raise ValueError("no N17 bound case for %s" % row["id"])
+
+
+def tie_candidates(row: dict, moves_band: bool, top: int = 36) -> list:
+    """Rows whose composite is an exact x.x5 tie, with the stored value the lower neighbour. moves_band picks ties on a band boundary
+    (6.95, 8.95 or 3.95 give 7.0, 9.0 or 4.0), otherwise a tie in the middle of a band."""
+    level = ZONE_LEVEL[row["zone"]]
+    lo, hi = REACH_RANGE[level]
+    found = []
+    for reach in range(lo, hi + 1, 5):
+        for e_total in range(12, top + 1):
+            for s_total in range(12, top + 1):
+                expl, scale = MEAN_OF[e_total], MEAN_OF[s_total]
+                total = 35 * row["cvss"] + 30 * expl + 15 * scale + 20 * reach
+                if total % 100 != 50:
+                    continue
+                exact = half_up(total, 100)
+                if (exact in (40, 70, 90)) != moves_band:
+                    continue
+                if not moves_band and band_of(exact - 1) != band_of(exact):
+                    continue
+                found.append((reach, e_total, s_total, exact))
+    return found
+
+
+def role_rounding_tie(row: dict, label: str, moves_band: bool) -> dict:
+    """The exact composite ends in .x5 and the baseline stored the lower neighbour. In mid-band the band holds and the difference is
+    normalized; on a boundary the lower neighbour is in the lower band, and the difference is a band correction by rounding (R-11)."""
+    found = tie_candidates(row, moves_band)
+    if not found:
+        raise ValueError("no tie for %s" % row["id"])
+    reach, e_total, s_total, exact = found[label_below(label, len(found))]
+    out = dict(row, reach=reach, expl_sub=sub_scores(e_total), expl=mean_tenths(sub_scores(e_total)),
+               scale_sub=sub_scores(s_total), scale=mean_tenths(sub_scores(s_total)), composite=exact - 1)
+    return set_band(out, band_of(exact - 1))
+
+
+def role_override_sla(row: dict, label: str) -> dict:
+    """A human tightened the SLA: the review date was counted from it, and the renderer must carry both and flag the override."""
+    out = dict(row, sla="14d", sla_days=14, review=add_days(SCORED_ON, 14), owner="platform-team")
+    return out
+
+
+def role_override_disposition(row: dict, label: str) -> dict:
+    return dict(row, disposition="Accept", owner="risk-office")
+
+
+# --- the files of a scenario ----------------------------------------------------------------------------------------------
+def baseline_threats_stub(world: dict) -> str:
+    """The baseline run's threats.md, cut to what the baseline resolver and a reference-set reader use: the trust zones, Section 4c,
+    Section 7 and the Affected Assets block. The scorer reads nothing else from it (ADR-050 D9, R-6)."""
+    cfg = world["cfg"]
+    dates, runs = cfg["dates"], cfg["run_ids"]
+    ranked = sorted(world["findings"], key=lambda f: (-RISK_RANK[f["risk"]], TABLE_ORDER.index(f["prefix"]), f["num"]))
+    rows = [(f["id"], f["status"], CATEGORY_TITLE[f["prefix"]], EM if f["pattern"] == "none" else f["pattern"], f["comp"],
+             layer_label(f["layer"]), f["short"], f["risk"], f["mit_short"]) for f in ranked]
+    zones = [(z["name"], z.get("label", z["level"]), ", ".join(z["members"])) for z in world["zones"]]
+    out = ["---", 'schema_version: "1.4"', 'date: "%s"' % dates["baseline"], 'input_format: "free-text"', 'classification: "confidential"',
+           'run_id: "%s"' % runs["baseline"], "baseline:", "  source: null", "  date: null", "  finding_count: null", "  run_id: null",
+           "coverage_gate:", '  status: "pass"', "  gaps: []", "---", "", "# Threat Model Report", "",
+           "This file is the baseline run's threats.md, cut down to the sections that a baseline reader uses.", "",
+           "## 2. Trust Boundaries", "", "### Trust Zones", "", table(("Zone", "Trust Level", "Components"), zones), "", "---", "",
+           "## 4c. Resolved Findings", "", table(("ID", "Component", "Threat", "Last Risk Level", "Resolution Reason"), []), "", "---", "",
+           "## 7. Recommended Actions", "",
+           table(("Finding ID", "Status", "Category", "Pattern", "Component", "MAESTRO Layer", "Threat", "Risk Level", "Mitigation"), rows),
+           "", "---", "", "## Affected Assets", "", table(("Finding ID", "Affected Assets"), [(f["id"], _assets_cell(world, f)) for f in ranked])]
+    return "\n".join(out)
+
+
+def tally(findings: dict) -> dict:
+    """The counts a stage record would hold for this scenario, by flag kind. An optional flag never counts."""
+    by_kind, flagged = {}, set()
+    for fid, record in findings.items():
+        for flag in record["flags"]:
+            if flag["basis"] == "optional":
+                continue
+            by_kind[flag["kind"]] = by_kind.get(flag["kind"], 0) + 1
+            flagged.add(fid)
+    return {"flags_by_kind": by_kind, "findings_with_flags": len(flagged), "findings": len(findings),
+            "normalized": sum(1 for record in findings.values() if record["normalized"])}
+
+
+def finding_record(row: dict, case: str, ctx: dict, treatment: str = "carried") -> dict:
+    """One finding's expected outcome: its stored values, what the renderer writes, and every flag, from the carried-row oracle."""
+    result = carried_expectation(row, ctx)
+    record = {"case": case, "treatment": treatment, "prefix": row["prefix"], "component": row["comp"], "form": row["form"],
+              "stored": stored_values(row), "rendered": result["rendered"], "flags": result["flags"], "normalized": result["normalized"],
+              "d10_step": result["step"], "vector_sources": {"markdown": row.get("md_vector"), "sarif": row.get("sarif_vector")}}
+    if row["form"] == "renderer":
+        record["stored_inputs"] = {"tags_used": list(row["tags_used"]), "scored_on": row["scored_on"],
+                                   "score_bounds": None if row.get("bounds") is None else [fmt1(row["bounds"][0]), fmt1(row["bounds"][1])]}
+    return record
+
+
+def unflagged_ids(findings: dict) -> list:
+    """The findings that the renderer must leave exactly as stored: no flag, nothing normalized, nothing recomputed."""
+    return sorted((fid for fid, r in findings.items() if not r["flags"] and not r["normalized"] and r["rendered"] == r["stored"]), key=prefix_rank)
+
+
+def expected_document(variant: str, scenario: str, summary: str, run: dict, baseline: dict, tag_source: dict, findings: dict,
+                      routing: dict = None, extra: dict = None, notes: Sequence = ()) -> str:
+    ordered = {fid: findings[fid] for fid in sorted(findings, key=prefix_rank)}
+    doc = {"schema": "tachi.fixture-expected/1", "variant": variant, "scenario": scenario, "stage": "risk-score", "summary": summary,
+           "run": run, "baseline": baseline, "tag_source": tag_source,
+           "routing": routing if routing is not None else {
+               "to_agent": [], "carried": [fid for fid in ordered if ordered[fid]["treatment"] == "carried"],
+               "copy_primary": {}, "carried_peers": {}},
+           "findings": ordered, "unflagged": unflagged_ids(ordered), "counts": tally(ordered), "notes": list(notes),
+           "flag_reading": list(FLAG_READING),
+           # True for every scenario whose threats.md carries the block that the shipped populator writes for its architecture
+           "populator_fixed_point": run["architecture"] is not None}
+    if extra:
+        doc.update(extra)
+    return dumps(doc)
+
+
+def standard_run(has_architecture: bool = True, threats: str = "run/threats.md") -> dict:
+    return {"date": RUN_DATE, "threats": threats, "architecture": "architecture/architecture.md" if has_architecture else None,
+            "baseline_dir": "baseline", "baseline_source": "baseline/threats.md",
+            "how": "copy the scenario directory to a working directory and run from there: the front matter's baseline.source and "
+                   "every path here are relative to it"}
+
+
+def legacy_baseline(files: Sequence, date=SCORED_ON, form: str = "legacy", note: str = "") -> dict:
+    return {"form": form, "files": list(files), "frontmatter_date": date, "note": note}
+
+
+# --- the seeded-error scenario (S-4, SC-4) ---------------------------------------------------------------------------------
+SEEDED_COUNTS = {"S": 9, "T": 9, "R": 9, "I": 9, "D": 9, "E": 9, "AG": 9, "AGP": 7, "LLM": 9, "OI": 9, "MI": 9, "TE": 9}
+SEEDED_RESOLVED = (
+    ("S", "edge-gateway", "Component 'legacy-batch-1' removed from architecture", "High"),
+    ("T", "vector-store-a", "Component 'report-export-2' removed from architecture", "Medium"),
+)
+# The roles every prefix gets, in this order, dealt to its findings by a label hash. Some prefixes swap a clean slot for a control.
+SEEDED_ROLES = ("wrong-composite", "wrong-band", "bad-vector", "reach-out-of-range", "missing-vector", "clamp-control", "n17-bound",
+                "clean", "clean")
+SEEDED_SWAPS = {"S": "rounding-only", "T": "rounding-only", "I": "rounding-only", "R": "override-sla", "D": "override-disposition",
+                "E": "cascade-composite", "AG": "cascade-band"}
+
+
+def _seeded_explicit() -> list:
+    names = tuple(name for name in GATED_COMPONENTS)
+    explicit = []
+    for prefix in PREFIX_ORDER:
+        explicit += spread(prefix, SEEDED_COUNTS[prefix], names)
+    explicit += [("S", "partner-sandbox", None), ("R", "partner-sandbox", None)]
+    return explicit
+
+
+PROFILES["seeded"] = variant_profile(_seeded_explicit(), GATED_COMPONENTS + ("partner-sandbox",), SEEDED_RESOLVED)
+
+
+def apply_role(role: str, row: dict, label: str) -> dict:
+    if role in ("clean", "clean-a", "clean-b"):
+        return role_clean(row, label)
+    if role == "wrong-composite":
+        return role_wrong_composite(row, label)
+    if role == "wrong-band":
+        return role_wrong_band(row, label)
+    if role == "bad-vector":
+        return role_bad_vector(row, label)
+    if role == "cascade-composite":
+        return role_bad_vector(row, label, "composite")
+    if role == "cascade-band":
+        return role_bad_vector(row, label, "band")
+    if role == "reach-out-of-range":
+        return role_reach_out_of_range(row, label)
+    if role == "missing-vector":
+        return role_missing_vector(row, label)
+    if role == "clamp-control":
+        return role_clamp_control(row, label)
+    if role == "n17-bound":
+        return role_n17_bound(row, label)
+    if role == "rounding-only":
+        return role_rounding_tie(row, label, False)
+    if role == "override-sla":
+        return role_override_sla(row, label)
+    if role == "override-disposition":
+        return role_override_disposition(row, label)
+    raise ValueError("unknown role %r" % role)
+
+
+def seeded_error_files() -> dict:
+    master = build_world("seeded")
+    natural = make_rows(master)
+    stored, roles = {}, {}
+    for prefix in PREFIX_ORDER:
+        pool = [f["id"] for f in master["findings"] if f["prefix"] == prefix and f["comp"] != "partner-sandbox"]
+        pool.sort(key=lambda fid: label_hash("seeded-role:" + fid))
+        plan = list(SEEDED_ROLES[:len(pool)])
+        if prefix == "AGP":
+            plan = list(SEEDED_ROLES[:7])
+        if prefix in SEEDED_SWAPS:
+            plan[plan.index("clean")] = SEEDED_SWAPS[prefix]
+        if len(plan) != len(pool):
+            raise ValueError("prefix %s: %d findings for %d roles" % (prefix, len(pool), len(plan)))
+        for fid, role in zip(pool, plan):
+            roles[fid] = role
+            stored[fid] = apply_role(role, natural[fid], "seeded:" + fid)
+    for f in master["findings"]:
+        if f["comp"] == "partner-sandbox":
+            roles[f["id"]] = "compound-label"
+            stored[f["id"]] = dict(natural[f["id"]])
+    # R-30: two findings the baseline scored and this run no longer has. Their rows carry a wrong composite on purpose.
+    resolved_rows = {}
+    rng = Rng("seeded/resolved")
+    for item in master["resolved"]:
+        row = dict(score_one(master, item, rng))
+        row.update({"id": item["id"], "prefix": item["prefix"], "comp": item["comp"], "zone": master["by_name"][item["comp"]]["zone"],
+                    "form": "legacy", "md_vector": row["vector"], "sarif_vector": row["vector"], "owner": "Unassigned", "source": "fresh"})
+        row["review"] = add_days(SCORED_ON, row["sla_days"])
+        resolved_rows[item["id"]] = role_wrong_composite(row, "seeded:" + item["id"])
+    all_rows = dict(stored)
+    all_rows.update(resolved_rows)
+    for row in all_rows.values():
+        row["sarif_vector"] = None  # this baseline has no SARIF, so a vector has one source only
+
+    ctx = {"tags": (), "run_date": RUN_DATE, "baseline_date": SCORED_ON, "compound_zones": ("Partner Exchange",)}
+    findings = {}
+    for fid, row in stored.items():
+        findings[fid] = finding_record(row, roles[fid], ctx)
+    for fid, row in resolved_rows.items():
+        values = stored_values(row)
+        findings[fid] = {"case": "resolved-wrong-composite", "treatment": "resolved", "prefix": row["prefix"], "component": row["comp"],
+                         "form": "legacy", "stored": values, "rendered": dict(values), "normalized": False, "d10_step": None,
+                         "vector_sources": {"markdown": row["md_vector"], "sarif": None},
+                         "flags": [make_flag("resolved", None, None)]}
+
+    run_world = clone_world(master, zones=[dict(z, label=COMPOUND_LABEL) if z["name"] == "Partner Exchange" else z for z in master["zones"]])
+    base = baseline_world(master, all_rows, master["resolved"])
+    base["zones"] = run_world["zones"]
+    root = "seeded-error/main/"
+    files = {
+        root + "run/threats.md": render_threats_md(run_world),
+        root + "architecture/architecture.md": architecture_text(master),
+        root + "baseline/risk-scores.md": render_risk_scores_md(base),
+        root + "baseline/threats.md": baseline_threats_stub(base),
+    }
+    summary = ("S-4's seeded-error variant. A baseline written by the pre-fix scorer holds, for each of the 12 prefixes, a wrong composite, a "
+               "wrong band, a CVSS score that its vector does not give, an out-of-range reachability under an unambiguous label and a "
+               "missing vector, plus the documented exceptions as controls and the N17 cases. Every finding is UNCHANGED, so every one is "
+               "carried and recomputed.")
+    notes = [
+        "Every finding of run/threats.md is UNCHANGED and has a row in the baseline: the renderer carries all of them. Nothing is routed to the agent.",
+        "baseline/threats.md is the baseline run's file cut to Sections 2, 4c and 7 and the Affected Assets block. R-6's resolver needs it to exist; "
+        "the scorer reads only baseline/risk-scores.md.",
+        "The baseline has no risk-scores.sarif, so a missing vector has no second source and stays missing.",
+        "Case 'bad-vector' stores a CVSS cell that its vector does not give, with the composite the right cell gives: one flag, no cascade. "
+        "Cases 'cascade-composite' and 'cascade-band' store the composite that the wrong cell gives, so the correction moves the composite, "
+        "and for 'cascade-band' the band: the composite and band flags are the ones that flag_reading's causes name.",
+        "Case 'rounding-only' stores the lower neighbour of an exact x.x5 composite, in the middle of a band: the difference is normalized and "
+        "counted, never flagged (R-11).",
+        "Case 'resolved-wrong-composite': these two baseline rows belong to findings that Section 4c of the run lists as RESOLVED. R-30 "
+        "keeps their last-known values verbatim, so the wrong composite is neither recomputed nor flagged; the row is marked resolved.",
+        "Case 'compound-label': Section 2 labels the zone 'Semi-trusted / Trusted', so the reachability range check is N17-dependent and "
+        "is reported as unchecked, never as a violation (R-10).",
+        "Overrides: 'override-sla' and 'override-disposition' carry a human owner and a value that differs from the stored band's default; they are "
+        "carried verbatim and flagged, and the review date is kept.",
+    ]
+    files[root + "expected-outcomes.json"] = expected_document(
+        "seeded-error", "main", summary, standard_run(), legacy_baseline(("threats.md", "risk-scores.md"), note="pre-fix form (v4.48.4), no SARIF"),
+        {"source": "block", "block_equals_recomputation": True, "tags": {}, "warning": False}, findings, notes=notes)
+    return files
+
+
+
+# --- the legacy-format variant (R-26) --------------------------------------------------------------------------------------
+def render_compact_scores_md(world: dict, scores: dict, style: dict) -> str:
+    """A risk-scores.md in the compact form that older runs wrote (R-26): no sub-score tables, a vector on only some rows, and the
+    heading and header spellings that the tolerant reader accepts. style: numbered (## 2. or ## Section 2:), dash (### ID - comp
+    or ### ID: comp), long_headers (Exploitability or Exploit), date (a front-matter date or none)."""
+    cfg, findings = world["cfg"], world["findings"]
+    order = sorted(findings, key=lambda f: (-scores[f["id"]]["composite"], prefix_rank(f["id"])))
+    bands = ("Critical", "High", "Medium", "Low")
+    counts = [sum(1 for f in findings if scores[f["id"]]["band"] == band) for band in bands]
+
+    def heading(number: int, title: str) -> str:
+        return ("## %d. %s" % (number, title)) if style["numbered"] else ("## Section %d: %s" % (number, title))
+
+    def dash(value) -> str:
+        return EM if value is None else value
+
+    head = ["Exploitability", "Scalability", "Reachability"] if style["long_headers"] else ["Exploit", "Scale", "Reach"]
+    out = ["---", 'schema_version: "1.0"']
+    if style["date"]:
+        out.append('date: "%s"' % cfg["dates"]["scores"])
+    out += ['source_file: "baseline/threats.md"', 'classification: "confidential"', "scoring_weights:", "  cvss_base: 0.35",
+            "  exploitability: 0.30", "  scalability: 0.15", "  reachability: 0.20", "---", "", "# Risk Scores Report", "",
+            heading(1, "Executive Summary"), "",
+            "**%d** threats scored | **%d** Critical | **%d** High | **%d** Medium | **%d** Low" % ((len(findings),) + tuple(counts)), "",
+            heading(2, "Scored Threat Table"), "",
+            table(("ID", "Component", "Threat", "CVSS", head[0], head[1], head[2], "Composite", "Severity", "SLA", "Disposition"),
+                  [(f["id"], f["comp"], clip(f["short"], 64), fmt1(scores[f["id"]]["cvss"]), fmt1(scores[f["id"]]["expl"]),
+                    fmt1(scores[f["id"]]["scale"]), fmt1(scores[f["id"]]["reach"]), fmt1(scores[f["id"]]["composite"]),
+                    scores[f["id"]]["band"], dash(scores[f["id"]]["sla"]), scores[f["id"]]["disposition"]) for f in order]),
+            "", heading(3, "Dimensional Breakdown"), ""]
+    for f in order:
+        s = scores[f["id"]]
+        out += [("### %s %s %s" % (f["id"], EM, f["comp"])) if style["dash"] else ("### %s: %s" % (f["id"], f["comp"])), "",
+                "**Threat**: %s" % first_sentence(f["threat"]), ""]
+        if s.get("md_vector") is not None:
+            if s.get("md_form", "A") == "A":
+                out += ["**CVSS Vector**: `%s`" % s["md_vector"], ""]
+            else:
+                out += ["**Score**: %s | **Vector**: `%s`" % (fmt1(s["cvss"]), s["md_vector"]), ""]
+    out += [heading(4, "Governance Fields"), "",
+            table(("ID", "Severity", "Owner", "SLA", "Disposition" if style["long_headers"] else "Disp", "Review Date"),
+                  [(f["id"], scores[f["id"]]["band"], scores[f["id"]].get("owner", "Unassigned"), dash(scores[f["id"]]["sla"]),
+                    scores[f["id"]]["disposition"], dash(scores[f["id"]]["review"])) for f in order])]
+    return "\n".join(out)
+
+
+# One finding per prefix on each side of the table: the first takes a seeded error, the second a format case or a control.
+LEGACY_FIRST = {prefix: ("wrong-composite" if index % 2 == 0 else "bad-vector-sarif-only") for index, prefix in enumerate(PREFIX_ORDER)}
+LEGACY_SECOND = {"S": "disagree", "T": "disagree-md-wins", "R": "neither", "I": "sarif-only", "D": "rung-review-missing",
+                 "E": "rung-sla-missing", "AG": "md-and-sarif", "AGP": "md-only", "LLM": "md-and-sarif", "OI": "md-and-sarif",
+                 "MI": "md-and-sarif", "TE": "md-and-sarif"}
+
+
+def _legacy_explicit() -> list:
+    explicit = []
+    for prefix in PREFIX_ORDER:
+        explicit += spread(prefix, 2, GATED_COMPONENTS)
+    return explicit
+
+
+PROFILES["legacy"] = variant_profile(_legacy_explicit(), GATED_COMPONENTS)
+
+
+def other_vector(vector: str, label: str, spread_tenths: int = 12) -> str:
+    """A vector whose score is at least spread_tenths away from this one's and that a step-6 correction would catch."""
+    base = cvss_of(vector)
+    for v in vector_choice(label, lambda vec: abs(cvss_of(vec) - base) >= spread_tenths):
+        return v
+    raise ValueError("no vector for %s" % label)
+
+
+def apply_legacy_role(role: str, row: dict, label: str) -> dict:
+    row = dict(row)
+    if role == "wrong-composite":
+        return role_wrong_composite(row, label)
+    if role == "bad-vector-sarif-only":  # the vector is only in the SARIF, so the correction proves that the SARIF is read
+        out = role_bad_vector(row, label)
+        out["md_vector"] = None
+        return out
+    if role == "disagree":  # the markdown's vector is the one the stored score follows; the SARIF's differs
+        row["sarif_vector"] = other_vector(row["vector"], label + "/sarif")
+        return row
+    if role == "disagree-md-wins":  # the stored score follows the SARIF's vector, but the markdown's is the one that counts
+        category = PREFIX_CATEGORY[row["prefix"]]
+        for v in vector_choice(label + "/sarif", lambda vec: abs(cvss_of(vec) - row["cvss"]) >= 12):
+            if legacy_check(cvss_of(v), row["vector"], category, ())[2] == 6:
+                return dict(row, sarif_vector=v, cvss=cvss_of(v))
+        raise ValueError("no disagreement for %s" % row["id"])
+    if role == "neither":
+        return role_missing_vector(row, label)
+    if role == "sarif-only":
+        return dict(row, md_vector=None)
+    if role == "md-only":
+        return dict(row, sarif_vector=None)
+    if role == "md-and-sarif":
+        return row
+    if role in ("rung-review-missing", "rung-sla-missing", "rung-no-date-sla", "rung-no-date-both"):
+        out = role_wrong_band(row, label)
+        if role == "rung-review-missing":
+            out["review"] = None
+        else:
+            out["sla"] = None
+            if role == "rung-no-date-both":
+                out["review"] = None
+        return out
+    raise ValueError("unknown legacy role %r" % role)
+
+
+def legacy_worlds(profile: str):
+    master = build_world(profile)
+    return master, make_rows(master)
+
+
+def legacy_scenario(variant_dir: str, scenario: str, master: dict, rows: dict, roles: dict, style: dict, ctx_date, summary: str,
+                    notes: Sequence) -> dict:
+    ctx = {"tags": (), "run_date": RUN_DATE, "baseline_date": ctx_date, "compound_zones": ()}
+    findings = {fid: finding_record(rows[fid], roles[fid], ctx) for fid in rows}
+    base = baseline_world(master, rows)
+    root = "%s/%s/" % (variant_dir, scenario)
+    files = {
+        root + "run/threats.md": render_threats_md(master),
+        root + "architecture/architecture.md": architecture_text(master),
+        root + "baseline/risk-scores.md": render_compact_scores_md(base, rows, style),
+        root + "baseline/risk-scores.sarif": render_risk_scores_sarif(base),
+        root + "baseline/threats.md": baseline_threats_stub(base),
+    }
+    form = {"date": ctx_date, "style": "%s headings, %s subsections, %s headers" % (
+        "numbered" if style["numbered"] else "Section N", "dash" if style["dash"] else "colon", "long" if style["long_headers"] else "short")}
+    files[root + "expected-outcomes.json"] = expected_document(
+        variant_dir, scenario, summary, standard_run(),
+        legacy_baseline(("threats.md", "risk-scores.md", "risk-scores.sarif"), date=ctx_date, form="legacy-compact",
+                        note="compact pre-fix form: %s; no sub-score tables; the SARIF holds a vector for the rows that the markdown lacks" % form["style"]),
+        {"source": "block", "block_equals_recomputation": True, "tags": {}, "warning": False}, findings, notes=notes)
+    return files
+
+
+def legacy_format_files() -> dict:
+    master, natural = legacy_worlds("legacy")
+    rows, roles = {}, {}
+    for prefix in PREFIX_ORDER:
+        pool = sorted((f["id"] for f in master["findings"] if f["prefix"] == prefix), key=prefix_rank)
+        if len(pool) != 2:
+            raise ValueError("prefix %s should have two findings in the legacy world" % prefix)
+        for fid, role in zip(pool, (LEGACY_FIRST[prefix], LEGACY_SECOND[prefix])):
+            roles[fid] = role
+            rows[fid] = apply_legacy_role(role, natural[fid], "legacy:" + fid)
+    notes = [
+        "The baseline is in the compact form (R-26): Section N headings, long header spellings, '### ID - component' subsections, no sub-score "
+        "tables, and a vector on only some rows. The exploitability, scalability and reachability values are the inputs, kept as stored.",
+        "A row's vector comes from the markdown ('**CVSS Vector**:' or after '**Vector**:'), or else from the SARIF's cvss-vector property "
+        "keyed by findingId/v1. Case 'bad-vector-sarif-only' has no markdown vector, so its correction shows that the SARIF is read.",
+        "Case 'disagree': the markdown and the SARIF name different vectors and the stored score follows the markdown's. The markdown's is "
+        "used and the disagreement is flagged, input:cvss_vector:sources-disagree.",
+        "Case 'disagree-md-wins': the stored score follows the SARIF's vector, but the markdown's vector is the one that counts, so the score "
+        "is corrected to the markdown's vector's score as well as the disagreement being flagged.",
+        "Case 'neither': no vector anywhere (the SARIF result has no cvss-vector property): unverifiable, the score is kept (R-7).",
+        "Cases 'rung-review-missing' and 'rung-sla-missing' are wrong bands whose original scoring date cannot be derived (the stored review "
+        "date, or the stored SLA, is missing). The baseline's front-matter date stands in for it: corrected:review_date:baseline-date.",
+        "baseline/threats.md is the baseline run's file cut to Sections 2, 4c and 7 and the Affected Assets block.",
+    ]
+    return legacy_scenario("legacy-format", "main", master, rows, roles,
+                           {"numbered": False, "dash": True, "long_headers": True, "date": True}, SCORED_ON,
+                           "S-4's legacy-format variant (R-26): a compact baseline with no sub-score tables, vectors on only some markdown rows, "
+                           "full vectors in the SARIF, one markdown-versus-SARIF disagreement and seeded composite and vector errors.", notes)
+
+
+def _legacy_date_explicit() -> list:
+    return [("S", "edge-gateway", None), ("T", "intake-agent", None), ("R", "edge-gateway", None), ("I", "vector-store-a", None)]
+
+
+PROFILES["legacy-date"] = variant_profile(_legacy_date_explicit(), GATED_COMPONENTS)
+
+
+def legacy_no_date_files() -> dict:
+    master, natural = legacy_worlds("legacy-date")
+    plan = {"S-1": "rung-no-date-sla", "T-1": "rung-no-date-both", "R-1": "wrong-composite", "I-1": "md-and-sarif"}
+    rows = {fid: apply_legacy_role(role, natural[fid], "legacy-date:" + fid) for fid, role in plan.items()}
+    notes = [
+        "The baseline's front matter has no date, so D9's first fallback is unavailable. S-1 has its SLA missing and its review date present: "
+        "the stored review date is kept, flagged unchecked:review_date:scoring-date-unknown.",
+        "T-1 has both missing: the review date is this run's date plus the new SLA, flagged corrected:review_date:clock-restarted. "
+        "No step is silent (D9).",
+        "A missing SLA is a gap, not an override: the SLA follows the corrected band. The cause for a value that the input's form lacks "
+        "is open (S-12(b), named by T032), so the SLA's own flag is optional.",
+        "R-1 and I-1 are controls: a wrong composite in the band, and a row with nothing wrong.",
+    ]
+    return legacy_scenario("legacy-format", "no-baseline-date", master, rows, plan,
+                           {"numbered": True, "dash": False, "long_headers": False, "date": False}, None,
+                           "The review-date fallback rungs that need a baseline with no front-matter date (ADR-050 D9): the stored review date "
+                           "kept, and the clock restarted.", notes)
+
+
+
+# --- the tagged variant (R-25, ruling A, S-13) ---------------------------------------------------------------------------
+def find_scores(label: str, vector_ok, accept) -> tuple:
+    """The first (vector, exploitability total, scalability total) in a label-rotated order for which accept(v, expl, scale) holds."""
+    combos = [(e, s) for e in range(12, 37) for s in range(12, 37)]
+    for v in vector_choice(label + "/v", vector_ok):
+        start = label_below(label + "/" + v, len(combos))
+        for k in range(len(combos)):
+            e_total, s_total = combos[(start + k) % len(combos)]
+            if accept(v, MEAN_OF[e_total], MEAN_OF[s_total]):
+                return v, e_total, s_total
+    raise ValueError("no scores satisfy %s" % label)
+
+
+def clean_composite(cvss: int, expl: int, scale: int, reach: int) -> bool:
+    return not composite_is_tie(cvss, expl, scale, reach) and not composite_on_boundary(composite_tenths(cvss, expl, scale, reach))
+
+
+def tag_search(label: str, reach: int, before: Sequence, after: Sequence, band_before=None, band_after=None, same_band: bool = False,
+               vector_ok=None, bounds=None, must_change: bool = True) -> tuple:
+    """Scores for a row that a change of tags from `before` to `after` moves (or leaves) as asked, with no tie or boundary on either side."""
+    def accept(v, expl, scale):
+        old, new = chain_tenths(v, before, bounds), chain_tenths(v, after, bounds)
+        if must_change and old == new:
+            return False
+        if not (clean_composite(old, expl, scale, reach) and clean_composite(new, expl, scale, reach)):
+            return False
+        band_old, band_new = band_of(composite_tenths(old, expl, scale, reach)), band_of(composite_tenths(new, expl, scale, reach))
+        if same_band:
+            return band_old == band_new
+        return band_old == band_before and band_new == band_after
+    return find_scores(label, vector_ok or (lambda v: True), accept)
+
+
+def tagged_row(rid: str, prefix: str, comp: str, zone: str, vector: str, e_total: int, s_total: int, reach: int, form: str,
+               cvss: int, scored_on: str = SCORED_ON, **more) -> dict:
+    """A baseline row with every field set. cvss is the stored score; the composite, band and governance follow from the cells."""
+    row = {"id": rid, "prefix": prefix, "comp": comp, "zone": zone, "form": form, "vector": vector, "md_vector": vector,
+           "sarif_vector": None, "cvss": cvss, "expl_sub": sub_scores(e_total), "expl": mean_tenths(sub_scores(e_total)),
+           "scale_sub": sub_scores(s_total), "scale": mean_tenths(sub_scores(s_total)), "reach": reach, "owner": "Unassigned",
+           "source": "fresh", "md_form": "A", "scored_on": scored_on, "primary": rid}
+    row.update(more)
+    return settle(row)
+
+
+def case_ids(world: dict, plan: Sequence) -> dict:
+    """Map each plan entry (case, prefix, comp, sub) to the ID the numbering gave it: the nth entry of a (prefix, comp, sub) is its nth finding."""
+    seen, out = {}, {}
+    for case, prefix, comp, sub in plan:
+        key = (prefix, comp, sub)
+        n = seen.get(key, 0)
+        seen[key] = n + 1
+        matches = sorted((f for f in world["findings"] if (f["prefix"], f["comp"], f["sub"]) == key), key=lambda f: f["num"])
+        out[case] = matches[n]["id"]
+    return out
+
+
+# T031's template, risk-scores.md schema 1.1, is the authority for the renderer-form file below. Section 5 is static text there, so the
+# generator carries it verbatim, and a test compares it with the template.
+SCORING_METHOD_11 = """## 5. Scoring Methodology
+
+This section documents the quantitative scoring model used to produce the risk scores in this report. All scores are derived from the threat findings identified during threat modeling and are intended to replace qualitative risk ratings with data-backed, reproducible numeric assessments.
+
+### 5.1 Scoring Dimensions
+
+Each threat finding is assessed across four independent dimensions, each producing a score on a 0.0 to 10.0 scale.
+
+| Dimension | Weight | What It Measures |
+|-----------|--------|------------------|
+| **CVSS Base** | 35% | Intrinsic severity of the vulnerability using CVSS 3.1 base metrics: attack vector, attack complexity, privileges required, user interaction, scope, and confidentiality/integrity/availability impact. Each finding includes the full CVSS vector string for auditability. |
+| **Exploitability** | 30% | Practical likelihood of exploitation based on known attack techniques, tooling availability, required skill level, and attack complexity. Higher scores indicate threats with well-documented exploit paths and readily available tooling. |
+| **Scalability** | 15% | Potential for automated, large-scale exploitation based on scriptability, breadth of target scope, resource requirements for the attacker, and difficulty of detection. Higher scores indicate threats that can be weaponized across many targets with minimal effort. |
+| **Reachability** | 20% | Exposure of the targeted component within the system's trust boundary architecture. Derived from trust zone data in the threat model and supplemented by architecture documentation when available. Higher scores indicate components directly exposed to untrusted networks. |
+
+### 5.2 Default Weights and Rationale
+
+The default weight allocation reflects the following priorities:
+
+- **CVSS Base (35%)** receives the highest weight because intrinsic vulnerability severity is the strongest predictor of potential damage. CVSS 3.1 is an industry-standard metric with well-understood interpretation.
+- **Exploitability (30%)** is weighted second because a severe vulnerability that is difficult to exploit in practice poses less immediate risk than one with known, tooled attack paths.
+- **Reachability (20%)** accounts for architectural context. A critical vulnerability behind multiple trust boundaries and authentication layers presents less operational risk than the same vulnerability on an internet-facing endpoint.
+- **Scalability (15%)** receives the lowest weight because while automation potential increases aggregate risk, it is less deterministic than the other dimensions and often correlates with exploitability.
+
+These weights are fixed for this scoring run and are recorded in the report frontmatter for reproducibility.
+
+### 5.3 Composite Score Formula
+
+The composite risk score for each finding is calculated as a weighted sum of the four dimension scores:
+
+```
+Composite = (0.35 x CVSS Base) + (0.30 x Exploitability) + (0.15 x Scalability) + (0.20 x Reachability)
+```
+
+The sum runs over the stored one-decimal values and is rounded half up to one decimal (a composite of 4.55 is 4.6). The composite score is bounded to the 0.0-10.0 range. Because each dimension is independently scored on a 0.0-10.0 scale and the weights sum to 1.0, the composite inherently falls within this range.
+
+### 5.4 Severity Band Mapping
+
+Composite scores are mapped to severity bands that drive default governance actions:
+
+| Severity | Composite Score Range | Default SLA | Default Disposition |
+|----------|-----------------------|-------------|---------------------|
+| **Critical** | 9.0 -- 10.0 | 24 hours | Mitigate |
+| **High** | 7.0 -- 8.9 | 7 days | Mitigate |
+| **Medium** | 4.0 -- 6.9 | 30 days | Review |
+| **Low** | 0.0 -- 3.9 | 90 days | Review |
+
+Boundary values map to the higher band (e.g., a composite score of exactly 7.0 maps to High, not Medium). These bands are aligned with the severity classifications defined in `schemas/output.yaml` to maintain backward compatibility with existing tachi threat model output.
+
+### 5.5 Data Sources
+
+Scoring draws on the following inputs:
+
+- **Threat findings**: Parsed from `threats.md` (markdown table format) or `threats.sarif` (SARIF 2.1.0 JSON). All original threat metadata (ID, component, category, description, likelihood, impact) is preserved through the scoring pipeline.
+- **Trust zone data**: Extracted from `threats.md` Section 2 (trust zone table) as the primary source for reachability scoring. Components in Untrusted/External zones score 8.0-10.0 reachability; Semi-Trusted/Application zones score 4.0-7.0; Trusted/Internal zones score 1.0-4.0.
+- **Architecture documentation**: When `architecture.md` is available, it provides supplementary context such as authentication barriers and network exposure details that refine the baseline reachability score derived from trust zones.
+- **Category default vectors**: CVSS 3.1 baseline vectors are defined per STRIDE threat category in `schemas/risk-scoring.yaml`. This includes tachi-specific defaults for AI threat categories (agentic and LLM) that lack standard CVSS mappings. Per-threat analysis may refine these baselines based on the specific threat description.
+- **The baseline**: When a baseline `risk-scores.md` is available, a carried finding's inputs (its vector, sub-scores, reachability inputs and human governance fields) come from it, and Section 6 records which baseline was used.
+
+When trust zone data is unavailable (no Section 2 in `threats.md` and no `architecture.md`), a default reachability score of 5.0 is applied with a warning in the output.
+
+### 5.6 Reproducibility
+
+The scorer's assessments (the CVSS vector, the eight sub-scores and the reachability inputs) are produced by an LLM at temperature 0. For the same threat model input, each of them is expected to be reproducible within a **+/- 0.5 tolerance** across runs. This tolerance reflects the inherent variability in LLM-based analysis and is considered acceptable for risk prioritization purposes.
+
+Everything the renderer computes from those assessments is deterministic: the averages, the CVSS base score, the composite, the severity band, the SLA and the review date. The renderer uses exact decimal arithmetic and takes the date as an input, so the same parts and the same date give the same file, byte for byte. The composite formula, weights, and severity band mappings carry no tolerance."""
+
+# The four narrative fields of a scored finding, in the scorer's order. Plain prose with no numeral and no slot, so the text in
+# Section 3 and the text in Section 6's Scoring Inputs are the same.
+RENDERER_NARRATIVE = (
+    ("rationale.cvss", "The vector follows the category default with a network attack path and the stated privileges."),
+    ("rationale.exploitability", "The sub-scores reflect documented techniques and common tooling for this kind of weakness."),
+    ("rationale.scalability", "The weakness can be scripted and repeated across instances with modest resources."),
+    ("rationale.reachability", "The component sits in a trusted zone with no extra barriers recorded."),
+)
+FLAG_KIND_ORDER = ("corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input")  # Section 2's Flags cell
+STAMP_VERSION = "4.48.4"  # a synthetic stamp: the version that wrote the baseline, in the form that tachi_parts reads
+
+
+def whole_percentages(counts: dict) -> dict:
+    """The template's severity percentages: whole numbers that sum to 100 by largest remainder, ties to the band name that sorts first
+    (ADR-050 D5), and all zero when there is nothing to count."""
+    total = sum(counts.values())
+    if total == 0:
+        return {band: 0 for band in counts}
+    share = {band: 100 * n // total for band, n in counts.items()}
+    for band in sorted(counts, key=lambda b: (-(100 * counts[b] % total), b))[:100 - sum(share.values())]:
+        share[band] += 1
+    return share
+
+
+def renderer_form_md(world: dict, rows: dict, tag_source: str = "block") -> str:
+    """risk-scores.md in schema 1.1 as the renderer writes it, laid out by templates/tachi/output-schemas/risk-scores.md: the templated
+    Executive Summary, a Flags column in Section 2, no Section 2a when nothing is resolved, the scorer's rationale prose in Section 3
+    beside per-metric cells that read the dash (and each finding's MAESTRO Layer field and weighted table), Section 5 as the template
+    has it, and Section 6, Score Integrity, ending in Scoring Inputs, the one table that the next run reads its carried inputs from. The
+    template's own explanatory subsections (column and field definitions, override guidance) are documentation, and no shipped output
+    carries them."""
+    cfg, findings, by_name = world["cfg"], world["findings"], world["by_name"]
+    when = cfg["dates"]["scores"]
+    order = sorted(findings, key=lambda f: (-rows[f["id"]]["composite"], prefix_rank(f["id"])))
+    bands = ("Critical", "High", "Medium", "Low")
+    counts = {band: sum(1 for f in findings if rows[f["id"]]["band"] == band) for band in bands}
+    share = whole_percentages(counts)
+    best = {}
+    for f in findings:
+        entry = best.setdefault(f["comp"], [0, 0])
+        entry[0] += 1
+        entry[1] = max(entry[1], rows[f["id"]]["composite"])
+    top = sorted(best.items(), key=lambda kv: (-kv[1][1], -kv[1][0], kv[0]))[0]
+
+    def dash(value) -> str:
+        return EM if value is None else value
+
+    def flags_cell(row: dict) -> str:
+        kinds = [kind for kind in FLAG_KIND_ORDER if kind in row.get("flag_kinds", ())]
+        return ", ".join(kinds) if kinds else EM
+
+    out = ["---", 'schema_version: "1.1"', 'date: "%s"' % when, 'source_file: "baseline/threats.md"', 'classification: "confidential"',
+           "scoring_weights:", "  cvss_base: 0.35", "  exploitability: 0.30", "  scalability: 0.15", "  reachability: 0.20", "baseline:",
+           "  source: null", "  inherited_count: null", "  fresh_count: null", "---", "", "# Risk Scores Report", "",
+           "## 1. Executive Summary", "",
+           "%d open findings were scored on %s: %d Critical, %d High, %d Medium and %d Low." % ((len(findings), when) + tuple(counts[b] for b in bands)),
+           "", "**Highest-Risk Component**: %s %s %d finding(s), max composite %s" % (top[0], EM, top[1][0], fmt1(top[1][1])), "",
+           "**Resolved findings** (Section 2a, outside the distribution below): %d" % len(world["resolved"]), "",
+           table(("Metric", "Value"), (("Scoring date", when), ("Source file", "`baseline/threats.md`"), ("Schema version", "1.1"))),
+           "", "**Severity Distribution:**", "",
+           table(("Severity", "Count", "Percentage"),
+                 [(b, counts[b], "%d%%" % share[b]) for b in bands] + [("**Total**", "**%d**" % len(findings), "**100%**")]),
+           "", "> Trust zone data was available for every component, so no reachability value was defaulted.", "", "---", "",
+           "## 2. Scored Threat Table", "",
+           "Findings sorted by Composite score descending (highest risk first), and by finding ID within equal scores. Boundary values map to "
+           "the higher severity band (e.g., 7.0 = High, 9.0 = Critical).", "",
+           table(("ID", "Source", "Component", "Threat", "CVSS", "Exploit.", "Scale.", "Reach.", "Composite", "Severity", "SLA", "Disposition", "Flags"),
+                 [(f["id"], rows[f["id"]].get("source", "fresh"), f["comp"], clip(f["short"], 64), fmt1(rows[f["id"]]["cvss"]),
+                   fmt1(rows[f["id"]]["expl"]), fmt1(rows[f["id"]]["scale"]), fmt1(rows[f["id"]]["reach"]), fmt1(rows[f["id"]]["composite"]),
+                   rows[f["id"]]["band"], dash(rows[f["id"]]["sla"]), rows[f["id"]]["disposition"], flags_cell(rows[f["id"]])) for f in order]),
+           "", "> **Correlated findings**: For correlation groups (Section 4a of the source threat model), the primary finding is scored "
+           "independently. A NEW or UPDATED peer takes its primary's assessment and is scored with its own asset tags. An UNCHANGED peer keeps "
+           "its own score, and is flagged `divergent` when that score differs from its primary's.", "", "---", ""]
+    if world["resolved"]:
+        raise ValueError("a renderer-form fixture with RESOLVED findings needs Section 2a, which no scenario has yet")
+    out += ["## 3. Dimensional Breakdown", "",
+            "Per-finding detail showing the full scoring rationale for each dimension. One subsection per open finding, ordered by composite "
+            "score descending (matching Section 2 sort order).", ""]
+    prose = dict(RENDERER_NARRATIVE)
+    for f in order:
+        r, comp = rows[f["id"]], by_name[f["comp"]]
+        metrics = vector_parts(r["vector"])
+        out += ["### %s %s %s" % (f["id"], EM, f["comp"]), "", "**Threat**: %s" % f["threat"], "",
+                "**Category**: %s | **MAESTRO Layer**: %s | **Original Risk Level**: %s | **Composite**: %s (%s)" % (
+                    PREFIX_CATEGORY[f["prefix"]], layer_label(f["layer"]), f["risk"], fmt1(r["composite"]), r["band"]), ""]
+        if r.get("integrity"):
+            out += ["**Integrity**: %s" % ", ".join(r["integrity"]), ""]
+        out += [table(("Dimension", "Score", "Weight", "Weighted"),
+                      [(label, fmt1(r[key]), "0.%02d" % weight, weighted_cell(r[key], weight)) for label, key, weight in WEIGHT_ROWS])
+                + "\n| **Composite** | | | **%s** |" % fmt1(r["composite"]), "",
+                "#### CVSS 3.1 Base", "", "**Score**: %s | **Vector**: `%s`" % (fmt1(r["cvss"]), r["vector"]), "",
+                table(("Metric", "Value", "Rationale"), [(label, names[metrics[key]], EM) for key, label, names, _ in CVSS_METRICS]), "",
+                prose["rationale.cvss"], "",
+                "#### Exploitability", "", "**Score**: %s (average of sub-dimensions)" % fmt1(r["expl"]), "",
+                table(("Sub-Dimension", "Score", "Rationale"), [(name, v, EM) for (name, _), v in zip(EXPLOIT_PARTS, r["expl_sub"])]), "",
+                prose["rationale.exploitability"], "",
+                "#### Scalability", "", "**Score**: %s (average of sub-dimensions)" % fmt1(r["scale"]), "",
+                table(("Sub-Dimension", "Score", "Rationale"), [(name, v, EM) for (name, _), v in zip(SCALE_PARTS, r["scale_sub"])]), "",
+                prose["rationale.scalability"], "",
+                "#### Reachability", "", "**Score**: %s | **Trust Zone**: %s (%s)" % (fmt1(r["reach"]), comp["zone"], PART_TRUST[ZONE_LEVEL[comp["zone"]]]),
+                "", prose["rationale.reachability"], "", "---", ""]
+    inputs = []
+    for fid in sorted(rows, key=prefix_rank):
+        r = rows[fid]
+        values = [("cvss_vector", r["vector"])]
+        values += list(zip(("exploitability.known_techniques", "exploitability.attack_complexity", "exploitability.tooling_availability",
+                            "exploitability.skill_level"), r["expl_sub"]))
+        values += list(zip(("scalability.scriptability", "scalability.target_scope", "scalability.resource_requirements",
+                            "scalability.detection_difficulty"), r["scale_sub"]))
+        values += [("reachability.zone", r["zone"]), ("reachability.trust_level", PART_TRUST[ZONE_LEVEL[r["zone"]]]),
+                   ("reachability.auth_barriers", 0), ("reachability.network_boundaries", 0)]
+        values += list(RENDERER_NARRATIVE)
+        if r.get("bounds") is not None:
+            values.append(("score_bounds", "%s,%s" % (fmt1(r["bounds"][0]), fmt1(r["bounds"][1]))))
+        values += [("tags", ",".join(sorted(r["tags_used"]))), ("scored_on", r["scored_on"])]
+        inputs += [(fid, key, value) for key, value in values]
+    digest = hashlib.sha256(b"tachi fixture: tagged/renderer-form baseline, input of the scorer renderer").hexdigest()
+    out += ["## 4. Governance Fields", "",
+            "Remediation tracking metadata for each scored finding. Default values are severity-driven and intended for manual override by "
+            "security managers during risk review.", "",
+            table(("ID", "Severity", "Owner", "SLA", "Disposition", "Review Date"),
+                  [(f["id"], rows[f["id"]]["band"], rows[f["id"]].get("owner", "Unassigned"), dash(rows[f["id"]]["sla"]),
+                    rows[f["id"]]["disposition"], dash(rows[f["id"]]["review"])) for f in order]), "", "---", "",
+            SCORING_METHOD_11.rstrip("\n"), "", "---", "", "## 6. Score Integrity", "",
+            "What the renderer checked, corrected or could not check, and the inputs it scored from. A first run with no baseline has "
+            "nothing to correct, so its Score Flags table is empty.", "",
+            "### Integrity Summary", "", table(("Kind", "Cause", "Count"), []), "", "**Normalized (rounding only)**: 0", "",
+            "**Baseline source**: none", "", "**Tag source**: %s" % tag_source, "",
+            "### Score Flags", "", table(("ID", "Flag", "Field", "Stored", "Rendered", "Cause"), []), "",
+            "### Input Issues", "", "None.", "",
+            "### Scoring Inputs", "", table(("ID", "Field", "Value"), inputs), "",
+            "<!-- tachi-provenance: renderer=render-risk-scores.py; version=%s; input-digest=sha256:%s -->" % (STAMP_VERSION, digest)]
+    return "\n".join(out)
+
+
+def drift_threats_md(world: dict) -> str:
+    """threats.md in the drift form that tachi's shipped samples show (S-12(a)): '## Section N: Title' headings, one field table per
+    finding, and Section 7 as a numbered list of bolded IDs. It has no Status column and no Section 7 table, so the populator reads no
+    finding from it. The Affected Assets block is the empty one that Step 1.5 leaves on such a file."""
+    cfg, findings = world["cfg"], world["findings"]
+    stride = [("S", "Spoofing (S)"), ("T", "Tampering (T)"), ("R", "Repudiation (R)"), ("I", "Information Disclosure (I)"),
+              ("D", "Denial of Service (D)"), ("E", "Elevation of Privilege (E)")]
+    out = ["---", 'schema_version: "1.4"', 'date: "%s"' % cfg["dates"]["threats"], 'input_format: "mermaid"', 'classification: "confidential"',
+           'run_id: "%s"' % cfg["run_ids"]["threats"], "baseline:", '  source: "%s"' % cfg["baseline_source"],
+           '  date: "%s"' % cfg["dates"]["baseline"], "coverage_gate:", '  status: "pass"', "  gaps: []", "---", "",
+           "# Threat Model %s %s" % (EM, PLATFORM), "", "## Section 1: Architecture Overview", "",
+           "A multi-agent platform that turns operator requests into planned, reviewed and audited shipment actions.", "", "### Components", "",
+           table(("Component", "Type", "Description"), [(c["name"], c["dfd"], c["desc"]) for c in world["components"]]), "",
+           "### Trust Zones", "",
+           table(("Zone", "Trust Level", "Components"), [(z["name"], z.get("label", z["level"]), ", ".join(z["members"])) for z in world["zones"]]),
+           "", "---", "", "## Section 2: STRIDE Findings", ""]
+    for prefix, title in stride:
+        here = [f for f in findings if f["prefix"] == prefix]
+        if not here:
+            continue
+        out += ["### " + title, ""]
+        for f in here:
+            comp = world["by_name"][f["comp"]]
+            out += ["#### %s %s %s" % (f["id"], EM, clip(f["short"], 60)), "", "| Field | Value |", "|---|---|", "| **id** | %s |" % f["id"],
+                    "| **category** | stride |", "| **component** | %s |" % f["comp"], "| **dfd_element_type** | %s |" % comp["dfd"],
+                    "| **threat** | %s |" % cell(f["threat"]), "| **likelihood** | %s |" % f["like"], "| **impact** | %s |" % f["imp"],
+                    "| **risk_level** | %s |" % f["risk"], "| **mitigation** | %s |" % cell(f["mit"]), ""]
+    out += ["---", "", "## Section 4a: Correlated Findings", "", "**Cross-agent correlations detected**: NONE in this baseline.", "", "---", "",
+            "## Section 6: Carry-Forward / Resolved (Baseline Mode)", "", "**Mode**: BASELINE.", "",
+            table(("Lifecycle Status", "Count"), (("`[UNCHANGED]`", len(findings)), ("`[NEW]`", 0), ("`[UPDATED]`", 0), ("`[RESOLVED]`", 0))),
+            "", "---", "", "## Section 7: Recommended Actions (Prioritized)", ""]
+    number = 1
+    for level, heading in (("Critical", "CRITICAL Priority (immediate action)"), ("High", "HIGH Priority (within sprint)"),
+                           ("Medium", "MEDIUM Priority (next quarter)"), ("Low", "LOW Priority (backlog)")):
+        here = [f for f in findings if f["risk"] == level]
+        if not here:
+            continue
+        out += ["### " + heading, ""]
+        for f in here:
+            out.append("%d. **%s %s %s**: %s" % (number, f["id"], EM, clip(f["short"], 60), f["mit_short"]))
+            number += 1
+        out.append("")
+    out += ["---", "", "## Affected Assets", "", table(("Finding ID", "Affected Assets"), [])]
+    return "\n".join(out)
+
+
+TAG_COMPONENTS = ("planner-agent", "tool-server-1", "model-gateway", "vector-store-a", "audit-ledger", "edge-gateway")
+
+
+def tagged_profile(plan: Sequence) -> dict:
+    profile = variant_profile([(prefix, comp, sub) for _, prefix, comp, sub in plan], GATED_COMPONENTS)
+    profile["mermaid"] = True  # the asset tags live in the Mermaid labels of the architecture description
+    return profile
+
+
+def with_block(text: str, keep: bool = True) -> str:
+    """threats.md with its Affected Assets block, or cut off just before it (the run had no block at all)."""
+    if keep:
+        return text
+    cut = text.rfind("\n---\n\n## Affected Assets")
+    return text[:cut]
+
+
+def tag_source_record(source: str, tags: dict, block_present: bool, architecture_present: bool, block_equals, warning: bool,
+                      cause: str) -> dict:
+    return {"source": source, "tags": {comp: list(values) for comp, values in sorted(tags.items()) if values}, "block_present": block_present,
+            "architecture_present": architecture_present, "block_equals_recomputation": block_equals, "warning": warning, "cause": cause}
+
+
+# --- tagged/renderer-form: ruling A in both directions, and R-25's outcomes, on rows that record their tags ----------------------
+TAGW_PLAN = (
+    ("up-band-review-later", "T", "vector-store-a", None),
+    ("up-band-review-earlier", "T", "vector-store-a", None),
+    ("up-band-sla-override", "T", "vector-store-a", None),
+    ("band-holds-tag-added", "D", "vector-store-a", None),
+    ("down-band", "T", "audit-ledger", None),
+    ("band-holds-tag-removed", "D", "audit-ledger", None),
+    ("r25-assessed-above-ceiling", "E", "model-gateway", None),
+    ("r25-ceiling-binds", "S", "model-gateway", None),
+    ("r25-tag-is-no-op", "T", "model-gateway", None),
+    ("tag-unchanged-elevated", "D", "tool-server-1", None),
+    ("untagged", "T", "planner-agent", None),
+    ("clamped-new-finding", "T", "planner-agent", None),
+)
+TAGW_NOW = {"vector-store-a": ("pii",), "model-gateway": ("secrets",), "tool-server-1": ("safety",)}      # this run's architecture
+TAGW_THEN = {"model-gateway": ("secrets",), "audit-ledger": ("financial",), "tool-server-1": ("safety",)}  # what the baseline scored under
+PROFILES["tagw"] = tagged_profile(TAGW_PLAN)
+
+
+def renderer_form_rows(master: dict) -> tuple:
+    ids = case_ids(master, TAGW_PLAN)
+    rows, cases = {}, {}
+    auth = {"S": "spoofing", "T": "tampering", "E": "privilege-escalation", "D": "denial-of-service"}
+
+    def zone_of(comp):
+        return master["by_name"][comp]["zone"]
+
+    def build(case, prefix, comp, vector, e_total, s_total, tags_then, scored_on=SCORED_ON, bounds=None, **more):
+        zone = zone_of(comp)
+        reach = reach_value(zone, ZONE_LEVEL[zone], 0, 0)
+        row = tagged_row(ids[case], prefix, comp, zone, vector, e_total, s_total, reach, "renderer", chain_tenths(vector, tags_then, bounds),
+                         scored_on, bounds=bounds, tags_used=tuple(sorted(tags_then)), **more)
+        rows[row["id"]], cases[row["id"]] = row, case
+        return row
+
+    def moving(case, prefix, comp, then, now, band_then, band_now, scored_on=SCORED_ON, **more):
+        zone = zone_of(comp)
+        reach = reach_value(zone, ZONE_LEVEL[zone], 0, 0)
+        v, e, s = tag_search("tagw:" + case, reach, then, now, band_then, band_now)
+        return build(case, prefix, comp, v, e, s, then, scored_on, **more)
+
+    moving("up-band-review-later", "T", "vector-store-a", (), TAGW_NOW["vector-store-a"], "Medium", "High")
+    moving("up-band-review-earlier", "T", "vector-store-a", (), TAGW_NOW["vector-store-a"], "Medium", "High", scored_on="2026-09-28")
+    row = moving("up-band-sla-override", "T", "vector-store-a", (), TAGW_NOW["vector-store-a"], "Medium", "High")
+    row.update(sla="14d", sla_days=14, review=add_days(SCORED_ON, 14), owner="platform-team")
+    for case, prefix, comp, then, now in (("band-holds-tag-added", "D", "vector-store-a", (), TAGW_NOW["vector-store-a"]),
+                                          ("band-holds-tag-removed", "D", "audit-ledger", TAGW_THEN["audit-ledger"], ())):
+        zone = zone_of(comp)
+        reach = reach_value(zone, ZONE_LEVEL[zone], 0, 0)
+        v, e, s = tag_search("tagw:" + case, reach, then, now, same_band=True)
+        build(case, prefix, comp, v, e, s, then)
+    moving("down-band", "T", "audit-ledger", TAGW_THEN["audit-ledger"], (), "High", "Medium")
+
+    reach_trusted = 25
+    secrets = TAGW_NOW["model-gateway"]
+    v = CATEGORY_VECTOR["privilege-escalation"]
+    e, s = find_scores("tagw:r25-above", lambda vec: vec == v, lambda vec, ex, sc: clean_composite(cvss_of(vec), ex, sc, reach_trusted))[1:]
+    build("r25-assessed-above-ceiling", "E", "model-gateway", v, e, s, secrets)
+    v, e, s = find_scores("tagw:r25-binds", lambda vec: cvss_of(vec) < CEILING < cvss_of(elevate_vector(vec, secrets)),
+                          lambda vec, ex, sc: clean_composite(CEILING, ex, sc, reach_trusted))
+    build("r25-ceiling-binds", "S", "model-gateway", v, e, s, secrets)
+    v, e, s = find_scores("tagw:r25-noop", lambda vec: elevate_vector(vec, secrets) == vec and 70 <= cvss_of(vec) < CEILING,
+                          lambda vec, ex, sc: clean_composite(cvss_of(vec), ex, sc, reach_trusted))
+    build("r25-tag-is-no-op", "T", "model-gateway", v, e, s, secrets)
+    safety = TAGW_NOW["tool-server-1"]
+    v, e, s = find_scores("tagw:kept", lambda vec: cvss_of(elevate_vector(vec, safety)) != cvss_of(vec) and cvss_of(elevate_vector(vec, safety)) < CEILING,
+                          lambda vec, ex, sc: clean_composite(chain_tenths(vec, safety, None), ex, sc, reach_trusted))
+    build("tag-unchanged-elevated", "D", "tool-server-1", v, e, s, safety)
+    v, e, s = find_scores("tagw:plain", lambda vec: 50 <= cvss_of(vec) <= 80, lambda vec, ex, sc: clean_composite(cvss_of(vec), ex, sc, reach_trusted))
+    build("untagged", "T", "planner-agent", v, e, s, ())
+    bounds = category_bounds("tampering")
+    v, e, s = find_scores("tagw:clamp", lambda vec: cvss_of(vec) > bounds[1],
+                          lambda vec, ex, sc: clean_composite(bounds[1], ex, sc, reach_trusted))
+    build("clamped-new-finding", "T", "planner-agent", v, e, s, (), bounds=bounds)
+    return rows, cases
+
+
+def tagged_renderer_form_files() -> dict:
+    master = build_world("tagw")
+    rows, cases = renderer_form_rows(master)
+    ctx_for = lambda comp: {"tags": TAGW_NOW.get(comp, ()), "run_date": RUN_DATE, "baseline_date": SCORED_ON, "compound_zones": ()}  # noqa: E731
+    findings = {fid: finding_record(row, cases[fid], ctx_for(row["comp"])) for fid, row in rows.items()}
+    run_world = clone_world(master, asset_tags=TAGW_NOW)
+    base = clone_world(baseline_world(master, rows), asset_tags=TAGW_THEN)
+    root = "tagged/renderer-form/"
+    files = {
+        root + "run/threats.md": render_threats_md(run_world),
+        root + "architecture/architecture.md": architecture_text(run_world),
+        root + "baseline/risk-scores.md": renderer_form_md(base, rows),
+        root + "baseline/threats.md": baseline_threats_stub(base),
+    }
+    notes = [
+        "The baseline is a renderer-form (schema 1.1) risk-scores.md: it records each row's assessed vector, its score_bounds, the tags it was "
+        "scored under and its scored-on date in Section 6's Scoring Inputs (the format frozen in contracts/module-signatures.md). So every "
+        "case here is decidable: recomputing with the recorded tags either gives the stored value (a retag) or it does not (a correction).",
+        "Ruling A, up: a tag added on vector-store-a (pii) raises the score and the band. The change is retagged, never corrected, for the CVSS "
+        "score, the composite, the band and the values that follow the band. The review date becomes this run's date plus the new SLA "
+        "unless the stored review date is earlier ('up-band-review-later' and 'up-band-review-earlier'). An SLA override keeps its review "
+        "date and its SLA ('up-band-sla-override'); the disposition still follows the band.",
+        "Ruling A, down: the financial tag on audit-ledger is gone, so the score and the band fall. The original scoring date is kept, so the "
+        "review date is the scored-on date plus the lower band's SLA ('down-band'). A deadline missed under the lower band stays missed.",
+        "PM-T7: 'band-holds-tag-added' and 'band-holds-tag-removed' move cvss_base and the composite but not the band: both are flagged "
+        "retagged, the band is not flagged, and nothing that follows the band changes.",
+        "R-25's documented outcomes are controls, flagged zero times: an assessed score above 9.2 that the tag does not lower, an elevated "
+        "score that the 9.2 ceiling holds at 9.2, a tag whose bits the vector already has, a tag that was already in effect when the row was "
+        "scored, an untagged finding, and a NEW finding's score held at its category bound (stored as score_bounds).",
+        "Reachability is the trusted-zone value (2.5) with no barriers, as the renderer computes it from the recorded zone, trust level and "
+        "barrier counts. The Section 6 narrative rows hold plain prose with no numeral and no slot.",
+        "The run's threats.md carries the populator's Affected Assets block for this architecture, so it is a fixed point of the populator.",
+    ]
+    files[root + "expected-outcomes.json"] = expected_document(
+        "tagged", "renderer-form", "Ruling A's tag-driven moves in both directions, PM-T7's band-holding move and R-25's documented outcomes, "
+        "on a baseline that records its tags.", standard_run(),
+        legacy_baseline(("threats.md", "risk-scores.md"), form="renderer", note="schema 1.1, Section 6 Scoring Inputs present"),
+        tag_source_record("block", TAGW_NOW, True, True, True, False, "the block equals the recomputation"), findings, notes=notes,
+        extra={"tags_this_run": {k: list(v) for k, v in sorted(TAGW_NOW.items())},
+               "tags_recorded_by_baseline": {k: list(v) for k, v in sorted(TAGW_THEN.items())}})
+    return files
+
+
+# --- tagged/legacy-form: the first renderer run after an upgrade (ruling A's legacy case) ------------------------------------
+TAGL_PLAN = (
+    ("up-band-review-later", "T", "vector-store-a", None),
+    ("up-band-review-earlier", "T", "vector-store-a", None),
+    ("band-holds", "D", "vector-store-a", None),
+    ("assessed-unrecorded", "E", "model-gateway", None),
+    ("documented-pass", "T", "model-gateway", None),
+    ("ceiling-pass", "S", "model-gateway", None),
+    ("n17-assessed-unrecorded", "S", "model-gateway", None),
+    ("untagged", "T", "planner-agent", None),
+)
+TAGL_NOW = {"vector-store-a": ("pii",), "model-gateway": ("secrets",)}
+PROFILES["tagl"] = tagged_profile(TAGL_PLAN)
+
+
+def legacy_form_rows(master: dict) -> tuple:
+    ids = case_ids(master, TAGL_PLAN)
+    rows, cases = {}, {}
+    reach = 25
+
+    def build(case, prefix, comp, vector, e_total, s_total, stored_cvss, scored_on=SCORED_ON):
+        zone = master["by_name"][comp]["zone"]
+        row = tagged_row(ids[case], prefix, comp, zone, vector, e_total, s_total, reach, "legacy", stored_cvss, scored_on)
+        rows[row["id"]], cases[row["id"]] = row, case
+        return row
+
+    now = TAGL_NOW["vector-store-a"]
+    for case, prefix, scored_on in (("up-band-review-later", "T", SCORED_ON), ("up-band-review-earlier", "T", "2026-09-28")):
+        v, e, s = tag_search("tagl:" + case, reach, (), now, "Medium", "High")
+        build(case, prefix, "vector-store-a", v, e, s, cvss_of(v), scored_on)
+    v, e, s = tag_search("tagl:band-holds", reach, (), now, same_band=True)
+    build("band-holds", "D", "vector-store-a", v, e, s, cvss_of(v))
+    secrets = TAGL_NOW["model-gateway"]
+    v = CATEGORY_VECTOR["privilege-escalation"]  # already carries C:H and I:H, so only an elevated score above 9.2 is stored
+    e, s = find_scores("tagl:unrecorded", lambda vec: vec == v, lambda vec, ex, sc: clean_composite(cvss_of(vec), ex, sc, reach))[1:]
+    build("assessed-unrecorded", "E", "model-gateway", v, e, s, cvss_of(v))
+    v, e, s = find_scores("tagl:pass", lambda vec: elevate_vector(vec, secrets) == vec and 70 <= cvss_of(vec) < CEILING,
+                          lambda vec, ex, sc: clean_composite(cvss_of(vec), ex, sc, reach))
+    build("documented-pass", "T", "model-gateway", v, e, s, cvss_of(v))
+    v, e, s = find_scores("tagl:ceiling", lambda vec: cvss_of(vec) < CEILING < cvss_of(elevate_vector(vec, secrets)),
+                          lambda vec, ex, sc: clean_composite(CEILING, ex, sc, reach))
+    build("ceiling-pass", "S", "model-gateway", v, e, s, CEILING)
+
+    def n17_ok(vec):
+        base, top = cvss_of(vec), cvss_of(elevate_vector(vec, secrets))
+        return base < CEILING < top and top >= 96 and legacy_check(95, vec, "spoofing", secrets)[1] == ("unchecked", "cvss_base", "assessed-unrecorded")
+    v, e, s = find_scores("tagl:n17", n17_ok, lambda vec, ex, sc: clean_composite(95, ex, sc, reach))
+    build("n17-assessed-unrecorded", "S", "model-gateway", v, e, s, 95)
+    v, e, s = find_scores("tagl:plain", lambda vec: 50 <= cvss_of(vec) <= 80, lambda vec, ex, sc: clean_composite(cvss_of(vec), ex, sc, reach))
+    build("untagged", "T", "planner-agent", v, e, s, cvss_of(v))
+    return rows, cases
+
+
+def tagged_legacy_form_files() -> dict:
+    master = build_world("tagl")
+    rows, cases = legacy_form_rows(master)
+    ctx_for = lambda comp: {"tags": TAGL_NOW.get(comp, ()), "run_date": RUN_DATE, "baseline_date": SCORED_ON, "compound_zones": ()}  # noqa: E731
+    findings = {fid: finding_record(row, cases[fid], ctx_for(row["comp"])) for fid, row in rows.items()}
+    run_world = clone_world(master, asset_tags=TAGL_NOW)
+    base = clone_world(baseline_world(master, rows), asset_tags={})
+    root = "tagged/legacy-form/"
+    files = {
+        root + "run/threats.md": render_threats_md(run_world),
+        root + "architecture/architecture.md": architecture_text(run_world),
+        root + "baseline/risk-scores.md": render_risk_scores_md(base),
+        root + "baseline/threats.md": baseline_threats_stub(base),
+    }
+    notes = [
+        "The baseline is a pre-fix risk-scores.md: it records no tags, so every tag this run applies is new to it. This is the first renderer "
+        "run after an upgrade, and D9 ends the UNCHANGED exemption, so tags apply to carried findings (ruling A's legacy case).",
+        "'up-band-review-later' and 'up-band-review-earlier': the stored score lacks the elevation (D10 step 4), so it becomes the elevated "
+        "score, retagged. The band rises only because of the tag, so the review date is this run's date plus the new SLA unless the stored "
+        "review date is earlier. A legacy row has no recorded tags, and the band the stored values give is the band it holds.",
+        "'band-holds': the tag moves the score and the composite but not the band: two retagged flags and nothing else.",
+        "'assessed-unrecorded' (D10 step 2): the vector already has the tag's bits and only a score above 9.2 is stored, so the assessed score "
+        "is unrecorded. The stored score is kept and reported as unchecked (R-25).",
+        "'documented-pass' and 'ceiling-pass': the stored score is the documented outcome (the elevated score, or the 9.2 ceiling when the "
+        "elevated score is above it), so nothing is flagged.",
+        "'n17-assessed-unrecorded' (D10 step 5): a forcing tag, and a stored score above 9.2 and below the elevated score. Unchecked, kept.",
+    ]
+    files[root + "expected-outcomes.json"] = expected_document(
+        "tagged", "legacy-form", "R-25's legacy outcomes and ruling A's legacy case: a pre-fix baseline that records no tags, scored under "
+        "this run's tags.", standard_run(), legacy_baseline(("threats.md", "risk-scores.md"), note="pre-fix form, no tags recorded"),
+        tag_source_record("block", TAGL_NOW, True, True, True, False, "the block equals the recomputation"), findings, notes=notes,
+        extra={"tags_this_run": {k: list(v) for k, v in sorted(TAGL_NOW.items())}})
+    return files
+
+
+# --- tagged/s13-*: the five branches of one tag source (S-13, PM-T4, AR-T4) ------------------------------------------------
+S13_PLAN = (
+    ("elevated-by-pii", "T", "vector-store-a", None),
+    ("pii-is-no-op", "I", "vector-store-a", None),
+    ("elevated-by-secrets", "T", "model-gateway", None),
+    ("secrets-is-no-op", "E", "model-gateway", None),
+    ("spoofing-on-untagged", "S", "tool-server-1", None),
+    ("dos-on-untagged", "D", "tool-server-1", None),
+)
+S13_ARCH = {"vector-store-a": ("pii",), "model-gateway": ("secrets",)}
+S13_STALE_BLOCK = {"model-gateway": ("secrets",), "tool-server-1": ("auth",)}          # vector-store-a's tag is missing, tool-server-1 has a stale one
+S13_UNVERIFIED_BLOCK = {"vector-store-a": ("pii",), "model-gateway": ("secrets",), "tool-server-1": ("auth",)}
+PROFILES["s13"] = tagged_profile(S13_PLAN)
+
+
+def s13_rows(master: dict) -> tuple:
+    ids = case_ids(master, S13_PLAN)
+    rows, cases = {}, {}
+    reach = 25
+
+    def build(case, prefix, comp, vector, e_total, s_total):
+        zone = master["by_name"][comp]["zone"]
+        row = tagged_row(ids[case], prefix, comp, zone, vector, e_total, s_total, reach, "legacy", cvss_of(vector))
+        rows[row["id"]], cases[row["id"]] = row, case
+
+    pii, secrets, auth = ("pii",), ("secrets",), ("auth",)
+    v, e, s = tag_search("s13:pii", reach, (), pii, "Medium", "High", vector_ok=lambda vec: 60 <= cvss_of(vec) <= 80)
+    build("elevated-by-pii", "T", "vector-store-a", v, e, s)
+    v, e, s = find_scores("s13:pii-noop", lambda vec: elevate_vector(vec, pii) == vec and 50 <= cvss_of(vec) < CEILING,
+                          lambda vec, ex, sc: clean_composite(cvss_of(vec), ex, sc, reach))
+    build("pii-is-no-op", "I", "vector-store-a", v, e, s)
+    v, e, s = tag_search("s13:secrets", reach, (), secrets, same_band=True, vector_ok=lambda vec: 50 <= cvss_of(vec) <= 80)
+    build("elevated-by-secrets", "T", "model-gateway", v, e, s)
+    v, e, s = find_scores("s13:secrets-noop", lambda vec: elevate_vector(vec, secrets) == vec and 70 <= cvss_of(vec) < CEILING,
+                          lambda vec, ex, sc: clean_composite(cvss_of(vec), ex, sc, reach))
+    build("secrets-is-no-op", "E", "model-gateway", v, e, s)
+    # the two findings on tool-server-1 move under a stale or unverified 'auth' and stay put under the architecture
+    for case, prefix, label in (("spoofing-on-untagged", "S", "s13:spoof"), ("dos-on-untagged", "D", "s13:dos")):
+        v, e, s = find_scores(
+            label, lambda vec: 50 <= cvss_of(vec) <= 85 and cvss_of(elevate_vector(vec, auth)) - cvss_of(vec) >= 10,
+            lambda vec, ex, sc: clean_composite(cvss_of(vec), ex, sc, reach) and clean_composite(cvss_of(elevate_vector(vec, auth)), ex, sc, reach))
+        build(case, prefix, "tool-server-1", v, e, s)
+    return rows, cases
+
+
+def s13_scenario(name: str, summary: str, notes: Sequence, arch_tags, block_tags, block_present: bool, architecture_present: bool,
+                 used_tags: dict, source: str, warning: bool, cause: str, drift: bool = False, fixed_point=None) -> dict:
+    master = build_world("s13")
+    rows, cases = s13_rows(master)
+    ctx_for = lambda comp: {"tags": used_tags.get(comp, ()), "run_date": RUN_DATE, "baseline_date": SCORED_ON, "compound_zones": ()}  # noqa: E731
+    findings = {fid: finding_record(row, cases[fid], ctx_for(row["comp"])) for fid, row in rows.items()}
+    run_world = clone_world(master, asset_tags=arch_tags or {}, block_tags=block_tags or {})
+    base = clone_world(baseline_world(master, rows), asset_tags={}, block_tags={})
+    root = "tagged/%s/" % name
+    threats = drift_threats_md(run_world) if drift else with_block(render_threats_md(run_world), block_present)
+    files = {root + "run/threats.md": threats, root + "baseline/risk-scores.md": render_risk_scores_md(base),
+             root + "baseline/threats.md": baseline_threats_stub(base)}
+    if architecture_present:
+        files[root + "architecture/architecture.md"] = architecture_text(run_world)
+    recomputed = {comp: tags for comp, tags in (arch_tags or {}).items() if tags}
+    equal = None if not architecture_present else (not drift and block_present and {c: t for c, t in (block_tags or {}).items() if t} == recomputed)
+    files[root + "expected-outcomes.json"] = expected_document(
+        "tagged", name, summary, standard_run(architecture_present), legacy_baseline(("threats.md", "risk-scores.md"), note="pre-fix form, no tags recorded"),
+        tag_source_record(source, used_tags, block_present, architecture_present, equal, warning, cause), findings, notes=notes,
+        extra={"architecture_tags": {k: list(v) for k, v in sorted((arch_tags or {}).items())},
+               "block_tags": {k: list(v) for k, v in sorted((block_tags or {}).items())} if block_present else None,
+               "populator_fixed_point": fixed_point,
+               "populator_fixed_point_note": "true: the shipped populator, run on the architecture and this file, leaves it as it is; false: it "
+                                              "rewrites the block; null: there is no architecture file to run it with"})
+    return files
+
+
+def tagged_s13_files() -> dict:
+    common = [
+        "Six carried legacy rows scored before any tags applied, so each tag that the chosen source applies shows as a retag: 'elevated-by-pii' "
+        "(the band rises) and 'elevated-by-secrets' (the band holds) move; 'pii-is-no-op' and 'secrets-is-no-op' carry bits their vectors "
+        "already have; the two findings on tool-server-1 move only if a source gives that component the auth tag.",
+        "The source is chosen once per run and never mixed: a run that scores one component from the block and another from the architecture "
+        "has failed this case. The warning is recorded in the stage record, and the run never stops for it (FR-N16.2, S-13).",
+    ]
+    files = {}
+    files.update(s13_scenario(
+        "s13-block-equal", "S-13, branch 1: the block equals the recomputation, so the block is the source.", common + [
+            "The Affected Assets block lists exactly the tags that the architecture gives, so the populator leaves the file as it is."],
+        S13_ARCH, S13_ARCH, True, True, S13_ARCH, "block", False, "the block equals the recomputation", fixed_point=True))
+    files.update(s13_scenario(
+        "s13-stale-block", "S-13, branch 2: a stale block. The recomputation from the architecture is the source, with a warning.", common + [
+            "The block misses vector-store-a's pii tag and gives tool-server-1 an auth tag the architecture does not have. Scoring from the "
+            "block would elevate the wrong rows; the expected values follow the architecture's tags alone.",
+            "This file is deliberately not a fixed point of the populator: running Step 1.5 would rewrite its block."],
+        S13_ARCH, S13_STALE_BLOCK, True, True, S13_ARCH, "recomputed", True, "the block differs from the recomputation", fixed_point=False))
+    files.update(s13_scenario(
+        "s13-no-architecture", "S-13, branch 3: no architecture file. The block is used as it is and recorded as unverified.", common + [
+            "The block's auth tag on tool-server-1 cannot be checked and is applied: that is what 'unverified' means. The command's own "
+            "architecture path is absent, so there is nothing to recompute from."],
+        None, S13_UNVERIFIED_BLOCK, True, False, S13_UNVERIFIED_BLOCK, "block-unverified", True, "no architecture file to verify the block against"))
+    files.update(s13_scenario(
+        "s13-neither-source", "S-13, branch 4: neither source. No finding is elevated, and the run warns, records the cause and continues.",
+        common + ["There is no Affected Assets block and no architecture file. Every row is carried as stored, with no tag applied."],
+        None, None, False, False, {}, "none", True, "no block and no architecture file"))
+    files.update(s13_scenario(
+        "s13-drift-form", "S-13, branch 5: a drift form. The populator reads no finding from it, so the block is empty and the tags are "
+        "recomputed through the reference set.", common + [
+            "threats.md is in the drift form of tachi's shipped samples (S-12(a)): Section N headings, one field table per finding, Section 7 as "
+            "a numbered list. Its Affected Assets block is the empty one that Step 1.5 leaves on such a file, so it misses every open finding "
+            "and is stale. The findings' components come from the field tables; their delta status is derived from the baseline (S-12(b)), "
+            "and any flag that derivation adds is outside this case's assertions."],
+        S13_ARCH, {}, True, True, S13_ARCH, "recomputed", True, "the block is empty on a drift form", drift=True, fixed_point=True))
+    return files
+
+
+
+# --- findings that the agent scores (NEW, or whose ID the baseline used) --------------------------------------------------------
+RATIONALE = {
+    "cvss": "The weakness is reachable over the network with the stated privileges, so the vector follows the category default.",
+    "exploitability": "Public techniques and common tools apply, and the sub-scores reflect that.",
+    "scalability": "The weakness can be scripted and repeated against each instance with modest resources.",
+    "reachability": "The component sits in the zone shown, with no extra barriers recorded.",
+}
+EXPL_KEYS = ("known_techniques", "attack_complexity", "tooling_availability", "skill_level")
+SCALE_KEYS = ("scriptability", "target_scope", "resource_requirements", "detection_difficulty")
+
+
+def agent_payload(vector: str, e_total: int, s_total: int, zone: str) -> dict:
+    """The judgment a scorer agent returns for one finding (contracts/part-files.md): a vector, eight sub-scores and the reachability
+    inputs, with prose that holds no digit."""
+    return {"cvss_vector": vector, "exploitability": dict(zip(EXPL_KEYS, sub_scores(e_total))),
+            "scalability": dict(zip(SCALE_KEYS, sub_scores(s_total))),
+            "reachability": {"zone": zone, "trust_level": PART_TRUST[ZONE_LEVEL[zone]], "auth_barriers": 0, "network_boundaries": 0},
+            "rationale": dict(RATIONALE)}
+
+
+def fresh_expectation(payload: dict, prefix: str, tags: Sequence, run_date: str, bounded: bool = True) -> dict:
+    """What the renderer writes for a finding that the agent scored this run: a NEW finding in a baseline-aware run is held to its own
+    category's bound (stored as score_bounds), the asset tags raise it by R-25, and the governance fields start from this run's date."""
+    category = PREFIX_CATEGORY[prefix]
+    bounds = category_bounds(category) if bounded else None
+    zone = payload["reachability"]["zone"]
+    cvss = chain_tenths(payload["cvss_vector"], tags, bounds)
+    expl = mean_tenths(tuple(payload["exploitability"][key] for key in EXPL_KEYS))
+    scale = mean_tenths(tuple(payload["scalability"][key] for key in SCALE_KEYS))
+    reach = reach_value(zone, ZONE_LEVEL[zone], payload["reachability"]["auth_barriers"], payload["reachability"]["network_boundaries"])
+    composite = composite_tenths(cvss, expl, scale, reach)
+    band = band_of(composite)
+    sla, days, disposition = BAND_GOVERNANCE[band]
+    return {"cvss_vector": payload["cvss_vector"], "cvss_base": fmt1(cvss), "exploitability": fmt1(expl), "scalability": fmt1(scale),
+            "reachability": fmt1(reach), "composite_score": fmt1(composite), "severity_band": band, "remediation_sla": sla,
+            "risk_disposition": disposition, "review_date": add_days(run_date, days), "risk_owner": "Unassigned",
+            "score_source": "fresh", "scored_on": run_date,
+            "score_bounds": None if bounds is None else [fmt1(bounds[0]), fmt1(bounds[1])]}
+
+
+def replace_world_findings(master: dict, keep: Sequence, status: dict = None, **more) -> dict:
+    """A copy of the world with only the named findings, some of them given a different delta status."""
+    status = status or {}
+    findings = [dict(f, status=status.get(f["id"], f["status"])) for f in master["findings"] if f["id"] in keep]
+    return clone_world(master, findings=findings, **more)
+
+
+def assign_groups(world: dict, member_ids: Sequence) -> dict:
+    """The world with its correlation groups set by hand: each group is a list of IDs, its first member the primary (ADR-050 D8)."""
+    by_id = {f["id"]: dict(f, group=None, primary=False) for f in world["findings"]}
+    groups = []
+    for number, ids in enumerate(member_ids, start=1):
+        members = [by_id[i] for i in ids]
+        groups.append({"id": "CG-%d" % number, "component": members[0]["comp"], "members": members, "rules": [],
+                       "risk": max((m["risk"] for m in members), key=RISK_RANK.get)})
+        for position, member in enumerate(members):
+            member["group"], member["primary"] = groups[-1]["id"], position == 0
+    return clone_world(world, findings=[by_id[f["id"]] for f in world["findings"]], groups=groups)
+
+
+# --- id-reuse, PR 1 (ruling B) ----------------------------------------------------------------------------------------------
+REUSE_PLAN = (("S", "edge-gateway", None), ("S", "auth-broker", None), ("T", "edge-gateway", None), ("T", "auth-broker", None),
+              ("T", "intake-agent", None), ("T", "planner-agent", None), ("T", "worker-2", None), ("T", "vector-store-a", None))
+PROFILES["reuse"] = variant_profile(REUSE_PLAN, GATED_COMPONENTS, (
+    ("I", "audit-ledger", "Component 'legacy-batch-1' removed from architecture", "Medium"),))
+
+
+def id_reuse_pr1_files() -> dict:
+    master = build_world("reuse")
+    natural = make_rows(master)
+    # The baseline's own T-4: another finding (on vector-store-a) that held the number, scored High, with a human owner and an Accept.
+    old_source = next(f for f in master["findings"] if f["id"] == "T-6")
+    old = dict(old_source, id="T-4", num=4)
+    zone = master["by_name"]["vector-store-a"]["zone"]
+    old_row = tagged_row("T-4", "T", "vector-store-a", zone, "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H", 32, 32, 25, "legacy",
+                         cvss_of("CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H"))
+    old_row.update(owner="platform-team", disposition="Accept")
+    carried = ("S-1", "S-2", "T-1", "T-2", "T-3")
+    rows = {fid: natural[fid] for fid in carried}
+    rows["T-4"] = old_row
+    resolved_item = master["resolved"][0]
+    resolved_row = dict(score_one(master, resolved_item, Rng("reuse/resolved")))
+    resolved_row.update({"id": "I-1", "prefix": "I", "comp": resolved_item["comp"], "zone": master["by_name"][resolved_item["comp"]]["zone"],
+                         "form": "legacy", "md_vector": resolved_row["vector"], "sarif_vector": None, "owner": "Unassigned",
+                         "source": "fresh", "review": add_days(SCORED_ON, resolved_row["sla_days"])})
+    rows["I-1"] = resolved_row
+    for row in rows.values():
+        row["sarif_vector"] = None  # this baseline has no SARIF
+
+    reach_trusted = 25
+    # T-4: NEW, and its number is the baseline's. Its vector scores above tampering's bound, so the bound holds it at 8.1.
+    bounds = category_bounds("tampering")
+    v4, e4, s4 = find_scores("reuse:T-4", lambda vec: cvss_of(vec) > bounds[1] and vec != old_row["vector"],
+                             lambda vec, ex, sc: clean_composite(bounds[1], ex, sc, reach_trusted))
+    v5, e5, s5 = find_scores("reuse:T-5", lambda vec: bounds[0] <= cvss_of(vec) <= bounds[1],
+                             lambda vec, ex, sc: clean_composite(cvss_of(vec), ex, sc, reach_trusted))
+    agent_inputs = {"T-4": agent_payload(v4, e4, s4, "Agent Runtime Zone"), "T-5": agent_payload(v5, e5, s5, "Agent Runtime Zone")}
+
+    ctx = {"tags": (), "run_date": RUN_DATE, "baseline_date": SCORED_ON, "compound_zones": ()}
+    findings = {fid: finding_record(rows[fid], "clean", ctx) for fid in carried}
+    for fid, case, flags in (("T-4", "reused-id", [make_flag("reused-id", "finding_id", "baseline", "T-4", None)]),
+                             ("T-5", "new-finding", [])):
+        rendered = fresh_expectation(agent_inputs[fid], "T", (), RUN_DATE)
+        record = {"case": case, "treatment": "agent", "prefix": "T", "component": next(f["comp"] for f in master["findings"] if f["id"] == fid),
+                  "form": "fresh", "stored": None, "rendered": rendered, "flags": flags, "normalized": False, "d10_step": None}
+        if fid == "T-4":
+            record["baseline_row_not_inherited"] = stored_values(old_row)
+        findings[fid] = record
+    values = stored_values(resolved_row)
+    findings["I-1"] = {"case": "resolved", "treatment": "resolved", "prefix": "I", "component": resolved_row["comp"], "form": "legacy",
+                       "stored": values, "rendered": dict(values), "normalized": False, "d10_step": None,
+                       "vector_sources": {"markdown": resolved_row["md_vector"], "sarif": None},
+                       "flags": [make_flag("resolved", None, None)]}
+
+    run_world = replace_world_findings(master, carried + ("T-4", "T-5"), {"T-4": STATUS_NEW, "T-5": STATUS_NEW})
+    base_findings = [f for f in master["findings"] if f["id"] in carried] + [old, resolved_as_finding(master, resolved_item)]
+    base = clone_world(master, findings=sorted(base_findings, key=lambda f: prefix_rank(f["id"])), resolved=[], groups=[], scores=rows)
+    root = "id-reuse/pr1/"
+    files = {
+        root + "run/threats.md": render_threats_md(run_world),
+        root + "architecture/architecture.md": architecture_text(run_world),
+        root + "baseline/risk-scores.md": render_risk_scores_md(base),
+        root + "baseline/threats.md": baseline_threats_stub(base),
+    }
+    routing = {"to_agent": ["T-4", "T-5"], "carried": list(carried), "copy_primary": {}, "carried_peers": {}}
+    notes = [
+        "Ruling B, PR 1: T-4 is a NEW finding whose ID the baseline's risk-scores.md already used for another finding (a tampering finding on "
+        "vector-store-a, scored High, with a human owner and an Accept disposition). A NEW finding whose ID is in any baseline row goes to the "
+        "agent, never to the carried set, and is flagged reused-id. Nothing of the old row may reach the new finding.",
+        "T-5 is a NEW finding with a number the baseline never used: scored fresh, and not flagged. It is the control.",
+        "agent_inputs holds the judgment that a scorer agent returns for T-4 and T-5 (the part payload's keys, with prose that has no digit). "
+        "A test builds a tachi.part/1 from it for the planned batch. The expected values follow from it: a NEW finding in a baseline-aware run is "
+        "held to its own category's bound (score_bounds, 6.1 to 8.1 for tampering), the owner is Unassigned, and the review date is this "
+        "run's date plus the new SLA.",
+        "I-1 is in Section 4c as RESOLVED and has a baseline row, which R-30 carries verbatim and marks resolved. It is not a reuse: its ID is "
+        "not in Section 7.",
+        "The PR 2 half of this variant (a baseline whose high-water mark sits above its live IDs) is T148's, in id-reuse/pr2/.",
+    ]
+    files[root + "expected-outcomes.json"] = expected_document(
+        "id-reuse", "pr1", "S-4's id-reuse variant for PR 1: a NEW finding whose ID the baseline risk-scores.md used (ruling B).", standard_run(),
+        legacy_baseline(("threats.md", "risk-scores.md"), note="pre-fix form, no SARIF"),
+        {"source": "block", "block_equals_recomputation": True, "tags": {}, "warning": False}, findings, routing=routing,
+        extra={"agent_inputs": agent_inputs}, notes=notes)
+    return files
+
+
+# --- ties (R-11) -----------------------------------------------------------------------------------------------------------
+def role_tie(row: dict, label: str, moves_band: bool, exact=None, stored_is_exact: bool = False, top: int = 36) -> dict:
+    """A row whose composite is an exact x.x5 tie (moving to the boundary `exact` when asked). The baseline stored the lower neighbour,
+    or, for a control, the half-up value itself."""
+    near = (lambda vec: True) if exact is None else (lambda vec: abs(cvss_of(vec) - exact) <= 25)
+    for v in [row["vector"]] + vector_choice(label + "/v", near):
+        trial = dict(row, vector=v, md_vector=v, sarif_vector=None, cvss=cvss_of(v))
+        found = [c for c in tie_candidates(trial, moves_band, top) if exact is None or c[3] == exact]
+        if not found:
+            continue
+        reach, e_total, s_total, value = found[label_below(label, len(found))]
+        out = dict(trial, reach=reach, expl_sub=sub_scores(e_total), expl=mean_tenths(sub_scores(e_total)),
+                   scale_sub=sub_scores(s_total), scale=mean_tenths(sub_scores(s_total)))
+        out["composite"] = value if stored_is_exact else value - 1
+        return set_band(out, band_of(out["composite"]))
+    raise ValueError("no tie for %s" % label)
+
+
+def role_boundary(row: dict, label: str, target: int) -> dict:
+    """A row whose composite is exactly 4.0, 7.0 or 9.0 with no rounding: the boundary maps to the higher band."""
+    level = ZONE_LEVEL[row["zone"]]
+    lo, hi = REACH_RANGE[level]
+    for v in vector_choice(label + "/v", lambda vec: abs(cvss_of(vec) - target) <= 25):
+        found = []
+        for reach in range(lo, hi + 1, 5):
+            for e_total in range(12, 41):
+                for s_total in range(12, 41):
+                    if 35 * cvss_of(v) + 30 * MEAN_OF[e_total] + 15 * MEAN_OF[s_total] + 20 * reach == 100 * target:
+                        found.append((reach, e_total, s_total))
+        if found:
+            reach, e_total, s_total = found[label_below(label, len(found))]
+            out = dict(row, vector=v, md_vector=v, sarif_vector=None, cvss=cvss_of(v), reach=reach, expl_sub=sub_scores(e_total),
+                       expl=mean_tenths(sub_scores(e_total)), scale_sub=sub_scores(s_total), scale=mean_tenths(sub_scores(s_total)),
+                       composite=target)
+            return set_band(out, band_of(target))
+    raise ValueError("no boundary row for %s" % label)
+
+
+TIES_PLAN = (
+    ("tie-band-moves-70", "S", "edge-gateway", None), ("tie-band-moves-90", "T", "edge-gateway", None),
+    ("tie-rounding-only", "R", "edge-gateway", None), ("tie-rounding-only", "I", "edge-gateway", None),
+    ("boundary-exact-70", "D", "edge-gateway", None), ("boundary-exact-90", "E", "edge-gateway", None),
+    ("boundary-exact-40", "AG", "intake-agent", "AG:autonomy"), ("tie-stored-as-half-up", "LLM", "edge-gateway", "LLM:inject"),
+    ("tie-band-moves-40", "MI", "intake-agent", "MI"),
+)
+PROFILES["ties"] = variant_profile([(prefix, comp, sub) for _, prefix, comp, sub in TIES_PLAN], GATED_COMPONENTS)
+
+# R-11's residual tie lives in the controls stage: residual = inherent x (1 - reduction factor), half-up to one decimal.
+RESIDUAL_CASES = (  # (finding, composite in tenths, control status)
+    ("S-1", 91, "found"), ("T-1", 49, "found"), ("R-1", 46, "partial"), ("I-1", 83, "found"), ("D-1", 60, "partial"), ("E-1", 77, "missing"))
+RESIDUAL_FACTOR = {"found": 50, "partial": 25, "missing": 0}
+PROFILES["tiesc"] = variant_profile([("S", "client-portal", None), ("T", "edge-gateway", None), ("R", "edge-gateway", None),
+                                     ("I", "edge-gateway", None), ("D", "edge-gateway", None), ("E", "edge-gateway", None)], GATED_COMPONENTS)
+
+
+def ties_scorer_files() -> dict:
+    master = build_world("ties")
+    natural = make_rows(master)
+    plan = {"tie-band-moves-70": ("band", 70), "tie-band-moves-90": ("band", 90), "tie-band-moves-40": ("band", 40),
+            "tie-rounding-only": ("mid", None), "tie-stored-as-half-up": ("exact", None), "boundary-exact-70": ("boundary", 70),
+            "boundary-exact-90": ("boundary", 90), "boundary-exact-40": ("boundary", 40)}
+    rows, cases = {}, {}
+    for entry in TIES_PLAN:
+        case = entry[0]
+        fid = [i for i in master["findings"] if i["prefix"] == entry[1] and i["comp"] == entry[2]][0]["id"]
+        kind, value = plan[case]
+        label = "ties:" + fid
+        base_row = natural[fid]
+        if kind == "band":
+            row = role_tie(base_row, label, True, exact=value, top=40)
+        elif kind == "mid":
+            row = role_tie(base_row, label, False)
+        elif kind == "exact":
+            row = role_tie(base_row, label, False, stored_is_exact=True)
+        else:
+            row = role_boundary(base_row, label, value)
+        rows[fid], cases[fid] = row, case
+    ctx = {"tags": (), "run_date": RUN_DATE, "baseline_date": SCORED_ON, "compound_zones": ()}
+    findings = {fid: finding_record(row, cases[fid], ctx) for fid, row in rows.items()}
+    base = baseline_world(master, rows)
+    root = "ties/scorer/"
+    files = {
+        root + "run/threats.md": render_threats_md(master),
+        root + "architecture/architecture.md": architecture_text(master),
+        root + "baseline/risk-scores.md": render_risk_scores_md(base),
+        root + "baseline/threats.md": baseline_threats_stub(base),
+    }
+    notes = [
+        "R-11. The weighted sum of a tie ends in exactly .x5 (6.95, 8.95, 3.95, mid-band values). The renderer rounds half up; this baseline "
+        "stored the lower neighbour.",
+        "'tie-band-moves-*': the exact composite is 6.95, 8.95 or 3.95, so half-up gives 7.0, 9.0 or 4.0 and the stored 6.9, 8.9 or 3.9 is in "
+        "the band below. The difference moves the band, so it is flagged corrected:severity_band:rounding and R-5 applies: the original "
+        "scoring date is kept, and the SLA, disposition and review date follow the new band. The composite's own change is normalized, "
+        "and only the band is flagged (D9).",
+        "'tie-rounding-only': a mid-band tie whose lower neighbour is in the same band. The composite is normalized to the half-up value and "
+        "counted in the run summary, never flagged per finding.",
+        "'tie-stored-as-half-up' is the control: the baseline already stored the half-up value.",
+        "'boundary-exact-*': composites of exactly 7.0, 9.0 and 4.0 with no rounding. A boundary maps to the higher band, and nothing is flagged.",
+    ]
+    files[root + "expected-outcomes.json"] = expected_document(
+        "ties", "scorer", "S-4's ties variant (R-11), the scorer half: band-moving ties, a rounding-only tie that does not move the band, "
+        "a tie stored correctly, and composites exactly on a band boundary.", standard_run(),
+        legacy_baseline(("threats.md", "risk-scores.md"), note="pre-fix form, no SARIF"),
+        {"source": "block", "block_equals_recomputation": True, "tags": {}, "warning": False}, findings, notes=notes)
+    return files
+
+
+def ties_controls_files() -> dict:
+    master = build_world("tiesc")
+    natural = make_rows(master)
+    rows, cases = {}, {}
+    ids = sorted((f["id"] for f in master["findings"]), key=prefix_rank)
+    wanted = {fid: composite for fid, composite, _ in RESIDUAL_CASES}
+    for fid in ids:
+        row = dict(natural[fid])
+        target = wanted[fid]
+        for v in vector_choice("tiesc:" + fid, lambda vec: True):
+            lo, hi = REACH_RANGE[ZONE_LEVEL[row["zone"]]]
+            found = [(r, e, s) for r in range(lo, hi + 1, 5) for e in range(12, 41) for s in range(12, 41)
+                     if composite_tenths(cvss_of(v), MEAN_OF[e], MEAN_OF[s], r) == target
+                     and not composite_is_tie(cvss_of(v), MEAN_OF[e], MEAN_OF[s], r)]
+            if found:
+                r, e, s = found[label_below("tiesc:" + fid, len(found))]
+                row.update(vector=v, md_vector=v, sarif_vector=None, cvss=cvss_of(v), reach=r, expl_sub=sub_scores(e),
+                           expl=mean_tenths(sub_scores(e)), scale_sub=sub_scores(s), scale=mean_tenths(sub_scores(s)), composite=target)
+                set_band(row, band_of(target))
+                break
+        else:
+            raise ValueError("no row with composite %s" % target)
+        rows[fid] = row
+    cases_out = []
+    for fid, composite, status in RESIDUAL_CASES:
+        pct = RESIDUAL_FACTOR[status]
+        product = composite * (100 - pct)  # the exact residual in thousandths of a point
+        residual = half_up(product, 100)
+        exact = ("%d.%03d" % divmod(product, 1000)).rstrip("0")
+        exact = exact + "0" if exact.endswith(".") else exact
+        floor_tenths = product // 100
+        half_even = floor_tenths + (floor_tenths % 2 if product % 100 == 50 else (1 if product % 100 > 50 else 0))
+        cases_out.append({"finding": fid, "inherent": fmt1(composite), "inherent_band": band_of(composite), "control_status": status,
+                          "reduction_factor": "0.%02d" % pct, "residual_exact": exact, "residual": fmt1(residual),
+                          "residual_band": band_of(residual), "is_tie": product % 100 == 50,
+                          "half_even_would_give": fmt1(half_even),
+                          "float_round_would_give": fmt1(int(round(round(composite / 10.0 * (100 - pct) / 100.0, 1) * 10)))})
+    base = baseline_world(master, rows)
+    root = "ties/controls/"
+    files = {
+        root + "run/threats.md": render_threats_md(master),
+        root + "run/risk-scores.md": render_risk_scores_md(base),
+    }
+    notes = [
+        "The controls stage's input: run/risk-scores.md is the scorer's output for this run, and each finding's inherent score is its composite. "
+        "The controls renderer never re-scores it (ADR-050 D2).",
+        "residual = q1(inherent x (1 - reduction factor)), half up, with the P0 factors found 0.50, partial 0.25 and missing 0.00. 'residual_exact' is "
+        "the product before rounding. S-1 is the documented 4.55, which must give 4.6; T-1 and R-1 are ties whose half-even rounding would give 2.4 and "
+        "3.4, and I-1's 4.15 is a float trap (a binary float holds it just below). D-1 is a partial control with an exact result, and E-1 a missing "
+        "control that changes nothing.",
+        "The test supplies the controls agent's judgment (control_status per finding); this file fixes the arithmetic that follows from it.",
+    ]
+    doc = {"schema": "tachi.fixture-expected/1", "variant": "ties", "scenario": "controls", "stage": "compensating-controls",
+           "summary": "S-4's ties variant (R-11), the controls half: residual ties.",
+           "run": {"date": RUN_DATE, "threats": "run/threats.md", "risk_scores": "run/risk-scores.md", "architecture": None,
+                   "how": "copy the scenario directory to a working directory; the controls stage reads run/risk-scores.md as its input"},
+           "controls_cases": cases_out, "notes": notes, "flag_reading": list(FLAG_READING)}
+    files[root + "expected-outcomes.json"] = dumps(doc)
+    return files
+
+
+# --- the regroup pair (US-5 #6, R-4, R-31, S-7) ----------------------------------------------------------------------------
+PAIR_PLAN = (("S", "client-portal", None), ("S", "auth-broker", None), ("T", "edge-gateway", None), ("T", "vector-store-a", None),
+             ("R", "intake-agent", None), ("I", "edge-gateway", None), ("D", "edge-gateway", None), ("E", "edge-gateway", None),
+             ("AG", "intake-agent", "AG:autonomy"), ("LLM", "edge-gateway", "LLM:inject"))
+PROFILES["pair"] = variant_profile(list(PAIR_PLAN), GATED_COMPONENTS)
+PAIR_GROUPS_BEFORE = (("I-1", "LLM-1"), ("R-1", "AG-1"))
+PAIR_GROUPS_AFTER = (("T-1", "I-1", "D-1", "E-1", "LLM-1"), ("R-1", "AG-1"))
+INHERITED_KEYS = ("vector", "md_vector", "sarif_vector", "cvss", "expl_sub", "expl", "scale_sub", "scale", "reach", "composite", "band",
+                  "sla", "sla_days", "disposition", "review", "owner")
+
+
+def banded_row(row: dict, label: str, band: str) -> dict:
+    """The row with scores that give a clean composite in the asked band."""
+    reach = row["reach"]
+    v, e, s = find_scores(label, lambda vec: True,
+                          lambda vec, ex, sc: clean_composite(cvss_of(vec), ex, sc, reach)
+                          and band_of(composite_tenths(cvss_of(vec), ex, sc, reach)) == band)
+    return settle(dict(row, vector=v, md_vector=v, sarif_vector=v, cvss=cvss_of(v), expl_sub=sub_scores(e), expl=mean_tenths(sub_scores(e)),
+                       scale_sub=sub_scores(s), scale=mean_tenths(sub_scores(s))))
+
+
+def group_records(groups: Sequence, kept: Sequence) -> list:
+    return [{"id": "CG-%d" % number, "primary": ids[0], "members": [i for i in ids if i in kept]} for number, ids in enumerate(groups, start=1)]
+
+
+def regroup_pair_files() -> dict:
+    master = build_world("pair")
+    natural = make_rows(master)
+    ids = [f["id"] for f in master["findings"]]
+    before = [i for i in ids if i != "D-1"]  # D-1 is NEW in the second run
+    rows = {fid: dict(natural[fid]) for fid in before}
+    rows["T-1"] = banded_row(rows["T-1"], "pair:T-1", "Medium")
+    rows["I-1"] = banded_row(rows["I-1"], "pair:I-1", "High")
+    rows["E-1"] = banded_row(rows["E-1"], "pair:E-1", "High")
+    rows["E-1"]["owner"] = "appsec-team"
+    for peer, primary in (("LLM-1", "I-1"), ("AG-1", "R-1")):  # the baseline's peers carry their primary's scores whole
+        rows[peer] = dict(rows[peer], **{key: rows[primary][key] for key in INHERITED_KEYS})
+    for row in rows.values():
+        row["source"] = "fresh"
+
+    def world_for(keep, status, groups, source, baseline_date):
+        cfg = dict(master["cfg"], baseline_source=source, dates=dict(master["cfg"]["dates"], baseline=baseline_date))
+        return assign_groups(replace_world_findings(master, keep, status, cfg=cfg), groups)
+
+    run1 = world_for(before, {}, PAIR_GROUPS_BEFORE, "baseline/threats.md", SCORED_ON)
+    run2 = world_for(ids, {"D-1": STATUS_NEW, "E-1": STATUS_UPDATED}, PAIR_GROUPS_AFTER, "run1/threats.md", RUN_DATE)
+    run3 = world_for(ids, {}, PAIR_GROUPS_AFTER, "run2/threats.md", RUN_DATE)
+    base = assign_groups(clone_world(master, findings=[f for f in master["findings"] if f["id"] in before], resolved=[], scores=rows),
+                         PAIR_GROUPS_BEFORE)
+
+    ctx = {"tags": (), "run_date": RUN_DATE, "baseline_date": SCORED_ON, "compound_zones": ()}
+    # run 1: the legacy baseline, scored again with the same groups. Nothing is wrong, so nothing is flagged.
+    run1_findings = {fid: finding_record(rows[fid], "unchanged-group" if fid in ("I-1", "LLM-1", "R-1", "AG-1") else "ungrouped", ctx)
+                     for fid in before}
+    # run 2: the regroup. T-1 is the new primary; I-1 and LLM-1 keep their scores and diverge; D-1 and E-1 copy T-1.
+    run2_findings = {fid: finding_record(rows[fid], "ungrouped", ctx) for fid in before}
+    primary = run2_findings["T-1"]
+    run2_findings["T-1"]["case"] = "new-primary"
+    for fid in ("I-1", "LLM-1"):
+        record = run2_findings[fid]
+        record["case"] = "unchanged-peer-diverges"
+        record["flags"].append(make_flag("divergent", "composite_score", "primary=T-1", record["stored"]["composite_score"],
+                                         primary["rendered"]["composite_score"]))
+    for fid in ("R-1", "AG-1"):
+        run2_findings[fid]["case"] = "unchanged-group"
+    for fid, case in (("D-1", "new-peer"), ("E-1", "updated-peer")):
+        own = rows.get(fid)
+        rendered = dict(primary["rendered"])
+        rendered["risk_owner"] = own["owner"] if own else "Unassigned"
+        rendered["review_date"] = add_days(RUN_DATE, sla_day_count(rendered["remediation_sla"]))
+        run2_findings[fid] = {"case": case, "treatment": "copy-primary", "prefix": fid.partition("-")[0],
+                              "component": next(f["comp"] for f in master["findings"] if f["id"] == fid), "form": "legacy",
+                              "stored": stored_values(own) if own else None, "rendered": rendered, "flags": [], "normalized": False,
+                              "d10_step": None, "primary": "T-1"}
+    # run 3: an unchanged re-run on run 2's output. Every value is carried as run 2 wrote it.
+    run3_findings = {}
+    for fid in ids:
+        values = dict(run2_findings[fid]["rendered"])
+        flags = ([make_flag("divergent", "composite_score", "primary=T-1", values["composite_score"],
+                            run2_findings["T-1"]["rendered"]["composite_score"])] if fid in ("I-1", "LLM-1") else [])
+        run3_findings[fid] = {"case": "rerun", "treatment": "carried", "prefix": fid.partition("-")[0], "component": run2_findings[fid]["component"],
+                              "form": "renderer", "stored": values, "rendered": dict(values), "flags": flags, "normalized": False,
+                              "d10_step": "renderer"}
+
+    def section(findings, routing, groups, threats, baseline_dir):
+        ordered = {fid: findings[fid] for fid in sorted(findings, key=prefix_rank)}
+        return {"threats": threats, "baseline_dir": baseline_dir, "routing": routing, "groups": groups, "findings": ordered,
+                "unflagged": unflagged_ids(ordered), "counts": tally(ordered)}
+
+    peers_before = {"LLM-1": "I-1", "AG-1": "R-1"}
+    peers_after = {"I-1": "T-1", "LLM-1": "T-1", "AG-1": "R-1"}
+    runs = {
+        "run1": section(run1_findings, {"to_agent": [], "carried": sorted(before, key=prefix_rank), "copy_primary": {}, "carried_peers": peers_before},
+                        group_records(PAIR_GROUPS_BEFORE, before), "run1/threats.md", "baseline"),
+        "run2": section(run2_findings, {"to_agent": [], "carried": sorted((fid for fid in before if fid != "E-1"), key=prefix_rank),
+                                        "copy_primary": {"D-1": "T-1", "E-1": "T-1"}, "carried_peers": peers_after},
+                        group_records(PAIR_GROUPS_AFTER, ids), "run2/threats.md", "run1"),
+        "run3": section(run3_findings, {"to_agent": [], "carried": sorted(ids, key=prefix_rank), "copy_primary": {},
+                                        "carried_peers": dict(peers_after, **{"D-1": "T-1", "E-1": "T-1"})},
+                        group_records(PAIR_GROUPS_AFTER, ids), "run3/threats.md", "run2"),
+    }
+    notes = [
+        "Three runs in sequence, each writing its outputs next to its own threats.md (--out run1, then run2, then run3), so that each run's "
+        "baseline.source finds the last run's output: run1 reads baseline/, run2 reads run1/, run3 reads run2/. run1 and run2's baselines "
+        "are therefore the renderer's own output, and only the first baseline is a fixture file.",
+        "Run 1 scores the legacy baseline again with the baseline's groups, CG-1 = [I-1, LLM-1] and CG-2 = [R-1, AG-1]. Nothing is wrong and "
+        "nothing is flagged: it is the first renderer run, and the scores it carries are the ones run 2 must not move.",
+        "Run 2 regroups. Correlation now puts T-1, an ungrouped Medium finding, first in CG-1, so the group's primary changes from I-1 (High) to "
+        "T-1. No carried finding's score, band or SLA changes because of the regroup alone (US-5 #6). I-1 and LLM-1 are UNCHANGED peers whose "
+        "carried score differs from the new primary's: they keep it and are flagged divergent:composite_score:primary=T-1. D-1 (NEW) and E-1 "
+        "(UPDATED) are peers that copy T-1's vector and scores; E-1 keeps its owner and, because its band changes, restarts its clock.",
+        "Run 3 re-runs run 2's file with every status UNCHANGED, on run 2's output. It keeps every key and value of run 2, and the divergences "
+        "stay flagged, since I-1 and LLM-1 still differ from T-1. D-1 and E-1 are now carried peers that equal their primary.",
+        "S-7: the correlation outcome of the pair (which findings group, and each group's primary) is the same whatever the SARIF recipe does; "
+        "'groups' lists it per run, primary first.",
+        "baseline/risk-scores.sarif is a pre-fix file: its hashes are the legacy ones, which a renderer never copies and never matches on.",
+    ]
+    doc = {"schema": "tachi.fixture-expected/1", "variant": "regroup-pair", "scenario": "main", "stage": "risk-score",
+           "summary": "S-4's regroup pair: correlation regroups carried findings and changes a primary, with a NEW peer, an UPDATED peer, an "
+                      "UNCHANGED peer whose score differs from its new primary's, and an unchanged re-run.",
+           "run": {"date": RUN_DATE, "architecture": "architecture/architecture.md", "sequence": ["run1", "run2", "run3"],
+                   "out_dirs": {"run1": "run1", "run2": "run2", "run3": "run3"},
+                   "how": "copy the scenario directory to a working directory and run the three in order from there"},
+           "baseline": legacy_baseline(("threats.md", "risk-scores.md", "risk-scores.sarif"), note="pre-fix form with its SARIF; only run1 reads it"),
+           "tag_source": {"source": "block", "block_equals_recomputation": True, "tags": {}, "warning": False},
+           "runs": runs,
+           "identity": {"keys_equal": ["run1", "run2", "run3"], "for_findings_present_in_both": True,
+                        "rerun_matches": {"run3": "run2"},
+                        "note": "every carried finding keeps its SARIF identity fields across the regroup, and the unchanged re-run keeps "
+                                "them and its values; the properties that name a baseline state or a score source may differ with the status"},
+           "populator_fixed_point": True, "notes": notes, "flag_reading": list(FLAG_READING)}
+    root = "regroup-pair/main/"
+    return {
+        root + "baseline/risk-scores.md": render_risk_scores_md(base),
+        root + "baseline/risk-scores.sarif": render_risk_scores_sarif(base),
+        root + "baseline/threats.md": baseline_threats_stub(base),
+        root + "architecture/architecture.md": architecture_text(master),
+        root + "run1/threats.md": render_threats_md(run1),
+        root + "run2/threats.md": render_threats_md(run2),
+        root + "run3/threats.md": render_threats_md(run3),
+        root + "expected-outcomes.json": dumps(doc),
+    }
+
 # --------------------------------------------------------------------------- parts
 # A part is a pure function of its Rng and SEED: it returns {relative path: text}. It may open more
 # streams with Rng("<part>/<aspect>"). Parts that share data (the architecture and the findings)
@@ -2540,32 +4672,40 @@ def part_gated_subset(rng: Rng) -> dict:
 
 def part_seeded_error(rng: Rng) -> dict:
     """T040: per prefix, a wrong composite, band, vector and reachability value, a missing vector, controls."""
-    return {}
+    return seeded_error_files()
 
 
 def part_legacy_format(rng: Rng) -> dict:
     """T040: no sub-score tables, partial vectors in markdown, full vectors in SARIF, one disagreement (R-26)."""
-    return {}
+    files = legacy_format_files()
+    files.update(legacy_no_date_files())
+    return files
 
 
 def part_tagged(rng: Rng) -> dict:
-    """T040: tagged components, findings above 9.2, a carried legacy finding, ruling A's band moves."""
-    return {}
+    """T040: tagged components, findings above 9.2, a carried legacy finding, ruling A's band moves, and S-13's five branches."""
+    files = tagged_renderer_form_files()
+    files.update(tagged_legacy_form_files())
+    files.update(tagged_s13_files())
+    return files
 
 
 def part_id_reuse(rng: Rng) -> dict:
     """T040: PR 1's case (a NEW finding reusing a baseline ID). T148: PR 2's high-water-mark and no-mark baselines."""
-    return {}
+    files = id_reuse_pr1_files()  # T148 adds id_reuse_pr2_files() here, under id-reuse/pr2/
+    return files
 
 
 def part_ties(rng: Rng) -> dict:
     """T040: a band-moving composite tie, a rounding-only tie and a residual tie (R-11)."""
-    return {}
+    files = ties_scorer_files()
+    files.update(ties_controls_files())
+    return files
 
 
 def part_regroup_pair(rng: Rng) -> dict:
     """T040: two runs where correlation regroups carried findings and moves a primary, plus a re-run."""
-    return {}
+    return regroup_pair_files()
 
 
 def part_chain_cap(rng: Rng) -> dict:
