@@ -3144,6 +3144,87 @@ def _parse_chain_breaking_controls(section_text: str) -> list:
 
 
 # =============================================================================
+# Attack Chain Outcome Record (F-374, ADR-050 D13, T116)
+# =============================================================================
+#
+# One line of threats.md records what Phase 3.5 did. ``attack-chains.py render`` upserts it after the join, and ``check`` rewrites it when
+# the chain file disagrees with it (R-24). Its grammar is in contracts/threat-model-records.md ("The outcome record"). Every reader of the
+# outcome goes through :func:`parse_chain_outcome`, so the grammar and the fence rule are stated once.
+
+# A record line starts with this, as the contract's ``^\*\*Attack chain outcome\*\*: `` says. It is public so that a writer's line and this
+# reader's match can't drift apart.
+CHAIN_OUTCOME_LABEL = "**Attack chain outcome**: "
+
+# The contract's R, a reason: 1 to 80 characters of this alphabet. It holds no parenthesis and no semicolon, so each form's pattern ends it
+# without ambiguity, and no character of it is markup in a markdown cell or in a Typst string.
+_CHAIN_OUTCOME_REASON = "[A-Za-z0-9 .,:=-]{1,80}"
+_CHAIN_OUTCOME_WRITTEN = re.compile(r"chains written \(([1-9][0-9]{0,5})\); candidates ([0-9]{1,6}); surfaced ([1-5])")
+_CHAIN_OUTCOME_ZERO = re.compile(r"0 chains passed filter \((%s)\); candidates ([0-9]{1,6})" % _CHAIN_OUTCOME_REASON)
+_CHAIN_OUTCOME_SKIPPED = re.compile(r"skipped \((%s)\)" % _CHAIN_OUTCOME_REASON)
+
+
+def parse_chain_outcome(content: str) -> dict:
+    """Read the attack chain outcome record of a ``threats.md``: one line, ``**Attack chain outcome**: OUTCOME`` (ADR-050 D13, P-3; T116).
+
+    The rest of the line must be wholly one of three forms (the contract's grammar, where ``N``, ``C`` and ``S`` are numerals and ``R`` is a
+    reason):
+
+    * ``chains written (N); candidates C; surfaced S``, with ``N`` from 1 to 999999, ``C`` of at most six digits and not below ``N``, and
+      ``S`` from 1 to 5 and not above ``N``;
+    * ``0 chains passed filter (R); candidates C``;
+    * ``skipped (R)``.
+
+    ``R`` is 1 to 80 characters of ``A-Z a-z 0-9 space . , : = -``, and not blank. Every reason that the contract lists fits it. The parser
+    holds no list of reasons, because the checks add to the list.
+
+    Returns a new dict with these seven keys, every time:
+
+    * ``form``: ``"written"``, ``"zero"`` or ``"skipped"`` when the text has one record line and it is that form. Otherwise ``"absent"`` (no
+      record line), ``"multiple"`` (two or more) or ``"malformed"`` (one, and it is none of the forms). The check words these three as
+      ``skipped (no outcome recorded)``, ``skipped (multiple outcome records)`` and ``skipped (outcome record malformed)`` (D13).
+    * ``chain_count``, ``candidate_count`` and ``surfaced_count``: ``N``, ``C`` and ``S`` as ints, under the names of the keys in
+      ``attack-chains.md``'s frontmatter. ``"zero"`` gives ``0``, ``C`` and ``0``, because ``S`` can't exceed ``N``. ``"skipped"`` and every
+      form that isn't a record give ``None`` for all three.
+    * ``reason``: ``R`` as written for ``"zero"`` and ``"skipped"``, and ``None`` otherwise.
+    * ``text``: OUTCOME as written, without trailing whitespace, for the three forms, and ``None`` otherwise. Only the contract's alphabet
+      and digits can reach it, so a reader may print it in a markdown cell or a Typst string. The text of a line that is no form never leaves
+      this function.
+    * ``lines``: the 0-based index of each record line in ``content.split("\\n")``, in order, and ``[]`` when there is none. A writer that
+      replaces the record replaces these lines, whatever the form.
+
+    **How it reads.** A record line begins with :data:`CHAIN_OUTCOME_LABEL` and lies outside every code fence, by the one fence rule of
+    :func:`match_heading`'s ``outside_fences`` (ADR-050 D3, "Finding a section"), so a finding's quoted evidence can't make a second record
+    or hide the first. A fence that nothing closes covers the rest of the text, so a record after it reads as absent. No heading is needed:
+    the heading is the writer's placement, and the record is the line. The text is split on ``\\n`` only, and trailing spaces, tabs and
+    carriage returns are ignored, so a CRLF file reads. Two or more record lines are ``"multiple"`` whatever they say.
+
+    It raises nothing on content and reads no file. It doesn't look at ``attack-chains.md``, whose agreement with the record is the check's
+    business (FR-K4.1b). A reader that falls back to the file's presence does so only when this returns ``"absent"``, as a ``threats.md`` of
+    an earlier version has no record (D13).
+    """
+    records = [(index, line) for index, line in _unfenced_lines((content or "").split("\n")) if line.startswith(CHAIN_OUTCOME_LABEL)]
+    outcome = {"form": "absent", "chain_count": None, "candidate_count": None, "surfaced_count": None, "reason": None, "text": None,
+               "lines": [index for index, _ in records]}
+    if len(records) > 1:
+        outcome["form"] = "multiple"
+    elif records:
+        text = records[0][1][len(CHAIN_OUTCOME_LABEL):].rstrip(" \t\r")
+        outcome["form"] = "malformed"
+        written = _CHAIN_OUTCOME_WRITTEN.fullmatch(text)
+        zero = _CHAIN_OUTCOME_ZERO.fullmatch(text)
+        skipped = _CHAIN_OUTCOME_SKIPPED.fullmatch(text)
+        if written:
+            chains, candidates, surfaced = (int(numeral) for numeral in written.groups())
+            if chains <= candidates and surfaced <= chains:   # the contract's C >= N and S <= N
+                outcome.update(form="written", chain_count=chains, candidate_count=candidates, surfaced_count=surfaced, text=text)
+        elif zero and zero.group(1).strip():
+            outcome.update(form="zero", chain_count=0, candidate_count=int(zero.group(2)), surfaced_count=0, reason=zero.group(1), text=text)
+        elif skipped and skipped.group(1).strip():
+            outcome.update(form="skipped", reason=skipped.group(1), text=text)
+    return outcome
+
+
+# =============================================================================
 # Asset-Sensitivity Tag Parser (Issue #260 prototype)
 # =============================================================================
 #

@@ -55,6 +55,7 @@ import tachi_parts  # noqa: E402  -- the escapers whose references the decoder r
 
 from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     SEVERITY_ORDINAL,
+    CHAIN_OUTCOME_LABEL,
     HEADER_ALIASES,
     classify_maestro_coverage_state,
     normalize_header,
@@ -78,6 +79,7 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     parse_reference_set,
     decode_references,
     parse_attack_chains,
+    parse_chain_outcome,
     parse_correlation_groups,
     parse_controls_assessment_inputs,
     parse_sarif_member_set,
@@ -4095,3 +4097,362 @@ def test_the_agentic_app_rows_wider_than_their_header_give_the_layer_that_sits_b
         parse_markdown_table(text, "### 4.2 LLM Threats (LLM)", overlong=overlong)
         assert line in overlong and text.split("\n")[line - 1].startswith("| LLM-5 |"), (relative, "premise: the row is wider than its header")
         assert parse_finding_layers(text)["LLM-5"] == _FOUNDATION, relative
+
+
+# =============================================================================
+# Feature 374 (PR 2, W2', T116): parse_chain_outcome, the attack chain outcome record (ADR-050 D13, P-3)
+#
+# threats.md holds one line, `**Attack chain outcome**: OUTCOME`. `attack-chains.py render` writes it, and `check` rewrites it when the chain
+# file disagrees with it (R-24). `detect_artifacts`, `prepare_attack_chains`, the check and the report assembly read it through this one
+# function. The cases state the contract's grammar (contracts/threat-model-records.md, "The outcome record") from the contract, and not from
+# the module's patterns:
+#
+#   forms      chains written (N); candidates C; surfaced S     N 1..999999, C 0..999999 and not below N, S 1..5 and not above N
+#              0 chains passed filter (R); candidates C
+#              skipped (R)                                      R is 1..80 characters of [A-Za-z0-9 .,:=-], and not blank
+#   otherwise  no record line is "absent", two or more are "multiple", and one line that is no form is "malformed"
+#   reading    lines outside code fences only (ADR-050 D3, "Finding a section"), split on "\n", trailing space, tab and CR ignored, and no
+#              heading needed
+# =============================================================================
+
+_OUTCOME_KEYS = ["form", "chain_count", "candidate_count", "surfaced_count", "reason", "text", "lines"]
+_OUTCOME_LABEL = "**Attack chain outcome**: "   # the contract's label, spelled out here, so that a change to the constant fails a test
+_WRITTEN_VALUE = "chains written (3); candidates 5; surfaced 3"
+_BODY_AT = 15   # the 0-based line of the first line that `_in_a_threat_model` puts under the outcome heading
+
+
+def _outcome(form, chains=None, candidates=None, surfaced=None, reason=None, text=None, lines=()):
+    """What ``parse_chain_outcome`` returns, spelled out: all seven keys, and ``None`` for what the record doesn't state."""
+    return {"form": form, "chain_count": chains, "candidate_count": candidates, "surfaced_count": surfaced, "reason": reason, "text": text,
+            "lines": list(lines)}
+
+
+def _record_line(value):
+    return _OUTCOME_LABEL + value
+
+
+def _in_a_threat_model(*body):
+    """A ``threats.md`` in the joiner's shape: frontmatter, Section 4, the ``body`` lines under the outcome heading, and Section 5."""
+    return "\n".join(["---", 'schema_version: "1.4"', 'date: "2026-11-24"', "---", "", "# Threat Model", "", "## 4. Findings", "",
+                      "| ID | Status | Component | MAESTRO Layer | Threat | Risk Level |", "|---|---|---|---|---|---|",
+                      "| S-1 | NEW | Gateway | L3 | A threat. | High |", "", "## Attack Chain Outcome", ""] + list(body) + ["", "## 5. Coverage Matrix", ""])
+
+
+def test_parse_chain_outcome_takes_one_text_and_its_label_is_the_contracts():
+    assert list(inspect.signature(parse_chain_outcome).parameters) == ["content"]
+    assert CHAIN_OUTCOME_LABEL == _OUTCOME_LABEL
+    assert re.match(r"^\*\*Attack chain outcome\*\*: ", CHAIN_OUTCOME_LABEL), "the contract's pattern matches the label"
+    assert _in_a_threat_model("x").split("\n")[_BODY_AT] == "x", "the helper puts its body where these cases say"
+
+
+@pytest.mark.parametrize("text", ["", None, "no record", _record_line("skipped (x)"), _record_line("maybe"),
+                                  _record_line("skipped (x)") + "\n" + _record_line("skipped (y)")],
+                         ids=["empty", "none", "absent", "skipped", "malformed", "multiple"])
+def test_every_result_has_the_same_seven_keys_and_is_a_new_dict_each_time(text):
+    first = parse_chain_outcome(text)
+    kept = dict(first, lines=list(first["lines"]))
+    assert list(first) == _OUTCOME_KEYS
+    first["lines"].append(99)
+    first["form"] = "changed"
+    again = parse_chain_outcome(text)
+    assert again == kept and again is not first and again["lines"] is not first["lines"], "a caller's changes to a result reach no other result"
+
+
+# ---- the three forms ---------------------------------------------------------------------------------------------
+
+def _form_case(name, value, form, chains=None, candidates=None, surfaced=None, reason=None):
+    """``(id, the text after the label, what it reads as)``: one record line, so line 0, and the whole of the value as its text."""
+    return (name, value, _outcome(form, chains, candidates, surfaced, reason, text=value, lines=[0]))
+
+
+OUTCOME_FORM_CASES = [
+    _form_case("written", _WRITTEN_VALUE, "written", 3, 5, 3),
+    _form_case("written-the-least", "chains written (1); candidates 1; surfaced 1", "written", 1, 1, 1),
+    _form_case("written-the-most", "chains written (999999); candidates 999999; surfaced 5", "written", 999999, 999999, 5),
+    _form_case("written-candidates-equal-chains", "chains written (5); candidates 5; surfaced 5", "written", 5, 5, 5),
+    _form_case("written-fewer-than-five-all-surface", "chains written (4); candidates 9; surfaced 4", "written", 4, 9, 4),
+    _form_case("written-five-surface-at-most", "chains written (120); candidates 340; surfaced 5", "written", 120, 340, 5),
+    # S is not min(5, N): a chain that ends at a terminal-impact finding that a higher chain ends at doesn't surface (S-3(f)), so S <= N.
+    _form_case("written-fewer-surface-than-the-cap-allows", "chains written (2); candidates 2; surfaced 1", "written", 2, 2, 1),
+    _form_case("written-candidates-with-leading-zeros", "chains written (3); candidates 005; surfaced 3", "written", 3, 5, 3),
+    _form_case("zero", "0 chains passed filter (no candidate links); candidates 4", "zero", 0, 4, 0, "no candidate links"),
+    _form_case("zero-no-candidates", "0 chains passed filter (no STRIDE findings); candidates 0", "zero", 0, 0, 0, "no STRIDE findings"),
+    _form_case("zero-the-most-candidates", "0 chains passed filter (no chain with a Critical or High finding); candidates 999999", "zero", 0, 999999, 0,
+               "no chain with a Critical or High finding"),
+    _form_case("skipped", "skipped (inventory missing)", "skipped", reason="inventory missing"),
+    _form_case("skipped-a-reason-of-80-characters", "skipped (%s)" % ("r" * 80), "skipped", reason="r" * 80),
+    _form_case("skipped-a-reason-of-one-character", "skipped (-)", "skipped", reason="-"),
+    _form_case("skipped-every-mark-the-alphabet-has", "skipped (a.b,c:d=e-f g)", "skipped", reason="a.b,c:d=e-f g"),
+    _form_case("skipped-a-reason-as-written", "skipped ( two  spaces )", "skipped", reason=" two  spaces "),
+]
+
+
+@pytest.mark.parametrize("name,value,expected", OUTCOME_FORM_CASES, ids=[case[0] for case in OUTCOME_FORM_CASES])
+def test_the_three_forms_read_as_the_contract_gives_them(name, value, expected):
+    assert parse_chain_outcome(_record_line(value)) == expected
+    assert parse_chain_outcome(_record_line(value) + "\n") == expected, "a final newline changes nothing"
+
+
+# "Reasons for 0 chains", "Reasons the script gives for skipped" and "Reasons the check gives for skipped", as the contract lists them. X and Y
+# of the check's three count reasons are numerals.
+OUTCOME_CONTRACT_REASONS = [
+    "no STRIDE findings", "fewer than two layers with STRIDE findings", "no candidate links", "no chain with a Critical or High finding",
+    "Section 7 unreadable", "inventory missing", "inventory invalid",
+    "no outcome recorded", "outcome record malformed", "multiple outcome records", "attack-chains.md missing", "attack-chains.md unexpected",
+    "attack-chains.md unreadable", "full chains 3 expected 4", "compact rows 98 expected 100", "remainder 7 expected 8", "frontmatter counts differ",
+]
+
+
+@pytest.mark.parametrize("reason", OUTCOME_CONTRACT_REASONS)
+def test_every_reason_the_contract_lists_is_a_reason_in_both_forms_that_take_one(reason):
+    skipped = "skipped (%s)" % reason
+    zero = "0 chains passed filter (%s); candidates 2" % reason
+    assert parse_chain_outcome(_record_line(skipped)) == _outcome("skipped", reason=reason, text=skipped, lines=[0])
+    assert parse_chain_outcome(_record_line(zero)) == _outcome("zero", 0, 2, 0, reason, zero, [0])
+
+
+_OUTCOME_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:=-")
+
+
+def test_a_reason_takes_exactly_the_contracts_alphabet_in_both_forms_that_take_one():
+    """The first 768 code points and some look-alikes of the line, space and dash characters, each put inside a reason. The text is split on
+    ``\\n`` only, so the other line boundaries of ``str.splitlines`` are in the reason, and the alphabet refuses them."""
+    for code in list(range(0x300)) + [0x2028, 0x2029, 0x2010, 0x2212, 0xFF0D, 0xFF1A, 0x3000, 0xFEFF]:
+        char = chr(code)
+        if char == "\n":
+            continue   # it ends the line, so it is never in a reason
+        assert parse_chain_outcome(_record_line("skipped (a%sb)" % char))["form"] == ("skipped" if char in _OUTCOME_ALPHABET else "malformed"), hex(code)
+        assert parse_chain_outcome(_record_line("0 chains passed filter (a%sb); candidates 1" % char))["form"] == \
+            ("zero" if char in _OUTCOME_ALPHABET else "malformed"), hex(code)
+
+
+def test_the_counts_follow_the_contracts_limits_over_a_grid():
+    """An oracle that is written from the contract: N is 1..999999, C is at most 999999 and not below N, and S is 1..5 and not above N."""
+    numbers = (0, 1, 2, 3, 4, 5, 6, 7, 8, 99999, 100000, 999999, 1000000)
+    for chains in numbers:
+        for candidates in numbers:
+            for surfaced in range(0, 8):
+                value = "chains written (%d); candidates %d; surfaced %d" % (chains, candidates, surfaced)
+                valid = 1 <= chains <= 999999 and chains <= candidates <= 999999 and 1 <= surfaced <= min(5, chains)
+                found = parse_chain_outcome(_record_line(value))
+                if valid:
+                    assert found == _outcome("written", chains, candidates, surfaced, text=value, lines=[0]), value
+                else:
+                    assert found == _outcome("malformed", lines=[0]), value
+    for candidates in numbers:
+        value = "0 chains passed filter (no candidate links); candidates %d" % candidates
+        assert parse_chain_outcome(_record_line(value))["form"] == ("zero" if candidates <= 999999 else "malformed"), value
+
+
+# ---- one record line that is no form ------------------------------------------------------------------------------
+
+OUTCOME_MALFORMED_VALUES = [
+    ("nothing", ""),
+    ("spaces-only", "   "),
+    ("a-word", "ok"),
+    ("the-shorthand-of-the-adr-for-written", "chains written (3)"),
+    ("written-without-surfaced", "chains written (3); candidates 5"),
+    ("written-without-candidates", "chains written (3); surfaced 3"),
+    ("written-in-another-order", "chains written (3); surfaced 3; candidates 5"),
+    ("written-with-no-numbers", "chains written"),
+    ("written-with-zero-chains", "chains written (0); candidates 3; surfaced 0"),
+    ("chains-with-a-leading-zero", "chains written (03); candidates 5; surfaced 3"),
+    ("chains-with-seven-digits", "chains written (1000000); candidates 1000000; surfaced 5"),
+    ("candidates-with-seven-digits", "chains written (3); candidates 1000000; surfaced 3"),
+    ("candidates-below-chains", "chains written (3); candidates 2; surfaced 3"),
+    ("surfaced-zero", "chains written (3); candidates 5; surfaced 0"),
+    ("surfaced-six", "chains written (9); candidates 9; surfaced 6"),
+    ("surfaced-above-chains", "chains written (3); candidates 5; surfaced 4"),
+    ("surfaced-with-a-leading-zero", "chains written (3); candidates 5; surfaced 03"),
+    ("negative-chains", "chains written (-3); candidates 5; surfaced 3"),
+    ("fractional-chains", "chains written (3.0); candidates 5; surfaced 3"),
+    ("signed-candidates", "chains written (3); candidates +5; surfaced 3"),
+    ("written-with-a-full-stop", "chains written (3); candidates 5; surfaced 3."),
+    ("written-with-trailing-words", "chains written (3); candidates 5; surfaced 3 chains"),
+    ("written-with-two-spaces", "chains written (3);  candidates 5; surfaced 3"),
+    ("written-without-a-space-before-the-parenthesis", "chains written(3); candidates 5; surfaced 3"),
+    ("written-capitalised", "Chains written (3); candidates 5; surfaced 3"),
+    ("a-fullwidth-digit", "chains written (３); candidates 5; surfaced 3"),
+    ("an-arabic-indic-digit", "chains written (3); candidates ٥; surfaced 3"),
+    ("written-then-skipped", _WRITTEN_VALUE + "; skipped (x)"),
+    ("zero-without-candidates", "0 chains passed filter (no candidate links)"),
+    ("zero-with-no-number-for-candidates", "0 chains passed filter (no candidate links); candidates"),
+    ("zero-with-an-empty-reason", "0 chains passed filter (); candidates 4"),
+    ("zero-with-a-blank-reason", "0 chains passed filter (   ); candidates 4"),
+    ("zero-candidates-with-seven-digits", "0 chains passed filter (x); candidates 1000000"),
+    ("zero-with-trailing-words", "0 chains passed filter (x); candidates 4 and more"),
+    ("zero-with-a-leading-zero-before-the-count", "00 chains passed filter (x); candidates 4"),
+    ("one-chain-passed-filter", "1 chains passed filter (x); candidates 4"),
+    ("skipped-bare", "skipped"),
+    ("skipped-with-an-empty-reason", "skipped ()"),
+    ("skipped-with-a-blank-reason", "skipped ( )"),
+    ("skipped-with-a-tab-for-a-reason", "skipped (\t)"),
+    ("skipped-with-two-parentheses", "skipped (a)(b)"),
+    ("skipped-with-trailing-words", "skipped (x) now"),
+    ("skipped-capitalised", "Skipped (x)"),
+    ("skipped-with-two-spaces", "skipped  (x)"),
+    ("skipped-with-a-reason-of-81-characters", "skipped (%s)" % ("r" * 81)),
+    ("skipped-with-a-semicolon", "skipped (a; b)"),
+    ("skipped-with-markup", "skipped (**x**)"),
+    ("skipped-with-a-pipe", "skipped (a|b)"),
+    ("skipped-with-a-backslash", "skipped (a\\b)"),
+    ("skipped-with-a-quote", 'skipped ("x")'),
+    ("skipped-with-a-hash", "skipped (#x)"),
+    ("skipped-with-an-accent", "skipped (café)"),
+    ("a-second-space-after-the-label", " skipped (x)"),
+    ("a-tab-after-the-label", "\tskipped (x)"),
+    ("a-trailing-no-break-space", "skipped (x) "),
+]
+
+
+@pytest.mark.parametrize("name,value", OUTCOME_MALFORMED_VALUES, ids=[case[0] for case in OUTCOME_MALFORMED_VALUES])
+def test_one_record_line_that_is_no_form_is_malformed_and_its_text_is_given_to_nobody(name, value):
+    assert parse_chain_outcome(_record_line(value)) == _outcome("malformed", lines=[0])
+    assert parse_chain_outcome(_in_a_threat_model(_record_line(value))) == _outcome("malformed", lines=[_BODY_AT])
+
+
+# ---- no record line -----------------------------------------------------------------------------------------------
+
+OUTCOME_ABSENT_TEXTS = [
+    ("empty", ""),
+    ("no-text-at-all", None),
+    ("a-newline", "\n"),
+    ("prose", "A threat model.\n\n## 5. Coverage Matrix\n"),
+    ("the-heading-without-a-line", "## Attack Chain Outcome\n\n## 5. Coverage Matrix\n"),
+    ("the-label-without-its-space", "**Attack chain outcome**:"),
+    ("the-label-with-no-space-before-the-value", "**Attack chain outcome**:skipped (x)"),
+    ("the-label-with-a-space-before-its-colon", "**Attack chain outcome** : skipped (x)"),
+    ("another-case", "**Attack Chain Outcome**: skipped (x)"),
+    ("lower-case", "**attack chain outcome**: skipped (x)"),
+    ("not-bold", "Attack chain outcome: skipped (x)"),
+    ("italic", "*Attack chain outcome*: skipped (x)"),
+    ("indented", " **Attack chain outcome**: skipped (x)"),
+    ("indented-by-a-tab", "\t**Attack chain outcome**: skipped (x)"),
+    ("in-a-block-quote", "> **Attack chain outcome**: skipped (x)"),
+    ("in-a-list", "- **Attack chain outcome**: skipped (x)"),
+    ("in-a-table-cell", "| **Attack chain outcome**: skipped (x) |"),
+    ("after-other-text", "A line. **Attack chain outcome**: skipped (x)"),
+    ("the-flag-of-an-earlier-version", '---\nschema_version: "1.4"\nhas-attack-chains: true\n---\n'),
+]
+
+
+@pytest.mark.parametrize("name,text", OUTCOME_ABSENT_TEXTS, ids=[case[0] for case in OUTCOME_ABSENT_TEXTS])
+def test_a_text_with_no_record_line_is_absent(name, text):
+    assert parse_chain_outcome(text) == _outcome("absent")
+
+
+# ---- two or more record lines -------------------------------------------------------------------------------------
+
+OUTCOME_SECOND_LINES = [
+    ("the-same-line-twice", _record_line(_WRITTEN_VALUE)),
+    ("another-form", _record_line("skipped (inventory missing)")),
+    ("a-malformed-line", _record_line("maybe")),
+    ("an-empty-record", _OUTCOME_LABEL),
+]
+
+
+@pytest.mark.parametrize("name,second", OUTCOME_SECOND_LINES, ids=[case[0] for case in OUTCOME_SECOND_LINES])
+def test_a_second_record_line_makes_multiple_whatever_it_says(name, second):
+    text = _in_a_threat_model(_record_line(_WRITTEN_VALUE), second)
+    assert parse_chain_outcome(text) == _outcome("multiple", lines=[_BODY_AT, _BODY_AT + 1])
+
+
+def test_record_lines_apart_are_all_given_in_order_and_two_malformed_lines_are_multiple_too():
+    text = "\n".join([_record_line("maybe"), "prose", _record_line("skipped (x)"), "", _record_line("nope"), "```", _record_line(_WRITTEN_VALUE), "```"])
+    assert parse_chain_outcome(text) == _outcome("multiple", lines=[0, 2, 4]), "the fenced fourth line is not one"
+    assert parse_chain_outcome("\n".join([_record_line("maybe"), _record_line("nope")])) == _outcome("multiple", lines=[0, 1])
+
+
+# ---- code fences --------------------------------------------------------------------------------------------------
+
+_OUTCOME_RECORD = _record_line(_WRITTEN_VALUE)
+
+
+def _written_at(*lines):
+    return _outcome("written", 3, 5, 3, text=_WRITTEN_VALUE, lines=lines)
+
+
+OUTCOME_FENCED_CASES = [
+    ("a-fenced-record-is-not-a-record", "```\n" + _OUTCOME_RECORD + "\n```\n", _outcome("absent")),
+    ("a-record-in-tildes-is-not-a-record", "~~~\n" + _OUTCOME_RECORD + "\n~~~\n", _outcome("absent")),
+    ("a-record-in-a-fence-with-an-info-string", "```text\n" + _OUTCOME_RECORD + "\n```\n", _outcome("absent")),
+    ("a-shorter-line-does-not-close-a-longer-fence", "````\n```\n" + _OUTCOME_RECORD + "\n````\n", _outcome("absent")),
+    ("a-fenced-copy-does-not-make-two", _OUTCOME_RECORD + "\n```\n" + _OUTCOME_RECORD + "\n```\n", _written_at(0)),
+    ("a-record-after-the-fence-counts", "```\n" + _OUTCOME_RECORD + "\n```\n" + _OUTCOME_RECORD + "\n", _written_at(3)),
+    ("a-record-before-the-fence-counts", _OUTCOME_RECORD + "\n```\nquoted\n```\n", _written_at(0)),
+    ("an-unclosed-fence-hides-what-follows-it", "```\ntext\n" + _OUTCOME_RECORD + "\n", _outcome("absent")),
+    ("a-fence-around-the-frontmatter-closes-before-the-record", "```yaml\n---\nx: 1\n---\n```\n" + _OUTCOME_RECORD + "\n", _written_at(5)),
+    ("a-crlf-file-with-a-fenced-record", "```\r\n" + _OUTCOME_RECORD + "\r\n```\r\n", _outcome("absent")),
+    ("a-fence-mark-inside-a-line-opens-no-fence", "text ``` text\n" + _OUTCOME_RECORD + "\n", _written_at(1)),
+    ("a-run-of-two-backticks-opens-no-fence", "``\n" + _OUTCOME_RECORD + "\n", _written_at(1)),
+]
+
+
+@pytest.mark.parametrize("name,text,expected", OUTCOME_FENCED_CASES, ids=[case[0] for case in OUTCOME_FENCED_CASES])
+def test_a_line_in_a_code_fence_is_not_a_record_line(name, text, expected):
+    assert parse_chain_outcome(text) == expected
+
+
+@pytest.mark.parametrize("name,text,expected", FENCE_CASES, ids=[case[0] for case in FENCE_CASES])
+def test_the_record_is_found_by_the_one_fence_rule_of_match_heading(name, text, expected):
+    """``FENCE_CASES`` is ``match_heading(outside_fences=True)``'s table, with a heading line in each. Each heading line is made a record line
+    here, and the first record line outside a fence is the one that ``match_heading`` finds, so the two readers can't drift apart."""
+    as_records = text.replace(_HEADING_LINE, _OUTCOME_RECORD)
+    first = match_heading(r"^\*\*Attack chain outcome\*\*: ", as_records, outside_fences=True)
+    assert first == expected, name
+    assert parse_chain_outcome(as_records)["lines"][:1] == ([] if expected is None else [expected]), name
+
+
+# ---- line endings, whitespace and placement -----------------------------------------------------------------------
+
+def test_a_crlf_file_and_trailing_whitespace_read_as_the_lf_file_does():
+    base = _in_a_threat_model(_record_line(_WRITTEN_VALUE))
+    expected = _outcome("written", 3, 5, 3, text=_WRITTEN_VALUE, lines=[_BODY_AT])
+    assert parse_chain_outcome(base) == expected
+    assert parse_chain_outcome(base.replace("\n", "\r\n")) == expected
+    for trailer in (" ", "  ", "\t", " \t ", "\r", " \r"):
+        assert parse_chain_outcome(_in_a_threat_model(_record_line(_WRITTEN_VALUE) + trailer)) == expected, repr(trailer)
+
+
+def test_a_record_is_found_as_the_first_line_and_as_the_last_with_no_final_newline():
+    assert parse_chain_outcome(_OUTCOME_RECORD) == _written_at(0)
+    assert parse_chain_outcome("a\nb\nc\n" + _OUTCOME_RECORD) == _written_at(3)
+    assert parse_chain_outcome("a\nb\nc\n" + _OUTCOME_RECORD + "\n") == _written_at(3)
+
+
+def test_the_record_is_the_line_so_the_heading_that_the_writer_puts_over_it_is_not_needed():
+    reason = "fewer than two layers with STRIDE findings"
+    zero = "0 chains passed filter (%s); candidates 0" % reason
+    under_its_heading = _in_a_threat_model(_record_line(zero))
+    found = parse_chain_outcome(under_its_heading)
+    assert found == _outcome("zero", 0, 0, 0, reason, zero, [_BODY_AT])
+    assert parse_chain_outcome(under_its_heading.replace("## Attack Chain Outcome", "## 6. Risk Summary")) == found, "another heading over the line"
+    at_the_end = _in_a_threat_model() + _record_line(zero) + "\n"
+    assert parse_chain_outcome(at_the_end) == _outcome("zero", 0, 0, 0, reason, zero, [at_the_end.split("\n").index(_record_line(zero))]), "no heading at all"
+
+
+# ---- shipped inputs, and a hostile text ---------------------------------------------------------------------------
+
+def test_every_shipped_threat_model_reads_cleanly():
+    """A threats.md from before this feature has no record, so it reads as absent and the readers fall back to the chain file's presence (D13,
+    US-2 #4). One that carries a record must carry it once, in a form."""
+    paths = sorted((REPO_ROOT / "examples").rglob("threats.md"))
+    assert len(paths) >= 10
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        found = parse_chain_outcome(text)
+        assert found["form"] in ("absent", "written", "zero", "skipped"), path.relative_to(REPO_ROOT).as_posix()
+        if _OUTCOME_LABEL not in text:
+            assert found == _outcome("absent"), path.relative_to(REPO_ROOT).as_posix()
+
+
+def test_a_hostile_text_is_read_in_one_linear_pass_and_a_long_value_is_refused_at_once():
+    started = time.perf_counter()
+    record = _record_line("skipped (x)")
+    many = parse_chain_outcome("\n".join([record] * 100000))
+    assert many["form"] == "multiple" and many["lines"] == list(range(100000))
+    assert parse_chain_outcome("```\n" + "\n".join([record] * 100000) + "\n```\n") == _outcome("absent")
+    for value in ("skipped (" + "a" * 5000000 + ")", "skipped (" + "a" * 80 + "(" * 1000000, "chains written (" + "9" * 1000000 + ")",
+                  "0 chains passed filter (" + " " * 2000000 + ")", " " * 3000000):
+        assert parse_chain_outcome(_record_line(value)) == _outcome("malformed", lines=[0])
+    assert time.perf_counter() - started < 5, "the record is no longer read in one linear pass"
