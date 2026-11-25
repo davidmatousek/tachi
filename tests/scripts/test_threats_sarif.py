@@ -1,20 +1,20 @@
-"""Cases for the rewritten ``scripts/generate-threats-sarif.py``, written before the script (F-374 T099; TDD; ADR-050 D1, D7, D8).
+"""Cases for the rewritten ``scripts/generate-threats-sarif.py``, written before the script (F-374 T099; TDD) and extended with it (T100; ADR-050 D1, D7, D8).
 
 They target ``contracts/cli.md`` (the entry and the exit table: 0, 1, 2 and 4), ``contracts/sarif-result.md`` (the result's
 shape and ruling C's sentence), ``.claude/skills/tachi-shared/references/sarif-identity-shared.md`` (the shared reference) and
 ADR-050 D1 (the surface that PR 2 moves to shipped code), D4 (the write), D7 (identity) and D8 (membership, the N/N rule and
-the claim rule), with the cross-read's errata (``test-results/w2-entry-pr2.md``: S1P-A18 to S1P-A21), never an implementation.
-T100 writes the generator to them. Until then they fail: ``scripts/generate-threats-sarif.py`` is still the orchestrator-era
-script, whose ``main()`` takes no ``argv`` and which reads a different input. ``generator`` loads it when a case first asks,
-and says so, so each case fails with the missing rewrite and not with an import error at collection.
+the claim rule), with the cross-read's errata (``test-results/w2-entry-pr2.md``: S1P-A18 to S1P-A21) and the architect's rulings
+on T099's readings (S1P-A26 to S1P-A28), never an implementation. T099 wrote sections 1 to 11, red; T100's generator passes them,
+and its own cases are section 12. ``generator`` loads the script when a case first asks, and a case fails with a message that
+names a missing or an old script, not with an import error at collection.
 
 How they run (ADR-050 D16, H15): the entry is loaded through ``tests/conftest.py``'s ``_load_hyphenated_script`` and driven
 in-process through ``main(argv)``, so pytest-cov counts it. The one subprocess case, in section 11, shows what a process alone
 shows: the bytecode guard and the output on a real interpreter. Nothing here pins a private helper: a case runs ``main(argv)``,
 then reads the exit code, the streams and the file. Fixtures are synthetic (H8).
 
-What these cases assume of the generator (T100 follows them; where a contract left a form open, the case says ``# reading:``
-and the orchestrator rules it at integration):
+What these cases assume of the generator (T100's generator follows them; where a contract left a form open, the case says
+``# reading:``, and the architect's rulings S1P-A26 to S1P-A28 settled the ones that T099 raised):
 
 1. **The CLI** is ``generate-threats-sarif.py --threats FILE --out DIR [--architecture PATH]`` with ``--help`` and ``--version``.
    ``main(argv=None) -> int``, behind a thin ``__main__`` guard. The exit codes are the table's: 0, and 1 for a missing input,
@@ -39,6 +39,8 @@ The groups, by what turns them green:
 * ``test_nn_*`` and ``test_membership_*``: D8's counting rule and its member set (T100).
 * ``test_correlation_*``, ``test_identity_*`` and ``test_baseline_*``: ruling C, the regroup pair and ``baseline-run-id``.
 * ``test_uri_*``, ``test_write_*`` and ``test_module_*``: D7's URI, D4's write and the script's own shape.
+* ``test_properties_*``, ``test_rules_*`` and ``test_warning_*`` (section 12, T100's): the exact property set of S1P-A28, the rules, the
+  taxonomies and the run's other stderr and exit readings.
 
 The cases that need the cross-file harness (the scorer's and controls files beside this one, FR-E.13's pin and the carrier
 chain) are ``test_sarif_identity.py``'s section 22, which builds on the project here.
@@ -60,8 +62,8 @@ import pytest
 
 from ..conftest import _load_hyphenated_script
 from .test_render_risk_scores import (
-    COMPONENTS, DASH, DIGEST, HOSTILE_THREAT, RESOLVED, RESOLVED_IDS, SPECS, ZONES, invoke, make_architecture_md, make_threats_md,
-    mitigation_of, spec, tree_state)
+    CATEGORY_NAME, COMPONENTS, DASH, DIGEST, HOSTILE_THREAT, RESOLVED, RESOLVED_IDS, SPECS, ZONES, invoke, make_architecture_md,
+    make_threats_md, mitigation_of, spec, tree_state)
 from .test_sarif_identity import EXPECTED_RULES, keys_of, message_parts, recipe, results_by, ruling_c
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -1075,3 +1077,239 @@ def test_module_a_fresh_interpreter_runs_it_writes_the_same_bytes_and_leaves_no_
     version = subprocess.run([sys.executable, str(copied / GENERATOR_NAME), "--version"], cwd=str(tmp_path), env=env, capture_output=True,
                              text=True, timeout=120)
     assert version.returncode == 0 and tp.VERSION in version.stdout + version.stderr
+
+
+# =============================================================================
+# 12. The property set, the rules and the readings that T100 adds (S1P-A28; sarif-specification.md's non-identity text)
+# =============================================================================
+#
+# ``contracts/sarif-result.md`` holds this file's exact property set: the keys that its own contract names (``sarif-specification.md``'s
+# non-identity text and the orchestrator's Phase 4 rules), and no other. Sections 1 to 11 pin what T099 could pin before the script. These cases
+# pin the rest of what the generator writes: that set, the tags, the placeholders of a drift form, the driver, its rules and its taxonomies,
+# and the readings that only stderr and the exit code show. Each states its source, and none reads the script's own tables.
+
+CONTRACTED_KEYS = {"tags", "maestro-layer", "severity", "baselineState", "affected_assets"}
+DROPPED_KEYS = ("likelihood", "impact", "owasp_id", "maestro-pattern", "asi07_emission", "feature", "pattern_category")  # no contract names them (PM W3 ruling 2)
+SECURITY_SEVERITY = {"Critical": 9.0, "High": 8.0, "Medium": 5.0, "Low": 2.0, "Note": 0.1}  # sarif-specification.md's severity table
+UNKNOWN_RISK_SEVERITY = 5.0  # a risk level that is none of the five words counts as a Medium, the ``warning`` that level_for_band gives it
+
+
+def test_properties_a_result_holds_exactly_the_keys_its_contract_names(plain, aware):
+    """S1P-A28, the one case that pins the exact set. A first-run result holds the five keys that this file's own contract names. A baseline-aware
+    result adds ``baseline-run-id``, and a group member the emitter's three ``correlation-*`` keys. ``likelihood``, ``impact``, ``owasp_id``, the
+    ``maestro-pattern`` property and AG-8's three markers, which no contract names, are written nowhere."""
+    for result in plain.results.values():
+        assert set(result["properties"]) == CONTRACTED_KEYS
+    members = {"S-2", "S-10", "T-1", "E-3", "E-5"}
+    for finding_id, result in aware.results.items():
+        expected = CONTRACTED_KEYS | {"baseline-run-id"} | (set(sc.CORRELATION_KEYS) if finding_id in members else set())
+        assert set(result["properties"]) == expected, finding_id
+    for result in list(plain.results.values()) + list(aware.results.values()):
+        assert not [key for key in DROPPED_KEYS if key in result["properties"]]
+
+
+def test_properties_baselineState_follows_the_status_in_a_baseline_aware_run_and_is_new_in_a_run_with_no_baseline(plain, aware):
+    """S1P-A28: ``new``, ``unchanged`` or ``updated`` from the finding's status, and ``new`` on every result of a run with no baseline, whatever
+    a row says. ``absent`` never occurs, because RESOLVED findings are no result (D8). It lives in ``properties``: SARIF's own key stays forbidden."""
+    word = {"NEW": "new", "UPDATED": "updated", "UNCHANGED": "unchanged"}
+    assert {item["status"] for item in SPECS} == set(word), "the project holds all three statuses, so the two runs below differ"
+    for item in SPECS:
+        assert aware.results[item["id"]]["properties"]["baselineState"] == word[item["status"]], item["id"]
+        assert plain.results[item["id"]]["properties"]["baselineState"] == "new", item["id"]
+    assert not [r for r in list(plain.results.values()) + list(aware.results.values()) if "baselineState" in r]
+
+
+@pytest.mark.parametrize("example", ["consumer-agent-app/sample-report", "predictive-ml-app/sample-report"])
+def test_properties_a_drift_form_gives_baselineState_new_and_the_placeholders_for_what_it_lacks(generator, tmp_path, example):
+    """S1P-A28 ("for a finding whose form gives no status") and the placeholders (``module-signatures.md``): the numbered-list form carries no
+    status, component or threat. Each of its results is new, in the component ``Unspecified`` with ``No threat description.``, where the shared
+    emitter's own fallbacks apply (the application zone and the process kind). The file still has one result for each finding."""
+    text = (REPO_ROOT / "examples" / example / "threats.md").read_text(encoding="utf-8")
+    assert tachi_parsers.parse_reference_set(text)["form"] == "list"
+    project = Project(generator, tmp_path, threats_text=text)
+    generated(project)
+    assert len(project.results) > 10
+    for finding_id, result in project.results.items():
+        assert result["properties"]["baselineState"] == "new", finding_id
+        assert result["locations"][0]["logicalLocations"] == [{"name": "Unspecified", "fullyQualifiedName": "Application Zone/Unspecified", "kind": "process"}]
+        assert message_parts(result["message"]["text"])[0] == "No threat description.", finding_id
+
+
+def test_properties_the_tags_are_the_category_tags_then_the_layer_then_the_pattern(generator, tmp_path):
+    """S1P-A28: ``security``, then ``stride`` or ``ai``, then the category's own tag, as the generator has always written them, with ``TE`` taking
+    ``AG``'s plus ``human-trust-exploitation``; then ``maestro-layer:<L1 to L7, or Unclassified>``; then ``maestro-pattern:<value>`` when the
+    pattern isn't ``none`` (``multiple`` included). All twelve prefixes, written out here from the contract."""
+    category = {
+        "S": ["security", "stride", "spoofing"], "T": ["security", "stride", "tampering"], "R": ["security", "stride", "repudiation"],
+        "I": ["security", "stride", "information-disclosure"], "D": ["security", "stride", "denial-of-service"],
+        "E": ["security", "stride", "elevation-of-privilege"], "AG": ["security", "ai", "agentic"],
+        "AGP": ["security", "ai", "agentic", "agentic-pattern"], "TE": ["security", "ai", "agentic", "human-trust-exploitation"],
+        "LLM": ["security", "ai", "llm"], "OI": ["security", "ai", "llm", "output-integrity"], "MI": ["security", "ai", "llm", "misinformation"]}
+    assert set(category) == set(tp.FINDING_PREFIXES)
+    specs = [finding("%s-1" % prefix, "planner-agent", "A threat for %s." % prefix) for prefix in category]
+    specs.append(finding("S-2", "planner-agent", "A finding that no layer reaches."))
+    text = make_threats_md(specs, [])
+    patterns = {"AG-1": "trust_exploitation", "TE-1": "multiple"}
+    for finding_id, pattern in patterns.items():
+        row = "| %s | NEW | %s | %s |" % (finding_id, CATEGORY_NAME[finding_id.partition("-")[0]], DASH)
+        assert row in text
+        text = text.replace(row, row.replace(DASH, pattern))
+    row = "| S-2 | NEW | Spoofing | %s | planner-agent | %s |" % (DASH, COMPONENTS["planner-agent"][1])
+    assert row in text
+    text = text.replace(row, "| S-2 | NEW | Spoofing | %s | unlisted-service |  |" % DASH)  # a component that Section 1 doesn't list, and no layer cell
+    project = Project(generator, tmp_path, threats_text=text)
+    generated(project)
+    for prefix, tags in category.items():
+        finding_id = "%s-1" % prefix
+        extra = ["maestro-pattern:" + patterns[finding_id]] if finding_id in patterns else []
+        assert project.results[finding_id]["properties"]["tags"] == tags + ["maestro-layer:L3"] + extra, prefix
+    unclassified = project.results["S-2"]["properties"]
+    assert unclassified["tags"] == category["S"] + ["maestro-layer:Unclassified"] and unclassified["maestro-layer"] == "Unclassified"
+
+
+def test_rules_one_for_each_category_with_a_result_with_its_help_and_the_highest_severity_among_its_results(plain):
+    """``sarif-specification.md``, "Rule Definition Templates": only the categories that have a result get a rule, each with ``help`` and a
+    ``security-severity`` that is the highest value among its findings, by the severity table. The shared rule table's order of keys
+    (``id``, the two descriptions, ``help``, ``properties``, ``relationships``) is the order of every shipped ``threats.sarif``."""
+    expected = {}
+    for item in SPECS:
+        rule = EXPECTED_RULES[tp.canonical_finding_id(item["id"]).partition("-")[0]]
+        expected[rule] = max(expected.get(rule, 0.0), SECURITY_SEVERITY[item["risk"]])
+    rules = plain.sarif["runs"][0]["tool"]["driver"]["rules"]
+    assert [rule["id"] for rule in rules] and {rule["id"] for rule in rules} == set(expected) and len(rules) == len(expected)
+    assert "tachi/stride/information-disclosure" not in expected, "the project has no such finding, so it has no such rule"
+    for rule in rules:
+        assert list(rule) == ["id", "shortDescription", "fullDescription", "help", "properties", "relationships"], rule["id"]
+        assert sorted(rule["help"]) == ["markdown", "text"] and rule["help"]["text"] and rule["help"]["markdown"], rule["id"]
+        assert list(rule["properties"]) == ["tags", "security-severity"] and rule["properties"]["tags"][0] == "security", rule["id"]
+        assert rule["properties"]["security-severity"] == "%.1f" % expected[rule["id"]], rule["id"]
+        assert rule["relationships"], rule["id"]
+
+
+def test_rules_a_finding_with_no_risk_level_is_a_warning_and_counts_as_a_medium(generator, tmp_path):
+    """A form that names no risk level (the numbered list under no priority subheading) has no word for ``level`` or for its rule. The shared
+    emitter's default for an unknown band is ``warning``, and the rule counts such a finding as a Medium, the severity that ``warning`` has.
+    # reading: no contract names a default for a blank risk level. The retired generator wrote ``note``; this one takes the shared helper's."""
+    text = (REPO_ROOT / "examples" / "predictive-ml-app" / "sample-report" / "threats.md").read_text(encoding="utf-8")
+    project = Project(generator, tmp_path, threats_text=text)
+    generated(project)
+    blank = {finding_id: result for finding_id, result in project.results.items() if result["properties"]["severity"] == ""}
+    assert blank and all(result["level"] == "warning" for result in blank.values())
+    highest = {}
+    for result in project.results.values():
+        value = SECURITY_SEVERITY.get(result["properties"]["severity"], UNKNOWN_RISK_SEVERITY)
+        highest[result["ruleId"]] = max(highest.get(result["ruleId"], 0.0), value)
+    for rule in project.sarif["runs"][0]["tool"]["driver"]["rules"]:
+        assert float(rule["properties"]["security-severity"]) == highest[rule["id"]], rule["id"]
+
+
+def test_document_the_driver_carries_the_release_and_the_two_taxonomies_in_their_stable_order(plain):
+    """``sarif-specification.md``, "SARIF Taxonomies" and its Rule 5: exactly two entries, OWASP at index 0 and CWE at 1, which never reorder, and
+    every relationship of a rule names one of them. ``semanticVersion`` is tachi's release version, as in the other two files.
+    # reading: PM W3 ruling 2c names the scorer's and controls files, and ``sarif-result.md`` leaves this driver to its own template (T101),
+    # which still shows the orchestrator-era value. The retired generator wrote the constant ``1.7``."""
+    run = plain.sarif["runs"][0]
+    driver = run["tool"]["driver"]
+    assert list(driver) == ["name", "semanticVersion", "informationUri", "supportedTaxonomies", "rules"]
+    assert driver["semanticVersion"] == tp.VERSION
+    assert [(entry["name"], entry["version"]) for entry in run["taxonomies"]] == [("OWASP", "2021"), ("CWE", "4.13")]
+    assert driver["supportedTaxonomies"] == [{"name": "OWASP", "index": 0}, {"name": "CWE", "index": 1}]
+    declared = {entry["name"] for entry in run["taxonomies"]}
+    for rule in driver["rules"]:
+        assert {link["target"]["toolComponent"]["name"] for link in rule["relationships"]} <= declared, rule["id"]
+
+
+def test_cli_an_out_that_is_not_a_directory_exits_1_and_names_it(generator, tmp_path):
+    """S1P-A42: ``--out`` is checked first, with the words that every entry shares, and it is exit 1 for an entry whose codes include 1."""
+    project = Project(generator, tmp_path)
+    res = invoke(generator, ["--threats", project.threats, "--out", project.out / "missing"], tmp_path)
+    assert res.code == 1, res.describe()
+    assert "--out is not a directory" in res.err and "Remedy: create it or correct --out" in res.err, res.describe()
+    assert sorted(path.name for path in project.out.iterdir()) == ["threats.md"]
+
+
+def test_cli_an_input_over_the_16_mib_cap_exits_2_and_writes_nothing(generator, tmp_path, monkeypatch):
+    """D3 step 2's cap is read when the script runs, so a case sets a small one instead of writing 16 MiB."""
+    project = Project(generator, tmp_path)
+    monkeypatch.setattr(tp, "MAX_AGENT_INPUT_BYTES", 1000)
+    res = project.generate()
+    assert res.code == 2 and "is over 1000 bytes" in res.err, res.describe()
+    assert not project.sarif_path.exists()
+
+
+@pytest.mark.parametrize("where", ["the baseline run ID", "an asset tag"])
+def test_refusal_a_forbidden_character_in_the_baseline_run_id_or_an_asset_tag_exits_2_and_writes_nothing(generator, tmp_path, where):
+    """Two more values that the generator copies into the file, and so checks where it takes them (P0-4): the run ID that the frontmatter's
+    baseline block names, which ``baseline-run-id`` carries, and a tag of the populator's block, which ``affected_assets`` copies."""
+    text = with_baseline(make_threats_md(baseline_source="baseline/threats.md"))
+    if where == "the baseline run ID":
+        text = text.replace('run_id: "%s"' % BASELINE_RUN_ID, 'run_id: "%s%s"' % (BASELINE_RUN_ID, chr(0x202e)))
+    else:
+        text = text.replace("| S-2 | [] |", "| S-2 | [auth%s] |" % chr(0x202e))
+    assert chr(0x202e) in text
+    project = Project(generator, tmp_path, threats_text=text)
+    project.sarif_path.write_bytes(b'{"earlier": "run"}\n')
+    res = project.generate()
+    assert res.code == 2 and "U+202E" in res.err, res.describe()
+    assert project.sarif_path.read_bytes() == b'{"earlier": "run"}\n', "an earlier file is left as it was"
+
+
+def test_failure_a_file_that_cannot_be_written_exits_4_and_the_earlier_one_stays(generator, tmp_path, monkeypatch):
+    project = Project(generator, tmp_path)
+    project.sarif_path.write_bytes(b'{"earlier": "run"}\n')
+
+    def refuse(path, data, mode_of=None):
+        raise OSError(13, "Permission denied")
+
+    monkeypatch.setattr(tp, "atomic_write", refuse)
+    res = project.generate()
+    assert res.code == 4, res.describe()
+    assert "threats.sarif could not be written (Permission denied)" in res.err and "Remedy:" in res.err, res.describe()
+    assert project.sarif_path.read_bytes() == b'{"earlier": "run"}\n'
+
+
+def test_failure_a_forbidden_character_that_reaches_the_document_is_stopped_by_the_backstop_with_exit_4(generator, tmp_path, monkeypatch):
+    """Every value that the generator takes is checked where it is taken, so nothing reaches the document with a forbidden character by
+    construction. The backstop looks at every decoded string of the finished document all the same (NFR-10, P0-4), and it is shown here by
+    putting one where intake can't: through the emitter's own result."""
+    project = Project(generator, tmp_path)
+    project.sarif_path.write_bytes(b'{"earlier": "run"}\n')
+    real = sc.build_result
+
+    def tainted(**kwargs):
+        result = real(**kwargs)
+        result["properties"]["maestro-layer"] += chr(0x202e)
+        return result
+
+    monkeypatch.setattr(sc, "build_result", tainted)
+    res = project.generate()
+    assert res.code == 4 and "U+202E" in res.err, res.describe()
+    assert project.sarif_path.read_bytes() == b'{"earlier": "run"}\n'
+
+
+def test_warning_a_finding_that_section_7_lists_twice_is_named_on_stderr_and_the_exit_stays_0(generator, tmp_path):
+    project = Project(generator, tmp_path, threats_text=make_threats_md(repeated=[("S-2", "client-portal")]))
+    res = project.generate()
+    assert res.code == 0 and "duplicate-finding-id" in res.err and "S-2" in res.err, res.describe()
+    assert len(project.results) == len(SPECS)
+
+
+def test_warning_a_drift_form_names_what_it_lacks_on_stderr_and_the_exit_stays_0(generator, tmp_path):
+    text = (REPO_ROOT / "examples" / "consumer-agent-app" / "sample-report" / "threats.md").read_text(encoding="utf-8")
+    project = Project(generator, tmp_path, threats_text=text)
+    res = project.generate()
+    assert res.code == 0, res.describe()
+    assert "value-not-in-form" in res.err, res.describe()
+    assert all(name in res.err for name in ("component", "threat", "delta_status")), res.describe()  # the three values the list form lacks (S-12(b))
+
+
+def test_warning_a_malformed_row_of_section_4a_is_named_on_stderr_and_its_findings_stay_uncorrelated(generator, tmp_path):
+    """The claim rule's own report belongs to ``check-threat-model.py`` (S1P-A19). A row that the shared parser skips is a different matter: it
+    changes which findings correlate, so the run says so, and every other group still holds."""
+    text = make_threats_md(groups=[("CG-X", ["S-2", "T-1"]), ("CG-2", ["E-3", "E-5"])])  # CG-X is not a group ID
+    project = Project(generator, tmp_path, threats_text=text)
+    res = project.generate()
+    assert res.code == 0 and "correlation-row-skipped" in res.err, res.describe()
+    results = project.results
+    assert "correlation-group" not in results["S-2"]["properties"] and "correlation-group" not in results["T-1"]["properties"]
+    assert results["E-3"]["properties"]["correlation-group"] == "CG-2" and results["E-5"]["properties"]["correlation-role"] == "peer"

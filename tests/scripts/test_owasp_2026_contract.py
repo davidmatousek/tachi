@@ -4,20 +4,7 @@ Locks two independently-motivated behaviors introduced by the 2026 remap so a
 future edition bump (or an accidental regression) cannot silently break either
 one:
 
-(a) ``normalize_owasp_id`` (``scripts/generate-threats-sarif.py:387``)
-    covering matrix per plan.md D2 / ADR-048 D1: the function's regex is
-    deliberately year-agnostic (the year is a digit capture, not a literal
-    ``2025``/``2026``), so a 2025-token input and a 2026-token input
-    normalize identically. The trailing ``$`` anchor is equally deliberate:
-    any suffix after the year (e.g. a transition breadcrumb) fails the match
-    and falls through to raw passthrough — this is *why* ADR-048 D1 confines
-    breadcrumbs to narrative prose and bans them from machine-parsed token
-    surfaces (``references[]``, the ``threats.md`` References column,
-    ``source_attribution``). This module pins that failure mode as a named,
-    asserted behavior rather than an implicit consequence someone has to
-    rediscover later.
-
-(b) FR-012a's derived-taxa contract (T015, commit 56343db), now on the
+(a) FR-012a's derived-taxa contract (T015, commit 56343db), now on the
     renderer. F-362 made ``scripts/generate-risk-scores-sarif.py`` take its
     OWASP-LLM taxa from ``schemas/taxonomy/owasp.yaml`` at both former
     hardcoded sites (``TAXONOMIES`` and ``supported_taxonomies()``), replacing
@@ -44,15 +31,47 @@ one:
     template or in ``contracts/sarif-result.md``, so there is no site left to
     pin, and the test that pinned its edition tokens is retired, not moved.
 
+(b) ADR-048 D3's enforcement point on the shipped ``threats.sarif`` generator
+    (F-374 T100; ADR-050 D1 makes the shipped emitters the places where "only
+    ``:2026`` tokens are emitted"). ``scripts/generate-threats-sarif.py`` is
+    rewritten on the shared emitter and writes ``threats.sarif`` itself. The
+    prose it copies from ``threats.md`` is model-authored, and ADR-048's
+    authored-prose enforcement points stay for that text. What the generator
+    writes on its own is the driver (the rules, their ``help`` and the
+    taxonomies), and that holds no OWASP-LLM edition token but 2026's. Its two
+    declared taxonomies are OWASP 2021 and CWE 4.13 (``sarif-specification.md``,
+    "SARIF Taxonomies"), so FR-012a's OWASP-LLM taxa contract of (a) doesn't
+    apply to it: the file declares no OWASP-LLM taxonomy.
+
+Retired with the old generator (F-374 T100; S1P-A28, S1P-A29): the covering
+matrix for ``normalize_owasp_id`` (``scripts/generate-threats-sarif.py:387``,
+plan.md D2 / ADR-048 D1, spec FR-006b). Its regex was deliberately year-agnostic,
+and its trailing ``$`` anchor made a breadcrumb-suffixed token fall through to
+passthrough, which is *why* ADR-048 D1 bans breadcrumbs from the machine-parsed
+token surfaces (``references[]``, the ``threats.md`` References column,
+``source_attribution``). The function's only caller wrote the ``owasp_id``
+property, which no contract names, so the rewritten generator writes no such
+property and the parser went with it. ADR-048's dated note (T162) records the
+retirement. The rule that the matrix documented stands in ADR-048 D1, and the
+extractors' ``classify_framework_items`` warning (FR-012b) still makes drift in
+a token form loud. One assertion of the matrix still holds through the
+generator's output, and (b) keeps it: each STRIDE prefix leads to its OWASP 2021
+category (``A07``, ``A08``, ``A09``, ``A01``, ``A05``, ``A01``), now through the
+``relationships`` of the finding's rule. The matrix held 22 test items. The 6
+STRIDE ones are that kept assertion, and the other 16 (the LLM, ASI and MCP token
+forms, the zero-padding, the breadcrumb and passthrough cases and the unmapped
+prefix) exercised branches that only the ``owasp_id`` property used.
+
 SAME-COMMIT obligation (KB 3 lockstep): this module's filename is wired into
 ``.github/workflows/tachi-pytest.yml`` — both the ``paths:`` trigger list and
 the ``pytest`` invocation — and the surfaces it reads must sit in the
 ``&hardening_paths`` anchor, so that each change to them triggers this gate
 (architect MEDIUM-1, kept by ADR-050 D16): ``schemas/taxonomy/owasp.yaml``
-(the catalog) and, in place of the retired generator, the renderer and what it
-loads (``scripts/render-risk-scores.py`` and its helpers, ``tachi-stage.py``
-and ``populate-affected-assets.py``) plus the project harness that
-``tests/scripts/test_render_risk_scores.py`` provides.
+(the catalog), the renderer and what it loads (``scripts/render-risk-scores.py``
+and its helpers, ``tachi-stage.py`` and ``populate-affected-assets.py``), the
+threats generator that (b) runs (``scripts/generate-threats-sarif.py``) and the
+project harness that ``tests/scripts/test_render_risk_scores.py`` provides. No
+other harness is imported, so the gate's path list needs no new entry.
 
 References:
   - specs/362-remap-owasp-llm-top10-2026/spec.md FR-012(a) (PRD FR-11)
@@ -68,11 +87,14 @@ Hyphenated script filenames (``generate-threats-sarif.py``,
 ``import``; loaded via ``importlib.util.spec_from_file_location`` — the
 established repo pattern (see
 ``tests/scripts/test_affected_assets_wiring.py::_load_script_module``,
-``tests/scripts/test_catalog_drift_guard.py``).
+``tests/scripts/test_catalog_drift_guard.py``). Each entry is then driven
+in-process through ``main(argv)`` (ADR-050 D16, H15).
 """
 from __future__ import annotations
 
 import importlib.util
+import json
+import re
 from pathlib import Path
 
 import pytest
@@ -86,7 +108,7 @@ def _load_script_module(filename: str, modname: str):
     """Load a hyphenated ``scripts/<filename>`` module by file location.
 
     Mirrors ``tests/scripts/test_affected_assets_wiring.py::_load_script_module``
-    exactly. None of the three scripts this module loads executes file I/O or
+    exactly. None of the scripts this module loads executes file I/O or
     ``main()`` at import time (each guards its CLI entry point behind
     ``if __name__ == "__main__":``), so loading is side-effect-free beyond
     binding module-level names.
@@ -98,123 +120,8 @@ def _load_script_module(filename: str, modname: str):
     return module
 
 
-_gen_threats = _load_script_module("generate-threats-sarif.py", "generate_threats_sarif")
-
-normalize_owasp_id = _gen_threats.normalize_owasp_id
-
-
 # -----------------------------------------------------------------------------
-# (a) normalize_owasp_id covering matrix — plan.md D2 / ADR-048 D1
-# -----------------------------------------------------------------------------
-# Branch structure, read directly from scripts/generate-threats-sarif.py:387:
-#   owasp_ref truthy  -> strip -> try LLM regex -> try ASI regex -> try MCP
-#                         regex -> raw passthrough (no branch matched)
-#   owasp_ref falsy    -> STRIDE-prefix dict lookup (default "")
-# There is no dedicated CWE regex branch; a "CWE-NN"-shaped ref exercises the
-# same final passthrough as any other unmatched string (see the "unmatched
-# strings" group below, which pins that explicitly).
-
-
-# --- LLM branch: year-agnostic regex, both editions normalize identically ---
-
-@pytest.mark.parametrize(
-    ("owasp_ref", "expected"),
-    [
-        # 2025-token spread (LLM01, LLM05 middle, LLM10) — historical outputs
-        # stay interpretable; the regex has no literal year.
-        ("OWASP LLM01:2025", "LLM-01"),
-        ("OWASP LLM05:2025", "LLM-05"),
-        ("OWASP LLM10:2025", "LLM-10"),
-        # 2026-token spread — identical normalization, same regex.
-        ("OWASP LLM01:2026", "LLM-01"),
-        ("OWASP LLM05:2026", "LLM-05"),
-        ("OWASP LLM10:2026", "LLM-10"),
-    ],
-    ids=[
-        "2025-llm01",
-        "2025-llm05-middle",
-        "2025-llm10",
-        "2026-llm01",
-        "2026-llm05-middle",
-        "2026-llm10",
-    ],
-)
-def test_llm_branch_normalizes_both_editions_identically(owasp_ref, expected):
-    assert normalize_owasp_id(owasp_ref, "I") == expected
-
-
-def test_llm_branch_zero_pads_single_digit_capture():
-    """Distinguishes real zero-pad reformatting from naive substring
-    passthrough: the capture group matches one-or-more digits (not a fixed
-    2-digit width), so a single-digit source still normalizes to the
-    zero-padded 2-digit output form."""
-    assert normalize_owasp_id("OWASP LLM1:2025", "I") == "LLM-01"
-
-
-# --- Breadcrumb-suffixed passthrough — the ADR-048 D1 rationale, pinned ---
-
-def test_breadcrumb_suffixed_string_is_passthrough_not_normalized():
-    """A transition breadcrumb ("(2025: LLM<NN>)") appended after the year
-    fails the trailing-``$``-anchored regex and falls through to raw
-    passthrough — this is WHY ADR-048 D1 confines breadcrumbs to narrative
-    prose and bans them from machine-parsed token surfaces (``references[]``,
-    the ``threats.md`` References column, ``source_attribution``)."""
-    breadcrumbed = "OWASP LLM01:2026 (2025: LLM01)"
-    assert normalize_owasp_id(breadcrumbed, "I") == breadcrumbed
-
-
-# --- ASI / MCP branches (per docstring; hyphen-optional, zero-pad reformat) ---
-
-@pytest.mark.parametrize(
-    ("owasp_ref", "expected"),
-    [
-        ("ASI-01", "ASI-01"),
-        ("ASI01", "ASI-01"),  # hyphen is optional in the source pattern
-        ("ASI-7", "ASI-07"),  # single digit still zero-pads
-        ("MCP-03", "MCP-03"),
-        ("MCP03", "MCP-03"),  # hyphen is optional in the source pattern
-    ],
-)
-def test_asi_mcp_branches(owasp_ref, expected):
-    assert normalize_owasp_id(owasp_ref, "I") == expected
-
-
-# --- CWE-shaped and unknown/garbage strings: both fall to raw passthrough ---
-
-@pytest.mark.parametrize(
-    "owasp_ref",
-    [
-        "CWE-79",  # no dedicated CWE branch exists — same passthrough as garbage
-        "garbage-string-xyz",
-    ],
-)
-def test_unmatched_strings_are_passthrough(owasp_ref):
-    assert normalize_owasp_id(owasp_ref, "I") == owasp_ref
-
-
-# --- STRIDE-derived fallback: empty owasp_ref maps by prefix ---
-
-@pytest.mark.parametrize(
-    ("prefix", "expected"),
-    [
-        ("S", "A07"),
-        ("T", "A08"),
-        ("R", "A09"),
-        ("I", "A01"),
-        ("D", "A05"),
-        ("E", "A01"),
-    ],
-)
-def test_stride_fallback_maps_prefix_to_owasp_2021_category(prefix, expected):
-    assert normalize_owasp_id("", prefix) == expected
-
-
-def test_stride_fallback_unmapped_prefix_returns_empty_string():
-    assert normalize_owasp_id("", "X") == ""
-
-
-# -----------------------------------------------------------------------------
-# (b) FR-012a derived-taxa contract — the renderer's ``taxonomies`` and
+# (a) FR-012a derived-taxa contract — the renderer's ``taxonomies`` and
 #     ``supportedTaxonomies``, as the written ``risk-scores.sarif`` carries them
 # -----------------------------------------------------------------------------
 
@@ -367,3 +274,67 @@ def test_taxonomies_owasp_llm_version_matches_catalog_edition(taxonomies):
 def test_supported_taxonomies_owasp_llm_version_matches_catalog_edition(supported_taxonomies):
     entry = _owasp_llm_entry(supported_taxonomies)
     assert entry["version"] == next(iter(_EXPECTED_EDITIONS))
+
+
+# -----------------------------------------------------------------------------
+# (b) ADR-048 D3's enforcement point on the shipped ``threats.sarif`` generator
+#     — what the generator writes on its own carries no LLM edition but 2026's
+# -----------------------------------------------------------------------------
+# One finding of every prefix, so every category has a rule and each rule's ``help`` is in the file. The prose that the generator copies
+# from ``threats.md`` is model-authored and is no part of this check: ADR-048's authored-prose enforcement points stay for it.
+
+_PREFIXES = ("S", "T", "R", "I", "D", "E", "AG", "AGP", "LLM", "OI", "MI", "TE")
+_LLM_TOKEN = re.compile(r"LLM[0-9]{1,2}:([0-9]{4})")
+
+
+@pytest.fixture(scope="module")
+def threats_run(tmp_path_factory) -> dict:
+    """The first run of the ``threats.sarif`` that ``generate-threats-sarif.py`` writes for a synthetic threat model, parsed.
+
+    The generator runs in-process through ``main(argv)``, as ``/tachi.threat-model`` runs it at Step 2.10, on the project harness of
+    ``test_render_risk_scores.py`` (its ``make_threats_md`` and ``invoke``), so this module imports no other harness.
+    """
+    from . import test_render_risk_scores as harness
+
+    specs = [harness.spec("%s-1" % prefix, "planner-agent", "A threat for %s." % prefix, "Medium", "NEW",
+                          "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N", (5, 5, 5, 5), (4, 4, 4, 4), "Agent Runtime Zone", "Trusted", 0, 0)
+             for prefix in _PREFIXES]
+    generator = _load_script_module("generate-threats-sarif.py", "generate_threats_sarif_for_owasp_contract")
+    root = tmp_path_factory.mktemp("owasp-contract-threats")
+    run_dir = root / "run"
+    run_dir.mkdir()
+    threats = run_dir / "threats.md"
+    threats.write_text(harness.make_threats_md(specs, []), encoding="utf-8")
+    result = harness.invoke(generator, ["--threats", threats, "--out", run_dir], root)
+    assert result.code == 0, result.describe()
+    return json.loads((run_dir / "threats.sarif").read_text(encoding="utf-8"))["runs"][0]
+
+
+def test_threats_generator_writes_a_rule_for_every_category_so_the_scan_below_is_not_vacuous(threats_run):
+    assert len(threats_run["tool"]["driver"]["rules"]) == 8
+    assert len(threats_run["results"]) == len(_PREFIXES)
+
+
+def test_threats_generator_driver_holds_no_owasp_llm_edition_token_but_2026s(threats_run):
+    """The driver (its rules, their ``help`` and the run's taxonomies) is what the generator writes without a model: every OWASP LLM token in it
+    is the 2026 edition's, and a 2025 one, the form that ADR-048 D3 rejects, is nowhere. The whole ``tool`` object and ``taxonomies`` are scanned."""
+    driver_text = json.dumps({"tool": threats_run["tool"], "taxonomies": threats_run["taxonomies"]}, ensure_ascii=True)
+    editions = _LLM_TOKEN.findall(driver_text)
+    assert set(editions) <= {next(iter(_EXPECTED_EDITIONS))}, "an OWASP LLM token of another edition is in the generator's own text: %s" % sorted(set(editions))
+    assert ":2025" not in driver_text.replace("2025-", "")  # no 2025-edition token, whatever its form (a date such as 2025-01-01 is not one)
+
+
+# What the retired ``normalize_owasp_id``'s STRIDE fallback derived from a finding's prefix (``stride_owasp``, plan.md D2).
+_STRIDE_OWASP_2021 = {"S": "A07", "T": "A08", "R": "A09", "I": "A01", "D": "A05", "E": "A01"}
+
+
+def test_threats_generator_links_each_stride_finding_to_the_owasp_2021_category_that_the_retired_prefix_fallback_gave_it(threats_run):
+    """The one assertion of the retired ``normalize_owasp_id`` matrix that still holds through the public interface. The function derived a STRIDE
+    finding's OWASP 2021 category from its prefix and wrote it as the ``owasp_id`` property. That property is gone (S1P-A28), and the same link now
+    runs through the finding's rule: the result's ``ruleId`` leads to a rule whose ``relationships`` name the OWASP category."""
+    rules = {rule["id"]: rule for rule in threats_run["tool"]["driver"]["rules"]}
+    results = {result["partialFingerprints"]["findingId/v1"]: result for result in threats_run["results"]}
+    for prefix, category in _STRIDE_OWASP_2021.items():
+        rule = rules[results["%s-1" % prefix]["ruleId"]]
+        targets = {(link["target"]["toolComponent"]["name"], link["target"]["id"]) for link in rule["relationships"]}
+        assert ("OWASP", category) in targets, prefix
