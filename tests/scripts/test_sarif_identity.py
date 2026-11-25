@@ -34,6 +34,9 @@ PM W3 ruling 2, gaps A and C, and T052's evidence-URI finding: what both rendere
 The architect's W3 ruling d, question 9 (P0-10): what the RESOLVED scan reads
 21. The scan reads what a renderer composes, and not text it copies (the scorer's renderer drives the last cases)
 
+T099, PR 2: ``threats.sarif`` through its generator (``scripts/generate-threats-sarif.py``, red until T100)
+22. FR-E.2's two-run model for the third file, D7's carrier chain, ruling C's 10-peer cap, the three files side by side, and FR-E.13's pin
+
 Section 11 also holds the guard that a result's URI and an evidence URI are relative, as written and as decoded (SA-11),
 and section 12 the driver's ``version``.
 
@@ -3461,7 +3464,8 @@ def test_a_controls_baseline_alone_does_not_make_the_stage_flag_a_reused_id(rrs,
 def test_the_three_tool_and_category_pairs_differ_across_the_rendered_files(rrs, entries, tmp_path):
     """R-33, US-6a #3 and FR-E.2's cross-file assertion, on the files the renderers write.
 
-    ``threats.sarif`` is still the orchestrator's until PR 2, so its pair is ADR-050 D7's constant, written out here.
+    ``threats.sarif`` is still the orchestrator's until PR 2, so its pair is ADR-050 D7's constant, written out here. Section 22 puts the
+    generator's own file beside these two (``test_the_three_files_have_three_different_tool_and_category_pairs_...``), once T100 lands.
     """
     project = make_project(CONTROLS_FILE, rrs, entries, tmp_path, groups=FIRST_RUN_GROUPS)
     res = project.run()
@@ -3944,3 +3948,350 @@ def test_an_affected_assets_cell_holding_a_line_separator_forges_no_second_row()
     assets = sc.parse_affected_assets(block)
     assert "T-9" not in assets, "a line separator inside a cell must not start a row"
     assert assets.get("S-1") is not None, "the real row still reads"
+
+
+# =============================================================================
+# 22. threats.sarif through its generator: FR-E.2's model for the third file, the three files side by side and FR-E.13's pin
+#     (T099, red until T100; ADR-050 D1, D7, D8)
+# =============================================================================
+#
+# From PR 2 the third file is written by shipped code too: ``scripts/generate-threats-sarif.py`` reads the compiled ``threats.md`` and
+# writes ``threats.sarif`` through the same emitter as the two renderers. The generator's own cases (its command line and exit codes, N/N on
+# every committed ``threats.md`` with the drift forms among them, what each result carries, the write) are ``test_threats_sarif.py``'s. This
+# section holds what is the identity test's: FR-E.2's two-run model (the regroup pair, an unchanged re-run, no shared key, a case variant),
+# D7's carrier chain (the flag, the body line, the default, and a warning for each carrier that fails), ruling C's cap, the three files
+# compared, and FR-E.13's pin. It is driven in-process through ``main(argv)`` (H15) on ``test_threats_sarif.py``'s project.
+#
+# The generator takes no plan and writes no stage record, so a warning is on stderr and its codes are 0, 1, 2 and 4 (``contracts/cli.md``): a
+# case reads the streams where Sections 16 and 19 read the record. The scorer's files carry ``score-flags`` and the controls file
+# ``integrity-flags``; this file has no flag property, because ruling B's reissue check for ``threats.md`` is ``check-threat-model.py``'s.
+
+THREATS_FILE = "threats.sarif"
+THREATS_CATEGORY = "threat-model"  # the upload category of threats.sarif: tachi recommends it and never writes it
+
+
+@pytest.fixture(scope="module")
+def tsh():
+    """``test_threats_sarif.py``'s harness, imported when a case first needs it: the project that the generator runs on."""
+    from . import test_threats_sarif
+    return test_threats_sarif
+
+
+@pytest.fixture(scope="module")
+def gen(tsh):
+    """The generator, loaded when a case first asks. Until T100 rewrites it, the case fails and says so."""
+    return tsh.load_generator()
+
+
+def threats_keys(document):
+    """GitHub's matching key of each result in a ``threats.sarif`` document, by ``findingId/v1``: tool, category, rule, hash and URI."""
+    run = document["runs"][0]
+    tool = run["tool"]["driver"]["name"]
+    assert tool == THREATS, "the tool is Tachi, verbatim"
+    return {finding_id: (tool, THREATS_CATEGORY) + key for finding_id, key in keys_of(run["results"]).items()}
+
+
+def run_threats_pair(rrs, tsh, gen, root, baseline_aware, plant=False, replace_baseline_sarif=False):
+    """The generator's ``run_pair``: run 1, then run 2 (regrouped, with one more finding), in one project.
+
+    Run 2 is baseline-aware when asked: its ``threats.md`` names run 1's directory as its baseline source and a run ID, and its carried
+    findings are UNCHANGED. The generator takes no baseline argument: ``baseline-run-id`` comes from that block alone. ``plant`` puts an
+    older ``threats.sarif`` with hashes of its own where run 1 will write its file, and ``replace_baseline_sarif`` swaps the baseline
+    directory's SARIF for one that lists other findings under other hashes.
+    """
+    project = tsh.Project(gen, root, groups=FIRST_RUN_GROUPS)
+    ids_1 = [item["id"] for item in rrs.SPECS]
+    if plant:
+        project.sarif_path.write_text(planted_sarif(ids_1, tool=THREATS), encoding="utf-8")
+    first = project.generate()
+    assert first.code == 0, first.describe()
+    pair = SimpleNamespace(project=project, ids_1=ids_1, specs_1=list(rrs.SPECS), baseline=None,
+                           first=project.sarif, first_text=project.sarif_text)
+    if baseline_aware:
+        pair.baseline = Path(root) / "baseline-1"
+        pair.baseline.mkdir()
+        for name in ("threats.md", THREATS_FILE):
+            shutil.copyfile(str(project.out / name), str(pair.baseline / name))
+        if replace_baseline_sarif:
+            (pair.baseline / THREATS_FILE).write_text(planted_sarif(ids_1 + ["S-99"], offset=20, tool=THREATS), encoding="utf-8")
+    pair.specs_2 = second_run_specs(rrs, baseline_aware)
+    pair.ids_2 = [item["id"] for item in pair.specs_2]
+    text_2 = rrs.make_threats_md(pair.specs_2, rrs.RESOLVED, groups=SECOND_RUN_GROUPS,
+                                 baseline_source="baseline-1/threats.md" if baseline_aware else None)
+    project.threats.write_text(tsh.with_baseline(text_2) if baseline_aware else text_2, encoding="utf-8")
+    second = project.generate()
+    assert second.code == 0, second.describe()
+    pair.second, pair.second_text = project.sarif, project.sarif_text
+    return pair
+
+
+@BOTH_MODES
+def test_threats_sarif_the_regroup_pair_keeps_every_carried_key_and_changes_only_the_text(rrs, tsh, gen, tmp_path, baseline_aware):
+    """US-6b #1: run 2 regroups carried findings, changes a primary and dissolves a group, and no key moves."""
+    pair = run_threats_pair(rrs, tsh, gen, tmp_path, baseline_aware)
+    keys_1, keys_2 = threats_keys(pair.first), threats_keys(pair.second)
+    assert sorted(keys_1) == sorted(pair.ids_1) and sorted(keys_2) == sorted(pair.ids_2), "no finding drops out"
+    for finding_id in pair.ids_1:
+        assert keys_2[finding_id] == keys_1[finding_id], "%s: a regroup never moves a key" % finding_id
+    assert "T-7" in keys_2 and "T-7" not in keys_1, "the finding only run 2 has gets a key of its own"
+    for keys in (keys_1, keys_2):
+        assert len(set(keys.values())) == len(keys), "no two present results share a key (the F-012 lesson)"
+    texts, owns = {}, {}
+    for run, document, specs, groups, ids in ((1, pair.first, pair.specs_1, FIRST_RUN_GROUPS, pair.ids_1),
+                                              (2, pair.second, pair.specs_2, SECOND_RUN_GROUPS, pair.ids_2)):
+        assignments = sc.correlation_assignments(groups, ids)
+        sc.self_check(document["runs"][0]["results"], tool=THREATS, member_ids=ids, assignments=assignments,
+                      resolved_ids=rrs.RESOLVED_IDS, uri=URI)
+        by_id = results_by(document)
+        for item in specs:
+            text = by_id[item["id"]]["message"]["text"]
+            assignment = assignments.get(tachi_parts.canonical_finding_id(item["id"]))
+            own, sentence = message_parts(text)
+            assert sentence == expected_sentence(assignment), (run, item["id"])
+            assert text == expected_text(item["threat"], assignment), (run, item["id"])
+            texts[(run, item["id"])], owns[(run, item["id"])] = text, own
+    for finding_id in ("T-1", "E-5", "AG-1"):
+        assert texts[(1, finding_id)] != texts[(2, finding_id)], "%s: a regroup changes its text (ruling C)" % finding_id
+        assert owns[(1, finding_id)] == owns[(2, finding_id)], "%s: and only the sentence, never the file's own text" % finding_id
+
+
+@BOTH_MODES
+def test_threats_sarif_an_unchanged_rerun_of_the_generator_keeps_its_keys_and_its_bytes(rrs, tsh, gen, tmp_path, baseline_aware):
+    """US-6b #3, FR-E.2: the same inputs give the same keys and the same bytes."""
+    pair = run_threats_pair(rrs, tsh, gen, tmp_path, baseline_aware)
+    again = pair.project.generate()
+    assert again.code == 0, again.describe()
+    assert pair.project.sarif_text == pair.second_text
+    assert threats_keys(pair.project.sarif) == threats_keys(pair.second)
+
+
+@BOTH_MODES
+def test_threats_sarif_the_hash_recomputes_from_the_tool_and_the_id_and_no_upstream_hash_is_copied(rrs, tsh, gen, tmp_path, baseline_aware):
+    """S-6, FR-E.12: the hash is tachi's own. An older model-authored ``threats.sarif`` in the run directory, and a baseline SARIF under
+    other hashes, are never read: the old orchestrator wrote hashes of its own, and no result may copy one now."""
+    pair = run_threats_pair(rrs, tsh, gen, tmp_path, baseline_aware, plant=True, replace_baseline_sarif=baseline_aware)
+    for document, text in ((pair.first, pair.first_text), (pair.second, pair.second_text)):
+        for result in document["runs"][0]["results"]:
+            written = result["partialFingerprints"]["findingId/v1"]
+            assert result["partialFingerprints"]["primaryLocationLineHash"] == recipe(THREATS, tachi_parts.canonical_finding_id(written)), written
+        assert not [planted for planted in PLANTED_HASHES if planted in text], "an upstream or earlier hash was copied (S-6)"
+        assert "automationDetails" not in text and "runAutomationDetails" not in text, "the upload step's category governs (D7)"
+    assert results_by(pair.first)["AGP-01"]["partialFingerprints"]["primaryLocationLineHash"] == recipe(THREATS, "AGP-1"), \
+        "the hash is over the canonical ID, and findingId/v1 keeps Section 7's spelling"
+
+
+def test_threats_sarif_no_stage_reads_a_baseline_sarifs_membership_or_hashes(rrs, tsh, gen, tmp_path):
+    """ADR-050 D8: SV-3's trigger does not fire, because no stage reads a baseline SARIF's membership or hashes."""
+    pair = run_threats_pair(rrs, tsh, gen, tmp_path, True, replace_baseline_sarif=True)
+    assert sorted(threats_keys(pair.second)) == sorted(pair.ids_2), "the member set is Section 7's"
+    assert "S-99" not in pair.second_text
+    keys_1, keys_2 = threats_keys(pair.first), threats_keys(pair.second)
+    assert all(keys_2[finding_id] == keys_1[finding_id] for finding_id in pair.ids_1)
+
+
+def test_threats_sarif_no_two_present_results_share_a_key_in_a_run_of_forty_two_findings(rrs, tsh, gen, tmp_path):
+    text = (rrs.GATED_SUBSET / "baseline" / "threats.md").read_text(encoding="utf-8")
+    project = tsh.Project(gen, tmp_path, threats_text=text)
+    res = project.generate()
+    assert res.code == 0, res.describe()
+    keys = threats_keys(project.sarif)
+    assert len(keys) == 42 and len(set(keys.values())) == 42 and len({key[3] for key in keys.values()}) == 42, "42 findings, 42 keys and 42 hashes"
+
+
+# --- the architecture path: the flag, then the body line, then the default (FR-E.18; D7) --------------------------------
+
+def assert_warned(res, expected):
+    """Each warning that the shared resolver gives is on stderr, by its code or its text, and a clean chain is silent."""
+    for warning in expected.warnings:
+        assert warning["code"] in res.err or warning["detail"] in res.err, "stderr names the failed carrier: %s\n%s" % (warning["code"], res.describe())
+    if not expected.warnings:
+        assert res.err == "", res.describe()
+
+
+@pytest.mark.parametrize("flag,body,snapshot,uri,warning_codes", [case[1:] for case in URI_CASES], ids=[case[0] for case in URI_CASES])
+def test_threats_sarif_the_flag_then_the_body_line_then_the_default_and_each_failed_carrier_warns(
+        rrs, tsh, gen, tmp_path, outside_file, flag, body, snapshot, uri, warning_codes):
+    """FR-E.18, in the third file: the generator's own path is the first candidate. A warning never changes its exit code."""
+    project = tsh.Project(gen, tmp_path, body_line=body)
+    add_architecture_files(project)
+    if snapshot:
+        (project.out / "architecture.md").write_text("# the snapshot the threat model copied\n", encoding="utf-8")
+    candidate = str(outside_file) if flag == "OUTSIDE" else flag
+    res = project.generate(architecture=candidate)
+    assert res.code == 0, res.describe()
+    results = project.sarif["runs"][0]["results"]
+    assert {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in results} == {uri}
+    expected = sc.resolve_architecture(candidate, threats_text=project.text, run_dir=str(project.out), root=str(tmp_path))
+    assert [warning["code"] for warning in expected.warnings] == warning_codes, "the chain is the table's"
+    assert_warned(res, expected)
+    sc.self_check(results, tool=THREATS, member_ids=[item["id"] for item in rrs.SPECS], assignments={},
+                  resolved_ids=rrs.RESOLVED_IDS, uri=uri)
+
+
+def test_threats_sarif_a_run_always_gets_a_uri_even_when_nothing_validates(rrs, tsh, gen, tmp_path, outside_file):
+    project = tsh.Project(gen, tmp_path)
+    project.architecture.unlink()
+    res = project.generate(architecture=str(outside_file))
+    assert res.code == 0, res.describe()
+    chain = ["architecture-path:explicit:outside-root", "architecture-path:body-line:absent", "architecture-path:default:missing"]
+    expected = sc.resolve_architecture(str(outside_file), threats_text=project.text, run_dir=str(project.out), root=str(tmp_path))
+    assert [w["code"] for w in expected.warnings] == chain, "D7's chain, in order"
+    assert_warned(res, expected)
+    uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in project.sarif["runs"][0]["results"]}
+    assert uris == {sc.DEFAULT_ARCHITECTURE_PATH}, "the constant is emitted as written, and nothing here stops a run"
+
+
+def test_threats_sarif_a_directory_named_with_a_colon_is_written_encoded_and_the_generators_self_check_accepts_it(tsh, gen, tmp_path):
+    """SA-11's decoding, as for the other two files: ``a%3Ab`` decodes to a first segment with a colon, which isn't a scheme."""
+    project = tsh.Project(gen, tmp_path)
+    architecture = project.root / "a:b" / "architecture.md"
+    try:
+        architecture.parent.mkdir()
+        architecture.write_text("# an architecture file in a directory whose name holds a colon\n", encoding="utf-8")
+    except OSError:  # pragma: no cover  (a filesystem that cannot name a directory with a colon)
+        pytest.skip("this filesystem cannot name a directory with a colon")
+    res = project.generate(architecture=str(architecture))
+    assert res.code == 0, res.describe()
+    uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in project.sarif["runs"][0]["results"]}
+    assert uris == {"a%3Ab/architecture.md"}
+    assert res.err == ""
+
+
+@pytest.mark.parametrize("body", ["docs/other/architecture.md", "DOCS/Other/ARCHITECTURE.md"], ids=["canonical", "case-variant"])
+def test_threats_sarif_a_case_variant_body_line_gives_every_result_the_same_uri_on_a_case_insensitive_volume(tsh, gen, tmp_path, monkeypatch, body):
+    """KB 24 and FR-E.2: the resolver, not the generator, spells the path, so a case variant gives one URI. The fake volume stands in for
+    the one an adopter's laptop has, and the generator reaches the filesystem through ``sarif_common.OS_FILESYSTEM`` for it."""
+    project = tsh.Project(gen, tmp_path, body_line=body)
+    add_architecture_files(project)
+    (project.out / "architecture.md").write_text("# the snapshot\n", encoding="utf-8")
+    fake = FakeFilesystem(str(tmp_path), case_insensitive=True)
+    mirror(fake, tmp_path)
+    monkeypatch.setattr(sc, "OS_FILESYSTEM", fake)
+    res = project.generate(architecture=False)
+    assert res.code == 0, res.describe()
+    uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in project.sarif["runs"][0]["results"]}
+    assert uris == {"docs/other/architecture.md"}
+
+
+def test_threats_sarif_a_case_variant_gives_every_result_the_same_uri_on_a_real_case_insensitive_volume(tsh, gen, tmp_path):
+    """The same case on the real volume (D16's ``f374-macos`` runs this module alone). Skipped on a case-sensitive volume."""
+    if not _case_insensitive(tmp_path):
+        pytest.skip("this volume is case-sensitive; the fake filesystem covers the case offline")
+    project = tsh.Project(gen, tmp_path, body_line="DOCS/Other/ARCHITECTURE.md")
+    add_architecture_files(project)
+    (project.out / "architecture.md").write_text("# the snapshot\n", encoding="utf-8")
+    res = project.generate(architecture=False)
+    assert res.code == 0, res.describe()
+    uris = {r["locations"][0]["physicalLocation"]["artifactLocation"]["uri"] for r in project.sarif["runs"][0]["results"]}
+    assert uris == {"docs/other/architecture.md"}
+
+
+# --- ruling C: a primary with more than ten peers (PM-T7) ---------------------------------------------------------------
+
+@pytest.mark.parametrize("size,more", [(11, 0), (12, 1), (13, 2)], ids=["ten-peers", "eleven-peers", "twelve-peers"])
+def test_threats_sarif_a_primary_with_more_than_ten_peers_names_ten_and_then_a_count(rrs, tsh, gen, tmp_path, size, more):
+    """Ruling C's sentence in ``threats.sarif``: the first ten in group order, joined by a comma and a space, then `` and N more``."""
+    specs = [rrs.spec("S-%d" % n, "edge-gateway", "Threat %d on the gateway." % n, "Medium", "NEW",
+                      "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N", (5, 5, 5, 5), (4, 4, 4, 4), "Edge DMZ", "Semi-Trusted", 0, 0)
+             for n in range(1, size + 1)]
+    ids = [item["id"] for item in specs]
+    project = tsh.Project(gen, tmp_path, specs=specs, resolved=[], groups=[("CG-1", ids)])
+    res = project.generate()
+    assert res.code == 0, res.describe()
+    results = results_by(project.sarif)
+    assert len(results) == size, "every peer is a result, once"
+    tail = "Correlated in CG-1; peers " + ", ".join(ids[1:11]) + (" and %d more" % more if more else "") + "."
+    own, sentence = message_parts(results["S-1"]["message"]["text"])
+    assert sentence == tail == ruling_c("CG-1", "S-1", ids[1:])
+    assert results["S-1"]["message"]["text"] == "Threat 1 on the gateway. " + tail
+    for peer in ids[1:]:
+        peer_own, peer_sentence = message_parts(results[peer]["message"]["text"])
+        assert peer_sentence == "Correlated in CG-1; primary S-1.", peer
+        assert peer_own == "Threat %s on the gateway." % peer[2:], peer
+    sc.self_check(project.sarif["runs"][0]["results"], tool=THREATS, member_ids=ids,
+                  assignments=sc.correlation_assignments([("CG-1", ids)], ids), resolved_ids=[], uri=URI)
+
+
+# --- the three files side by side (R-33; FR-E.2's cross-file assertion; D7's re-key table) ----------------------------
+
+def test_the_three_files_have_three_different_tool_and_category_pairs_and_one_result_per_finding_in_each(rrs, entries, tsh, gen, tmp_path):
+    """R-33, US-6a #3 and FR-E.2, now on the three files that shipped code writes: the generator runs on the very ``threats.md`` that the
+    scorer and the controls stage read. Each finding then has one result per tool, with the same rule, location and correlation outcome and
+    three different hashes, and no hash is shared across the files."""
+    project = make_project(CONTROLS_FILE, rrs, entries, tmp_path, groups=FIRST_RUN_GROUPS)
+    res = project.run()
+    assert res.code in RUN_CODES[CONTROLS_FILE], res.describe()
+    made = rrs.invoke(gen, ["--threats", project.threats, "--out", project.out, "--architecture", URI], project.root)
+    assert made.code == 0, made.describe()
+    documents = {THREATS_FILE: json.loads((project.out / THREATS_FILE).read_text(encoding="utf-8")), SCORER_FILE: project.scorer_sarif,
+                 CONTROLS_FILE: project.sarif}
+    drivers = {name: document["runs"][0]["tool"]["driver"] for name, document in documents.items()}
+    assert [drivers[name]["name"] for name in (THREATS_FILE, SCORER_FILE, CONTROLS_FILE)] == ["Tachi", "tachi-risk-scorer", "tachi-control-analyzer"], "verbatim"
+    categories = {THREATS_FILE: THREATS_CATEGORY, SCORER_FILE: SCORER_CATEGORY, CONTROLS_FILE: CONTROLS_CATEGORY}
+    assert len({(drivers[name]["name"], categories[name]) for name in documents}) == 3, "the three (tool, category) pairs differ"
+    assert {driver["informationUri"] for driver in drivers.values()} == {"https://github.com/davidmatousek/tachi"}, "one real URL, in all three"
+    for document in documents.values():
+        assert "automationDetails" not in document["runs"][0], "the upload step's category governs (D7)"
+    found = {name: results_by(document) for name, document in documents.items()}
+    assert sorted(found[THREATS_FILE]) == sorted(found[SCORER_FILE]) == sorted(found[CONTROLS_FILE]), "one result per open finding, in each file"
+    every_hash = []
+    for finding_id in found[THREATS_FILE]:
+        canonical = tachi_parts.canonical_finding_id(finding_id)
+        hashes = {name: found[name][finding_id]["partialFingerprints"]["primaryLocationLineHash"] for name in documents}
+        assert hashes == {THREATS_FILE: recipe(THREATS, canonical), SCORER_FILE: recipe(SCORER, canonical),
+                          CONTROLS_FILE: recipe(CONTROLS, canonical)}, finding_id
+        assert len(set(hashes.values())) == 3, "one finding, three files, three hashes"
+        every_hash += list(hashes.values())
+        rules = {found[name][finding_id]["ruleId"] for name in documents}
+        assert rules == {EXPECTED_RULES[canonical.partition("-")[0]]}, "the rule is a function of the finding, shared by the files (ADR-013 D2)"
+        places = [found[name][finding_id]["locations"][0]["physicalLocation"] for name in documents]
+        assert places[0] == places[1] == places[2], "and so is the location"
+        outcomes = {name: tuple(found[name][finding_id]["properties"].get(key) for key in sc.CORRELATION_KEYS) for name in documents}
+        assert len(set(outcomes.values())) == 1, "%s: the correlation outcome is one, in each file: %s" % (finding_id, outcomes)
+        tails = {name: message_parts(found[name][finding_id]["message"]["text"])[1] for name in documents}
+        assert len(set(tails.values())) == 1, "and so is ruling C's sentence: %s" % tails
+    assert len(set(every_hash)) == len(every_hash), "no hash is shared across the files"
+
+
+# --- FR-E.13: the regroup pair's correlation outcome is unchanged (S-7) -------------------------------------------------
+
+def groups_in(results):
+    """``{group: (primary, {members})}`` as the results' correlation properties give them."""
+    found = {}
+    for finding_id, result in results.items():
+        properties = result["properties"]
+        if "correlation-group" in properties:
+            primary, members = found.setdefault(properties["correlation-group"], [properties["correlation-primary"], set()])
+            assert properties["correlation-primary"] == primary, "one primary per group"
+            members.add(finding_id)
+    return {group: (primary, members) for group, (primary, members) in found.items()}
+
+
+def test_fr_e13_the_regroup_pairs_correlation_outcome_is_the_committed_one_whatever_the_sarif_recipe_does(tsh, gen, tmp_path):
+    """Phase 3's baseline correlation keeps matching findings as it does today (FR-E.13, spec S-7). The pair commits that outcome: which
+    findings group, and each group's primary, per run. It is read three ways, and all three are one. Section 4a through the shared
+    parser is what correlation starts from, and the new recipe never feeds it. The generator's file says the same, in its properties. And
+    a baseline SARIF in the old recipe, planted where an earlier run left its file, changes no byte of any run's output: no stage reads
+    a baseline SARIF's hashes."""
+    outcomes = json.loads((tsh.PAIR / "expected-outcomes.json").read_text(encoding="utf-8"))
+    pinned = {name: {group["id"]: (group["primary"], set(group["members"])) for group in outcomes["runs"][name]["groups"]}
+              for name in ("run1", "run2", "run3")}
+    for name in pinned:
+        read = tsh.reference_of((tsh.PAIR / name / "threats.md").read_text(encoding="utf-8"))
+        assert {group["group_id"]: (group["primary"], set(group["members"])) for group in read.groups} == pinned[name], \
+            "%s: Section 4a gives the committed groups and primaries" % name
+    scenario = tsh.copy_pair(tmp_path)
+    first = tsh.generate_pair(gen, scenario)
+    for name, run in first.items():
+        assert groups_in(run.results) == pinned[name], "%s: the generator's properties give the same outcome" % name
+    legacy = (tsh.GATED_SUBSET / "baseline" / "threats.sarif").read_bytes()  # a model-authored file: the old recipe, a collapsed key and its own hashes
+
+    def plant_the_old_recipe(root, current):
+        for earlier in ("baseline", "run1", "run2", "run3"):
+            if earlier != current:
+                (Path(root) / earlier / THREATS_FILE).write_bytes(legacy)
+
+    again = tsh.generate_pair(gen, scenario, plant=plant_the_old_recipe)
+    for name in pinned:
+        assert again[name].text == first[name].text, "%s: an old baseline SARIF moved a byte" % name
+        assert groups_in(again[name].results) == pinned[name]
