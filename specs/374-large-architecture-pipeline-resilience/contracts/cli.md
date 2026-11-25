@@ -8,7 +8,7 @@ Every entry script supports `--help` and `--version`. Each one:
 - sets `sys.dont_write_bytecode` before its local imports (ADR-049 D8);
 - refuses Python below 3.9 before any import, with exit 2. `--version` prints the script's version and the interpreter's, and below 3.9 names the version found, so the commands' Step 1 presence check stops before any dispatch (ADR-050 D4);
 - writes only under `--out`, by resolved identity, and recomputes every path from `--out`, the stage and grammar-checked IDs, except the plan's digest-checked `inputs`;
-- prints one JSON object on stdout (the renderer prints summary lines instead), and errors on stderr.
+- prints one JSON object on stdout, and errors on stderr. Only PR 1's two renderers, `render-risk-scores.py` and `render-compensating-controls.py`, print summary lines instead. PR 2's writers print one JSON object, as every other entry does (S1P-A27).
 
 Orchestrator fences pass literal arguments only (C6). `PLAN` below stands for `--plan ID --plan-digest HEX`: the plan ID, which overrides `current.json` (a disagreement exits 2), and the `plan_digest` that the last `plan` or `reconcile` printed (a mismatch exits 2).
 
@@ -46,7 +46,7 @@ Orchestrator fences pass literal arguments only (C6). `PLAN` below stands for `-
 | `python3 scripts/attack-chains.py plan\|render\|check --run-dir DIR`. `check` also takes `--plan ID`, the run-level plan, for its hand-off file, `threat-model/<plan_id>/checks/attack-chains.json` (D13; `part-files.md` §6) | O | `plan` and `render`: 0, 1, 2, which the orchestrator ignores (R-24); `check`: 0, 2 (argparse's usage error), 5 |
 | `python3 scripts/check-threat-model.py --run-dir DIR --plan ID (--baseline FILE \| --no-baseline)`: FR-N4.5, FR-N4.6, P-11, FR-E.10, FR-E.19's reissue check and D8's repeated-member report (R-F; erratum S1P-A19), with its hand-off file, `threat-model/<plan_id>/checks/provenance.json` (D12; `part-files.md` §6) | O | 0, 2, 4, 5 |
 | `python3 scripts/assemble-report.py trees\|report --run-dir DIR PLAN`: `trees` takes the `trees` plan, runs once that stage reconciles to 0, and copies and merges the trees; `report` takes the `report` plan, which pins the trees plan, assembles the report and runs FR-K5.3, FR-K5.5 and FR-K5.7 (D14). Each writes its stage's record on 0 (RR3, ruled at rev. 3) | O | 0, 1, 2, 4 |
-| `python3 scripts/generate-threats-sarif.py --threats FILE --out DIR --architecture PATH`: the shipped generator on the shared emitter; the path is the command's own, resolved in code (D1, D7, D8) | O | 0, 1, 2, 4 |
+| `python3 scripts/generate-threats-sarif.py --threats FILE --out DIR [--architecture PATH]`: the shipped generator on the shared emitter. The path is the command's own, resolved in code (D1, D7, D8). `--architecture` is optional (S1P-A26). Step 2.10 always passes the command's `{architecture_path}`, as Step 2.7 does, and without the flag D7's chain starts at the body line. A refused candidate prints the resolver's warnings on stderr, and the exit stays 0, because Step 2.7's `architecture-source` has already reported the same refusal with exit 5 | O | 0, 1, 2, 4 |
 
 **Helpers** (imported, never run directly; each is installed and listed under F-373's S-13 import gate):
 - `tachi_parts.py`: loader, validator, identifier patterns, guards, atomic write, digest, stamp and version (D3, D4);

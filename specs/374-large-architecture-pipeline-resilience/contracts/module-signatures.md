@@ -27,6 +27,7 @@
 - **Ruled at W6 (S3, 2026-11-24) from the Step 8 economy gate's EC-2, additive:** `tachi_parts.snapshot_key(relpath: str) -> str`, the planner's private `_snapshot_key` made public.
   - **What it is.** A file's key in the plan's `out_snapshot`: its path, or `./unrecordable:` and the SHA-256 of its bytes for a name that `path_problem` refuses (SA-5). The planner keeps its own name for it, as an alias.
   - **Who calls it.** The planner (`plan`'s snapshot, and `fail`'s declared-paths check) and each renderer's declared-paths check, so a file that was there at plan time and hasn't changed is found by one key in all three. Before EC-2 each renderer looked up the raw path, so a name such as macOS's `Icon` and a carriage return made a clean run warn `undeclared-paths-unrecordable` and exit 5. Only the key is shared: the walk and the undeclared check stay three copies, which SA-12's follow-up (T080) hoists.
+- **Ruled at W2′'s entry (S1′, 2026-11-24), additive:** `tachi_parsers.parse_chain_outcome` and `tachi_parsers.CHAIN_OUTCOME_LABEL`, the first slice of T116 (lane OC, in `f94dabb`; S1P-A22, S1P-A23). No name is renamed or removed. They are described below.
 
 **Shared conventions.**
 - Every module has `from __future__ import annotations` and runs on Python 3.9 (S-11). Annotations use `typing` forms, so nothing here needs 3.10.
@@ -460,6 +461,43 @@ def parse_finding_layers(content: str) -> Dict[str, str]: ...  # canonical findi
 - **What it doesn't do.** It raises nothing on content, and it flags nothing when the two sources disagree: Section 7 wins (ADR-050 D2). It never reads the component's layer or infers one from other findings. The renderers' P0-4 intake checks every value it returns, as the renderers already check `finding_layer`.
 - **Who calls it.** The scorer renderer's `_prepare` and the controls renderer's `_read_reference`, each in place of its own Section 7 loop and keeping its `setdefault`, and the planner's controls unit row (T067b's M3, `layer`). So the unit row's `layer` equals the renderer's structured value, which `_check_cells` compares with the agent's §2 cell.
 - **Tests** go in `tests/scripts/test_tachi_parsers.py`, the ratchet file. The shipped examples are read-only inputs for them (S-12(a)).
+
+## `scripts/tachi_parsers.py`: one PR 2 addition (ruled at W2′'s entry, S1′, 2026-11-24; T116's first slice, lane OC)
+
+```python
+CHAIN_OUTCOME_LABEL: str = "**Attack chain outcome**: "
+
+def parse_chain_outcome(content: str) -> dict: ...  # the attack-chain outcome record of a threats.md (ADR-050 D13, P-3)
+```
+
+- **What it reads.** The record line that `threat-model-records.md`, "The outcome record", defines.
+  - A record line starts with `CHAIN_OUTCOME_LABEL`, its trailing space included, at the line's first character. It must lie outside every code fence, by `_unfenced_lines`, the fence rule of `match_heading(outside_fences=True)` and `parse_finding_layers` (S1P-A22).
+  - No heading is needed: the heading is where the writer places the line, and the record is the line itself.
+  - The text is split on `\n` only, and trailing spaces, tabs and carriage returns are ignored, so a CRLF file reads. Any other trailing whitespace makes the line `malformed`.
+- **What it returns.** A new dict, with these seven keys every time, in this order:
+
+  | Key | Value |
+  |---|---|
+  | `form` | `"written"`, `"zero"` or `"skipped"` when there is exactly one record line and the rest of it is wholly that form. Otherwise `"absent"` (no record line), `"multiple"` (two or more, whatever they say) or `"malformed"` (one, in no form) |
+  | `chain_count`, `candidate_count`, `surfaced_count` | N, C and S as ints, under `attack-chains.md`'s frontmatter names. `"zero"` gives `0`, C and `0`. Every other form gives `None` for all three |
+  | `reason` | R as written, for `"zero"` and `"skipped"`; otherwise `None` |
+  | `text` | OUTCOME as written, without its trailing whitespace, for the three forms; otherwise `None`. Only the grammar's alphabet and digits can reach it, so a reader may print it in a markdown cell or a Typst string. A malformed line's text never leaves the function |
+  | `lines` | the 0-based index, in `content.split("\n")`, of each record line outside fences, in order; `[]` when there is none |
+
+- **The six forms, and the grammar each one holds to:**
+  - **`written`:** `chains written (N); candidates C; surfaced S`, with N from 1 to 999999 and no leading zero, C of at most six digits and `C >= N`, and S from 1 to 5 and `S <= N`;
+  - **`zero`:** `0 chains passed filter (R); candidates C`;
+  - **`skipped`:** `skipped (R)`;
+  - **`absent`**, **`multiple`** and **`malformed`**, as in the table above.
+
+  R is 1 to 80 characters of `A-Z a-z 0-9 space . , : = -`, and a blank R is `malformed`, because D13 requires a stated reason. A line that breaks `C >= N` or `S <= N` is `malformed` too. The parser holds no list of reasons, so the checks can add reasons without changing it.
+- **What it doesn't do.** It raises nothing on content, and it reads no file. It doesn't compare the record with `attack-chains.md`, because that is the check's job (FR-K4.1b).
+- **Who calls it.**
+  - `check` (T117) maps `absent`, `malformed` and `multiple` to its own `skipped (no outcome recorded)`, `skipped (outcome record malformed)` and `skipped (multiple outcome records)`.
+  - `assemble-report.py report` (T109) includes `attack_chains` only for `written`, and otherwise prints `text`.
+  - `detect_artifacts` and `prepare_attack_chains` (T120) fall back to the file's presence only on `absent` (D13).
+  - **The writers.** `render`'s upsert and `check`'s rewrite (T117) replace the lines that `lines` names, and write `CHAIN_OUTCOME_LABEL` + OUTCOME. They never scan with a second rule.
+- **Tests** go in `tests/scripts/test_tachi_parsers.py`, the ratchet file. Any later change adds keys, last, and renames none.
 
 ## `scripts/sarif_common.py`: one W2 addition (lane R0b, ruled at W2, 2026-11-23)
 

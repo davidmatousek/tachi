@@ -250,3 +250,15 @@ ADR-050 gains a Revision History row for S1P-A18 and S1P-A19, and the contracts 
 - **T100 (R3b).** Keep writing `properties.severity` as Section 7's risk level. D8's fallback reads it, as ruled at W3.
 - **The new readers of `threats.md`** (T096, T100, T109 and T117) read it through `tachi_parsers`' decoding readers. From PR 2 on, `threats.md` is rendered text, so any cell may hold D3's references.
 - **Cost.** About 0.1 d in all, across T092, T095, T096, T106, T108 and T109. The team-lead prices it.
+
+### Rulings for W2′'s lanes, second pass (2026-11-24, S1P-A22 to S1P-A30)
+
+These are contract readings only. None changes a decision of ADR-050, and the details are in the architect's results for the second pass.
+- **S1P-A22.** The chain outcome record is read only outside code fences, by the shared fence rule. `render`'s upsert and `check`'s rewrite replace `parse_chain_outcome`'s `lines` (`threat-model-records.md`).
+- **S1P-A23.** `parse_chain_outcome` and `CHAIN_OUTCOME_LABEL` are recorded in `module-signatures.md`.
+- **S1P-A24.** The model-keyword note stays in the orchestrator's working notes, and `phase1/dispatch.json` gains no key. D11 had already ruled out the printed intermediates where the note appeared, so this needs no PM item. T119 aligns `output-schemas.md`.
+- **S1P-A25.** `coverage-requirements.md` Step 5 goes to T111.
+- **S1P-A26 and S1P-A27.** The generator's `--architecture` is optional, and its stdout is one JSON object (`cli.md`).
+- **S1P-A28.** `threats.sarif` keeps `tags`, `maestro-layer`, `severity`, `baselineState` and `affected_assets`, plus `baseline-run-id` and the correlation keys. The uncontracted keys are dropped and listed (`sarif-result.md`).
+- **S1P-A29.** T100 migrates `test_affected_assets_wiring.py` and `test_owasp_2026_contract.py` (D1, D16).
+- **S1P-A30.** The `tachi.chains/1` and `tachi.chain-narratives/1` key sets are closed, and T115's narratives form stands (`threat-model-records.md`).

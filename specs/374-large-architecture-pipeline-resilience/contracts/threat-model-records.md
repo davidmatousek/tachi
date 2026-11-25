@@ -63,7 +63,10 @@ rows {"components", "data_flows", "technologies", "trust_zones", "boundary_cross
 DATE := YYYY-MM-DD   RUN := YYYY-MM-DDTHH-MM-SS   TOKEN := [a-z][a-z0-9-]{0,39}
 TEXT := 1-1000 characters, with no '"', '\' or control character
 ```
-**The outcome record** in `threats.md`. Exactly one line in the file matches `^\*\*Attack chain outcome\*\*: `.
+**The outcome record** in `threats.md`. Exactly one line in the file, outside code fences, matches `^\*\*Attack chain outcome\*\*: ` (ruled at W2′'s entry, S1P-A22).
+- **Fences.** They follow the one fence rule of `tachi_parsers.match_heading(outside_fences=True)`, as the ID high-water mark below does (ADR-050 D3, "Finding a section"). So a fenced line is no record, and a fence that nothing closes hides every line after it: the record then reads as absent, and the check rewrites it.
+- **One reader.** `tachi_parsers.parse_chain_outcome` reads the record (`module-signatures.md`).
+- **The writers.** `render`'s upsert and `check`'s rewrite replace exactly the lines that the reader's `lines` names, all of them, whatever their form, and write the line as `CHAIN_OUTCOME_LABEL` followed by OUTCOME. They find their anchor headings (`## Attack Chain Outcome`, `## 5. Coverage Matrix` and `## Affected Assets`) as exact lines outside fences, through `match_heading(..., outside_fences=True)`. After a write, the reader gives one record, in the form written.
 ```
 ## Attack Chain Outcome
 
@@ -108,9 +111,41 @@ summary {"fresh", "carried_forward", "regenerated"}: ints summing to attack_tree
 ```
 A tree batch's part is its manifest: D3's envelope, with one item per finding, `{finding_id, delta_status, action, similarity_score}` (the last under Rule 3 only), where `delta_status` and `action` equal the batch input's. Each tree goes to the path the batch input's `tree_paths` names, and the merge adds `file_path` (ADR-050 D6).
 
-**Chain files** (`chains/`, D13):
-- `chains/chains.json`: `tachi.chains/1`. It holds every computed chain field (members in order, layers, roles, max severity, rank, ID, surfaced flag, converging count, chain-breaking target), the counts C, N and S, and the digests of both inputs. Only `attack-chains.py plan` writes it.
-- `chains/narratives.json`: `tachi.chain-narratives/1`, written by the orchestrator. It maps each surfaced chain ID, and only those, to `{title, narrative}`. Both are narrative-class text (D3), with the slots D3's table gives chain narratives: `finding`, `ref`, `name` as `component:<ID>`, and `count` as `members`, `layers` or `converging`. No numerals outside slots; at most 120 characters for a title and 2,000 for a narrative. A failure takes D13's one rewrite, then its fixed text. `render` refuses unknown IDs and stale digests.
+**Chain files** (`chains/`, D13). Their key sets are closed and were ruled at W2′'s entry (S1P-A30). `tachi_parts.KEY_SETS` holds them under the names in brackets, with no optional key. Each file is written with `tachi_parts.atomic_write` and read with the strict loader.
+- `chains/chains.json`: `tachi.chains/1` (`chains`). Only `attack-chains.py plan` writes it, on every run of `plan`, unusable inputs included. `render` reads it.
+  ```
+  schema            "tachi.chains/1"
+  outcome           "written" | "zero" | "skipped"   the record's form, in parse_chain_outcome's names
+  reason            null for written; for zero, one of the four reasons for 0 chains; for skipped, one of the script's three (the outcome record, above)
+  chain_count       N: int >= 1 for written, 0 for zero, null for skipped
+  candidate_count   C: int 0-999999, >= N, for written and zero; null for skipped
+  surfaced_count    S: int 1-5, <= N, for written; 0 for zero; null for skipped
+  reference_digest  64 lowercase hex: the reference set's digest, by the helper that gives the trees and report plans
+                    their params.reference_digest; null when Section 7 can't be read
+  inventory_digest  64 lowercase hex: the SHA-256 of phase1/inventory.json's bytes; null when the file is missing
+  chains            [chain], in rank order: every surfaced chain, and the first min(100, N - S) of the other
+                    consolidated chains, so exactly the chains that attack-chains.md lists; [] unless written
+  chain (chain):
+    chain_id        "CHAIN-" + the rank, at least three digits (tachi_parts' chain pattern); ascending; no repeat
+    surfaced        true | false; exactly S chains are true
+    converging      for a surfaced chain, the number of other consolidated chains that end at its terminal-impact
+                    finding (int >= 0); null for any other
+    max_severity    the highest risk level among its members: "Critical" | "High" | "Medium" | "Low" | "Note"
+    members         [member], 2 to 7, in chain order
+    breaking_target the finding_id of one of its members, by Step 4's rules
+  member (chain-member):
+    finding_id      as Section 7 spells it: a STRIDE finding of the reference set, passing tachi_parts' finding pattern
+    layer           "L1" to "L7": Section 7's cell, else the inventory's; no two members share one
+    role            "initial_exploit" for the first, "terminal_impact" for the last, "intermediate_cascade" between
+  ```
+  - **Derived, with no key of their own.** A chain's layers are its members' layers, in order. Its rank is the number in its ID. Its finding count is the number of its members. The chains that aren't listed are counted only: K = N − S − (the listed chains that aren't surfaced).
+  - **What `render` takes from the reference set,** whose digest it has just checked: each member's component and risk level, and the target's mitigation, verbatim. Each member's category comes from its ID's prefix.
+  - **`render` refuses** a `chains.json` that fails its key set, its types or these rules: exit 2, or 1 when it can't be read. It also refuses one whose digests differ from its own reads of both inputs (exit 2). For `zero` and `skipped`, it upserts the record from `outcome`, `reason` and the counts, and writes no `attack-chains.md`.
+- `chains/narratives.json`: `tachi.chain-narratives/1` (`chain-narratives`), written by the orchestrator after `plan`. Its form is `{"schema": "tachi.chain-narratives/1", "narratives": {CHAIN-ID: {"title": …, "narrative": …}}}`.
+  - `narratives` maps each surfaced chain ID, and only those, to an object with exactly the keys `title` and `narrative` (`chain-text`). No other key set's name may match `chain.*narrat`, because T115's harness test reads the declared names.
+  - `title` and `narrative` are both narrative-class text (D3), with the slots that D3's table gives chain narratives: `finding`, `ref`, `name` as `component:<ID>`, and `count` as `members`, `layers` or `converging`. No numeral may appear outside a slot. A title is at most 120 characters, and a narrative at most 2,000.
+  - A chain whose entry is missing, or whose fields fail, has failed its validation. So does every surfaced chain when the file is missing, or fails its key set or types. A failed chain takes D13's one rewrite, then its fixed text, which `render` builds from its members.
+  - `render` refuses unknown IDs, including an ID that isn't a surfaced chain of the current `chains.json`, and stale digests.
 
 ## Phase 2 dispatches (item O-α; ADR-050 D6, rev. 3)
 
