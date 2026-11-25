@@ -137,6 +137,23 @@ message, exit code, reason string and cap it had (S1P-A11):
 * ``RECOMMENDATION_KEYS`` and ``EFFORT_LEVELS``: the four keys of the section 4 block and the levels that its Effort
   Estimate starts with. Step 9 rejects a ``recommendation_body`` that doesn't hold the keys once each and in order, whose
   Effort Estimate doesn't start with a level, or that has a heading line or a table line (the 1.1 template's "Who writes what").
+
+**Added at W2' (T091's first slice, PR 2; ADR-050 D15 and RR5, ``contracts/threat-model-records.md`` and ``contracts/part-files.md``):**
+
+* The stages. ``STAGE_AGENTS`` and ``CANONICAL_OUTPUTS`` gain ``threat-model`` (the run-level plan: no units, and D4's four canonical files), and the three
+  batch stages ``threats-md``, ``trees`` and ``report`` (no canonical output of their own: their ``fail`` moves nothing). ``phase2`` is not a stage,
+  because Phase 2 has no plan (item O-alpha). ``SECTION_STAGES`` are the stages whose batches may name no finding ID (a ``threats-md`` row section, a ``report``
+  section part) and ``UNSIZED_STAGES`` those that record a null ``batch_size``. ``STAGE_COUNT_KEYS`` is each stage's closed ``counts`` set, and ``COUNT_KEYS``
+  their union.
+* The record documents, each a closed key set in ``KEY_SETS``, a ``*_SCHEMA`` name, a size cap in ``MAX_DOCUMENT_BYTES`` and a validator that ``read_document``
+  also reaches: ``validate_dispatch_record`` (``tachi.dispatch-record/1``), ``validate_brief``, ``validate_idmap``, ``validate_phase1_inventory``,
+  ``validate_phase1_dispatch``, ``validate_chains``, ``validate_chain_narratives`` and ``validate_check_handoff`` (``tachi.check-handoff/1``). Each checks what
+  its own file shows and nothing across files: the checks that compare a record with its brief, the inventory or the reference set belong to the scripts
+  that hold both. ``ROSTER``, ``DISPATCH_KEYS``, ``LAYERS``, ``RISK_LEVELS`` and the enums beside them are the contracts' closed values.
+* The part payloads of ``trees`` and ``report``. ``classify_part`` and ``read_part`` take the batch input's ``units`` for the stages whose parts depend on
+  them. A ``trees`` item is ``{finding_id, delta_status, action, similarity_score?}``. A ``report`` part is a section part (``fragments`` under ``REPORT_PARTS``'
+  closed keys and ``report_fragment_limit``'s limits) or a findings part (``threat_analysis`` and ``remediation_roadmap`` items). ``report_fallback(field)`` is
+  the fixed sentence for a report field, and ``SLOT_TABLE`` gains the ``report`` and ``chain-narratives`` stages, whose slots may name a finding.
 """
 from __future__ import annotations
 
@@ -292,12 +309,35 @@ BATCH_INPUT_SCHEMA = "tachi.batch-input/1"
 PLAN_SCHEMA = "tachi.plan/1"
 POINTER_SCHEMA = "tachi.plan-pointer/1"
 STAGE_RECORD_SCHEMA = "tachi.stage-record/1"
+# PR 2's JSON files (ADR-050 D15: "tachi.<kind>/<major>"; contracts/threat-model-records.md and contracts/part-files.md section 6).
+DISPATCH_RECORD_SCHEMA = "tachi.dispatch-record/1"
+BRIEF_SCHEMA = "tachi.brief/1"
+IDMAP_SCHEMA = "tachi.idmap/1"
+INVENTORY_SCHEMA = "tachi.phase1-inventory/1"
+DISPATCH_TABLE_SCHEMA = "tachi.phase1-dispatch/1"
+CHAINS_SCHEMA = "tachi.chains/1"
+CHAIN_NARRATIVES_SCHEMA = "tachi.chain-narratives/1"
+HANDOFF_SCHEMA = "tachi.check-handoff/1"
 
-# The stages this version knows, each with its agent. Later stages join this table when they ship.
+# The stages this version knows, each with its agent. `threat-model` is PR 2's run-level plan (it plans no units, and it owns D4's four canonical
+# files); `threats-md`, `trees` and `report` are its batch stages (part-files.md section 5). Phase 2 has no stage: it writes records, not parts, and it
+# has no plan (item O-alpha, ADR-050 D6 rev. 3).
 STAGE_AGENTS: Dict[str, str] = {
     "risk-score": "tachi-risk-scorer",
     "compensating-controls": "tachi-control-analyzer",
+    "threat-model": "tachi-orchestrator",
+    "threats-md": "tachi-orchestrator",
+    "trees": "tachi-attack-tree-delta",
+    "report": "tachi-threat-report",
 }
+# Stages whose batches may name no finding ID: a `threats-md` row section and a `report` section part hold their units in the batch input's
+# `units` (items O-beta and O-gamma). Every other stage's batch names one to 500.
+SECTION_STAGES = ("threats-md", "report")
+# Stages whose plan records a null `batch_size`: the run-level plan has no units, and the two per-section stages take their sizes from constants in
+# `tachi-stage.py` (part-files.md section 4). Any other stage records an integer, or null when it has no unit.
+UNSIZED_STAGES = ("threat-model",) + SECTION_STAGES
+# Batch stages: their plan takes no `{out}` snapshot and has no canonical output (`close` checks the run, and their `fail` moves nothing).
+BATCH_STAGES = ("threats-md", "trees", "report")
 
 SUBSCORE_NAMES = ("known_techniques", "attack_complexity", "tooling_availability", "skill_level",
                   "scriptability", "target_scope", "resource_requirements", "detection_difficulty")
@@ -313,11 +353,62 @@ BATCH_STATES = ("pending", "done", "failed", "split")
 RECORD_STATUSES = ("success", "success-with-warnings", "failed")
 OVERFLOW_EVENT_KINDS = ("missing", "overflow-reported", "unparseable", "invalid")
 
-# The stage record's closed `counts` keys: the base counts and the flag kinds (ADR-050 D2, D9). `cell_overwrites` is the
-# eighth base count, the controls renderer's: the computed §2 cells that held anything but their own slot token.
-COUNT_KEYS = frozenset((
+# PR 2's closed values (contracts/threat-model-records.md; contracts/part-files.md). Each is the contracts' list, and a drift test pins the text.
+# `ROSTER` is the Phase 2 roster of agent-roster-shared.md, in its order: a dispatch record and a brief name one of these 14 agents.
+ROSTER = ("tachi-spoofing", "tachi-tampering", "tachi-repudiation", "tachi-info-disclosure", "tachi-denial-of-service",
+          "tachi-privilege-escalation", "tachi-agent-autonomy", "tachi-tool-abuse", "tachi-human-trust-exploitation",
+          "tachi-prompt-injection", "tachi-data-poisoning", "tachi-model-theft", "tachi-output-integrity", "tachi-misinformation")
+DISPATCH_KEYS = ("S", "T", "R", "I", "D", "E", "AG", "LLM")  # the contracts' `CAT`: a category that a dispatch table or a brief names
+STRIDE_LETTERS = DISPATCH_KEYS[:6]
+AI_KEYS = DISPATCH_KEYS[6:]
+LAYERS = ("L1", "L2", "L3", "L4", "L5", "L6", "L7")  # the MAESTRO layers
+RISK_LEVELS = ("Critical", "High", "Medium", "Low", "Note")
+DFD_TYPES = ("External Entity", "Process", "Data Store", "Data Flow")
+DISPATCH_ORIGINS = ("planned", "redispatch", "coverage-gap")
+DISPATCH_STATUSES = ("complete", "superseded", "unrecovered")  # `complete` is the only live record (item O-alpha)
+DISPATCH_REASONS = ("no_end_marker", "overflow_error")  # why a record was truncated; null exactly for a complete one
+CHAIN_OUTCOMES = ("written", "zero", "skipped")  # `tachi_parsers.parse_chain_outcome`'s forms
+CHAIN_ZERO_REASONS = ("no STRIDE findings", "fewer than two layers with STRIDE findings", "no candidate links",
+                      "no chain with a Critical or High finding")
+CHAIN_SKIP_REASONS = ("Section 7 unreadable", "inventory missing", "inventory invalid")  # the script's own; the check adds others to the record
+CHAIN_ROLES = ("initial_exploit", "intermediate_cascade", "terminal_impact")
+HANDOFF_CHECKS = ("attack-chains", "provenance")  # a hand-off's `check` is its file's stem
+HANDOFF_STATUSES = ("pass", "warn", "fail")
+HANDOFF_ERROR_CODES = ("no-records", "envelope", "lineage", "provenance", "completeness")  # the failed rule of FR-N4.5 and FR-N4.6
+# The check hand-off's closed warning codes (part-files.md section 6). `coverage-gap:unrecovered:<reason>` takes the record's reasons.
+HANDOFF_WARNING_CODES = (("chain-outcome:rewritten", "section6:mismatch", "id:reissued")
+                         + tuple("coverage-gap:unrecovered:" + reason for reason in DISPATCH_REASONS)
+                         + ("correlation-member-repeated",))
+DELTA_STATUSES = ("NEW", "UNCHANGED", "UPDATED")
+TREE_ACTIONS = ("carried_forward", "generated_fresh", "regenerated")
+# The `report` payload's closed names (part-files.md, "Stage payload: report"). A band is a risk level in lower case, as a `count` or `pct` slot spells it.
+REPORT_BANDS = tuple(level.lower() for level in RISK_LEVELS)
+# Item O-beta's category keys: the eight category tables, `agentic` for AG, AGP and TE, and `llm` for LLM, OI and MI.
+REPORT_CATEGORY_KEYS = ("spoofing", "tampering", "repudiation", "information_disclosure", "denial_of_service", "elevation_of_privilege",
+                        "agentic", "llm")
+# The six patterns of Section 7's Pattern column (`schemas/finding.yaml`'s `agentic_pattern`), in the canonical order.
+REPORT_PATTERNS = ("agent_collusion", "emergent_behavior", "temporal_attack", "trust_exploitation", "communication_vulnerability",
+                   "resource_competition")
+
+# The run-level `threat-model` stage record's counts, and the provenance hand-off's: FR-N4.5's three provenance classes, the renumbered and folded
+# kept dispositions, and FR-E.19's reissued IDs, beside the reference set's two counts (part-files.md sections 5 and 6).
+THREAT_MODEL_COUNTS = ("open", "resolved", "recorded", "carried", "rule", "renumbered", "folded", "reused-id")
+
+# The stage record's closed `counts` keys, per stage: the base counts and the flag kinds (ADR-050 D2, D9) for PR 1's two stages, and PR 2's own for each
+# of its four (part-files.md section 5). `cell_overwrites` is the eighth base count, the controls renderer's: the computed §2 cells that held anything
+# but their own slot token. The record's counts are a subset of the stage's set: a failed record may hold fewer.
+_PR1_COUNT_KEYS = frozenset((
     "units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations", "cell_overwrites",
     "corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input"))
+STAGE_COUNT_KEYS: Dict[str, frozenset] = {
+    "risk-score": _PR1_COUNT_KEYS,
+    "compensating-controls": _PR1_COUNT_KEYS,
+    "threat-model": frozenset(THREAT_MODEL_COUNTS),
+    "threats-md": frozenset(("units", "open", "resolved", "rendered")),
+    "trees": frozenset(("units", "carried", "rendered")),
+    "report": frozenset(("units", "rendered", "narrative_fallbacks", "truncations")),
+}
+COUNT_KEYS = frozenset().union(*STAGE_COUNT_KEYS.values())  # every key that any stage's record may count
 
 # name -> (required keys, optional keys), in the contracts' order. Every key is required unless listed optional.
 KEY_SETS: Dict[str, Tuple[Tuple[str, ...], Tuple[str, ...]]] = {
@@ -352,6 +443,34 @@ KEY_SETS: Dict[str, Tuple[Tuple[str, ...], Tuple[str, ...]]] = {
     "warning": (("code", "detail"), ()),
     "output": (("path", "sha256"), ()),
     "error": (("code", "message", "batch_id", "finding_ids", "remedy"), ()),
+    # PR 2 (T091): the record documents of contracts/threat-model-records.md, in its order, then the hand-off of part-files.md section 6, then the
+    # `trees` and `report` payloads. A chain file's names are the contract's own (S1P-A30); no other name may match `chain.*narrat`.
+    "dispatch-record": (("schema", "dispatch_id", "agent_type", "origin", "scope", "brief", "prompt", "end_marker", "status",
+                         "supersedes", "superseded_by", "reason", "count", "local_ids"), ()),
+    "record-scope": (("components",), ()),
+    "brief": (("schema", "dispatch_id", "agent_type", "targets", "inputs", "baseline_focus"), ()),
+    "brief-inputs": (("architecture", "inventory", "dispatch_table"), ()),
+    "brief-focus": (("component", "covered"), ()),
+    "idmap": (("schema", "records"), ()),
+    "phase1-inventory": (("schema", "components", "data_flows", "trust_zones"), ()),
+    "inventory-component": (("name", "dfd_type", "maestro_layer", "description"), ()),
+    "inventory-flow": (("source", "destination", "data", "protocol"), ()),
+    "inventory-zone": (("name", "components"), ()),
+    "phase1-dispatch": (("schema", "rows"), ()),
+    "dispatch-row": (("component", "stride", "ai"), ()),
+    "chains": (("schema", "outcome", "reason", "chain_count", "candidate_count", "surfaced_count", "reference_digest",
+                "inventory_digest", "chains"), ()),
+    "chain": (("chain_id", "surfaced", "converging", "max_severity", "members", "breaking_target"), ()),
+    "chain-member": (("finding_id", "layer", "role"), ()),
+    "chain-narratives": (("schema", "narratives"), ()),
+    "chain-text": (("title", "narrative"), ()),
+    "check-handoff": (("schema", "check", "plan_id", "status", "counts", "batches", "warnings", "error"), ()),
+    "handoff-counts": (THREAT_MODEL_COUNTS, ()),
+    "handoff-error": (("code", "message", "finding_ids", "remedy"), ()),
+    "trees-item": (("finding_id", "delta_status", "action"), ("similarity_score",)),
+    "fragment": (("slot_key", "text"), ()),
+    "analysis-item": (("finding_id", "narrative", "tree_summary"), ()),
+    "roadmap-item": (("finding_id", "effort", "dependencies"), ()),
 }
 
 # The 24 flag fields: the `<field>` of `input:<field>:narrative-fallback` and `input:<field>:truncated`,
@@ -371,6 +490,17 @@ MAX_DOCUMENT_BYTES: Dict[str, int] = {
     BATCH_INPUT_SCHEMA: 4 * 1024 * 1024,
     POINTER_SCHEMA: 4096,
     STAGE_RECORD_SCHEMA: 1024 * 1024,
+    # PR 2's files. The first five caps and the hand-off's are the contracts' (threat-model-records.md; part-files.md section 6). The two chain files
+    # have none in the contracts, so they take the part cap: `chains.json` holds at most 105 chains of at most seven members, and `narratives.json`
+    # at most five titles and narratives, both far below it.
+    DISPATCH_RECORD_SCHEMA: 64 * 1024,
+    BRIEF_SCHEMA: 32 * 1024,
+    IDMAP_SCHEMA: 256 * 1024,
+    INVENTORY_SCHEMA: 512 * 1024,
+    DISPATCH_TABLE_SCHEMA: 256 * 1024,
+    CHAINS_SCHEMA: MAX_PART_BYTES,
+    CHAIN_NARRATIVES_SCHEMA: MAX_PART_BYTES,
+    HANDOFF_SCHEMA: 1024 * 1024,
 }
 MAX_NESTING = 8
 MAX_INT_DIGITS = 20
@@ -627,6 +757,31 @@ SLOT_TABLE: Dict[str, Dict[str, Optional[frozenset]]] = {
         "ref": None,
         "name": frozenset(("component",)),
     },
+    # PR 2's two narrative stages (ADR-050 D3's table, as item O-gamma and S1P-A30 rule them). The `report` stage's `count` argument is a status, a band, a
+    # category key or `<category key>.<band>`, and `pct` a band. A `band` or `name` slot there takes no plain argument: it takes `risk:<finding ID>` or
+    # `component:<finding ID>`, which `SLOT_ID_PREFIXES` lets through. A chain narrative's `count` is one of the chain's three computed counts.
+    "report": {
+        "count": frozenset(("open", "resolved", "new", "unchanged", "updated") + REPORT_BANDS + REPORT_CATEGORY_KEYS
+                           + tuple("%s.%s" % (category, band) for category in REPORT_CATEGORY_KEYS for band in REPORT_BANDS)),
+        "pct": frozenset(REPORT_BANDS),
+        "band": frozenset(),
+        "finding": None,
+        "ref": None,
+        "name": frozenset(),
+    },
+    "chain-narratives": {
+        "count": frozenset(("members", "layers", "converging")),
+        "finding": None,
+        "ref": None,
+        "name": frozenset(),
+    },
+}
+
+# stage -> kind -> the prefix of an argument that ends in a finding ID, such as `risk:T-2`. The argument passes when it is the prefix and an allow-listed ID,
+# and the lookup then resolves it (the finding's level, or its component).
+SLOT_ID_PREFIXES: Dict[str, Dict[str, str]] = {
+    "report": {"band": "risk:", "name": "component:"},
+    "chain-narratives": {"name": "component:"},
 }
 
 # A slot is recognized only as `{{`, a kind, then `:`. Every kind that any stage will ever have is listed, so a
@@ -700,6 +855,12 @@ _BRACE_OF_A_PAIR = re.compile(r"\{(?=\{)|(?<=\{)\{")
 _LINE_START_GUARD = re.compile(r"(?m)^([^\S\n]*)([#~])")
 
 
+def _id_argument(stage: str, kind: str, name: str) -> bool:
+    """True when ``name`` is the stage's prefix for this kind and an allow-listed finding ID: ``risk:T-2``, ``component:T-2`` (``SLOT_ID_PREFIXES``)."""
+    prefix = SLOT_ID_PREFIXES.get(stage, {}).get(kind)
+    return prefix is not None and name.startswith(prefix) and id_matches("finding", name[len(prefix):])
+
+
 def _tokens(text: str, stage: str) -> List[Tuple[str, ...]]:
     """Split a narrative into ``("text", plain)`` and ``("slot", kind, argument)`` tokens.
 
@@ -721,7 +882,8 @@ def _tokens(text: str, stage: str) -> List[Tuple[str, ...]]:
         if kind not in table:
             raise ValueError("slot-kind")
         allowed = table[kind]
-        if (allowed is not None and name not in allowed) or (kind == "finding" and not id_matches("finding", name)):
+        if (allowed is not None and name not in allowed and not _id_argument(stage, kind, name)) or (
+                kind == "finding" and not id_matches("finding", name)):
             raise ValueError("slot-argument")
         if opener.start() > position:
             tokens.append(("text", text[position:opener.start()]))
@@ -886,6 +1048,8 @@ class PartResult:
     message (the ``reason`` for ``overflow``). ``part`` is the validated part, only when ``done``: IDs in
     canonical form, items in the planned order, prose cut at its limits. ``flags`` maps each canonical
     finding ID to its sorted ``input:<field>:<cause>`` flags, and ``counts`` totals the cuts and the fallbacks.
+    A ``report`` part has no flags (``{}``): its fallbacks and cuts are counted, and the report prints none. A ``report`` section part holds its
+    ``fragments`` in the batch's planned order, each cut, stripped and, where its text broke the narrative rules, replaced by the fixed sentence.
     """
 
     state: str
@@ -988,21 +1152,22 @@ def _enum(value: Any, allowed: Tuple[str, ...], what: str) -> str:
     return value
 
 
-def _narrative(text: str, field: str, state: _ItemState) -> str:
+def _narrative(text: str, field: str, state: _ItemState, fallback: Optional[str] = None) -> str:
     """Step 11: a narrative field that breaks the slot grammar or the numeral ban takes its fixed sentence.
 
     The field is flagged ``input:<field>:narrative-fallback`` and counted, and the part is never rejected for it.
-    A field that passes is kept with its slots as written.
+    A field that passes is kept with its slots as written. ``fallback`` is the sentence of a field that ``FALLBACK_SENTENCES`` doesn't hold: a ``report``
+    field's (``report_fallback``).
     """
     if narrative_problem(text, state.stage) is None:
         return text
     state.flags.add("input:%s:narrative-fallback" % field)
     state.fallbacks += 1
-    return FALLBACK_SENTENCES[field]
+    return FALLBACK_SENTENCES[field] if fallback is None else fallback
 
 
 def _prose(value: Any, limit: int, field: str, state: _ItemState, narrative: bool = False,
-           minimum: int = 0, lines: Optional[int] = None, dedent: bool = False) -> str:
+           minimum: int = 0, lines: Optional[int] = None, dedent: bool = False, fallback: Optional[str] = None) -> str:
     """A prose field: cut at its limit (and at ``lines`` lines) and flagged, never rejected for length (RR2).
 
     Step 9's order is the cut, then the edge whitespace: a snippet (``dedent``) is dedented with ``textwrap.dedent``
@@ -1027,7 +1192,7 @@ def _prose(value: Any, limit: int, field: str, state: _ItemState, narrative: boo
     if len(value) < minimum:
         _fail("%s is empty" % field)
     _check_characters(value, field)
-    return _narrative(value, field, state) if narrative else value
+    return _narrative(value, field, state, fallback) if narrative else value
 
 
 def _scorer_item(item: Dict[str, Any], state: _ItemState) -> None:
@@ -1180,7 +1345,201 @@ def _controls_item(item: Dict[str, Any], state: _ItemState) -> None:
 
 
 # Stage -> its payload validator. PR 2's stages join this table with their payloads.
-_PAYLOADS = {"risk-score": _scorer_item, "compensating-controls": _controls_item}
+# --- PR 2's payloads (T091): the `trees` items and the `report` parts (contracts/part-files.md, "Stage payload: report"; ADR-050 D6 items O-gamma and RR3) ---
+
+def _trees_item(item: Dict[str, Any], state: _ItemState) -> None:
+    """A ``trees`` item (D6): one tree's entry in its batch's manifest. ``delta_status`` and ``action`` are closed values, and ``similarity_score``, which
+    only a Rule 3 entry has, is a number from 0 to 1, kept as a ``float`` (a part's JSON numbers arrive as ``Decimal``, which a writer can't dump).
+
+    Whether ``delta_status`` and ``action`` equal the batch input's is not decided here, because this check doesn't hold the units: the reconciler and
+    ``assemble-report.py trees`` do (see the results record, "Rule 3").
+    """
+    _check_keys(item, "trees-item")
+    _enum(item["delta_status"], DELTA_STATUSES, "delta_status")
+    _enum(item["action"], TREE_ACTIONS, "action")
+    if "similarity_score" in item:
+        score = item["similarity_score"]
+        if type(score) is bool or not isinstance(score, (int, float, Decimal)) or not 0 <= score <= 1:
+            _fail("similarity_score is not a number from 0 to 1")
+        item["similarity_score"] = float(score)
+
+
+# The report's parts, in the template's order: a section part holds paragraphs (``fragments``), a findings part one item per finding. The planner, the
+# validator and the assembler import this table and ``report_fragment_limit`` (part-files.md).
+REPORT_PARTS: Tuple[Tuple[str, str], ...] = (
+    ("exec_summary", "section"), ("architecture_overview", "section"), ("threat_categories", "section"),
+    ("threat_analysis", "findings"), ("cross_cutting_themes", "section"), ("attack_chains", "section"),
+    ("agentic_patterns", "section"), ("remediation_roadmap", "findings"), ("delta_summary", "section"))
+# A section's fixed fragment keys and their limits in characters. The keys that depend on the run (`category.<key>`, `summary.<key>`, `chain.<ID>`,
+# `pattern.<value>` and a theme's) are in ``report_fragment_limit``.
+REPORT_FRAGMENTS: Dict[str, Dict[str, int]] = {
+    "exec_summary": {"risk_posture": 1500, "top_threats": 4000, "key_recommendations": 2500, "compliance": 2000},
+    "architecture_overview": {"system_context": 4000, "trust_boundaries": 4000},
+    "threat_categories": {"overview": 1500},
+    "agentic_patterns": {"multi": 3000},
+    "delta_summary": {"progress": 3000},
+}
+# The planned fragment keys that a section part may leave out (all the rest are required), and the themes unit's twelve keys: `themes` allows
+# `theme.<n>.title` and `theme.<n>.body` for n from 1 to 6, all optional, in pairs, numbered from 1 with no gap.
+REPORT_OPTIONAL_FRAGMENTS: Dict[str, Tuple[str, ...]] = {"exec_summary": ("compliance",), "threat_categories": ("overview",),
+                                                         "cross_cutting_themes": ("themes",)}
+THEME_KEYS = tuple("theme.%d.%s" % (n, part) for n in range(1, 7) for part in ("title", "body"))
+_THEME_KEY = re.compile(r"theme\.([1-6])\.(title|body)", re.ASCII)
+MAX_FRAGMENTS = 50  # the envelope's ``fragments`` holds 0 to 50 entries
+
+
+def report_fragment_limit(section: str, key: str) -> Optional[int]:
+    """The limit, in characters, of fragment ``key`` in the ``report`` section part ``section``, or ``None`` when the section has no such key.
+
+    A theme's keys belong to ``cross_cutting_themes`` (the unit key ``themes`` stands for all twelve). The limits are part-files.md's: 1,500, 4,000, 2,500
+    and 2,000 for the executive summary, 4,000 for each architecture paragraph, 1,500 for the overview, 600 for each ``category.<key>`` and 1,200 for each
+    ``summary.<key>``, 120 and 2,000 for a theme, 2,000 for each ``chain.<chain ID>``, 1,500 for each ``pattern.<value>``, 3,000 for ``multi`` and
+    ``progress``.
+    """
+    if not isinstance(section, str) or not isinstance(key, str):
+        return None
+    if key in REPORT_FRAGMENTS.get(section, {}):
+        return REPORT_FRAGMENTS[section][key]
+    head, _, tail = key.partition(".")
+    if section == "threat_categories" and tail in REPORT_CATEGORY_KEYS:
+        return {"category": 600, "summary": 1200}.get(head)
+    if section == "attack_chains" and head == "chain" and id_matches("chain", tail):
+        return 2000
+    if section == "agentic_patterns" and head == "pattern" and tail in REPORT_PATTERNS:
+        return 1500
+    theme = _THEME_KEY.fullmatch(key) if section == "cross_cutting_themes" else None
+    if theme is not None:
+        return 120 if theme.group(2) == "title" else 2000
+    return None
+
+
+def report_unit_slots(section: str, key: str) -> Optional[Tuple[str, ...]]:
+    """The fragment keys that one planned unit of a section part allows: its own key, or for the themes unit its twelve. ``None`` for a key that the section
+    doesn't have."""
+    if section == "cross_cutting_themes":
+        return THEME_KEYS if key == "themes" else None
+    return (key,) if report_fragment_limit(section, key) is not None else None
+
+
+# The `report` stage's fixed sentences (part-files.md, "Stage payload: report"; item O-gamma). A findings item's three narrative fields have one each, a
+# theme's title has its own, and every other fragment shares one. T113 copies this table into the shared reference, which a drift test then pins.
+REPORT_FALLBACKS: Dict[str, str] = {
+    "narrative": "No narrative is shown for this finding because the text the agent wrote broke the narrative rules.",
+    "tree_summary": "No summary is shown for this attack tree because the text the agent wrote broke the narrative rules.",
+    "dependencies": "No dependency note is shown because the text the agent wrote broke the narrative rules.",
+    "theme.<n>.title": "Untitled theme",
+    "fragment": "This passage is not shown because the text the agent wrote broke the narrative rules.",
+}
+
+
+def report_fallback(field: str) -> str:
+    """The fixed sentence for a ``report`` field: ``narrative``, ``tree_summary`` or ``dependencies`` (a findings item's), a ``theme.<n>.title`` fragment, or
+    any other fragment key. Text that broke the slot grammar or the numeral ban is replaced by it, and so is a slot that doesn't resolve at assembly.
+    ``KeyError`` for a name that is none of those."""
+    if isinstance(field, str):
+        if field in ("narrative", "tree_summary", "dependencies"):
+            return REPORT_FALLBACKS[field]
+        theme = _THEME_KEY.fullmatch(field)
+        if theme is not None and theme.group(2) == "title":
+            return REPORT_FALLBACKS["theme.<n>.title"]
+        if any(report_fragment_limit(section, field) is not None for section, kind in REPORT_PARTS if kind == "section"):
+            return REPORT_FALLBACKS["fragment"]
+    raise KeyError(field)
+
+
+def _unit_section(units: Any, kind: str) -> Tuple[str, List[Dict[str, Any]]]:
+    """The one report section that a batch's units name, and the units: a malformed plan is ``invalid``, never a crash."""
+    if not isinstance(units, list) or not units or not all(isinstance(unit, dict) for unit in units):
+        _fail("the planned units are missing or malformed")
+    sections = [unit.get("section") for unit in units]
+    if not all(isinstance(section, str) for section in sections) or len(set(sections)) != 1 or dict(REPORT_PARTS).get(sections[0]) != kind:
+        _fail("the planned units don't name one report %s part" % kind)
+    return sections[0], units
+
+
+def _classify_report_section(obj: Dict[str, Any], units: Any) -> PartResult:
+    """A ``report`` section part (item O-gamma): ``finding_ids`` and ``items`` are empty, and ``fragments`` holds one paragraph for each required unit of its
+    batch, at most one for each optional unit, and nothing else, with no key twice. The themes unit allows its theme keys in pairs, numbered from 1 with no
+    gap. Each ``text`` is narrative: it is cut at its key's limit, loses its edge whitespace, passes step 10 and takes step 11's per-field fallback.
+    The validated part holds the fragments in the planned order."""
+    section, unit_rows = _unit_section(units, "section")
+    unit_keys = [unit.get("key") for unit in unit_rows]
+    if not all(isinstance(key, str) for key in unit_keys) or len(set(unit_keys)) != len(unit_keys):
+        _fail("a planned unit has no key, or two units share one")
+    allowed: List[str] = []
+    for key in unit_keys:
+        slots = report_unit_slots(section, key)
+        if slots is None:
+            _fail("a planned unit's key is not a fragment key of its section")
+        allowed.extend(slots)
+    if obj["items"] != []:
+        _fail("items must be empty in a section part")
+    fragments = obj["fragments"]
+    if not isinstance(fragments, list) or len(fragments) > MAX_FRAGMENTS:
+        _fail("fragments is not a list of at most %d" % MAX_FRAGMENTS)
+    texts: Dict[str, Any] = {}
+    for fragment in fragments:
+        _check_keys(fragment, "fragment")
+        key = fragment["slot_key"]
+        if not isinstance(key, str) or key not in allowed:
+            _fail("a fragment's slot_key is not one of the batch's keys")
+        if key in texts:
+            _fail("two fragments for one key")
+        texts[key] = fragment["text"]
+    if any(key not in texts for key in unit_keys if key not in REPORT_OPTIONAL_FRAGMENTS.get(section, ())):
+        _fail("a required fragment is missing")
+    if section == "cross_cutting_themes":
+        numbers = sorted({int(key.split(".")[1]) for key in texts})
+        if numbers != list(range(1, len(numbers) + 1)) or any(
+                "theme.%d.%s" % (n, part) not in texts for n in numbers for part in ("title", "body")):
+            _fail("the themes are not numbered from 1 in pairs of a title and a body")
+    state = _ItemState("report")
+    checked = []
+    for key in allowed:
+        if key in texts:
+            text = _prose(texts[key], report_fragment_limit(section, key), key, state, narrative=True, minimum=1, fallback=report_fallback(key))
+            checked.append({"slot_key": key, "text": text})
+    part = dict(obj, finding_ids=[], items=[], fragments=checked)
+    return PartResult("done", "", part, {}, {"narrative_fallbacks": state.fallbacks, "truncations": state.truncations})
+
+
+def _analysis_item(item: Dict[str, Any], state: _ItemState, tree: bool) -> None:
+    """A ``threat_analysis`` item: ``narrative`` (1 to 2,000, cut), and ``tree_summary`` (1 to 300, cut) for a finding that has a tree, ``null`` for any other."""
+    _check_keys(item, "analysis-item")
+    item["narrative"] = _prose(item["narrative"], 2000, "narrative", state, narrative=True, minimum=1, fallback=REPORT_FALLBACKS["narrative"])
+    if tree:
+        item["tree_summary"] = _prose(item["tree_summary"], 300, "tree_summary", state, narrative=True, minimum=1, fallback=REPORT_FALLBACKS["tree_summary"])
+    elif item["tree_summary"] is not None:
+        _fail("tree_summary is not null for a finding with no tree")
+
+
+def _roadmap_item(item: Dict[str, Any], state: _ItemState) -> None:
+    """A ``remediation_roadmap`` item: ``effort`` (Low, Medium or High) and ``dependencies`` (1 to 400, cut, or ``null``)."""
+    _check_keys(item, "roadmap-item")
+    _enum(item["effort"], EFFORT_LEVELS, "effort")
+    if item["dependencies"] is not None:
+        item["dependencies"] = _prose(item["dependencies"], 400, "dependencies", state, narrative=True, minimum=1, fallback=REPORT_FALLBACKS["dependencies"])
+
+
+def _report_findings(units: Any, planned: List[str]) -> Callable[[str, Dict[str, Any], _ItemState], None]:
+    """The item check for a ``report`` findings batch: its section comes from the units, which hold one for each planned finding (``tree`` too, in
+    ``threat_analysis``)."""
+    section, rows = _unit_section(units, "findings")
+    by_id: Dict[str, Dict[str, Any]] = {}
+    for row in rows:
+        if not id_matches("finding", row.get("finding_id")):
+            _fail("a planned unit has no allow-listed finding_id")
+        by_id[canonical_finding_id(row["finding_id"])] = row
+    if len(by_id) != len(rows) or set(by_id) != set(planned):
+        _fail("the planned units differ from the planned finding IDs")
+    if section == "remediation_roadmap":
+        return lambda key, item, state: _roadmap_item(item, state)
+    if not all(type(row.get("tree")) is bool for row in rows):
+        _fail("a threat_analysis unit has no tree flag")
+    return lambda key, item, state: _analysis_item(item, state, by_id[key]["tree"])
+
+
+_PAYLOADS = {"risk-score": _scorer_item, "compensating-controls": _controls_item, "trees": _trees_item}
 
 
 def _planned_ids(plan_id: Any, batch_id: Any, stage: Any, agent_type: Any, finding_ids: Any) -> List[str]:
@@ -1192,12 +1551,12 @@ def _planned_ids(plan_id: Any, batch_id: Any, stage: Any, agent_type: Any, findi
     if not isinstance(finding_ids, (list, tuple)) or not all(id_matches("finding", v) for v in finding_ids):
         _fail("a planned finding ID is malformed")
     canonical = [canonical_finding_id(v) for v in finding_ids]
-    if not 1 <= len(canonical) <= MAX_IDS or len(set(canonical)) != len(canonical):
+    if not (0 if stage in SECTION_STAGES else 1) <= len(canonical) <= MAX_IDS or len(set(canonical)) != len(canonical):
         _fail("the planned finding IDs are empty, too many or duplicated")
     return canonical
 
 
-def _classify(obj: Any, plan_id: Any, batch_id: Any, stage: Any, agent_type: Any, finding_ids: Any) -> PartResult:
+def _classify(obj: Any, plan_id: Any, batch_id: Any, stage: Any, agent_type: Any, finding_ids: Any, units: Any = None) -> PartResult:
     planned = _planned_ids(plan_id, batch_id, stage, agent_type, finding_ids)
     if not isinstance(obj, dict):
         _fail("the part is not an object")
@@ -1215,11 +1574,19 @@ def _classify(obj: Any, plan_id: Any, batch_id: Any, stage: Any, agent_type: Any
         _fail("plan_id, batch_id, stage or agent_type differs from the planned batch")
     # Step 8: every ID passes the allow-list before any other use.
     ids = obj["finding_ids"]
-    if not isinstance(ids, list) or not 1 <= len(ids) <= MAX_IDS or not all(id_matches("finding", v) for v in ids):
-        _fail("finding_ids is not 1 to %d allow-listed IDs" % MAX_IDS)
+    minimum = 0 if stage in SECTION_STAGES else 1
+    if not isinstance(ids, list) or not minimum <= len(ids) <= MAX_IDS or not all(id_matches("finding", v) for v in ids):
+        _fail("finding_ids is not %d to %d allow-listed IDs" % (minimum, MAX_IDS))
     canonical = [canonical_finding_id(v) for v in ids]
     if len(set(canonical)) != len(canonical) or set(canonical) != set(planned):
         _fail("finding_ids differ from the planned set")
+    if not planned:  # a section batch: the units name what the part holds, and `finding_ids` and `items` are empty
+        if stage != "report":
+            _fail("the stage has no section part payload in this version")
+        return _classify_report_section(obj, units)
+    check = _report_findings(units, planned) if stage == "report" else None
+    if check is None and stage not in _PAYLOADS:
+        _fail("the stage has no part payload in this version")
     items = obj["items"]
     if not isinstance(items, list) or len(items) != len(planned) or not all(isinstance(i, dict) for i in items):
         _fail("items is not one object per finding ID")
@@ -1243,8 +1610,11 @@ def _classify(obj: Any, plan_id: Any, batch_id: Any, stage: Any, agent_type: Any
         item = copy.deepcopy(by_id[key])
         item["finding_id"] = key
         state = _ItemState(stage)
-        _PAYLOADS[stage](item, state)
-        if state.flags:
+        if check is not None:
+            check(key, item, state)
+        else:
+            _PAYLOADS[stage](item, state)
+        if state.flags and stage != "report":  # the report prints no flag: its fallbacks and cuts are counted, and that is all
             flags[key] = sorted(state.flags)
         cuts += state.truncations
         fallbacks += state.fallbacks
@@ -1253,22 +1623,27 @@ def _classify(obj: Any, plan_id: Any, batch_id: Any, stage: Any, agent_type: Any
     return PartResult("done", "", part, flags, {"narrative_fallbacks": fallbacks, "truncations": cuts})
 
 
-def classify_part(obj: Any, plan_id: str, batch_id: str, stage: str, agent_type: str, finding_ids: Any) -> PartResult:
-    """Steps 5 to 10 on a parsed object, against the planned batch. Never raises; see ``PartResult``."""
+def classify_part(obj: Any, plan_id: str, batch_id: str, stage: str, agent_type: str, finding_ids: Any, units: Any = None) -> PartResult:
+    """Steps 5 to 10 on a parsed object, against the planned batch. Never raises; see ``PartResult``.
+
+    ``units`` is the batch input's ``units``. A ``report`` part needs it: a section part's fragments are the batch's planned keys, and a findings part's
+    ``tree_summary`` is ``null`` exactly when the finding has no tree. A batch without it, or with units that don't fit the plan, is ``invalid``. The other
+    stages ignore it.
+    """
     try:
-        return _classify(obj, plan_id, batch_id, stage, agent_type, finding_ids)
+        return _classify(obj, plan_id, batch_id, stage, agent_type, finding_ids, units)
     except PartError as exc:
         return PartResult(exc.kind, exc.detail)
 
 
 def read_part(path: object, out: object, plan_id: str, batch_id: str, stage: str, agent_type: str,
-              finding_ids: Any) -> PartResult:
+              finding_ids: Any, units: Any = None) -> PartResult:
     """Steps 1 to 10 on the part file at ``path``: ``load_json``, then ``classify_part``. Never raises."""
     try:
         obj = load_json(path, out)
     except PartError as exc:
         return PartResult(exc.kind, exc.detail)
-    return classify_part(obj, plan_id, batch_id, stage, agent_type, finding_ids)
+    return classify_part(obj, plan_id, batch_id, stage, agent_type, finding_ids, units)
 
 
 # =============================================================================
@@ -1276,10 +1651,15 @@ def read_part(path: object, out: object, plan_id: str, batch_id: str, stage: str
 # =============================================================================
 
 # D4's closed output sets: the canonical file names a stage's plan may record a pre-image for.
-# Keep this table in step with STAGE_AGENTS: a stage that ships adds its row to both.
+# Keep this table in step with STAGE_AGENTS: a stage that ships adds its row to both. The run-level `threat-model` plan owns the four files of D4's threat
+# model set, in its order. A batch stage owns none: its `fail` writes its record and moves nothing, so its plan's `preimage` is `{}` (part-files.md section 5).
 CANONICAL_OUTPUTS: Dict[str, Tuple[str, ...]] = {
     "risk-score": ("risk-scores.md", "risk-scores.sarif"),
     "compensating-controls": ("compensating-controls.md", "compensating-controls.sarif"),
+    "threat-model": ("threats.md", "threats.sarif", "threat-report.md", "attack-chains.md"),
+    "threats-md": (),
+    "trees": (),
+    "report": (),
 }
 
 _UTC = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?Z", re.ASCII)
@@ -1436,7 +1816,7 @@ def validate_plan(obj: Any) -> Dict[str, Any]:
             _fail("two batches share one batch_id")
         seen.add(batch_id)
         _int(entry["attempt"], 1, 3, "batches.attempt")
-        _id_list(entry["finding_ids"], "batches.finding_ids")
+        _id_list(entry["finding_ids"], "batches.finding_ids", minimum=0 if obj["stage"] in SECTION_STAGES else 1)
         _stamp(entry["input_sha256"], _HEX64, "batches.input_sha256")
         _enum(entry["state"], BATCH_STATES, "batches.state")
     for entry in batches:
@@ -1445,7 +1825,39 @@ def validate_plan(obj: Any) -> Dict[str, Any]:
             _fail("a batch's parent is not the batch its ID derives from")
         if entry["parent"] is not None and entry["parent"] not in seen:
             _fail("a batch's parent is not in the plan")
+    _stage_shape(obj)
     return obj
+
+
+def _stage_shape(plan: Dict[str, Any]) -> None:
+    """What part-files.md sections 4 and 5 and cli.md say about each PR 2 stage's plan, on top of the closed schema.
+
+    * ``batch_size`` is null for the run-level plan (it plans no units) and for the two per-section stages, whose sizes are constants of ``tachi-stage.py``.
+      Any other stage records an integer, and null only when it has no batch.
+    * The run-level ``threat-model`` plan has no unit and no batch. Its pre-images are D4's four files, which the closed ``preimage`` already checks.
+    * A batch stage takes no ``{out}`` snapshot, and ``threats-md`` and ``report`` have no pointers (``refs`` is ``{}``). ``threats-md`` has no
+      architecture warning either.
+    * The ``trees`` and ``report`` plans record ``params.reference_digest``, the SHA-256 of the reference set's canonical JSON.
+    """
+    stage = plan["stage"]
+    if stage in UNSIZED_STAGES:
+        if plan["batch_size"] is not None:
+            _fail("batch_size is null for this stage")
+    elif plan["batch_size"] is None and plan["batches"]:
+        _fail("batch_size is null only for a plan with no unit")
+    if stage == "threat-model" and (plan["batches"] or plan["unit_count"] != 0):
+        _fail("the run-level plan has no unit and no batch")
+    if stage in BATCH_STAGES and plan["out_snapshot"] is not None:
+        _fail("a batch stage's plan takes no out_snapshot")
+    if stage in SECTION_STAGES and plan["refs"] != {}:
+        _fail("this stage's plan has no refs")
+    if stage == "threats-md" and plan["architecture_warning"] is not None:
+        _fail("this stage's plan has no architecture warning")
+    if stage in ("trees", "report"):
+        digest = plan["params"].get("reference_digest")
+        if digest is None:
+            _fail("params.reference_digest is missing")
+        _stamp(digest, _HEX64, "params.reference_digest")
 
 
 def validate_pointer(obj: Any) -> Dict[str, Any]:
@@ -1465,13 +1877,21 @@ def validate_batch_input(obj: Any) -> Dict[str, Any]:
     plan_id = _id("plan", obj["plan_id"], "plan_id")
     batch_id = _id("batch", obj["batch_id"], "batch_id")
     _stage_pair(obj["stage"], obj["agent_type"])
-    _id_list(obj["finding_ids"], "finding_ids")
+    finding_ids = _id_list(obj["finding_ids"], "finding_ids", minimum=0 if obj["stage"] in SECTION_STAGES else 1)
     attempt = _int(obj["attempt"], 1, 3, "attempt")
     parts = path_parts(_path_text(obj["part_path"], "part_path", absolute=True), allow_absolute=True)
     if parts[-3:] != (plan_id, "parts", "%s.a%d.json" % (batch_id, attempt)):
         _fail("part_path is not <plan_id>/parts/<batch_id>.a<attempt>.json")
-    if obj["tree_paths"] != {}:
-        _fail("tree_paths is {} outside the trees stage")
+    if obj["stage"] != "trees":
+        if obj["tree_paths"] != {}:
+            _fail("tree_paths is {} outside the trees stage")
+    else:  # one path for each finding, each directly under the plan's trees/ directory (part-files.md section 3)
+        paths = obj["tree_paths"]
+        if not isinstance(paths, dict) or set(paths) != set(finding_ids):
+            _fail("tree_paths is not one path for each finding ID")
+        for path in paths.values():
+            if path_parts(_path_text(path, "tree_paths", absolute=True), allow_absolute=True)[-3:-1] != (plan_id, "trees"):
+                _fail("a tree path is not under <plan_id>/trees/")
     if not isinstance(obj["units"], list) or len(obj["units"]) > MAX_IDS or not all(isinstance(u, dict) for u in obj["units"]):
         _fail("units is not a list of at most %d objects" % MAX_IDS)
     _refs(obj["refs"])
@@ -1492,8 +1912,8 @@ def validate_stage_record(obj: Any) -> Dict[str, Any]:
     _utc(obj["started_utc"], "started_utc")
     _utc(obj["finished_utc"], "finished_utc")
     _stamp(obj["input_digest"], _DIGEST, "input_digest")
-    if not isinstance(obj["counts"], dict) or not set(obj["counts"]) <= COUNT_KEYS:
-        _fail("counts has a key outside the closed set")
+    if not isinstance(obj["counts"], dict) or not set(obj["counts"]) <= STAGE_COUNT_KEYS[obj["stage"]]:
+        _fail("counts has a key outside the stage's closed set")
     for name, count in obj["counts"].items():
         _int(count, 0, 10 ** 9, "counts.%s" % name)
     _check_keys(obj["batches"], "stage-batches")
@@ -1503,6 +1923,12 @@ def validate_stage_record(obj: Any) -> Dict[str, Any]:
                          ("undeclared_paths", MAX_UNDECLARED_PATHS), ("outputs", 100)):
         if not isinstance(obj[field], list) or len(obj[field]) > limit:
             _fail("%s is not a list of at most %d entries" % (field, limit))
+    # Part-files.md section 5: Phase 2's events stay in its records, so the run-level record lists none, and `close` checks the whole run, so a batch
+    # stage's record names no undeclared path.
+    if obj["stage"] == "threat-model" and (obj["overflow_events"] or obj["retries"]):
+        _fail("the run-level record lists no overflow event and no retry")
+    if obj["stage"] in BATCH_STAGES and obj["undeclared_paths"]:
+        _fail("a batch stage's record names no undeclared path")
     for event in obj["overflow_events"]:
         _check_keys(event, "overflow-event")
         _id("batch", event["batch_id"], "overflow_events.batch_id")
@@ -1538,16 +1964,376 @@ def validate_stage_record(obj: Any) -> Dict[str, Any]:
     return obj
 
 
+# =============================================================================
+# PR 2's record documents (T091; contracts/threat-model-records.md, contracts/part-files.md section 6)
+#
+# Each validator checks one file against its own closed key set, types, ranges and the rules that the file itself shows. It raises
+# ``PartError("invalid")`` and returns the object it was given. What needs a second file is the check's: that a record's scope is in the inventory,
+# that its brief matches it, that a chain's members are in the reference set, that a hand-off's ``check`` is its file's stem and its ``plan_id`` the
+# run's. A file read from disk goes through ``read_document``, which adds the strict loader and the size cap.
+# =============================================================================
+
+def _name(value: Any, what: str) -> str:
+    """A ``NAME``: 1 to 200 characters with no control byte. ``closed_string`` allows tab and newline, and a name may not hold either."""
+    closed_string(value, what, 1, 200)
+    if "\t" in value or "\n" in value:
+        _fail("%s holds a control byte" % what)
+    return value
+
+
+def _folded(name: str) -> str:
+    """A component name as the checks compare it: casefolded, each run of whitespace one space (ADR-050 D13; the inventory's own uniqueness rule)."""
+    return " ".join(name.casefold().split())
+
+
+def _names(value: Any, what: str, low: int, high: int) -> List[str]:
+    """A list of ``low`` to ``high`` ``NAME``s, no two alike once casefolded and whitespace-collapsed."""
+    if not isinstance(value, list) or not low <= len(value) <= high:
+        _fail("%s is not %d to %d names" % (what, low, high))
+    for name in value:
+        _name(name, what)
+    if len({_folded(name) for name in value}) != len(value):
+        _fail("%s names one component twice" % what)
+    return value
+
+
+def _file_path(value: Any, what: str, tail: Tuple[str, ...]) -> str:
+    """An absolute ``PATH`` whose last components are ``tail`` (the fixed place that the contract gives the file under ``{out}``)."""
+    _path_text(value, what, absolute=True)
+    if path_parts(value, allow_absolute=True)[-len(tail):] != tail:
+        _fail("%s is not at its fixed place under the run's output directory" % what)
+    return value
+
+
+def _schema(obj: Dict[str, Any], schema: str) -> None:
+    if obj["schema"] != schema:
+        _fail("schema is not %s" % schema)
+
+
+def validate_dispatch_record(obj: Any) -> Dict[str, Any]:
+    """``tachi.dispatch-record/1``: a Phase 2 dispatch's manifest, written once when the return arrives (D11; item O-alpha).
+
+    ``complete`` holds exactly when ``end_marker`` does, a ``reason`` is set exactly when the record isn't complete, ``supersedes`` exactly for a
+    ``redispatch`` and ``superseded_by`` exactly for a ``superseded`` record, and a ``coverage-gap`` record has one component and is never superseded.
+    The prompt is the fixed line, with the brief's path in it, and ``local_ids`` has ``count`` entries. Whether the scope is in the inventory, and the lineage
+    of the records, are the provenance check's.
+    """
+    _check_keys(obj, "dispatch-record")
+    _schema(obj, DISPATCH_RECORD_SCHEMA)
+    dispatch_id = _id("dispatch", obj["dispatch_id"], "dispatch_id")
+    _enum(obj["agent_type"], ROSTER, "agent_type")
+    origin = _enum(obj["origin"], DISPATCH_ORIGINS, "origin")
+    _check_keys(obj["scope"], "record-scope")
+    components = _names(obj["scope"]["components"], "scope.components", 1, 500)
+    if origin == "coverage-gap" and len(components) != 1:
+        _fail("a coverage-gap record has exactly one component")
+    brief = _file_path(obj["brief"], "brief", (BUILD_DIR, "briefs", dispatch_id + ".json"))
+    if obj["prompt"] != "Read and follow the brief at %s." % brief:
+        _fail("prompt is not the fixed line with the brief's path")
+    if type(obj["end_marker"]) is not bool:
+        _fail("end_marker is not a boolean")
+    status = _enum(obj["status"], DISPATCH_STATUSES, "status")
+    if (status == "complete") != obj["end_marker"]:
+        _fail("a record is complete exactly when it has its end marker")
+    if status == "superseded" and origin == "coverage-gap":
+        _fail("a coverage-gap record is never superseded")
+    supersedes = obj["supersedes"]
+    if (supersedes is not None) != (origin == "redispatch"):
+        _fail("supersedes is set exactly for a redispatch")
+    if supersedes is not None and (not id_matches("dispatch", supersedes) or supersedes == dispatch_id):
+        _fail("supersedes is not another dispatch ID")
+    by = obj["superseded_by"]
+    if (not isinstance(by, list) or len(by) > 500 or not all(id_matches("dispatch", v) for v in by) or len(set(by)) != len(by)
+            or dispatch_id in by):
+        _fail("superseded_by is not a list of up to 500 other dispatch IDs, none twice")
+    if bool(by) != (status == "superseded"):
+        _fail("superseded_by is non-empty exactly for a superseded record")
+    reason = obj["reason"]
+    if (reason is None) != (status == "complete"):
+        _fail("reason is null exactly for a complete record")
+    if reason is not None:
+        _enum(reason, DISPATCH_REASONS, "reason")
+    count = _int(obj["count"], 0, 2000, "count")
+    local_ids = obj["local_ids"]
+    if not isinstance(local_ids, list) or len(local_ids) != count or not all(v is None or id_matches("finding", v) for v in local_ids):
+        _fail("local_ids is not one finding ID or null for each of count")
+    return obj
+
+
+def validate_brief(obj: Any) -> Dict[str, Any]:
+    """``tachi.brief/1``: the scope file of one dispatch (D11; FR-N4.3). It points at its inputs and never copies them.
+
+    ``inputs`` holds absolute paths, the two Phase 1 files at their fixed places, and ``baseline_focus`` is null or lists target components, each with the
+    categories that the baseline covers. Whether ``targets`` equal the record's scope, and where the architecture snapshot sits, are the check's.
+    """
+    _check_keys(obj, "brief")
+    _schema(obj, BRIEF_SCHEMA)
+    _id("dispatch", obj["dispatch_id"], "dispatch_id")
+    _enum(obj["agent_type"], ROSTER, "agent_type")
+    targets = _names(obj["targets"], "targets", 1, 500)
+    inputs = obj["inputs"]
+    _check_keys(inputs, "brief-inputs")
+    _path_text(inputs["architecture"], "inputs.architecture", absolute=True)
+    _file_path(inputs["inventory"], "inputs.inventory", (BUILD_DIR, "phase1", "inventory.json"))
+    _file_path(inputs["dispatch_table"], "inputs.dispatch_table", (BUILD_DIR, "phase1", "dispatch.json"))
+    focus = obj["baseline_focus"]
+    if focus is not None:
+        if not isinstance(focus, list):
+            _fail("baseline_focus is not null or a list")
+        for entry in focus:
+            _check_keys(entry, "brief-focus")
+            _name(entry["component"], "baseline_focus.component")
+            covered = entry["covered"]
+            if not isinstance(covered, list) or not all(isinstance(v, str) and v in DISPATCH_KEYS for v in covered):
+                _fail("baseline_focus.covered is not a list of categories")
+        names = [_folded(entry["component"]) for entry in focus]
+        if len(set(names)) != len(names) or not set(names) <= {_folded(name) for name in targets}:
+            _fail("baseline_focus names a component twice, or one that isn't a target")
+    return obj
+
+
+_DISPOSITION = re.compile(r"[=~>]?(?:%s)" % ID_PATTERNS["finding"], re.ASCII)
+
+
+def validate_idmap(obj: Any) -> Dict[str, Any]:
+    """``tachi.idmap/1``: for each complete record, one disposition for each finding it received, in the order received (D11).
+
+    A disposition is an ID (kept), or an ID led by ``=`` (matched exactly), ``~`` (matched by similarity) or ``>`` (merged into). Which record a key names,
+    that its length is the record's ``count`` and that each target exists are the provenance check's (FR-N4.6).
+    """
+    _check_keys(obj, "idmap")
+    _schema(obj, IDMAP_SCHEMA)
+    records = obj["records"]
+    if not isinstance(records, dict):
+        _fail("records is not an object")
+    for dispatch_id, dispositions in records.items():
+        _id("dispatch", dispatch_id, "records key")
+        if not isinstance(dispositions, list) or len(dispositions) > 2000 or not all(
+                isinstance(d, str) and _DISPOSITION.fullmatch(d) is not None for d in dispositions):
+            _fail("a record's dispositions are not up to 2000 dispositions")
+    return obj
+
+
+def validate_phase1_inventory(obj: Any) -> Dict[str, Any]:
+    """``tachi.phase1-inventory/1``: the components, data flows and trust zones that the orchestrator persists before any dispatch (D11).
+
+    Component names are unique once casefolded and whitespace-collapsed, and every name in a trust zone is a component. A flow's ends are not checked
+    against the components: the contract says that of the zones only.
+    """
+    _check_keys(obj, "phase1-inventory")
+    _schema(obj, INVENTORY_SCHEMA)
+    components = obj["components"]
+    if not isinstance(components, list) or not 1 <= len(components) <= 500:
+        _fail("components is not 1 to 500 components")
+    for component in components:
+        _check_keys(component, "inventory-component")
+        _name(component["name"], "components.name")
+        _enum(component["dfd_type"], DFD_TYPES, "components.dfd_type")
+        _enum(component["maestro_layer"], LAYERS + ("Unclassified",), "components.maestro_layer")
+        closed_string(component["description"], "components.description", 0, 500)
+    known = {_folded(component["name"]) for component in components}
+    if len(known) != len(components):
+        _fail("components names one component twice")
+    flows = obj["data_flows"]
+    if not isinstance(flows, list) or len(flows) > 5000:
+        _fail("data_flows is not up to 5000 flows")
+    for flow in flows:
+        _check_keys(flow, "inventory-flow")
+        _name(flow["source"], "data_flows.source")
+        _name(flow["destination"], "data_flows.destination")
+        closed_string(flow["data"], "data_flows.data", 0, 200)
+        closed_string(flow["protocol"], "data_flows.protocol", 0, 100)
+    zones = obj["trust_zones"]
+    if not isinstance(zones, list) or len(zones) > 200:
+        _fail("trust_zones is not up to 200 zones")
+    for zone in zones:
+        _check_keys(zone, "inventory-zone")
+        _name(zone["name"], "trust_zones.name")
+        names = zone["components"]
+        if not isinstance(names, list) or not {_folded(_name(name, "trust_zones.components")) for name in names} <= known:
+            _fail("a trust zone is not a list of components")
+    return obj
+
+
+def validate_phase1_dispatch(obj: Any) -> Dict[str, Any]:
+    """``tachi.phase1-dispatch/1``: the categories that each component gets, one row per component (D11). Each row's two lists are of distinct keys.
+
+    That every inventory component has its row, and no other does, is the check's.
+    """
+    _check_keys(obj, "phase1-dispatch")
+    _schema(obj, DISPATCH_TABLE_SCHEMA)
+    rows = obj["rows"]
+    if not isinstance(rows, list) or not 1 <= len(rows) <= 500:
+        _fail("rows is not 1 to 500 rows")
+    for row in rows:
+        _check_keys(row, "dispatch-row")
+        _name(row["component"], "rows.component")
+        for field, allowed in (("stride", STRIDE_LETTERS), ("ai", AI_KEYS)):
+            keys = row[field]
+            if not isinstance(keys, list) or len(set(map(str, keys))) != len(keys) or not all(isinstance(k, str) and k in allowed for k in keys):
+                _fail("rows.%s is not a list of distinct keys from %s" % (field, ", ".join(allowed)))
+    if len({_folded(row["component"]) for row in rows}) != len(rows):
+        _fail("rows has two rows for one component")
+    return obj
+
+
+def validate_chains(obj: Any) -> Dict[str, Any]:
+    """``tachi.chains/1``: what ``attack-chains.py plan`` computed, with both input digests (D13; S1P-A30).
+
+    The counts follow the outcome: N chains for ``written`` (S of them surfaced, at most five), none for ``zero``, and no count for ``skipped``, which
+    has no chain either. ``chains`` lists every surfaced chain and the first ``min(100, N - S)`` of the others, in rank order, so it has ``S + min(100,
+    N - S)`` entries. A chain's ID is ``CHAIN-`` and its rank, three digits at least, and the IDs ascend. A chain has two to seven STRIDE findings on
+    distinct layers, whose roles are the first's ``initial_exploit``, the last's ``terminal_impact`` and ``intermediate_cascade`` between, and its
+    ``breaking_target`` is one of them. The members' IDs, components and levels are checked against the reference set by ``render``, which also checks both
+    digests against its own reads.
+    """
+    _check_keys(obj, "chains")
+    _schema(obj, CHAINS_SCHEMA)
+    outcome = _enum(obj["outcome"], CHAIN_OUTCOMES, "outcome")
+    reason, found, candidates, surfaced = obj["reason"], obj["chain_count"], obj["candidate_count"], obj["surfaced_count"]
+    if outcome == "written":
+        if reason is not None:
+            _fail("reason is null for a written outcome")
+        found = _int(found, 1, 999999, "chain_count")
+        candidates = _int(candidates, found, 999999, "candidate_count")
+        surfaced = _int(surfaced, 1, min(5, found), "surfaced_count")
+    elif outcome == "zero":
+        _enum(reason, CHAIN_ZERO_REASONS, "reason")
+        found = _int(found, 0, 0, "chain_count")
+        _int(candidates, 0, 999999, "candidate_count")
+        surfaced = _int(surfaced, 0, 0, "surfaced_count")
+    else:
+        _enum(reason, CHAIN_SKIP_REASONS, "reason")
+        if found is not None or candidates is not None or surfaced is not None:
+            _fail("a skipped outcome has no count")
+    for name in ("reference_digest", "inventory_digest"):
+        if obj[name] is not None:
+            _stamp(obj[name], _HEX64, name)
+        elif outcome != "skipped":
+            _fail("%s is null only for a skipped outcome" % name)
+    if outcome == "skipped" and ((reason == "Section 7 unreadable" and obj["reference_digest"] is not None)
+                                 or (reason == "inventory missing" and obj["inventory_digest"] is not None)):
+        _fail("a digest of an input that couldn't be read")
+    chains = obj["chains"]
+    if not isinstance(chains, list) or len(chains) != (surfaced + min(100, found - surfaced) if outcome == "written" else 0):
+        _fail("chains does not list the surfaced chains and the first min(100, N - S) of the others")
+    rank = flagged = 0
+    for chain in chains:
+        _check_keys(chain, "chain")
+        chain_id = _id("chain", chain["chain_id"], "chains.chain_id")
+        number = int(chain_id[len("CHAIN-"):])
+        if chain_id != "CHAIN-%03d" % number or not rank < number <= found:
+            _fail("a chain ID is not CHAIN- and its rank, three digits at least, ascending and at most N")
+        rank = number
+        if type(chain["surfaced"]) is not bool:
+            _fail("chains.surfaced is not a boolean")
+        if chain["surfaced"]:
+            flagged += 1
+            _int(chain["converging"], 0, found - 1, "chains.converging")
+        elif chain["converging"] is not None:
+            _fail("converging is null for a chain that isn't surfaced")
+        _enum(chain["max_severity"], RISK_LEVELS, "chains.max_severity")
+        members = chain["members"]
+        if not isinstance(members, list) or not 2 <= len(members) <= 7:
+            _fail("a chain has two to seven members")
+        layers, ids = set(), set()
+        for index, member in enumerate(members):
+            _check_keys(member, "chain-member")
+            canonical = canonical_finding_id(_id("finding", member["finding_id"], "members.finding_id"))
+            if canonical.partition("-")[0] not in STRIDE_LETTERS:
+                _fail("a chain member is not a STRIDE finding")
+            layer = _enum(member["layer"], LAYERS, "members.layer")
+            role = "initial_exploit" if index == 0 else ("terminal_impact" if index == len(members) - 1 else "intermediate_cascade")
+            if member["role"] != role:
+                _fail("a member's role is not its place in the chain")
+            if layer in layers or canonical in ids:
+                _fail("two members share a layer or a finding")
+            layers.add(layer)
+            ids.add(canonical)
+        if chain["breaking_target"] not in [member["finding_id"] for member in members]:
+            _fail("breaking_target is not one of the chain's members")
+    if flagged != (surfaced if outcome == "written" else 0):
+        _fail("the number of surfaced chains is not surfaced_count")
+    return obj
+
+
+def validate_chain_narratives(obj: Any) -> Dict[str, Any]:
+    """``tachi.chain-narratives/1``: the orchestrator's ``{title, narrative}`` for each surfaced chain (D13; S1P-A30).
+
+    This is the key set and the types: every entry has exactly ``title`` and ``narrative``, both text. The rest is ``render``'s, because it fails one chain
+    and not the file: the narrative checks (slots, the numeral ban, 120 and 2,000 characters), and that each key is a surfaced chain of the current
+    ``chains.json``, which it refuses with exit 2. So a key's spelling isn't checked here.
+    """
+    _check_keys(obj, "chain-narratives")
+    _schema(obj, CHAIN_NARRATIVES_SCHEMA)
+    narratives = obj["narratives"]
+    if not isinstance(narratives, dict):
+        _fail("narratives is not an object")
+    for entry in narratives.values():
+        _check_keys(entry, "chain-text")
+        if not isinstance(entry["title"], str) or not isinstance(entry["narrative"], str):
+            _fail("a title or a narrative is not text")
+    return obj
+
+
+def validate_check_handoff(obj: Any) -> Dict[str, Any]:
+    """``tachi.check-handoff/1``: what a main-session check tells ``close`` and ``fail`` (part-files.md section 6; RR5).
+
+    ``attack-chains`` has no counts, batches or error. ``provenance`` has the eight counts and Phase 2's six batch counts, each 0 to 1,000,000, and an
+    ``error`` that is null or names the failed rule, how many IDs are involved and the first 20 of them in S-2 order. ``status`` is ``fail`` when there is an
+    error, otherwise ``warn`` when there are warnings, otherwise ``pass``. The warning codes are closed, and ``correlation-member-repeated`` is the
+    provenance check's. That ``check`` is the file's stem and ``plan_id`` the run's is the reader's.
+    """
+    _check_keys(obj, "check-handoff")
+    _schema(obj, HANDOFF_SCHEMA)
+    check = _enum(obj["check"], HANDOFF_CHECKS, "check")
+    _id("plan", obj["plan_id"], "plan_id")
+    status = _enum(obj["status"], HANDOFF_STATUSES, "status")
+    warnings = obj["warnings"]
+    if not isinstance(warnings, list) or len(warnings) > 1000:
+        _fail("warnings is not a list of at most 1,000")
+    for warning in warnings:
+        _warning_entry(warning, "warnings")
+        if warning["code"] not in HANDOFF_WARNING_CODES or (warning["code"] == "correlation-member-repeated" and check != "provenance"):
+            _fail("a warning code that this check doesn't have")
+    error = obj["error"]
+    if check == "attack-chains":
+        if obj["counts"] is not None or obj["batches"] is not None or error is not None:
+            _fail("counts, batches and error are null in the attack-chains hand-off")
+    else:
+        _check_keys(obj["counts"], "handoff-counts")
+        for name in THREAT_MODEL_COUNTS:
+            _int(obj["counts"][name], 0, 1000000, "counts.%s" % name)
+        _check_keys(obj["batches"], "stage-batches")
+        for name in KEY_SETS["stage-batches"][0]:
+            _int(obj["batches"][name], 0, 1000000, "batches.%s" % name)
+        if error is not None:
+            _check_keys(error, "handoff-error")
+            _enum(error["code"], HANDOFF_ERROR_CODES, "error.code")
+            closed_string(error["message"], "error.message", 1, 2000)
+            ids = _id_list(error["finding_ids"], "error.finding_ids", minimum=0)
+            if len(ids) > 20 or [finding_sort_key(v) for v in ids] != sorted(finding_sort_key(v) for v in ids):
+                _fail("error.finding_ids is not the first 20 IDs in S-2 order")
+            closed_string(error["remedy"], "error.remedy", 1, 2000)
+    if status != ("fail" if error is not None else ("warn" if warnings else "pass")):
+        _fail("status is not what the error and the warnings give")
+    return obj
+
+
 _DOCUMENTS = {PLAN_SCHEMA: validate_plan, POINTER_SCHEMA: validate_pointer,
-              BATCH_INPUT_SCHEMA: validate_batch_input, STAGE_RECORD_SCHEMA: validate_stage_record}
+              BATCH_INPUT_SCHEMA: validate_batch_input, STAGE_RECORD_SCHEMA: validate_stage_record,
+              DISPATCH_RECORD_SCHEMA: validate_dispatch_record, BRIEF_SCHEMA: validate_brief, IDMAP_SCHEMA: validate_idmap,
+              INVENTORY_SCHEMA: validate_phase1_inventory, DISPATCH_TABLE_SCHEMA: validate_phase1_dispatch,
+              CHAINS_SCHEMA: validate_chains, CHAIN_NARRATIVES_SCHEMA: validate_chain_narratives, HANDOFF_SCHEMA: validate_check_handoff}
 
 
 def read_document(path: object, out: object, schema: str) -> Dict[str, Any]:
-    """Load one of the four planner and record documents (steps 1 to 4), then validate it against ``schema``.
+    """Load one of the planner and record documents (steps 1 to 4), then validate it against ``schema``.
 
     ``schema`` is the document the caller expects, so a file that names another schema is ``invalid``: the
     key set is chosen by the caller's expectation and the file's own ``schema`` must agree (F5). Raises
-    ``ValueError`` for a ``schema`` that is not one of the four, and ``PartError`` for anything wrong with the file.
+    ``ValueError`` for a ``schema`` that isn't one of the documents (``_DOCUMENTS``: the four of the batch plan, and PR 2's eight records), and
+    ``PartError`` for anything wrong with the file.
     """
     if schema not in _DOCUMENTS:
         raise ValueError("not a document schema: %r" % (schema,))

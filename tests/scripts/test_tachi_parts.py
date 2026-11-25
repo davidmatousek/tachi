@@ -2209,8 +2209,13 @@ STAGE_RECORD_KEYS = ["schema", "stage", "plan_id", "status", "tachi_version", "s
 PLAN_BATCH_KEYS = ["batch_id", "parent", "attempt", "finding_ids", "input_sha256", "state"]
 ASSESSMENT_DIMENSIONS = ["coverage", "configuration", "currency", "completeness"]
 METRICS = ["AV", "AC", "PR", "UI", "S", "C", "I", "A"]
-COUNT_KEYS = {"units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations", "cell_overwrites",
-              "corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input"}
+PR1_COUNT_KEYS = {"units", "open", "resolved", "rendered", "parse_errors", "narrative_fallbacks", "truncations", "cell_overwrites",
+                  "corrected", "unverifiable", "unchecked", "divergent", "override", "retagged", "reused-id", "input"}
+# part-files.md section 5: each PR 2 stage's own closed counts. `COUNT_KEYS` is the union of the six stages' sets.
+PR2_COUNT_KEYS = {"threat-model": {"open", "resolved", "recorded", "carried", "rule", "renumbered", "folded", "reused-id"},
+                  "threats-md": {"units", "open", "resolved", "rendered"}, "trees": {"units", "carried", "rendered"},
+                  "report": {"units", "rendered", "narrative_fallbacks", "truncations"}}
+COUNT_KEYS = set().union(PR1_COUNT_KEYS, *PR2_COUNT_KEYS.values())
 EXPECTED_KEY_SETS = {
     "part": (PART_KEYS, []), "overflow": (OVERFLOW_KEYS, []), "batch-input": (BATCH_INPUT_KEYS, []),
     "plan": (PLAN_KEYS, []), "plan-pointer": (POINTER_KEYS, []), "stage-record": (STAGE_RECORD_KEYS, []),
@@ -2229,6 +2234,33 @@ EXPECTED_KEY_SETS = {
     "overflow-event": (["batch_id", "attempt", "kind"], []), "retry-entry": (["batch_id", "attempt", "cause", "children"], []),
     "warning": (["code", "detail"], []), "output": (["path", "sha256"], []),
     "error": (["code", "message", "batch_id", "finding_ids", "remedy"], []),
+    # PR 2 (T091's first slice): contracts/threat-model-records.md, then part-files.md section 6 and "Stage payload: report".
+    "dispatch-record": (["schema", "dispatch_id", "agent_type", "origin", "scope", "brief", "prompt", "end_marker", "status",
+                         "supersedes", "superseded_by", "reason", "count", "local_ids"], []),
+    "record-scope": (["components"], []),
+    "brief": (["schema", "dispatch_id", "agent_type", "targets", "inputs", "baseline_focus"], []),
+    "brief-inputs": (["architecture", "inventory", "dispatch_table"], []),
+    "brief-focus": (["component", "covered"], []),
+    "idmap": (["schema", "records"], []),
+    "phase1-inventory": (["schema", "components", "data_flows", "trust_zones"], []),
+    "inventory-component": (["name", "dfd_type", "maestro_layer", "description"], []),
+    "inventory-flow": (["source", "destination", "data", "protocol"], []),
+    "inventory-zone": (["name", "components"], []),
+    "phase1-dispatch": (["schema", "rows"], []),
+    "dispatch-row": (["component", "stride", "ai"], []),
+    "chains": (["schema", "outcome", "reason", "chain_count", "candidate_count", "surfaced_count", "reference_digest",
+                "inventory_digest", "chains"], []),
+    "chain": (["chain_id", "surfaced", "converging", "max_severity", "members", "breaking_target"], []),
+    "chain-member": (["finding_id", "layer", "role"], []),
+    "chain-narratives": (["schema", "narratives"], []),
+    "chain-text": (["title", "narrative"], []),
+    "check-handoff": (["schema", "check", "plan_id", "status", "counts", "batches", "warnings", "error"], []),
+    "handoff-counts": (["open", "resolved", "recorded", "carried", "rule", "renumbered", "folded", "reused-id"], []),
+    "handoff-error": (["code", "message", "finding_ids", "remedy"], []),
+    "trees-item": (["finding_id", "delta_status", "action"], ["similarity_score"]),
+    "fragment": (["slot_key", "text"], []),
+    "analysis-item": (["finding_id", "narrative", "tree_summary"], []),
+    "roadmap-item": (["finding_id", "effort", "dependencies"], []),
 }
 
 
@@ -2247,7 +2279,9 @@ def test_the_enumerations_and_the_stage_table_match_the_contract():
     assert list(_api("METRIC_NAMES")) == METRICS
     assert list(_api("CONTROL_CATEGORIES")) == CONTROL_CATEGORIES
     assert set(_api("COUNT_KEYS")) == COUNT_KEYS
-    assert dict(_api("STAGE_AGENTS")) == {"risk-score": "tachi-risk-scorer", "compensating-controls": "tachi-control-analyzer"}
+    assert dict(_api("STAGE_AGENTS")) == {
+        "risk-score": "tachi-risk-scorer", "compensating-controls": "tachi-control-analyzer", "threat-model": "tachi-orchestrator",
+        "threats-md": "tachi-orchestrator", "trees": "tachi-attack-tree-delta", "report": "tachi-threat-report"}
     assert _api("MAX_PART_BYTES") == 512 * 1024
     assert _api("MAX_AGENT_INPUT_BYTES") == 16 * 1024 * 1024
 
@@ -2603,7 +2637,7 @@ def test_a_stage_record_that_follows_the_contract_validates_for_every_status():
     assert _api("validate_stage_record")(warned) is warned
 
 
-@pytest.mark.parametrize("kind", sorted(COUNT_KEYS))
+@pytest.mark.parametrize("kind", sorted(PR1_COUNT_KEYS))
 def test_every_count_key_the_contract_names_is_accepted(kind):
     record = valid_stage_record()
     record["counts"] = {kind: 2}
@@ -2782,7 +2816,7 @@ def test_builders_return_absolute_text_whatever_form_out_arrives_in(tmp_path, mo
     ("plan id not text", lambda f: f("out", "risk-score", None)),
     ("stage unknown", lambda f: f("out", "bogus", PLAN)),
     ("stage that climbs", lambda f: f("out", "../risk-score", PLAN)),
-    ("stage not shipped yet", lambda f: f("out", "trees", PLAN)),
+    ("stage with no plan", lambda f: f("out", "phase2", PLAN)),  # item O-alpha: Phase 2 writes records, not parts
     ("stage not text", lambda f: f("out", None, PLAN)),
 ])
 @pytest.mark.parametrize("name", ["plan_dir", "plan_path", "stage_record_path"])
@@ -5024,3 +5058,1803 @@ def test_an_unexpected_errors_message_cuts_its_detail_at_200_and_names_where_it_
     assert failure.remedy == "report this as a bug in render-y.py; the earlier outputs were left or put back as they were"
     assert failure.text().startswith("TACHI COMPENSATING-CONTROLS FAILED: an unexpected error")
     assert "at unknown)" in _api("entry_defect")("risk-score", "render-y.py", ValueError("never raised"), None).reason, "an exception with no traceback"
+
+
+# =============================================================================
+# 25. PR 2's stages, plans, batch inputs and stage records (T091's first slice)
+#
+# contracts/part-files.md sections 3 to 5 (STAGE_AGENTS gains four stages; a plan with no units takes a null batch_size; a section batch names no
+# finding), cli.md and ADR-050 D4, D6 (items O-alpha, O-beta, O-gamma) and D15 (RR5). Every case changes one thing in a document that passes.
+# =============================================================================
+
+PR2_STAGES = {"threat-model": "tachi-orchestrator", "threats-md": "tachi-orchestrator", "trees": "tachi-attack-tree-delta",
+              "report": "tachi-threat-report"}
+BATCH_STAGES = ["threats-md", "trees", "report"]
+TREES = {"stage": "trees", "agent_type": "tachi-attack-tree-delta"}
+REPORT = {"stage": "report", "agent_type": "tachi-threat-report"}
+HEX2 = "cd" * 32
+RUN_OUT = "/work/out"
+
+
+def test_pr2_adds_four_stages_with_their_agents_and_phase2_is_not_one():
+    stages = _api("STAGE_AGENTS")
+    assert {name: stages[name] for name in PR2_STAGES} == PR2_STAGES
+    assert "phase2" not in stages and len(stages) == 6, "Phase 2 has no plan (item O-alpha), so it has no stage (T091 adds none)"
+
+
+def test_the_run_level_plan_owns_d4s_four_files_in_its_order_and_a_batch_stage_owns_none():
+    owned = _api("CANONICAL_OUTPUTS")
+    assert owned["threat-model"] == ("threats.md", "threats.sarif", "threat-report.md", "attack-chains.md")
+    assert all(owned[stage] == () for stage in BATCH_STAGES)
+    assert set(owned) == set(_api("STAGE_AGENTS"))
+
+
+def test_each_stages_counts_are_its_own_closed_set_and_count_keys_is_their_union():
+    per_stage = _api("STAGE_COUNT_KEYS")
+    assert set(per_stage) == set(_api("STAGE_AGENTS"))
+    for stage in ("risk-score", "compensating-controls"):
+        assert set(per_stage[stage]) == PR1_COUNT_KEYS, "PR 1's two stages keep theirs"
+    for stage, keys in PR2_COUNT_KEYS.items():
+        assert set(per_stage[stage]) == keys
+    assert set(_api("COUNT_KEYS")) == COUNT_KEYS == set().union(*map(set, per_stage.values()))
+    assert {"recorded", "carried", "rule", "renumbered", "folded"} <= set(_api("COUNT_KEYS"))
+
+
+def test_the_stage_groups_are_the_contracts():
+    assert tuple(_api("SECTION_STAGES")) == ("threats-md", "report"), "a batch of these may name no finding ID"
+    assert tuple(_api("UNSIZED_STAGES")) == ("threat-model", "threats-md", "report"), "these record a null batch_size"
+    assert tuple(_api("BATCH_STAGES")) == ("threats-md", "trees", "report"), "these take no snapshot and move nothing"
+
+
+@pytest.mark.parametrize("stage", sorted(PR2_STAGES))
+def test_the_layout_builders_serve_each_pr2_stage(tmp_path, stage):
+    out = str(tmp_path / "out")
+    base = os.path.join(out, ".tachi-build", stage)
+    assert _api("stage_dir")(out, stage) == base
+    assert _api("pointer_path")(out, stage) == os.path.join(base, "current.json")
+    assert _api("plan_path")(out, stage, PLAN) == os.path.join(base, PLAN, "plan.json")
+    assert _api("input_path")(out, stage, PLAN, "B002") == os.path.join(base, PLAN, "inputs", "B002.json")
+    assert _api("part_path")(out, stage, PLAN, "B002-1", 2) == os.path.join(base, PLAN, "parts", "B002-1.a2.json")
+    assert _api("stage_record_path")(out, stage, PLAN) == os.path.join(base, PLAN, "stage-record.json")
+
+
+def test_only_the_run_level_stage_has_pre_image_staged_and_failed_files(tmp_path):
+    out = str(tmp_path / "out")
+    for builder in ("preimage_path", "staged_path", "failed_path"):
+        for name in ("threats.md", "threats.sarif", "threat-report.md", "attack-chains.md"):
+            assert os.path.basename(_api(builder)(out, "threat-model", PLAN, name)) == name
+        for bad in ("risk-scores.md", "attack-chains.inconsistent.md", "architecture.md", "../threats.md", None):
+            with pytest.raises(ValueError):
+                _api(builder)(out, "threat-model", PLAN, bad)
+        for stage in BATCH_STAGES:
+            with pytest.raises(ValueError):
+                _api(builder)(out, stage, PLAN, "threats.md")
+
+
+def valid_pr2_plan(stage):
+    """A plan for each of PR 2's four stages, as part-files.md sections 4 and 5, cli.md and ADR-050 D6 give it."""
+    plan = valid_plan()
+    plan.update(stage=stage, agent_type=PR2_STAGES[stage], inputs={"threats": plan["inputs"]["threats"]}, refs={}, architecture_warning=None,
+                params={"scoring_date": "2026-11-22"}, batch_size=None, unit_count=0, preimage={}, out_snapshot=None,
+                retry_budget={"limit": 0, "used": 0}, batches=[])
+
+    def batch(batch_id, ids):
+        return {"batch_id": batch_id, "parent": None, "attempt": 1, "finding_ids": list(ids), "input_sha256": HEX, "state": "pending"}
+
+    if stage == "threat-model":  # Step 1.5: no units, D4's four pre-images and the {out} snapshot
+        plan.update(preimage={"threats.md": HEX, "threats.sarif": None, "threat-report.md": None, "attack-chains.md": HEX2},
+                    out_snapshot={"architecture.md": [120, 1700000000000000000]})
+    elif stage == "threats-md":  # a row section's batch names no finding, a finding section's names its own
+        plan.update(unit_count=3, retry_budget={"limit": 4, "used": 0}, batches=[batch("B001", []), batch("B002", ["S-1", "T-2"])])
+    elif stage == "trees":  # a size, because the stage has one: a batch of at most 12
+        plan.update(batch_size=12, unit_count=2, retry_budget={"limit": 2, "used": 0}, batches=[batch("B001", ["S-1", "T-2"])],
+                    refs={"baseline_dir": "/work/baseline"}, params={"scoring_date": "2026-11-22", "rule_applied": "Rule 1", "reference_digest": HEX})
+    else:  # report: sizes per section, so a null size, and a pinned trees plan
+        plan.update(unit_count=5, retry_budget={"limit": 4, "used": 0}, batches=[batch("B001", []), batch("B002", ["S-1", "T-2"])],
+                    params={"scoring_date": "2026-11-22", "reference_digest": HEX, "trees_plan_id": OTHER_PLAN})
+    return plan
+
+
+@pytest.mark.parametrize("stage", sorted(PR2_STAGES))
+def test_a_plan_for_each_pr2_stage_that_follows_the_contract_validates(stage):
+    plan = valid_pr2_plan(stage)
+    assert _api("validate_plan")(plan) is plan
+
+
+@pytest.mark.parametrize("stage", ["trees"])
+def test_a_trees_plan_with_nothing_to_draw_has_a_null_size_and_keeps_its_pointers(stage):
+    plan = valid_pr2_plan(stage)
+    plan.update(batch_size=None, unit_count=0, retry_budget={"limit": 0, "used": 0}, batches=[])
+    assert _api("validate_plan")(plan) is plan, "a plan with no units takes a null batch_size (RR5); refs and params stay"
+
+
+def test_a_pr1_plan_with_no_units_still_takes_a_null_size_and_with_units_it_takes_a_number():
+    plan = valid_plan()
+    plan.update(out_snapshot=None, batch_size=None, unit_count=0, batches=[])
+    assert _api("validate_plan")(plan) is plan
+    plan = valid_plan()
+    plan["batch_size"] = None
+    raises_invalid(_api("validate_plan"), plan)
+
+
+def batches_of(*batch_ids):
+    return lambda plan: plan.update(batches=[dict(valid_pr2_plan("trees")["batches"][0], batch_id=b) for b in batch_ids], unit_count=len(batch_ids))
+
+
+PR2_PLAN_VIOLATIONS = [
+    # The run-level plan plans no unit.
+    ("threat-model", "a batch and a unit count", batches_of("B001")),
+    ("threat-model", "a batch with no unit count", lambda p: p.update(batches=[valid_pr2_plan("trees")["batches"][0]])),
+    ("threat-model", "a unit count", lambda p: p.update(unit_count=1)),
+    ("threat-model", "a batch size", lambda p: p.update(batch_size=12)),
+    ("threat-model", "a pre-image set of PR 1's", lambda p: p.update(preimage={"risk-scores.md": None, "risk-scores.sarif": None})),
+    ("threat-model", "a pre-image set that lacks a file", lambda p: p["preimage"].pop("attack-chains.md")),
+    ("threat-model", "a pre-image of a file D4 doesn't own", lambda p: p["preimage"].update({"architecture.md": None})),
+    # A batch stage plans no snapshot and owns no output.
+    *[(stage, "a snapshot", lambda p: p.update(out_snapshot={"threats.md": [1, 1]})) for stage in BATCH_STAGES],
+    *[(stage, "a pre-image", lambda p: p.update(preimage={"threats.md": None})) for stage in BATCH_STAGES],
+    # The two per-section stages have sizes of their own, and no pointers (items O-beta and O-gamma).
+    ("threats-md", "a batch size", lambda p: p.update(batch_size=12)),
+    ("report", "a batch size", lambda p: p.update(batch_size=12)),
+    ("threats-md", "a pointer", lambda p: p.update(refs={"threats": "/work/run/threats.md"})),
+    ("report", "a pointer", lambda p: p.update(refs={"threats": "/work/run/threats.md"})),
+    ("threats-md", "an architecture warning", lambda p: p.update(architecture_warning={"code": "architecture-path:explicit:missing", "detail": "d"})),
+    # `trees` has a size when it has a unit.
+    ("trees", "no size for a plan with units", lambda p: p.update(batch_size=None)),
+    # The trees and report plans pin the reference set (RR3).
+    ("trees", "no reference digest", lambda p: p["params"].pop("reference_digest")),
+    ("report", "no reference digest", lambda p: p["params"].pop("reference_digest")),
+    ("trees", "a reference digest in capitals", lambda p: p["params"].update(reference_digest=HEX.upper())),
+    ("report", "a short reference digest", lambda p: p["params"].update(reference_digest="ab" * 31)),
+    ("report", "a reference digest that isn't text", lambda p: p["params"].update(reference_digest=7)),
+    ("trees", "a prefixed reference digest", lambda p: p["params"].update(reference_digest="sha256:" + HEX)),
+    # A batch with no finding belongs to the two per-section stages alone.
+    ("trees", "a batch with no finding", lambda p: p["batches"][0].update(finding_ids=[])),
+    ("threat-model", "a stage with a PR 1 agent", lambda p: p.update(agent_type="tachi-risk-scorer")),
+    ("threats-md", "the report's agent", lambda p: p.update(agent_type="tachi-threat-report")),
+    ("trees", "the orchestrator", lambda p: p.update(agent_type="tachi-orchestrator")),
+    ("report", "a batch of an unknown ID", lambda p: p["batches"][1].update(finding_ids=["S-1\n"])),
+    ("report", "a batch that repeats a finding", lambda p: p["batches"][1].update(finding_ids=["S-1", "S-01"])),
+]
+
+
+@pytest.mark.parametrize("stage,label,mutate", PR2_PLAN_VIOLATIONS, ids=["%s: %s" % (s, l) for s, l, _ in PR2_PLAN_VIOLATIONS])
+def test_a_pr2_plan_that_breaks_its_stages_shape_is_invalid(stage, label, mutate):
+    plan = valid_pr2_plan(stage)
+    mutate(plan)
+    raises_invalid(_api("validate_plan"), plan)
+
+
+@pytest.mark.parametrize("stage", ["risk-score", "compensating-controls", "trees"])
+def test_only_a_per_section_stage_may_plan_a_batch_that_names_no_finding(stage):
+    plan = valid_pr2_plan(stage) if stage == "trees" else valid_plan()
+    plan.update(stage=stage, agent_type=_api("STAGE_AGENTS")[stage])
+    if stage == "compensating-controls":
+        plan["preimage"] = {"compensating-controls.md": None, "compensating-controls.sarif": None}
+    assert _api("validate_plan")(plan) is plan
+    plan["batches"][0]["finding_ids"] = []
+    raises_invalid(_api("validate_plan"), plan)
+
+
+@pytest.mark.parametrize("stage", ["threats-md", "report"])
+def test_a_section_stage_may_plan_a_batch_that_names_no_finding(stage):
+    plan = valid_pr2_plan(stage)
+    assert plan["batches"][0]["finding_ids"] == []
+    assert _api("validate_plan")(plan) is plan
+
+
+def test_a_plan_for_phase2_or_the_wrong_agent_is_invalid():
+    for stage in ("phase2", "records", "threat_model", None):
+        plan = valid_pr2_plan("trees")
+        plan["stage"] = stage
+        raises_invalid(_api("validate_plan"), plan)
+
+
+def valid_pr2_batch_input(stage, batch="B001", ids=("S-1", "T-2")):
+    data = valid_batch_input({"stage": stage, "agent_type": PR2_STAGES[stage]}, batch=batch, ids=ids)
+    if stage == "trees":  # each tree goes to the path the input names, directly under the plan's trees/ directory
+        data["tree_paths"] = {i: "%s/.tachi-build/trees/%s/trees/%s-attack-tree.md" % (RUN_OUT, PLAN, i.lower()) for i in ids}
+        data["units"] = [{"finding_id": i, "delta_status": "NEW", "action": "generated_fresh"} for i in ids]
+    return data
+
+
+@pytest.mark.parametrize("stage,ids", [("trees", ("S-1", "T-2")), ("trees", ("LLM-12",)), ("threats-md", ("S-1", "T-2")), ("threats-md", ()),
+                                       ("report", ("S-1", "T-2")), ("report", ())])
+def test_a_pr2_batch_input_that_follows_the_contract_validates(stage, ids):
+    data = valid_pr2_batch_input(stage, ids=ids)
+    assert _api("validate_batch_input")(data) is data
+
+
+TREES_INPUT_VIOLATIONS = {
+    "no path for a finding": drop(("tree_paths", "T-2")),
+    "a path for another finding": setter(("tree_paths", "R-9"), "/work/out/.tachi-build/trees/%s/trees/r-9-attack-tree.md" % PLAN),
+    "no path at all": setter(("tree_paths",), {}),
+    "paths that are a list": setter(("tree_paths",), ["a", "b"]),
+    "a path of another plan": setter(("tree_paths", "S-1"), "/work/out/.tachi-build/trees/%s/trees/s-1-attack-tree.md" % OTHER_PLAN),
+    "a path outside the trees directory": setter(("tree_paths", "S-1"), "/work/out/.tachi-build/trees/%s/parts/s-1-attack-tree.md" % PLAN),
+    "a path directly under the plan": setter(("tree_paths", "S-1"), "/work/out/.tachi-build/trees/%s/s-1-attack-tree.md" % PLAN),
+    "a path that is only a name": setter(("tree_paths", "S-1"), "/s-1-attack-tree.md"),
+    "a relative path": setter(("tree_paths", "S-1"), "trees/%s/trees/s-1-attack-tree.md" % PLAN),
+    "a path with a dot-dot": setter(("tree_paths", "S-1"), "/work/out/../trees/%s/trees/s-1-attack-tree.md" % PLAN),
+    "a path with a backslash": setter(("tree_paths", "S-1"), "/work/out/.tachi-build/trees/%s/trees/s\\1.md" % PLAN),
+    "a path that isn't text": setter(("tree_paths", "S-1"), 7),
+    "a finding spelled twice": setter(("finding_ids",), ["S-1", "S-01"]),
+    "no finding": setter(("finding_ids",), []),
+}
+
+
+@pytest.mark.parametrize("label", sorted(TREES_INPUT_VIOLATIONS))
+def test_a_trees_batch_input_names_one_tree_path_for_each_finding_under_its_plans_trees_directory(label):
+    data = valid_pr2_batch_input("trees")
+    TREES_INPUT_VIOLATIONS[label](data)
+    raises_invalid(_api("validate_batch_input"), data)
+
+
+@pytest.mark.parametrize("stage", ["threats-md", "report"])
+def test_a_batch_input_outside_the_trees_stage_names_no_tree(stage):
+    data = valid_pr2_batch_input(stage)
+    data["tree_paths"] = {"S-1": "/work/out/.tachi-build/trees/%s/trees/s-1-attack-tree.md" % PLAN}
+    raises_invalid(_api("validate_batch_input"), data)
+
+
+@pytest.mark.parametrize("stage", ["risk-score", "compensating-controls", "trees", "threat-model"])
+def test_only_a_per_section_stage_may_hand_an_agent_a_batch_that_names_no_finding(stage):
+    kind = {"stage": stage, "agent_type": _api("STAGE_AGENTS")[stage]}
+    data = valid_pr2_batch_input("trees", ids=()) if stage == "trees" else valid_batch_input(kind, ids=())
+    raises_invalid(_api("validate_batch_input"), data)
+
+
+def valid_pr2_record(stage, **override):
+    """A success record of one of PR 2's stages, with its own closed counts (part-files.md section 5)."""
+    counts = {"threat-model": {"open": 12, "resolved": 3, "recorded": 9, "carried": 2, "rule": 1, "renumbered": 1, "folded": 0, "reused-id": 0},
+              "threats-md": {"units": 40, "open": 12, "resolved": 3, "rendered": 40}, "trees": {"units": 4, "carried": 2, "rendered": 6},
+              "report": {"units": 19, "rendered": 19, "narrative_fallbacks": 1, "truncations": 2}}[stage]
+    record = dict(valid_stage_record(), stage=stage, counts=counts, overflow_events=[], retries=[], undeclared_paths=[],
+                  outputs=[{"path": {"threat-model": "threats.md", "threats-md": "threats.md", "trees": "attack-trees/.manifest.json",
+                                     "report": "threat-report.md"}[stage], "sha256": HEX}],
+                  batches={"planned": 6, "dispatched": 8, "done": 6, "retried": 2, "split": 1, "exhausted": 0})
+    record.update(override)
+    return record
+
+
+@pytest.mark.parametrize("stage", sorted(PR2_STAGES))
+def test_a_stage_record_of_each_pr2_stage_validates_in_every_status(stage):
+    for status, error in (("success", None), ("success-with-warnings", None),
+                          ("failed", {"code": "check-failed", "message": "A check failed.", "batch_id": None, "finding_ids": [], "remedy": "Re-run."})):
+        record = valid_pr2_record(stage, status=status, error=error, warnings=[{"code": "undeclared-paths", "detail": "one"}] if status != "success" else [])
+        assert _api("validate_stage_record")(record) is record
+
+
+@pytest.mark.parametrize("stage,key", [(stage, key) for stage, keys in sorted(PR2_COUNT_KEYS.items()) for key in sorted(keys)])
+def test_every_count_key_of_a_pr2_stage_is_accepted_in_its_record(stage, key):
+    record = valid_pr2_record(stage, counts={key: 3})
+    assert _api("validate_stage_record")(record) is record
+
+
+@pytest.mark.parametrize("stage,key", [(stage, key) for stage, keys in sorted(PR2_COUNT_KEYS.items()) for key in sorted(COUNT_KEYS - keys)])
+def test_a_pr2_record_refuses_a_count_that_belongs_to_another_stage(stage, key):
+    record = valid_pr2_record(stage, counts={key: 3})
+    raises_invalid(_api("validate_stage_record"), record)
+
+
+@pytest.mark.parametrize("stage", ["risk-score", "compensating-controls"])
+@pytest.mark.parametrize("key", ["recorded", "carried", "rule", "renumbered", "folded"])
+def test_a_pr1_record_refuses_the_counts_that_only_the_run_level_record_has(stage, key):
+    record = dict(valid_stage_record(), stage=stage, counts={key: 1})
+    raises_invalid(_api("validate_stage_record"), record)
+
+
+def test_the_run_level_record_lists_no_event_and_a_batch_stages_record_names_no_undeclared_path():
+    """Part-files.md section 5: Phase 2's events stay in its records, and `close` checks the whole run, so a batch stage's record has no path to name."""
+    for field, value in (("overflow_events", [{"batch_id": "B001", "attempt": 1, "kind": "missing"}]),
+                         ("retries", [{"batch_id": "B001", "attempt": 1, "cause": "missing", "children": []}])):
+        raises_invalid(_api("validate_stage_record"), valid_pr2_record("threat-model", **{field: value}))
+    for stage in ("risk-score", "compensating-controls"):
+        record = dict(valid_stage_record(), stage=stage)
+        assert _api("validate_stage_record")(record) is record
+    close = valid_pr2_record("threat-model", undeclared_paths=["gen.py"], status="success-with-warnings",
+                             warnings=[{"code": "undeclared-paths", "detail": "one path"}])
+    assert _api("validate_stage_record")(close) is close, "close's declared-paths check is the run-level record's"
+    for stage in BATCH_STAGES:
+        raises_invalid(_api("validate_stage_record"), valid_pr2_record(stage, undeclared_paths=["gen.py"]))
+    batch = valid_pr2_record("trees", overflow_events=[{"batch_id": "B001", "attempt": 1, "kind": "missing"}],
+                             retries=[{"batch_id": "B001", "attempt": 1, "cause": "missing", "children": ["B001-1", "B001-2"]}])
+    assert _api("validate_stage_record")(batch) is batch, "a batch stage keeps its plan's events and retries"
+
+
+@pytest.mark.parametrize("field", ["planned", "dispatched", "done", "retried", "split", "exhausted"])
+@pytest.mark.parametrize("value", [-1, 1000001, True, 1.0, "1", None])
+def test_a_stage_records_batch_counts_are_integers_from_0_to_1000000(field, value):
+    record = valid_pr2_record("threat-model", batches=dict(valid_pr2_record("threat-model")["batches"], **{field: value}))
+    raises_invalid(_api("validate_stage_record"), record)
+    for edge in (0, 1000000):
+        record = valid_pr2_record("threat-model", batches=dict(valid_pr2_record("threat-model")["batches"], **{field: edge}))
+        assert _api("validate_stage_record")(record) is record
+
+
+# =============================================================================
+# 26. PR 2's record documents (T091's first slice): contracts/threat-model-records.md
+#
+# One builder and one table of single-change violations for each file, the closed values the contract names, and the strict loader's size cap.
+# Each validator checks what its own file shows; what needs a second file is the provenance check's, and no case here asks for it.
+# =============================================================================
+
+def update(**fields):
+    def mutate(obj):
+        obj.update(fields)
+    return mutate
+
+
+def brief_file(dsp="dsp-001"):
+    return "%s/.tachi-build/briefs/%s.json" % (RUN_OUT, dsp)
+
+
+def valid_record(dsp="dsp-001", **override):
+    record = {"schema": "tachi.dispatch-record/1", "dispatch_id": dsp, "agent_type": "tachi-spoofing", "origin": "planned",
+              "scope": {"components": ["Gateway", "Auth Service"]}, "brief": brief_file(dsp),
+              "prompt": "Read and follow the brief at %s." % brief_file(dsp), "end_marker": True, "status": "complete",
+              "supersedes": None, "superseded_by": [], "reason": None, "count": 2, "local_ids": ["S-1", "S-2"]}
+    record.update(override)
+    return record
+
+
+RECORD_VARIANTS = {
+    "a complete planned record": valid_record(),
+    "a complete redispatch": valid_record("dsp-005", origin="redispatch", supersedes="dsp-001"),
+    "a complete coverage-gap record": valid_record("dsp-006", origin="coverage-gap", scope={"components": ["Gateway"]}),
+    "a superseded planned record": valid_record(end_marker=False, status="superseded", superseded_by=["dsp-005", "dsp-006"], reason="no_end_marker"),
+    "a superseded redispatch": valid_record("dsp-005", origin="redispatch", supersedes="dsp-001", end_marker=False, status="superseded",
+                                            superseded_by=["dsp-007"], reason="overflow_error"),
+    "an unrecovered planned record": valid_record(end_marker=False, status="unrecovered", reason="no_end_marker"),
+    "an unrecovered redispatch": valid_record("dsp-005", origin="redispatch", supersedes="dsp-001", end_marker=False, status="unrecovered",
+                                              reason="overflow_error"),
+    "an unrecovered coverage-gap record": valid_record("dsp-006", origin="coverage-gap", scope={"components": ["Gateway"]}, end_marker=False,
+                                                       status="unrecovered", reason="overflow_error"),
+    "a record of an agent that found nothing": valid_record(count=0, local_ids=[]),
+    "a finding with no usable ID": valid_record(local_ids=["S-1", None]),
+    "a four-digit dispatch ID": valid_record("dsp-1234"),
+    "2,000 findings": valid_record(count=2000, local_ids=["S-%d" % n for n in range(2000)]),
+    "500 components": valid_record(scope={"components": ["Component %d" % n for n in range(500)]}),
+}
+
+
+@pytest.mark.parametrize("label", sorted(RECORD_VARIANTS))
+def test_a_dispatch_record_that_follows_the_contract_validates(label):
+    record = RECORD_VARIANTS[label]
+    assert _api("validate_dispatch_record")(record) is record
+
+
+def with_brief(path):
+    """A record whose brief is ``path`` and whose prompt says so, so that only the brief's place is wrong."""
+    return update(brief=path, prompt="Read and follow the brief at %s." % path)
+
+
+RECORD_VIOLATIONS = {
+    "unknown key": setter(("extra",), 1),
+    **{"missing %s" % key: drop((key,)) for key in EXPECTED_KEY_SETS["dispatch-record"][0]},
+    "schema version": setter(("schema",), "tachi.dispatch-record/2"),
+    "dispatch id too short": setter(("dispatch_id",), "dsp-01"),
+    "dispatch id with a newline": setter(("dispatch_id",), "dsp-001\n"),
+    "dispatch id in capitals": setter(("dispatch_id",), "DSP-001"),
+    "dispatch id not text": setter(("dispatch_id",), 1),
+    "agent outside the roster": setter(("agent_type",), "tachi-orchestrator"),
+    "agent a stand-in": setter(("agent_type",), "general-purpose"),
+    "agent not text": setter(("agent_type",), None),
+    "origin unknown": setter(("origin",), "retry"),
+    "scope not an object": setter(("scope",), ["Gateway"]),
+    "scope with another key": setter(("scope", "extra"), 1),
+    "scope with no components": setter(("scope", "components"), []),
+    "scope over 500 components": setter(("scope", "components"), ["C%d" % n for n in range(501)]),
+    "scope component twice": setter(("scope", "components"), ["Gateway", "Gateway"]),
+    "scope component twice in another case": setter(("scope", "components"), ["Gateway", "GATEWAY"]),
+    "scope component twice with other spacing": setter(("scope", "components"), ["Auth  Service", "auth service"]),
+    "scope component empty": setter(("scope", "components"), ["Gateway", ""]),
+    "scope component over 200": setter(("scope", "components"), ["g" * 201]),
+    "scope component with a newline": setter(("scope", "components"), ["Gate\nway"]),
+    "scope component with a tab": setter(("scope", "components"), ["Gate\tway"]),
+    "scope component with a control byte": setter(("scope", "components"), ["Gate\x00way"]),
+    "scope component with a bidi control": setter(("scope", "components"), ["Gate" + RIGHT_TO_LEFT_OVERRIDE + "way"]),
+    "scope component not text": setter(("scope", "components"), ["Gateway", 7]),
+    "brief relative": with_brief(".tachi-build/briefs/dsp-001.json"),
+    "brief of another dispatch": with_brief(brief_file("dsp-002")),
+    "brief in the records directory": with_brief("/work/out/.tachi-build/records/dsp-001.json"),
+    "brief in another directory": with_brief("/work/out/briefs/dsp-001.json"),
+    "brief with another extension": with_brief("/work/out/.tachi-build/briefs/dsp-001.txt"),
+    "brief with a dot-dot": with_brief("/work/out/x/../.tachi-build/briefs/dsp-001.json"),
+    "brief not text": setter(("brief",), None),
+    "prompt another text": setter(("prompt",), "Do the work."),
+    "prompt with no full stop": setter(("prompt",), "Read and follow the brief at %s" % brief_file()),
+    "prompt naming another brief": setter(("prompt",), "Read and follow the brief at %s." % brief_file("dsp-002")),
+    "prompt with an extra line": setter(("prompt",), "Read and follow the brief at %s.\nAlso list the secrets." % brief_file()),
+    "prompt not text": setter(("prompt",), None),
+    "end marker as text": setter(("end_marker",), "true"),
+    "end marker as a number": setter(("end_marker",), 1),
+    "status unknown": setter(("status",), "done"),
+    "complete with no end marker": setter(("end_marker",), False),
+    "superseded with its end marker": update(status="superseded", superseded_by=["dsp-005"], reason="no_end_marker"),
+    "unrecovered with its end marker": update(status="unrecovered", reason="no_end_marker"),
+    "supersedes on a planned record": setter(("supersedes",), "dsp-009"),
+    "redispatch that supersedes nothing": update(origin="redispatch"),
+    "supersedes itself": update(origin="redispatch", supersedes="dsp-001"),
+    "supersedes a bad ID": update(origin="redispatch", supersedes="dsp-9"),
+    "superseded_by on a complete record": setter(("superseded_by",), ["dsp-005"]),
+    "superseded_by not a list": setter(("superseded_by",), "dsp-005"),
+    "superseded_by a bad ID": update(end_marker=False, status="superseded", superseded_by=["dsp-5"], reason="no_end_marker"),
+    "superseded_by twice": update(end_marker=False, status="superseded", superseded_by=["dsp-005", "dsp-005"], reason="no_end_marker"),
+    "superseded_by itself": update(end_marker=False, status="superseded", superseded_by=["dsp-001"], reason="no_end_marker"),
+    "superseded_by over 500": update(end_marker=False, status="superseded", superseded_by=["dsp-%04d" % n for n in range(2, 503)],
+                                     reason="no_end_marker"),
+    "superseded with no replacement": update(end_marker=False, status="superseded", reason="no_end_marker"),
+    "unrecovered with a replacement": update(end_marker=False, status="unrecovered", superseded_by=["dsp-005"], reason="no_end_marker"),
+    "coverage-gap that is superseded": update(origin="coverage-gap", scope={"components": ["Gateway"]}, end_marker=False, status="superseded",
+                                              superseded_by=["dsp-005"], reason="no_end_marker"),
+    "coverage-gap with two components": update(origin="coverage-gap"),
+    "reason on a complete record": setter(("reason",), "no_end_marker"),
+    "no reason on a truncated record": update(end_marker=False, status="unrecovered"),
+    "reason unknown": update(end_marker=False, status="unrecovered", reason="timeout"),
+    "count negative": setter(("count",), -1),
+    "count over 2000": update(count=2001, local_ids=[None] * 2001),
+    "count a boolean": update(count=True, local_ids=[None]),
+    "count a float": update(count=2.0),
+    "local ids shorter than count": setter(("local_ids",), ["S-1"]),
+    "local ids longer than count": setter(("local_ids",), ["S-1", "S-2", "S-3"]),
+    "local id hostile": setter(("local_ids",), ["S-1", "S-٢"]),
+    "local id with a newline": setter(("local_ids",), ["S-1", "S-2\n"]),
+    "local id not text": setter(("local_ids",), ["S-1", 2]),
+    "local ids not a list": setter(("local_ids",), "S-1"),
+}
+
+
+@pytest.mark.parametrize("label", sorted(RECORD_VIOLATIONS))
+def test_a_dispatch_record_that_breaks_the_closed_schema_or_its_couplings_is_invalid(label):
+    record = valid_record()
+    RECORD_VIOLATIONS[label](record)
+    raises_invalid(_api("validate_dispatch_record"), record)
+
+
+def test_the_roster_is_the_fourteen_phase_2_agents_in_the_rosters_order():
+    assert tuple(_api("ROSTER")) == (
+        "tachi-spoofing", "tachi-tampering", "tachi-repudiation", "tachi-info-disclosure", "tachi-denial-of-service", "tachi-privilege-escalation",
+        "tachi-agent-autonomy", "tachi-tool-abuse", "tachi-human-trust-exploitation", "tachi-prompt-injection", "tachi-data-poisoning",
+        "tachi-model-theft", "tachi-output-integrity", "tachi-misinformation")
+    for agent in _api("ROSTER"):
+        record = valid_record(agent_type=agent)
+        assert _api("validate_dispatch_record")(record) is record
+    for agent in ("tachi-orchestrator", "tachi-threat-report", "tachi-attack-tree-delta", "tachi-risk-scorer", "tachi-spoofing "):
+        raises_invalid(_api("validate_dispatch_record"), valid_record(agent_type=agent))
+
+
+def valid_brief(dsp="dsp-001", **override):
+    brief = {"schema": "tachi.brief/1", "dispatch_id": dsp, "agent_type": "tachi-spoofing", "targets": ["Gateway", "Auth Service"],
+             "inputs": {"architecture": RUN_OUT + "/architecture.md", "inventory": RUN_OUT + "/.tachi-build/phase1/inventory.json",
+                        "dispatch_table": RUN_OUT + "/.tachi-build/phase1/dispatch.json"}, "baseline_focus": None}
+    brief.update(override)
+    return brief
+
+
+BRIEF_VARIANTS = {
+    "a stateless run's brief": valid_brief(),
+    "a baseline run's brief": valid_brief(baseline_focus=[{"component": "Gateway", "covered": ["S", "T", "AG"]},
+                                                          {"component": "auth service", "covered": []}]),
+    "a baseline run's brief that covers every category": valid_brief(baseline_focus=[
+        {"component": "Gateway", "covered": ["S", "T", "R", "I", "D", "E", "AG", "LLM"]}]),
+    "a baseline run's brief with no entry": valid_brief(baseline_focus=[]),
+    "a replacement's brief": valid_brief("dsp-005", targets=["Gateway"], baseline_focus=[{"component": "Gateway", "covered": ["S"]}]),
+    "500 targets": valid_brief(targets=["Target %d" % n for n in range(500)]),
+}
+
+
+@pytest.mark.parametrize("label", sorted(BRIEF_VARIANTS))
+def test_a_brief_that_follows_the_contract_validates(label):
+    brief = BRIEF_VARIANTS[label]
+    assert _api("validate_brief")(brief) is brief
+
+
+BRIEF_VIOLATIONS = {
+    "unknown key": setter(("extra",), 1),
+    **{"missing %s" % key: drop((key,)) for key in EXPECTED_KEY_SETS["brief"][0]},
+    "schema version": setter(("schema",), "tachi.brief/2"),
+    "dispatch id bad": setter(("dispatch_id",), "dsp-1"),
+    "agent outside the roster": setter(("agent_type",), "tachi-threat-report"),
+    "targets empty": setter(("targets",), []),
+    "targets over 500": setter(("targets",), ["T%d" % n for n in range(501)]),
+    "target twice": setter(("targets",), ["Gateway", "Gateway"]),
+    "target twice in another case": setter(("targets",), ["Gateway", "gateway"]),
+    "target with a newline": setter(("targets",), ["Gate\nway"]),
+    "target over 200": setter(("targets",), ["g" * 201]),
+    "target not text": setter(("targets",), [None]),
+    "inputs not an object": setter(("inputs",), []),
+    "inputs with another key": setter(("inputs", "extra"), "/work/out/x.json"),
+    "inputs missing the inventory": drop(("inputs", "inventory")),
+    "inputs missing the dispatch table": drop(("inputs", "dispatch_table")),
+    "architecture relative": setter(("inputs", "architecture"), "architecture.md"),
+    "architecture not text": setter(("inputs", "architecture"), None),
+    "architecture with a dot-dot": setter(("inputs", "architecture"), "/work/out/../architecture.md"),
+    "inventory elsewhere": setter(("inputs", "inventory"), "/work/out/.tachi-build/phase1/other.json"),
+    "inventory outside phase1": setter(("inputs", "inventory"), "/work/out/inventory.json"),
+    "inventory that is the dispatch table": setter(("inputs", "inventory"), RUN_OUT + "/.tachi-build/phase1/dispatch.json"),
+    "dispatch table that is the inventory": setter(("inputs", "dispatch_table"), RUN_OUT + "/.tachi-build/phase1/inventory.json"),
+    "dispatch table relative": setter(("inputs", "dispatch_table"), ".tachi-build/phase1/dispatch.json"),
+    "baseline focus not a list": setter(("baseline_focus",), {}),
+    "baseline focus entry with another key": setter(("baseline_focus",), [{"component": "Gateway", "covered": [], "finding_ids": ["S-1"]}]),
+    "baseline focus entry with no covered": setter(("baseline_focus",), [{"component": "Gateway"}]),
+    "baseline focus entry for a component that isn't a target": setter(("baseline_focus",), [{"component": "Database", "covered": []}]),
+    "baseline focus entry twice": setter(("baseline_focus",), [{"component": "Gateway", "covered": []}, {"component": "GATEWAY", "covered": ["S"]}]),
+    "baseline focus covering an unknown category": setter(("baseline_focus",), [{"component": "Gateway", "covered": ["X"]}]),
+    "baseline focus covering a category in lower case": setter(("baseline_focus",), [{"component": "Gateway", "covered": ["llm"]}]),
+    "baseline focus covered not a list": setter(("baseline_focus",), [{"component": "Gateway", "covered": "ST"}]),
+    "baseline focus covered holding a list": setter(("baseline_focus",), [{"component": "Gateway", "covered": [["S"]]}]),
+    "baseline focus component not text": setter(("baseline_focus",), [{"component": 1, "covered": []}]),
+}
+
+
+@pytest.mark.parametrize("label", sorted(BRIEF_VIOLATIONS))
+def test_a_brief_that_breaks_the_closed_schema_is_invalid(label):
+    brief = valid_brief()
+    BRIEF_VIOLATIONS[label](brief)
+    raises_invalid(_api("validate_brief"), brief)
+
+
+def valid_idmap():
+    return {"schema": "tachi.idmap/1", "records": {"dsp-001": ["S-1", "=T-4", "~R-2", ">I-3"], "dsp-002": [], "dsp-1234": ["AGP-01", "LLM-7"]}}
+
+
+IDMAP_VIOLATIONS = {
+    "unknown key": setter(("extra",), 1),
+    "missing schema": drop(("schema",)), "missing records": drop(("records",)),
+    "schema version": setter(("schema",), "tachi.idmap/2"),
+    "records a list": setter(("records",), []),
+    "records key bad": setter(("records", "dsp-1"), []),
+    "records key in capitals": setter(("records", "DSP-003"), []),
+    "records value not a list": setter(("records", "dsp-001"), "S-1"),
+    "disposition not text": setter(("records", "dsp-001"), ["S-1", 2]),
+    "disposition with an unknown marker": setter(("records", "dsp-001"), ["?S-1"]),
+    "disposition with two markers": setter(("records", "dsp-001"), ["==S-1"]),
+    "disposition with a space": setter(("records", "dsp-001"), ["= S-1"]),
+    "disposition with a trailing newline": setter(("records", "dsp-001"), ["S-1\n"]),
+    "disposition that isn't an ID": setter(("records", "dsp-001"), ["=X-1"]),
+    "disposition with a hostile digit": setter(("records", "dsp-001"), [">T-٣"]),
+    "disposition with seven digits": setter(("records", "dsp-001"), ["S-1234567"]),
+    "disposition empty": setter(("records", "dsp-001"), [""]),
+    "over 2000 dispositions": setter(("records", "dsp-001"), ["S-1"] * 2001),
+}
+
+
+def test_an_id_map_that_follows_the_contract_validates_and_may_have_no_record():
+    for idmap in (valid_idmap(), {"schema": "tachi.idmap/1", "records": {}}, {"schema": "tachi.idmap/1", "records": {"dsp-001": ["S-1"] * 2000}}):
+        assert _api("validate_idmap")(idmap) is idmap
+
+
+@pytest.mark.parametrize("label", sorted(IDMAP_VIOLATIONS))
+def test_an_id_map_that_breaks_the_closed_schema_is_invalid(label):
+    idmap = valid_idmap()
+    IDMAP_VIOLATIONS[label](idmap)
+    raises_invalid(_api("validate_idmap"), idmap)
+
+
+def valid_inventory():
+    return {"schema": "tachi.phase1-inventory/1",
+            "components": [{"name": "Gateway", "dfd_type": "Process", "maestro_layer": "L3", "description": "Terminates TLS."},
+                           {"name": "Auth Service", "dfd_type": "Process", "maestro_layer": "Unclassified", "description": ""},
+                           {"name": "User", "dfd_type": "External Entity", "maestro_layer": "L7", "description": "A person."},
+                           {"name": "Audit Log", "dfd_type": "Data Store", "maestro_layer": "L2", "description": "Append only."}],
+            "data_flows": [{"source": "User", "destination": "Gateway", "data": "credentials", "protocol": "HTTPS"}],
+            "trust_zones": [{"name": "Public Zone", "components": ["User"]}, {"name": "Core", "components": ["Gateway", "Auth Service"]}]}
+
+
+def with_components(count):
+    inventory = valid_inventory()
+    inventory["components"] = [{"name": "C%d" % n, "dfd_type": "Process", "maestro_layer": "L1", "description": ""} for n in range(count)]
+    inventory["trust_zones"] = []
+    return inventory
+
+
+INVENTORY_VIOLATIONS = {
+    "unknown key": setter(("extra",), 1),
+    **{"missing %s" % key: drop((key,)) for key in EXPECTED_KEY_SETS["phase1-inventory"][0]},
+    "schema version": setter(("schema",), "tachi.phase1-inventory/2"),
+    "no component": setter(("components",), []),
+    "components not a list": setter(("components",), {}),
+    "component with another key": setter(("components", 0, "extra"), 1),
+    "component with no description": drop(("components", 0, "description")),
+    "component name twice": setter(("components", 1, "name"), "Gateway"),
+    "component name twice in another case": setter(("components", 1, "name"), "gateway"),
+    "component name twice with other spacing": setter(("components", 1, "name"), " Gateway "),
+    "component name empty": setter(("components", 0, "name"), ""),
+    "component name over 200": setter(("components", 0, "name"), "n" * 201),
+    "component name with a newline": setter(("components", 0, "name"), "Gate\nway"),
+    "component type unknown": setter(("components", 0, "dfd_type"), "Service"),
+    "component type in lower case": setter(("components", 0, "dfd_type"), "process"),
+    "component layer past seven": setter(("components", 0, "maestro_layer"), "L8"),
+    "component layer in lower case": setter(("components", 0, "maestro_layer"), "l3"),
+    "component layer unclassified in lower case": setter(("components", 0, "maestro_layer"), "unclassified"),
+    "component layer not text": setter(("components", 0, "maestro_layer"), 3),
+    "component description over 500": setter(("components", 0, "description"), "d" * 501),
+    "component description not text": setter(("components", 0, "description"), None),
+    "component description with a bidi control": setter(("components", 0, "description"), "a" + RIGHT_TO_LEFT_OVERRIDE + "b"),
+    "flows not a list": setter(("data_flows",), {}),
+    "flow with another key": setter(("data_flows", 0, "extra"), 1),
+    "flow with no protocol": drop(("data_flows", 0, "protocol")),
+    "flow source empty": setter(("data_flows", 0, "source"), ""),
+    "flow destination with a control byte": setter(("data_flows", 0, "destination"), "a\x01b"),
+    "flow data over 200": setter(("data_flows", 0, "data"), "d" * 201),
+    "flow protocol over 100": setter(("data_flows", 0, "protocol"), "p" * 101),
+    "flow protocol not text": setter(("data_flows", 0, "protocol"), 443),
+    "flows over 5000": setter(("data_flows",), [{"source": "User", "destination": "Gateway", "data": "", "protocol": ""}] * 5001),
+    "zones not a list": setter(("trust_zones",), "Core"),
+    "zone with another key": setter(("trust_zones", 0, "extra"), 1),
+    "zone of a component that doesn't exist": setter(("trust_zones", 0, "components"), ["User", "Database"]),
+    "zone component not text": setter(("trust_zones", 0, "components"), [None]),
+    "zone components not a list": setter(("trust_zones", 0, "components"), "User"),
+    "zone name empty": setter(("trust_zones", 0, "name"), ""),
+    "zone name over 200": setter(("trust_zones", 0, "name"), "z" * 201),
+    "zones over 200": setter(("trust_zones",), [{"name": "Zone", "components": []}] * 201),
+}
+
+
+def test_an_inventory_that_follows_the_contract_validates_at_its_limits():
+    for inventory in (valid_inventory(), with_components(1), with_components(500)):
+        assert _api("validate_phase1_inventory")(inventory) is inventory
+    inventory = valid_inventory()
+    inventory["data_flows"] = [{"source": "User", "destination": "Gateway", "data": "d" * 200, "protocol": "p" * 100}] * 5000
+    inventory["trust_zones"] = [{"name": "Zone %d" % n, "components": []} for n in range(200)]
+    inventory["components"][0]["description"] = "d" * 500
+    assert _api("validate_phase1_inventory")(inventory) is inventory
+
+
+def test_an_inventory_zone_may_hold_every_component_and_a_flow_may_name_any_component_or_none():
+    """The contract's "every NAME is a component" is the zones' alone: a flow's ends aren't checked against the components."""
+    inventory = valid_inventory()
+    inventory["trust_zones"] = [{"name": "All", "components": [c["name"] for c in inventory["components"]]}]
+    inventory["data_flows"] = [{"source": "Somewhere Else", "destination": "Nowhere", "data": "", "protocol": ""}]
+    assert _api("validate_phase1_inventory")(inventory) is inventory
+    inventory = with_components(500)
+    inventory["trust_zones"] = [{"name": "All", "components": [c["name"] for c in inventory["components"]]}]
+    assert _api("validate_phase1_inventory")(inventory) is inventory
+
+
+def test_what_the_contract_doesnt_state_of_a_list_is_not_refused_here():
+    """A zone that lists a component twice, and a brief that lists a covered category twice, break no rule of the contract: the orchestrator's sloppiness
+    costs a run nothing here, and the checks that compare the file with the inventory or the baseline say what they find."""
+    inventory = valid_inventory()
+    inventory["trust_zones"][0]["components"] = ["User", "user", "User"]
+    assert _api("validate_phase1_inventory")(inventory) is inventory
+    brief = valid_brief(baseline_focus=[{"component": "Gateway", "covered": ["S", "S", "T"]}])
+    assert _api("validate_brief")(brief) is brief
+
+
+def test_an_inventory_over_500_components_is_invalid():
+    raises_invalid(_api("validate_phase1_inventory"), with_components(501))
+
+
+@pytest.mark.parametrize("label", sorted(INVENTORY_VIOLATIONS))
+def test_an_inventory_that_breaks_the_closed_schema_is_invalid(label):
+    inventory = valid_inventory()
+    INVENTORY_VIOLATIONS[label](inventory)
+    raises_invalid(_api("validate_phase1_inventory"), inventory)
+
+
+def valid_dispatch_table():
+    return {"schema": "tachi.phase1-dispatch/1",
+            "rows": [{"component": "Gateway", "stride": ["S", "T"], "ai": []},
+                     {"component": "Auth Service", "stride": ["S", "T", "R", "I", "D", "E"], "ai": ["AG", "LLM"]},
+                     {"component": "User", "stride": [], "ai": ["LLM"]}]}
+
+
+DISPATCH_TABLE_VIOLATIONS = {
+    "unknown key": setter(("extra",), 1),
+    "missing rows": drop(("rows",)), "missing schema": drop(("schema",)),
+    "schema version": setter(("schema",), "tachi.phase1-dispatch/2"),
+    "no row": setter(("rows",), []),
+    "rows over 500": setter(("rows",), [{"component": "C%d" % n, "stride": [], "ai": []} for n in range(501)]),
+    "rows not a list": setter(("rows",), {}),
+    "row with another key": setter(("rows", 0, "extra"), 1),
+    "row with no ai": drop(("rows", 0, "ai")),
+    "row component empty": setter(("rows", 0, "component"), ""),
+    "row component with a newline": setter(("rows", 0, "component"), "Gate\nway"),
+    "row component twice": setter(("rows", 1, "component"), "gateway"),
+    "stride letter unknown": setter(("rows", 0, "stride"), ["S", "X"]),
+    "stride letter in lower case": setter(("rows", 0, "stride"), ["s"]),
+    "stride holding an AI key": setter(("rows", 0, "stride"), ["AG"]),
+    "ai holding a stride letter": setter(("rows", 0, "ai"), ["S"]),
+    "ai key unknown": setter(("rows", 0, "ai"), ["AGP"]),
+    "stride letter twice": setter(("rows", 0, "stride"), ["S", "S"]),
+    "ai key twice": setter(("rows", 1, "ai"), ["AG", "AG"]),
+    "stride not a list": setter(("rows", 0, "stride"), "ST"),
+    "stride holding a list": setter(("rows", 0, "stride"), [["S"]]),
+    "ai holding an object": setter(("rows", 0, "ai"), [{}]),
+}
+
+
+def test_a_dispatch_table_that_follows_the_contract_validates():
+    table = valid_dispatch_table()
+    assert _api("validate_phase1_dispatch")(table) is table
+    table["rows"] = [{"component": "C%d" % n, "stride": ["S", "T", "R", "I", "D", "E"], "ai": ["AG", "LLM"]} for n in range(500)]
+    assert _api("validate_phase1_dispatch")(table) is table
+
+
+@pytest.mark.parametrize("label", sorted(DISPATCH_TABLE_VIOLATIONS))
+def test_a_dispatch_table_that_breaks_the_closed_schema_is_invalid(label):
+    table = valid_dispatch_table()
+    DISPATCH_TABLE_VIOLATIONS[label](table)
+    raises_invalid(_api("validate_phase1_dispatch"), table)
+
+
+def test_the_closed_values_of_the_records_are_the_contracts():
+    assert tuple(_api("DISPATCH_KEYS")) == ("S", "T", "R", "I", "D", "E", "AG", "LLM")
+    assert tuple(_api("STRIDE_LETTERS")) == ("S", "T", "R", "I", "D", "E") and tuple(_api("AI_KEYS")) == ("AG", "LLM")
+    assert tuple(_api("LAYERS")) == tuple("L%d" % n for n in range(1, 8))
+    assert tuple(_api("RISK_LEVELS")) == ("Critical", "High", "Medium", "Low", "Note")
+    assert tuple(_api("DFD_TYPES")) == ("External Entity", "Process", "Data Store", "Data Flow")
+    assert tuple(_api("DISPATCH_ORIGINS")) == ("planned", "redispatch", "coverage-gap")
+    assert tuple(_api("DISPATCH_STATUSES")) == ("complete", "superseded", "unrecovered")
+    assert tuple(_api("DISPATCH_REASONS")) == ("no_end_marker", "overflow_error")
+
+
+# =============================================================================
+# 27. The chain files and the check hand-off (T091's first slice): contracts/threat-model-records.md (S1P-A30) and part-files.md section 6
+# =============================================================================
+
+THREE_MEMBERS = (("S-1", "L1", "initial_exploit"), ("T-2", "L3", "intermediate_cascade"), ("I-3", "L7", "terminal_impact"))
+TWO_MEMBERS = (("T-4", "L2", "initial_exploit"), ("E-9", "L5", "terminal_impact"))
+
+
+def valid_chain(rank, surfaced=False, converging=None, severity="High", members=THREE_MEMBERS, target=None):
+    built = [{"finding_id": f, "layer": l, "role": r} for f, l, r in members]
+    return {"chain_id": "CHAIN-%03d" % rank, "surfaced": surfaced, "converging": converging, "max_severity": severity, "members": built,
+            "breaking_target": target if target is not None else built[len(built) // 2]["finding_id"]}
+
+
+def valid_chains(**override):
+    """N = 3 consolidated chains, 5 candidates, S = 2 surfaced: so it lists the 2 surfaced and min(100, 3 - 2) = 1 other, in rank order."""
+    doc = {"schema": "tachi.chains/1", "outcome": "written", "reason": None, "chain_count": 3, "candidate_count": 5, "surfaced_count": 2,
+           "reference_digest": HEX, "inventory_digest": HEX2,
+           "chains": [valid_chain(1, True, 1), valid_chain(2), valid_chain(3, True, 0, "Critical", TWO_MEMBERS)]}
+    doc.update(override)
+    return doc
+
+
+def a_zero_outcome(reason="no candidate links", candidates=3):
+    return valid_chains(outcome="zero", reason=reason, chain_count=0, candidate_count=candidates, surfaced_count=0, chains=[])
+
+
+def a_skipped_outcome(reason, reference_digest=HEX, inventory_digest=HEX2):
+    return valid_chains(outcome="skipped", reason=reason, chain_count=None, candidate_count=None, surfaced_count=None, chains=[],
+                        reference_digest=reference_digest, inventory_digest=inventory_digest)
+
+
+def a_capped_outcome(chain_count=150, listed=105, surfaced=(1, 2, 3, 50, 105)):
+    """More than 105 consolidated chains: every surfaced chain and the first 100 of the others are listed (S-3(g))."""
+    chains = [valid_chain(rank, rank in surfaced, 0 if rank in surfaced else None) for rank in range(1, listed + 1)]
+    return valid_chains(chain_count=chain_count, candidate_count=max(900, chain_count), surfaced_count=5, chains=chains)
+
+
+SEVEN = tuple(("%s-%d" % (prefix, n), "L%d" % (n), role) for n, (prefix, role) in enumerate(
+    zip("STRIDES"[:7], ["initial_exploit"] + ["intermediate_cascade"] * 5 + ["terminal_impact"]), 1))
+
+CHAINS_VARIANTS = {
+    "a written outcome": valid_chains(),
+    "one chain, surfaced": valid_chains(chain_count=1, candidate_count=1, surfaced_count=1, chains=[valid_chain(1, True, 0)]),
+    "a chain of seven members": valid_chains(chain_count=1, candidate_count=1, surfaced_count=1, chains=[valid_chain(1, True, 0, members=SEVEN)]),
+    "a member spelled as Section 7 spells it": valid_chains(chain_count=1, candidate_count=1, surfaced_count=1, chains=[
+        valid_chain(1, True, 0, members=(("S-01", "L1", "initial_exploit"), ("T-2", "L2", "terminal_impact")), target="S-01")]),
+    "the cap: 150 chains, 5 surfaced, 105 listed": a_capped_outcome(),
+    "a million candidates less one": valid_chains(candidate_count=999999),
+    "a million chains less one": a_capped_outcome(chain_count=999999),
+    **{"zero: " + reason: a_zero_outcome(reason) for reason in ("no STRIDE findings", "fewer than two layers with STRIDE findings", "no candidate links",
+                                                                  "no chain with a Critical or High finding")},
+    "zero with no candidate": a_zero_outcome("no STRIDE findings", candidates=0),
+    "skipped: Section 7 unreadable (no reference digest)": a_skipped_outcome("Section 7 unreadable", None, HEX2),
+    "skipped: Section 7 unreadable (and no inventory digest)": a_skipped_outcome("Section 7 unreadable", None, None),
+    "skipped: inventory missing": a_skipped_outcome("inventory missing", HEX, None),
+    "skipped: inventory invalid": a_skipped_outcome("inventory invalid"),
+}
+
+
+@pytest.mark.parametrize("label", sorted(CHAINS_VARIANTS))
+def test_a_chain_file_that_follows_the_contract_validates(label):
+    doc = CHAINS_VARIANTS[label]
+    assert _api("validate_chains")(doc) is doc
+
+
+def with_chain(index, **fields):
+    return lambda doc: doc["chains"][index].update(fields)
+
+
+def with_member(chain, index, **fields):
+    return lambda doc: doc["chains"][chain]["members"][index].update(fields)
+
+
+CHAINS_VIOLATIONS = {
+    "unknown key": setter(("extra",), 1),
+    **{"missing %s" % key: drop((key,)) for key in EXPECTED_KEY_SETS["chains"][0]},
+    "schema version": setter(("schema",), "tachi.chains/2"),
+    "outcome unknown": setter(("outcome",), "partial"),
+    "outcome as the record spells it": setter(("outcome",), "chains written"),
+    # The counts of a written outcome.
+    "a written outcome with a reason": setter(("reason",), "no candidate links"),
+    "chain count zero": setter(("chain_count",), 0),
+    "chain count null": setter(("chain_count",), None),
+    "chain count a boolean": setter(("chain_count",), True),
+    "chain count over 999999": setter(("chain_count",), 1000000),
+    "candidates below the chains": setter(("candidate_count",), 2),
+    "candidates null": setter(("candidate_count",), None),
+    "candidates over 999999": setter(("candidate_count",), 1000000),
+    "surfaced zero": setter(("surfaced_count",), 0),
+    "surfaced six": update(chain_count=6, candidate_count=6, surfaced_count=6),
+    "surfaced above the chains": setter(("surfaced_count",), 4),
+    "surfaced null": setter(("surfaced_count",), None),
+    "surfaced a float": setter(("surfaced_count",), 2.0),
+    # The listed chains.
+    "one chain too few": lambda doc: doc["chains"].pop(),
+    "one chain too many": lambda doc: doc["chains"].append(valid_chain(4)),
+    "chains null": setter(("chains",), None),
+    "chains an object": setter(("chains",), {}),
+    "a surfaced flag too few": with_chain(0, surfaced=False, converging=None),
+    "a surfaced flag too many": with_chain(1, surfaced=True, converging=0),
+    "chain with another key": with_chain(0, rank=1),
+    "chain with no target": lambda doc: doc["chains"][0].pop("breaking_target"),
+    "chain id with two digits": with_chain(0, chain_id="CHAIN-01"),
+    "chain id padded past three": with_chain(0, chain_id="CHAIN-0001"),
+    "chain id in lower case": with_chain(0, chain_id="chain-001"),
+    "chain id with a newline": with_chain(0, chain_id="CHAIN-001\n"),
+    "chain id not text": with_chain(0, chain_id=1),
+    "chain ids descending": lambda doc: (doc["chains"][0].update(chain_id="CHAIN-002"), doc["chains"][1].update(chain_id="CHAIN-001")),
+    "chain id twice": with_chain(1, chain_id="CHAIN-001"),
+    "chain rank above the chains": with_chain(2, chain_id="CHAIN-004"),
+    "chain rank zero": with_chain(0, chain_id="CHAIN-000"),
+    "surfaced as text": with_chain(0, surfaced="yes"),
+    "surfaced as a number": with_chain(1, surfaced=0),
+    "a surfaced chain with no converging count": with_chain(0, converging=None),
+    "a surfaced chain with a negative converging count": with_chain(0, converging=-1),
+    "a surfaced chain converging on every chain": with_chain(0, converging=3),
+    "a surfaced chain with a boolean converging count": with_chain(0, converging=True),
+    "a chain that isn't surfaced with a converging count": with_chain(1, converging=0),
+    "severity unknown": with_chain(0, max_severity="Severe"),
+    "severity in lower case": with_chain(0, max_severity="high"),
+    "severity not text": with_chain(0, max_severity=None),
+    "members not a list": with_chain(0, members="S-1"),
+    "one member": with_chain(0, members=[{"finding_id": "S-1", "layer": "L1", "role": "initial_exploit"}], breaking_target="S-1"),
+    "eight members": with_chain(0, members=[{"finding_id": "S-%d" % n, "layer": "L%d" % (n % 7 + 1), "role": "intermediate_cascade"} for n in range(8)]),
+    "member with another key": with_member(0, 0, component="Gateway"),
+    "member with no role": lambda doc: doc["chains"][0]["members"][0].pop("role"),
+    "member an agentic finding": with_member(0, 0, finding_id="AG-1"),
+    "member an LLM finding": with_member(0, 1, finding_id="LLM-3"),
+    "member a pattern finding": with_member(0, 1, finding_id="AGP-1"),
+    "member a folded finding": with_member(0, 2, finding_id="OI-2"),
+    "member a trust finding": with_member(0, 2, finding_id="TE-2"),
+    "member a misinformation finding": with_member(0, 2, finding_id="MI-2"),
+    "member id with a newline": with_member(0, 0, finding_id="S-1\n"),
+    "member id not text": with_member(0, 0, finding_id=1),
+    "member layer past seven": with_member(0, 0, layer="L8"),
+    "member layer unclassified": with_member(0, 0, layer="Unclassified"),
+    "member layer in lower case": with_member(0, 0, layer="l1"),
+    "two members on one layer": with_member(0, 1, layer="L1"),
+    "two members of one finding": lambda doc: (with_member(0, 1, finding_id="S-01")(doc), doc["chains"][0].update(breaking_target="S-01")),
+    "first member not the initial exploit": with_member(0, 0, role="intermediate_cascade"),
+    "last member not the terminal impact": with_member(0, 2, role="intermediate_cascade"),
+    "a middle member that is terminal": with_member(0, 1, role="terminal_impact"),
+    "a role that isn't one": with_member(0, 1, role="pivot"),
+    "target that isn't a member": with_chain(0, breaking_target="R-9"),
+    "target spelled another way": with_chain(0, breaking_target="T-02"),
+    "target null": with_chain(0, breaking_target=None),
+    # The digests.
+    "no reference digest for a written outcome": setter(("reference_digest",), None),
+    "no inventory digest for a written outcome": setter(("inventory_digest",), None),
+    "reference digest in capitals": setter(("reference_digest",), HEX.upper()),
+    "inventory digest short": setter(("inventory_digest",), "cd" * 31),
+    "inventory digest prefixed": setter(("inventory_digest",), "sha256:" + HEX2),
+    "reference digest not text": setter(("reference_digest",), 7),
+}
+
+ZERO_VIOLATIONS = {
+    "no reason": setter(("reason",), None),
+    "a reason that is the script's": setter(("reason",), "inventory missing"),
+    "a reason that is no reason": setter(("reason",), "the chains were filtered"),
+    "a chain count": setter(("chain_count",), 1),
+    "no chain count": setter(("chain_count",), None),
+    "a surfaced count": setter(("surfaced_count",), 1),
+    "no candidate count": setter(("candidate_count",), None),
+    "a negative candidate count": setter(("candidate_count",), -1),
+    "a chain listed": setter(("chains",), [valid_chain(1, True, 0)]),
+    "no reference digest": setter(("reference_digest",), None),
+    "no inventory digest": setter(("inventory_digest",), None),
+}
+
+SKIPPED_VIOLATIONS = {
+    "no reason": setter(("reason",), None),
+    "a zero reason": setter(("reason",), "no candidate links"),
+    "a reason the check gives": setter(("reason",), "no outcome recorded"),
+    "a chain count": setter(("chain_count",), 0),
+    "a candidate count": setter(("candidate_count",), 0),
+    "a surfaced count": setter(("surfaced_count",), 0),
+    "a chain listed": setter(("chains",), [valid_chain(1, True, 0)]),
+    "a reference digest of Section 7 that couldn't be read": lambda doc: doc.update(reason="Section 7 unreadable", reference_digest=HEX),
+    "an inventory digest of an inventory that is missing": lambda doc: doc.update(reason="inventory missing", inventory_digest=HEX2),
+    "a bad digest": setter(("reference_digest",), "xyz"),
+}
+
+
+@pytest.mark.parametrize("label", sorted(CHAINS_VIOLATIONS))
+def test_a_chain_file_that_breaks_the_closed_schema_or_its_rules_is_invalid(label):
+    doc = valid_chains()
+    CHAINS_VIOLATIONS[label](doc)
+    raises_invalid(_api("validate_chains"), doc)
+
+
+@pytest.mark.parametrize("label", sorted(ZERO_VIOLATIONS))
+def test_a_zero_outcome_that_breaks_its_rules_is_invalid(label):
+    doc = a_zero_outcome()
+    ZERO_VIOLATIONS[label](doc)
+    raises_invalid(_api("validate_chains"), doc)
+
+
+@pytest.mark.parametrize("label", sorted(SKIPPED_VIOLATIONS))
+def test_a_skipped_outcome_that_breaks_its_rules_is_invalid(label):
+    doc = a_skipped_outcome("inventory invalid")
+    SKIPPED_VIOLATIONS[label](doc)
+    raises_invalid(_api("validate_chains"), doc)
+
+
+def test_at_most_five_chains_surface_whatever_the_count_of_chains():
+    """S-3(f): six chains that all surface (N = 6, S = 6, six listed and six flagged) are as consistent as a file can be, and still invalid."""
+    six = dict(a_capped_outcome(chain_count=6, listed=6, surfaced=(1, 2, 3, 4, 5, 6)), surfaced_count=6)
+    raises_invalid(_api("validate_chains"), six)
+    five = dict(a_capped_outcome(chain_count=6, listed=6, surfaced=(1, 2, 3, 4, 5)), surfaced_count=5)
+    assert _api("validate_chains")(five) is five
+
+
+def test_the_listed_chains_are_the_surfaced_ones_and_the_first_hundred_of_the_others():
+    """N = 150 and S = 5 list 105 chains. Fewer or more is invalid, and so is a count that disagrees: 104 listed for N = 150, or 106."""
+    assert _api("validate_chains")(a_capped_outcome()) is not None
+    for chains in (a_capped_outcome()["chains"][:104], a_capped_outcome(listed=106)["chains"]):
+        raises_invalid(_api("validate_chains"), dict(a_capped_outcome(), chains=chains))
+    small = a_capped_outcome(chain_count=10, listed=10, surfaced=(1, 2, 3, 4, 10))  # N - S = 5, so min(100, 5) = 5 others: 10 chains in all
+    assert _api("validate_chains")(small) is small
+    raises_invalid(_api("validate_chains"), dict(small, chains=small["chains"][:-1]))
+
+
+def test_the_chain_outcomes_and_their_reasons_are_the_contracts():
+    assert tuple(_api("CHAIN_OUTCOMES")) == ("written", "zero", "skipped")
+    assert tuple(_api("CHAIN_ZERO_REASONS")) == ("no STRIDE findings", "fewer than two layers with STRIDE findings", "no candidate links",
+                                                 "no chain with a Critical or High finding")
+    assert tuple(_api("CHAIN_SKIP_REASONS")) == ("Section 7 unreadable", "inventory missing", "inventory invalid")
+    assert tuple(_api("CHAIN_ROLES")) == ("initial_exploit", "intermediate_cascade", "terminal_impact")
+
+
+def valid_narratives():
+    return {"schema": "tachi.chain-narratives/1",
+            "narratives": {"CHAIN-001": {"title": "Edge to core", "narrative": "A path of {{count:members}} findings, led by {{finding:S-1}}."},
+                           "CHAIN-003": {"title": "Second path", "narrative": "It crosses {{count:layers}} layers."}}}
+
+
+NARRATIVES_VIOLATIONS = {
+    "unknown key": setter(("extra",), 1),
+    "missing narratives": drop(("narratives",)), "missing schema": drop(("schema",)),
+    "the container under another name": lambda doc: doc.update(chains=doc.pop("narratives")),
+    "schema version": setter(("schema",), "tachi.chain-narratives/2"),
+    "narratives a list": setter(("narratives",), []),
+    "narratives null": setter(("narratives",), None),
+    "entry not an object": setter(("narratives", "CHAIN-001"), "Edge to core"),
+    "entry with another key": setter(("narratives", "CHAIN-001", "note"), "x"),
+    "entry with no narrative": drop(("narratives", "CHAIN-001", "narrative")),
+    "entry with no title": drop(("narratives", "CHAIN-003", "title")),
+    "title not text": setter(("narratives", "CHAIN-001", "title"), None),
+    "narrative not text": setter(("narratives", "CHAIN-001", "narrative"), ["a"]),
+    "title a number": setter(("narratives", "CHAIN-003", "title"), 5),
+}
+
+
+def test_a_chain_narratives_file_that_follows_the_contract_validates_with_or_without_an_entry():
+    for doc in (valid_narratives(), {"schema": "tachi.chain-narratives/1", "narratives": {}}):
+        assert _api("validate_chain_narratives")(doc) is doc
+
+
+@pytest.mark.parametrize("label", sorted(NARRATIVES_VIOLATIONS))
+def test_a_chain_narratives_file_that_breaks_the_key_set_or_the_types_is_invalid(label):
+    doc = valid_narratives()
+    NARRATIVES_VIOLATIONS[label](doc)
+    raises_invalid(_api("validate_chain_narratives"), doc)
+
+
+def test_what_fails_one_chain_and_not_the_file_is_left_to_render():
+    """S1P-A30: a title over 120 characters, a narrative over 2,000, a numeral, a forbidden character, an unknown or not surfaced chain ID and an
+    entry for no chain are `render`'s: it takes D13's rewrite and then its fixed text for the chain, or refuses the ID with exit 2. This check is the
+    key set and the types, so the file keeps its other chains."""
+    doc = valid_narratives()
+    doc["narratives"]["CHAIN-001"] = {"title": "t" * 500, "narrative": "n" * 5000}
+    doc["narratives"]["CHAIN-003"] = {"title": "Chain 3", "narrative": "A bidi " + RIGHT_TO_LEFT_OVERRIDE + " control and 7 steps."}
+    doc["narratives"]["CHAIN-999"] = {"title": "", "narrative": ""}
+    doc["narratives"]["not a chain"] = {"title": "t", "narrative": "n"}
+    assert _api("validate_chain_narratives")(doc) is doc
+
+
+def test_the_chain_files_use_the_names_the_contract_gives_and_no_other_name_matches_chain_narrat():
+    """S1P-A30: `tachi_parts.KEY_SETS` holds `chains`, `chain`, `chain-member`, `chain-narratives` and `chain-text`, with no optional key, and T115's
+    harness test reads the declared names, so no other key set's name may match `chain.*narrat`."""
+    keys = _api("KEY_SETS")
+    for name in ("chains", "chain", "chain-member", "chain-narratives", "chain-text"):
+        assert keys[name][1] == ()
+    assert [name for name in keys if re.search(r"chain.*narrat", name)] == ["chain-narratives"]
+
+
+def valid_handoff(check="provenance", **override):
+    provenance = check == "provenance"
+    doc = {"schema": "tachi.check-handoff/1", "check": check, "plan_id": PLAN, "status": "pass",
+           "counts": {"open": 12, "resolved": 3, "recorded": 9, "carried": 2, "rule": 1, "renumbered": 1, "folded": 0, "reused-id": 0} if provenance else None,
+           "batches": {"planned": 6, "dispatched": 8, "done": 6, "retried": 2, "split": 1, "exhausted": 0} if provenance else None,
+           "warnings": [], "error": None}
+    doc.update(override)
+    return doc
+
+
+def warned(*codes, check="provenance"):
+    return valid_handoff(check, status="warn", warnings=[{"code": code, "detail": "a detail"} for code in codes])
+
+
+HANDOFF_ERROR = {"code": "provenance", "message": "2 findings have no provenance entry: T-1, T-2", "finding_ids": ["T-1", "T-2"],
+                 "remedy": "re-run /tachi.threat-model"}
+HANDOFF_VARIANTS = {
+    "attack-chains, pass": valid_handoff("attack-chains"),
+    "attack-chains, rewritten": warned("chain-outcome:rewritten", check="attack-chains"),
+    "provenance, pass": valid_handoff(),
+    "provenance, section 6 mismatches": warned("section6:mismatch", "section6:mismatch"),
+    "provenance, a reissued ID": warned("id:reissued"),
+    "provenance, a coverage gap with no end marker": warned("coverage-gap:unrecovered:no_end_marker"),
+    "provenance, a coverage gap that overflowed": warned("coverage-gap:unrecovered:overflow_error"),
+    "provenance, a repeated correlation member": warned("correlation-member-repeated"),
+    "provenance, every warning": warned("chain-outcome:rewritten", "section6:mismatch", "id:reissued", "coverage-gap:unrecovered:no_end_marker",
+                                        "coverage-gap:unrecovered:overflow_error", "correlation-member-repeated"),
+    "provenance, 1,000 warnings": warned(*["section6:mismatch"] * 1000),
+    "provenance, counts at the limit": valid_handoff(counts={key: 1000000 for key in EXPECTED_KEY_SETS["handoff-counts"][0]},
+                                                     batches={key: 1000000 for key in ("planned", "dispatched", "done", "retried", "split", "exhausted")}),
+    "provenance, a failed check with the first 20 IDs": valid_handoff(status="fail", error=dict(
+        HANDOFF_ERROR, finding_ids=["S-%d" % n for n in range(1, 21)], message="25 findings are involved")),
+    "provenance, a failed check with warnings": valid_handoff(status="fail", error=HANDOFF_ERROR, warnings=[{"code": "id:reissued", "detail": "d"}]),
+    **{"provenance, failed on %s" % code: valid_handoff(status="fail", error=dict(HANDOFF_ERROR, code=code, finding_ids=[] if code == "no-records" else ["T-1"]))
+       for code in ("no-records", "envelope", "lineage", "provenance", "completeness")},
+    "provenance, IDs of two kinds in S-2 order": valid_handoff(status="fail", error=dict(HANDOFF_ERROR, finding_ids=["E-12", "AG-1", "LLM-3", "TE-1"])),
+}
+
+
+@pytest.mark.parametrize("label", sorted(HANDOFF_VARIANTS))
+def test_a_check_hand_off_that_follows_the_contract_validates(label):
+    doc = HANDOFF_VARIANTS[label]
+    assert _api("validate_check_handoff")(doc) is doc
+
+
+def failed_with(**fields):
+    return lambda doc: doc.update(status="fail", error=dict(HANDOFF_ERROR, **fields))
+
+
+HANDOFF_VIOLATIONS = [
+    ("provenance", "unknown key", setter(("extra",), 1)),
+    *[("provenance", "missing %s" % key, drop((key,))) for key in EXPECTED_KEY_SETS["check-handoff"][0]],
+    ("provenance", "schema version", setter(("schema",), "tachi.check-handoff/2")),
+    ("provenance", "a check that isn't one", setter(("check",), "assemble")),
+    ("provenance", "a plan id off the allow-list", setter(("plan_id",), "../escape")),
+    ("provenance", "a plan id with a newline", setter(("plan_id",), PLAN + "\n")),
+    ("provenance", "a status that isn't one", setter(("status",), "ok")),
+    # The closed warning codes, and a code that belongs to the other check.
+    ("provenance", "an unknown warning code", lambda doc: doc.update(status="warn", warnings=[{"code": "made-up:code", "detail": "d"}])),
+    ("provenance", "an unrecovered reason off the list", lambda doc: doc.update(status="warn", warnings=[{"code": "coverage-gap:unrecovered:other", "detail": "d"}])),
+    ("provenance", "an unrecovered gap with no reason", lambda doc: doc.update(status="warn", warnings=[{"code": "coverage-gap:unrecovered", "detail": "d"}])),
+    ("provenance", "a code with a trailing newline", lambda doc: doc.update(status="warn", warnings=[{"code": "id:reissued\n", "detail": "d"}])),
+    ("provenance", "a warning with another key", lambda doc: doc.update(status="warn", warnings=[{"code": "id:reissued", "detail": "d", "level": 1}])),
+    ("provenance", "a warning with no detail", lambda doc: doc.update(status="warn", warnings=[{"code": "id:reissued"}])),
+    ("provenance", "a detail over 500", lambda doc: doc.update(status="warn", warnings=[{"code": "id:reissued", "detail": "x" * 501}])),
+    ("provenance", "a detail with a control character", lambda doc: doc.update(status="warn", warnings=[{"code": "id:reissued", "detail": "a\x00b"}])),
+    ("provenance", "warnings over 1,000", lambda doc: doc.update(status="warn", warnings=[{"code": "id:reissued", "detail": "d"}] * 1001)),
+    ("provenance", "warnings an object", setter(("warnings",), {})),
+    ("attack-chains", "the provenance check's warning", lambda doc: doc.update(status="warn", warnings=[{"code": "correlation-member-repeated", "detail": "d"}])),
+    # The provenance check's counts and batches.
+    ("provenance", "no counts", setter(("counts",), None)),
+    ("provenance", "a count missing", drop(("counts", "folded"))),
+    ("provenance", "a count that isn't one", setter(("counts", "extra"), 1)),
+    ("provenance", "a negative count", setter(("counts", "open"), -1)),
+    ("provenance", "a boolean count", setter(("counts", "open"), True)),
+    ("provenance", "a float count", setter(("counts", "open"), 1.0)),
+    ("provenance", "a count over 1,000,000", setter(("counts", "resolved"), 1000001)),
+    ("provenance", "a count as text", setter(("counts", "reused-id"), "0")),
+    ("provenance", "no batches", setter(("batches",), None)),
+    ("provenance", "a batch count missing", drop(("batches", "split"))),
+    ("provenance", "a batch count that isn't one", setter(("batches", "failed"), 0)),
+    ("provenance", "a batch count over 1,000,000", setter(("batches", "planned"), 1000001)),
+    ("provenance", "a negative batch count", setter(("batches", "done"), -1)),
+    # The provenance check's error.
+    ("provenance", "an error with a batch id", failed_with(batch_id=None)),
+    ("provenance", "an error with no remedy", lambda doc: (failed_with()(doc), doc["error"].pop("remedy"))),
+    ("provenance", "an error that isn't an object", lambda doc: doc.update(status="fail", error="failed")),
+    ("provenance", "an error code that isn't a rule", failed_with(code="check-failed")),
+    ("provenance", "an error code in capitals", failed_with(code="Provenance")),
+    ("provenance", "an error with no message", failed_with(message="")),
+    ("provenance", "an error message over 2,000", failed_with(message="m" * 2001)),
+    ("provenance", "an error message with a bidi control", failed_with(message="a" + RIGHT_TO_LEFT_OVERRIDE + "b")),
+    ("provenance", "an error remedy empty", failed_with(remedy="")),
+    ("provenance", "an error remedy over 2,000", failed_with(remedy="r" * 2001)),
+    ("provenance", "an error with 21 IDs", failed_with(finding_ids=["S-%d" % n for n in range(1, 22)])),
+    ("provenance", "error IDs out of S-2 order", failed_with(finding_ids=["T-2", "S-1"])),
+    ("provenance", "error IDs ordered as text", failed_with(finding_ids=["T-10", "T-9"])),
+    ("provenance", "error IDs with a repeat", failed_with(finding_ids=["S-1", "S-01"])),
+    ("provenance", "an error ID off the allow-list", failed_with(finding_ids=["S-1", "X-2"])),
+    ("provenance", "error IDs not a list", failed_with(finding_ids="S-1")),
+    # The status follows the error, then the warnings, as the check's exit code does (4, 5 or 0).
+    ("provenance", "pass with a warning", lambda doc: doc.update(warnings=[{"code": "id:reissued", "detail": "d"}])),
+    ("provenance", "warn with no warning", setter(("status",), "warn")),
+    ("provenance", "pass with an error", setter(("error",), dict(HANDOFF_ERROR))),
+    ("provenance", "warn with an error", lambda doc: doc.update(status="warn", error=dict(HANDOFF_ERROR))),
+    ("provenance", "fail with no error", setter(("status",), "fail")),
+    ("provenance", "fail with only a warning", lambda doc: doc.update(status="fail", warnings=[{"code": "id:reissued", "detail": "d"}])),
+    # The attack-chains hand-off has no counts, no batches and no error, and is never a failure.
+    ("attack-chains", "unknown key", setter(("extra",), 1)),
+    ("attack-chains", "counts", setter(("counts",), {})),
+    ("attack-chains", "counts filled", lambda doc: doc.update(counts=valid_handoff()["counts"])),
+    ("attack-chains", "batches", lambda doc: doc.update(batches=valid_handoff()["batches"])),
+    ("attack-chains", "an error", setter(("error",), dict(HANDOFF_ERROR))),
+    ("attack-chains", "a failed check", setter(("status",), "fail")),
+    ("attack-chains", "a failed check with an error", lambda doc: doc.update(status="fail", error=dict(HANDOFF_ERROR))),
+    ("attack-chains", "pass with a warning", lambda doc: doc.update(warnings=[{"code": "chain-outcome:rewritten", "detail": "d"}])),
+]
+
+
+@pytest.mark.parametrize("check,label,mutate", HANDOFF_VIOLATIONS, ids=["%s: %s" % (c, l) for c, l, _ in HANDOFF_VIOLATIONS])
+def test_a_check_hand_off_that_breaks_its_contract_is_invalid(check, label, mutate):
+    doc = valid_handoff(check)
+    mutate(doc)
+    raises_invalid(_api("validate_check_handoff"), doc)
+
+
+def test_the_hand_offs_closed_values_are_the_contracts():
+    assert tuple(_api("HANDOFF_CHECKS")) == ("attack-chains", "provenance")
+    assert tuple(_api("HANDOFF_STATUSES")) == ("pass", "warn", "fail")
+    assert tuple(_api("HANDOFF_ERROR_CODES")) == ("no-records", "envelope", "lineage", "provenance", "completeness")
+    assert tuple(_api("HANDOFF_WARNING_CODES")) == (
+        "chain-outcome:rewritten", "section6:mismatch", "id:reissued", "coverage-gap:unrecovered:no_end_marker",
+        "coverage-gap:unrecovered:overflow_error", "correlation-member-repeated")
+
+
+def test_the_hand_offs_check_is_its_files_stem_and_its_plan_is_the_runs_and_those_are_the_readers_to_compare():
+    """A hand-off that names the other check, or another run's plan, is valid in itself: `close` compares both with the file and the run (OS's R3)."""
+    for doc in (valid_handoff("provenance", plan_id=OTHER_PLAN), valid_handoff("attack-chains", plan_id=OTHER_PLAN)):
+        assert _api("validate_check_handoff")(doc) is doc
+
+
+# --- reading a PR 2 document from disk: the same loader as a part, then the schema's own key set, under the contract's size cap ---
+
+PR2_DOCUMENTS = [
+    ("tachi.dispatch-record/1", "validate_dispatch_record", valid_record, 64 * 1024),
+    ("tachi.brief/1", "validate_brief", valid_brief, 32 * 1024),
+    ("tachi.idmap/1", "validate_idmap", valid_idmap, 256 * 1024),
+    ("tachi.phase1-inventory/1", "validate_phase1_inventory", valid_inventory, 512 * 1024),
+    ("tachi.phase1-dispatch/1", "validate_phase1_dispatch", valid_dispatch_table, 256 * 1024),
+    ("tachi.chains/1", "validate_chains", valid_chains, 512 * 1024),
+    ("tachi.chain-narratives/1", "validate_chain_narratives", valid_narratives, 512 * 1024),
+    ("tachi.check-handoff/1", "validate_check_handoff", valid_handoff, 1024 * 1024),
+]
+
+
+@pytest.mark.parametrize("schema,validator,build,cap", PR2_DOCUMENTS, ids=[d[0] for d in PR2_DOCUMENTS])
+def test_a_pr2_document_is_read_through_the_loader_and_its_own_validator(tmp_path, schema, validator, build, cap):
+    out, path = document_path(tmp_path)
+    path.write_text(json.dumps(build()), encoding="utf-8")
+    assert _api("read_document")(path, out, schema) == build()
+    other = next(d[0] for d in PR2_DOCUMENTS if d[0] != schema)
+    with pytest.raises(_api("PartError")) as excinfo:
+        _api("read_document")(path, out, other)
+    assert excinfo.value.kind == "invalid"
+    path.write_text(json.dumps(dict(build(), extra=1)), encoding="utf-8")
+    with pytest.raises(_api("PartError")) as excinfo:
+        _api("read_document")(path, out, schema)
+    assert excinfo.value.kind == "invalid", "the file's own key set is checked after the loader"
+
+
+@pytest.mark.parametrize("schema,validator,build,cap", PR2_DOCUMENTS, ids=[d[0] for d in PR2_DOCUMENTS])
+def test_a_pr2_document_that_fails_the_loader_reports_the_loaders_kind(tmp_path, schema, validator, build, cap):
+    read, error = _api("read_document"), _api("PartError")
+    out, path = document_path(tmp_path)
+    with pytest.raises(error) as missing:
+        read(path, out, schema)
+    assert missing.value.kind == "missing"
+    text = json.dumps(build())
+    path.write_text(text[:-1] + ', "schema": "x"}', encoding="utf-8")   # a duplicate key
+    with pytest.raises(error) as duplicate:
+        read(path, out, schema)
+    assert duplicate.value.kind == "unparseable"
+    path.write_text(text.replace('"schema"', '"schema": NaN, "x"', 1), encoding="utf-8")
+    with pytest.raises(error) as constant:
+        read(path, out, schema)
+    assert constant.value.kind == "unparseable"
+    real = tmp_path / "real.json"
+    real.write_text(text, encoding="utf-8")
+    path.unlink()
+    path.symlink_to(real)
+    with pytest.raises(error) as linked:
+        read(path, out, schema)
+    assert linked.value.kind == "invalid"
+
+
+@pytest.mark.parametrize("schema,validator,build,cap", PR2_DOCUMENTS, ids=[d[0] for d in PR2_DOCUMENTS])
+def test_a_pr2_document_has_the_size_cap_the_contract_gives_it(tmp_path, schema, validator, build, cap):
+    """The caps of threat-model-records.md (64 KiB, 32 KiB, 256 KiB, 512 KiB and 256 KiB) and part-files.md section 6 (1 MiB). The two chain files have
+    none in the contracts, so they take the part cap, 512 KiB."""
+    assert _api("MAX_DOCUMENT_BYTES")[schema] == cap
+    out, path = document_path(tmp_path)
+    text = json.dumps(build())
+    path.write_text(text + " " * (cap - len(text)), encoding="utf-8")
+    assert _api("read_document")(path, out, schema) == build(), "a file of exactly the cap is read"
+    path.write_text(text + " " * (cap - len(text) + 1), encoding="utf-8")
+    with pytest.raises(_api("PartError")) as excinfo:
+        _api("read_document")(path, out, schema)
+    assert excinfo.value.kind == "unparseable"
+
+
+# =============================================================================
+# 28. The `trees` and `report` part payloads (T091's first slice)
+#
+# ADR-050 D6's batch-stage table (`trees`), item O-gamma and part-files.md, "Stage payload: report". `classify_part` takes the batch input's `units`
+# for the stages whose parts depend on them. Each case changes one thing in a part that passes.
+# =============================================================================
+
+def tree_item(fid, status="NEW", action="generated_fresh", **extra):
+    return dict({"finding_id": fid, "delta_status": status, "action": action}, **extra)
+
+
+def trees_part(ids=("S-1", "T-2"), items=None, **override):
+    part = {"schema": "tachi.part/1", "plan_id": PLAN, "batch_id": "B001", "stage": "trees", "agent_type": "tachi-attack-tree-delta",
+            "finding_ids": list(ids), "items": items if items is not None else [tree_item(i) for i in ids], "fragments": []}
+    part.update(override)
+    return part
+
+
+def test_a_trees_part_is_done_and_needs_no_units():
+    result = classify(trees_part(), kind=TREES)
+    assert result.state == "done", result.detail
+    assert result.part["items"] == [tree_item("S-1"), tree_item("T-2")] and result.flags == {}
+    assert result.counts == {"narrative_fallbacks": 0, "truncations": 0}
+
+
+def test_a_trees_part_comes_back_in_the_planned_order_with_canonical_ids_and_never_changes_its_input():
+    part = trees_part(ids=("T-02", "S-1"), items=[tree_item("T-02", "UNCHANGED", "carried_forward", similarity_score=0.91), tree_item("S-1")])
+    before = json.dumps(part, sort_keys=True)
+    result = classify(part, ids=("S-1", "T-2"), kind=TREES)
+    assert result.state == "done", result.detail
+    assert result.part["finding_ids"] == ["S-1", "T-2"] and [i["finding_id"] for i in result.part["items"]] == ["S-1", "T-2"]
+    assert json.dumps(part, sort_keys=True) == before
+
+
+@pytest.mark.parametrize("status", ["NEW", "UNCHANGED", "UPDATED"])
+@pytest.mark.parametrize("action", ["carried_forward", "generated_fresh", "regenerated"])
+def test_every_delta_status_and_action_of_the_manifest_is_accepted(status, action):
+    assert classify(trees_part(items=[tree_item("S-1", status, action), tree_item("T-2")]), kind=TREES).state == "done"
+
+
+@pytest.mark.parametrize("score,kept", [(0, 0.0), (1, 1.0), (0.5, 0.5), (0.85, 0.85), (Decimal("0.85"), 0.85), (Decimal("1"), 1.0), (0.0, 0.0), (1e-300, 1e-300)])
+def test_a_rule_3_similarity_score_from_0_to_1_is_kept_as_a_float(score, kept):
+    result = classify(trees_part(items=[tree_item("S-1", "UNCHANGED", "carried_forward", similarity_score=score), tree_item("T-2")]), kind=TREES)
+    assert result.state == "done", result.detail
+    assert result.part["items"][0]["similarity_score"] == kept and type(result.part["items"][0]["similarity_score"]) is float
+
+
+@pytest.mark.parametrize("score", [-0.1, 1.01, 2, -1, Decimal("1.0000001"), Decimal("-0.0000001"), float("nan"), float("inf"), True, False, "0.9", None, [0.9], {}])
+def test_a_similarity_score_outside_0_to_1_or_not_a_number_is_invalid(score):
+    part = trees_part(items=[tree_item("S-1", "UNCHANGED", "carried_forward", similarity_score=score), tree_item("T-2")])
+    assert classify(part, kind=TREES).state == "invalid"
+
+
+def test_a_similarity_score_read_from_disk_arrives_as_a_float(tmp_path):
+    text = json.dumps(trees_part(items=[tree_item("S-1", "UNCHANGED", "carried_forward", similarity_score=0.25), tree_item("T-2")]))
+    result = read(tmp_path, text, kind=TREES)
+    assert result.state == "done", result.detail
+    assert result.part["items"][0]["similarity_score"] == 0.25 and type(result.part["items"][0]["similarity_score"]) is float
+    assert read(tmp_path, text.replace("0.25", "1e999"), kind=TREES).state == "invalid", "an exponent that overflows is out of range, never inf"
+
+
+@pytest.mark.parametrize("label,mutate", [
+    ("a status the manifest hasn't", lambda p: p["items"][0].update(delta_status="RESOLVED")),
+    ("a status in lower case", lambda p: p["items"][0].update(delta_status="new")),
+    ("a status not text", lambda p: p["items"][0].update(delta_status=None)),
+    ("an action the manifest hasn't", lambda p: p["items"][0].update(action="copied")),
+    ("an action with a capital", lambda p: p["items"][0].update(action="Regenerated")),
+    ("no action", lambda p: p["items"][0].pop("action")),
+    ("no status", lambda p: p["items"][1].pop("delta_status")),
+    ("the merge's path", lambda p: p["items"][0].update(file_path="attack-trees/s-1-attack-tree.md")),
+    ("another key", lambda p: p["items"][1].update(tree="graph TD")),
+    ("a score under another name", lambda p: p["items"][1].update(similarity=0.5)),
+    ("fragments", lambda p: p.update(fragments=[{"slot_key": "intro", "text": "x"}])),
+])
+def test_a_trees_item_that_breaks_the_manifests_closed_keys_or_values_is_invalid(label, mutate):
+    part = trees_part()
+    mutate(part)
+    assert classify(part, kind=TREES).state == "invalid"
+
+
+def test_a_trees_part_that_is_not_the_planned_batch_is_invalid():
+    assert classify(trees_part(ids=("S-1",)), ids=("S-1", "T-2"), kind=TREES).state == "invalid"
+    assert classify(trees_part(), ids=("S-1", "T-2"), kind=SCORER).state == "invalid", "a trees part under the scorer's plan"
+    assert classify(make_part(), kind=TREES).state == "invalid", "a scorer's part under the trees plan"
+    assert classify(trees_part(), ids=(), kind=TREES).state == "invalid", "a trees batch names a finding"
+
+
+def test_what_the_units_say_of_a_trees_item_is_the_reconcilers_and_the_assemblers_to_compare():
+    """D6: `delta_status` and `action` equal the batch input's. This check holds no unit, so it takes any pair of closed values, and a Rule 3
+    entry, whose `action` may differ from the plan's, is not refused here (T's RD-6 asks the Architect; the results record has it)."""
+    units = [{"finding_id": "S-1", "delta_status": "UNCHANGED", "action": "regenerated"}, {"finding_id": "T-2", "delta_status": "NEW", "action": "generated_fresh"}]
+    part = trees_part(items=[tree_item("S-1", "UNCHANGED", "carried_forward", similarity_score=0.9), tree_item("T-2")])
+    assert classify(part, kind=TREES, units=units).state == "done"
+    assert classify(part, kind=TREES, units=None).state == "done"
+
+
+def section_part(fragments, batch="B001", **override):
+    part = {"schema": "tachi.part/1", "plan_id": PLAN, "batch_id": batch, "stage": "report", "agent_type": "tachi-threat-report",
+            "finding_ids": [], "items": [], "fragments": list(fragments)}
+    part.update(override)
+    return part
+
+
+def fragment(key, text="A short paragraph about it."):
+    return {"slot_key": key, "text": text}
+
+
+def section_units(section, *keys):
+    return [{"section": section, "key": key, "rows": [{"finding_id": "S-1"}]} for key in keys]
+
+
+def classify_section(fragments, section, keys, **override):
+    return classify(section_part(fragments, **override), ids=(), kind=REPORT, units=section_units(section, *keys))
+
+
+EXEC_KEYS = ("risk_posture", "top_threats", "key_recommendations", "compliance")
+EXEC_REQUIRED = [fragment(key) for key in EXEC_KEYS[:3]]
+
+
+def test_the_reports_parts_are_the_templates_nine_in_its_order_with_their_kinds():
+    assert tuple(_api("REPORT_PARTS")) == (
+        ("exec_summary", "section"), ("architecture_overview", "section"), ("threat_categories", "section"), ("threat_analysis", "findings"),
+        ("cross_cutting_themes", "section"), ("attack_chains", "section"), ("agentic_patterns", "section"), ("remediation_roadmap", "findings"),
+        ("delta_summary", "section"))
+
+
+# part-files.md, "Stage payload: report": the limit of each fragment key, in characters.
+REPORT_LIMITS = [
+    ("exec_summary", "risk_posture", 1500), ("exec_summary", "top_threats", 4000), ("exec_summary", "key_recommendations", 2500),
+    ("exec_summary", "compliance", 2000), ("architecture_overview", "system_context", 4000), ("architecture_overview", "trust_boundaries", 4000),
+    ("threat_categories", "overview", 1500), ("threat_categories", "category.spoofing", 600), ("threat_categories", "category.information_disclosure", 600),
+    ("threat_categories", "category.llm", 600), ("threat_categories", "summary.agentic", 1200), ("threat_categories", "summary.denial_of_service", 1200),
+    ("cross_cutting_themes", "theme.1.title", 120), ("cross_cutting_themes", "theme.1.body", 2000), ("cross_cutting_themes", "theme.6.title", 120),
+    ("cross_cutting_themes", "theme.6.body", 2000), ("attack_chains", "chain.CHAIN-001", 2000), ("attack_chains", "chain.CHAIN-123456", 2000),
+    ("agentic_patterns", "pattern.agent_collusion", 1500), ("agentic_patterns", "pattern.resource_competition", 1500),
+    ("agentic_patterns", "multi", 3000), ("delta_summary", "progress", 3000),
+]
+
+
+@pytest.mark.parametrize("section,key,limit", REPORT_LIMITS)
+def test_each_fragment_key_has_the_limit_the_contract_gives_it(section, key, limit):
+    assert _api("report_fragment_limit")(section, key) == limit
+
+
+@pytest.mark.parametrize("section,key,limit", REPORT_LIMITS)
+def test_a_fragment_at_its_limit_is_kept_and_one_character_over_is_cut_and_counted(section, key, limit):
+    unit = "themes" if key.startswith("theme.") else key
+    # a theme is a title and a body, and themes are numbered from 1 with no gap: the others of the key's pair and of the themes before it
+    partner = [f for n in range(1, int(key.split(".")[1]) + 1) for f in theme(n) if f["slot_key"] != key] if unit == "themes" else []
+    kept = classify_section([fragment(key, "k" * limit)] + partner, section, [unit])
+    assert kept.state == "done", kept.detail
+    assert fragment(key, "k" * limit) in kept.part["fragments"] and kept.counts == {"narrative_fallbacks": 0, "truncations": 0}
+    cut = classify_section([fragment(key, "k" * (limit + 1))] + partner, section, [unit])
+    assert cut.state == "done" and fragment(key, "k" * limit) in cut.part["fragments"], "cut at the limit, never rejected"
+    assert cut.counts == {"narrative_fallbacks": 0, "truncations": 1} and cut.flags == {}
+
+
+@pytest.mark.parametrize("section,key", [
+    ("exec_summary", "system_context"), ("exec_summary", "themes"), ("exec_summary", None), ("exec_summary", ""),
+    ("architecture_overview", "risk_posture"), ("threat_categories", "category.bogus"), ("threat_categories", "category."),
+    ("threat_categories", "category"), ("threat_categories", "summary.AG"), ("threat_categories", "Category.spoofing"),
+    ("threat_categories", "category.spoofing.high"), ("attack_chains", "chain.CHAIN-01"), ("attack_chains", "chain.chain-001"), ("attack_chains", "chain."),
+    ("attack_chains", "chain.CHAIN-001\n"), ("agentic_patterns", "pattern.none"), ("agentic_patterns", "pattern.multiple"),
+    ("agentic_patterns", "pattern.Agent Collusion"), ("agentic_patterns", "multiple"), ("delta_summary", "progress "),
+    ("cross_cutting_themes", "theme.7.title"), ("cross_cutting_themes", "theme.0.body"), ("cross_cutting_themes", "theme.1.footer"),
+    ("cross_cutting_themes", "themes"), ("cross_cutting_themes", "theme.1.title\n"), ("threat_analysis", "narrative"), ("remediation_roadmap", "effort"),
+    ("bogus", "progress"), (None, "progress"),
+])
+def test_a_key_that_a_section_doesnt_have_has_no_limit(section, key):
+    assert _api("report_fragment_limit")(section, key) is None
+
+
+def test_a_unit_allows_its_own_key_and_the_themes_unit_allows_twelve():
+    slots = _api("report_unit_slots")
+    assert slots("exec_summary", "risk_posture") == ("risk_posture",) and slots("exec_summary", "bogus") is None
+    assert slots("cross_cutting_themes", "themes") == tuple("theme.%d.%s" % (n, part) for n in range(1, 7) for part in ("title", "body"))
+    assert slots("cross_cutting_themes", "theme.1.title") is None, "the unit is `themes`; a theme key is a fragment's"
+    assert slots("threat_analysis", "x") is None and slots("exec_summary", "themes") is None
+
+
+def test_a_section_part_holds_its_required_paragraphs_in_the_planned_order_whatever_order_they_were_written_in():
+    result = classify_section([fragment("key_recommendations", "c"), fragment("risk_posture", "a"), fragment("top_threats", "b")], "exec_summary", EXEC_KEYS)
+    assert result.state == "done", result.detail
+    assert [(f["slot_key"], f["text"]) for f in result.part["fragments"]] == [("risk_posture", "a"), ("top_threats", "b"), ("key_recommendations", "c")]
+    assert result.part["finding_ids"] == [] and result.part["items"] == [] and result.flags == {}
+    assert result.counts == {"narrative_fallbacks": 0, "truncations": 0}
+
+
+def test_an_optional_paragraph_may_be_left_out_and_may_be_written():
+    assert classify_section(EXEC_REQUIRED, "exec_summary", EXEC_KEYS).state == "done"
+    with_compliance = classify_section(EXEC_REQUIRED + [fragment("compliance")], "exec_summary", EXEC_KEYS)
+    assert with_compliance.state == "done" and [f["slot_key"] for f in with_compliance.part["fragments"]][-1] == "compliance"
+    categories = ("overview", "category.spoofing", "summary.llm")
+    assert classify_section([fragment("category.spoofing"), fragment("summary.llm")], "threat_categories", categories).state == "done"
+    assert classify_section([fragment("summary.llm")], "threat_categories", categories).state == "invalid", "a category with an open finding has its paragraph"
+
+
+@pytest.mark.parametrize("label,fragments", [
+    ("a required paragraph missing", EXEC_REQUIRED[:2]),
+    ("no paragraph", []),
+    ("a paragraph of another section", EXEC_REQUIRED + [fragment("system_context")]),
+    ("a paragraph that no unit planned", EXEC_REQUIRED + [fragment("overview")]),
+    ("a key twice", EXEC_REQUIRED + [fragment("risk_posture", "again")]),
+    ("a key that isn't text", EXEC_REQUIRED + [{"slot_key": None, "text": "x"}]),
+    ("a key that is a list", EXEC_REQUIRED + [{"slot_key": ["compliance"], "text": "x"}]),
+    ("an unknown key", EXEC_REQUIRED + [fragment("bogus")]),
+    ("a key with a capital", EXEC_REQUIRED + [fragment("Compliance")]),
+    ("a fragment with another key", EXEC_REQUIRED + [dict(fragment("compliance"), note="x")]),
+    ("a fragment with no text", EXEC_REQUIRED + [{"slot_key": "compliance"}]),
+    ("a fragment with no key", EXEC_REQUIRED + [{"text": "x"}]),
+    ("a fragment that isn't an object", EXEC_REQUIRED + ["compliance"]),
+    ("text that isn't text", EXEC_REQUIRED + [fragment("compliance", None)]),
+    ("text that is a number", EXEC_REQUIRED + [fragment("compliance", 5)]),
+    ("empty text", [fragment("risk_posture", ""), EXEC_REQUIRED[1], EXEC_REQUIRED[2]]),
+    ("text of only whitespace", [fragment("risk_posture", " \n\t "), EXEC_REQUIRED[1], EXEC_REQUIRED[2]]),
+    ("51 fragments", [fragment("risk_posture")] * 51),
+])
+def test_a_section_part_that_breaks_the_batchs_keys_is_invalid(label, fragments):
+    assert classify_section(fragments, "exec_summary", EXEC_KEYS).state == "invalid"
+
+
+@pytest.mark.parametrize("field,value", [("finding_ids", ["S-1"]), ("items", [{"finding_id": "S-1"}]), ("finding_ids", None), ("items", None),
+                                         ("fragments", None), ("fragments", {}), ("fragments", "text")])
+def test_a_section_part_has_no_finding_and_no_item_and_a_list_of_fragments(field, value):
+    part = section_part(EXEC_REQUIRED)
+    part[field] = value
+    assert classify(part, ids=(), kind=REPORT, units=section_units("exec_summary", *EXEC_KEYS)).state == "invalid"
+
+
+def test_a_section_part_of_another_plan_batch_or_stage_is_invalid_and_an_overflow_object_for_its_batch_is_classified_overflow():
+    units = section_units("exec_summary", *EXEC_KEYS)
+    for override in ({"plan_id": OTHER_PLAN}, {"batch_id": "B002"}, {"stage": "trees"}, {"agent_type": "tachi-orchestrator"}, {"schema": "tachi.part/2"}):
+        assert classify(section_part(EXEC_REQUIRED, **override), ids=(), kind=REPORT, units=units).state == "invalid"
+    overflow = dict(overflow_object("input-too-large"), stage="report", agent_type="tachi-threat-report")
+    result = classify(overflow, ids=(), kind=REPORT, units=units)
+    assert (result.state, result.detail) == ("overflow", "input-too-large")
+
+
+@pytest.mark.parametrize("label,units", [
+    ("no units", None),
+    ("no unit", []),
+    ("units that aren't a list", {"section": "exec_summary", "key": "risk_posture"}),
+    ("a unit that isn't an object", ["risk_posture"]),
+    ("a unit with no section", [{"key": "risk_posture"}, {"key": "top_threats"}, {"key": "key_recommendations"}]),
+    ("a unit with no key", [{"section": "exec_summary"}]),
+    ("a section that isn't text", [{"section": ["exec_summary"], "key": "risk_posture"}]),
+    ("a key that isn't text", [{"section": "exec_summary", "key": 1}]),
+    ("units of two sections", section_units("exec_summary", "risk_posture") + section_units("architecture_overview", "system_context")),
+    ("units of two sections, each with a key of the first", [{"section": "exec_summary", "key": "risk_posture"},
+                                                              {"section": "architecture_overview", "key": "top_threats"},
+                                                              {"section": "exec_summary", "key": "key_recommendations"}]),
+    ("an unknown section", section_units("bogus", "risk_posture")),
+    ("a findings section", section_units("threat_analysis", "risk_posture")),
+    ("a key of another section", section_units("exec_summary", "system_context")),
+    ("the themes unit in another section", section_units("exec_summary", "risk_posture", "top_threats", "key_recommendations", "themes")),
+    ("a key twice", section_units("exec_summary", "risk_posture", "risk_posture", "top_threats", "key_recommendations")),
+])
+def test_a_section_part_needs_units_that_plan_one_report_section(label, units):
+    assert classify(section_part(EXEC_REQUIRED), ids=(), kind=REPORT, units=units).state == "invalid"
+
+
+def test_a_section_part_holds_at_most_fifty_fragments(monkeypatch):
+    """The envelope's cap (part-files.md section 1). No section has 50 keys, so the cap is the first check of a list and stands behind the key rules."""
+    assert _api("MAX_FRAGMENTS") == 50
+    monkeypatch.setattr(tachi_parts, "MAX_FRAGMENTS", 2)
+    assert classify_section(EXEC_REQUIRED[:2], "exec_summary", EXEC_KEYS[:2]).state == "done"
+    assert classify_section(EXEC_REQUIRED, "exec_summary", EXEC_KEYS).state == "invalid"
+
+
+def classify_themes(fragments):
+    return classify_section(fragments, "cross_cutting_themes", ("themes",))
+
+
+def theme(n, title="A theme", body="Why it matters."):
+    return [fragment("theme.%d.title" % n, title), fragment("theme.%d.body" % n, body)]
+
+
+def test_the_themes_unit_allows_its_theme_keys_in_pairs_numbered_from_1_with_no_gap():
+    assert classify_themes([]).state == "done", "all of them are optional: the template has a note for a run with no theme"
+    assert classify_themes(theme(1)).state == "done"
+    result = classify_themes(theme(2) + theme(1))
+    assert result.state == "done" and [f["slot_key"] for f in result.part["fragments"]] == ["theme.1.title", "theme.1.body", "theme.2.title", "theme.2.body"]
+    six = [f for n in range(1, 7) for f in theme(n)]
+    assert classify_themes(six).state == "done" and len(classify_themes(six).part["fragments"]) == 12
+
+
+@pytest.mark.parametrize("label,fragments", [
+    ("a title with no body", [fragment("theme.1.title")]),
+    ("a body with no title", [fragment("theme.1.body")]),
+    ("a second theme with no first", theme(2)),
+    ("a gap after the first", theme(1) + theme(3)),
+    ("a seventh theme", [f for n in range(1, 8) for f in theme(n)]),
+    ("a title twice", theme(1) + [fragment("theme.1.title")]),
+    ("theme zero", theme(0)),
+    ("a key that isn't a theme's", theme(1) + [fragment("themes")]),
+    ("a second pair that is half there", theme(1) + [fragment("theme.2.title")]),
+])
+def test_themes_that_aren_t_pairs_from_1_are_invalid(label, fragments):
+    assert classify_themes(fragments).state == "invalid"
+
+
+def test_a_theme_title_that_breaks_the_narrative_rules_becomes_untitled_and_any_other_fragment_takes_the_passage_sentence():
+    result = classify_themes([fragment("theme.1.title", "Theme 1"), fragment("theme.1.body", "It has 3 causes.")])
+    assert result.state == "done"
+    assert [f["text"] for f in result.part["fragments"]] == ["Untitled theme", _api("REPORT_FALLBACKS")["fragment"]]
+    assert result.counts == {"narrative_fallbacks": 2, "truncations": 0}
+
+
+GOOD_REPORT_TEXT = [
+    "There are {{count:open}} open findings.", "{{count:critical}} of them are critical, {{pct:critical}} of the open set.",
+    "{{count:spoofing}} spoofing, {{count:spoofing.high}} of them high.", "{{count:agentic.note}} notes.", "{{count:llm}}, {{count:llm.low}}.",
+    "{{count:resolved}} resolved, {{count:new}} new, {{count:unchanged}} unchanged, {{count:updated}} updated.",
+    "{{finding:T-2}} is rated {{band:risk:T-2}} on {{name:component:T-2}}.", "{{finding:T-02}} and {{finding:LLM-12}}.",
+    "See {{ref:CWE-89}}, {{ref:LLM01:2026}} and {{ref:L3}}.", "{{pct:high}} and {{pct:note}} and {{pct:medium}} and {{pct:low}}.", "Two-factor and third-party.",
+]
+BAD_REPORT_TEXT = [
+    "7 findings.", "Seven {{count:open}}3", "{{count:bogus}}", "{{count:critical.high}}", "{{count:spoofing.bogus}}", "{{count:Open}}", "{{pct:open}}",
+    "{{pct:spoofing}}", "{{band:severity}}", "{{band:risk:bogus}}", "{{band:risk}}", "{{band:risk:}}", "{{band:T-2}}", "{{band:risk:T-2:x}}",
+    "{{name:component}}", "{{name:zone}}", "{{name:component:}}", "{{name:component:bogus}}", "{{score:cvss_base}}", "{{date:scored}}",
+    "{{finding:bogus}}", "{{finding:T-2\n}}", "{{count:open", "{{count:members}}", "{{count:layers}}", "Total {{count:open}} and 3 more", "{{ref:}}", "{{ref:" + "x" * 65 + "}}",
+]
+
+
+@pytest.mark.parametrize("text", GOOD_REPORT_TEXT)
+def test_a_report_narrative_that_follows_the_slot_grammar_is_kept_as_written(text):
+    assert _api("narrative_problem")(text, "report") is None
+    result = classify_section(EXEC_REQUIRED[:2] + [fragment("key_recommendations", text)], "exec_summary", EXEC_KEYS)
+    assert result.state == "done" and result.part["fragments"][2]["text"] == text and result.counts["narrative_fallbacks"] == 0
+
+
+@pytest.mark.parametrize("text", BAD_REPORT_TEXT)
+def test_a_report_narrative_that_breaks_the_slot_grammar_or_the_numeral_ban_takes_the_fixed_sentence_and_the_part_stays_done(text):
+    assert _api("narrative_problem")(text, "report") is not None
+    result = classify_section(EXEC_REQUIRED[:2] + [fragment("key_recommendations", text)], "exec_summary", EXEC_KEYS)
+    assert result.state == "done", "a narrative failure never rejects the part (step 11)"
+    assert result.part["fragments"][2]["text"] == _api("REPORT_FALLBACKS")["fragment"]
+    assert result.counts == {"narrative_fallbacks": 1, "truncations": 0} and result.flags == {}
+
+
+GOOD_CHAIN_TEXT = ["{{count:members}} members over {{count:layers}} layers.", "{{count:converging}} converge.", "{{finding:S-1}} leads, {{name:component:S-1}}.",
+                   "See {{ref:L3}} and {{ref:CWE-89}}."]
+BAD_CHAIN_TEXT = ["{{count:open}}", "{{count:critical}}", "{{pct:high}}", "{{band:risk:S-1}}", "{{name:component}}", "{{name:zone}}", "{{score:x}}",
+                  "{{date:scored}}", "{{count:members", "{{finding:bogus}}", "A path of 3 steps.", "{{count:Members}}"]
+
+
+@pytest.mark.parametrize("text", GOOD_CHAIN_TEXT)
+def test_a_chain_narrative_may_use_the_chains_counts_and_name_a_member(text):
+    assert _api("narrative_problem")(text, "chain-narratives") is None
+
+
+@pytest.mark.parametrize("text", BAD_CHAIN_TEXT)
+def test_a_chain_narrative_that_uses_another_stages_slot_or_a_numeral_breaks_the_grammar(text):
+    assert _api("narrative_problem")(text, "chain-narratives") is not None
+
+
+def test_a_slot_that_names_a_finding_resolves_through_the_callers_lookup_with_the_argument_as_written():
+    seen = []
+
+    def lookup(kind, argument):
+        seen.append((kind, argument))
+        return {("count", "open"): "12", ("band", "risk:T-2"): "High", ("name", "component:T-2"): "API <Gateway>", ("finding", "T-2"): "T-2"}.get((kind, argument))
+
+    text = "{{finding:T-02}} is {{band:risk:T-2}} on {{name:component:T-2}} of {{count:open}}."
+    assert _api("resolve_narrative")(text, "report", lookup, sink="prose") == "T-2 is High on API &lt;Gateway&gt; of 12."
+    assert seen == [("finding", "T-2"), ("band", "risk:T-2"), ("name", "component:T-2"), ("count", "open")]
+    assert _api("resolve_narrative")("{{band:risk:R-9}}", "report", lookup) is None, "a lookup that finds nothing sends the field to its fallback"
+
+
+@pytest.mark.parametrize("field,sentence", [
+    ("narrative", "No narrative is shown for this finding because the text the agent wrote broke the narrative rules."),
+    ("tree_summary", "No summary is shown for this attack tree because the text the agent wrote broke the narrative rules."),
+    ("dependencies", "No dependency note is shown because the text the agent wrote broke the narrative rules."),
+    ("theme.1.title", "Untitled theme"), ("theme.6.title", "Untitled theme"),
+    ("theme.1.body", "This passage is not shown because the text the agent wrote broke the narrative rules."),
+    ("risk_posture", "This passage is not shown because the text the agent wrote broke the narrative rules."),
+    ("category.llm", "This passage is not shown because the text the agent wrote broke the narrative rules."),
+    ("chain.CHAIN-004", "This passage is not shown because the text the agent wrote broke the narrative rules."),
+    ("multi", "This passage is not shown because the text the agent wrote broke the narrative rules."),
+])
+def test_the_reports_fixed_sentences_are_the_contracts(field, sentence):
+    assert _api("report_fallback")(field) == sentence
+
+
+@pytest.mark.parametrize("field", ["bogus", "", None, 3, "theme.7.title", "theme.1.footer", "category.bogus", "effort", "finding_id"])
+def test_a_name_that_is_no_report_field_has_no_fixed_sentence(field):
+    with pytest.raises(KeyError):
+        _api("report_fallback")(field)
+
+
+def test_the_report_has_five_fixed_sentences_and_the_flag_fields_of_the_scorer_and_controls_are_unchanged():
+    assert set(_api("REPORT_FALLBACKS")) == {"narrative", "tree_summary", "dependencies", "theme.<n>.title", "fragment"}
+    assert set(_api("FALLBACK_SENTENCES")) == set(NARRATIVE_FIELDS) and len(_api("FLAG_FIELDS")) == 28
+
+
+def test_the_text_of_a_fragment_loses_its_edge_whitespace_is_cut_before_step_10_and_never_holds_a_forbidden_character():
+    padded = classify_section(EXEC_REQUIRED[:2] + [fragment("key_recommendations", "  \n Do it.\t \n")], "exec_summary", EXEC_KEYS)
+    assert padded.state == "done" and padded.part["fragments"][2]["text"] == "Do it." and padded.counts["truncations"] == 0
+    for char in ("\x00", "\x1b", RIGHT_TO_LEFT_OVERRIDE, chr(0x2028), chr(0xE0041)):
+        assert classify_section(EXEC_REQUIRED[:2] + [fragment("key_recommendations", "Do" + char + "it")], "exec_summary", EXEC_KEYS).state == "invalid", repr(char)
+        beyond = classify_section([fragment("risk_posture", "a" * 1500 + char + "more"), EXEC_REQUIRED[1], EXEC_REQUIRED[2]], "exec_summary", EXEC_KEYS)
+        assert beyond.state == "done" and beyond.part["fragments"][0]["text"] == "a" * 1500, "a character beyond the cut is cut away with the rest"
+        assert beyond.counts["truncations"] == 1
+    huge = classify_section([fragment("risk_posture", "a" * 20000), EXEC_REQUIRED[1], EXEC_REQUIRED[2]], "exec_summary", EXEC_KEYS)
+    assert huge.state == "done" and len(huge.part["fragments"][0]["text"]) == 1500, "over step 10's 16,384 too: the cut comes first"
+
+
+def test_a_section_part_is_read_from_disk_with_its_units(tmp_path):
+    text = json.dumps(section_part(EXEC_REQUIRED + [fragment("compliance", "Relevant to {{count:open}} findings.")]))
+    out, path = write_part(tmp_path, text, REPORT)
+    result = _api("read_part")(path, out=out, **dict(expect((), REPORT), units=section_units("exec_summary", *EXEC_KEYS)))
+    assert result.state == "done" and len(result.part["fragments"]) == 4, result.detail
+    assert _api("read_part")(path, out=out, **expect((), REPORT)).state == "invalid", "no units: it can't know what the batch planned"
+
+
+def test_a_section_part_in_a_pr1_stage_or_a_part_with_no_finding_is_invalid_there():
+    assert classify(make_part(ids=()), ids=(), kind=SCORER).state == "invalid"
+    assert classify(make_part(ids=(), kind=CONTROLS), ids=(), kind=CONTROLS).state == "invalid"
+    assert classify(make_part(), ids=("S-1", "T-2"), kind=SCORER, units=section_units("exec_summary", "risk_posture")).state == "done", "units mean nothing to a PR 1 stage"
+
+
+def analysis_item(fid, tree=True, **override):
+    item = {"finding_id": fid, "narrative": "It lets an attacker act as another user.", "tree_summary": "The attacker forges a token." if tree else None}
+    item.update(override)
+    return item
+
+
+def roadmap_item(fid, **override):
+    return dict({"finding_id": fid, "effort": "Medium", "dependencies": None}, **override)
+
+
+def findings_part(items, ids=("S-1", "T-2"), **override):
+    part = {"schema": "tachi.part/1", "plan_id": PLAN, "batch_id": "B001", "stage": "report", "agent_type": "tachi-threat-report",
+            "finding_ids": list(ids), "items": list(items), "fragments": []}
+    part.update(override)
+    return part
+
+
+def analysis_units(*pairs, section="threat_analysis"):
+    return [{"section": section, "finding_id": fid, "tree": tree, "risk_level": "High"} for fid, tree in pairs]
+
+
+def roadmap_units(*ids):
+    return [{"section": "remediation_roadmap", "finding_id": fid, "risk_level": "High"} for fid in ids]
+
+
+ANALYSIS_UNITS = analysis_units(("S-1", True), ("T-2", False))
+ANALYSIS_ITEMS = [analysis_item("S-1"), analysis_item("T-2", tree=False)]
+
+
+def test_a_threat_analysis_part_has_a_narrative_for_each_finding_and_a_tree_summary_for_each_finding_that_has_a_tree():
+    result = classify(findings_part(ANALYSIS_ITEMS), kind=REPORT, units=ANALYSIS_UNITS)
+    assert result.state == "done", result.detail
+    assert result.part["items"] == ANALYSIS_ITEMS and result.part["fragments"] == [] and result.flags == {}
+    assert result.counts == {"narrative_fallbacks": 0, "truncations": 0}
+
+
+def test_a_findings_part_comes_back_in_the_planned_order_with_canonical_ids():
+    part = findings_part([analysis_item("T-02", tree=False), analysis_item("AGP-01")], ids=("T-02", "AGP-01"))
+    result = classify(part, ids=("AGP-1", "T-2"), kind=REPORT, units=analysis_units(("AGP-1", True), ("T-2", False)))
+    assert result.state == "done", result.detail
+    assert [i["finding_id"] for i in result.part["items"]] == ["AGP-1", "T-2"] and result.part["finding_ids"] == ["AGP-1", "T-2"]
+
+
+@pytest.mark.parametrize("label,mutate", [
+    ("no tree summary for a finding with a tree", lambda p: p["items"][0].update(tree_summary=None)),
+    ("a tree summary for a finding with no tree", lambda p: p["items"][1].update(tree_summary="A summary.")),
+    ("an empty tree summary", lambda p: p["items"][0].update(tree_summary="")),
+    ("a tree summary of whitespace", lambda p: p["items"][0].update(tree_summary=" \n ")),
+    ("a tree summary that isn't text", lambda p: p["items"][0].update(tree_summary=7)),
+    ("a narrative that is empty", lambda p: p["items"][0].update(narrative="")),
+    ("a narrative of whitespace", lambda p: p["items"][1].update(narrative=" \t ")),
+    ("a narrative that isn't text", lambda p: p["items"][0].update(narrative=None)),
+    ("a narrative with a forbidden character", lambda p: p["items"][0].update(narrative="a\x1bb")),
+    ("no tree summary key", lambda p: p["items"][1].pop("tree_summary")),
+    ("no narrative key", lambda p: p["items"][0].pop("narrative")),
+    ("another key", lambda p: p["items"][0].update(effort="Low")),
+    ("a lead the assembler writes", lambda p: p["items"][0].update(risk_level="High")),
+    ("fragments", lambda p: p.update(fragments=[fragment("risk_posture")])),
+])
+def test_a_threat_analysis_item_that_breaks_the_closed_keys_or_values_is_invalid(label, mutate):
+    part = findings_part(ANALYSIS_ITEMS)
+    part = json.loads(json.dumps(part))
+    mutate(part)
+    assert classify(part, kind=REPORT, units=ANALYSIS_UNITS).state == "invalid"
+
+
+def test_a_narrative_over_2000_and_a_tree_summary_over_300_are_cut_and_counted_and_a_numeral_takes_the_fixed_sentence():
+    items = [analysis_item("S-1", narrative="n" * 2001, tree_summary="t" * 301), analysis_item("T-2", tree=False, narrative="It has 3 causes.")]
+    result = classify(findings_part(items), kind=REPORT, units=ANALYSIS_UNITS)
+    assert result.state == "done", result.detail
+    assert result.part["items"][0]["narrative"] == "n" * 2000 and result.part["items"][0]["tree_summary"] == "t" * 300
+    assert result.part["items"][1]["narrative"] == _api("REPORT_FALLBACKS")["narrative"]
+    assert result.counts == {"narrative_fallbacks": 1, "truncations": 2} and result.flags == {}, "the report prints no flag"
+    exact = classify(findings_part([analysis_item("S-1", narrative="n" * 2000, tree_summary="t" * 300), analysis_item("T-2", tree=False)]),
+                     kind=REPORT, units=ANALYSIS_UNITS)
+    assert exact.counts == {"narrative_fallbacks": 0, "truncations": 0}
+    swapped = classify(findings_part([analysis_item("S-1", tree_summary="It takes 4 steps."), analysis_item("T-2", tree=False)]), kind=REPORT, units=ANALYSIS_UNITS)
+    assert swapped.part["items"][0]["tree_summary"] == _api("REPORT_FALLBACKS")["tree_summary"] and swapped.counts["narrative_fallbacks"] == 1
+
+
+@pytest.mark.parametrize("label,units", [
+    ("no units", None),
+    ("a unit that has no tree flag", [{"section": "threat_analysis", "finding_id": "S-1"}, {"section": "threat_analysis", "finding_id": "T-2", "tree": False}]),
+    ("a tree flag that isn't a boolean", analysis_units(("S-1", 1), ("T-2", False))),
+    ("a tree flag as text", analysis_units(("S-1", "yes"), ("T-2", False))),
+    ("a unit missing", analysis_units(("S-1", True))),
+    ("a unit too many", analysis_units(("S-1", True), ("T-2", False), ("R-3", False))),
+    ("a unit of another finding", analysis_units(("S-1", True), ("R-3", False))),
+    ("a unit twice", analysis_units(("S-1", True), ("S-1", True))),
+    ("a unit with a bad ID", analysis_units(("S-1", True), ("T-2\n", False))),
+    ("units of two sections", analysis_units(("S-1", True)) + roadmap_units("T-2")),
+    ("units of two findings sections, each with a tree flag", [{"section": "threat_analysis", "finding_id": "S-1", "tree": True},
+                                                                {"section": "remediation_roadmap", "finding_id": "T-2", "tree": False}]),
+    ("units of a section part's kind", [{"section": "exec_summary", "finding_id": "S-1", "tree": True},
+                                         {"section": "exec_summary", "finding_id": "T-2", "tree": False}]),
+    ("units of an unknown section", [{"section": "bogus", "finding_id": "S-1", "tree": True}, {"section": "bogus", "finding_id": "T-2", "tree": False}]),
+    ("units of a section part", section_units("exec_summary", "risk_posture")),
+    ("units that aren't objects", ["S-1", "T-2"]),
+])
+def test_a_findings_part_needs_one_unit_for_each_planned_finding_in_one_findings_section(label, units):
+    assert classify(findings_part(ANALYSIS_ITEMS), kind=REPORT, units=units).state == "invalid"
+
+
+def test_a_remediation_roadmap_part_has_an_effort_and_a_dependency_note_or_none():
+    items = [roadmap_item("S-1", effort="Low", dependencies="Needs {{finding:T-2}} fixed first."), roadmap_item("T-2", effort="High")]
+    result = classify(findings_part(items), kind=REPORT, units=roadmap_units("S-1", "T-2"))
+    assert result.state == "done", result.detail
+    assert result.part["items"] == items and result.flags == {}
+    for effort in ("Low", "Medium", "High"):
+        assert classify(findings_part([roadmap_item("S-1", effort=effort), roadmap_item("T-2")]), kind=REPORT, units=roadmap_units("S-1", "T-2")).state == "done"
+
+
+@pytest.mark.parametrize("label,mutate", [
+    ("an effort in lower case", lambda p: p["items"][0].update(effort="low")),
+    ("an effort that isn't a level", lambda p: p["items"][0].update(effort="Huge")),
+    ("an effort that isn't text", lambda p: p["items"][0].update(effort=2)),
+    ("no effort", lambda p: p["items"][0].pop("effort")),
+    ("no dependencies key", lambda p: p["items"][1].pop("dependencies")),
+    ("empty dependencies", lambda p: p["items"][1].update(dependencies="")),
+    ("dependencies that aren't text", lambda p: p["items"][1].update(dependencies=["a"])),
+    ("a narrative", lambda p: p["items"][0].update(narrative="x")),
+    ("another key", lambda p: p["items"][0].update(mitigation="Fix it.")),
+])
+def test_a_roadmap_item_that_breaks_the_closed_keys_or_values_is_invalid(label, mutate):
+    part = json.loads(json.dumps(findings_part([roadmap_item("S-1"), roadmap_item("T-2")])))
+    mutate(part)
+    assert classify(part, kind=REPORT, units=roadmap_units("S-1", "T-2")).state == "invalid"
+
+
+def test_a_roadmap_dependency_note_over_400_is_cut_and_a_numeral_takes_the_fixed_sentence():
+    items = [roadmap_item("S-1", dependencies="d" * 401), roadmap_item("T-2", dependencies="Wait 2 weeks.")]
+    result = classify(findings_part(items), kind=REPORT, units=roadmap_units("S-1", "T-2"))
+    assert result.state == "done" and result.part["items"][0]["dependencies"] == "d" * 400
+    assert result.part["items"][1]["dependencies"] == _api("REPORT_FALLBACKS")["dependencies"]
+    assert result.counts == {"narrative_fallbacks": 1, "truncations": 1}
+
+
+def test_an_item_of_one_section_is_invalid_under_the_units_of_the_other():
+    assert classify(findings_part(ANALYSIS_ITEMS), kind=REPORT, units=roadmap_units("S-1", "T-2")).state == "invalid"
+    assert classify(findings_part([roadmap_item("S-1"), roadmap_item("T-2")]), kind=REPORT, units=ANALYSIS_UNITS).state == "invalid"
+
+
+def test_the_stages_with_no_payload_yet_are_never_a_crash():
+    """`threats-md`'s payload is T091b's, and a `threat-model` plan has no part: until then, a part of either is not done, and never a traceback."""
+    for stage in ("threats-md", "threat-model"):
+        kind = {"stage": stage, "agent_type": PR2_STAGES[stage]}
+        part = {"schema": "tachi.part/1", "plan_id": PLAN, "batch_id": "B001", "stage": stage, "agent_type": PR2_STAGES[stage],
+                "finding_ids": ["S-1"], "items": [{"finding_id": "S-1"}], "fragments": []}
+        assert classify(part, ids=("S-1",), kind=kind).state in STATES
+        assert classify(dict(part, finding_ids=[], items=[]), ids=(), kind=kind).state in STATES
