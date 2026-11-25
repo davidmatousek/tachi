@@ -40,6 +40,8 @@ import os
 import re
 import subprocess
 import sys
+import threading
+import time
 from collections import namedtuple
 from pathlib import Path
 
@@ -872,10 +874,11 @@ def test_plan_stage_refuses_a_batch_size_outside_1_to_500(stage, cli, tmp_path, 
 
 
 def test_plan_stage_refuses_a_stage_this_version_does_not_plan(stage, cli, tmp_path):
-    """``tachi_parts.STAGE_AGENTS`` holds PR 1's two stages, and PR 1 rejects every other (ruled at W1)."""
+    """``tachi_parts.STAGE_AGENTS`` names the stages that this version plans, and every other name is refused (ruled at W1). PR 2 added ``trees`` to them, so
+    the case is the one name that item O-alpha leaves without a plan: Phase 2 writes records, not parts, and has no stage."""
     h = Harness(stage, cli, tmp_path, "risk-score")
     with pytest.raises(stage.StageError) as info:
-        stage.plan_stage(stage="trees", out=h.out, date=DATE, threats=h.threats)
+        stage.plan_stage(stage="phase2", out=h.out, date=DATE, threats=h.threats)
     assert info.value.code == 2
 
 
@@ -4677,3 +4680,3455 @@ def test_a_carried_row_holds_its_layer_too_and_the_layer_is_not_a_carried_key(st
     assert h.plan_cli().code == 0
     row = unit_rows(h)["T-2"]
     assert row["layer"] == "L4 " + _DASH + " Deployment" and "layer" not in CARRIED and carried_values(row) != {}
+
+
+# =========================================================================== PR 2: tachi-stage.py's new modes (F-374 T092, tests first)
+#
+# Written at W2' while the #443 hoist runs, and before the code, from ADR-050 rev. 3 (D3, D4, D6, D7's ruling B, D11 to D15) and the contracts
+# (cli.md; part-files.md sections 4 to 6 and the stage payloads; threat-model-records.md). They drive ``main(argv)`` in-process through the ``cli``
+# fixture and look only at what a caller can see: what a command prints, its exit code, the files it writes, and the stage records. The hoist moves
+# the stage-entry plumbing into ``tachi_parts``, so no private helper is named here.
+#
+# Before T092's code they failed, and each failure named the missing behavior (``needs``). A negative case first shows that the mode exists: a
+# refusal prints D4's ``TACHI <STAGE> FAILED`` message (``refused``), which an argparse usage error does not, so no refusal passes for the wrong
+# reason. A shape that the contracts leave open is pinned as a reading, marked ``# reading:``, and listed for the architect in the lane's results file.
+# T092's code, which follows the architect's pass-3 rulings (S1P-A43 to S1P-A63), needs two functions of ``tachi_parsers`` that lane OC writes:
+# ``parse_chain_outcome`` (T116's first slice) for the report plan and ``attack_tree_source`` (T159) for ``reconcile --stage trees``.
+
+THREAT_MODEL = "threat-model"
+TM_OUTPUTS = ("threats.md", "threats.sarif", "threat-report.md", "attack-chains.md")  # ADR-050 D4's closed set for the run, in its order
+TM_AGENT = "tachi-orchestrator"
+TM_EARLIER = {name: ("# the earlier run's %s\n" % name).encode("utf-8") for name in TM_OUTPUTS}
+TM_NEW = {name: ("# a run that went wrong: %s\n" % name).encode("utf-8") for name in TM_OUTPUTS}
+FAKE_PLAN_ID = "20261122T000000Z-0123456789ab"
+ODD_MODES = {"threats.md": 0o604, "threats.sarif": 0o640, "threat-report.md": 0o620, "attack-chains.md": 0o642}  # none is a new file's ordinary mode
+
+
+def needs(res, code, behavior):
+    """The first assertion of a new case: until T092's code lands the command isn't there, and the failure names what is missing."""
+    assert res.code == code, "T092, %s: expected exit %d, got %d\n%s" % (behavior, code, res.code, res.describe())
+    return res
+
+
+def refused(res, label, behavior, code=2):
+    """A refusal is D4's four-line message with its code, never an argparse usage error (AR-T5)."""
+    assert res.code == code and re.search(r"^TACHI %s FAILED: " % label, res.err, re.M) and "Remedy: " in res.err, (
+        "T092, %s: expected a refusal (exit %d, a 'TACHI %s FAILED' message with its Remedy)\n%s" % (behavior, code, label, res.describe()))
+    return res
+
+
+class RunDir(object):
+    """One run directory and one stage of PR 2 (``name``), with the calls every test makes. The stage's plan is the one ``plan_cli`` made last."""
+
+    def __init__(self, stage, cli, root, name=THREAT_MODEL):
+        self.stage, self.cli, self.name = stage, cli, name
+        self.root = Path(root)
+        self.out = self.root / "run"
+        self.out.mkdir(parents=True, exist_ok=True)
+        self.plan_id = self.digest = None
+
+    @property
+    def build(self):
+        return self.out / ".tachi-build" / self.name
+
+    @property
+    def plan_dir(self):
+        return self.build / self.plan_id
+
+    @staticmethod
+    def read_json(path):
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+
+    def plan_json(self):
+        return self.read_json(self.plan_dir / "plan.json")
+
+    def record(self):
+        return self.read_json(self.plan_dir / "stage-record.json")
+
+    def batch_input(self, batch_id):
+        return self.read_json(self.plan_dir / "inputs" / ("%s.json" % batch_id))
+
+    def plan_args(self, plan_id=None, digest=None):
+        return ["--plan", plan_id or self.plan_id, "--plan-digest", digest or self.digest]
+
+    def plan_cli(self, *extra):
+        res = self.cli("plan", "--stage", self.name, "--out", self.out, "--date", DATE, *extra)
+        if res.code == 0:
+            printed = res.json
+            self.plan_id, self.digest = printed["plan_id"], printed["plan_digest"]
+        return res
+
+    def reconcile(self, plan_id=None, digest=None):
+        res = self.cli("reconcile", "--stage", self.name, "--out", self.out, *self.plan_args(plan_id, digest))
+        if res.code in (0, 3, 4):
+            self.digest = res.json["plan_digest"]
+        return res
+
+    def fail(self, reason="check-failed", detail=None, plan_id=None, digest=None):
+        extra = ["--detail", detail] if detail is not None else []
+        return self.cli("fail", "--stage", self.name, "--out", self.out, *self.plan_args(plan_id, digest), "--reason", reason, *extra)
+
+    def close(self, plan_id=None, digest=None):
+        return self.cli("close", "--stage", self.name, "--out", self.out, *self.plan_args(plan_id, digest))
+
+    # ---- the run's four files
+    def earlier(self, names=TM_OUTPUTS):
+        """The outputs of an earlier successful run, before the plan takes its pre-images."""
+        for name in names:
+            (self.out / name).write_bytes(TM_EARLIER[name])
+
+    def run_wrote(self, names=TM_OUTPUTS):
+        """What a run that got part way did: it replaced these canonical files."""
+        for name in names:
+            (self.out / name).write_bytes(TM_NEW[name])
+
+    def assert_earlier_outputs_untouched(self, names=TM_OUTPUTS):
+        for name in names:
+            assert (self.out / name).read_bytes() == TM_EARLIER[name], name
+
+    # ---- the checks' hand-off files (part-files.md section 6)
+    def write_handoff(self, check, warnings=(), error=None, mutate=None, raw=None):
+        path = self.plan_dir / "checks" / ("%s.json" % check)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if raw is not None:
+            path.write_bytes(raw)
+        else:
+            body = handoff(check, self.plan_id, warnings, error)
+            if mutate is not None:
+                mutate(body)
+            path.write_text(json.dumps(body, indent=2), encoding="utf-8")
+        return path
+
+
+# The key set of ``tachi.check-handoff/1`` (``contracts/part-files.md`` section 6, fixed at rev. 3 by T088), with the counts and Phase 2's six batch counts
+# that ``check-threat-model.py`` writes into ``provenance.json``. ``attack-chains.json`` has ``null`` for counts, batches and error.
+HANDOFF_SCHEMA = "tachi.check-handoff/1"
+PROVENANCE_COUNTS = {"open": 12, "resolved": 3, "recorded": 9, "carried": 2, "rule": 1, "renumbered": 1, "folded": 0, "reused-id": 0}
+PHASE2_BATCHES = {"planned": 6, "dispatched": 8, "done": 6, "retried": 2, "split": 1, "exhausted": 0}
+PROVENANCE_ERROR = {"code": "provenance", "message": "2 findings have no provenance entry: T-1, T-2", "finding_ids": ["T-1", "T-2"],
+                    "remedy": "re-run /tachi.threat-model"}
+WARN_CHAIN = {"code": "chain-outcome:rewritten", "detail": "recorded as skipped (attack-chains.md missing); no chain file was quarantined"}
+WARN_SECTION6 = {"code": "section6:mismatch", "detail": "Section 6, row High: the cell says 3 and the reference set says 4"}
+WARN_REISSUED = {"code": "id:reissued", "detail": "2 NEW findings carry an ID the baseline used: T-3, T-4"}
+WARN_GAP = {"code": "coverage-gap:unrecovered:no_end_marker", "detail": "dsp-009, tachi-spoofing, component Gateway"}
+WARN_REPEATED = {"code": "correlation-member-repeated", "detail": "Section 4a lists 1 finding in more than one group: T-2"}
+
+
+def handoff(check, plan_id, warnings=(), error=None):
+    """A valid ``tachi.check-handoff/1`` object. The status follows ``error``, then ``warnings`` (section 6), and ``attack-chains`` is never ``fail``."""
+    provenance = check == "provenance"
+    status = "fail" if provenance and error else ("warn" if warnings else "pass")
+    return {"schema": HANDOFF_SCHEMA, "check": check, "plan_id": plan_id, "status": status,
+            "counts": dict(PROVENANCE_COUNTS) if provenance else None, "batches": dict(PHASE2_BATCHES) if provenance else None,
+            "warnings": [dict(w) for w in warnings], "error": dict(error) if provenance and error else None}
+
+
+def closeable(stage, cli, root, chain=True, earlier=True, wrote=TM_OUTPUTS):
+    """A run that reached Step 2.10: the earlier files, the run-level plan, the files this run wrote, and both hand-off files."""
+    h = RunDir(stage, cli, root)
+    if earlier:
+        h.earlier()
+    needs(h.plan_cli(), 0, "plan --stage threat-model, the run-level plan")
+    h.run_wrote(wrote)
+    if chain:
+        h.write_handoff("attack-chains")
+    h.write_handoff("provenance")
+    return h
+
+
+def assert_not_closed(h, plan_id=None):
+    """A close that refuses leaves no success record: its record, if one exists, says ``failed``."""
+    path = h.build / (plan_id or h.plan_id) / "stage-record.json"
+    assert not path.exists() or h.read_json(path)["status"] == "failed", "a close that exits 2 must not leave a success record"
+
+
+def check_close_record(rec, h, version, status):
+    """The run-level stage record that ``close`` writes (``part-files.md`` section 5, PR 2's stage records)."""
+    assert set(rec) == RECORD_KEYS and rec["schema"] == "tachi.stage-record/1"
+    assert (rec["stage"], rec["plan_id"], rec["status"]) == (THREAT_MODEL, h.plan_id, status)
+    assert rec["tachi_version"] == version and ISO_UTC.match(rec["started_utc"]) and ISO_UTC.match(rec["finished_utc"])
+    assert re.match(r"^sha256:[0-9a-f]{64}\Z", rec["input_digest"])
+    assert rec["overflow_events"] == [] and rec["retries"] == [], "Phase 2's events stay in its records (item O-alpha)"
+    assert rec["error"] is None
+    return rec
+
+
+# ---------------------------------------------------------------------------- the run-level plan (Step 1.5; ADR-050 D4, ``part-files.md`` section 4)
+
+
+def test_the_run_level_plan_plans_no_units_and_prints_the_plan_object(stage, cli, tmp_path, tachi_version):
+    """D4's Step 1.5: ``plan --stage threat-model`` takes no ``--threats`` and plans no units, so it prints no waves and has no batches. It exists
+    so that ``fail`` and ``close`` have a plan to read."""
+    h = RunDir(stage, cli, tmp_path)
+    printed = needs(h.plan_cli(), 0, "plan --stage threat-model, the run-level plan").json
+    assert set(printed) == {"plan_id", "plan_digest", "waves"} and PLAN_ID.match(printed["plan_id"]) and printed["waves"] == []
+    plan = h.plan_json()
+    assert set(plan) == PLAN_KEYS and plan["schema"] == "tachi.plan/1"
+    assert (plan["plan_id"], plan["stage"], plan["agent_type"]) == (printed["plan_id"], THREAT_MODEL, TM_AGENT)
+    assert plan["tachi_version"] == tachi_version and ISO_UTC.match(plan["created_utc"])
+    assert (plan["unit_count"], plan["batches"], plan["batch_size"]) == (0, [], None), "no units, so a null batch size (section 4)"
+    assert plan["retry_budget"] == {"limit": 0, "used": 0} and plan["architecture_warning"] is None
+    assert sha256_of(h.plan_dir / "plan.json") == printed["plan_digest"]
+    assert h.read_json(h.build / "current.json") == {"schema": "tachi.plan-pointer/1", "plan_id": printed["plan_id"]}
+    assert not (h.plan_dir / "inputs").exists() or list((h.plan_dir / "inputs").iterdir()) == []
+
+
+def test_the_run_level_plan_copies_each_existing_canonical_file_as_a_pre_image(stage, cli, tmp_path):
+    """D4's failed outputs: the plan records the digest of each of the four files that exists, and copies it into ``preimage/``. A name with
+    no file records null, and has no copy. The plan changes no output."""
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier(("threats.md", "threats.sarif"))
+    needs(h.plan_cli(), 0, "the run-level plan's pre-images")
+    expected = {name: (hashlib.sha256(TM_EARLIER[name]).hexdigest() if name in ("threats.md", "threats.sarif") else None) for name in TM_OUTPUTS}
+    assert h.plan_json()["preimage"] == expected
+    for name in ("threats.md", "threats.sarif"):
+        assert (h.plan_dir / "preimage" / name).read_bytes() == TM_EARLIER[name]
+    assert sorted(p.name for p in (h.plan_dir / "preimage").iterdir()) == ["threats.md", "threats.sarif"]
+    h.assert_earlier_outputs_untouched(("threats.md", "threats.sarif"))
+    assert not (h.out / "threat-report.md").exists() and not (h.out / "attack-chains.md").exists()
+
+
+def test_the_run_level_plan_reads_no_threat_model_so_an_earlier_one_nobody_can_parse_is_no_obstacle(stage, cli, tmp_path):
+    """The earlier ``threats.md`` is only copied: it has no Section 7, which would stop a plan that reads a reference set (S-12(c))."""
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    assert b"## 7." not in TM_EARLIER["threats.md"]
+    needs(h.plan_cli(), 0, "the run-level plan over an earlier output with no Section 7")
+    assert h.plan_json()["preimage"]["threats.md"] == hashlib.sha256(TM_EARLIER["threats.md"]).hexdigest()
+
+
+def test_the_run_level_plan_snapshots_out_before_it_writes_a_file_of_its_own(stage, cli, tmp_path):
+    """D4: the plan records each path under ``{out}`` with its size and ``mtime_ns``, so ``close`` can tell what is new or changed. The plan's own
+    files are new by construction, so they are not in it."""
+    h = RunDir(stage, cli, tmp_path)
+    (h.out / "architecture.md").write_bytes(b"# Architecture\n")
+    (h.out / "attack-trees").mkdir()
+    (h.out / "attack-trees" / "s-1-attack-tree.md").write_bytes(b"an earlier tree\n")
+    h.earlier(("threats.md",))
+    needs(h.plan_cli(), 0, "the run-level plan's {out} snapshot")
+    snapshot = h.plan_json()["out_snapshot"]
+    assert isinstance(snapshot, dict), "a small tree is snapshotted (the check is skipped above 20,000 entries)"
+    for relpath in ("architecture.md", "attack-trees/s-1-attack-tree.md", "threats.md"):
+        status = (h.out / relpath).stat()
+        assert snapshot[relpath] == [status.st_size, status.st_mtime_ns], relpath
+    assert set(snapshot) == {"architecture.md", "attack-trees/s-1-attack-tree.md", "threats.md"}, "nothing the plan wrote is in its own snapshot"
+
+
+def test_each_run_level_plan_is_fresh_and_nothing_under_the_build_directory_is_deleted(stage, cli, tmp_path):
+    """D3: each invocation makes a fresh ``<plan_id>/`` and moves the pointer. An earlier plan's directory is left whole (KB 21)."""
+    h = RunDir(stage, cli, tmp_path)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    first_id, first_tree = h.plan_id, tree_state(h.build / h.plan_id)
+    needs(h.plan_cli(), 0, "a second run-level plan")
+    assert h.plan_id != first_id
+    assert tree_state(h.build / first_id) == first_tree
+    assert h.read_json(h.build / "current.json")["plan_id"] == h.plan_id
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_the_run_level_plan_copies_the_permission_bits_of_each_canonical_file(stage, cli, tmp_path):
+    """P1-2: a pre-image is what ``fail`` writes back, so it carries its output's own bits, and each of the four keeps its own."""
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    for name, mode in ODD_MODES.items():
+        os.chmod(str(h.out / name), mode)
+    needs(h.plan_cli(), 0, "the run-level plan's pre-images")
+    assert {name: (h.plan_dir / "preimage" / name).stat().st_mode & 0o777 for name in ODD_MODES} == ODD_MODES
+    assert {name: (h.out / name).stat().st_mode & 0o777 for name in ODD_MODES} == ODD_MODES, "the plan changes no output"
+
+
+def test_the_run_level_plan_refuses_a_missing_out_a_bad_date_and_a_linked_build_directory(stage, cli, tmp_path):
+    h = RunDir(stage, cli, tmp_path)
+    refused(h.cli("plan", "--stage", THREAT_MODEL, "--out", tmp_path / "nothing", "--date", DATE), "THREAT-MODEL", "a missing --out", code=1)
+    refused(h.cli("plan", "--stage", THREAT_MODEL, "--out", h.out, "--date", "2026-13-45"), "THREAT-MODEL", "a bad --date")
+    (h.out / ".tachi-build").mkdir()
+    (h.out / ".tachi-build" / THREAT_MODEL).symlink_to(tmp_path)
+    refused(h.plan_cli(), "THREAT-MODEL", "a symlinked stage directory")
+    assert list(tmp_path.glob("*/plan.json")) == [] and not (tmp_path / "current.json").exists(), "nothing was written through the link"
+    (h.out / ".tachi-build" / THREAT_MODEL).unlink()
+    needs(h.plan_cli(), 0, "the run-level plan, once the link is gone")
+
+
+# ---------------------------------------------------------------------------- close (Step 2.10; part-files.md sections 5 and 6; ADR-050 D4)
+
+
+def test_close_writes_the_run_record_from_the_two_hand_off_files(stage, cli, tmp_path, tachi_version):
+    """The run-level record takes its counts and Phase 2's six batch counts from ``provenance.json``, and lists the four canonical files that are
+    present, with their digests. A run with no warning closes with 0."""
+    h = closeable(stage, cli, tmp_path)
+    needs(h.close(), 0, "close, the run-level stage record")
+    rec = check_close_record(h.record(), h, tachi_version, "success")
+    assert rec["counts"] == PROVENANCE_COUNTS and rec["batches"] == PHASE2_BATCHES
+    assert rec["warnings"] == [] and rec["undeclared_paths"] == []
+    # reading: an output's path is its canonical name relative to {out}, as the renderers write it
+    assert {(o["path"], o["sha256"]) for o in rec["outputs"]} == {(name, hashlib.sha256(TM_NEW[name]).hexdigest()) for name in TM_OUTPUTS}
+
+
+def test_close_lists_only_the_canonical_files_that_are_present(stage, cli, tmp_path, tachi_version):
+    """A run with no report and no chain file (a skipped chain outcome) has two of the four."""
+    h = closeable(stage, cli, tmp_path, earlier=False, wrote=("threats.md", "threats.sarif"))
+    needs(h.close(), 0, "close, with two of the four files present")
+    rec = check_close_record(h.record(), h, tachi_version, "success")
+    assert sorted(o["path"] for o in rec["outputs"]) == ["threats.md", "threats.sarif"]
+
+
+def test_close_prints_one_json_object_that_names_the_record_and_holds_its_two_lists(stage, cli, tmp_path):
+    """S1P-A50 (R1): ``{record, warnings, undeclared_paths}``. ``record`` is the stage record's path, as ``fail``'s is, and the two lists are the record's own,
+    so that on exit 5 the command prints them without reading the record."""
+    h = closeable(stage, cli, tmp_path)
+    (h.out / "gen.py").write_text("print('an improvised script')\n", encoding="utf-8")
+    h.write_handoff("provenance", warnings=[WARN_REISSUED])
+    printed = needs(h.close(), 5, "close, its printed object").json
+    assert set(printed) == {"record", "warnings", "undeclared_paths"}
+    assert Path(printed["record"]).resolve() == (h.plan_dir / "stage-record.json").resolve()
+    assert printed["warnings"] == h.record()["warnings"] == [WARN_REISSUED] and printed["undeclared_paths"] == h.record()["undeclared_paths"] == ["gen.py"]
+
+
+def test_close_writes_the_stage_record_and_nothing_else(stage, cli, tmp_path):
+    """``close`` moves and restores nothing: the files the run wrote stay where they are, and the only new file is the record."""
+    h = closeable(stage, cli, tmp_path)
+    before = tree_state(h.out)
+    needs(h.close(), 0, "close")
+    after = tree_state(h.out)
+    assert {key for key in after if before.get(key) != after[key]} == {".tachi-build/threat-model/%s/stage-record.json" % h.plan_id}
+    assert set(before) <= set(after), "nothing was deleted or moved"
+    assert all((h.out / name).read_bytes() == TM_NEW[name] for name in TM_OUTPUTS)
+
+
+def test_close_folds_the_hand_off_warnings_in_the_contract_order_and_exits_5(stage, cli, tmp_path, tachi_version):
+    """Section 6: the record's warnings are ``attack-chains.json``'s, then ``provenance.json``'s, each as written. Any warning makes the status
+    ``success-with-warnings`` and the exit 5. The counts and batches still come from ``provenance.json``."""
+    h = closeable(stage, cli, tmp_path)
+    h.write_handoff("attack-chains", warnings=[WARN_CHAIN])
+    h.write_handoff("provenance", warnings=[WARN_SECTION6, WARN_REISSUED, WARN_GAP, WARN_REPEATED])
+    needs(h.close(), 5, "close, folding the hand-off warnings")
+    rec = check_close_record(h.record(), h, tachi_version, "success-with-warnings")
+    assert rec["warnings"] == [WARN_CHAIN, WARN_SECTION6, WARN_REISSUED, WARN_GAP, WARN_REPEATED]
+    assert rec["counts"] == PROVENANCE_COUNTS and rec["batches"] == PHASE2_BATCHES
+
+
+def test_close_without_the_chain_hand_off_warns_and_goes_on(stage, cli, tmp_path, tachi_version):
+    """The chain check's own 2 prints and continues (R-24) and writes no file, so a missing ``attack-chains.json`` is a warning, never a stop."""
+    h = closeable(stage, cli, tmp_path, chain=False)
+    needs(h.close(), 5, "close, with no attack-chains.json")
+    rec = check_close_record(h.record(), h, tachi_version, "success-with-warnings")
+    assert [w["code"] for w in rec["warnings"]] == ["handoff-missing:attack-chains"] and isinstance(rec["warnings"][0]["detail"], str)
+    assert rec["counts"] == PROVENANCE_COUNTS
+
+
+def test_close_puts_its_own_warnings_last_in_the_contract_order(stage, cli, tmp_path, monkeypatch):
+    """Section 6: the hand-off warnings first, then ``handoff-missing:attack-chains``, then the declared-paths warnings."""
+    monkeypatch.setattr(stage.tp, "MAX_SNAPSHOT_ENTRIES", 1)
+    h = RunDir(stage, cli, tmp_path)
+    for name in ("a.txt", "b.txt"):
+        (h.out / name).write_bytes(b"x")  # two files: over a cap of one, so the plan takes no snapshot
+    res = needs(h.plan_cli(), 0, "the run-level plan over the snapshot cap")
+    assert "snapshot is skipped" in res.err and h.plan_json()["out_snapshot"] is None
+    h.run_wrote(("threats.md",))
+    h.write_handoff("provenance", warnings=[WARN_REISSUED])
+    needs(h.close(), 5, "close, with its own warnings")
+    rec = h.record()
+    assert [w["code"] for w in rec["warnings"]] == ["id:reissued", "handoff-missing:attack-chains", "declared-paths-skipped"]
+    assert rec["undeclared_paths"] == []
+
+
+def test_close_keeps_the_first_999_warnings_and_counts_the_rest(stage, cli, tmp_path):
+    """Section 6, the record's cap: folded warnings past §5's 1,000 keep the first 999 in order, then ``warnings-truncated`` with the full count."""
+    h = closeable(stage, cli, tmp_path)
+    chain = [{"code": "chain-outcome:rewritten", "detail": "chain warning %d" % n} for n in range(600)]
+    prov = [{"code": "id:reissued", "detail": "provenance warning %d" % n} for n in range(700)]
+    h.write_handoff("attack-chains", warnings=chain)
+    h.write_handoff("provenance", warnings=prov)
+    needs(h.close(), 5, "close, over the record's warning cap")
+    warnings = h.record()["warnings"]
+    assert len(warnings) == 1000 and warnings[:999] == (chain + prov)[:999]
+    assert warnings[999]["code"] == "warnings-truncated" and "1300" in warnings[999]["detail"]
+
+
+# ---- the declared-paths check, over the whole run (D4's PR 2 grammar)
+
+
+def declared_run_files():
+    """One file of every kind that a threat-model run writes under ``{out}``, by D3's layout and D11 to D14's names (ADR-050 D4). The hand-off files
+    and the run-level record belong to the plan under test, so the test writes those on their own."""
+    plan = ".tachi-build/%s/" + FAKE_PLAN_ID + "/"
+    return [
+        "threats.md", "threats.sarif", "threat-report.md", "attack-chains.md", "architecture.md",
+        "attack-chains.inconsistent.md",  # D13: the name that the chain check gives a file it rewrote the record against
+        "attack-trees/.manifest.json", "attack-trees/s-1-attack-tree.md", "attack-trees/llm-12-attack-tree.md",
+        ".tachi-build/phase1/inventory.json", ".tachi-build/phase1/dispatch.json", ".tachi-build/briefs/dsp-001.json",
+        ".tachi-build/records/dsp-001.json", ".tachi-build/idmap.json", ".tachi-build/chains/chains.json", ".tachi-build/chains/narratives.json",
+        ".tachi-build/sections.json",
+        ".tachi-build/threats-md/current.json", plan % "threats-md" + "plan.json", plan % "threats-md" + "inputs/B001.json",
+        plan % "threats-md" + "parts/B001.a1.json", plan % "threats-md" + "parts/B001-1.a2.json", plan % "threats-md" + "staged/threats.md",
+        plan % "threats-md" + "stage-record.json",
+        ".tachi-build/trees/current.json", plan % "trees" + "plan.json", plan % "trees" + "inputs/B001.json", plan % "trees" + "parts/B001.a1.json",
+        plan % "trees" + "trees/s-1-attack-tree.md", plan % "trees" + "stage-record.json",
+        ".tachi-build/report/current.json", plan % "report" + "plan.json", plan % "report" + "inputs/B002.json", plan % "report" + "parts/B002.a1.json",
+        plan % "report" + "staged/threat-report.md", plan % "report" + "stage-record.json",
+    ]
+
+
+def test_close_declares_the_files_a_run_writes_and_lists_every_other_new_file(stage, cli, tmp_path, tachi_version):
+    """D4: a path that is new or changed since the plan must match the grammar: the four canonical files, D3's exact layout, and in PR 2 also
+    ``architecture.md``, ``attack-trees/*`` and D11 to D14's names. Anything else, such as a ``gen.py``, is ``undeclared_paths`` and exits 5."""
+    h = RunDir(stage, cli, tmp_path)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.write_handoff("attack-chains")
+    h.write_handoff("provenance")
+    in_plan = ".tachi-build/threat-model/%s/" % h.plan_id
+    declared = declared_run_files() + [in_plan + "preimage/" + name for name in TM_OUTPUTS] + [in_plan + "failed/" + name for name in TM_OUTPUTS]
+    undeclared = ["gen.py", "scratch/x.txt", "notes.md", ".tachi-build/records/gen.py", ".tachi-build/chains/notes.md",
+                  in_plan + "checks/gen.py", ".tachi-build/compensating-controls/x.json"]
+    for relpath in declared + undeclared:
+        (h.out / relpath).parent.mkdir(parents=True, exist_ok=True)
+        (h.out / relpath).write_bytes(b"a file of this run\n")
+    needs(h.close(), 5, "close, the declared-paths check over the whole run")
+    rec = check_close_record(h.record(), h, tachi_version, "success-with-warnings")
+    assert rec["undeclared_paths"] == sorted(undeclared)
+    assert rec["warnings"] == [], "undeclared paths are listed, not warned of: the code is the exit 5 and the status (D4)"
+
+
+def test_close_lists_a_file_that_changed_since_the_plan_and_not_one_that_was_already_there(stage, cli, tmp_path):
+    """The snapshot is the baseline of "new or changed": an adopter's own file that the run never touched is not the run's to explain."""
+    h = RunDir(stage, cli, tmp_path)
+    (h.out / "adopter-notes.txt").write_text("the adopter's own file\n", encoding="utf-8")
+    (h.out / "old-script.py").write_text("print(1)\n", encoding="utf-8")
+    needs(h.plan_cli(), 0, "the run-level plan")
+    (h.out / "old-script.py").write_text("print(1)\nprint(2)\n", encoding="utf-8")
+    h.write_handoff("attack-chains")
+    h.write_handoff("provenance")
+    needs(h.close(), 5, "close, listing a changed file")
+    assert h.record()["undeclared_paths"] == ["old-script.py"]
+
+
+def test_close_caps_the_undeclared_paths_it_lists_and_says_how_many_there_were(stage, cli, tmp_path):
+    """The same cap and warning as ``fail``'s record (ruled at W1)."""
+    h = closeable(stage, cli, tmp_path)
+    (h.out / "stray").mkdir()
+    for number in range(stage.tp.MAX_UNDECLARED_PATHS + 3):
+        (h.out / "stray" / ("f%04d.txt" % number)).write_bytes(b"x")
+    needs(h.close(), 5, "close, over the undeclared-paths cap")
+    rec = h.record()
+    assert rec["undeclared_paths"] == ["stray/f%04d.txt" % n for n in range(1000)]
+    assert [w for w in rec["warnings"] if w["code"] == "undeclared-paths-truncated"] == [
+        {"code": "undeclared-paths-truncated", "detail": "1003 undeclared paths in all; the first 1000 are listed"}]
+
+
+# ---- what close refuses (exit 2): a run whose check failed, or whose records can't be trusted, can't be closed
+
+
+def loader_variants(valid):
+    """Bytes for a hand-off file that the strict loader refuses: closed keys aside, at most 1 MiB, no NaN, Infinity or duplicate key (section 6)."""
+    text = json.dumps(valid, indent=2)
+    tail = text.rstrip()[:-1].rstrip()  # the object without its closing brace
+    return {
+        "not-json": b"{not json", "empty-file": b"", "top-level-array": b"[]",
+        "duplicate-key": (tail + ',\n  "schema": "%s"\n}' % HANDOFF_SCHEMA).encode("utf-8"),
+        "nan": (tail + ',\n  "x": NaN\n}').encode("utf-8"), "infinity": (tail + ',\n  "x": Infinity\n}').encode("utf-8"),
+        "byte-order-mark": b"\xef\xbb\xbf" + text.encode("utf-8"), "not-utf8": b'{"schema": "\xff"}',
+        "over-1-mib": (tail + ',\n  "x": "%s"\n}' % ("A" * (1024 * 1024))).encode("utf-8"),
+        "nested-too-deep": (tail + ',\n  "x": ' + "[" * 9 + "]" * 9 + "\n}").encode("utf-8"),
+    }
+
+
+@pytest.mark.parametrize("check", ["provenance", "attack-chains"])
+@pytest.mark.parametrize("variant", sorted(loader_variants(handoff("provenance", FAKE_PLAN_ID))))
+def test_close_strict_loads_each_hand_off_file(stage, cli, tmp_path, check, variant):
+    h = closeable(stage, cli, tmp_path)
+    h.write_handoff(check, raw=loader_variants(handoff(check, h.plan_id))[variant])
+    refused(h.close(), "THREAT-MODEL", "close over a %s.json that is %s" % (check, variant))
+    assert_not_closed(h)
+
+
+def test_close_does_not_read_a_hand_off_file_through_a_link(stage, cli, tmp_path):
+    h = closeable(stage, cli, tmp_path)
+    real = tmp_path / "elsewhere.json"
+    real.write_text(json.dumps(handoff("provenance", h.plan_id)), encoding="utf-8")
+    path = h.plan_dir / "checks" / "provenance.json"
+    path.unlink()
+    path.symlink_to(real)
+    refused(h.close(), "THREAT-MODEL", "close over a linked provenance.json")
+    assert_not_closed(h)
+
+
+def test_close_refuses_a_run_with_no_provenance_hand_off(stage, cli, tmp_path):
+    """``provenance.json`` is required: a run whose check never ran can't be closed. (A missing chain file is only a warning, above.)"""
+    h = closeable(stage, cli, tmp_path)
+    (h.plan_dir / "checks" / "provenance.json").unlink()
+    refused(h.close(), "THREAT-MODEL", "close with no provenance.json")
+    assert_not_closed(h)
+
+
+def _set(key, value):
+    def apply(body):
+        body[key] = value
+    return apply
+
+
+def _drop(key):
+    def apply(body):
+        del body[key]
+    return apply
+
+
+def _count(key, value):
+    def apply(body):
+        body["counts"][key] = value
+    return apply
+
+
+def _drop_count(key):
+    def apply(body):
+        del body["counts"][key]
+    return apply
+
+
+def _warns(code, detail="a detail"):
+    def apply(body):
+        body["status"], body["warnings"] = "warn", [{"code": code, "detail": detail}]
+    return apply
+
+
+def _failed(body):
+    body["status"], body["error"] = "fail", dict(PROVENANCE_ERROR)
+
+
+# reading: the last two provenance cases below take section 6's status rule ("fail when error isn't null; otherwise warn when warnings isn't
+# empty; otherwise pass") as part of a file's validity, since the status "matches the check's exit code".
+BREAKS = [
+    ("provenance", "unknown-key", _set("extra", 1)), ("provenance", "missing-key", _drop("batches")),
+    ("provenance", "wrong-schema", _set("schema", "tachi.check-handoff/2")),
+    ("provenance", "check-is-not-the-stem", _set("check", "attack-chains")),
+    ("provenance", "another-plan", _set("plan_id", "20200101T000000Z-000000000000")),
+    ("provenance", "plan-id-off-the-allow-list", _set("plan_id", "../escape")),
+    ("provenance", "a-failed-check", _failed),
+    ("provenance", "unknown-warning-code", _warns("made-up:code")),
+    ("provenance", "unrecovered-reason-off-the-list", _warns("coverage-gap:unrecovered:other")),
+    ("provenance", "warning-detail-over-500", _warns("id:reissued", "x" * 501)),
+    ("provenance", "counts-missing-key", _drop_count("folded")), ("provenance", "counts-extra-key", _count("extra", 1)),
+    ("provenance", "counts-negative", _count("open", -1)), ("provenance", "counts-boolean", _count("open", True)),
+    ("provenance", "counts-over-1000000", _count("open", 1000001)), ("provenance", "counts-null", _set("counts", None)),
+    ("provenance", "batches-null", _set("batches", None)),
+    ("provenance", "status-disagrees-with-warnings", lambda body: body.update(warnings=[dict(WARN_REISSUED)])),
+    ("provenance", "status-disagrees-with-error", _set("error", dict(PROVENANCE_ERROR))),
+    ("attack-chains", "unknown-key", _set("extra", 1)), ("attack-chains", "check-is-not-the-stem", _set("check", "provenance")),
+    ("attack-chains", "another-plan", _set("plan_id", "20200101T000000Z-000000000000")),
+    ("attack-chains", "counts-not-null", _set("counts", {})), ("attack-chains", "batches-not-null", _set("batches", dict(PHASE2_BATCHES))),
+    ("attack-chains", "error-not-null", _set("error", dict(PROVENANCE_ERROR))),
+    ("attack-chains", "a-failed-check", _set("status", "fail")),
+]
+
+
+@pytest.mark.parametrize("check,name,mutate", BREAKS, ids=["%s-%s" % (check, name) for check, name, _ in BREAKS])
+def test_close_refuses_a_hand_off_file_that_breaks_its_contract(stage, cli, tmp_path, check, name, mutate):
+    """Section 6: closed keys, the closed warning codes, ``counts`` and ``batches`` as the check writes them, the plan's own ID, and a status that
+    isn't ``fail``. ``attack-chains`` is never ``fail`` and has ``null`` for counts, batches and error."""
+    h = closeable(stage, cli, tmp_path)
+    h.write_handoff(check, mutate=mutate)
+    refused(h.close(), "THREAT-MODEL", "close over a %s.json with %s" % (check, name))
+    assert_not_closed(h)
+
+
+@pytest.mark.parametrize("fault", ["wrong-digest", "edited-plan", "newer-plan", "missing-plan", "plan-id-off-the-allow-list"])
+def test_close_refuses_a_plan_it_cannot_trust(stage, cli, tmp_path, fault):
+    """D3: ``fail`` and ``close`` refuse a plan file with another digest, a ``--plan`` that the pointer doesn't name, and an ID off the allow-list.
+    Its table has no exit 1, so even a plan that isn't there is a 2."""
+    h = closeable(stage, cli, tmp_path)
+    plan_id, digest = h.plan_id, h.digest
+    if fault == "wrong-digest":
+        res = h.close(digest="0" * 64)
+    elif fault == "edited-plan":
+        path = h.plan_dir / "plan.json"
+        path.write_text(path.read_text(encoding="utf-8") + " ", encoding="utf-8")
+        res = h.close()
+    elif fault == "newer-plan":
+        needs(h.plan_cli(), 0, "a newer run-level plan")
+        res = h.close(plan_id=plan_id, digest=digest)
+    elif fault == "missing-plan":
+        (h.plan_dir / "plan.json").unlink()
+        res = h.close()
+    else:
+        res = h.close(plan_id="../escape")
+    refused(res, "THREAT-MODEL", "close over a plan with %s" % fault)
+    if fault != "plan-id-off-the-allow-list":
+        assert_not_closed(h, plan_id)
+
+
+def test_close_takes_only_the_threat_model_stage(stage, cli, tmp_path):
+    h = closeable(stage, cli, tmp_path)
+    needs(h.close(), 0, "close")
+    for other in ("risk-score", "compensating-controls", "threats-md", "trees", "report"):
+        res = h.cli("close", "--stage", other, "--out", h.out, *h.plan_args())
+        assert res.code == 2, (other, res.describe())
+
+
+# ---------------------------------------------------------------------------- id-mark (Step 2.7; ADR-050 D7, the PM's ruling B; FR-E.19)
+#
+# ``id-mark`` upserts the ID high-water mark line into this run's ``threats.md``: per prefix, the larger of this run's highest ID and the baseline's
+# mark, or, where the baseline has no mark, the highest ID among its live findings and its Section 4c. The line is one body line under P-2's anchors,
+# written by shipped code and never by the model, in S-2 prefix order, and zero matches or several read as absent.
+
+MARK_TEXT = "**ID high-water mark**: `%s`"
+MARK_LINE = re.compile(r"^\*\*ID high-water mark\*\*: `([^`]*)`$")
+FENCED_MARK = "```text\n**ID high-water mark**: `S-999`\n```"
+SECTION_7_ONE_ROW = (
+    "## 7. Recommended Actions\n\n| Finding ID | Status | Category | Pattern | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |\n"
+    "|---|---|---|---|---|---|---|---|---|\n| T-1 | NEW | Tampering | " + _DASH + " | Gateway | L4 " + _DASH + " Deployment | A threat | High | A fix |\n")
+
+
+def mark_lines(text):
+    """(index, the marks it names, inside a fence) for each line that looks like the mark line."""
+    found, in_fence = [], False
+    for index, line in enumerate(text.split("\n")):
+        if line.startswith("```"):
+            in_fence = not in_fence
+            continue
+        match = MARK_LINE.match(line)
+        if match:
+            found.append((index, match.group(1), in_fence))
+    return found
+
+
+def real_marks(text):
+    """The marks of the lines outside code fences, the only ones that count."""
+    return [value for _, value, fenced in mark_lines(text) if not fenced]
+
+
+@pytest.fixture
+def marked(tmp_path, monkeypatch):
+    """A working directory with a ``run/`` directory for this run's ``threats.md`` and the baseline's."""
+    (tmp_path / "run").mkdir()
+    monkeypatch.chdir(tmp_path)
+    return tmp_path
+
+
+def write_run(root, name, open_ids, resolved=(), mark=None, preamble=""):
+    """``run/<name>``: a synthetic threats.md, with the mark line (when ``mark`` is given) and any other ``preamble`` before its first heading."""
+    lead = "\n\n".join(part for part in (MARK_TEXT % mark if mark else "", preamble) if part)
+    path = root / "run" / name
+    path.write_text(make_threats_md(open_ids, resolved, preamble=lead), encoding="utf-8")
+    return path
+
+
+def id_mark(cli, baseline="run/baseline.md", threats="run/threats.md"):
+    return cli("id-mark", "--threats", threats, *(["--baseline", baseline] if baseline else ["--no-baseline"]))
+
+
+# (case, this run's open IDs, the baseline, the mark that ruling B gives). A baseline is {"open", "resolved", "mark"}.
+MARK_CASES = [
+    ("no-baseline-takes-the-numeric-maximum-in-canonical-form", ["T-9", "T-10", "S-2", "AGP-01", "LLM-3", "LLM-12"], None, "S-2, T-10, AGP-1, LLM-12"),
+    ("every-prefix-is-in-s2-order", ["%s-1" % prefix for prefix in reversed(PREFIX_ORDER)], None, ", ".join("%s-1" % prefix for prefix in PREFIX_ORDER)),
+    ("a-mark-above-every-live-id-wins", ["S-3", "T-5"], {"open": ["S-3", "T-5"], "resolved": [], "mark": "S-14, T-22"}, "S-14, T-22"),
+    ("this-run-above-the-mark-wins", ["S-9"], {"open": ["S-1"], "resolved": [], "mark": "S-4"}, "S-9"),
+    ("each-prefix-takes-its-own-larger-value", ["S-3", "T-8", "LLM-1"], {"open": ["S-3", "T-2"], "resolved": [], "mark": "S-14, T-2"}, "S-14, T-8, LLM-1"),
+    ("a-prefix-that-only-the-mark-names-stays", ["S-3"], {"open": ["S-3", "E-3"], "resolved": [], "mark": "S-14, E-3"}, "S-14, E-3"),
+    ("no-mark-seeds-from-the-live-ids-and-section-4c", ["S-3", "T-5"], {"open": ["S-3", "T-5"], "resolved": ["S-9", "LLM-7"], "mark": None}, "S-9, T-5, LLM-7"),
+    ("a-new-id-above-the-seed-wins", ["S-3", "S-10"], {"open": ["S-3"], "resolved": ["S-9"], "mark": None}, "S-10"),
+    ("section-4c-alone-sets-the-seed", ["T-1"], {"open": ["T-1"], "resolved": ["T-4"], "mark": None}, "T-4"),
+    ("a-live-baseline-id-that-this-run-dropped-sets-the-seed", ["S-2"], {"open": ["S-2", "S-7"], "resolved": [], "mark": None}, "S-7"),
+]
+
+
+@pytest.mark.parametrize("case", MARK_CASES, ids=[case[0] for case in MARK_CASES])
+def test_id_mark_writes_per_prefix_the_larger_of_this_runs_highest_id_and_the_baselines_mark(stage, cli, marked, case):
+    """Ruling B (ADR-050 D7). A first PR 2 run, on a baseline with no mark, seeds it from the baseline's live IDs and Section 4c (PM-T7), so an ID that
+    was resolved before this run is never numbered again."""
+    _, open_ids, baseline, expected = case
+    threats = write_run(marked, "threats.md", open_ids)
+    if baseline is not None:
+        write_run(marked, "baseline.md", baseline["open"], baseline["resolved"], mark=baseline["mark"])
+    baseline_bytes = (marked / "run" / "baseline.md").read_bytes() if baseline is not None else None
+    needs(id_mark(cli, "run/baseline.md" if baseline is not None else None), 0, "id-mark, ruling B's high-water mark line")
+    assert real_marks(threats.read_text(encoding="utf-8")) == [expected]
+    if baseline is not None:
+        assert (marked / "run" / "baseline.md").read_bytes() == baseline_bytes, "the baseline is only read"
+
+
+@pytest.mark.parametrize("preamble", [FENCED_MARK, MARK_TEXT % "S-90" + "\n\n" + MARK_TEXT % "S-91"], ids=["a-mark-inside-a-fence", "two-mark-lines"])
+def test_a_baseline_mark_that_sits_in_a_fence_or_repeats_reads_as_absent_so_the_seed_applies(stage, cli, marked, preamble):
+    """D7: the line sits between the frontmatter and the first heading, outside code fences, and zero matches or several read as absent. A forged or
+    quoted mark in a baseline must not set this run's."""
+    threats = write_run(marked, "threats.md", ["S-3"])
+    write_run(marked, "baseline.md", ["S-3"], ["S-5"], preamble=preamble)
+    needs(id_mark(cli), 0, "id-mark over a baseline whose mark line doesn't count")
+    assert real_marks(threats.read_text(encoding="utf-8")) == ["S-5"], "seeded from the baseline's Section 4c, not from the quoted mark"
+
+
+def test_id_mark_never_reads_the_mark_this_runs_own_file_already_holds(stage, cli, marked):
+    """The reissue check reads the baseline's line, never this run's, and shipped code writes the line: a stale or forged one in this file is replaced,
+    and a second run changes no byte."""
+    threats = write_run(marked, "threats.md", ["S-3", "T-5"], mark="S-999")
+    needs(id_mark(cli, None), 0, "id-mark over a file with a stale mark")
+    text = threats.read_text(encoding="utf-8")
+    assert real_marks(text) == ["S-3, T-5"] and "S-999" not in text
+    needs(id_mark(cli, None), 0, "id-mark, again")
+    assert threats.read_text(encoding="utf-8") == text, "a second run changes no byte"
+
+
+def test_id_mark_collapses_several_lines_to_one_and_leaves_a_fenced_copy_alone(stage, cli, marked):
+    threats = write_run(marked, "threats.md", ["S-3", "T-5"], mark="S-98", preamble=MARK_TEXT % "S-99" + "\n\n" + FENCED_MARK)
+    assert len(real_marks(threats.read_text(encoding="utf-8"))) == 2
+    needs(id_mark(cli, None), 0, "id-mark over a file with two mark lines")
+    text = threats.read_text(encoding="utf-8")
+    assert real_marks(text) == ["S-3, T-5"]
+    assert [value for _, value, fenced in mark_lines(text) if fenced] == ["S-999"], "the quoted copy in the fence is not the line, and is left alone"
+
+
+def test_id_mark_changes_nothing_in_the_file_but_the_mark_line(stage, cli, marked):
+    threats = write_run(marked, "threats.md", ["S-3", "T-5"], resolved=["T-2"], preamble=FENCED_PREAMBLE)
+    before = threats.read_text(encoding="utf-8")
+    needs(id_mark(cli, None), 0, "id-mark")
+    after = threats.read_text(encoding="utf-8")
+    assert [line for line in without_blank_lines(after) if not MARK_LINE.match(line)] == without_blank_lines(before)
+    index = [i for i, _, fenced in mark_lines(after) if not fenced][0]
+    assert frontmatter_end(after) < index < first_heading_outside_fences(after)
+
+
+@pytest.mark.parametrize("lead", ["---\nk: v\n---\n", "# Title\n\n", "~~~\n## fake\n~~~\n", "# T\n\n    ## code, not a heading\n\n"],
+                         ids=["frontmatter-then-heading", "no-frontmatter", "tilde-fence", "indented-code"])
+def test_id_mark_places_the_line_before_the_first_heading_outside_fences(stage, cli, marked, lead):
+    """The same placement as the architecture-source line (P-2's anchors), for files of every shape that Section 7 can follow."""
+    threats = marked / "run" / "threats.md"
+    threats.write_text(lead + SECTION_7_ONE_ROW, encoding="utf-8")
+    needs(id_mark(cli, None), 0, "id-mark")
+    expected = lead + MARK_TEXT % "T-1" + "\n\n" + SECTION_7_ONE_ROW
+    assert threats.read_text(encoding="utf-8") == expected
+    assert id_mark(cli, None).code == 0 and threats.read_text(encoding="utf-8") == expected, "a second run changes no byte"
+
+
+@pytest.mark.parametrize("order", ["mark-first", "source-first"])
+def test_id_mark_and_architecture_source_each_leave_the_others_line_alone(stage, cli, repo, order):
+    """Step 2.7 runs both. Each is an upsert of its own body line, so neither may remove, alter or duplicate the other's."""
+    threats = repo / "run" / "threats.md"
+    steps = [lambda: id_mark(cli, None), lambda: arch_source(cli)]
+    for step in (steps if order == "mark-first" else steps[::-1]):
+        needs(step(), 0, "Step 2.7's two upserts")
+    text = threats.read_text(encoding="utf-8")
+    assert real_marks(text) == ["S-2, T-10, AGP-1"] and [value for _, value in real_lines(text)] == ["docs/security/architecture.md"]
+    for index in [i for i, _, fenced in mark_lines(text) if not fenced] + [i for i, _ in real_lines(text)]:
+        assert frontmatter_end(text) < index < first_heading_outside_fences(text)
+    kept = sorted(without_blank_lines(text))
+    for step in steps:  # a second upsert may place its own line again, but it never drops, repeats or alters the other's
+        assert step().code == 0
+        again = threats.read_text(encoding="utf-8")
+        assert sorted(without_blank_lines(again)) == kept and len(real_marks(again)) == 1 and len(real_lines(again)) == 1
+
+
+def test_id_mark_exits_1_for_a_missing_threats_file_or_baseline_and_2_for_what_it_cannot_edit_or_read(stage, cli, marked):
+    threats = write_run(marked, "threats.md", ["S-3"])
+    write_run(marked, "baseline.md", ["S-3"])
+    needs(id_mark(cli), 0, "id-mark")
+    refused(id_mark(cli, threats="run/absent.md"), "THREAT-MODEL", "id-mark with no threats file", code=1)
+    refused(id_mark(cli, baseline="run/absent.md"), "THREAT-MODEL", "id-mark with no baseline file", code=1)
+    (marked / "run" / "link.md").symlink_to(threats)
+    refused(id_mark(cli, threats="run/link.md"), "THREAT-MODEL", "id-mark over a linked threats file")
+    assert (marked / "run" / "link.md").is_symlink()
+    refused(id_mark(cli, threats="run"), "THREAT-MODEL", "id-mark over a directory")
+    (marked / "run" / "binary.md").write_bytes(b"# \xff\xfe not utf-8\n")
+    refused(id_mark(cli, threats="run/binary.md"), "THREAT-MODEL", "id-mark over a threats file that is not UTF-8")
+    refused(id_mark(cli, baseline="run/binary.md"), "THREAT-MODEL", "id-mark over a baseline that is not UTF-8")
+
+
+def test_id_mark_stops_when_this_runs_section_7_cannot_be_read_and_leaves_the_file_as_it_was(stage, cli, marked):
+    """reading: the mark is the larger of two values, and one that can't be read would lower it silently, the direction that lets an ID come back.
+    A Section 7 that the reference-set wrapper refuses (S-12(c), KB 22) is exit 2, with no write."""
+    threats = write_run(marked, "threats.md", ["S-3"])
+    needs(id_mark(cli, None), 0, "id-mark")
+    threats.write_text(make_threats_md(["S-3"], section7="missing"), encoding="utf-8")
+    before = threats.read_bytes()
+    refused(id_mark(cli, None), "THREAT-MODEL", "id-mark over a file with no Section 7")
+    assert threats.read_bytes() == before
+
+
+def test_id_mark_needs_exactly_one_of_baseline_and_no_baseline(stage, cli, marked):
+    write_run(marked, "threats.md", ["S-3"])
+    write_run(marked, "baseline.md", ["S-3"])
+    needs(id_mark(cli), 0, "id-mark")
+    assert cli("id-mark", "--threats", "run/threats.md").code == 2
+    assert cli("id-mark", "--threats", "run/threats.md", "--baseline", "run/baseline.md", "--no-baseline").code == 2
+    assert cli("id-mark", "--baseline", "run/baseline.md").code == 2
+
+
+def test_id_mark_prints_one_json_object(stage, cli, marked):
+    write_run(marked, "threats.md", ["S-3"])
+    assert isinstance(needs(id_mark(cli, None), 0, "id-mark, its printed object").json, dict)
+
+
+# ---------------------------------------------------------------------------- fail --stage threat-model: the four-file set and the hand-off fold
+#
+# D4's failed outputs for the run: the four files ``threats.md``, ``threats.sarif``, ``threat-report.md`` and ``attack-chains.md`` move to
+# ``<plan_id>/failed/`` when their bytes changed since the plan, and the pre-image goes back when its digest matches (KB 21's double gate, the
+# four moments, and AR-T6). ``fail`` also folds whichever hand-off files exist and load, in ``close``'s order (part-files.md section 6).
+
+
+def test_fail_moves_each_changed_file_of_the_four_and_puts_the_earlier_run_back(stage, cli, tmp_path):
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.run_wrote()
+    res = needs(h.fail("render-failed"), 0, "fail --stage threat-model, the four-file set")
+    printed = res.json
+    assert set(printed) == {"moved", "restored", "record"}
+    assert sorted(printed["moved"]) == sorted(printed["restored"]) == sorted(TM_OUTPUTS)
+    assert Path(printed["record"]).resolve() == (h.plan_dir / "stage-record.json").resolve()
+    h.assert_earlier_outputs_untouched()
+    assert {name: (h.plan_dir / "failed" / name).read_bytes() for name in TM_OUTPUTS} == TM_NEW, "the failed run is kept for diagnosis"
+
+
+@pytest.mark.parametrize("reason", FAIL_REASONS)
+def test_fail_writes_the_failed_run_record_and_with_no_hand_off_its_counts_are_empty_and_its_batches_zero(stage, cli, tmp_path, tachi_version, reason):
+    """Section 5: with no hand-off, ``fail`` writes the run's ``counts`` as ``{}`` and its ``batches`` as zeros, and warns of no missing file, because
+    a run can fail before Step 2.8."""
+    h = RunDir(stage, cli, tmp_path)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    needs(h.fail(reason, detail="a synthetic failure for the test"), 0, "fail --stage threat-model")
+    rec = h.record()
+    check_record(rec, THREAT_MODEL, h.plan_id, tachi_version)
+    assert rec["error"]["code"] == reason and "a synthetic failure for the test" in rec["error"]["message"]
+    assert rec["counts"] == {} and rec["batches"] == {key: 0 for key in RECORD_BATCH_KEYS}
+    assert rec["warnings"] == [] and rec["undeclared_paths"] == []
+
+
+@pytest.mark.parametrize("reason,fragment", [
+    ("agent-not-spawned", "scripts/install.sh"), ("unrecoverable-batch", "report the kept plan directory"),
+    ("check-failed", "re-run"), ("render-failed", "re-run")])
+def test_fail_prints_d4s_message_for_the_run_with_its_remedy_and_the_kept_directory(stage, cli, tmp_path, reason, fragment):
+    h = RunDir(stage, cli, tmp_path)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    res = needs(h.fail(reason, detail="tachi-spoofing"), 0, "fail --stage threat-model")
+    assert re.search(r"^TACHI THREAT-MODEL FAILED: ", res.err, re.M) and "Remedy: " in res.err
+    assert fragment in res.err and "Kept for diagnosis: %s" % h.plan_dir in res.err
+    if reason == "agent-not-spawned":
+        assert "Agent: tachi-spoofing" in res.err
+
+
+def test_fail_folds_the_hand_off_files_it_finds_in_the_order_close_does(stage, cli, tmp_path, tachi_version):
+    h = RunDir(stage, cli, tmp_path)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.write_handoff("attack-chains", warnings=[WARN_CHAIN])
+    h.write_handoff("provenance", warnings=[WARN_SECTION6, WARN_REISSUED])
+    needs(h.fail("render-failed"), 0, "fail --stage threat-model, folding the hand-off files")
+    rec = h.record()
+    check_record(rec, THREAT_MODEL, h.plan_id, tachi_version)
+    assert rec["counts"] == PROVENANCE_COUNTS and rec["batches"] == PHASE2_BATCHES
+    assert rec["warnings"] == [WARN_CHAIN, WARN_SECTION6, WARN_REISSUED] and rec["error"]["code"] == "render-failed"
+
+
+def test_fail_folds_the_chain_hand_off_alone_when_the_run_failed_before_the_provenance_check(stage, cli, tmp_path):
+    h = RunDir(stage, cli, tmp_path)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.write_handoff("attack-chains", warnings=[WARN_CHAIN])
+    needs(h.fail("check-failed"), 0, "fail --stage threat-model, with one hand-off file")
+    rec = h.record()
+    assert rec["warnings"] == [WARN_CHAIN] and rec["counts"] == {} and rec["batches"] == {key: 0 for key in RECORD_BATCH_KEYS}
+
+
+def test_fail_takes_the_error_text_from_a_failed_provenance_check_and_puts_the_earlier_run_back(stage, cli, tmp_path, tachi_version):
+    """D-3's second path, driven through ``fail`` to the pre-image restore (AR-T6): the check exits 4 with the run's four files already written. When
+    ``provenance.json`` says ``fail``, the record's message, finding IDs and remedy come from its ``error``, and its code is ``--reason``."""
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.run_wrote()
+    h.write_handoff("attack-chains")
+    h.write_handoff("provenance", error=PROVENANCE_ERROR)
+    res = needs(h.fail("check-failed"), 0, "fail --stage threat-model, over a failed provenance check")
+    assert sorted(res.json["moved"]) == sorted(res.json["restored"]) == sorted(TM_OUTPUTS)
+    h.assert_earlier_outputs_untouched()
+    rec = h.record()
+    check_record(rec, THREAT_MODEL, h.plan_id, tachi_version)
+    assert rec["error"] == {"code": "check-failed", "message": PROVENANCE_ERROR["message"], "batch_id": None,
+                            "finding_ids": PROVENANCE_ERROR["finding_ids"], "remedy": PROVENANCE_ERROR["remedy"]}
+    assert rec["counts"] == PROVENANCE_COUNTS and rec["batches"] == PHASE2_BATCHES
+
+
+@pytest.mark.parametrize("fault", ["not-json", "another-plan"])
+def test_fail_leaves_out_a_hand_off_file_that_does_not_load_and_still_ends_the_run(stage, cli, tmp_path, fault):
+    """Section 6: ``fail`` folds whichever hand-off files exist and load. A file that doesn't, or that another plan wrote, must not put its numbers
+    in this run's record, and must not stop the run from failing."""
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.run_wrote()
+    if fault == "not-json":
+        h.write_handoff("provenance", raw=b"{not json")
+    else:
+        h.write_handoff("provenance", mutate=_set("plan_id", "20200101T000000Z-000000000000"))  # reading: a file of another plan doesn't load
+    res = needs(h.fail("check-failed"), 0, "fail --stage threat-model, over a hand-off file that does not load")
+    assert sorted(res.json["restored"]) == sorted(TM_OUTPUTS)
+    rec = h.record()
+    assert rec["counts"] == {} and rec["batches"] == {key: 0 for key in RECORD_BATCH_KEYS}
+    # S1P-A53 (R4): in that file's place the record says why its counts are missing, with the loader's reason and never the file's text
+    assert [w["code"] for w in rec["warnings"]] == ["handoff-invalid:provenance"] and rec["warnings"][0]["detail"]
+    assert "{not json" not in rec["warnings"][0]["detail"]
+
+
+# ---- KB 21's four moments, for the four files
+
+
+def test_fail_leaves_earlier_outputs_alone_on_a_re_run_of_the_run(stage, cli, tmp_path):
+    """Moment 1: an earlier run's outputs stay where they are when this run fails before it writes anything, and the earlier plan's directory is left whole."""
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    needs(h.plan_cli(), 0, "the run-level plan")
+    earlier_id, earlier_tree = h.plan_id, tree_state(h.plan_dir)
+    needs(h.plan_cli(), 0, "the re-run's plan")
+    res = needs(h.fail("check-failed"), 0, "fail --stage threat-model")
+    assert res.json["moved"] == [] and res.json["restored"] == []
+    h.assert_earlier_outputs_untouched()
+    assert tree_state(h.build / earlier_id) == earlier_tree
+    assert not (h.plan_dir / "failed").exists() or list((h.plan_dir / "failed").iterdir()) == []
+
+
+def test_fail_leaves_earlier_outputs_alone_on_a_resume_and_refuses_another_digest(stage, cli, tmp_path):
+    """Moment 2: the model keeps no state, so a later process fails the plan using only the plan ID and the digest ``plan`` printed. Any other digest
+    is refused with exit 2, the record is still written, and nothing moves."""
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.run_wrote()
+    refused_res = h.fail("check-failed", digest="0" * 64)
+    assert refused_res.code == 2 and (h.plan_dir / "stage-record.json").is_file(), refused_res.describe()
+    assert [w["code"] for w in h.record()["warnings"]] == ["plan-digest-mismatch"]
+    assert all((h.out / name).read_bytes() == TM_NEW[name] for name in TM_OUTPUTS), "a plan that can't be trusted moves and restores nothing"
+    assert not (h.plan_dir / "failed").exists() or list((h.plan_dir / "failed").iterdir()) == []
+    res = needs(h.fail("check-failed"), 0, "fail --stage threat-model, with the digest plan printed")
+    assert sorted(res.json["restored"]) == sorted(TM_OUTPUTS)
+    h.assert_earlier_outputs_untouched()
+
+
+def test_fail_leaves_earlier_outputs_alone_after_a_failed_run_of_the_run(stage, cli, tmp_path):
+    """Moment 3: a run that failed keeps its quarantined files. A later run that fails touches neither them nor the restored canonical files, and
+    ``{out}`` never holds a failed file under a name that an auto-detect site would take."""
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.run_wrote()
+    first = needs(h.fail("render-failed"), 0, "fail --stage threat-model")
+    assert sorted(first.json["moved"]) == sorted(first.json["restored"]) == sorted(TM_OUTPUTS)
+    first_id, first_failed = h.plan_id, tree_state(h.build / h.plan_id / "failed")
+    assert first_failed == {name: hashlib.sha256(TM_NEW[name]).hexdigest() for name in TM_OUTPUTS}
+    h.assert_earlier_outputs_untouched()
+
+    needs(h.plan_cli(), 0, "a later run's plan, on the restored outputs")
+    second = needs(h.fail("check-failed"), 0, "fail --stage threat-model, a second time")
+    assert second.json["moved"] == [] and second.json["restored"] == []
+    assert tree_state(h.build / first_id / "failed") == first_failed
+    h.assert_earlier_outputs_untouched()
+    assert sorted(path.name for path in h.out.iterdir()) == sorted([".tachi-build"] + list(TM_OUTPUTS))
+
+
+def test_fail_with_output_dir_touches_only_that_directory_for_the_run(stage, cli, tmp_path):
+    """Moment 4: a run whose ``--out`` isn't the default moves and restores inside it only. The other directory's outputs and ``.tachi-build`` stay."""
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    default_state = tree_state(h.out)
+    custom = tmp_path / "custom"
+    custom.mkdir()
+    (custom / "threats.md").write_bytes(b"# the custom directory's earlier threats.md\n")
+    default, h.out = h.out, custom
+    needs(h.plan_cli(), 0, "the run-level plan, in --output-dir")
+    (custom / "threats.md").write_bytes(NEW_MD)
+    res = needs(h.fail("render-failed"), 0, "fail --stage threat-model, in --output-dir")
+    assert res.json["moved"] == ["threats.md"] and res.json["restored"] == ["threats.md"]
+    assert (custom / "threats.md").read_bytes() == b"# the custom directory's earlier threats.md\n"
+    assert tree_state(default) == default_state, "the default directory is as it was, with no .tachi-build"
+
+
+def test_a_failing_staged_check_changes_nothing_for_the_run(stage, cli, tmp_path):
+    """D4: a check that fails on the staged files, the joiner's or the assembler's, leaves the canonical files untouched, and ``fail`` finds nothing
+    changed. The staged files stay for diagnosis, as nothing under ``.tachi-build`` is deleted."""
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    needs(h.plan_cli(), 0, "the run-level plan")
+    staged = [".tachi-build/threats-md/%s/staged/threats.md" % FAKE_PLAN_ID, ".tachi-build/report/%s/staged/threat-report.md" % FAKE_PLAN_ID]
+    for relpath in staged:
+        (h.out / relpath).parent.mkdir(parents=True)
+        (h.out / relpath).write_bytes(NEW_MD)
+    res = needs(h.fail("check-failed"), 0, "fail --stage threat-model")
+    assert res.json["moved"] == [] and res.json["restored"] == []
+    h.assert_earlier_outputs_untouched()
+    assert all((h.out / relpath).read_bytes() == NEW_MD for relpath in staged)
+
+
+HALF_APPLIED = {
+    "the-markdown-alone": ("threats.md",), "the-sarif-and-the-report": ("threats.sarif", "threat-report.md"),
+    "the-chain-file-alone": ("attack-chains.md",), "three-of-the-four": ("threats.md", "threats.sarif", "attack-chains.md"),
+}
+
+
+@pytest.mark.parametrize("changed", sorted(HALF_APPLIED))
+def test_a_half_applied_set_is_restored_file_by_file(stage, cli, tmp_path, changed):
+    """D4: a run that replaced some of the four and then failed is undone. Each changed file moves to ``failed/``, its pre-image takes its place,
+    and a file that never changed is not touched."""
+    names = HALF_APPLIED[changed]
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.run_wrote(names)
+    res = needs(h.fail("render-failed"), 0, "fail --stage threat-model")
+    assert sorted(res.json["moved"]) == sorted(res.json["restored"]) == sorted(names)
+    for name in TM_OUTPUTS:
+        assert (h.plan_dir / "failed" / name).exists() == (name in names)
+    h.assert_earlier_outputs_untouched()
+
+
+def test_new_outputs_with_no_earlier_run_are_moved_and_nothing_is_restored_for_the_run(stage, cli, tmp_path):
+    """A first run's files stay for diagnosis but leave the canonical names, so no later command takes them as input or as a baseline."""
+    h = RunDir(stage, cli, tmp_path)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.run_wrote()
+    res = needs(h.fail("render-failed"), 0, "fail --stage threat-model")
+    assert sorted(res.json["moved"]) == sorted(TM_OUTPUTS) and res.json["restored"] == []
+    assert not any((h.out / name).exists() for name in TM_OUTPUTS)
+    assert {name: (h.plan_dir / "failed" / name).read_bytes() for name in TM_OUTPUTS} == TM_NEW
+
+
+def test_fail_puts_an_earlier_chain_file_back_when_this_run_moved_its_own_away(stage, cli, tmp_path):
+    """reading: D13's check renames a chain file that it rewrote the outcome record against to ``attack-chains.inconsistent.md``, so the canonical
+    name is empty when a later step fails the run. This run had overwritten the earlier run's file before that, so the pre-image goes back (KB 21: wire
+    every moment that the state can exist). The quarantined copy is this run's own file and stays where the check put it."""
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.run_wrote()
+    os.replace(str(h.out / "attack-chains.md"), str(h.out / "attack-chains.inconsistent.md"))
+    res = needs(h.fail("check-failed"), 0, "fail --stage threat-model, with the chain file quarantined")
+    assert (h.out / "attack-chains.md").read_bytes() == TM_EARLIER["attack-chains.md"]
+    assert (h.out / "attack-chains.inconsistent.md").read_bytes() == TM_NEW["attack-chains.md"]
+    assert sorted(res.json["restored"]) == sorted(TM_OUTPUTS) and sorted(res.json["moved"]) == sorted(set(TM_OUTPUTS) - {"attack-chains.md"})
+
+
+def test_fail_moves_only_the_four_names_of_the_run(stage, cli, tmp_path):
+    """KB 21's double gate, the name half: only the four names move, whatever else the run changed or wrote."""
+    h = RunDir(stage, cli, tmp_path)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.run_wrote()
+    others = {"attack-chains.inconsistent.md": b"a quarantined chain file\n", "risk-scores.md": b"another stage's output\n", "notes.md": b"a stray file\n",
+              "gen.py": b"print('an improvised script')\n", "architecture.md": b"# Architecture\n", "attack-trees/s-1-attack-tree.md": b"a tree\n"}
+    for relpath, data in others.items():
+        (h.out / relpath).parent.mkdir(parents=True, exist_ok=True)
+        (h.out / relpath).write_bytes(data)
+    res = needs(h.fail("render-failed"), 0, "fail --stage threat-model")
+    assert sorted(res.json["moved"]) == sorted(TM_OUTPUTS)
+    assert {relpath: (h.out / relpath).read_bytes() for relpath in others} == others
+
+
+@pytest.mark.parametrize("name", TM_OUTPUTS)
+@pytest.mark.parametrize("kind", ["symlink", "directory"])
+def test_fail_refuses_a_symlink_or_a_directory_at_any_of_the_four_names(stage, cli, tmp_path, name, kind):
+    """KB 21's double gate, the file half: only a regular file directly in ``{out}`` moves. A refusal is exit 2, the record is still written, and the
+    link's target is untouched."""
+    h = RunDir(stage, cli, tmp_path)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    victim = tmp_path / "victim.txt"
+    victim.write_bytes(b"outside the run directory\n")
+    target = h.out / name
+    if kind == "symlink":
+        target.symlink_to(victim)
+    else:
+        target.mkdir()
+        (target / "inner.txt").write_bytes(b"inside a directory\n")
+    res = h.fail("render-failed")
+    assert res.code == 2 and (h.plan_dir / "stage-record.json").is_file(), res.describe()
+    assert victim.read_bytes() == b"outside the run directory\n"
+    assert target.is_symlink() if kind == "symlink" else (target / "inner.txt").is_file()
+    assert not (h.plan_dir / "failed" / name).exists()
+
+
+def test_fail_never_overwrites_a_failed_copy_and_restores_only_a_pre_image_that_still_matches_for_the_run(stage, cli, tmp_path):
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    needs(h.plan_cli(), 0, "the run-level plan")
+    (h.plan_dir / "failed").mkdir(exist_ok=True)
+    (h.plan_dir / "failed" / "threats.md").write_bytes(b"the first failure's copy\n")
+    (h.plan_dir / "preimage" / "threats.sarif").write_bytes(b"# a tampered copy\n")
+    h.run_wrote(("threats.md", "threats.sarif"))
+    res = h.fail("render-failed")
+    assert res.code == 2 and (h.plan_dir / "stage-record.json").is_file(), res.describe()
+    assert (h.plan_dir / "failed" / "threats.md").read_bytes() == b"the first failure's copy\n"
+    assert (h.out / "threats.md").read_bytes() == TM_NEW["threats.md"], "a refused move leaves the file where it was"
+    assert res.json["moved"] == ["threats.sarif"] and res.json["restored"] == []
+    assert not (h.out / "threats.sarif").exists(), "a copy whose digest no longer matches never goes back"
+    assert {w["code"] for w in h.record()["warnings"]} == {"move-refused"}
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+def test_fail_puts_each_pre_image_back_with_the_permission_bits_of_the_file_it_replaces(stage, cli, tmp_path):
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    for name, mode in ODD_MODES.items():
+        os.chmod(str(h.out / name), mode)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.run_wrote()
+    needs(h.fail("render-failed"), 0, "fail --stage threat-model")
+    assert {name: (h.out / name).stat().st_mode & 0o777 for name in ODD_MODES} == ODD_MODES
+
+
+def test_fail_does_not_act_on_a_run_level_plan_the_pointer_no_longer_names(stage, cli, tmp_path):
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    needs(h.plan_cli(), 0, "the run-level plan")
+    older_id, older_digest = h.plan_id, h.digest
+    h.run_wrote()
+    needs(h.plan_cli(), 0, "a newer run-level plan")
+    res = h.fail("render-failed", plan_id=older_id, digest=older_digest)
+    assert res.code == 2 and res.json["moved"] == [] and res.json["restored"] == [], res.describe()
+    assert all((h.out / name).read_bytes() == TM_NEW[name] for name in TM_OUTPUTS)
+    assert [w["code"] for w in h.read_json(h.build / older_id / "stage-record.json")["warnings"]] == ["pointer-mismatch"]
+
+
+# ---------------------------------------------------------------------------- the threats-md batch stage (item O-beta; part-files.md, "Stage payload: threats-md")
+#
+# The orchestrator writes ``{out}/.tachi-build/sections.json`` once after Phase 4. ``plan --stage threats-md`` strict-loads it from that fixed path and
+# splits the template's 24 tables into parts: a table keyed by row has the manifest's row count, and a table keyed by finding has the open IDs of its
+# prefixes (Section 7: every open ID; Section 4c: the resolved ones). The orchestrator writes each part itself, and ``reconcile`` validates them.
+
+_STRIDE_KEYS = ("finding_id", "status", "component", "maestro_layer", "threat", "likelihood", "impact", "risk_level", "mitigation")
+_AI_KEYS = ("finding_id", "status", "component", "maestro_layer", "threat", "owasp_reference", "likelihood", "impact", "risk_level", "mitigation")
+# (section, its units: "rows", "open", "resolved" or the finding prefixes of its table, the item keys in header order, the size per part), in the
+# template's order, as ``contracts/part-files.md`` lists them.
+THREATS_MD = [
+    ("components", "rows", ("component", "type", "maestro_layer", "description"), 59), ("data_flows", "rows", ("source", "destination", "data", "protocol"), 59),
+    ("technologies", "rows", ("category", "technology", "version"), 59), ("trust_zones", "rows", ("zone", "trust_level", "components"), 59),
+    ("boundary_crossings", "rows", ("crossing", "from_zone", "to_zone", "components", "controls"), 59),
+    ("spoofing", ("S",), _STRIDE_KEYS, 16), ("tampering", ("T",), _STRIDE_KEYS, 16), ("repudiation", ("R",), _STRIDE_KEYS, 16),
+    ("information_disclosure", ("I",), _STRIDE_KEYS, 16), ("denial_of_service", ("D",), _STRIDE_KEYS, 16),
+    ("elevation_of_privilege", ("E",), _STRIDE_KEYS, 16), ("agentic", ("AG", "AGP", "TE"), _AI_KEYS, 16), ("llm", ("LLM", "OI", "MI"), _AI_KEYS, 16),
+    ("correlated", "rows", ("group", "findings", "component", "threat_summary", "risk_level"), 27), ("patterns", "rows", ("pattern", "count", "findings"), 59),
+    ("resolved", "resolved", ("finding_id", "component", "threat", "last_risk_level", "resolution_reason"), 59),
+    ("coverage", "rows", ("component", "s", "t", "r", "i", "d", "e", "ag", "llm", "total"), 59),
+    ("gate_requirements", "rows", ("component", "determined_type", "required_categories", "evaluated", "gaps"), 59),
+    ("gate_gaps", "rows", ("component", "missing_category", "agents_dispatched", "resolution", "findings_added"), 59),
+    ("risk_by_layer", "rows", ("maestro_layer", "finding_count", "highest_severity"), 59), ("risk_levels", "rows", ("risk_level", "count", "percentage"), 59),
+    ("actions", "open", ("finding_id", "status", "pattern", "component", "maestro_layer", "threat", "risk_level", "mitigation"), 41),
+    ("lifecycle", "rows", ("status", "count", "description"), 59), ("baseline_reference", "rows", ("field", "value"), 59),
+]
+ROWS_DEFAULT = {"components": 3, "data_flows": 2, "technologies": 1, "trust_zones": 2, "boundary_crossings": 1, "correlated": 0, "patterns": 0, "coverage": 3,
+                "gate_requirements": 3, "gate_gaps": 0, "risk_by_layer": 2, "risk_levels": 4, "lifecycle": 0, "baseline_reference": 0}
+ROWS_ZERO = {key: 0 for key in ROWS_DEFAULT}
+OPEN_DEFAULT = ["S-1", "S-2", "T-1", "I-1", "E-1", "AG-1", "LLM-1", "LLM-2"]
+BASELINE_FRONTMATTER = {"source": "reports/earlier/threats.md", "date": "2026-11-01", "finding_count": 5, "run_id": "2026-11-01T10-00-00"}
+PART_FOR = {}  # stage -> the function that builds a valid part from a batch input (filled in beside each stage)
+
+
+def sections_manifest(open_ids=OPEN_DEFAULT, resolved=None, rows=None):
+    """A valid ``tachi.sections/1`` manifest (``threat-model-records.md``, "The section manifest"). A run with a baseline has ``resolved`` IDs, and the
+    baseline's frontmatter values; one without has ``null`` for both."""
+    counts = dict(ROWS_DEFAULT)
+    counts.update(rows or {})
+    baseline = dict(BASELINE_FRONTMATTER) if resolved is not None else {"source": None, "date": None, "finding_count": None, "run_id": None}
+    return {"schema": "tachi.sections/1",
+            "frontmatter": {"date": "2026-11-22", "input_format": "mermaid", "classification": "confidential", "run_id": "2026-11-22T10-00-00",
+                            "baseline": baseline, "coverage_gate": {"status": "pass", "gaps": []}},
+            "open": list(open_ids), "resolved": None if resolved is None else list(resolved), "rows": counts}
+
+
+def write_sections(h, manifest, raw=None):
+    path = h.out / ".tachi-build" / "sections.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(raw if raw is not None else json.dumps(manifest, indent=2).encode("utf-8"))
+    return path
+
+
+def balanced_runs(count, size):
+    """The contiguous ``(start, stop)`` runs that D3 makes of ``count`` units: at most ``size`` each, differing by at most 1."""
+    planned = -(-count // size)
+    base, extra = divmod(count, planned)
+    runs, at = [], 0
+    for number in range(planned):
+        take = base + (1 if number < extra else 0)
+        runs.append((at, at + take))
+        at += take
+    return runs
+
+
+def threats_md_sections(manifest):
+    """``[(section, its units, its size)]`` for each table that has a unit, in the template's order, from the manifest alone (item O-beta)."""
+    ids = sorted(manifest["open"], key=s2_key)
+    found = []
+    for section, which, _, size in THREATS_MD:
+        if which == "rows":
+            units = [{"section": section, "row": number} for number in range(1, manifest["rows"][section] + 1)]
+        else:
+            chosen = ids if which == "open" else sorted(manifest["resolved"] or [], key=s2_key) if which == "resolved" else [
+                fid for fid in ids if fid.partition("-")[0] in which]
+            units = [{"section": section, "finding_id": fid} for fid in chosen]
+        if units:
+            found.append((section, units, size))
+    return found
+
+
+def expected_threats_md_batches(manifest):
+    """``[(section, units)]`` for each part, in plan order."""
+    return [(section, units[start:stop]) for section, units, size in threats_md_sections(manifest) for start, stop in balanced_runs(len(units), size)]
+
+
+def threats_md_item(section, keys, unit):
+    values = {"status": "NEW", "likelihood": "HIGH", "impact": "HIGH", "risk_level": "High", "last_risk_level": "High",
+              "maestro_layer": "L4 " + _DASH + " Deployment", "pattern": _DASH}
+    return {key: unit["finding_id"] if key == "finding_id" else values.get(key, "%s of %s" % (key, section)) for key in keys}
+
+
+def threats_md_part(bi):
+    keys = {section: item_keys for section, _, item_keys, _ in THREATS_MD}[bi["units"][0]["section"]]
+    return {"schema": "tachi.part/1", "plan_id": bi["plan_id"], "batch_id": bi["batch_id"], "stage": "threats-md", "agent_type": TM_AGENT,
+            "finding_ids": list(bi["finding_ids"]), "items": [threats_md_item(unit["section"], keys, unit) for unit in bi["units"]], "fragments": []}
+
+
+PART_FOR["threats-md"] = threats_md_part
+
+
+def write_part(h, batch_id, mutate=None, raw=None, files=True):
+    """A writer's Write: a valid part at the path the batch input names (or ``raw`` bytes there), with ``mutate`` applied to the part first. A ``trees``
+    batch also writes each tree file that its input names, unless ``files`` is false."""
+    bi = h.batch_input(batch_id)
+    path = Path(bi["part_path"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if raw is not None:
+        path.write_bytes(raw)
+    else:
+        part = PART_FOR[h.name](bi)
+        if mutate is not None:
+            mutate(part, bi)
+        path.write_text(json.dumps(part), encoding="utf-8")
+    if h.name == "trees" and files:
+        for finding_id, tree_path in bi["tree_paths"].items():
+            Path(tree_path).parent.mkdir(parents=True, exist_ok=True)
+            Path(tree_path).write_text(tree_text(finding_id), encoding="utf-8")
+    return path
+
+
+def write_valid_parts(h, skip=()):
+    """A valid part for every batch the plan still waits for, except ``skip``."""
+    for entry in h.plan_json()["batches"]:
+        if entry["state"] == "pending" and entry["batch_id"] not in skip:
+            write_part(h, entry["batch_id"])
+
+
+def pending_ids(printed):
+    return sorted(entry["batch_id"] for wave in printed["waves"] for entry in wave)
+
+
+def wave_entries(printed):
+    return [entry for wave in printed["waves"] for entry in wave]
+
+
+def threats_md_run(stage, cli, root, manifest=None):
+    h = RunDir(stage, cli, root, "threats-md")
+    write_sections(h, manifest or sections_manifest())
+    needs(h.plan_cli(), 0, "plan --stage threats-md, from the section manifest")
+    return h
+
+
+# ---- plan
+
+
+def test_the_threats_md_plan_makes_a_part_for_each_section_that_has_a_unit_in_the_templates_order(stage, cli, tmp_path):
+    manifest = sections_manifest()
+    h = RunDir(stage, cli, tmp_path, "threats-md")
+    write_sections(h, manifest)
+    printed = needs(h.plan_cli(), 0, "plan --stage threats-md, from the section manifest").json
+    assert set(printed) == {"plan_id", "plan_digest", "waves"}
+    expected = expected_threats_md_batches(manifest)
+    assert len(expected) == 16, "the default manifest has 16 tables with a unit: 5 row tables, 4 STRIDE tables, 2 AI tables and 5 summary tables"
+    flat = wave_entries(printed)
+    assert [entry["batch_id"] for entry in flat] == ["B%03d" % n for n in range(1, len(expected) + 1)]
+    assert [entry["section"] for entry in flat] == [section for section, _ in expected]
+    for entry, (section, units) in zip(flat, expected):
+        assert set(entry) == {"batch_id", "input_path", "part_path", "section", "finding_ids", "rows", "problem"}, "what plan prints for this stage (cli.md)"
+        assert entry["finding_ids"] == [unit["finding_id"] for unit in units if "finding_id" in unit] and entry["problem"] is None
+        assert entry["rows"] == ([units[0]["row"], units[-1]["row"]] if "row" in units[0] else None)  # reading: rows are 1-based, [first, last]
+        assert Path(entry["input_path"]).resolve() == (h.plan_dir / "inputs" / ("%s.json" % entry["batch_id"])).resolve()
+        assert Path(entry["part_path"]).resolve() == (h.plan_dir / "parts" / ("%s.a1.json" % entry["batch_id"])).resolve()
+        bi = h.batch_input(entry["batch_id"])
+        assert set(bi) == BATCH_INPUT_KEYS and bi["schema"] == "tachi.batch-input/1"
+        assert (bi["plan_id"], bi["batch_id"], bi["stage"], bi["agent_type"], bi["attempt"]) == (printed["plan_id"], entry["batch_id"], "threats-md", TM_AGENT, 1)
+        assert bi["finding_ids"] == entry["finding_ids"] and bi["units"] == units and bi["part_path"] == entry["part_path"]
+        assert bi["tree_paths"] == {} and bi["refs"] == {}
+
+
+def test_the_threats_md_plan_file_holds_no_snapshot_no_refs_and_the_manifests_digest(stage, cli, tmp_path, tachi_version):
+    manifest = sections_manifest()
+    h = threats_md_run(stage, cli, tmp_path, manifest)
+    plan = h.plan_json()
+    expected = expected_threats_md_batches(manifest)
+    assert set(plan) == PLAN_KEYS and (plan["stage"], plan["agent_type"], plan["tachi_version"]) == ("threats-md", TM_AGENT, tachi_version)
+    assert plan["batch_size"] is None, "a stage with per-section sizes records a null batch size (section 4)"
+    assert plan["refs"] == {} and plan["architecture_warning"] is None and plan["out_snapshot"] is None
+    assert plan["unit_count"] == sum(len(units) for _, units in expected)
+    assert plan["retry_budget"] == {"limit": 2 * len(expected), "used": 0}
+    assert [entry["batch_id"] for entry in plan["batches"]] == ["B%03d" % n for n in range(1, len(expected) + 1)]
+    assert all((entry["parent"], entry["attempt"], entry["state"]) == (None, 1, "pending") for entry in plan["batches"])
+    manifest_path = h.out / ".tachi-build" / "sections.json"
+    recorded = [value for value in plan["inputs"].values() if value["sha256"] == sha256_of(manifest_path)]
+    assert len(recorded) == 1 and Path(recorded[0]["path"]).resolve() == manifest_path.resolve(), "one version: the joiner checks this digest too"
+
+
+def _manifest_with(section, count):
+    """A manifest whose table ``section`` has ``count`` units, and that has no other unit that this test counts."""
+    which = {key: kind for key, kind, _, _ in THREATS_MD}[section]
+    if which == "rows":
+        return sections_manifest(rows={section: count})
+    if which == "resolved":
+        return sections_manifest(resolved=["D-%d" % n for n in range(1, count + 1)])  # a prefix that the default open IDs don't use
+    prefix = "S" if which == "open" else which[0]
+    return sections_manifest(open_ids=["%s-%d" % (prefix, n) for n in range(1, count + 1)])
+
+
+@pytest.mark.parametrize("section,count,sizes", [
+    ("components", 59, [59]), ("components", 60, [30, 30]), ("components", 61, [31, 30]), ("spoofing", 16, [16]), ("spoofing", 17, [9, 8]),
+    ("agentic", 17, [9, 8]), ("llm", 33, [11, 11, 11]), ("correlated", 27, [27]), ("correlated", 28, [14, 14]), ("actions", 41, [41]),
+    ("actions", 42, [21, 21]), ("resolved", 60, [30, 30])])
+def test_a_threats_md_section_at_its_size_plans_one_part_and_one_more_unit_plans_balanced_parts(stage, cli, tmp_path, section, count, sizes):
+    """NFR-4 and D3's batch granularity, at each size part-files.md gives: 59 rows, 16 findings, 27 groups and 41 actions."""
+    h = threats_md_run(stage, cli, tmp_path, _manifest_with(section, count))
+    inputs = [h.batch_input(entry["batch_id"]) for entry in h.plan_json()["batches"]]
+    found = [len(bi["units"]) for bi in inputs if bi["units"][0]["section"] == section]
+    assert sorted(found, reverse=True) == sizes and max(found) - min(found) <= 1
+
+
+def test_row_units_number_the_rows_of_their_section_and_finding_units_come_in_s2_order(stage, cli, tmp_path):
+    manifest = sections_manifest(open_ids=["T-10", "T-9", "T-1", "S-2", "S-1"], rows=dict(ROWS_ZERO, components=61))
+    h = threats_md_run(stage, cli, tmp_path, manifest)
+    batches = [h.batch_input(entry["batch_id"]) for entry in h.plan_json()["batches"]]
+    components = [bi for bi in batches if bi["units"][0]["section"] == "components"]
+    # reading: a row unit is {section, row}, and its number is the table's row number, so a second part continues where the first stopped
+    spans = [(bi["units"][0]["row"], bi["units"][-1]["row"]) for bi in components]
+    assert len(components) == 2 and spans[0][0] == 1 and spans[1][0] == spans[0][1] + 1 and spans[1][1] == 61
+    assert abs(len(components[0]["units"]) - len(components[1]["units"])) <= 1
+    assert all(set(unit) == {"section", "row"} and unit["row"] == span[0] + number
+               for bi, span in zip(components, spans) for number, unit in enumerate(bi["units"]))
+    tampering = [bi for bi in batches if bi["units"][0]["section"] == "tampering"]
+    assert [bi["units"] for bi in tampering] == [[{"section": "tampering", "finding_id": fid} for fid in ("T-1", "T-9", "T-10")]]
+    assert tampering[0]["finding_ids"] == ["T-1", "T-9", "T-10"]
+
+
+def test_a_baseline_run_plans_the_resolved_lifecycle_and_baseline_tables_too(stage, cli, tmp_path):
+    manifest = sections_manifest(resolved=["T-2", "LLM-9"], rows={"lifecycle": 3, "baseline_reference": 4})
+    h = threats_md_run(stage, cli, tmp_path, manifest)
+    sections = [h.batch_input(entry["batch_id"])["units"][0]["section"] for entry in h.plan_json()["batches"]]
+    assert sections == [section for section, _ in expected_threats_md_batches(manifest)]
+    assert {"resolved", "lifecycle", "baseline_reference"} <= set(sections)
+    resolved = h.batch_input("B%03d" % (sections.index("resolved") + 1))
+    assert resolved["finding_ids"] == ["T-2", "LLM-9"]
+
+
+def test_planning_the_same_manifest_twice_gives_the_same_parts(stage, cli, tmp_path):
+    h = threats_md_run(stage, cli, tmp_path)
+    first = [(entry["batch_id"], h.batch_input(entry["batch_id"])["units"]) for entry in h.plan_json()["batches"]]
+    needs(h.plan_cli(), 0, "the same plan, again")
+    assert [(entry["batch_id"], h.batch_input(entry["batch_id"])["units"]) for entry in h.plan_json()["batches"]] == first
+
+
+def _manifest_raw(valid, variant):
+    text = json.dumps(valid, indent=2)
+    tail = text.rstrip()[:-1].rstrip()
+    return {"not-json": b"{not json", "top-level-array": b"[]", "empty-file": b"",
+            "duplicate-key": (tail + ',\n  "schema": "tachi.sections/1"\n}').encode("utf-8"), "nan": (tail + ',\n  "x": NaN\n}').encode("utf-8"),
+            "over-256-kib": (tail + ',\n  "x": "%s"\n}' % ("A" * (256 * 1024))).encode("utf-8")}[variant]
+
+
+def _fm(**changes):
+    def apply(manifest):
+        manifest["frontmatter"].update(changes)
+    return apply
+
+
+def _baseline_text(value):
+    def apply(manifest):
+        manifest["frontmatter"]["baseline"]["source"] = value
+    return apply
+
+
+def _gap(**changes):
+    def apply(manifest):
+        gap = {"component": "Gateway", "missing_category": "spoofing", "resolution": "findings_produced"}
+        gap.update(changes)
+        manifest["frontmatter"]["coverage_gate"] = {"status": "warn", "gaps": [gap]}
+    return apply
+
+
+def _rows(**changes):
+    def apply(manifest):
+        manifest["rows"].update(changes)
+    return apply
+
+
+def _no_rows_key(key):
+    def apply(manifest):
+        del manifest["rows"][key]
+    return apply
+
+
+# (case, whether the base manifest has a baseline, what to break). Each is a rule of the manifest's contract, and each ends the plan with exit 2.
+MANIFEST_BREAKS = [
+    ("unknown-key", False, _set("extra", 1)), ("missing-key", False, _drop("rows")), ("wrong-schema", False, _set("schema", "tachi.sections/2")),
+    ("no-open-findings", False, _set("open", [])), ("a-repeated-open-id", False, _set("open", ["T-1", "T-1"])),
+    ("two-spellings-of-one-id", False, _set("open", ["T-1", "T-01"])), ("an-id-off-the-allow-list", False, _set("open", ["T-1", "X-1"])),
+    ("resolved-overlaps-open", True, _set("resolved", ["T-1"])), ("the-same-id-in-two-spellings-across-the-lists", True, _set("resolved", ["S-01"])),
+    ("resolved-without-a-baseline", False, _set("resolved", ["T-9"])), ("a-baseline-without-resolved", True, _set("resolved", None)),
+    ("a-row-count-missing", False, _no_rows_key("components")), ("an-unknown-row-table", False, _rows(extra=1)),
+    ("a-negative-row-count", False, _rows(components=-1)), ("a-row-count-over-5000", False, _rows(components=5001)),
+    ("a-boolean-row-count", False, _rows(components=True)),
+    ("a-frontmatter-key-too-many", False, _fm(extra="x")), ("a-bad-date", False, _fm(date="22-11-2026")), ("an-input-format-off-the-list", False, _fm(input_format="pdf")),
+    ("a-bad-run-id", False, _fm(run_id="yesterday")), ("a-bad-classification-token", False, _fm(classification="Top Secret")),
+    ("a-quote-in-a-string", True, _baseline_text('reports/"earlier"/threats.md')), ("a-backslash-in-a-string", True, _baseline_text("reports\\earlier\\threats.md")),
+    ("a-bidi-control-in-a-string", True, _baseline_text("reports/" + chr(0x202E) + "earlier/threats.md")),
+    ("an-escape-in-a-string", True, _baseline_text("reports/\x1b[31mearlier/threats.md")),
+    ("a-quote-in-a-gap-component", False, _gap(component='Gate"way')), ("a-control-in-a-gap-component", False, _gap(component="Gate\x1bway")),
+    ("a-gap-resolution-off-the-list", False, _gap(resolution="fixed")), ("a-gap-category-off-the-token-pattern", False, _gap(missing_category="Spoofing Attacks")),
+    ("a-coverage-gate-status-off-the-list", False, _fm(coverage_gate={"status": "fail", "gaps": []})),
+]
+
+
+@pytest.mark.parametrize("case,baseline,mutate", MANIFEST_BREAKS, ids=[case for case, _, _ in MANIFEST_BREAKS])
+def test_the_threats_md_plan_refuses_a_manifest_that_breaks_its_contract_before_it_writes_anything(stage, cli, tmp_path, case, baseline, mutate):
+    """``plan --stage threats-md`` strict-loads the manifest and exits 2 when any rule of its contract fails, so the orchestrator stops with D4's
+    error (item O-beta; errata S1P-A18 for the strings, which the joiner writes double-quoted)."""
+    h = RunDir(stage, cli, tmp_path, "threats-md")
+    manifest = sections_manifest(resolved=["T-2", "LLM-9"] if baseline else None)
+    mutate(manifest)
+    write_sections(h, manifest)
+    refused(h.plan_cli(), "THREATS-MD", "plan --stage threats-md over a manifest with %s" % case)
+    assert not (h.build / "current.json").exists(), "a plan that fails leaves no pointer"
+
+
+@pytest.mark.parametrize("variant", ["not-json", "top-level-array", "empty-file", "duplicate-key", "nan", "over-256-kib"])
+def test_the_threats_md_plan_loads_the_manifest_strictly(stage, cli, tmp_path, variant):
+    h = RunDir(stage, cli, tmp_path, "threats-md")
+    write_sections(h, None, raw=_manifest_raw(sections_manifest(), variant))
+    refused(h.plan_cli(), "THREATS-MD", "plan --stage threats-md over a manifest that is %s" % variant)
+
+
+def test_the_threats_md_plan_exits_1_for_a_missing_manifest_and_reads_no_threats_md(stage, cli, tmp_path):
+    h = RunDir(stage, cli, tmp_path, "threats-md")
+    refused(h.plan_cli(), "THREATS-MD", "plan --stage threats-md with no section manifest", code=1)
+    write_sections(h, sections_manifest())
+    assert not (h.out / "threats.md").exists()
+    needs(h.plan_cli(), 0, "plan --stage threats-md takes no --threats and reads the manifest alone")
+
+
+# ---- reconcile
+
+
+def test_valid_threats_md_parts_for_every_batch_reconcile_to_complete(stage, cli, tmp_path):
+    h = threats_md_run(stage, cli, tmp_path)
+    write_valid_parts(h)
+    printed = needs(h.reconcile(), 0, "reconcile --stage threats-md").json
+    assert set(printed) == RECONCILE_KEYS and printed["status"] == "complete" and printed["waves"] == [] and printed["exhausted"] == []
+    assert printed["done"] == [entry["batch_id"] for entry in h.plan_json()["batches"]]
+
+
+def test_a_missing_threats_md_part_halves_a_row_batch_by_rows_and_says_so(stage, cli, tmp_path):
+    h = threats_md_run(stage, cli, tmp_path, sections_manifest(open_ids=["T-1"], rows=dict(ROWS_ZERO, components=4)))
+    write_valid_parts(h, skip=["B001"])
+    res = needs(h.reconcile(), 3, "reconcile --stage threats-md, a missing part")
+    entries = wave_entries(res.json)
+    assert [(e["batch_id"], e["section"], e["rows"], e["finding_ids"], e["problem"]) for e in entries] == [
+        ("B001-1", "components", [1, 2], [], "missing"), ("B001-2", "components", [3, 4], [], "missing")]
+    by_id = {entry["batch_id"]: entry for entry in h.plan_json()["batches"]}
+    assert by_id["B001"]["state"] == "split" and (by_id["B001-1"]["attempt"], by_id["B001-2"]["attempt"]) == (2, 2)
+    assert h.plan_json()["retry_budget"] == {"limit": 2 * 3, "used": 2}, "a halving counts 2"
+    assert [unit["row"] for unit in h.batch_input("B001-2")["units"]] == [3, 4]
+    assert Path(h.batch_input("B001-2")["part_path"]).name == "B001-2.a2.json" and Path(entries[1]["part_path"]).name == "B001-2.a2.json"
+    write_part(h, "B001-1")
+    write_part(h, "B001-2")
+    assert needs(h.reconcile(), 0, "reconcile --stage threats-md, after the retry").json["status"] == "complete"
+
+
+def test_a_missing_threats_md_part_halves_a_finding_batch_by_findings(stage, cli, tmp_path):
+    h = threats_md_run(stage, cli, tmp_path, sections_manifest(open_ids=["T-1", "T-2", "T-3", "T-4"], rows=ROWS_ZERO))
+    assert [h.batch_input(e["batch_id"])["units"][0]["section"] for e in h.plan_json()["batches"]] == ["tampering", "actions"]
+    write_valid_parts(h, skip=["B001"])
+    entries = wave_entries(needs(h.reconcile(), 3, "reconcile --stage threats-md, a missing finding part").json)
+    assert [(e["batch_id"], e["finding_ids"], e["rows"], e["problem"]) for e in entries] == [
+        ("B001-1", ["T-1", "T-2"], None, "missing"), ("B001-2", ["T-3", "T-4"], None, "missing")]
+
+
+def test_a_missing_part_of_one_unit_is_retried_as_it_is(stage, cli, tmp_path):
+    h = threats_md_run(stage, cli, tmp_path, sections_manifest(open_ids=["T-1"], rows=ROWS_ZERO))
+    write_valid_parts(h, skip=["B001"])
+    entries = wave_entries(needs(h.reconcile(), 3, "reconcile --stage threats-md, a missing one-unit part").json)
+    assert [(e["batch_id"], e["finding_ids"], e["problem"]) for e in entries] == [("B001", ["T-1"], "missing")]
+    by_id = {entry["batch_id"]: entry for entry in h.plan_json()["batches"]}
+    assert (by_id["B001"]["attempt"], by_id["B001"]["state"]) == (2, "pending") and h.plan_json()["retry_budget"]["used"] == 1
+
+
+def _first(key, value):
+    def apply(part, bi):
+        part["items"][0][key] = value
+    return apply
+
+
+def _drop_item_key(key):
+    def apply(part, bi):
+        del part["items"][0][key]
+    return apply
+
+
+def _part_key(key, value):
+    def apply(part, bi):
+        part[key] = value
+    return apply
+
+
+def _extra_row(part, bi):
+    part["items"].append(dict(part["items"][0]))
+
+
+def _short_row(part, bi):
+    part["items"].pop()
+
+
+BAD_VALUE = "SEVERE-9731"
+# (case, the section to break, what to break, a key the problem must name, the bad value it must not echo)
+THREATS_MD_BREAKS = [
+    ("an-unknown-key", "tampering", _first("extra", "x"), "extra", None), ("a-missing-key", "tampering", _drop_item_key("mitigation"), "mitigation", None),
+    ("a-number-for-a-string", "components", _first("description", 3), "description", None),
+    ("a-risk-level-off-the-list", "tampering", _first("risk_level", BAD_VALUE), "risk_level", BAD_VALUE),
+    ("a-status-off-the-list", "tampering", _first("status", BAD_VALUE), "status", BAD_VALUE),
+    ("a-likelihood-off-the-list", "tampering", _first("likelihood", BAD_VALUE), "likelihood", BAD_VALUE),
+    ("a-layer-off-the-list", "tampering", _first("maestro_layer", BAD_VALUE), "maestro_layer", BAD_VALUE),
+    ("a-pattern-off-the-list", "actions", _first("pattern", BAD_VALUE), "pattern", BAD_VALUE),
+    ("a-finding-outside-the-batch", "tampering", _first("finding_id", "T-99"), None, None),
+    ("a-forbidden-character", "tampering", _first("mitigation", "fix\x1b[31m the thing"), "mitigation", "\x1b"),
+    ("a-value-that-is-empty-once-its-edges-are-stripped", "components", _first("description", "   "), "description", None),
+    ("a-row-too-many", "components", _extra_row, None, None), ("a-row-too-few", "components", _short_row, None, None),
+    ("the-wrong-agent", "components", _part_key("agent_type", "tachi-threat-report"), None, None),
+    ("the-wrong-stage", "components", _part_key("stage", "report"), None, None),
+    ("a-fragment", "components", _part_key("fragments", [{"slot_key": "x", "text": "y"}]), None, None),
+]
+
+
+@pytest.mark.parametrize("case,section,mutate,key,value", THREATS_MD_BREAKS, ids=[case[0] for case in THREATS_MD_BREAKS])
+def test_a_threats_md_part_that_breaks_its_contract_is_invalid_and_retried_with_what_to_fix(stage, cli, tmp_path, case, section, mutate, key, value):
+    """An ``invalid`` batch is retried with the same units. The retry's wave entry names the earlier attempt's first failure, the item and the key, never
+    the value (part-files.md, "What plan and reconcile print")."""
+    h = threats_md_run(stage, cli, tmp_path, sections_manifest(open_ids=["T-1", "T-2", "T-3"], rows=dict(ROWS_ZERO, components=3)))
+    target = next(entry["batch_id"] for entry in h.plan_json()["batches"] if h.batch_input(entry["batch_id"])["units"][0]["section"] == section)
+    write_valid_parts(h, skip=[target])
+    write_part(h, target, mutate=mutate)
+    res = needs(h.reconcile(), 3, "reconcile --stage threats-md, an invalid part (%s)" % case)
+    entries = wave_entries(res.json)
+    assert [e["batch_id"] for e in entries] == [target], "an invalid batch is retried as it is, not halved"
+    problem = entries[0]["problem"]
+    assert isinstance(problem, str) and problem and problem != "missing"
+    if key is not None:
+        assert key in problem
+    if value is not None:
+        assert value not in problem
+    retried = {entry["batch_id"]: entry for entry in h.plan_json()["batches"]}[target]
+    assert (retried["attempt"], retried["state"]) == (2, "pending") and h.plan_json()["retry_budget"]["used"] == 1
+    write_part(h, target)
+    assert needs(h.reconcile(), 0, "reconcile --stage threats-md, after the retry").json["status"] == "complete"
+
+
+def test_threats_md_values_are_evidence_so_digits_markup_and_pipes_are_accepted(stage, cli, tmp_path):
+    """No ``threats-md`` value is narrative (step 11 doesn't run): digits stand, and the joiner escapes on output. Only a closed value, a forbidden
+    character or an empty value rejects a part."""
+    h = threats_md_run(stage, cli, tmp_path, sections_manifest(open_ids=["T-1"], rows=dict(ROWS_ZERO, components=1)))
+    text = "  Port 8443 | <b>bold</b> `code` {{7*7}} &amp; ### a heading-shaped word, two-factor  "
+    write_valid_parts(h, skip=["B001", "B002"])
+    write_part(h, "B001", mutate=_first("description", text))
+    write_part(h, "B002", mutate=_first("threat", text))
+    assert needs(h.reconcile(), 0, "reconcile --stage threats-md, a part of evidence").json["status"] == "complete"
+
+
+def test_reconcile_exits_2_for_a_threats_md_plan_whose_manifest_changed_after_it(stage, cli, tmp_path):
+    """One version (item O-beta): the plan pins the manifest's digest, as it pins every input, so a changed manifest can't be joined into this plan."""
+    h = threats_md_run(stage, cli, tmp_path)
+    write_valid_parts(h)
+    path = h.out / ".tachi-build" / "sections.json"
+    path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    refused(h.reconcile(), "THREATS-MD", "reconcile --stage threats-md after the manifest changed")
+
+
+def test_a_threats_md_part_from_an_earlier_plan_never_counts(stage, cli, tmp_path):
+    h = threats_md_run(stage, cli, tmp_path)
+    write_valid_parts(h)
+    needs(h.plan_cli(), 0, "a second plan")
+    res = needs(h.reconcile(), 3, "reconcile --stage threats-md over a fresh plan")
+    assert len(wave_entries(res.json)) >= 16 and res.json["done"] == []
+
+
+def test_threats_md_runs_out_of_attempts_and_exits_4_naming_the_part(stage, cli, tmp_path):
+    h = threats_md_run(stage, cli, tmp_path, sections_manifest(open_ids=["S-1"], rows=ROWS_ZERO))
+    assert [h.batch_input(e["batch_id"])["units"][0]["section"] for e in h.plan_json()["batches"]] == ["spoofing", "actions"]
+    for _ in range(2):  # attempts 2 and 3
+        needs(h.reconcile(), 3, "reconcile --stage threats-md, nothing written")
+    res = needs(h.reconcile(), 4, "reconcile --stage threats-md, the attempts exhausted")
+    assert [(e["batch_id"], e["finding_ids"]) for e in res.json["exhausted"]] == [("B001", ["S-1"]), ("B002", ["S-1"])] and res.json["status"] == "exhausted"
+    assert "B001" in res.err and "TACHI THREATS-MD FAILED" in res.err
+
+
+# ---------------------------------------------------------------------------- the joined threats.md: the input of the trees and report stages
+
+
+def finding(finding_id, status="NEW", risk="High", pattern=_DASH, component="Gateway"):
+    return {"id": finding_id, "status": status, "risk": risk, "pattern": pattern, "component": component}
+
+
+# (the prefixes of a per-finding table, the section heading that precedes it or None, its own heading)
+_PER_FINDING = [
+    (("S",), None, "### 3.1 Spoofing (S)"), (("T",), None, "### 3.2 Tampering (T)"), (("R",), None, "### 3.3 Repudiation (R)"),
+    (("I",), None, "### 3.4 Information Disclosure (I)"), (("D",), None, "### 3.5 Denial of Service (D)"),
+    (("E",), None, "### 3.6 Elevation of Privilege (E)"), (("AG", "AGP", "TE"), "## 4. AI Threat Tables", "### 4.1 Agentic Threats (AG)"),
+    (("LLM", "OI", "MI"), None, "### 4.2 LLM Threats (LLM)"),
+]
+CHAINS_OUTCOME = "chains written (3); candidates 5; surfaced 2"
+ATTACK_CHAINS_MD = "\n".join([
+    "---", 'schema_version: "1.1"', 'date: "2026-11-22"', "chain_count: 3", "surfaced_count: 2", "candidate_count: 5", "---", "", "# Attack Chains", "",
+    "## 1. Chain Summary", "", "| Chain ID | Layers | Findings | Max Severity | Chain-Breaking Target | Converging Chains |", "|---|---|---|---|---|---|",
+    "| CHAIN-001 | L2 → L3 | S-1 → T-2 | High | T-2 | 1 |", "| CHAIN-002 | L3 → L7 | T-2 → D-4 | Critical | D-4 | 0 |", "",
+    "## 2. Chain Details", "", "### CHAIN-001: A first chain", "", "**Surfaced**: Yes", "**Converging chains**: 1", "",
+    "### CHAIN-002: A second chain", "", "**Surfaced**: Yes", "**Converging chains**: 0", "",
+    "## 3. Other Consolidated Chains", "", "| Chain ID | Layers | Findings | Max Severity | Chain-Breaking Target |", "|---|---|---|---|---|",
+    "| CHAIN-003 | L2 → L3 | S-1 → D-4 | High | D-4 |", "", "**Consolidated chains not listed**: 0", ""])
+
+
+def joined_md(findings, resolved=(), baseline_source=None, outcome=None, groups=(), preamble=""):
+    """A synthetic joined ``threats.md`` (a list of ``finding(...)``), with every section that the trees and report planners read: Sections 1 and 2's
+    tables, the per-finding tables of Sections 3 and 4, Section 4a's groups, 4c's resolved findings, the outcome record (D13's place, before Section 5),
+    and Section 7, whose rows are in reverse S-2 order as a sort by risk leaves them."""
+    lines = ["---", 'schema_version: "1.4"', 'date: "2026-11-22"', 'input_format: "mermaid"', 'classification: "confidential"', 'run_id: "2026-11-22T10-00-00"',
+             "baseline:", "  source: %s" % ("null" if baseline_source is None else '"%s"' % baseline_source), "  date: null", "  finding_count: null",
+             "  run_id: null", "coverage_gate:", '  status: "pass"', "  gaps: []", "---", "", "# Threat Model Report", ""]
+    if preamble:
+        lines += [preamble, ""]
+    lines += ["## 1. System Overview", "", "### Components", "", "| Component | Type | MAESTRO Layer | Description |", "|---|---|---|---|",
+              "| Gateway | Process | L4 " + _DASH + " Deployment | The edge gateway |", "", "### Data Flows", "",
+              "| Source | Destination | Data | Protocol |", "|---|---|---|---|", "| Client | Gateway | Requests | HTTPS |", "",
+              "## 2. Trust Boundaries", "", "### Trust Zones", "", "| Zone | Trust Level | Components |", "|---|---|---|", "| Edge | Untrusted | Gateway |", ""]
+    stride_head = ["| ID | Status | Component | MAESTRO Layer | Threat | Likelihood | Impact | Risk Level | Mitigation |", "|---|---|---|---|---|---|---|---|---|"]
+    ai_head = ["| ID | Status | Component | MAESTRO Layer | Threat | OWASP Reference | Likelihood | Impact | Risk Level | Mitigation |", "|---|---|---|---|---|---|---|---|---|---|"]
+    lines += ["## 3. STRIDE Tables", ""]
+    for prefixes, section_heading, heading in _PER_FINDING:
+        if section_heading is not None:
+            lines += [section_heading, ""]
+        rows = [f for f in sorted(findings, key=lambda f: s2_key(f["id"])) if f["id"].partition("-")[0] in prefixes]
+        if not rows:
+            continue
+        ai = prefixes[0] in ("AG", "LLM")
+        lines += [heading, ""] + (ai_head if ai else stride_head)
+        for f in rows:
+            owasp = " | LLM01:2026" if ai else ""
+            lines.append("| %s | [%s] | %s | L4 %s Deployment | Threat text for %s%s | Medium | High | %s | Mitigation text for %s |"
+                         % (f["id"], f["status"], f["component"], _DASH, f["id"], owasp, f["risk"], f["id"]))
+        lines.append("")
+    if groups:
+        lines += ["## 4a. Correlated Findings", "", "| Group | Findings | Component |", "|-------|----------|-----------|"]
+        lines += ["| %s | %s | Gateway |" % (group, ", ".join(members)) for group, members in groups] + [""]
+    if resolved:
+        lines += ["## 4c. Resolved Findings", "", "| ID | Component | Threat | Last Risk Level | Resolution Reason |",
+                  "|----|-----------|--------|-----------------|-------------------|"]
+        lines += ["| %s | Legacy %d | Old threat %s | High | Component removed |" % (fid, n, fid) for n, fid in enumerate(resolved, 1)] + [""]
+    if outcome is not None:
+        lines += ["## Attack Chain Outcome", "", "**Attack chain outcome**: %s" % outcome, ""]
+    lines += ["## 5. Coverage Matrix", "", "| Component | S | T | R | I | D | E | AG | LLM | Total |", "|---|---|---|---|---|---|---|---|---|---|",
+              "| Gateway | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 |", "", "## 6. Risk Summary", "", "The counts here are not read by the planners.", "",
+              "## 7. Recommended Actions", "",
+              "| Finding ID | Status | Category | Pattern | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |", "|---|---|---|---|---|---|---|---|---|"]
+    for f in sorted(findings, key=lambda f: s2_key(f["id"]), reverse=True):
+        lines.append("| %s | %s | %s | %s | %s | L4 %s Deployment | Threat text for %s | %s | Mitigation text for %s |"
+                     % (f["id"], f["status"], _CATEGORY[f["id"].partition("-")[0]], f["pattern"], f["component"], _DASH, f["id"], f["risk"], f["id"]))
+    lines += [""]
+    if baseline_source is not None:
+        lines += ["## 8. Delta Summary", "", "### Finding Lifecycle", "", "| Status | Count | Description |", "|---|---|---|", "| NEW | 1 | New this run |", ""]
+    return "\n".join(lines) + "\n"
+
+
+@pytest.fixture(scope="module")
+def parsers(stage):
+    sys.path.insert(0, str(SCRIPTS_DIR))
+    import tachi_parsers
+
+    return tachi_parsers
+
+
+def test_the_joined_fixture_reads_through_the_shipped_reference_set_reader(parsers):
+    """The fixture is what the planners will read, so the shipped reader must read it as it was built: this guards the tests, not the script."""
+    items = [finding("S-1", "NEW", "Critical"), finding("T-2", "UNCHANGED", "High"), finding("LLM-3", "UPDATED", "Medium"), finding("AG-4", "NEW", "Low", "trust_exploitation")]
+    reference = parsers.parse_reference_set(joined_md(items, resolved=["D-9"], baseline_source="reports/earlier/threats.md", outcome=CHAINS_OUTCOME,
+                                                      groups=[("CG-1", ["S-1", "T-2"])]), "threats.md")
+    assert sorted(f["id"] for f in reference["open"]) == ["AG-4", "LLM-3", "S-1", "T-2"]
+    assert {f["id"]: (f["delta_status"], f["risk_level"]) for f in reference["open"]} == {
+        "S-1": ("NEW", "Critical"), "T-2": ("UNCHANGED", "High"), "LLM-3": ("UPDATED", "Medium"), "AG-4": ("NEW", "Low")}
+    assert [f["id"] for f in reference["resolved"]] == ["D-9"]
+    assert parsers.parse_correlation_groups(joined_md(items, groups=[("CG-1", ["S-1", "T-2"])]), ["S-1", "T-2"])["groups"][0]["members"] == ["S-1", "T-2"]
+
+
+# ---------------------------------------------------------------------------- the trees batch stage (D6's table, D14; contracts/cli.md, rev. 3)
+#
+# ``plan --stage trees`` reads the joined threats.md's reference set and the baseline's ``attack-trees/`` listing, and plans a unit for each open Critical
+# or High finding whose tree is generated: every one with no baseline or under Rule 2, and the ones with no baseline file under Rule 1. A tree is one Write,
+# to the path its batch input names under ``<plan_id>/trees/``, and the part is the batch manifest.
+
+TREE_FINDINGS = [finding("S-1", "UNCHANGED", "Critical"), finding("T-2", "UNCHANGED", "High"), finding("I-3", "UNCHANGED", "High"),
+                 finding("D-4", "UNCHANGED", "Medium"), finding("E-5", "UNCHANGED", "Low")]
+
+
+def tree_text(finding_id):
+    return ("# Attack Tree: %s " % finding_id + _DASH + " A synthetic threat\n\n**Finding**: %s | Risk Level: High\n\n```mermaid\ngraph TD\n"
+            "    ROOT[\"%s\"]\n    ROOT --> A[\"A step\"]\n```\n" % (finding_id, finding_id))
+
+
+def trees_item(unit, action=None, score=None):
+    """A tree part's item for ``unit``. A Rule 3 unit, planned ``regenerated``, is the one whose item may say another action and the only one that carries
+    ``similarity_score`` (S1P-A43, RD-6), so it takes a score from here, 0.5 unless the caller gives one."""
+    item = {"finding_id": unit["finding_id"], "delta_status": unit["delta_status"], "action": action or unit["action"]}
+    if unit["action"] == "regenerated":
+        item["similarity_score"] = 0.5 if score is None else score
+    return item
+
+
+def trees_part(bi):
+    return {"schema": "tachi.part/1", "plan_id": bi["plan_id"], "batch_id": bi["batch_id"], "stage": "trees", "agent_type": "tachi-attack-tree-delta",
+            "finding_ids": list(bi["finding_ids"]), "items": [trees_item(unit) for unit in bi["units"]], "fragments": []}
+
+
+PART_FOR["trees"] = trees_part
+
+
+def plan_trees(stage, cli, root, items, resolved=(), baseline=None, outcome=None):
+    """A run directory with a joined threats.md, and ``plan --stage trees`` over it. ``baseline`` is None for no ``--baseline-dir``, or the finding IDs
+    whose tree files the baseline directory holds (``[]`` for a baseline whose ``attack-trees/`` is empty, ``False`` for one with none)."""
+    h = RunDir(stage, cli, root, "trees")
+    threats = h.out / "threats.md"
+    threats.write_text(joined_md(items, resolved, baseline_source=None if baseline is None else "reports/earlier/threats.md", outcome=outcome), encoding="utf-8")
+    args = ["--threats", threats]
+    if baseline is not None:
+        directory = Path(root) / "baseline"
+        directory.mkdir(parents=True, exist_ok=True)
+        if baseline is not False:
+            (directory / "attack-trees").mkdir(exist_ok=True)
+            for fid in baseline:
+                (directory / "attack-trees" / ("%s-attack-tree.md" % fid.lower())).write_text(tree_text(fid), encoding="utf-8")
+        args += ["--baseline-dir", directory]
+    h.threats, h.args = threats, args
+    previous = os.getcwd()
+    os.chdir(str(root))  # R-6 resolves a baseline below the working directory, as the command runs: the run's root is the project's
+    try:
+        return h, h.plan_cli(*args)
+    finally:
+        os.chdir(previous)
+
+
+def tree_units(h):
+    """``{finding ID: its unit row}``, and the batch inputs in plan order."""
+    inputs = [h.batch_input(entry["batch_id"]) for entry in h.plan_json()["batches"]]
+    return {unit["finding_id"]: unit for bi in inputs for unit in bi["units"]}, inputs
+
+
+TREES_CASES = [
+    # (case, the findings' statuses, resolved, the baseline's trees, the rule it applies, the findings it plans)
+    ("no-baseline-flag", ["NEW", "NEW", "NEW"], (), None, "no-baseline", {"S-1", "T-2", "I-3"}),
+    ("a-baseline-directory-with-no-attack-trees", ["UNCHANGED"] * 3, (), False, "no-baseline", {"S-1", "T-2", "I-3"}),
+    ("a-baseline-whose-attack-trees-is-empty", ["UNCHANGED"] * 3, (), [], "no-baseline", {"S-1", "T-2", "I-3"}),
+    ("rule-1-every-tree-carried", ["UNCHANGED"] * 3, (), ["S-1", "T-2", "I-3"], "Rule 1", set()),
+    ("rule-1-one-tree-missing", ["UNCHANGED"] * 3, (), ["S-1", "T-2"], "Rule 1", {"I-3"}),
+    ("rule-2-a-new-finding", ["NEW", "UNCHANGED", "UNCHANGED"], (), ["S-1", "T-2", "I-3"], "Rule 2", {"S-1", "T-2", "I-3"}),
+    ("rule-2-an-updated-finding", ["UNCHANGED", "UPDATED", "UNCHANGED"], (), ["S-1", "T-2", "I-3"], "Rule 2", {"S-1", "T-2", "I-3"}),
+    ("rule-2-a-resolved-finding", ["UNCHANGED"] * 3, ["D-9"], ["S-1", "T-2", "I-3"], "Rule 2", {"S-1", "T-2", "I-3"}),
+]
+
+
+def _tree_case_findings(statuses):
+    return [dict(item, status=status) for item, status in zip(TREE_FINDINGS[:3], statuses)] + TREE_FINDINGS[3:]
+
+
+@pytest.mark.parametrize("case", TREES_CASES, ids=[case[0] for case in TREES_CASES])
+def test_the_trees_plan_plans_a_unit_for_each_open_critical_or_high_finding_whose_tree_is_generated(stage, cli, tmp_path, case):
+    """D14: the planner, not the agent, applies today's Step 1 table: no baseline generates every tree, Rule 1 carries the trees that have a baseline file
+    and generates only the missing ones, and Rule 2 regenerates every one. A Medium, Low or Note finding has no tree, and neither has a resolved one."""
+    _, statuses, resolved, baseline, _, expected = case
+    h, res = plan_trees(stage, cli, tmp_path, _tree_case_findings(statuses), resolved, baseline)
+    needs(res, 0, "plan --stage trees")
+    units, inputs = tree_units(h)
+    assert set(units) == expected
+    assert [fid for bi in inputs for fid in bi["finding_ids"]] == sorted(expected, key=s2_key), "S-2 order, across the batches"
+    if not expected:
+        assert res.json["waves"] == [] and h.plan_json()["batches"] == [] and h.plan_json()["batch_size"] is None
+    for fid, unit in units.items():
+        assert unit["delta_status"] == {item["id"]: item["status"] for item in _tree_case_findings(statuses)}[fid]
+
+
+@pytest.mark.parametrize("case", TREES_CASES, ids=[case[0] for case in TREES_CASES])
+def test_the_trees_plan_records_the_rule_it_applied(stage, cli, tmp_path, case):
+    """The merged manifest's ``rule_applied`` is "the plan's" (part-files.md and threat-model-records.md), so the assembler can read it from the plan."""
+    _, statuses, resolved, baseline, rule, _ = case
+    h, res = plan_trees(stage, cli, tmp_path, _tree_case_findings(statuses), resolved, baseline)
+    needs(res, 0, "plan --stage trees")
+    assert h.plan_json()["params"]["rule_applied"] == rule  # reading: the plan's params hold it, beside reference_digest
+
+
+def test_a_trees_plan_with_no_critical_or_high_finding_applies_no_op_and_reconciles_complete(stage, cli, tmp_path):
+    h, res = plan_trees(stage, cli, tmp_path, TREE_FINDINGS[3:], baseline=None)
+    needs(res, 0, "plan --stage trees, with nothing to draw")
+    assert res.json["waves"] == [] and h.plan_json()["params"]["rule_applied"] == "no-op"  # reading: the rule is recorded as the agent's manifest does
+    done = needs(h.reconcile(), 0, "reconcile --stage trees, a plan with no units").json
+    assert done["status"] == "complete" and done["done"] == []
+
+
+def test_the_trees_plan_file_has_the_trees_agent_a_size_of_12_and_no_snapshot(stage, cli, tmp_path, tachi_version):
+    h, res = plan_trees(stage, cli, tmp_path, [finding("S-1", "NEW", "High"), finding("T-2", "NEW", "Critical")])
+    needs(res, 0, "plan --stage trees")
+    plan = h.plan_json()
+    assert set(plan) == PLAN_KEYS and (plan["stage"], plan["agent_type"], plan["tachi_version"]) == ("trees", "tachi-attack-tree-delta", tachi_version)
+    assert plan["batch_size"] == 12 and plan["unit_count"] == 2 and plan["out_snapshot"] is None and plan["architecture_warning"] is None
+    assert plan["retry_budget"] == {"limit": 2, "used": 0}
+    assert re.match(r"^[0-9a-f]{64}\Z", plan["params"]["reference_digest"])
+    assert [value["sha256"] for value in plan["inputs"].values() if Path(value["path"]).resolve() == h.threats.resolve()] == [sha256_of(h.threats)]
+
+
+@pytest.mark.parametrize("count,sizes", [(12, [12]), (13, [7, 6]), (25, [9, 8, 8])])
+def test_the_trees_plan_batches_at_most_12_trees_balanced(stage, cli, tmp_path, count, sizes):
+    h, res = plan_trees(stage, cli, tmp_path, [finding("S-%d" % n, "NEW", "High") for n in range(1, count + 1)])
+    needs(res, 0, "plan --stage trees")
+    found = [len(entry["finding_ids"]) for entry in h.plan_json()["batches"]]
+    assert sorted(found, reverse=True) == sizes and max(found) - min(found) <= 1
+
+
+def test_a_trees_batch_input_names_one_path_for_each_tree_under_its_plans_trees_directory(stage, cli, tmp_path):
+    """Each tree goes to the path the batch input's ``tree_paths`` names, one for each finding (part-files.md section 3, D6): no path is built from content."""
+    h, res = plan_trees(stage, cli, tmp_path, [finding("S-1", "NEW", "Critical"), finding("LLM-12", "NEW", "High")])
+    needs(res, 0, "plan --stage trees")
+    bi = h.batch_input("B001")
+    assert set(bi["tree_paths"]) == {"S-1", "LLM-12"} and bi["finding_ids"] == ["S-1", "LLM-12"]
+    for fid, path in bi["tree_paths"].items():
+        assert Path(path).is_absolute() and Path(path).parent.resolve() == (h.plan_dir / "trees").resolve()
+        assert Path(path).name == "%s-attack-tree.md" % fid.lower(), "D14's file naming: the lowercase ID, then -attack-tree.md"
+    assert [(unit["finding_id"], unit["delta_status"], unit["action"]) for unit in bi["units"]] == [
+        ("S-1", "NEW", "generated_fresh"), ("LLM-12", "NEW", "generated_fresh")]
+
+
+def test_the_trees_plan_generates_a_baseline_tree_that_rule_1_finds_missing_as_a_fresh_one(stage, cli, tmp_path):
+    h, res = plan_trees(stage, cli, tmp_path, _tree_case_findings(["UNCHANGED"] * 3), baseline=["S-1", "T-2"])
+    needs(res, 0, "plan --stage trees, Rule 1")
+    units, _ = tree_units(h)
+    assert {fid: (unit["delta_status"], unit["action"]) for fid, unit in units.items()} == {"I-3": ("UNCHANGED", "generated_fresh")}
+
+
+def test_the_reference_digest_is_the_reference_sets_and_survives_the_body_lines_that_steps_2_5_to_2_8_add(stage, cli, tmp_path):
+    """RR3: the report plan compares ``params.reference_digest`` with the reference set of the ``threats.md`` that Step 2.9 finds, because Steps 2.5 to
+    2.8 change that file by design: the outcome record, the populator's block and the two body lines. A change to a finding must change it."""
+    items = [finding("S-1", "NEW", "Critical"), finding("T-2", "NEW", "High")]
+    h, res = plan_trees(stage, cli, tmp_path, items)
+    needs(res, 0, "plan --stage trees")
+    digest = h.plan_json()["params"]["reference_digest"]
+    body_lines = "**Architecture source**: `docs/security/architecture.md`\n\n**ID high-water mark**: `S-1, T-2`"
+    changed = joined_md(items, outcome=CHAINS_OUTCOME, preamble=body_lines) + "\n## Affected Assets\n\n| Asset | Finding |\n|---|---|\n| Records | S-1 |\n"
+    h.threats.write_text(changed, encoding="utf-8")
+    needs(h.plan_cli(*h.args), 0, "plan --stage trees over the file with its body lines added")
+    assert h.plan_json()["params"]["reference_digest"] == digest
+    h.threats.write_text(joined_md([finding("S-1", "NEW", "High"), finding("T-2", "NEW", "High")]), encoding="utf-8")
+    needs(h.plan_cli(*h.args), 0, "plan --stage trees over a changed finding")
+    assert h.plan_json()["params"]["reference_digest"] != digest
+
+
+# ---- reconcile
+
+
+def trees_run(stage, cli, root, items, **kwargs):
+    h, res = plan_trees(stage, cli, root, items, **kwargs)
+    needs(res, 0, "plan --stage trees")
+    return h
+
+
+def test_valid_tree_parts_and_files_reconcile_to_complete(stage, cli, tmp_path):
+    h = trees_run(stage, cli, tmp_path, [finding("S-1", "NEW", "Critical"), finding("T-2", "NEW", "High")])
+    write_valid_parts(h)
+    printed = needs(h.reconcile(), 0, "reconcile --stage trees").json
+    assert printed["status"] == "complete" and printed["done"] == ["B001"] and printed["waves"] == [] and printed["exhausted"] == []
+
+
+def test_a_trees_batch_with_a_missing_tree_is_missing_and_halves_by_findings(stage, cli, tmp_path):
+    """D6's table: done when the part validates and every named tree passes the per-file checks. A missing tree makes the batch ``missing``."""
+    h = trees_run(stage, cli, tmp_path, [finding("S-1", "NEW", "Critical"), finding("T-2", "NEW", "High")])
+    write_part(h, "B001", files=False)
+    Path(h.batch_input("B001")["tree_paths"]["S-1"]).parent.mkdir(parents=True, exist_ok=True)
+    Path(h.batch_input("B001")["tree_paths"]["S-1"]).write_text(tree_text("S-1"), encoding="utf-8")  # T-2's tree was never written
+    res = needs(h.reconcile(), 3, "reconcile --stage trees, a missing tree")
+    assert pending_ids(res.json) == ["B001-1", "B001-2"]
+    assert [h.batch_input(b)["finding_ids"] for b in ("B001-1", "B001-2")] == [["S-1"], ["T-2"]]
+    for batch_id in ("B001-1", "B001-2"):
+        write_part(h, batch_id)
+    assert needs(h.reconcile(), 0, "reconcile --stage trees, after the retry").json["status"] == "complete"
+
+
+@pytest.mark.parametrize("text", [
+    "# Attack Tree: S-1\n\nA description and no diagram.\n", tree_text("S-1") + "\n```mermaid\ngraph TD\n    X --> Y\n```\n",
+    tree_text("S-1").replace("A step", "A step " + chr(0x202E) + "reversed"), tree_text("S-1").replace("A step", "A step \x1b[31m")],
+    ids=["no-mermaid-block", "two-mermaid-blocks", "a-bidi-control", "an-escape-character"])
+def test_a_generated_tree_that_fails_the_per_file_checks_is_retried(stage, cli, tmp_path, text):
+    """D14's checks (one Mermaid block, no character that ``forbidden_character`` returns), held at ``reconcile`` so that a failing generated tree is
+    retried and never reaches Step 2.9 (ADR-050 D14, rev. 3's erratum S1P-A18). One unit, so the retry is the same batch whichever way it is read."""
+    h = trees_run(stage, cli, tmp_path, [finding("S-1", "NEW", "Critical")])
+    write_part(h, "B001")
+    Path(h.batch_input("B001")["tree_paths"]["S-1"]).write_text(text, encoding="utf-8")
+    res = needs(h.reconcile(), 3, "reconcile --stage trees, a tree that fails its per-file checks")
+    assert pending_ids(res.json) == ["B001"] and h.plan_json()["batches"][0]["attempt"] == 2
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda part, bi: part["items"][0].update(action="regenerated"), lambda part, bi: part["items"][0].update(delta_status="UPDATED"),
+    lambda part, bi: part["items"][0].update(action="invented"), lambda part, bi: part["items"][0].update(extra="x"),
+    lambda part, bi: part.update(agent_type="tachi-threat-report")],
+    ids=["an-action-that-differs-from-the-batch-input", "a-delta-status-that-differs-from-the-batch-input", "an-action-off-the-list", "an-unknown-key",
+         "the-wrong-agent"])
+def test_a_trees_part_that_disagrees_with_its_batch_input_is_invalid_and_retried(stage, cli, tmp_path, mutate):
+    """The part is the batch manifest: ``delta_status`` and ``action`` equal the batch input's (D6)."""
+    h = trees_run(stage, cli, tmp_path, [finding("S-1", "NEW", "Critical")])
+    write_part(h, "B001", mutate=mutate)
+    res = needs(h.reconcile(), 3, "reconcile --stage trees, a part that disagrees with its batch input")
+    assert pending_ids(res.json) == ["B001"]
+
+
+# ---------------------------------------------------------------------------- the report batch stage (item O-gamma; part-files.md, "Stage payload: report")
+#
+# ``plan --stage report --trees-plan ID --trees-plan-digest HEX`` runs after ``assemble-report.py trees``. It refuses a trees plan whose digest or pointer
+# differs, or that has a batch that isn't done, and records the trees plan file, the merged tree manifest, ``threats.md`` and, for ``chains written``,
+# ``attack-chains.md`` as inputs. A section part holds the fragments of one template section, and a findings part holds one item for each finding.
+
+REPORT_AGENT = "tachi-threat-report"
+THREE_FINDINGS = [finding("S-1", "NEW", "Critical"), finding("T-2", "NEW", "High"), finding("D-4", "NEW", "Medium")]
+
+
+def report_ready(stage, cli, root, items, resolved=(), baseline=False, outcome=None, groups=(), attack_chains=False):
+    """The trees stage planned and reconciled to done over a joined ``threats.md``, its merged manifest in place, and what ``plan --stage report`` takes.
+    Returns the report run, with its plan arguments in ``args``, and the trees run."""
+    ht = RunDir(stage, cli, root, "trees")
+    threats = ht.out / "threats.md"
+    threats.write_text(joined_md(items, resolved, baseline_source="reports/earlier/threats.md" if baseline else None, outcome=outcome, groups=groups),
+                       encoding="utf-8")
+    needs(ht.plan_cli("--threats", threats), 0, "plan --stage trees")
+    if ht.plan_json()["batches"]:
+        write_valid_parts(ht)
+        needs(ht.reconcile(), 0, "reconcile --stage trees")
+    drawn = [item for item in sorted(items, key=lambda item: (item["risk"] != "Critical", s2_key(item["id"]))) if item["risk"] in ("Critical", "High")]
+    (ht.out / "attack-trees").mkdir(exist_ok=True)
+    for item in drawn:
+        (ht.out / "attack-trees" / ("%s-attack-tree.md" % item["id"].lower())).write_text(tree_text(item["id"]), encoding="utf-8")
+    manifest = {"schema_version": "1.0", "rule_applied": "no-baseline", "attack_tree_count": len(drawn),
+                "trees": [{"finding_id": item["id"], "delta_status": item["status"], "action": "generated_fresh",
+                           "file_path": "attack-trees/%s-attack-tree.md" % item["id"].lower()} for item in drawn],
+                "summary": {"fresh": len(drawn), "carried_forward": 0, "regenerated": 0}}
+    (ht.out / "attack-trees" / ".manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    if attack_chains:
+        (ht.out / "attack-chains.md").write_text(ATTACK_CHAINS_MD, encoding="utf-8")
+    hr = RunDir(stage, cli, root, "report")
+    hr.threats, hr.args = threats, ["--threats", threats, "--trees-plan", ht.plan_id, "--trees-plan-digest", ht.digest]
+    return hr, ht
+
+
+def report_batches(hr):
+    """``(the section of each batch of the plan, in plan order, the batch inputs)``."""
+    inputs = [hr.batch_input(entry["batch_id"]) for entry in hr.plan_json()["batches"]]
+    return [bi["units"][0]["section"] for bi in inputs], inputs
+
+
+def planned_report(stage, cli, root, items, **kwargs):
+    hr, ht = report_ready(stage, cli, root, items, **kwargs)
+    needs(hr.plan_cli(*hr.args), 0, "plan --stage report, after the trees stage")
+    return hr, ht
+
+
+def report_part(bi):
+    base = {"schema": "tachi.part/1", "plan_id": bi["plan_id"], "batch_id": bi["batch_id"], "stage": "report", "agent_type": REPORT_AGENT}
+    first = bi["units"][0]
+    if "key" in first:  # a section part: prose in fragments, with no finding and no item
+        fragments = []
+        for unit in bi["units"]:
+            if unit["key"] == "themes":
+                fragments += [{"slot_key": "theme.1.title", "text": "A first theme"}, {"slot_key": "theme.1.body", "text": "Why it matters to the gateway."}]
+            else:
+                fragments.append({"slot_key": unit["key"], "text": "A passage that holds no numeral."})
+        return dict(base, finding_ids=[], items=[], fragments=fragments)
+    items = []
+    for unit in bi["units"]:
+        if first["section"] == "threat_analysis":
+            items.append({"finding_id": unit["finding_id"], "narrative": "A narrative about the finding.",
+                          "tree_summary": "A one-line summary of the attack tree." if unit.get("tree") else None})
+        else:
+            items.append({"finding_id": unit["finding_id"], "effort": "Medium", "dependencies": None})
+    return dict(base, finding_ids=list(bi["finding_ids"]), items=items, fragments=[])
+
+
+PART_FOR["report"] = report_part
+BASE_SECTIONS = ["exec_summary", "architecture_overview", "threat_categories", "threat_analysis", "cross_cutting_themes", "remediation_roadmap"]
+PATTERNED = [finding("S-1", "NEW", "Critical"), finding("T-2", "NEW", "High"), finding("LLM-3", "NEW", "Medium"), finding("AG-4", "NEW", "Low", "trust_exploitation")]
+REPORT_CASES = [
+    # (case, the findings, the run's options, the sections that the plan has, in the template's order)
+    ("a-first-run-with-no-pattern", THREE_FINDINGS, {}, BASE_SECTIONS),
+    ("a-baseline-run-with-a-pattern", PATTERNED, {"baseline": True, "resolved": ["D-9"]},
+     BASE_SECTIONS[:5] + ["agentic_patterns", "remediation_roadmap", "delta_summary"]),
+    ("an-outcome-of-no-chains-and-a-stale-chain-file", THREE_FINDINGS, {"outcome": "0 chains passed filter (no candidate links); candidates 4", "attack_chains": True}, BASE_SECTIONS),
+    ("a-skipped-outcome-and-a-stale-chain-file", THREE_FINDINGS, {"outcome": "skipped (inventory missing)", "attack_chains": True}, BASE_SECTIONS),
+]
+
+
+@pytest.mark.parametrize("case", REPORT_CASES, ids=[case[0] for case in REPORT_CASES])
+def test_the_report_plan_has_a_part_for_each_section_that_the_run_has_in_the_templates_order(stage, cli, tmp_path, case):
+    """D14: three sections are always planned beside the findings parts, and three are conditional: ``attack_chains`` only for ``chains written``,
+    ``agentic_patterns`` when an open finding has a pattern, and ``delta_summary`` when the run has a baseline."""
+    _, items, options, sections = case
+    hr, ht = planned_report(stage, cli, tmp_path, items, **options)
+    found, inputs = report_batches(hr)
+    assert found == sections
+    chains = [value for value in hr.plan_json()["inputs"].values() if Path(value["path"]).name == "attack-chains.md"]
+    assert chains == [], "attack-chains.md is an input for chains written alone, whatever file is in {out}"
+
+
+def test_the_report_plan_records_its_inputs_and_has_no_refs_no_snapshot_and_a_null_size(stage, cli, tmp_path, tachi_version):
+    hr, ht = report_ready(stage, cli, tmp_path, THREE_FINDINGS)
+    printed = needs(hr.plan_cli(*hr.args), 0, "plan --stage report, after the trees stage").json
+    assert set(printed) == {"plan_id", "plan_digest", "waves"}
+    plan = hr.plan_json()
+    assert set(plan) == PLAN_KEYS and (plan["stage"], plan["agent_type"], plan["tachi_version"]) == ("report", REPORT_AGENT, tachi_version)
+    assert plan["refs"] == {} and plan["batch_size"] is None and plan["out_snapshot"] is None and plan["architecture_warning"] is None
+    assert {Path(value["path"]).resolve() for value in plan["inputs"].values()} == {
+        (ht.plan_dir / "plan.json").resolve(), (hr.out / "attack-trees" / ".manifest.json").resolve(), hr.threats.resolve()}
+    assert all(value["sha256"] == sha256_of(value["path"]) for value in plan["inputs"].values())
+    assert plan["params"]["reference_digest"] == ht.plan_json()["params"]["reference_digest"] and re.match(r"^[0-9a-f]{64}\Z", plan["params"]["reference_digest"])
+    assert plan["retry_budget"]["limit"] == 2 * len(plan["batches"]) and plan["unit_count"] >= len(plan["batches"])
+
+
+def test_the_report_plan_records_attack_chains_md_for_chains_written_and_plans_a_unit_for_each_surfaced_chain(stage, cli, tmp_path):
+    """R9 (S1P-A58): the outcome record is read through ``tachi_parsers.parse_chain_outcome`` (T116's slice), and the surfaced chains are the Chain Details
+    sections of ``attack-chains.md`` that ``parse_attack_chains`` returns with ``surfaced`` true, in file order, which is rank order. The Chain Summary
+    table is not read a second time. The file is an input of the plan, and each chain is the unit ``chain.<chain ID>`` of the ``attack_chains`` section."""
+    hr, _ = planned_report(stage, cli, tmp_path, THREE_FINDINGS, outcome=CHAINS_OUTCOME, attack_chains=True)
+    sections, inputs = report_batches(hr)
+    assert sections == BASE_SECTIONS[:5] + ["attack_chains", "remediation_roadmap"]
+    assert [unit["key"] for unit in inputs[5]["units"]] == ["chain.CHAIN-001", "chain.CHAIN-002"]
+    recorded = [value for value in hr.plan_json()["inputs"].values() if Path(value["path"]).name == "attack-chains.md"]
+    assert len(recorded) == 1 and recorded[0]["sha256"] == sha256_of(hr.out / "attack-chains.md")
+
+
+def test_each_report_section_part_has_a_unit_for_each_fragment_key_of_the_contract(stage, cli, tmp_path):
+    hr, _ = planned_report(stage, cli, tmp_path, PATTERNED, baseline=True, resolved=["D-9"])
+    sections, inputs = report_batches(hr)
+    keys = {bi["units"][0]["section"]: [unit["key"] for unit in bi["units"]] for bi in inputs if "key" in bi["units"][0]}
+    assert keys["exec_summary"][:3] == ["risk_posture", "top_threats", "key_recommendations"] and set(keys["exec_summary"]) <= {
+        "risk_posture", "top_threats", "key_recommendations", "compliance"}
+    assert keys["architecture_overview"] == ["system_context", "trust_boundaries"]
+    categories = set(keys["threat_categories"])
+    assert {"category.spoofing", "category.tampering", "category.llm", "category.agentic"} <= categories and categories - {
+        "category.spoofing", "category.tampering", "category.llm", "category.agentic"} <= {"overview"}, "no summary key: the run has 4 open findings"
+    assert keys["cross_cutting_themes"] == ["themes"] and keys["agentic_patterns"] == ["pattern.trust_exploitation"] and keys["delta_summary"] == ["progress"]
+    for bi in inputs:
+        if "key" in bi["units"][0]:
+            assert bi["finding_ids"] == [] and all(unit["section"] == bi["units"][0]["section"] for unit in bi["units"]), "a section part has no finding"
+    assert len(inputs) == len(set(sections)) == 8, "a section part is one batch at planning"
+
+
+def test_a_finding_is_narrated_one_by_one_and_over_30_open_the_medium_low_and_note_ones_are_summarized_by_category(stage, cli, tmp_path):
+    """Section 3's rule (part-files.md, "Narrated or summarized"): over 30 open findings, a Medium, Low or Note finding has no item of its own."""
+    items = [finding("S-1", "NEW", "High")] + [finding("T-%d" % n, "NEW", "Medium") for n in range(1, 31)]
+    hr, _ = planned_report(stage, cli, tmp_path, items)
+    sections, inputs = report_batches(hr)
+    analysis = [unit for bi in inputs if bi["units"][0]["section"] == "threat_analysis" for unit in bi["units"]]
+    assert [unit["finding_id"] for unit in analysis] == ["S-1"] and analysis[0]["tree"] is True
+    categories = {unit["key"] for bi in inputs if bi["units"][0]["section"] == "threat_categories" for unit in bi["units"]}
+    assert {"category.spoofing", "category.tampering", "summary.tampering"} <= categories and "summary.spoofing" not in categories
+
+
+def test_a_run_whose_open_findings_are_all_summarized_has_no_analysis_part(stage, cli, tmp_path):
+    hr, _ = planned_report(stage, cli, tmp_path, [finding("T-%d" % n, "NEW", "Medium") for n in range(1, 32)])
+    sections, _ = report_batches(hr)
+    assert "threat_analysis" not in sections and "remediation_roadmap" in sections
+
+
+@pytest.mark.parametrize("count,sizes", [(22, [22]), (23, [12, 11])])
+def test_the_analysis_part_holds_at_most_22_findings_balanced(stage, cli, tmp_path, count, sizes):
+    hr, _ = planned_report(stage, cli, tmp_path, [finding("S-%d" % n, "NEW", "High") for n in range(1, count + 1)])
+    sections, inputs = report_batches(hr)
+    assert sorted((len(bi["units"]) for bi in inputs if bi["units"][0]["section"] == "threat_analysis"), reverse=True) == sizes
+    assert all(unit["tree"] is True for bi in inputs if bi["units"][0]["section"] == "threat_analysis" for unit in bi["units"])
+
+
+@pytest.mark.parametrize("count,sizes", [(144, [144]), (145, [73, 72])])
+def test_the_roadmap_part_holds_at_most_144_rows_balanced(stage, cli, tmp_path, count, sizes):
+    hr, _ = planned_report(stage, cli, tmp_path, [finding("T-%d" % n, "NEW", "Medium") for n in range(1, count + 1)])
+    sections, inputs = report_batches(hr)
+    assert sorted((len(bi["units"]) for bi in inputs if bi["units"][0]["section"] == "remediation_roadmap"), reverse=True) == sizes
+
+
+def test_the_roadmap_has_a_row_for_each_open_finding_that_is_not_a_correlation_groups_non_primary_member(stage, cli, tmp_path):
+    """A group's primary is its first member left after the claim rule, among the run's open IDs (D8; erratum S1P-A20), so the roadmap and ``threats.sarif``
+    name the same one. T-9 isn't open, so T-1 is the primary, and T-2 has no row of its own."""
+    items = [finding("S-1", "NEW", "High"), finding("T-1", "NEW", "High"), finding("T-2", "NEW", "High"), finding("T-3", "NEW", "High")]
+    hr, _ = planned_report(stage, cli, tmp_path, items, groups=[("CG-1", ["T-9", "T-1", "T-2"])])
+    sections, inputs = report_batches(hr)
+    roadmap = [unit["finding_id"] for bi in inputs if bi["units"][0]["section"] == "remediation_roadmap" for unit in bi["units"]]
+    analysis = [unit["finding_id"] for bi in inputs if bi["units"][0]["section"] == "threat_analysis" for unit in bi["units"]]
+    assert roadmap == ["S-1", "T-1", "T-3"] and analysis == ["S-1", "T-1", "T-2", "T-3"], "every open finding is narrated, and a peer has no roadmap row"
+
+
+@pytest.mark.parametrize("fault", ["wrong-digest", "newer-trees-plan", "a-batch-that-is-not-done"])
+def test_the_report_plan_refuses_a_trees_plan_it_cannot_trust_before_it_writes_anything(stage, cli, tmp_path, fault):
+    hr, ht = report_ready(stage, cli, tmp_path, THREE_FINDINGS)
+    args = list(hr.args)
+    if fault == "wrong-digest":
+        args[-1] = "0" * 64
+    elif fault == "newer-trees-plan":
+        needs(ht.plan_cli("--threats", hr.threats), 0, "a newer trees plan")  # the pointer now names it, so the plan in args is an earlier one
+    else:
+        waiting = RunDir(stage, cli, tmp_path / "other", "trees")
+        (waiting.out / "attack-trees").mkdir()
+        (waiting.out / "attack-trees" / ".manifest.json").write_text(json.dumps({"schema_version": "1.0"}), encoding="utf-8")
+        waiting.threats = waiting.out / "threats.md"
+        waiting.threats.write_text(joined_md(THREE_FINDINGS), encoding="utf-8")
+        needs(waiting.plan_cli("--threats", waiting.threats), 0, "a trees plan that waits for its parts")
+        hr = RunDir(stage, cli, tmp_path / "other", "report")
+        args = ["--threats", waiting.threats, "--trees-plan", waiting.plan_id, "--trees-plan-digest", waiting.digest]
+    refused(hr.plan_cli(*args), "REPORT", "plan --stage report over a trees plan with %s" % fault)
+    assert not (hr.build / "current.json").exists(), "a plan that fails leaves no pointer"
+
+
+def test_the_report_plan_exits_1_for_a_missing_merged_manifest(stage, cli, tmp_path):
+    hr, _ = report_ready(stage, cli, tmp_path, THREE_FINDINGS)
+    (hr.out / "attack-trees" / ".manifest.json").unlink()
+    refused(hr.plan_cli(*hr.args), "REPORT", "plan --stage report with no merged tree manifest", code=1)
+
+
+# ---- reconcile
+
+
+def test_valid_report_parts_for_every_batch_reconcile_to_complete(stage, cli, tmp_path):
+    hr, _ = planned_report(stage, cli, tmp_path, PATTERNED, baseline=True, resolved=["D-9"])
+    write_valid_parts(hr)
+    printed = needs(hr.reconcile(), 0, "reconcile --stage report").json
+    assert printed["status"] == "complete" and printed["done"] == [entry["batch_id"] for entry in hr.plan_json()["batches"]]
+
+
+def _fragments(**by_index):
+    def apply(part, bi):
+        for index, change in by_index.items():
+            part["fragments"][int(index[1:])].update(change)
+    return apply
+
+
+REPORT_BREAKS = [
+    ("a-required-fragment-missing", "exec_summary", lambda part, bi: part["fragments"].pop(0)),
+    ("a-fragment-key-twice", "exec_summary", lambda part, bi: part["fragments"].append(dict(part["fragments"][0]))),
+    ("an-unknown-fragment-key", "exec_summary", lambda part, bi: part["fragments"].append({"slot_key": "made_up", "text": "x"})),
+    ("a-fragment-text-that-is-not-a-string", "exec_summary", _fragments(f0={"text": 3})),
+    ("a-fragment-text-that-is-empty-once-stripped", "exec_summary", _fragments(f0={"text": "   "})),
+    ("an-item-in-a-section-part", "exec_summary", lambda part, bi: part.update(items=[{"finding_id": "S-1"}])),
+    ("a-finding-in-a-section-part", "exec_summary", lambda part, bi: part.update(finding_ids=["S-1"])),
+    ("the-wrong-agent", "exec_summary", lambda part, bi: part.update(agent_type="tachi-orchestrator")),
+    ("a-theme-with-a-gap", "cross_cutting_themes", lambda part, bi: part.update(
+        fragments=[{"slot_key": "theme.2.title", "text": "A"}, {"slot_key": "theme.2.body", "text": "B"}])),
+    ("a-theme-title-without-its-body", "cross_cutting_themes", lambda part, bi: part.update(fragments=[{"slot_key": "theme.1.title", "text": "A"}])),
+    ("an-effort-off-the-list", "remediation_roadmap", lambda part, bi: part["items"][0].update(effort="Trivial")),
+    ("a-null-tree-summary-for-a-critical-finding", "threat_analysis", lambda part, bi: part["items"][0].update(tree_summary=None)),
+    ("a-tree-summary-for-a-medium-finding", "threat_analysis", lambda part, bi: part["items"][2].update(tree_summary="A summary that must not be there.")),
+    ("a-finding-outside-the-batch", "threat_analysis", lambda part, bi: part["items"][0].update(finding_id="S-99")),
+    ("an-unknown-item-key", "remediation_roadmap", lambda part, bi: part["items"][0].update(extra="x")),
+    ("a-fragment-in-a-findings-part", "threat_analysis", lambda part, bi: part.update(fragments=[{"slot_key": "x", "text": "y"}])),
+]
+
+
+@pytest.mark.parametrize("case,section,mutate", REPORT_BREAKS, ids=[case[0] for case in REPORT_BREAKS])
+def test_a_report_part_that_breaks_its_contract_is_invalid_and_retried_as_it_is(stage, cli, tmp_path, case, section, mutate):
+    """Closed values reject the part: the finding, ``effort``, each fragment's key, and whether ``tree_summary`` is null. A section part has no item and
+    no finding, and a findings part has no fragment. An invalid batch is retried with the same units, never halved."""
+    hr, _ = planned_report(stage, cli, tmp_path, THREE_FINDINGS)
+    sections, inputs = report_batches(hr)
+    target = hr.plan_json()["batches"][sections.index(section)]["batch_id"]
+    write_valid_parts(hr, skip=[target])
+    write_part(hr, target, mutate=mutate)
+    res = needs(hr.reconcile(), 3, "reconcile --stage report, an invalid part (%s)" % case)
+    assert pending_ids(res.json) == [target]
+    write_part(hr, target)
+    assert needs(hr.reconcile(), 0, "reconcile --stage report, after the retry").json["status"] == "complete"
+
+
+def test_a_narrative_that_breaks_the_numeral_ban_or_its_limit_does_not_reject_the_part(stage, cli, tmp_path):
+    """D3's per-field fallback and step 9: a narrative field with a numeral outside a slot takes the fixed sentence, and one over its limit is cut. The
+    part stays valid (the record counts both, at Step 2.9)."""
+    hr, _ = planned_report(stage, cli, tmp_path, THREE_FINDINGS)
+    sections, _ = report_batches(hr)
+    ids = {section: entry["batch_id"] for section, entry in zip(sections, hr.plan_json()["batches"])}
+    write_valid_parts(hr, skip=[ids["exec_summary"], ids["threat_analysis"], ids["remediation_roadmap"]])
+    write_part(hr, ids["exec_summary"], mutate=_fragments(f0={"text": "There are 42 findings across 3 components. " + "x" * 3000}))
+    write_part(hr, ids["threat_analysis"], mutate=lambda part, bi: part["items"][0].update(narrative="This takes 3 steps and 2 hours."))
+    write_part(hr, ids["remediation_roadmap"], mutate=lambda part, bi: part["items"][0].update(dependencies="Needs 2 teams, as in {{7*7}}."))
+    assert needs(hr.reconcile(), 0, "reconcile --stage report, parts with narrative that falls back").json["status"] == "complete"
+
+
+def test_a_missing_section_part_halves_by_its_fragment_keys(stage, cli, tmp_path):
+    """§4's readings, with a batch's units in place of its IDs: a section part of two or more units that is missing is halved, contiguously."""
+    hr, _ = planned_report(stage, cli, tmp_path, THREE_FINDINGS)
+    sections, _ = report_batches(hr)
+    target = hr.plan_json()["batches"][sections.index("architecture_overview")]["batch_id"]
+    write_valid_parts(hr, skip=[target])
+    res = needs(hr.reconcile(), 3, "reconcile --stage report, a missing section part")
+    assert pending_ids(res.json) == [target + "-1", target + "-2"]
+    assert all(set(entry) == {"batch_id", "input_path"} for entry in wave_entries(res.json)), "the report stage prints PR 1's wave entries"
+    assert [[unit["key"] for unit in hr.batch_input(batch)["units"]] for batch in (target + "-1", target + "-2")] == [["system_context"], ["trust_boundaries"]]
+    for batch in (target + "-1", target + "-2"):
+        write_part(hr, batch)
+    assert needs(hr.reconcile(), 0, "reconcile --stage report, after the retry").json["status"] == "complete"
+
+
+# ---------------------------------------------------------------------------- fail for a batch stage: its failed record, and nothing moved (cli.md, rev. 3; RR3)
+
+
+def planned_stage(stage, cli, root, name):
+    if name == "threats-md":
+        return threats_md_run(stage, cli, root)
+    if name == "trees":
+        return trees_run(stage, cli, root, [finding("S-1", "NEW", "Critical")])
+    return planned_report(stage, cli, root, THREE_FINDINGS)[0]
+
+
+BATCH_STAGES = ["threats-md", "trees", "report"]
+
+
+@pytest.mark.parametrize("name", BATCH_STAGES)
+def test_fail_for_a_batch_stage_writes_its_failed_record_and_moves_nothing(stage, cli, tmp_path, tachi_version, name):
+    """Only ``fail --stage threat-model`` moves and restores the four canonical files. A batch stage's ``fail`` writes its own record, and the plan's
+    ``out_snapshot`` is null, so the record carries no declared-paths warning and no undeclared paths: ``close`` checks the run."""
+    h = planned_stage(stage, cli, tmp_path, name)
+    (h.out / "threat-report.md").write_bytes(NEW_MD)
+    (h.out / "gen.py").write_bytes(b"print('an improvised script')\n")
+    res = needs(h.fail("check-failed", detail="a synthetic failure"), 0, "fail --stage %s" % name)
+    assert res.json["moved"] == [] and res.json["restored"] == []
+    assert (h.out / "threat-report.md").read_bytes() == NEW_MD and (h.out / "gen.py").exists()
+    rec = h.record()
+    check_record(rec, name, h.plan_id, tachi_version)
+    assert rec["error"]["code"] == "check-failed" and rec["warnings"] == [] and rec["undeclared_paths"] == []
+    assert rec["counts"] == {"units": h.plan_json()["unit_count"]} and rec["outputs"] == [], "R10: a failed batch stage knows only its units"
+    assert Path(res.json["record"]).resolve() == (h.plan_dir / "stage-record.json").resolve()
+    assert re.search(r"^TACHI %s FAILED: " % name.upper(), res.err, re.M) and "Kept for diagnosis: %s" % h.plan_dir in res.err
+
+
+@pytest.mark.parametrize("name", BATCH_STAGES)
+def test_a_batch_stage_whose_plan_digest_was_copied_wrong_still_gets_its_failed_record(stage, cli, tmp_path, name):
+    """RR3's Step F order relies on this: a report plan whose digest was copied wrong is exit 2 with ``plan-digest-mismatch``, and the record is written."""
+    h = planned_stage(stage, cli, tmp_path, name)
+    res = h.fail("check-failed", digest="0" * 64)
+    assert res.code == 2 and (h.plan_dir / "stage-record.json").is_file(), res.describe()
+    assert [w["code"] for w in h.record()["warnings"]] == ["plan-digest-mismatch"]
+
+
+@pytest.mark.parametrize("name", BATCH_STAGES)
+def test_a_batch_stage_stops_at_a_digest_that_differs_and_at_a_stage_that_is_not_the_plans(stage, cli, tmp_path, name):
+    h = planned_stage(stage, cli, tmp_path, name)
+    refused(h.reconcile(digest="0" * 64), name.upper(), "reconcile --stage %s with another digest" % name)
+    other = "report" if name != "report" else "trees"
+    res = h.cli("reconcile", "--stage", other, "--out", h.out, *h.plan_args())
+    assert res.code in (1, 2), res.describe()  # the plan ID and its pointer belong to this stage only
+
+
+# ---------------------------------------------------------------------------- one case per exit code for the new invocations (contracts/cli.md), --help, and a real interpreter
+
+
+def _x_tm_plan_0(stage, cli, root, monkeypatch):
+    return RunDir(stage, cli, root).plan_cli()
+
+
+def _x_tm_plan_1(stage, cli, root, monkeypatch):
+    return cli("plan", "--stage", THREAT_MODEL, "--out", Path(root) / "nothing", "--date", DATE)
+
+
+def _x_tm_plan_2(stage, cli, root, monkeypatch):
+    return cli("plan", "--stage", THREAT_MODEL, "--out", RunDir(stage, cli, root).out, "--date", "2026-13-45")
+
+
+def _x_md_plan_0(stage, cli, root, monkeypatch):
+    h = RunDir(stage, cli, root, "threats-md")
+    write_sections(h, sections_manifest())
+    return h.plan_cli()
+
+
+def _x_md_plan_1(stage, cli, root, monkeypatch):
+    return RunDir(stage, cli, root, "threats-md").plan_cli()
+
+
+def _x_md_plan_2(stage, cli, root, monkeypatch):
+    h = RunDir(stage, cli, root, "threats-md")
+    write_sections(h, sections_manifest(open_ids=[]))
+    return h.plan_cli()
+
+
+def _x_md_reconcile_0(stage, cli, root, monkeypatch):
+    h = threats_md_run(stage, cli, root)
+    write_valid_parts(h)
+    return h.reconcile()
+
+
+def _x_md_reconcile_1(stage, cli, root, monkeypatch):
+    h = threats_md_run(stage, cli, root)
+    (h.plan_dir / "plan.json").unlink()
+    return h.reconcile()
+
+
+def _x_md_reconcile_2(stage, cli, root, monkeypatch):
+    return threats_md_run(stage, cli, root).reconcile(digest="0" * 64)
+
+
+def _x_md_reconcile_3(stage, cli, root, monkeypatch):
+    return threats_md_run(stage, cli, root).reconcile()
+
+
+def _x_md_reconcile_4(stage, cli, root, monkeypatch):
+    h = threats_md_run(stage, cli, root, sections_manifest(open_ids=["S-1"], rows=ROWS_ZERO))
+    assert h.reconcile().code == 3 and h.reconcile().code == 3
+    return h.reconcile()
+
+
+def _x_tm_fail_0(stage, cli, root, monkeypatch):
+    h = RunDir(stage, cli, root)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    return h.fail("check-failed")
+
+
+def _x_tm_fail_2(stage, cli, root, monkeypatch):
+    h = RunDir(stage, cli, root)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    return h.fail("check-failed", digest="0" * 64)
+
+
+def _x_close_0(stage, cli, root, monkeypatch):
+    return closeable(stage, cli, root).close()
+
+
+def _x_close_2(stage, cli, root, monkeypatch):
+    h = closeable(stage, cli, root)
+    (h.plan_dir / "checks" / "provenance.json").unlink()
+    return h.close()
+
+
+def _x_close_5(stage, cli, root, monkeypatch):
+    return closeable(stage, cli, root, chain=False).close()
+
+
+def _x_mark_0(stage, cli, root, monkeypatch):
+    (Path(root) / "run").mkdir()
+    monkeypatch.chdir(root)
+    write_run(Path(root), "threats.md", ["S-3"])
+    return id_mark(cli, None)
+
+
+def _x_mark_1(stage, cli, root, monkeypatch):
+    (Path(root) / "run").mkdir()
+    monkeypatch.chdir(root)
+    return id_mark(cli, None, threats="run/absent.md")
+
+
+def _x_mark_2(stage, cli, root, monkeypatch):
+    (Path(root) / "run").mkdir()
+    monkeypatch.chdir(root)
+    write_run(Path(root), "threats.md", ["S-3"])
+    needs(id_mark(cli, None), 0, "id-mark, before its usage error")
+    return cli("id-mark", "--threats", "run/threats.md")
+
+
+PR2_EXIT_CASES = [
+    ("plan threat-model", 0, _x_tm_plan_0), ("plan threat-model", 1, _x_tm_plan_1), ("plan threat-model", 2, _x_tm_plan_2),
+    ("plan threats-md", 0, _x_md_plan_0), ("plan threats-md", 1, _x_md_plan_1), ("plan threats-md", 2, _x_md_plan_2),
+    ("reconcile threats-md", 0, _x_md_reconcile_0), ("reconcile threats-md", 1, _x_md_reconcile_1), ("reconcile threats-md", 2, _x_md_reconcile_2),
+    ("reconcile threats-md", 3, _x_md_reconcile_3), ("reconcile threats-md", 4, _x_md_reconcile_4),
+    ("fail threat-model", 0, _x_tm_fail_0), ("fail threat-model", 2, _x_tm_fail_2),
+    ("close", 0, _x_close_0), ("close", 2, _x_close_2), ("close", 5, _x_close_5),
+    ("id-mark", 0, _x_mark_0), ("id-mark", 1, _x_mark_1), ("id-mark", 2, _x_mark_2),
+]
+
+
+@pytest.mark.parametrize("command,code,scenario", PR2_EXIT_CASES, ids=["%s-%d" % (command.replace(" ", "-"), code) for command, code, _ in PR2_EXIT_CASES])
+def test_one_case_per_exit_code_for_the_pr2_invocations(stage, cli, tmp_path, monkeypatch, command, code, scenario):
+    """contracts/cli.md's table, for what PR 2 adds: each (invocation, code) pair has one case, and the code 3 belongs to ``reconcile`` alone."""
+    res = scenario(stage, cli, tmp_path, monkeypatch)
+    assert res.code == code, "T092, %s exiting %d\n%s" % (command, code, res.describe())
+    if command.split()[0] != "reconcile":
+        assert res.code != 3
+    if code in (1, 2) and (command, code) != ("id-mark", 2):  # id-mark's 2 is a usage error, which argparse prints
+        assert re.search(r"^TACHI [A-Z-]+ FAILED: ", res.err, re.M), "T092, %s exiting %d, with D4's message\n%s" % (command, code, res.describe())
+
+
+def test_help_names_the_pr2_commands_and_the_pr2_arguments(stage, cli):
+    top = needs(cli("--help"), 0, "--help, naming close and id-mark").out
+    assert "close" in top and "id-mark" in top, "T092, --help must name close and id-mark\n" + top
+    for argv in (["close", "--help"], ["id-mark", "--help"]):
+        assert needs(cli(*argv), 0, "%s" % " ".join(argv)).out
+    assert "--no-baseline" in cli("id-mark", "--help").out and "--baseline" in cli("id-mark", "--help").out
+    plan_help = cli("plan", "--help").out
+    for name in ("threat-model", "threats-md", "trees", "report", "--trees-plan", "--trees-plan-digest"):
+        assert name in plan_help, name
+
+
+def test_the_pr2_invocations_exit_with_their_codes_from_a_real_interpreter(tmp_path):
+    """What a process alone shows (H15): the ``__main__`` guard turns the result into the exit status, one JSON object reaches stdout, and an error
+    reaches stderr alone. ``close`` ends with 5 here (a warning), which no earlier process case shows."""
+    out = tmp_path / "run"
+    out.mkdir()
+    threats = out / "threats.md"
+    threats.write_text(make_threats_md(["S-3", "T-5"]), encoding="utf-8")
+    marked_run = _run_script("id-mark", "--threats", threats, "--no-baseline")
+    assert marked_run.returncode == 0, "T092, id-mark from a real interpreter\n" + marked_run.stderr
+    assert isinstance(json.loads(marked_run.stdout), dict) and real_marks(threats.read_text(encoding="utf-8")) == ["S-3, T-5"]
+    absent = _run_script("id-mark", "--threats", out / "absent.md", "--no-baseline")
+    assert absent.returncode == 1 and absent.stdout == "" and absent.stderr.strip(), "T092, id-mark on a missing file\n" + absent.stderr
+
+    planned = _run_script("plan", "--stage", THREAT_MODEL, "--out", out, "--date", DATE)
+    assert planned.returncode == 0, "T092, plan --stage threat-model from a real interpreter\n" + planned.stderr
+    printed = json.loads(planned.stdout)
+    checks = out / ".tachi-build" / THREAT_MODEL / printed["plan_id"] / "checks"
+    checks.mkdir()
+    (checks / "provenance.json").write_text(json.dumps(handoff("provenance", printed["plan_id"], warnings=[WARN_REISSUED])), encoding="utf-8")
+    closed = _run_script("close", "--stage", THREAT_MODEL, "--out", out, "--plan", printed["plan_id"], "--plan-digest", printed["plan_digest"])
+    assert closed.returncode == 5, closed.stderr
+    assert isinstance(json.loads(closed.stdout), dict)
+    wrong = _run_script("close", "--stage", THREAT_MODEL, "--out", out, "--plan", printed["plan_id"], "--plan-digest", "0" * 64)
+    assert wrong.returncode == 2 and wrong.stderr.strip() and "TACHI THREAT-MODEL FAILED" in wrong.stderr
+
+
+# ---------------------------------------------------------------------------- the second pass over T092: what the first pass left unpinned (S1P-A43 to S1P-A63)
+#
+# The cases above were written before the code, from the contracts and OS's own readings of them (R1 to R13), which the architect then ruled. These pin
+# what the rulings left to the code: the pointers that a plan takes, R6's restore for every stage, what a failed run's record holds, the baseline readings of
+# ``id-mark``, and the shapes that the planners print and the units hold.
+
+PR2_POINTERS = {THREAT_MODEL: (), "threats-md": (), "trees": ("threats", "baseline_dir"), "report": ("threats", "trees_plan", "trees_plan_digest")}
+POINTER_FLAGS = {"threats": "--threats", "risk_scores": "--risk-scores", "baseline_dir": "--baseline-dir", "architecture": "--architecture",
+                 "target": "--target", "trees_plan": "--trees-plan", "trees_plan_digest": "--trees-plan-digest"}
+FOREIGN_POINTERS = [(name, pointer) for name, own in PR2_POINTERS.items() for pointer in POINTER_FLAGS if pointer not in own]
+
+
+@pytest.mark.parametrize("name,pointer", FOREIGN_POINTERS, ids=["%s-%s" % pair for pair in FOREIGN_POINTERS])
+def test_a_pr2_plan_refuses_a_pointer_that_is_not_its_own_and_writes_nothing(stage, cli, tmp_path, name, pointer):
+    """S1P-A63: each PR 2 plan takes only its own pointers, so a stale pointer in a command line is refused, never ignored."""
+    h = RunDir(stage, cli, tmp_path, name)
+    res = h.cli("plan", "--stage", name, "--out", h.out, "--date", DATE, POINTER_FLAGS[pointer], "0" * 64)
+    refused(res, name.upper(), "plan --stage %s with %s" % (name, POINTER_FLAGS[pointer]))
+    assert POINTER_FLAGS[pointer] in res.err and not (h.out / ".tachi-build").exists(), "nothing is written"
+
+
+@pytest.mark.parametrize("name", STAGE_NAMES)
+@pytest.mark.parametrize("flag,value", [("--trees-plan", FAKE_PLAN_ID), ("--trees-plan-digest", "0" * 64)])
+def test_a_pr1_plan_refuses_the_two_pointers_that_only_the_report_stage_takes(stage, cli, tmp_path, name, flag, value):
+    """PR 1's two stages keep every pointer they had, and a flag that is the report stage's alone is a stale one for them."""
+    h = Harness(stage, cli, tmp_path, name)
+    refused(h.plan_cli(flag, value), name.upper(), "plan --stage %s with %s" % (name, flag))
+    assert not (h.out / ".tachi-build").exists()
+
+
+def test_a_pr2_plan_takes_its_batch_size_through_the_function_interface_only(stage, cli, tmp_path):
+    """D6: a size is a constant of the script, and a smaller one reaches the planner through ``plan_stage``'s argument alone. For a stage whose sizes
+    are per section it sets every part's size."""
+    h = RunDir(stage, cli, tmp_path, "threats-md")
+    write_sections(h, sections_manifest(open_ids=["S-1", "S-2", "S-3", "S-4", "S-5"], rows=dict(ROWS_ZERO, components=5)))
+    printed = stage.plan_stage(stage="threats-md", out=h.out, date=DATE, batch_size=2)
+    h.plan_id = printed["plan_id"]
+    sizes = [len(h.batch_input(entry["batch_id"])["units"]) for entry in h.plan_json()["batches"]]
+    assert sizes == [2, 2, 1, 2, 2, 1, 2, 2, 1], "components, spoofing and actions: 5 units each, cut at 2 into three balanced runs"
+    for size in (0, 501, True, "4"):
+        with pytest.raises(stage.StageError):
+            stage.plan_stage(stage="threats-md", out=h.out, date=DATE, batch_size=size)
+
+
+# ---- R6 for PR 1's two stages (S1P-A55)
+
+
+@pytest.mark.parametrize("name", STAGE_NAMES)
+def test_fail_puts_back_a_pr1_output_that_was_deleted_after_the_plan(stage, cli, tmp_path, name):
+    """S1P-A55 (R6): D4's "changed since the plan" includes a file that is gone. Nothing moves for it, the pre-image goes back with the copy's bits, and the
+    name is listed in ``restored`` alone. A name that the plan recorded no pre-image for stays empty, and a file that a run wrote there still moves aside."""
+    h = Harness(stage, cli, tmp_path, name, ids=MIXED_IDS[:3])
+    h.earlier(sarif=False)  # only the markdown was there when the plan was made
+    needs(h.plan_cli(), 0, "plan --stage %s" % name)
+    (h.out / h.md).unlink()
+    (h.out / h.sarif).write_bytes(NEW_SARIF)
+    res = needs(h.fail(), 0, "fail --stage %s over a deleted output" % name)
+    assert res.json["moved"] == [h.sarif] and res.json["restored"] == [h.md]
+    assert (h.out / h.md).read_bytes() == EARLIER_MD and not (h.out / h.sarif).exists()
+    assert [Path(output["path"]).name for output in h.read_json(h.plan_dir / "stage-record.json")["outputs"]] == [h.sarif], "only a file that moved is listed"
+
+
+@pytest.mark.parametrize("name", STAGE_NAMES)
+def test_fail_leaves_a_name_empty_when_the_plan_recorded_no_pre_image_for_it(stage, cli, tmp_path, name):
+    h = Harness(stage, cli, tmp_path, name, ids=MIXED_IDS[:3])
+    needs(h.plan_cli(), 0, "plan --stage %s" % name)
+    res = needs(h.fail(), 0, "fail --stage %s over names that were empty at plan time" % name)
+    assert res.json["moved"] == [] and res.json["restored"] == [] and not (h.out / h.md).exists() and not (h.out / h.sarif).exists()
+
+
+@pytest.mark.parametrize("name", STAGE_NAMES)
+def test_fail_does_not_put_back_a_deleted_output_whose_pre_image_no_longer_matches(stage, cli, tmp_path, name):
+    """KB 21's double gate holds for the empty name too: a copy whose digest differs from the one the plan recorded never goes back."""
+    h = Harness(stage, cli, tmp_path, name, ids=MIXED_IDS[:3])
+    h.earlier()
+    needs(h.plan_cli(), 0, "plan --stage %s" % name)
+    (h.plan_dir / "preimage" / h.md).write_bytes(b"# a tampered copy\n")
+    (h.out / h.md).unlink()
+    res = h.fail()
+    assert res.code == 2 and (h.plan_dir / "stage-record.json").is_file(), res.describe()
+    assert not (h.out / h.md).exists() and res.json["restored"] == []
+    assert {w["code"] for w in h.read_json(h.plan_dir / "stage-record.json")["warnings"]} == {"move-refused"}
+
+
+# ---- fail takes its plan from its arguments (T092's pin; whether fail should refuse such a plan is T136's follow-up)
+
+
+@pytest.mark.parametrize("name", [THREAT_MODEL, "risk-score"])
+def test_fail_sets_the_records_plan_id_from_its_arguments_and_never_checks_that_plan_json_names_itself(stage, cli, tmp_path, name):
+    """A plan directory whose ``plan.json`` names another plan, with the pointer on the directory and the digest of that file, passes every check that
+    ``fail`` makes: it takes the record's ``plan_id`` from ``--plan``. ``trusted_plan`` would refuse such a plan, and ``fail`` doesn't call it."""
+    h = RunDir(stage, cli, tmp_path, name) if name == THREAT_MODEL else Harness(stage, cli, tmp_path, name)
+    needs(h.plan_cli(), 0, "the plan")
+    named_by_the_file = h.plan_id
+    other = "20200101T000000Z-aaaaaaaaaaaa"
+    (h.build / other).mkdir()
+    (h.build / other / "plan.json").write_bytes((h.plan_dir / "plan.json").read_bytes())
+    (h.build / "current.json").write_text(json.dumps({"schema": "tachi.plan-pointer/1", "plan_id": other}), encoding="utf-8")
+    res = h.cli("fail", "--stage", name, "--out", h.out, "--plan", other, "--plan-digest", sha256_of(h.build / other / "plan.json"), "--reason", "check-failed")
+    needs(res, 0, "fail --stage %s over a plan.json that names another plan" % name)
+    record = h.read_json(h.build / other / "stage-record.json")
+    assert record["plan_id"] == other and Path(res.json["record"]).resolve() == (h.build / other / "stage-record.json").resolve()
+    assert h.read_json(h.build / other / "plan.json")["plan_id"] == named_by_the_file
+    assert not (h.build / named_by_the_file / "stage-record.json").exists()
+
+
+# ---- the run's record, what fail and close hold in it
+
+
+def test_close_has_no_exit_1_so_a_missing_out_directory_is_a_2(stage, cli, tmp_path):
+    """S1P-A61: the table of ``close`` has no 1. A run-level plan or pointer that is missing is a 2, and so is the directory that holds them."""
+    refused(cli("close", "--stage", THREAT_MODEL, "--out", tmp_path / "nothing", "--plan", FAKE_PLAN_ID, "--plan-digest", "0" * 64), "THREAT-MODEL",
+            "close over a missing --out")
+    h = RunDir(stage, cli, tmp_path)
+    refused(h.close(plan_id=FAKE_PLAN_ID, digest="0" * 64), "THREAT-MODEL", "close over a plan that was never made")
+
+
+def test_close_stage_takes_the_run_level_plan_alone(stage, tmp_path):
+    for other in ("risk-score", "compensating-controls", "threats-md", "trees", "report"):
+        with pytest.raises(stage.StageError) as info:
+            stage.close_stage(other, tmp_path, FAKE_PLAN_ID, "0" * 64)
+        assert info.value.code == 2
+
+
+def test_fail_lists_the_undeclared_paths_of_the_run_in_its_record(stage, cli, tmp_path):
+    """The run-level plan snapshots {out}, so its ``fail`` runs the declared-paths check as PR 1's does, and a batch stage's, which takes no snapshot, doesn't."""
+    h = RunDir(stage, cli, tmp_path)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    (h.out / "gen.py").write_text("print('an improvised script')\n", encoding="utf-8")
+    needs(h.fail("check-failed"), 0, "fail --stage threat-model")
+    assert h.record()["undeclared_paths"] == ["gen.py"]
+
+
+def test_fail_keeps_its_record_within_the_warning_cap_when_the_hand_off_files_hold_more(stage, cli, tmp_path):
+    """Section 6, the record's cap, for ``fail`` as for ``close``: the first 999 stay, then ``warnings-truncated`` with the full count. A move that is
+    refused still shows in a record that is full: the folded warnings give way to it, so the record stays valid and says why the exit is 2."""
+    h = RunDir(stage, cli, tmp_path)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    chain = [{"code": "chain-outcome:rewritten", "detail": "chain warning %d" % n} for n in range(600)]
+    prov = [{"code": "id:reissued", "detail": "provenance warning %d" % n} for n in range(700)]
+    h.write_handoff("attack-chains", warnings=chain)
+    h.write_handoff("provenance", warnings=prov)
+    needs(h.fail("check-failed"), 0, "fail --stage threat-model, over a full record")
+    warnings = h.record()["warnings"]
+    assert len(warnings) == 1000 and warnings[:999] == (chain + prov)[:999]
+    assert warnings[999]["code"] == "warnings-truncated" and "1300" in warnings[999]["detail"]
+
+    (h.out / "threats.md").mkdir()  # a directory at a canonical name: the move is refused
+    res = h.fail("check-failed")
+    assert res.code == 2, res.describe()
+    warnings = h.record()["warnings"]
+    assert len(warnings) == 1000 and warnings[:998] == (chain + prov)[:998] and warnings[998]["code"] == "warnings-truncated"
+    assert warnings[999]["code"] == "move-refused"
+
+
+@pytest.mark.parametrize("name", BATCH_STAGES)
+def test_fail_after_the_batches_are_done_records_each_of_them(stage, cli, tmp_path, name):
+    """A batch stage's failed record knows its batches: the parts that it accepted give its ``input_digest`` and its ``done`` count, though it moves nothing."""
+    h = planned_stage(stage, cli, tmp_path, name)
+    write_valid_parts(h)
+    needs(h.reconcile(), 0, "reconcile --stage %s" % name)
+    needs(h.fail("render-failed"), 0, "fail --stage %s over done batches" % name)
+    rec, plan = h.record(), h.plan_json()
+    assert rec["batches"]["done"] == rec["batches"]["planned"] == len(plan["batches"]) and rec["counts"] == {"units": plan["unit_count"]}
+    assert re.match(r"^sha256:[0-9a-f]{64}\Z", rec["input_digest"]) and rec["outputs"] == []
+
+
+@pytest.mark.parametrize("name", BATCH_STAGES)
+def test_a_failed_record_is_still_written_when_the_part_of_a_done_batch_no_longer_validates(stage, cli, tmp_path, name):
+    """The digest of a failed record covers the parts that still validate, so a part that has turned invalid since is left out and ``fail`` still writes."""
+    h = planned_stage(stage, cli, tmp_path, name)
+    write_valid_parts(h)
+    needs(h.reconcile(), 0, "reconcile --stage %s" % name)
+    first = h.plan_json()["batches"][0]
+    Path(h.batch_input(first["batch_id"])["part_path"]).write_bytes(b"{not json")
+    needs(h.fail("check-failed"), 0, "fail --stage %s over a part that no longer validates" % name)
+    assert h.record()["batches"]["done"] == len(h.plan_json()["batches"])
+
+
+# ---- id-mark's baseline (S1P-A54, ruling B)
+
+
+def test_id_mark_takes_a_baseline_whose_mark_line_reads_whatever_its_section_7_holds(stage, cli, marked):
+    """S1P-A54: a baseline whose mark line reads is enough. Its Section 7, which can't be read here, is never asked for."""
+    threats = write_run(marked, "threats.md", ["S-3"])
+    (marked / "run" / "baseline.md").write_text(make_threats_md(["S-1"], section7="missing", preamble=MARK_TEXT % "S-14, T-22"), encoding="utf-8")
+    res = needs(id_mark(cli), 0, "id-mark over a baseline with a mark and no Section 7")
+    assert real_marks(threats.read_text(encoding="utf-8")) == ["S-14, T-22"] and res.json["floor"] == "mark"
+
+
+def test_id_mark_stops_when_the_baseline_has_no_mark_and_its_findings_cannot_be_read(stage, cli, marked):
+    """S1P-A54: with no mark to take, the seed needs the baseline's findings, and a mark that it can't compute is never written (a lower one lets an ID come back)."""
+    threats = write_run(marked, "threats.md", ["S-3"])
+    (marked / "run" / "baseline.md").write_text(make_threats_md(["S-1"], section7="missing"), encoding="utf-8")
+    before = threats.read_bytes()
+    refused(id_mark(cli), "THREAT-MODEL", "id-mark over a baseline with no mark and no Section 7")
+    assert threats.read_bytes() == before
+
+
+@pytest.mark.parametrize("value", ["S-5,T-2", "S-5, S-6", "not an id", "", "S-5 T-6", "S-5, "],
+                         ids=["no-space-after-the-comma", "a-prefix-twice", "no-id", "empty", "no-comma", "a-trailing-comma"])
+def test_a_baseline_mark_line_that_does_not_hold_marks_reads_as_absent(stage, cli, marked, value):
+    """The line is ``MARKS``, a backtick-quoted run of IDs separated by ``, `` with no prefix twice. Any other value is no mark, so the seed applies."""
+    threats = write_run(marked, "threats.md", ["S-3"])
+    write_run(marked, "baseline.md", ["S-3"], ["S-9"], preamble=MARK_TEXT % value)
+    res = needs(id_mark(cli), 0, "id-mark over a baseline whose mark line is %r" % value)
+    assert real_marks(threats.read_text(encoding="utf-8")) == ["S-9"] and res.json["floor"] == "seed"
+
+
+def test_id_mark_counts_the_runs_own_section_4c_and_prints_what_it_did(stage, cli, marked):
+    """An ID in this run's Section 4c has been used, so it is never numbered again. The printed object says what the line is, what happened to the file and
+    where the baseline's side came from."""
+    threats = write_run(marked, "threats.md", ["S-3"], resolved=["T-7"])
+    assert needs(id_mark(cli, None), 0, "id-mark").json == {"mark": "S-3, T-7", "action": "added", "floor": "none"}
+    assert real_marks(threats.read_text(encoding="utf-8")) == ["S-3, T-7"]
+    assert needs(id_mark(cli, None), 0, "id-mark, again").json["action"] == "unchanged"
+    threats.write_text(threats.read_text(encoding="utf-8").replace("S-3, T-7", "S-999"), encoding="utf-8")
+    assert needs(id_mark(cli, None), 0, "id-mark over a stale mark").json["action"] == "replaced"
+
+
+def test_id_mark_refuses_a_baseline_that_is_a_link(stage, cli, marked):
+    write_run(marked, "threats.md", ["S-3"])
+    real = write_run(marked, "real.md", ["S-3"])
+    (marked / "run" / "baseline.md").symlink_to(real)
+    refused(id_mark(cli), "THREAT-MODEL", "id-mark over a linked baseline")
+
+
+# ---- the run-level plan, and the threats-md stage (S1P-A56)
+
+
+def test_the_run_level_plan_reconciles_complete_with_nothing_to_do(stage, cli, tmp_path):
+    h = RunDir(stage, cli, tmp_path)
+    needs(h.plan_cli(), 0, "the run-level plan")
+    printed = needs(h.reconcile(), 0, "reconcile --stage threat-model").json
+    assert printed["status"] == "complete" and printed["done"] == [] and printed["waves"] == [] and printed["exhausted"] == []
+
+
+def test_a_missing_part_of_an_odd_number_of_rows_halves_with_the_extra_row_in_the_first_child(stage, cli, tmp_path):
+    """S1P-A56: a halving cuts the units contiguously, and ``<parent>-1`` takes the extra unit of an odd count, as the planner cuts a table."""
+    h = threats_md_run(stage, cli, tmp_path, sections_manifest(open_ids=["T-1"], rows=dict(ROWS_ZERO, components=5)))
+    write_valid_parts(h, skip=["B001"])
+    entries = wave_entries(needs(h.reconcile(), 3, "reconcile --stage threats-md, a missing part of 5 rows").json)
+    assert [(entry["batch_id"], entry["rows"]) for entry in entries] == [("B001-1", [1, 3]), ("B001-2", [4, 5])]
+
+
+def test_an_overflow_object_halves_a_threats_md_batch_and_its_problem_is_the_reason(stage, cli, tmp_path):
+    """An overflow object is a kind of failure that the planner halves for, and the wave entry's ``problem`` is the part reader's detail, unchanged."""
+    h = threats_md_run(stage, cli, tmp_path, sections_manifest(open_ids=["T-1"], rows=dict(ROWS_ZERO, components=2)))
+    write_valid_parts(h, skip=["B001"])
+    bi = h.batch_input("B001")
+    overflow = {"schema": "tachi.overflow/1", "plan_id": bi["plan_id"], "batch_id": bi["batch_id"], "stage": bi["stage"], "agent_type": bi["agent_type"],
+                "reason": "output-budget"}
+    write_part(h, "B001", raw=json.dumps(overflow).encode("utf-8"))
+    entries = wave_entries(needs(h.reconcile(), 3, "reconcile --stage threats-md, an overflow object").json)
+    assert [(e["batch_id"], e["rows"], e["problem"]) for e in entries] == [("B001-1", [1, 1], "output-budget"), ("B001-2", [2, 2], "output-budget")]
+
+
+def test_the_exit_4_message_names_the_rows_of_a_batch_that_holds_no_finding(stage, cli, tmp_path):
+    h = threats_md_run(stage, cli, tmp_path, sections_manifest(open_ids=["T-1"], rows=dict(ROWS_ZERO, components=2)))
+    write_valid_parts(h, skip=["B001"])  # no part of B001 or of its halves is ever written
+    for _ in range(2):
+        needs(h.reconcile(), 3, "reconcile --stage threats-md, a part that never comes")
+    res = needs(h.reconcile(), 4, "reconcile --stage threats-md, the attempts exhausted")
+    assert "Batch B001-1: components rows 1 to 1" in res.err
+    needs(h.fail("unrecoverable-batch"), 0, "fail --stage threats-md")
+    assert h.record()["error"]["batch_id"] == "B001-1"
+
+
+def test_the_exit_4_message_names_the_fragment_keys_of_a_report_section(stage, cli, tmp_path):
+    hr, _ = planned_report(stage, cli, tmp_path, THREE_FINDINGS)
+    sections, _ = report_batches(hr)
+    target = hr.plan_json()["batches"][sections.index("architecture_overview")]["batch_id"]
+    write_valid_parts(hr, skip=[target])
+    for _ in range(2):
+        needs(hr.reconcile(), 3, "reconcile --stage report, a part that never comes")
+    res = needs(hr.reconcile(), 4, "reconcile --stage report, the attempts exhausted")
+    assert "architecture_overview: system_context" in res.err and "TACHI REPORT FAILED" in res.err
+
+
+# ---- the trees stage: Rule 3's units, the baseline and the tree files (S1P-A43, S1P-A44, R11, RD-6, RD-8, RD-16)
+
+
+def _rule_3_run(stage, cli, tmp_path):
+    items = [finding("S-1", "NEW", "Critical"), finding("T-2", "UNCHANGED", "High"), finding("I-3", "UNCHANGED", "High"), finding("D-4", "UPDATED", "High")]
+    h, res = plan_trees(stage, cli, tmp_path, items, baseline=["T-2", "D-4"])  # the baseline has trees for T-2 and D-4 only
+    needs(res, 0, "plan --stage trees, Rule 2")
+    return h
+
+
+def test_a_rule_2_plan_plans_a_rule_3_unit_for_an_unchanged_finding_whose_baseline_has_a_tree(stage, cli, tmp_path):
+    """Rule 2 regenerates every tree, and an UNCHANGED finding that the baseline has a tree for is Rule 3's: planned ``regenerated``, which the agent's
+    item may answer with ``regenerated`` or ``carried_forward``. A finding that is NEW or UPDATED, or has no baseline tree, is generated fresh."""
+    h = _rule_3_run(stage, cli, tmp_path)
+    units, _ = tree_units(h)
+    assert {fid: unit["action"] for fid, unit in units.items()} == {
+        "S-1": "generated_fresh", "T-2": "regenerated", "I-3": "generated_fresh", "D-4": "generated_fresh"}
+    plan = h.plan_json()
+    assert plan["params"]["rule_applied"] == "Rule 2" and Path(plan["refs"]["baseline_dir"]).resolve() == (tmp_path / "baseline").resolve()
+    assert plan["batch_size"] == 12 and plan["preimage"] == {} and plan["out_snapshot"] is None
+
+
+def test_a_rule_3_unit_may_be_carried_forward_and_its_item_says_so(stage, cli, tmp_path):
+    h = _rule_3_run(stage, cli, tmp_path)
+
+    def carry(part, bi):
+        for item in part["items"]:
+            if item["finding_id"] == "T-2":
+                item.update(action="carried_forward", similarity_score=0.93)
+
+    write_part(h, "B001", mutate=carry)
+    assert needs(h.reconcile(), 0, "reconcile --stage trees, a Rule 3 unit that the baseline's tree wins").json["status"] == "complete"
+
+
+@pytest.mark.parametrize("fault", ["no-score", "a-score-on-a-fresh-tree", "a-fresh-action-for-a-rule-3-unit", "a-score-above-1", "a-boolean-score"])
+def test_a_trees_item_that_breaks_rule_3s_readings_is_invalid_and_retried_as_it_is(stage, cli, tmp_path, fault):
+    h = _rule_3_run(stage, cli, tmp_path)
+
+    def break_it(part, bi):
+        by_id = {item["finding_id"]: item for item in part["items"]}
+        if fault == "no-score":
+            del by_id["T-2"]["similarity_score"]
+        elif fault == "a-score-on-a-fresh-tree":
+            by_id["S-1"]["similarity_score"] = 0.5
+        elif fault == "a-fresh-action-for-a-rule-3-unit":
+            by_id["T-2"]["action"] = "generated_fresh"
+        elif fault == "a-score-above-1":
+            by_id["T-2"]["similarity_score"] = 1.5
+        else:
+            by_id["T-2"]["similarity_score"] = True
+
+    write_part(h, "B001", mutate=break_it)
+    assert pending_ids(needs(h.reconcile(), 3, "reconcile --stage trees, an item that breaks Rule 3's readings").json) == ["B001"]
+
+
+def test_a_baseline_outside_the_working_directory_is_not_used_so_every_tree_is_generated(stage, cli, tmp_path, monkeypatch):
+    """R-6 resolves a baseline below the working directory. One outside it warns, and the plan generates every tree, as the scorer's plan scores every finding."""
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    h = RunDir(stage, cli, tmp_path, "trees")
+    threats = h.out / "threats.md"
+    threats.write_text(joined_md([finding("S-1", "UNCHANGED", "Critical")], baseline_source="x/threats.md"), encoding="utf-8")
+    (tmp_path / "baseline" / "attack-trees").mkdir(parents=True)
+    (tmp_path / "baseline" / "attack-trees" / "s-1-attack-tree.md").write_text(tree_text("S-1"), encoding="utf-8")
+    res = needs(h.plan_cli("--threats", threats, "--baseline-dir", tmp_path / "baseline"), 0, "plan --stage trees, a baseline outside the working directory")
+    assert "outside-working-directory" in res.err
+    plan = h.plan_json()
+    assert plan["params"]["rule_applied"] == "no-baseline" and plan["refs"] == {}
+    assert [unit["action"] for unit in tree_units(h)[0].values()] == ["generated_fresh"]
+
+
+def test_the_baseline_is_found_through_baseline_source_when_no_flag_names_one(stage, cli, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    h = RunDir(stage, cli, tmp_path, "trees")
+    earlier = tmp_path / "reports" / "earlier"
+    (earlier / "attack-trees").mkdir(parents=True)
+    (earlier / "threats.md").write_text("# an earlier threats.md\n", encoding="utf-8")
+    (earlier / "attack-trees" / "s-1-attack-tree.md").write_text(tree_text("S-1"), encoding="utf-8")
+    threats = h.out / "threats.md"
+    threats.write_text(joined_md([finding("S-1", "UNCHANGED", "Critical")], baseline_source="reports/earlier/threats.md"), encoding="utf-8")
+    needs(h.plan_cli("--threats", threats), 0, "plan --stage trees, a baseline from baseline.source")
+    plan = h.plan_json()
+    assert plan["params"]["rule_applied"] == "Rule 1" and plan["batches"] == [] and Path(plan["refs"]["baseline_dir"]).resolve() == earlier.resolve()
+
+
+def test_a_baseline_tree_that_is_a_link_or_has_another_name_is_no_tree(stage, cli, tmp_path, monkeypatch):
+    """A tree counts when it is the file that ``assemble-report.py trees`` would copy: the canonical ID in lower case, a regular file, no link on the way."""
+    monkeypatch.chdir(tmp_path)
+    h = RunDir(stage, cli, tmp_path, "trees")
+    trees = tmp_path / "baseline" / "attack-trees"
+    trees.mkdir(parents=True)
+    (tmp_path / "real.md").write_text(tree_text("S-1"), encoding="utf-8")
+    (trees / "s-1-attack-tree.md").symlink_to(tmp_path / "real.md")
+    (trees / "agp-01-attack-tree.md").write_text(tree_text("AGP-1"), encoding="utf-8")  # AGP-1's file is agp-1-attack-tree.md
+    (trees / "notes.md").write_text("not a tree\n", encoding="utf-8")
+    threats = h.out / "threats.md"
+    threats.write_text(joined_md([finding("S-1", "UNCHANGED", "Critical"), finding("AGP-1", "UNCHANGED", "High")], baseline_source="x/threats.md"), encoding="utf-8")
+    needs(h.plan_cli("--threats", threats, "--baseline-dir", tmp_path / "baseline"), 0, "plan --stage trees, a baseline with no usable tree")
+    assert h.plan_json()["params"]["rule_applied"] == "no-baseline" and sorted(tree_units(h)[0]) == ["AGP-1", "S-1"]
+
+
+def test_a_missing_tree_outranks_a_tree_that_fails_a_check_so_the_batch_is_halved(stage, cli, tmp_path):
+    h = trees_run(stage, cli, tmp_path, [finding("S-1", "NEW", "Critical"), finding("T-2", "NEW", "High")])
+    write_part(h, "B001", files=False)
+    Path(h.batch_input("B001")["tree_paths"]["S-1"]).write_text("# no diagram here\n", encoding="utf-8")  # S-1's tree fails a check, and T-2's was never written
+    assert pending_ids(needs(h.reconcile(), 3, "reconcile --stage trees, one tree missing and one that fails").json) == ["B001-1", "B001-2"]
+
+
+def test_a_tree_that_is_a_link_is_refused_and_the_batch_is_retried_as_it_is(stage, cli, tmp_path):
+    h = trees_run(stage, cli, tmp_path, [finding("S-1", "NEW", "Critical")])
+    write_part(h, "B001", files=False)
+    (tmp_path / "elsewhere.md").write_text(tree_text("S-1"), encoding="utf-8")
+    Path(h.batch_input("B001")["tree_paths"]["S-1"]).symlink_to(tmp_path / "elsewhere.md")
+    assert pending_ids(needs(h.reconcile(), 3, "reconcile --stage trees, a linked tree").json) == ["B001"] and h.plan_json()["batches"][0]["attempt"] == 2
+
+
+def test_a_batch_input_whose_tree_path_is_not_the_plans_is_exit_2(stage, cli, tmp_path):
+    """The path is built from ``--out``, the plan ID and the ID, and the batch input's own entry must equal it (S1P-A44). Here the input and the plan are
+    re-pinned, so only that check refuses."""
+    h = trees_run(stage, cli, tmp_path, [finding("S-1", "NEW", "Critical")])
+    write_part(h, "B001")
+    path = h.plan_dir / "inputs" / "B001.json"
+    body = json.loads(path.read_text(encoding="utf-8"))
+    body["tree_paths"]["S-1"] = str(h.plan_dir / "trees" / "another-attack-tree.md")
+    path.write_text(json.dumps(body, indent=2), encoding="utf-8")
+    plan = json.loads((h.plan_dir / "plan.json").read_text(encoding="utf-8"))
+    plan["batches"][0]["input_sha256"] = sha256_of(path)
+    (h.plan_dir / "plan.json").write_text(json.dumps(plan, indent=2), encoding="utf-8")
+    h.digest = sha256_of(h.plan_dir / "plan.json")
+    refused(h.reconcile(), "TREES", "reconcile --stage trees over a tree path that is not the plan's")
+
+
+def test_each_pr2_plan_records_its_closed_params_and_no_pre_image_for_a_batch_stage(stage, cli, tmp_path):
+    """S1P-A57 (R8): ``threat-model`` and ``threats-md`` hold ``{scoring_date}``, ``trees`` adds the rule and the reference digest, and ``report`` the digest
+    and the trees plan's ID. A batch stage owns no canonical file, so its plan copies none."""
+    run = RunDir(stage, cli, tmp_path / "run-level")
+    needs(run.plan_cli(), 0, "the run-level plan")
+    assert run.plan_json()["params"] == {"scoring_date": DATE} and set(run.plan_json()["preimage"]) == set(TM_OUTPUTS)
+    md = threats_md_run(stage, cli, tmp_path / "md")
+    assert md.plan_json()["params"] == {"scoring_date": DATE} and md.plan_json()["preimage"] == {}
+    ht = trees_run(stage, cli, tmp_path / "trees", [finding("S-1", "NEW", "Critical")])
+    assert set(ht.plan_json()["params"]) == {"scoring_date", "rule_applied", "reference_digest"} and ht.plan_json()["preimage"] == {}
+    hr, trees = planned_report(stage, cli, tmp_path / "report", THREE_FINDINGS)
+    assert hr.plan_json()["params"] == {"scoring_date": DATE, "reference_digest": trees.plan_json()["params"]["reference_digest"], "trees_plan_id": trees.plan_id}
+    assert hr.plan_json()["preimage"] == {}
+
+
+# ---- the report stage: its chain file (R9), its trees plan and what a unit holds
+
+
+def test_the_report_plan_refuses_a_threats_md_that_the_trees_plan_was_not_made_from(stage, cli, tmp_path):
+    """Both plans record the reference set's digest and ``report`` compares them at Step 2.9, so a plan over other findings is refused at the start."""
+    hr, ht = report_ready(stage, cli, tmp_path, THREE_FINDINGS)
+    other = hr.out / "other-threats.md"
+    other.write_text(joined_md([finding("S-1", "NEW", "Critical"), finding("T-2", "NEW", "High")]), encoding="utf-8")
+    args = list(hr.args)
+    args[1] = other
+    res = refused(hr.plan_cli(*args), "REPORT", "plan --stage report over another threats.md")
+    assert "Kept for diagnosis: %s" % ht.plan_dir in res.err and not (hr.build / "current.json").exists()
+
+
+@pytest.mark.parametrize("fault", ["no-file", "a-link", "no-surfaced-chain", "not-utf-8"])
+def test_a_chains_written_record_with_a_chain_file_that_cannot_be_used_plans_no_attack_chains_part(stage, cli, tmp_path, fault):
+    """R9 (S1P-A58): when the file is missing or unreadable or holds no surfaced chain, the planner plans no ``attack_chains`` part, records no file, says so on
+    stderr and exits 0. Step 2.8's check then rewrites the record (D13) and the run goes on (R-24)."""
+    hr, ht = report_ready(stage, cli, tmp_path, THREE_FINDINGS, outcome=CHAINS_OUTCOME, attack_chains=(fault != "no-file"))
+    chains = hr.out / "attack-chains.md"
+    if fault == "a-link":
+        (tmp_path / "elsewhere.md").write_text(ATTACK_CHAINS_MD, encoding="utf-8")
+        chains.unlink()
+        chains.symlink_to(tmp_path / "elsewhere.md")
+    elif fault == "no-surfaced-chain":
+        chains.write_text(ATTACK_CHAINS_MD.replace("**Surfaced**: Yes", "**Surfaced**: No"), encoding="utf-8")
+    elif fault == "not-utf-8":
+        chains.write_bytes(b"\xff\xfe not utf-8")
+    res = needs(hr.plan_cli(*hr.args), 0, "plan --stage report over a chain file that can't be used (%s)" % fault)
+    assert "attack-chains.md can't be used" in res.err
+    sections, _ = report_batches(hr)
+    assert sections == BASE_SECTIONS and not [value for value in hr.plan_json()["inputs"].values() if Path(value["path"]).name == "attack-chains.md"]
+
+
+def test_a_report_unit_holds_the_rows_that_its_key_is_about(stage, cli, tmp_path):
+    """What each unit holds (``_report_parts``), so that no report agent reads threats.md: the counts, the Critical and High rows, the tables of Sections 1, 2
+    and 4a, a finding's Section 7 row with its category-table row, a group's members and Section 4c's rows."""
+    items = [finding("S-1", "NEW", "Critical"), finding("T-2", "NEW", "High"), finding("T-3", "NEW", "High"), finding("LLM-4", "NEW", "Medium", "trust_exploitation")]
+    hr, _ = planned_report(stage, cli, tmp_path, items, baseline=True, resolved=["D-9"], groups=[("CG-1", ["T-2", "T-3"])])
+    _, inputs = report_batches(hr)
+    keyed = {unit["key"]: unit for bi in inputs for unit in bi["units"] if "key" in unit}
+    found = {(unit["section"], unit["finding_id"]): unit for bi in inputs for unit in bi["units"] if "finding_id" in unit}
+    counts = {"open": 4, "resolved": 1, "new": 4, "unchanged": 0, "updated": 0, "critical": 1, "high": 2, "medium": 1, "low": 0, "note": 0}
+    assert keyed["risk_posture"]["counts"] == counts and "rows" not in keyed["risk_posture"]
+    assert [row["finding_id"] for row in keyed["top_threats"]["rows"]] == [row["finding_id"] for row in keyed["key_recommendations"]["rows"]] == ["S-1", "T-2", "T-3"]
+    assert keyed["system_context"]["components"][0]["component"] == "Gateway" and keyed["system_context"]["data_flows"][0]["protocol"] == "HTTPS"
+    assert keyed["trust_boundaries"]["trust_zones"][0]["zone"] == "Edge" and keyed["trust_boundaries"]["boundary_crossings"] == []
+    assert keyed["category.tampering"]["narrated"] == ["T-2", "T-3"] and keyed["category.tampering"]["summarized"] == []
+    assert sorted(keyed["overview"]["categories"]) == ["llm", "spoofing", "tampering"]
+    assert keyed["themes"]["groups"][0]["group"] == "CG-1" and keyed["themes"]["groups"][0]["findings"] == "T-2, T-3"
+    lead = found[("threat_analysis", "S-1")]
+    assert lead["tree"] is True and lead["category_row"]["likelihood"] == "Medium" and lead["category_row"]["impact"] == "High"
+    assert lead["category_row"]["maestro_layer"].startswith("L4") and lead["component"] == "Gateway" and lead["risk_level"] == "Critical"
+    assert found[("threat_analysis", "LLM-4")]["tree"] is False and found[("threat_analysis", "LLM-4")]["category_row"]["owasp_reference"] == "LLM01:2026"
+    primary = found[("remediation_roadmap", "T-2")]
+    assert primary["group_id"] == "CG-1" and [row["finding_id"] for row in primary["members"]] == ["T-2", "T-3"]
+    assert ("remediation_roadmap", "T-3") not in found and "group_id" not in found[("remediation_roadmap", "S-1")]
+    assert [row["finding_id"] for row in keyed["pattern.trust_exploitation"]["rows"]] == ["LLM-4"]
+    assert keyed["progress"]["lifecycle"] == {"new": 4, "unchanged": 0, "updated": 0, "resolved": 1} and keyed["progress"]["baseline"]["source"] == "reports/earlier/threats.md"
+    assert keyed["progress"]["resolved"] == [{"finding_id": "D-9", "component": "Legacy 1", "threat": "Old threat D-9", "last_risk_level": "High",
+                                              "resolution_reason": "Component removed"}]
+
+
+# ---- the edges: what the plans refuse before they write, and what a record still gets when a file has gone
+
+
+def test_a_pr2_plan_refuses_more_batches_than_a_batch_id_can_name_before_it_writes(stage, cli, tmp_path):
+    h = RunDir(stage, cli, tmp_path, "threats-md")
+    write_sections(h, sections_manifest(open_ids=["S-1"], rows=dict(ROWS_ZERO, components=1000)))
+    with pytest.raises(stage.StageError) as info:
+        stage.plan_stage(stage="threats-md", out=h.out, date=DATE, batch_size=1)  # 1,002 batches, and a batch ID is B and three digits
+    assert info.value.code == 2 and "999" in str(info.value) and not (h.build / "current.json").exists() and not h.build.exists()
+
+
+@pytest.mark.parametrize("name", ["trees", "report"])
+def test_a_plan_that_reads_a_threats_md_needs_the_pointer_that_names_it(stage, cli, tmp_path, name):
+    refused(RunDir(stage, cli, tmp_path, name).plan_cli(), name.upper(), "plan --stage %s with no --threats" % name)
+
+
+def test_the_report_plan_needs_its_trees_plan_and_checks_the_two_arguments_that_name_it(stage, cli, tmp_path):
+    hr, ht = report_ready(stage, cli, tmp_path, THREE_FINDINGS)
+    threats = ["--threats", hr.threats]
+    for extra, why in (([], "no trees plan"), (["--trees-plan", ht.plan_id], "no digest"), (["--trees-plan-digest", ht.digest], "no plan ID"),
+                       (["--trees-plan", "../escape", "--trees-plan-digest", ht.digest], "a plan ID off the allow-list"),
+                       (["--trees-plan", ht.plan_id, "--trees-plan-digest", ht.digest.upper()], "a digest in upper case")):
+        refused(hr.plan_cli(*threats, *extra), "REPORT", "plan --stage report with %s" % why)
+    assert not (hr.build / "current.json").exists()
+
+
+def test_a_finding_with_several_patterns_gets_the_multi_unit_after_the_six_patterns(stage, cli, tmp_path):
+    hr, _ = planned_report(stage, cli, tmp_path, [finding("AG-1", "NEW", "High", "multiple"), finding("AG-2", "NEW", "High", "agent_collusion")])
+    _, inputs = report_batches(hr)
+    assert [unit["key"] for bi in inputs if bi["units"][0]["section"] == "agentic_patterns" for unit in bi["units"]] == ["pattern.agent_collusion", "multi"]
+
+
+def test_a_message_still_names_a_batch_whose_input_can_no_longer_be_read(stage, cli, tmp_path):
+    h = threats_md_run(stage, cli, tmp_path, sections_manifest(open_ids=["T-1"], rows=dict(ROWS_ZERO, components=2)))
+    write_valid_parts(h, skip=["B001"])
+    for _ in range(2):
+        needs(h.reconcile(), 3, "reconcile --stage threats-md, a part that never comes")
+    needs(h.reconcile(), 4, "reconcile --stage threats-md, the attempts exhausted")
+    (h.plan_dir / "inputs" / "B001-1.json").unlink()
+    res = needs(h.fail("unrecoverable-batch"), 0, "fail --stage threats-md, a batch whose input is gone")
+    assert "Batch B001-1:" in res.err
+
+
+@pytest.mark.parametrize("name", BATCH_STAGES)
+def test_fail_leaves_out_a_done_batch_whose_input_can_no_longer_be_read(stage, cli, tmp_path, name):
+    h = planned_stage(stage, cli, tmp_path, name)
+    write_valid_parts(h)
+    needs(h.reconcile(), 0, "reconcile --stage %s" % name)
+    (h.plan_dir / "inputs" / ("%s.json" % h.plan_json()["batches"][0]["batch_id"])).unlink()
+    needs(h.fail("check-failed"), 0, "fail --stage %s over a batch whose input is gone" % name)
+    assert h.record()["batches"]["done"] == len(h.plan_json()["batches"])
+
+
+def test_a_pre_image_that_cannot_be_written_back_is_refused_and_not_a_crash(stage, cli, tmp_path, monkeypatch):
+    h = RunDir(stage, cli, tmp_path)
+    h.earlier()
+    needs(h.plan_cli(), 0, "the run-level plan")
+    h.run_wrote(("threats.md",))
+    real = stage.tp.atomic_write
+
+    def failing(path, data, mode_of=None):
+        if os.path.basename(str(path)) == "threats.md":
+            raise OSError(13, "Permission denied")
+        return real(path, data, mode_of=mode_of)
+
+    monkeypatch.setattr(stage.tp, "atomic_write", failing)
+    res = h.fail("render-failed")
+    assert res.code == 2 and res.json["moved"] == ["threats.md"] and res.json["restored"] == [], res.describe()
+    assert any(w["code"] == "move-refused" and "could not be put back" in w["detail"] for w in h.record()["warnings"])
+
+
+def test_a_hand_off_file_that_is_the_other_checks_is_refused_by_close_and_noted_by_fail(stage, cli, tmp_path):
+    """A file that is valid, but for the other check, is no hand-off of this one: ``check`` must be its file's name (part-files.md section 6)."""
+    h = closeable(stage, cli, tmp_path)
+    h.write_handoff("provenance", raw=json.dumps(handoff("attack-chains", h.plan_id)).encode("utf-8"))
+    refused(h.close(), "THREAT-MODEL", "close over a provenance.json that is the chain check's")
+    needs(h.fail("check-failed"), 0, "fail --stage threat-model over a provenance.json that is the chain check's")
+    warnings = h.record()["warnings"]
+    assert [w["code"] for w in warnings] == ["handoff-invalid:provenance"] and "attack-chains" in warnings[0]["detail"]
+
+
+@pytest.mark.skipif(os.name != "posix" or os.geteuid() == 0, reason="a mode of 0 stops no read by root")
+def test_close_refuses_a_canonical_file_that_it_cannot_read(stage, cli, tmp_path):
+    h = closeable(stage, cli, tmp_path)
+    os.chmod(str(h.out / "threats.md"), 0)
+    try:
+        refused(h.close(), "THREAT-MODEL", "close over an output that can't be read")
+        assert_not_closed(h)
+    finally:
+        os.chmod(str(h.out / "threats.md"), 0o644)
+
+
+def test_id_mark_that_cannot_write_its_file_is_exit_1(stage, cli, marked, monkeypatch):
+    write_run(marked, "threats.md", ["S-3"])
+
+    def failing(path, data, mode_of=None):
+        raise OSError(13, "Permission denied")
+
+    monkeypatch.setattr(stage.tp, "atomic_write", failing)
+    refused(id_mark(cli, None), "THREAT-MODEL", "id-mark that can't write", code=1)
+
+
+def test_a_baseline_mark_line_without_backticks_reads_as_absent(stage, cli, marked):
+    threats = write_run(marked, "threats.md", ["S-3"])
+    write_run(marked, "baseline.md", ["S-3"], ["S-9"], preamble="**ID high-water mark**: S-50")
+    res = needs(id_mark(cli), 0, "id-mark over a baseline whose mark line has no backticks")
+    assert real_marks(threats.read_text(encoding="utf-8")) == ["S-9"] and res.json["floor"] == "seed"
+
+
+def test_a_baseline_with_windows_line_endings_reads_its_mark_line(stage, cli, marked):
+    threats = write_run(marked, "threats.md", ["S-3"])
+    baseline = write_run(marked, "baseline.md", ["S-3"], mark="S-14, T-22")
+    baseline.write_bytes(baseline.read_bytes().replace(b"\n", b"\r\n"))
+    res = needs(id_mark(cli), 0, "id-mark over a baseline with CRLF line ends")
+    assert real_marks(threats.read_text(encoding="utf-8")) == ["S-14, T-22"] and res.json["floor"] == "mark"
+
+
+# ---------------------------------------------------------------------------- watch: Phase 2's bound (T156; ADR-050 D6, S1P-PM9; threat-model-records.md, "The watch")
+#
+# ``watch --out DIR DSP [DSP ...]`` waits until each named dispatch has its record, and exits 3 with the IDs that have none if the deadline passes first.
+# It writes nothing. The orchestrator writes each timed-out dispatch's ``timed_out`` record from that exit, so no case here needs a record that validates
+# under that status, and none waits on T091b. The cases run in-process (H15) with ``time.monotonic`` and ``time.sleep`` replaced by a clock that only
+# counts, so none of them sleeps. A smaller deadline reaches the script only through the function interface (D6). A record here is a stand-in: the
+# watch looks at a file's kind and never at its content.
+
+WATCH_BANNER = "THREAT-MODEL"
+
+
+class WatchClock(object):
+    """``time.monotonic`` and ``time.sleep`` for a watch that must not wait: a sleep moves the clock on and does nothing else.
+
+    ``after(n, action)`` runs ``action`` when the n-th sleep ends, so that a record can appear during the wait. A loop that sleeps more than ``RUNAWAY``
+    times is not following its deadline and fails here, so a regression ends its case and never hangs the run.
+    """
+
+    RUNAWAY = 3000
+
+    def __init__(self, start=1000.0):
+        self.start, self.now, self.sleeps, self.actions = start, start, [], {}
+
+    def monotonic(self):
+        return self.now
+
+    def sleep(self, seconds):
+        assert seconds >= 0, "T156, a sleep of %r seconds" % (seconds,)
+        self.sleeps.append(seconds)
+        assert len(self.sleeps) <= self.RUNAWAY, "T156, the watch kept sleeping past any deadline (%d sleeps)" % len(self.sleeps)
+        self.now += seconds
+        for action in self.actions.get(len(self.sleeps), ()):
+            action()
+
+    def after(self, count, action):
+        self.actions.setdefault(count, []).append(action)
+
+    @property
+    def elapsed(self):
+        return self.now - self.start
+
+
+@pytest.fixture
+def clock(monkeypatch):
+    fake = WatchClock()
+    monkeypatch.setattr(time, "monotonic", fake.monotonic)
+    monkeypatch.setattr(time, "sleep", fake.sleep)
+    return fake
+
+
+def watch_out(root):
+    out = Path(root) / "run"
+    out.mkdir()
+    return out
+
+
+def watch_record(out, dispatch_id, content=b"{}\n"):
+    """A dispatch's record, where the orchestrator leaves it. Its content is a stand-in: the watch never reads it."""
+    path = Path(out) / ".tachi-build" / "records" / (dispatch_id + ".json")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content)
+    return path
+
+
+def watch_ids(count, first=1):
+    return ["dsp-%03d" % number for number in range(first, first + count)]
+
+
+def watch_said(res, code, status, pending, behavior):
+    """An exit 0 or an exit 3: the code, one JSON object with its two keys on stdout, and nothing on stderr."""
+    assert res.code == code and res.err == "", "T156, %s: expected exit %d with nothing on stderr\n%s" % (behavior, code, res.describe())
+    assert res.json == {"status": status, "pending": pending}, "T156, %s\n%s" % (behavior, res.describe())
+    return res
+
+
+def watch_refused(res, behavior, code=2):
+    """A refusal is D4's four-line message with its code, never an argparse usage error: ``TACHI THREAT-MODEL FAILED``, a reason and a ``Remedy:`` line,
+    and nothing on stdout."""
+    assert res.code == code and res.out == "" and re.search(r"^TACHI %s FAILED: " % WATCH_BANNER, res.err, re.M) and "Remedy: " in res.err, (
+        "T156, %s: expected a refusal (exit %d, D4's message with its Remedy, nothing on stdout)\n%s" % (behavior, code, res.describe()))
+    return res
+
+
+def watch_tree_state(root):
+    """Every path under ``root`` with its kind, size, modification time and bytes: what a command that writes nothing leaves as it found it."""
+    state = {}
+    for base, dirs, files in os.walk(str(root)):
+        for name in sorted(dirs + files):
+            path = os.path.join(base, name)
+            kind = "link" if os.path.islink(path) else "dir" if os.path.isdir(path) else "file"
+            state[os.path.relpath(path, str(root))] = (kind, os.lstat(path).st_mtime_ns, Path(path).read_bytes() if kind == "file" else None)
+    return state
+
+
+# ---- what it waits for
+
+def test_watch_exits_0_at_once_when_every_record_is_already_there(stage, cli, clock, tmp_path):
+    """The first look comes before the first sleep, so a wave that is already recorded costs nothing (S1P-A38, item 5)."""
+    out = watch_out(tmp_path)
+    ids = watch_ids(4)
+    for dsp in ids:
+        watch_record(out, dsp)
+    watch_said(cli("watch", "--out", out, *ids), 0, "done", [], "every record there at the start")
+    assert clock.sleeps == [] and clock.elapsed == 0
+
+
+def test_watch_exits_0_as_soon_as_the_last_record_appears_during_the_wait(stage, cli, clock, tmp_path):
+    """It looks every 5 seconds, and it ends when the last record is there, not at the deadline."""
+    out = watch_out(tmp_path)
+    ids = watch_ids(3)
+    watch_record(out, ids[0])
+    clock.after(1, lambda: watch_record(out, ids[2]))
+    clock.after(3, lambda: watch_record(out, ids[1]))
+    watch_said(cli("watch", "--out", out, *ids), 0, "done", [], "the last record appears during the third wait")
+    assert clock.sleeps == [5, 5, 5] and clock.elapsed == 15
+
+
+def test_watch_keeps_waiting_while_any_one_record_is_missing(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    ids = watch_ids(3)
+    for dsp in ids[:2]:
+        watch_record(out, dsp)
+    clock.after(7, lambda: watch_record(out, ids[2]))
+    watch_said(cli("watch", "--out", out, *ids), 0, "done", [], "two of three there, the third after seven waits")
+    assert len(clock.sleeps) == 7 and clock.elapsed == 35
+
+
+def test_watch_exits_3_at_the_deadline_and_names_the_dispatches_with_no_record_in_argument_order(stage, cli, clock, tmp_path):
+    """The deadline is the constant, 5,400 seconds from the watch's start, and the poll is 5. ``pending`` follows the arguments, not the sort order."""
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-002")
+    watch_said(cli("watch", "--out", out, "dsp-004", "dsp-002", "dsp-010", "dsp-003"), 3, "timed-out", ["dsp-004", "dsp-010", "dsp-003"],
+               "a deadline with one record of four")
+    assert clock.elapsed == 5400 and len(clock.sleeps) == 1080 and set(clock.sleeps) == {5}
+
+
+def test_watch_exits_3_naming_every_dispatch_when_none_has_a_record(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    ids = ["dsp-016", "dsp-001", "dsp-009"]
+    watch_said(cli("watch", "--out", out, *ids), 3, "timed-out", ids, "no record at all")
+    assert not (out / ".tachi-build").exists()
+
+
+def test_a_record_that_arrives_during_the_wait_leaves_the_pending_list(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-001")
+    clock.after(2, lambda: watch_record(out, "dsp-003"))
+    watch_said(cli("watch", "--out", out, "dsp-003", "dsp-001", "dsp-002"), 3, "timed-out", ["dsp-002"], "dsp-003 recorded during the wait, dsp-002 never")
+    assert clock.elapsed == 5400
+
+
+@pytest.mark.parametrize("start", [0.0, 1000.0, 86400.5])
+def test_the_deadline_runs_from_the_watchs_own_start_on_the_monotonic_clock(stage, cli, clock, tmp_path, start):
+    clock.start = clock.now = start
+    out = watch_out(tmp_path)
+    watch_said(cli("watch", "--out", out, "dsp-001"), 3, "timed-out", ["dsp-001"], "a clock that starts at %r" % start)
+    assert clock.elapsed == 5400
+
+
+def test_the_deadline_and_the_poll_are_the_documented_constants(stage):
+    assert stage.WATCH_SECONDS == 5400 and stage.WATCH_POLL_SECONDS == 5
+
+
+# ---- the function interface: the one way a smaller deadline gets in (D6)
+
+def test_watch_function_takes_the_deadline_and_the_poll_and_its_last_sleep_ends_at_the_deadline(stage, clock, tmp_path):
+    out = watch_out(tmp_path)
+    assert stage.watch(out, ["dsp-001", "dsp-002"], seconds=12, poll=5) == (3, {"status": "timed-out", "pending": ["dsp-001", "dsp-002"]})
+    assert clock.sleeps == [5, 5, 2] and clock.elapsed == 12  # cut to what is left, so it ends at the deadline and not a poll after
+
+
+def test_a_record_that_arrives_during_the_last_sleep_still_counts(stage, clock, tmp_path):
+    out = watch_out(tmp_path)
+    clock.after(3, lambda: watch_record(out, "dsp-001"))
+    assert stage.watch(out, ["dsp-001"], seconds=12, poll=5) == (0, {"status": "done", "pending": []})
+    assert clock.elapsed == 12
+
+
+def test_a_deadline_of_zero_looks_once_and_never_sleeps(stage, clock, tmp_path):
+    out = watch_out(tmp_path)
+    assert stage.watch(out, ["dsp-001"], seconds=0) == (3, {"status": "timed-out", "pending": ["dsp-001"]})
+    watch_record(out, "dsp-001")
+    assert stage.watch(out, ["dsp-001"], seconds=0) == (0, {"status": "done", "pending": []})
+    assert clock.sleeps == []
+
+
+def test_watch_works_on_the_real_clock(stage, tmp_path):
+    """The cases above replace the clock. This one doesn't: a record that another thread writes during the wait ends it, and a deadline that passes
+    first ends it with exit 3. The bounds are loose, so a loaded machine can't fail them, but a loop that ignores its poll or its deadline can."""
+    out = watch_out(tmp_path)
+    started = time.monotonic()
+    writer = threading.Timer(0.15, watch_record, args=(out, "dsp-001"))
+    writer.start()
+    try:
+        assert stage.watch(out, ["dsp-001"], seconds=60, poll=0.05) == (0, {"status": "done", "pending": []})
+    finally:
+        writer.join()
+    assert 0.1 <= time.monotonic() - started < 30
+    started = time.monotonic()
+    assert stage.watch(out, ["dsp-001", "dsp-002"], seconds=0.3, poll=0.05) == (3, {"status": "timed-out", "pending": ["dsp-002"]})
+    assert 0.3 <= time.monotonic() - started < 30
+
+
+# ---- a record counts by its kind and its place, never by its content
+
+def _plant_link_to_a_file(out, root):
+    path = watch_record(out, "dsp-001")
+    path.unlink()
+    elsewhere = Path(root) / "elsewhere.json"
+    elsewhere.write_bytes(b"{}\n")
+    os.symlink(str(elsewhere), str(path))
+
+
+def _plant_dangling_link(out, root):
+    path = watch_record(out, "dsp-001")
+    path.unlink()
+    os.symlink(str(Path(root) / "nowhere.json"), str(path))
+
+
+def _plant_directory(out, root):
+    path = watch_record(out, "dsp-001")
+    path.unlink()
+    path.mkdir()
+
+
+def _plant_linked_records_directory(out, root):
+    elsewhere = Path(root) / "other-records"
+    elsewhere.mkdir()
+    (elsewhere / "dsp-001.json").write_bytes(b"{}\n")
+    (Path(out) / ".tachi-build").mkdir()
+    os.symlink(str(elsewhere), str(Path(out) / ".tachi-build" / "records"))
+
+
+def _plant_linked_build_directory(out, root):
+    elsewhere = Path(root) / "other-build"
+    (elsewhere / "records").mkdir(parents=True)
+    (elsewhere / "records" / "dsp-001.json").write_bytes(b"{}\n")
+    os.symlink(str(elsewhere), str(Path(out) / ".tachi-build"))
+
+
+NOT_A_RECORD = {
+    "a link to a regular file": _plant_link_to_a_file,
+    "a dangling link": _plant_dangling_link,
+    "a directory": _plant_directory,
+    "a link in the place of records/": _plant_linked_records_directory,
+    "a link in the place of .tachi-build/": _plant_linked_build_directory,
+}
+
+
+@pytest.mark.parametrize("kind", sorted(NOT_A_RECORD))
+def test_a_record_counts_only_as_a_regular_file_with_no_link_in_its_path(stage, cli, clock, tmp_path, kind):
+    out = watch_out(tmp_path)
+    NOT_A_RECORD[kind](out, tmp_path)
+    watch_said(cli("watch", "--out", out, "dsp-001"), 3, "timed-out", ["dsp-001"], "a record that is %s" % kind)
+
+
+@pytest.mark.parametrize("content", [b"", b"not json at all", b"\xff\xfe\x00", b"{}\n"], ids=["empty", "text", "bytes", "object"])
+def test_a_record_counts_by_its_kind_and_never_by_its_content(stage, cli, clock, tmp_path, content):
+    """Reading a record is the check's job at Step 2.8. The watch only has to know that the orchestrator has written one."""
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-001", content)
+    watch_said(cli("watch", "--out", out, "dsp-001"), 0, "done", [], "a record holding %r" % content)
+
+
+def test_a_record_of_another_dispatch_counts_for_nothing(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-002")
+    (out / ".tachi-build" / "records" / "dsp-001.json.partial").write_bytes(b"{}\n")
+    (out / ".tachi-build" / "briefs").mkdir()
+    (out / ".tachi-build" / "briefs" / "dsp-001.json").write_bytes(b"{}\n")  # the brief is not the record
+    watch_said(cli("watch", "--out", out, "dsp-001"), 3, "timed-out", ["dsp-001"], "a brief, a partial file and another dispatch's record")
+
+
+def test_watch_takes_an_out_that_is_itself_a_link(stage, cli, clock, tmp_path):
+    """The guard walks down from ``--out``, so a link in ``--out`` itself is fine: only what lies below it may not be one."""
+    real = tmp_path / "real-run"
+    real.mkdir()
+    watch_record(real, "dsp-001")
+    os.symlink(str(real), str(tmp_path / "run-link"))
+    watch_said(cli("watch", "--out", tmp_path / "run-link", "dsp-001"), 0, "done", [], "--out a link to the run directory")
+
+
+# ---- it writes nothing
+
+@pytest.mark.parametrize("deadline", [False, True], ids=["exit-0", "exit-3"])
+def test_watch_writes_nothing_and_least_of_all_a_timed_out_record(stage, cli, clock, tmp_path, deadline):
+    """It exits 3 and names the dispatches. The orchestrator writes each one's ``timed_out`` record (ADR-050 D6), and the watch writes no record, no
+    stage record and no directory, so a dispatch that timed out has the one record the orchestrator wrote and no other."""
+    out = watch_out(tmp_path)
+    ids = watch_ids(3)
+    recorded = ids[:1] if deadline else ids
+    for dsp in recorded:
+        watch_record(out, dsp)
+    (out / "threats.md").write_bytes(b"# a threat model\n")
+    before = watch_tree_state(tmp_path)
+    assert cli("watch", "--out", out, *ids).code == (3 if deadline else 0)
+    assert watch_tree_state(tmp_path) == before
+    assert not (out / ".tachi-build" / THREAT_MODEL).exists()
+    assert sorted(path.name for path in (out / ".tachi-build" / "records").iterdir()) == [dsp + ".json" for dsp in recorded]
+
+
+# ---- what it refuses, before it waits
+
+BAD_DISPATCH_IDS = [
+    "dsp-1", "dsp-12", "dsp-12345", "DSP-001", "dsp-00a", "dsp-001.json", "dsp_001", "dsp-001 ", " dsp-001", "dsp-001\n", "dsp-0 01", "dsp--01", "dsp-+01",
+    "dsp-", "B001", "", "../dsp-001", "dsp-001/..", "/dsp-001", "dsp-\uff10\uff10\uff11",
+]
+
+
+@pytest.mark.parametrize("bad", BAD_DISPATCH_IDS, ids=repr)
+def test_watch_refuses_an_id_that_is_not_a_dispatch_id_before_it_waits(stage, cli, clock, tmp_path, bad):
+    """Each ID fully matches ``tachi_parts``' dispatch pattern, as an ASCII full match, before it becomes part of a path."""
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-001")
+    before = watch_tree_state(tmp_path)
+    watch_refused(cli("watch", "--out", out, "dsp-001", bad), "the argument %r" % bad)
+    assert clock.sleeps == [] and watch_tree_state(tmp_path) == before
+
+
+def test_a_refusal_never_prints_a_control_character_from_an_id(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    res = watch_refused(cli("watch", "--out", out, "dsp-001\x1b[31m\r"), "an ID with an escape sequence")
+    assert "\x1b" not in res.err and "\r" not in res.err
+
+
+def test_watch_refuses_an_id_named_twice(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    for dsp in watch_ids(2):
+        watch_record(out, dsp)
+    res = watch_refused(cli("watch", "--out", out, "dsp-001", "dsp-002", "dsp-001"), "a repeated ID")
+    assert "dsp-001" in res.err and clock.sleeps == []
+
+
+@pytest.mark.parametrize("count", [0, 17, 40])
+def test_watch_refuses_no_id_and_more_than_one_wave_of_16(stage, cli, clock, tmp_path, count):
+    """A wave holds at most 16 dispatches in flight (S-8). Even with a record for each, 17 is refused."""
+    out = watch_out(tmp_path)
+    ids = watch_ids(count)
+    for dsp in ids:
+        watch_record(out, dsp)
+    watch_refused(cli("watch", "--out", out, *ids), "%d IDs" % count)
+    assert clock.sleeps == []
+
+
+@pytest.mark.parametrize("count", [1, 16])
+def test_watch_takes_from_one_to_16_ids(stage, cli, clock, tmp_path, count):
+    out = watch_out(tmp_path)
+    ids = watch_ids(count, first=100)
+    for dsp in ids:
+        watch_record(out, dsp)
+    watch_said(cli("watch", "--out", out, *ids), 0, "done", [], "%d IDs, all recorded" % count)
+
+
+def test_watch_takes_the_four_digit_ids_of_a_long_run(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    ids = ["dsp-999", "dsp-1000", "dsp-9999"]
+    for dsp in ids:
+        watch_record(out, dsp)
+    watch_said(cli("watch", "--out", out, *ids), 0, "done", [], "3- and 4-digit IDs")
+
+
+def test_watch_refuses_an_out_that_is_not_a_directory(stage, cli, clock, tmp_path):
+    """``watch`` has no exit 1 (``cli.md``: 0, 2 and 3), so a missing directory is exit 2, as for ``fail``. Nothing is created, and it never waits."""
+    missing = tmp_path / "nothing"
+    watch_refused(cli("watch", "--out", missing, "dsp-001"), "a missing --out")
+    assert not missing.exists()
+    a_file = tmp_path / "a-file"
+    a_file.write_bytes(b"x")
+    res = watch_refused(cli("watch", "--out", a_file, "dsp-001"), "--out a file")
+    assert "--out" in res.err and clock.sleeps == []
+
+
+def test_watch_refuses_an_out_whose_path_a_document_cannot_carry(stage, cli, clock, tmp_path):
+    """``--out`` is checked as the other subcommands check it, with D7's rule for the path first."""
+    odd = tmp_path / "back`tick"
+    odd.mkdir()
+    watch_record(odd, "dsp-001")
+    res = watch_refused(cli("watch", "--out", odd, "dsp-001"), "an --out with a backtick")
+    assert "--out" in res.err and clock.sleeps == []
+
+
+def test_watch_checks_out_before_it_checks_the_ids(stage, cli, clock, tmp_path):
+    """The contract's order: ``--out`` first, then the IDs, so the first check that fails is the one reported."""
+    res = watch_refused(cli("watch", "--out", tmp_path / "nothing", "dsp-1", "dsp-1"), "a missing --out with two bad IDs")
+    assert "--out" in res.err and "dsp-1" not in res.err and clock.sleeps == []
+
+
+def test_watch_needs_an_out(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-001")
+    watch_said(cli("watch", "--out", out, "dsp-001"), 0, "done", [], "the command with its --out")  # the command is there, so the refusal below is the missing option's
+    res = cli("watch", "dsp-001")
+    assert res.code == 2 and res.out == "" and "required" in res.err and "--out" in res.err  # argparse's usage error
+    assert clock.sleeps == []
+
+
+# ---- the deadline is not a setting
+
+@pytest.mark.parametrize("flag", [["--seconds", "1"], ["--deadline", "1"], ["--poll", "1"], ["--timeout", "1"]], ids=lambda flag: flag[0])
+def test_the_deadline_is_not_a_command_line_setting(stage, cli, clock, tmp_path, flag):
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-001")
+    watch_said(cli("watch", "--out", out, "dsp-001"), 0, "done", [], "the command without the flag")  # the command is there, so the refusal below is the flag's
+    res = cli("watch", "--out", out, *flag, "dsp-001")
+    assert res.code == 2 and res.out == "" and "unrecognized arguments" in res.err and clock.sleeps == []
+
+
+@pytest.mark.parametrize("variable", ["WATCH_SECONDS", "WATCH_POLL_SECONDS", "TACHI_WATCH_SECONDS", "TACHI_WATCH_DEADLINE"])
+def test_the_deadline_is_not_an_environment_setting(stage, cli, clock, tmp_path, monkeypatch, variable):
+    monkeypatch.setenv(variable, "1")
+    out = watch_out(tmp_path)
+    watch_said(cli("watch", "--out", out, "dsp-001"), 3, "timed-out", ["dsp-001"], "%s set to 1" % variable)
+    assert clock.elapsed == 5400 and set(clock.sleeps) == {5}
+
+
+# ---- --help, and a real interpreter
+
+def test_help_names_watch_and_its_arguments(stage, cli):
+    top = cli("--help")
+    assert top.code == 0 and "watch" in top.out
+    text = cli("watch", "--help")
+    assert text.code == 0 and "--out" in text.out and "DSP" in text.out
+    assert "--seconds" not in text.out and "--deadline" not in text.out
+
+
+def test_watch_exits_from_a_real_interpreter(tmp_path):
+    """What a process alone shows (H15): the ``__main__`` guard turns ``main``'s result into the exit status, one JSON object reaches stdout, and a refusal
+    reaches stderr alone. The deadline can't be shown this way: it is 90 minutes of a real clock, and ``test_watch_works_on_the_real_clock`` covers the loop."""
+    out = watch_out(tmp_path)
+    for dsp in watch_ids(2):
+        watch_record(out, dsp)
+    done = _run_script("watch", "--out", out, "dsp-001", "dsp-002")
+    assert done.returncode == 0 and done.stderr == "", done.stderr
+    assert json.loads(done.stdout) == {"status": "done", "pending": []}
+    bad = _run_script("watch", "--out", out, "dsp-001", "dsp-1")
+    assert bad.returncode == 2 and bad.stdout == "" and "TACHI THREAT-MODEL FAILED" in bad.stderr and "Remedy: " in bad.stderr
+    absent = _run_script("watch", "--out", tmp_path / "nothing", "dsp-001")
+    assert absent.returncode == 2 and absent.stdout == "" and "TACHI THREAT-MODEL FAILED" in absent.stderr

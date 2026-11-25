@@ -1,0 +1,233 @@
+{
+  "agent_type": "tachi-threat-report",
+  "attempt": 1,
+  "batch_id": "B003",
+  "finding_ids": [],
+  "params": {
+    "reference_digest": "867b6b5c5fb8e75ab6eb75bd6f454cdc3279a381783c49ec61d005317c3bffbf",
+    "scoring_date": "2026-11-23",
+    "trees_plan_id": "20261123T101500Z-7a1c3e5d9b02"
+  },
+  "part_path": "/synthetic-case/run/.tachi-build/report/20261123T103000Z-4e8f2a6c1d07/parts/B003.a1.json",
+  "plan_id": "20261123T103000Z-4e8f2a6c1d07",
+  "refs": {},
+  "schema": "tachi.batch-input/1",
+  "stage": "report",
+  "tree_paths": {},
+  "units": [
+    {
+      "key": "overview",
+      "section": "threat_categories"
+    },
+    {
+      "key": "category.spoofing",
+      "narrated": [
+        "S-4"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "S-1",
+        "S-3",
+        "S-5"
+      ]
+    },
+    {
+      "key": "category.tampering",
+      "narrated": [
+        "T-1"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "T-2",
+        "T-3",
+        "T-4"
+      ]
+    },
+    {
+      "key": "category.repudiation",
+      "narrated": [],
+      "section": "threat_categories",
+      "summarized": [
+        "R-1",
+        "R-3",
+        "R-4"
+      ]
+    },
+    {
+      "key": "category.information_disclosure",
+      "narrated": [
+        "I-1",
+        "I-4",
+        "I-5"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "I-3"
+      ]
+    },
+    {
+      "key": "category.denial_of_service",
+      "narrated": [
+        "D-2"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "D-1",
+        "D-3"
+      ]
+    },
+    {
+      "key": "category.elevation_of_privilege",
+      "narrated": [
+        "E-1",
+        "E-3"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "E-2"
+      ]
+    },
+    {
+      "key": "category.agentic",
+      "narrated": [
+        "AG-1",
+        "AG-2",
+        "AG-3"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "AG-4",
+        "AG-5",
+        "AG-6",
+        "AG-7",
+        "AGP-01",
+        "TE-1"
+      ]
+    },
+    {
+      "key": "category.llm",
+      "narrated": [
+        "LLM-1",
+        "LLM-2",
+        "LLM-3",
+        "LLM-5",
+        "LLM-6",
+        "LLM-7"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "LLM-4",
+        "LLM-8",
+        "LLM-9",
+        "OI-1",
+        "OI-2",
+        "MI-1"
+      ]
+    },
+    {
+      "key": "summary.spoofing",
+      "narrated": [
+        "S-4"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "S-1",
+        "S-3",
+        "S-5"
+      ]
+    },
+    {
+      "key": "summary.tampering",
+      "narrated": [
+        "T-1"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "T-2",
+        "T-3",
+        "T-4"
+      ]
+    },
+    {
+      "key": "summary.repudiation",
+      "narrated": [],
+      "section": "threat_categories",
+      "summarized": [
+        "R-1",
+        "R-3",
+        "R-4"
+      ]
+    },
+    {
+      "key": "summary.information_disclosure",
+      "narrated": [
+        "I-1",
+        "I-4",
+        "I-5"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "I-3"
+      ]
+    },
+    {
+      "key": "summary.denial_of_service",
+      "narrated": [
+        "D-2"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "D-1",
+        "D-3"
+      ]
+    },
+    {
+      "key": "summary.elevation_of_privilege",
+      "narrated": [
+        "E-1",
+        "E-3"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "E-2"
+      ]
+    },
+    {
+      "key": "summary.agentic",
+      "narrated": [
+        "AG-1",
+        "AG-2",
+        "AG-3"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "AG-4",
+        "AG-5",
+        "AG-6",
+        "AG-7",
+        "AGP-01",
+        "TE-1"
+      ]
+    },
+    {
+      "key": "summary.llm",
+      "narrated": [
+        "LLM-1",
+        "LLM-2",
+        "LLM-3",
+        "LLM-5",
+        "LLM-6",
+        "LLM-7"
+      ],
+      "section": "threat_categories",
+      "summarized": [
+        "LLM-4",
+        "LLM-8",
+        "LLM-9",
+        "OI-1",
+        "OI-2",
+        "MI-1"
+      ]
+    }
+  ]
+}

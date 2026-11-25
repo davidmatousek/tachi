@@ -1,0 +1,23 @@
+{
+  "agent_type": "tachi-threat-report",
+  "batch_id": "B006",
+  "finding_ids": [],
+  "fragments": [
+    {
+      "slot_key": "pattern.agent_collusion",
+      "text": "Agents that coordinate through a shared channel can add up actions that no single limit covers."
+    },
+    {
+      "slot_key": "pattern.emergent_behavior",
+      "text": "Planning agents that feed each other's output can drift into behavior that no one tested for."
+    },
+    {
+      "slot_key": "pattern.trust_exploitation",
+      "text": "Agents and people that trust a fluent answer pass it on without a check of its source."
+    }
+  ],
+  "items": [],
+  "plan_id": "20261123T103000Z-4e8f2a6c1d07",
+  "schema": "tachi.part/1",
+  "stage": "report"
+}

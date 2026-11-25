@@ -1,4 +1,4 @@
-"""Contract-text tests for F-374, W1 to W3 and W5's fixes (T010, T029 to T031, T037, T038, T051, T147; ADR-050 D16;
+"""Contract-text tests for F-374, W1 to W3 and W5's fixes (T010, T029 to T031, T037, T038, T051, T147, T094; ADR-050 D16;
 spec US-4 #5, FR-N4.1, FR-N4.4, FR-E.1, FR-E.3, FR-K6.3, FR-K7.4, FR-K8.3, FR-N14.1).
 
 The agent specs, the shared references and the shipped helpers state one contract in three places.
@@ -18,13 +18,21 @@ Inputs (read-only; repository-relative; every one matches an existing ``paths:``
 - ``.claude/skills/tachi-shared/SKILL.md`` and its references ``agent-roster-shared.md``,
   ``sarif-identity-shared.md``, ``part-file-contract-shared.md``, ``finding-format-shared.md``,
   ``stride-categories-shared.md`` and ``dispatch-record-brief-shared.md``.
-- ``.claude/skills/tachi-orchestration/SKILL.md`` and ``references/coverage-requirements.md``, and every
-  other ``.claude/skills/**`` Markdown file (section 7 scans them for a load of the staged reference).
+- ``.claude/skills/tachi-orchestration/SKILL.md`` and ``references/coverage-requirements.md`` and
+  ``references/dispatch-rules.md``, and every other ``.claude/skills/**`` Markdown file (section 7 scans them
+  for a load of the record and brief reference).
 - ``schemas/coverage-checklists.yaml`` (its comment table; read as text, never parsed as YAML),
   ``INSTALL_MANIFEST.md``, ``adapters/claude-code/README.md`` and ``adapters/claude-code/agents/*.md``.
 - ``scripts/tachi_parts.py``, ``scripts/tachi_scoring.py`` and ``scripts/sarif_common.py``, imported, and
   ``scripts/extract-report-data.py``, ``scripts/extract-infographic-data.py`` and ``scripts/tachi_parsers.py``,
   read as text for their imports (section 11).
+
+T114's wiring gave two more inputs a ``paths:`` entry of their own, because no glob covered them:
+``docs/architecture/02_ADRs/ADR-050-*.md`` (the completion rule, section 12, and the end marker's words and recorded
+frame, section 7) and ``specs/374-large-architecture-pipeline-resilience/contracts/threat-model-records.md`` (the
+recorded frame and the class table, section 7, and PR 2's key sets, section 9). One input still has none: ``part-files.md``
+in the same folder (PR 2's stages, counts and key sets, section 9), so a change to only that file reaches these pins when
+another input next runs the job.
 
 What each section proves:
 
@@ -37,16 +45,30 @@ What each section proves:
    be spawned (T008, T009; US-4 #5). The scanner is shown red on sample sentences.
 4. The adapter copies carry R-17's superseded-by header, and the adapter README warns first (FR-C.1).
 5. One roster: ``agent-roster-shared.md`` equals the agent files, and every other list of agents is a
-   projection of it (FR-N4.1; the architect's ruling E). The three new PR 1 references are in the
-   shared skill's Loading Table with the consumers they declare.
+   projection of it (FR-N4.1; the architect's ruling E). The three new PR 1 references, and PR 2's
+   record and brief reference (T094), are in the shared skill's Loading Table with the consumers they
+   declare.
 6. The orchestrator's shell fences are single ``python3`` calls of shipped scripts (FR-N4.4; guard C6).
-7. PR 1's Track O text is inert (ADR-050 D11, spec S-5). **PR 2 flips this section** (T094).
+7. PR 2's Track O text is live (ADR-050 D11; T093, T094, T111, T157). PR 1 pinned it inert, and T094 inverted the
+   pin: the orchestrator's Phases 1 to 3 load the record and brief reference and agree with its five
+   templates, the old inline protocol is gone, and the dispatch rules' table rows follow the persisted
+   file's order. T111 and T157 made the end marker final (AR-T7): its text is in ``finding-format-shared.md``
+   in the words of ADR-050 D6 and in no agent spec or command, its detector is the End Marker section of the
+   record and brief reference, which agrees with the ADR and the contract on the recorded frame (S1P-A39), and
+   the orchestrator carries the watch, the completion rule's readings, the four reasons and the exhausted
+   lineage's error. Step 5 of the coverage requirements is a dispatch under the same protocol (S1P-A25).
 8. ``sarif-identity-shared.md`` equals ``sarif_common`` (T005): tools, categories, rule IDs, the
    three ``tachi-plh/1`` vectors, ruling C's sentences, the resolver's and the result's names, the
    result shape and key order, and the 14 emitter constants. The ``dormant`` status of
    ``threats.sarif`` is PR 1's too, and PR 2 (T101) flips it.
 9. ``part-file-contract-shared.md`` equals ``tachi_parts`` (T006): the 24 key sets, the closed
    values, the slot table, the 24 fixed sentences, the 28 flag fields, the identifiers and the limits.
+   That reference describes PR 1's two stages, so these comparisons read the code's PR 1 slice (``PR1_STAGES``, and the 24
+   names that its tables define). PR 2's entries of the same tables are compared with the texts that state them (T091's
+   integration step): the 12 key sets of the record and brief reference's templates, the 6 of ``part-files.md`` and the 12
+   of ``threat-model-records.md``; PR 2's four stages, with their agents and closed counts; and the reserved slots, which
+   each later stage must accept. One test keeps the names whole, so a key set, a stage or a slot table that no text pins
+   fails it.
 10. The same reference against the validator's behavior: each field is cut where the table says, and
    each narrative slip takes the table's sentence.
 11. The two extraction preflights (report assembler, infographic agent) check the extractor and every
@@ -126,7 +148,11 @@ SHARED_SKILL = SHARED + "/SKILL.md"
 ORCHESTRATION = SKILLS_DIR + "/tachi-orchestration"
 ORCHESTRATION_SKILL = ORCHESTRATION + "/SKILL.md"
 COVERAGE_REQUIREMENTS = ORCHESTRATION + "/references/coverage-requirements.md"
+DISPATCH_RULES = ORCHESTRATION + "/references/dispatch-rules.md"
 COVERAGE_CHECKLISTS = "schemas/coverage-checklists.yaml"
+ADR_050 = "docs/architecture/02_ADRs/ADR-050-large-architecture-output-authority.md"
+THREAT_MODEL_RECORDS = "specs/374-large-architecture-pipeline-resilience/contracts/threat-model-records.md"
+PART_FILES_CONTRACT = "specs/374-large-architecture-pipeline-resilience/contracts/part-files.md"
 INSTALL_MANIFEST = "INSTALL_MANIFEST.md"
 ADAPTER_README = "adapters/claude-code/README.md"
 ADAPTER_AGENTS = "adapters/claude-code/agents"
@@ -745,14 +771,17 @@ NEW_PR1_REFERENCES = {
     "part-file-contract-shared.md": PART_CONTRACT,
     "agent-roster-shared.md": ROSTER,
 }
+# PR 2's reference joined the table in the commit that made it live (T094; the PM's re-sign at v1.4).
+NEW_PR2_REFERENCES = {"dispatch-record-brief-shared.md": DISPATCH_RECORD_BRIEF}
+NEW_REFERENCES = {**NEW_PR1_REFERENCES, **NEW_PR2_REFERENCES}
 
 
-@pytest.mark.parametrize("name", sorted(NEW_PR1_REFERENCES))
-def test_each_new_pr_1_reference_is_in_the_loading_table_with_the_consumers_it_declares(name):
+@pytest.mark.parametrize("name", sorted(NEW_REFERENCES))
+def test_each_new_reference_is_in_the_loading_table_with_the_consumers_it_declares(name):
     rows = [r for r in table_after(text_of(SHARED_SKILL), "## Loading Table", where=SHARED_SKILL).rows
             if strip_ticks(r[0]) == "references/" + name]
     assert len(rows) == 1, "the shared skill's Loading Table has no single row for %s" % name
-    assert {c.strip() for c in rows[0][1].split(",")} == set(frontmatter_list(text_of(NEW_PR1_REFERENCES[name]), "consumers"))
+    assert {c.strip() for c in rows[0][1].split(",")} == set(frontmatter_list(text_of(NEW_REFERENCES[name]), "consumers"))
 
 
 @pytest.mark.parametrize("path, code", [(SARIF_IDENTITY, "scripts/sarif_common.py"), (PART_CONTRACT, "scripts/tachi_parts.py")])
@@ -889,21 +918,26 @@ def test_the_command_scanner_flags_what_c6_forbids(body):
 
 
 # =============================================================================
-# 7. PR 1's Track O text is inert (ADR-050 D11, spec S-5). PR 2's T094 flips this group.
+# 7. PR 2's Track O text is live (ADR-050 D11; T093, T094, T111, T157). PR 1 pinned it inert (T010), and T094 inverted the
+#    pin: the orchestrator's Phases 1 to 3 load the record and brief reference and agree with its templates. T111 and
+#    T157 made the end marker final and flipped its pins (AR-T7): the text moved into finding-format-shared.md, the
+#    detector is final, and the orchestrator carries the watch (ADR-050 D6, S1P-A31 to S1P-A39).
 # =============================================================================
+
+ORCHESTRATOR_SPEC = "%s/orchestrator.md" % AGENTS_DIR
 
 
 def end_marker_tokens() -> Set[str]:
-    """The end marker's provisional text, read from the staged reference: ``TACHI-END`` and ``TACHI-OVERFLOW``."""
-    section = section_text(text_of(DISPATCH_RECORD_BRIEF), "## End Marker (provisional)", DISPATCH_RECORD_BRIEF)
+    """The end marker's two lines, read from the End Marker section of the record and brief reference: ``TACHI-END`` and ``TACHI-OVERFLOW``."""
+    section = section_text(text_of(DISPATCH_RECORD_BRIEF), "## End Marker", DISPATCH_RECORD_BRIEF)
     tokens = set(re.findall(r"TACHI-[A-Z]+", section))
     if tokens != {"TACHI-END", "TACHI-OVERFLOW"}:
-        raise ReferenceDrift("the staged end marker's text moved: %s" % sorted(tokens))
+        raise ReferenceDrift("the end marker's lines moved: %s" % sorted(tokens))
     return tokens
 
 
-def loaders_of_the_staged_reference() -> List[str]:
-    """Every tachi agent, tachi command and skill file, other than the staged reference itself, that names it."""
+def loaders_of_the_reference() -> List[str]:
+    """Every tachi agent, tachi command and skill file, other than the record and brief reference itself, that names it."""
     own = REPO_ROOT / DISPATCH_RECORD_BRIEF
     candidates = sorted((REPO_ROOT / AGENTS_DIR).rglob("*.md"))
     candidates += sorted((REPO_ROOT / COMMANDS_DIR).glob("tachi.*.md"))
@@ -912,41 +946,632 @@ def loaders_of_the_staged_reference() -> List[str]:
             if path != own and "dispatch-record-brief" in path.read_text(encoding="utf-8")]
 
 
-def test_no_pr_1_agent_command_or_skill_loads_the_record_and_brief_reference():
-    assert loaders_of_the_staged_reference() == []
-
-
-def test_the_staged_reference_says_nothing_loads_it_yet():
-    text = text_of(DISPATCH_RECORD_BRIEF)
-    assert frontmatter_scalar(text, "status") == "staged"
-    assert frontmatter_scalar(text, "consumers") == "[]"
-    assert "Staged: nothing loads this file yet." in text
-    assert "dispatch-record-brief" not in text_of(SHARED_SKILL)
-
-
-def test_finding_format_has_neither_the_end_marker_nor_the_brief_rename():
-    text = text_of(FINDING_FORMAT)
-    for token in sorted(end_marker_tokens()):
-        assert token not in text, "finding-format-shared.md already carries %s" % token
-    assert not re.search(r"\bbrief\b", text, re.IGNORECASE), "finding-format-shared.md already says 'brief'"
-    assert text.count("dispatch record") >= 3, "the three 'dispatch record' places D11 renames in PR 2 are gone"
-
-
-def test_no_agent_spec_or_command_carries_the_end_marker_or_the_record_and_brief_files():
-    markers = sorted(end_marker_tokens())
-    staged_paths = ["/briefs/", "/records/", "phase1/", "idmap.json"]
-    files = [(AGENTS_DIR + "/%s.md" % stem) for stem in AGENT_STEMS]
-    files += [p.relative_to(REPO_ROOT).as_posix() for p in sorted((REPO_ROOT / COMMANDS_DIR).glob("tachi.*.md"))]
-    for path in files:
-        text = text_of(path)
-        for token in markers + staged_paths:
-            assert token not in text, "%s already mentions %s, which is PR 2's" % (path, token)
-
-
-def test_the_orchestrator_has_no_dispatch_record_mechanics_yet():
+def test_the_orchestrator_loads_the_record_and_brief_reference_before_it_writes_the_inventory():
     text = spec_text("orchestrator")
-    assert "dispatch record" not in text.lower()
-    assert ".tachi-build" not in text
+    load = "**MANDATORY**: Read `%s`" % DISPATCH_RECORD_BRIEF
+    persist = "**Persist the inventory.**"
+    assert (REPO_ROOT / DISPATCH_RECORD_BRIEF).is_file()
+    assert load in text, "the orchestrator has no MANDATORY read of the record and brief reference"
+    assert text.count(persist) == 1, "the orchestrator's inventory step moved"
+    assert text.index(load) < text.index(persist), "the orchestrator writes the inventory before it reads the templates"
+
+
+def test_only_the_orchestrator_names_the_record_and_brief_reference_among_the_agents():
+    agents = [path for path in loaders_of_the_reference() if path.startswith(AGENTS_DIR + "/")]
+    assert agents == [ORCHESTRATOR_SPEC], "the agents that name the reference: %s" % agents
+    assert set(frontmatter_list(text_of(DISPATCH_RECORD_BRIEF), "consumers")) == {"orchestrator"}
+
+
+def test_the_record_and_brief_reference_is_final():
+    text = text_of(DISPATCH_RECORD_BRIEF)
+    assert frontmatter_scalar(text, "status") is None, "the reference still says it is staged"
+    assert "Staged: nothing loads this file yet" not in text
+    assert "Only the end marker is provisional" not in text, "the banner is back"
+    assert "(provisional)" not in text, "a section of the reference is provisional again"
+    assert [line for line in text.splitlines() if line.startswith("## End Marker")] == ["## End Marker"]
+
+
+# ADR-050 D6 (T090, S1P-A32) gives the end marker's words as a block quote, and T111 moved them into finding-format-shared.md,
+# where each marker line is a code block and not a code span. So the two are compared as paragraphs.
+MARKER_INTRO = "These are its words, in this order."
+
+
+def adr_marker_paragraphs() -> List[str]:
+    """The end marker's words as ADR-050 D6 quotes them: the paragraphs of the block quote that follows ``MARKER_INTRO``."""
+    lines = text_of(ADR_050).splitlines()
+    starts = [i for i, line in enumerate(lines) if MARKER_INTRO in line]
+    if len(starts) != 1:
+        raise ReferenceDrift("%s: expected one line that introduces the marker's words, found %d" % (ADR_050, len(starts)))
+    quoted: List[str] = []
+    for line in lines[starts[0] + 1:]:
+        stripped = line.strip()
+        if stripped.startswith(">"):
+            quoted.append(stripped[1:].strip())
+        elif quoted:
+            break
+        elif stripped:
+            raise ReferenceDrift("%s: the marker's words don't follow their introduction" % ADR_050)
+    return [paragraph for paragraph in "\n".join(quoted).split("\n\n") if paragraph.strip()]
+
+
+def finding_format_marker_paragraphs(text: str) -> List[str]:
+    """The paragraphs of finding-format-shared.md's "Ending Your Report", with each marker code block read as a code span."""
+    section = section_text(text, "### Ending Your Report", FINDING_FORMAT, keep_fences=True)
+    section = re.sub(r"```[^\n]*\n(.*?)\n```", lambda match: "`%s`" % match.group(1), section, flags=re.S)
+    return [paragraph.strip() for paragraph in re.split(r"\n\s*\n", section) if paragraph.strip()]
+
+
+def test_finding_format_carries_the_end_marker_in_the_words_of_adr_050():
+    text = text_of(FINDING_FORMAT)
+    words = adr_marker_paragraphs()
+    assert len(words) == 5, "the marker is two lead-ins, two marker lines and the sentence for a resumed agent: %s" % words
+    assert finding_format_marker_paragraphs(text) == words, "the agents' text drifted from ADR-050 D6's words"
+    # One home: the two lines are in that subsection and nowhere else in the file, and it sits in the producers' part.
+    section = section_text(text, "### Ending Your Report", FINDING_FORMAT, keep_fences=True)
+    assert text.count(section) == 1
+    outside = text.replace(section, "")
+    for token in sorted(end_marker_tokens()):
+        assert token not in outside, "finding-format-shared.md names %s outside its Ending Your Report section" % token
+    producers = section_text(text, "## For Threat Agents (Producers)", FINDING_FORMAT)
+    headings = [line for line in producers.splitlines() if line.startswith("### ")]
+    assert headings.index("### Ending Your Report") == headings.index("### Field Construction Guidance") + 1
+
+
+def test_finding_format_says_brief_where_it_said_dispatch_record():
+    text = text_of(FINDING_FORMAT)
+    assert "3. Missing `component`: Use the target component name from the brief." in text
+    assert "- **`component`**: Use the exact component name from your brief's `targets`." in text
+    assert "- **`dfd_element_type`**: Use the DFD classification in the inventory your brief names (" in text
+    assert "dispatch record" not in text.lower(), "D11 renames every 'dispatch record' in this file"
+
+
+def test_a_drifted_end_marker_text_is_noticed():
+    text = text_of(FINDING_FORMAT)
+    words = adr_marker_paragraphs()
+    for old, new in (("alone and exactly as written", "alone"), ("End with it too when you found nothing. ", ""),
+                     ("Otherwise end with `TACHI-OVERFLOW`.", "Otherwise stop."), ("```\nTACHI-OVERFLOW\n```", "```\nTACHI-OVERFLOW \n```")):
+        assert old in text, old
+        assert finding_format_marker_paragraphs(text.replace(old, new, 1)) != words, "no change was noticed: %r" % old
+
+
+def files_naming_a_marker_line(texts: Dict[str, str]) -> Set[str]:
+    """The paths, among ``texts``, that name ``TACHI-END`` or ``TACHI-OVERFLOW``."""
+    markers = sorted(end_marker_tokens())
+    return {path for path, text in texts.items() if any(token in text for token in markers)}
+
+
+def claude_texts() -> Dict[str, str]:
+    """Every Markdown file under the agents, the commands and the skills, by its repository-relative path."""
+    found: Dict[str, str] = {}
+    for base in (AGENTS_DIR, COMMANDS_DIR, SKILLS_DIR):
+        for path in sorted((REPO_ROOT / base).rglob("*.md")):
+            found[path.relative_to(REPO_ROOT).as_posix()] = path.read_text(encoding="utf-8")
+    return found
+
+
+def test_the_two_marker_lines_have_two_homes_and_no_agent_spec_or_command_names_either():
+    """The agents' text is in finding-format-shared.md and the detector in the record and brief reference. Nothing else under
+    .claude/ names either line, so no protected detection file changes (the F-142 invariant, KB 6) and no third copy can drift."""
+    texts = claude_texts()
+    assert {FINDING_FORMAT, DISPATCH_RECORD_BRIEF} <= set(texts), "a home moved"
+    assert files_naming_a_marker_line(texts) == {FINDING_FORMAT, DISPATCH_RECORD_BRIEF}
+
+
+def test_a_third_file_that_names_a_marker_line_is_noticed():
+    texts = claude_texts()
+    texts[ORCHESTRATOR_SPEC] += "\nEnd your report with TACHI-END.\n"
+    assert files_naming_a_marker_line(texts) == {FINDING_FORMAT, DISPATCH_RECORD_BRIEF, ORCHESTRATOR_SPEC}
+    del texts[FINDING_FORMAT]
+    assert FINDING_FORMAT not in files_naming_a_marker_line(texts), "the scan reads the texts it is given, not the tree"
+
+
+# The orchestrator writes the working files, and no other agent names one: the threat agents are read-only.
+WORKING_FILE_MARKS = ("/briefs/", "/records/", "phase1/", "idmap.json")
+# The headings of the orchestrator's Phase 2 and Phase 3 protocol (T093).
+PROTOCOL_HEADINGS = ("#### Persist the Dispatch Table", "#### Plan the Dispatches", "#### Write a Brief", "#### Dispatch",
+                     "#### Record Each Return", "#### Re-Dispatch a Truncated Return", "#### When a Lineage Is Exhausted",
+                     "### The ID Map")
+# What the inline-payload protocol said before T093 replaced it (ADR-050 D11). The orchestrator says none of it now.
+INLINE_PROTOCOL = (
+    "produce a visible intermediate artifact labeled",
+    "Produce a visible intermediate component inventory",
+    "Produce a visible dispatch table as an intermediate artifact",
+    "dispatch table intermediate artifact has been produced and validated",
+    "list target components with names and DFD types; and provide the full architecture context",
+    "The context payload includes target components, full architecture context, analysis scope",
+)
+
+
+def test_no_other_agent_spec_names_a_working_file_of_the_orchestrator():
+    for stem in AGENT_STEMS:
+        if stem != "orchestrator":
+            for mark in WORKING_FILE_MARKS:
+                assert mark not in spec_text(stem), "%s.md names %s, a working file of the orchestrator" % (stem, mark)
+
+
+def test_the_orchestrator_has_the_dispatch_protocol_and_not_the_inline_payload_one():
+    text = spec_text("orchestrator")
+    headings = [line for line in text.splitlines() if line.startswith("#")]
+    for heading in PROTOCOL_HEADINGS:
+        assert headings.count(heading) == 1, "the orchestrator has no single heading %r" % heading
+    for old in INLINE_PROTOCOL:
+        assert old not in text, "the orchestrator still says %r, which ADR-050 D11 replaced" % old
+    assert ".tachi-build" in text and "dispatch record" in text.lower()
+    assert text.count("print no copy of it") >= 2, "the inventory and the dispatch table are each persisted, with no printed copy"
+
+
+def test_the_orchestrator_names_each_working_file_at_the_path_the_reference_gives():
+    reference = text_of(DISPATCH_RECORD_BRIEF)
+    rows = table_after(reference, "## Where the Files Live", where=DISPATCH_RECORD_BRIEF).rows
+    assert [row[0] for row in rows] == ["Phase 1 inventory", "Phase 1 dispatch table", "Brief", "Dispatch record", "ID map"]
+    text = spec_text("orchestrator")
+    for name, path, _written, _cap in rows:
+        assert strip_ticks(path) in text, "the orchestrator never names the %s at %s" % (name.lower(), strip_ticks(path))
+    # Every path it names for one of these files, by folder or by file name, is one of the five. So a path changed in one
+    # place is caught, and a path for a later phase (the section manifest, the chain files) is not a working file here.
+    named = {path.rstrip(".,;:") for path in re.findall(r"\{out\}/\.tachi-build/[^\s`)]+", text)}
+    working = {path for path in named
+               if re.match(r"\{out\}/\.tachi-build/(phase1|briefs|records)/", path) or "{dispatch_id}" in path
+               or path.rsplit("/", 1)[-1] in ("inventory.json", "dispatch.json", "idmap.json")}
+    assert working == {strip_ticks(path) for _name, path, _written, _cap in rows}
+    assert "each in one Write call, and never rewrites one or reads one back" in reference
+    assert "Write each file once, in one Write call, and never edit or rewrite it. Never read one back" in text
+
+
+# The five templates of the record and brief reference: a label, the reference's heading and the schema the file names.
+TEMPLATES = (
+    ("inventory", "## Phase 1 Inventory", "tachi.phase1-inventory/1"),
+    ("dispatch table", "## Dispatch Table", "tachi.phase1-dispatch/1"),
+    ("brief", "## Brief", "tachi.brief/1"),
+    ("dispatch record", "## Dispatch Record", "tachi.dispatch-record/1"),
+    ("ID map", "## ID Map", "tachi.idmap/1"),
+)
+TEMPLATE_IDS = [row[0] for row in TEMPLATES]
+_DISPATCH_ID = re.compile(r"dsp-[0-9]{3,4}")
+# The record's closed values (ADR-050 D6 and D11). The End Marker section's class table sets ``reason``: T090 added
+# ``agent_failed`` (a failed agent has no report) and ``timed_out`` (the watch's deadline), S1P-A31 and S1P-A33.
+RECORD_VALUES = {
+    "origin": ("planned", "redispatch", "coverage-gap"),
+    "status": ("complete", "superseded", "unrecovered"),
+    "reason": ("no_end_marker", "overflow_error", "agent_failed", "timed_out"),
+}
+
+
+def template_json(text: str, anchor: str) -> Any:
+    """A template's one JSON example, from the record and brief reference's text."""
+    section = section_text(text, anchor, DISPATCH_RECORD_BRIEF, keep_fences=True)
+    blocks = [fence.body for fence in fences(section) if fence.label == "json"]
+    if len(blocks) != 1:
+        raise ReferenceDrift("%s: %r holds %d json examples, not one" % (DISPATCH_RECORD_BRIEF, anchor, len(blocks)))
+    return json.loads(blocks[0])
+
+
+def template_of(anchor: str) -> Tuple[Any, Table]:
+    """A template's example object and its key table, both read from the record and brief reference."""
+    text = text_of(DISPATCH_RECORD_BRIEF)
+    return template_json(text, anchor), table_after(text, anchor, where=DISPATCH_RECORD_BRIEF)
+
+
+def nested_keys(example: Any) -> Set[str]:
+    """The keys of the objects inside a template's example, at any depth. A dispatch ID that keys the ID map is data."""
+    if isinstance(example, dict):
+        children = list(example.values())
+    elif isinstance(example, list):
+        children = list(example)
+    else:
+        children = []
+    found: Set[str] = set()
+    for child in children:
+        if isinstance(child, dict):
+            found |= {key for key in child if not _DISPATCH_ID.fullmatch(key)}
+        found |= nested_keys(child)
+    return found
+
+
+def fixed_prompt() -> str:
+    """The one line that points an agent at its brief, as the reference gives it, with ``{brief_path}`` unfilled."""
+    section = section_text(text_of(DISPATCH_RECORD_BRIEF), "## Fixed Prompt", DISPATCH_RECORD_BRIEF, keep_fences=True)
+    blocks = [fence.body.strip() for fence in fences(section)]
+    if len(blocks) != 1 or "\n" in blocks[0]:
+        raise ReferenceDrift("%s: the fixed prompt is not one line in one block" % DISPATCH_RECORD_BRIEF)
+    return blocks[0]
+
+
+def orchestrator_slice(label: str) -> str:
+    """The orchestrator's own words for one working file: the inventory's key list, or the section that gives the file."""
+    text = spec_text("orchestrator")
+    if label == "inventory":
+        marker = "The inventory is a JSON object with exactly these keys:"
+        if text.count(marker) != 1:
+            raise ReferenceDrift("%s: the inventory's key list moved" % ORCHESTRATOR_SPEC)
+        return text.split(marker, 1)[1].split("\n---", 1)[0]
+    anchors = {"dispatch table": "#### Persist the Dispatch Table", "brief": "#### Write a Brief",
+               "dispatch record": "#### Record Each Return", "ID map": "### The ID Map"}
+    return section_text(text, anchors[label], ORCHESTRATOR_SPEC)
+
+
+@pytest.mark.parametrize("label, anchor, schema", TEMPLATES, ids=TEMPLATE_IDS)
+def test_each_template_example_holds_the_keys_its_table_names_and_the_schema_it_says(label, anchor, schema):
+    example, table = template_of(anchor)
+    named = {token for row in table.rows for token in ticks(row[0])}
+    assert set(example) == named, "%s: the example holds %s and the table names %s" % (label, sorted(example), sorted(named))
+    assert example["schema"] == schema
+    assert [row[1] for row in table.rows if row[0] == "`schema`"] == ['`"%s"`' % schema]
+    words = " ".join(" ".join(row) for row in table.rows)
+    for key in sorted(nested_keys(example)):
+        assert re.search(r"\b%s\b" % re.escape(key), words), "%s: the table never names the nested key %r" % (label, key)
+
+
+@pytest.mark.parametrize("label, anchor, schema", TEMPLATES, ids=TEMPLATE_IDS)
+def test_the_orchestrator_names_the_schema_and_the_keys_of_each_template(label, anchor, schema):
+    example, _ = template_of(anchor)
+    words = orchestrator_slice(label)
+    assert "`%s`" % schema in words, "%s: the orchestrator never names the schema %s" % (label, schema)
+    for key in sorted(example):
+        assert "`%s`" % key in words, "%s: the orchestrator never names the key %r" % (label, key)
+    for key in sorted(nested_keys(example)):
+        assert re.search(r"\b%s\b" % re.escape(key), words), "%s: the orchestrator never names the nested key %r" % (label, key)
+    listed = set(re.findall(r"^- `([^`]+)`", words, re.MULTILINE))
+    assert listed <= set(example) | nested_keys(example), "%s: keys the template lacks: %s" % (
+        label, sorted(listed - set(example) - nested_keys(example)))
+
+
+def test_the_inventory_s_character_limits_are_the_same_in_the_orchestrator_and_the_reference():
+    reference = " ".join(" ".join(row) for row in template_of("## Phase 1 Inventory")[1].rows)
+    limits = re.findall(r"at most ([0-9]+) characters", reference)
+    assert len(limits) == 3, "the inventory's description, data and protocol each have a character limit: %s" % limits
+    assert re.findall(r"at most ([0-9]+) characters", orchestrator_slice("inventory")) == limits
+
+
+def test_the_examples_describe_one_dispatch_and_agree_with_each_other():
+    inventory, _ = template_of("## Phase 1 Inventory")
+    dispatch, _ = template_of("## Dispatch Table")
+    record, _ = template_of("## Dispatch Record")
+    brief, _ = template_of("## Brief")
+    idmap, _ = template_of("## ID Map")
+    names = [component["name"] for component in inventory["components"]]
+    assert len({name.casefold() for name in names}) == len(names)
+    assert all(flow[end] in names for flow in inventory["data_flows"] for end in ("source", "destination"))
+    assert all(name in names for zone in inventory["trust_zones"] for name in zone["components"])
+    assert [row["component"] for row in dispatch["rows"]] == names, "one row for each component, in the inventory's order"
+    for row in dispatch["rows"]:
+        assert row["stride"] == [letter for letter in "STRIDE" if letter in row["stride"]], row
+        assert row["ai"] == [key for key in ("AG", "LLM") if key in row["ai"]], row
+    key_of = {agent: key for agent, key, *_ in roster_rows(text_of(ROSTER))[0]}
+    scope = [row["component"] for row in dispatch["rows"] if key_of[record["agent_type"]] in row["stride"] + row["ai"]]
+    assert record["scope"]["components"] == brief["targets"] == scope, "a scope is the rows that carry the agent's key"
+    for key in ("dispatch_id", "agent_type"):
+        assert record[key] == brief[key]
+    assert record["brief"].endswith("/briefs/%s.json" % record["dispatch_id"])
+    assert record["prompt"] == fixed_prompt().replace("{brief_path}", record["brief"])
+    assert brief["inputs"]["inventory"].endswith("/phase1/inventory.json")
+    assert brief["inputs"]["dispatch_table"].endswith("/phase1/dispatch.json")
+    assert (record["status"] == "complete") is record["end_marker"] and record["reason"] is None
+    assert record["count"] == len(record["local_ids"]) == len(idmap["records"][record["dispatch_id"]])
+
+
+def test_the_records_closed_values_agree_in_the_reference_the_orchestrator_and_the_end_marker_rule():
+    reference = text_of(DISPATCH_RECORD_BRIEF)
+    cells = {strip_ticks(row[0]): row[1] for row in template_of("## Dispatch Record")[1].rows}
+    orchestrator = orchestrator_slice("dispatch record")
+    for key, values in RECORD_VALUES.items():
+        for value in values:
+            assert '`"%s"`' % value in cells[key], "the reference's %s row lacks %s" % (key, value)
+            assert "`%s`" % value in orchestrator, "the orchestrator never writes %s for %s" % (value, key)
+    table = table_after(spec_text("orchestrator"), "#### Record Each Return", where=ORCHESTRATOR_SPEC)
+    assert [strip_ticks(row[2]) for row in table.rows] == list(RECORD_VALUES["status"])
+    for row in table.rows[1:]:   # a truncated return takes any of the four reasons, in the table's words
+        assert enum_after(row[3]) == list(RECORD_VALUES["reason"]), row
+    rule = table_after(reference, "**The classes.**", where=DISPATCH_RECORD_BRIEF)
+    assert {strip_ticks(row[2]).strip('"') for row in rule.rows if row[2].strip()} == set(RECORD_VALUES["reason"]) | {"null"}
+
+
+def test_the_orchestrator_sends_the_fixed_prompt_and_classifies_returns_by_the_reference_s_end_marker_rule():
+    text = spec_text("orchestrator")
+    assert fixed_prompt() == "Read and follow the brief at {brief_path}."
+    assert fixed_prompt().replace("{brief_path}", "<brief path>") in text
+    assert "by the end-marker rule in the End Marker section of the dispatch record and brief reference" in text
+    assert "This file adds no rule of its own, so the predicate has one home." in text
+
+
+def agents_per_dispatch_key() -> Dict[str, int]:
+    """How many Phase 2 agents carry each dispatch key in the roster: one for each STRIDE letter, three for AG, five for LLM."""
+    counts: Dict[str, int] = {}
+    for _agent, key, *_rest in roster_rows(text_of(ROSTER))[0]:
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def test_the_dispatch_rules_persist_the_table_and_print_no_copy_of_it():
+    text = text_of(DISPATCH_RULES)
+    persisted = "{out}/.tachi-build/phase1/dispatch.json"
+    for gone in ("visible dispatch table", "### Dispatch Table (Intermediate)", "(Intermediate Output)", "before invoking agents"):
+        assert gone not in text, "the dispatch rules still say %r" % gone
+    assert persisted in text and persisted in text_of(DISPATCH_RECORD_BRIEF) and persisted in spec_text("orchestrator")
+    assert DISPATCH_RECORD_BRIEF in text, "the dispatch rules never point at the table's template"
+    assert "Print no copy of the table or the file." in text
+    assert "no field for the note" in section_text(text, "### Ambiguity Note", DISPATCH_RULES)
+
+
+def test_the_dispatch_rules_example_rows_follow_the_normalization_the_roster_and_the_persisted_order():
+    rules = text_of(DISPATCH_RULES)
+    quick = table_after(rules, "### Quick Reference", where=DISPATCH_RULES)
+    letters = [plain(cell) for cell in quick.header[1:]]
+    assert letters == list("STRIDE"), "the persisted file lists STRIDE letters in the Quick Reference's order"
+    stride_of = {plain(row[0]): [letter for letter, mark in zip(letters, row[1:]) if mark.strip() == "x"] for row in quick.rows}
+    counts = agents_per_dispatch_key()
+    rows = table_after(rules, "### Example Rows", where=DISPATCH_RULES).rows
+    assert len(rows) == 5, "the example rows moved"
+    for component, dfd_type, _layer, stride, ai, total in rows:
+        stride_list = [cell.strip() for cell in stride.split(",")]
+        ai_list = [] if ai.strip() == chr(0x2014) else [cell.strip() for cell in ai.split(",")]  # the rules write "none" as an em dash
+        assert stride_list == stride_of[dfd_type], component
+        assert ai_list == [key for key in ("AG", "LLM") if key in ai_list], "%s: AI categories go in the persisted order" % component
+        assert int(total) == len(stride_list) + sum(counts[key] for key in ai_list), component
+
+
+# --- the detector's home and the recorded frame (T157; ADR-050 D6, item O-alpha; S1P-A31, S1P-A39) --------------------------
+
+# Claude Code 2.1.331 is the version on which S-9's spike recorded the frame that wraps a delivered report. The detector's
+# home, ADR-050 D6 and the records contract each say so in one sentence, and the three must name the same version and the
+# same frame strings. Changing the version is a decision made in all three and here, after R-27's smoke run on that release.
+RECORDED_VERSION = "2.1.331"
+FRAME_STRINGS = ("<agent-message>", "[Subagent hand-back]")   # the sentence names them in this order
+CLOSING_TAG = "</agent-message>"                              # only the home names it: it says where the report ends
+_RECORDED_FRAME = re.compile(r"The recorded example is Claude Code ([0-9]+\.[0-9]+\.[0-9]+)'s frame:(.*?)every report line")
+PREDICATE_SENTENCE = ("Take the report's last line that isn't blank once leading and trailing whitespace are removed, "
+                      "which also removes the harness's two-space indent.")
+FRAME_TEXTS = {"the detector's home": DISPATCH_RECORD_BRIEF, "ADR-050 D6": ADR_050, "the records contract": THREAT_MODEL_RECORDS}
+
+
+def frame_problems(texts: Dict[str, str]) -> List[str]:
+    """Why the texts that record the hand-back frame disagree with each other or with the recorded version. An empty list is a pass."""
+    problems: List[str] = []
+    for name, text in sorted(texts.items()):
+        flat = " ".join(text.split())
+        found = _RECORDED_FRAME.findall(flat)
+        if len(found) != 1:
+            problems.append("%s: expected one sentence that records the frame, found %d" % (name, len(found)))
+            continue
+        version, listed = found[0]
+        if version != RECORDED_VERSION:
+            problems.append("%s: records Claude Code %s, not %s" % (name, version, RECORDED_VERSION))
+        if tuple(_TICKED.findall(listed)) != FRAME_STRINGS:
+            problems.append("%s: names the frame strings %s, not %s" % (name, _TICKED.findall(listed), list(FRAME_STRINGS)))
+        if flat.count(PREDICATE_SENTENCE) != 1:
+            problems.append("%s: lacks the predicate's first sentence, word for word" % name)
+    return problems
+
+
+def frame_texts() -> Dict[str, str]:
+    return {name: text_of(path) for name, path in FRAME_TEXTS.items()}
+
+
+def test_the_home_the_adr_and_the_contract_name_the_same_version_and_frame_strings():
+    texts = frame_texts()
+    assert frame_problems(texts) == []
+    home = section_text(texts["the detector's home"], "## End Marker", DISPATCH_RECORD_BRIEF)
+    assert "`%s`" % CLOSING_TAG in home, "the home doesn't say where the report ends"
+    assert "stated against Claude Code %s" % RECORDED_VERSION in home, "the home's drift note names no version"
+
+
+@pytest.mark.parametrize("which", sorted(FRAME_TEXTS))
+@pytest.mark.parametrize("old, new", [
+    ("Claude Code 2.1.331's frame", "Claude Code 2.1.340's frame"),
+    ("the `[Subagent hand-back]` line", "the hand-back line"),
+    ("the `<agent-message>` tags", "the message tags"),
+    ("The recorded example is Claude Code", "The example is Claude Code"),
+    ("Take the report's last line that isn't blank", "Take the report's last line"),
+])
+def test_a_drifted_frame_in_any_one_of_the_three_texts_is_noticed(which, old, new):
+    texts = frame_texts()
+    assert old in texts[which], "%s no longer has %r" % (which, old)
+    texts[which] = texts[which].replace(old, new, 1)
+    assert frame_problems(texts), "a change to %s went unnoticed: %r" % (which, old)
+
+
+def class_table(path: str, anchor: str) -> Table:
+    return table_after(text_of(path), anchor, where=path)
+
+
+def test_the_class_table_has_seven_rows_with_the_four_reasons_and_a_count_of_zero_without_a_report():
+    table = class_table(DISPATCH_RECORD_BRIEF, "**The classes.**")
+    assert table.header[1:] == ["`end_marker`", "`reason`", "`count`, `local_ids`"]
+    assert len(table.rows) == 7, "S1P-A31's table has seven rows"
+    assert [strip_ticks(row[2]).strip('"') for row in table.rows] == [
+        "null", "overflow_error", "no_end_marker", "agent_failed", "no_end_marker", "", "timed_out"]
+    assert [strip_ticks(row[1]) for row in table.rows[:5] + table.rows[6:]] == ["true", "false", "false", "false", "false", "false"]
+    assert table.rows[5][1].startswith("not a return: the dispatch stays pending"), "an interim notice is no return"
+    assert [row[3] for row in (table.rows[3], table.rows[4], table.rows[6])] == ["`0`, `[]`"] * 3, "no report means count 0"
+    assert {strip_ticks(row[2]).strip('"') for row in table.rows if row[2].strip()} - {"null"} == set(RECORD_VALUES["reason"])
+
+
+def class_table_problems(home_text: str, contract_text: str) -> List[str]:
+    """How the home's class table differs from the records contract's in the three columns that carry the rule. [] is a pass."""
+    home = table_after(home_text, "**The classes.**", where=DISPATCH_RECORD_BRIEF)
+    contract = table_after(contract_text, "**The detector**", where=THREAT_MODEL_RECORDS)
+    problems: List[str] = []
+    if home.header[1:] != contract.header[1:]:
+        problems.append("the headers differ: %s and %s" % (home.header[1:], contract.header[1:]))
+    if len(home.rows) != len(contract.rows):
+        problems.append("the home has %d rows and the contract %d" % (len(home.rows), len(contract.rows)))
+    for number, (mine, theirs) in enumerate(zip(home.rows, contract.rows), start=1):
+        if mine[1:] != theirs[1:]:
+            problems.append("row %d differs: %s and %s" % (number, mine[1:], theirs[1:]))
+    return problems
+
+
+def test_the_class_table_is_the_records_contracts_in_every_column_but_the_first():
+    assert class_table_problems(text_of(DISPATCH_RECORD_BRIEF), text_of(THREAT_MODEL_RECORDS)) == []
+
+
+@pytest.mark.parametrize("old, new", [
+    ('`false` | `"agent_failed"` | `0`, `[]` |', '`false` | `"failed"` | `0`, `[]` |'),
+    ('`false` | `"timed_out"` | `0`, `[]` |', '`false` | `"timed_out"` | the report\'s findings |'),
+    ("not a return: the dispatch stays pending, and its deadline runs on", "a return that is not recorded"),
+])
+@pytest.mark.parametrize("which", ["the home", "the contract"])
+def test_a_drifted_class_table_row_is_noticed(which, old, new):
+    texts = {"the home": text_of(DISPATCH_RECORD_BRIEF), "the contract": text_of(THREAT_MODEL_RECORDS)}
+    assert old in texts[which], "%s no longer has %r" % (which, old)
+    texts[which] = texts[which].replace(old, new, 1)
+    assert class_table_problems(texts["the home"], texts["the contract"]), "a change to %s went unnoticed: %r" % (which, old)
+
+
+def test_the_record_template_gives_a_count_of_zero_and_no_ids_when_no_report_came():
+    """T157: ``count`` is 0 and ``local_ids`` is ``[]`` for ``agent_failed`` and ``timed_out``, in the template's key table and
+    in the orchestrator's words for the record."""
+    cells = {strip_ticks(row[0]): row[1] for row in template_of("## Dispatch Record")[1].rows}
+    assert "It is 0 when no report came, which is `reason` `\"agent_failed\"` or `\"timed_out\"`" in cells["count"]
+    assert "and `[]` when no report came" in cells["local_ids"]
+    assert "So is a dispatch that never returned before its wave's watch timed it out." in text_of(DISPATCH_RECORD_BRIEF)
+    assert "has `count` 0 and `local_ids` `[]`" in orchestrator_slice("dispatch record")
+
+
+def test_the_detector_reads_the_report_by_its_last_line_and_a_notification_only_when_no_report_came():
+    home = section_text(text_of(DISPATCH_RECORD_BRIEF), "## End Marker", DISPATCH_RECORD_BRIEF)
+    assert PREDICATE_SENTENCE in home
+    assert "It is the end marker when it is exactly `TACHI-END`, and the overflow line when it is `TACHI-OVERFLOW`, alone or followed by a space." in home
+    assert "**A notification** decides only when no report came. Its `<status>` alone decides nothing" in home
+    assert "A `completed` notification whose result says that the report was delivered as a message is judged by that message." in home
+    assert "The overflow line carries no object, and nothing reads it past its first word." in home
+    assert "stays pending" in home and "changes nothing" in home, "an interim notice and a late return are both left out"
+    assert "finding-format-shared.md" in home and "No agent spec names either line." in home, "the agents' text has one home"
+
+
+# --- the orchestrator's watch and its completion rule's readings (T111; ADR-050 D6, S1P-A33 to S1P-A35, S1P-A38) ------------------
+
+WATCH_CALL = "python3 scripts/tachi-stage.py watch --out '{out}' <dispatch_ids>"
+HANDBACK_RULE = "Never call `SubagentHandback` while a dispatch is pending."
+AFTER_REPLY_RULE = "**After your reply,** make no tool call, even if a late message resumes you. End your turn."
+TIMED_OUT_CLAUSE = ("Once its wave's watch has timed a dispatch out, it counts as returned: it no longer holds its wave, the error path's "
+                    "wait or your reply. It still counts against the 16 in flight until its late notice arrives, so a wave starts at "
+                    "most 16 less those agents. When they leave no room for a pending dispatch, the run fails as for an exhausted "
+                    "lineage, and the error names the oldest record that timed out.")
+FAILED_AGENT_CLAUSE = "Its failure notice is the `agent_failed` row of the End Marker section's table, and that row decides what you write."
+SAME_RESUME_RULE = ("When the watch's exit and a return for a dispatch it lists arrive in the same resume, judge the return first, "
+                    "so that the dispatch gets its own record and not `timed_out`.")
+TIMED_OUT_REMEDY = "the agent may still be running: stop it, or end the session, before you re-run"
+RE_DISPATCH_WAVE = ("When every dispatch of the wave has its record, from a return or from the watch's timeout, write the pending briefs "
+                    "and start them as the next wave, with a watch of its own.")
+
+
+def test_each_wave_starts_the_watch_with_one_literal_fence_and_names_its_dispatch_in_the_agent_call():
+    text = spec_text("orchestrator")
+    section = section_text(text, "#### Dispatch", ORCHESTRATOR_SPEC, keep_fences=True)
+    shell = [fence.body.strip() for fence in fences(section) if fence.label.lower() in SHELL_LABELS]
+    assert shell == [WATCH_CALL], "the Dispatch section's one shell fence is the watch"
+    assert not command_problems(shell[0], shipped_scripts()), "H13: one python3 call of a shipped script, with literal arguments"
+    assert [fence.body.strip() for fence in fences(text) if "tachi-stage.py" in fence.body] == [WATCH_CALL], "no other fence runs it"
+    assert "Set `subagent_type` to the agent's roster name and `description` to the dispatch's ID" in section
+    assert "with its `run_in_background` option set" in section, "the watch runs in the background, which is what resumes the agent"
+    assert "with each wave's Agent calls, or right after them and before you end your turn, start that wave's watch" in section
+    assert "A planned wave, a re-dispatch wave and a coverage-gap wave each start one." in section
+    rule_3 = re.search(r"^3\. \*\*Run shipped scripts only\.\*\*.*$", text, re.M)
+    assert rule_3 and "`scripts/tachi-stage.py watch`" in rule_3.group(0), "typed dispatch rule 3 names the watch"
+
+
+def test_the_watchs_three_exits_are_routed():
+    section = section_text(spec_text("orchestrator"), "#### Dispatch", ORCHESTRATOR_SPEC)
+    bullets = {match.group(1): match.group(2) for match in re.finditer(r"^- \*\*(Exit 0|Exit 3|Any other exit)\*\*(.*)$", section, re.M)}
+    assert sorted(bullets) == ["Any other exit", "Exit 0", "Exit 3"]
+    assert "needs nothing from you" in bullets["Exit 0"]
+    assert "`reason` `timed_out`" in bullets["Exit 3"] and "treat it as a truncated return" in bullets["Exit 3"]
+    assert "Skip a dispatch that has its record by now." in bullets["Exit 3"]
+    assert "`TACHI THREAT MODEL FAILED:`" in bullets["Any other exit"] and "the run fails" in bullets["Any other exit"]
+
+
+def test_the_completion_rule_reads_a_failed_agent_a_timed_out_dispatch_and_the_reply():
+    text = spec_text("orchestrator")
+    section = section_text(text, "#### Dispatch", ORCHESTRATOR_SPEC)
+    assert HANDBACK_RULE in section, "the SubagentHandback sentence"
+    assert AFTER_REPLY_RULE in section, "the rule for after the reply"
+    assert TIMED_OUT_CLAUSE in section, "the timed-out clause"
+    assert FAILED_AGENT_CLAUSE in section, "a failed agent is the table's agent_failed row"
+    assert "which counts as a return with no end marker" not in text, "a failed agent is no longer a return with no end marker"
+    assert "wait for the agents still running, then reply" in section, "the error path's wait stays"
+    assert "To wait, end your turn, and resume on each completion notice." in section
+
+
+def test_a_return_judged_in_the_same_resume_as_the_watchs_exit_wins_and_a_second_notice_changes_nothing():
+    section = section_text(spec_text("orchestrator"), "#### Record Each Return", ORCHESTRATOR_SPEC)
+    assert SAME_RESUME_RULE in section
+    assert "A record is written once. A return or a notice for a dispatch that already has its record changes nothing" in section
+    assert "its findings are never compiled" in section
+    assert "A dispatch that sent no report, `agent_failed` or `timed_out`, has `count` 0 and `local_ids` `[]`." in section
+    assert "the notices that are no return, such as an interim one, and a dispatch whose notice is no return stays pending" in section
+
+
+def test_a_timed_out_record_is_re_dispatched_like_any_truncated_one_and_a_wave_waits_for_every_record():
+    text = spec_text("orchestrator")
+    section = section_text(text, "#### Re-Dispatch a Truncated Return", ORCHESTRATOR_SPEC)
+    assert RE_DISPATCH_WAVE in section
+    assert "a `timed_out` record is split, repeated or ended like any other" in section
+    assert "At most 16 are in flight, and each agent that timed out counts until its late notice arrives, so a wave starts at most 16 less those agents." in section
+    assert "If they leave no room for a pending dispatch, the run fails as the completion rule says." in section
+    assert "has reported completion and has its record" not in text, "the wave no longer waits for completion notices alone"
+
+
+def test_the_exhausted_lineage_error_names_the_reason_and_the_timed_out_remedy():
+    section = section_text(spec_text("orchestrator"), "#### When a Lineage Is Exhausted", ORCHESTRATOR_SPEC, keep_fences=True)
+    errors = [fence.body.splitlines() for fence in fences(section) if fence.label == "text"]
+    assert len(errors) == 1
+    assert [line.split(":", 1)[0] for line in errors[0]] == [
+        "TACHI THREAT MODEL FAILED", "Record", "Agent", "Components", "Reason", "Remedy"]
+    assert "Reason: <the record's reason>" in errors[0]
+    assert "When the reason is `timed_out`, add this to the remedy: %s." % TIMED_OUT_REMEDY in section
+    assert "The wait is bounded: each wave's watch times out an agent that never returns, and you don't wait for an agent that timed out." in section
+
+
+def test_phase_3b_starts_a_watch_for_each_coverage_gap_wave_and_phase_5_starts_none():
+    text = spec_text("orchestrator")
+    gate = section_text(text, "### Phase 3b: Coverage Gate", ORCHESTRATOR_SPEC)
+    assert "Start them in waves of at most 16, and start each wave's watch with its Agent calls." in gate
+    assert "`unrecovered` when the return is truncated or timed out" in gate
+    assert "replace the re-analysis payload" not in gate, "the coverage requirements no longer describe a payload"
+    report = section_text(text, "### Phase 5 Dispatch", ORCHESTRATOR_SPEC)
+    assert "**No watch.** The watch bounds the waves of Phase 2 and Phase 3b alone" in report
+    assert "Start none for a Phase 5 dispatch, whatever its wave." in report
+
+
+def test_the_watch_is_the_orchestrators_only_background_call_and_the_sequential_mode_gives_each_dispatch_its_own():
+    text = spec_text("orchestrator")
+    assert text.count("run_in_background") == 1
+    assert "Each dispatch is then a wave of its own, with its own watch." in text
+    assert "invoke the whole planned set concurrently as one wave with its watch" in text
+
+
+# --- Step 5 of the coverage requirements, a dispatch under the same protocol (T157; S1P-A25, S1P-A38 item 4) ------------------
+
+
+def test_step_5_re_analyses_each_gap_as_a_dispatch_with_a_brief_and_takes_the_truncated_case_as_unrecovered():
+    text = text_of(COVERAGE_REQUIREMENTS)
+    for gone in ("Re-Analysis Context Payload", "Scope constraint", "Targeted re-analysis for coverage gap: analyze",
+                 "Assign sequential IDs after the highest existing ID", "Agent dispatch failure"):
+        assert gone not in text, "the inline payload protocol is back: %r" % gone
+    dispatch = section_text(text, "### Re-Analysis Dispatch", COVERAGE_REQUIREMENTS)
+    assert "made under the orchestrator's Dispatch Protocol" in dispatch
+    assert DISPATCH_RECORD_BRIEF in dispatch
+    assert fixed_prompt() in dispatch, "the fixed prompt, word for word"
+    for needed in ("One dispatch for each gap and agent", "The next unused dispatch ID", "`tachi.brief/1`", "whose one target is the gap's component",
+                   "`origin` `coverage-gap`", "`supersedes` `null`", "**isolated discovery**", "no finding descriptions, scores, mitigations or finding IDs"):
+        assert needed in dispatch, needed
+    handling = section_text(text, "### Re-Analysis Result Handling", COVERAGE_REQUIREMENTS)
+    outcomes = table_after(text, "### Re-Analysis Result Handling", where=COVERAGE_REQUIREMENTS).rows
+    assert [row[0].split(" (")[0] for row in outcomes] == ["Findings produced", "No findings produced", "Truncated return"]
+    assert "this reference sets no ID rule of its own" in outcomes[0][1]
+    assert "`\"analyzed_clean\"`" in outcomes[1][1]
+    for reason in RECORD_VALUES["reason"]:
+        assert "`%s`" % reason in outcomes[2][0], "the truncated row names %s" % reason
+    assert "an `unrecovered` record" in outcomes[2][0]
+    assert "`\"dispatch_failure\"`" in outcomes[2][1] and "does not block pipeline" in outcomes[2][1]
+    assert "`coverage-gap:unrecovered:<reason>`, with exit 5" in outcomes[2][1]
+    assert "typed dispatch rule 2" in handling, "a spawn failure is the orchestrator's stop, not a gap's resolution"
+    constraints = section_text(text, "### Re-Analysis Constraints", COVERAGE_REQUIREMENTS)
+    assert "belongs to no lineage, is never `superseded` and is never re-dispatched" in constraints
+    assert "waves of at most 16, and each wave starts its own watch" in constraints
+    for kept in ("**Run once per gap**", "**No recursive coverage checks**", "**Non-blocking**"):
+        assert kept in constraints, kept
 
 
 # =============================================================================
@@ -1280,16 +1905,28 @@ INLINE_KEY_SETS = {
     "error": ("stage-record", "error"),
 }
 
+# The two stages that part-file-contract-shared.md describes, the two that PR 1 ships. The families below that read it compare it with the
+# code's slice for these stages. PR 2's four stages, and the key sets and counts that came with them, are pinned further down.
+PR1_STAGES = ("risk-score", "compensating-controls")
+
 
 def key_table(text: str, name: str) -> Table:
     return table_after(text, KEY_SET_TABLES[name], where="part-file-contract-shared.md")
 
 
-def key_row(table: Table, key: str) -> List[str]:
+def key_row(table: Table, key: str, where: str = "part-file-contract-shared.md") -> List[str]:
     rows = [row for row in table.rows if strip_ticks(row[0]) == key]
     if len(rows) != 1:
-        raise ReferenceDrift("part-file-contract-shared.md: expected one row for %r, found %d" % (key, len(rows)))
+        raise ReferenceDrift("%s: expected one row for %r, found %d" % (where, key, len(rows)))
     return rows[0]
+
+
+def brace_keys(cell: str, where: str, label: str) -> List[str]:
+    """The names in the one ``{a, b, c}`` that a table cell holds in backticks."""
+    braces = re.findall(r"`\{([^}]*)\}`", cell)
+    if len(braces) != 1:
+        raise ReferenceDrift("%s: the %s row has %d brace lists" % (where, label, len(braces)))
+    return [k.strip() for k in braces[0].split(",")]
 
 
 def parse_key_sets(text: str) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
@@ -1304,16 +1941,18 @@ def parse_key_sets(text: str) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]
         out[name] = (frozenset(required), frozenset(optional))
     for name, (table_name, row_key) in INLINE_KEY_SETS.items():
         cell = key_row(key_table(text, table_name), row_key)[1]
-        braces = re.findall(r"`\{([^}]*)\}`", cell)
-        if len(braces) != 1:
-            raise ReferenceDrift("part-file-contract-shared.md: the %s row has %d brace lists" % (row_key, len(braces)))
-        keys = [k.strip() for k in braces[0].split(",")]
-        out[name] = (frozenset(keys), frozenset())
+        out[name] = (frozenset(brace_keys(cell, "part-file-contract-shared.md", row_key)), frozenset())
     return out
 
 
+def code_key_sets_named(names: Sequence[str]) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
+    """The code's key sets with these names, each as (required, optional). A name that the code lacks is left out, so the diff names it."""
+    return {name: (frozenset(req), frozenset(opt)) for name, (req, opt) in tachi_parts.KEY_SETS.items() if name in names}
+
+
 def code_key_sets() -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
-    return {name: (frozenset(req), frozenset(opt)) for name, (req, opt) in tachi_parts.KEY_SETS.items()}
+    """PR 1's 24: the sets that the reference's tables define. PR 2's are compared with the texts that state them, further down."""
+    return code_key_sets_named(tuple(KEY_SET_TABLES) + tuple(INLINE_KEY_SETS))
 
 
 def parse_closed_values(text: str) -> Dict[str, FrozenSet[str]]:
@@ -1343,9 +1982,12 @@ def parse_closed_values(text: str) -> Dict[str, FrozenSet[str]]:
 
 def code_closed_values() -> Dict[str, FrozenSet[str]]:
     names = ("SUBSCORE_NAMES", "METRIC_NAMES", "ASSESSMENT_DIMENSIONS", "CONTROL_CATEGORIES", "CONTROL_STATUSES",
-             "CONFIDENCES", "TRUST_LEVELS", "OVERFLOW_REASONS", "BATCH_STATES", "RECORD_STATUSES", "OVERFLOW_EVENT_KINDS",
-             "COUNT_KEYS")
-    return {name: frozenset(getattr(tachi_parts, name)) for name in names}
+             "CONFIDENCES", "TRUST_LEVELS", "OVERFLOW_REASONS", "BATCH_STATES", "RECORD_STATUSES", "OVERFLOW_EVENT_KINDS")
+    values = {name: frozenset(getattr(tachi_parts, name)) for name in names}
+    # The reference's ``counts`` row is PR 1's: the union of the two PR 1 stages' sets, which one test below holds equal. The
+    # code's own ``COUNT_KEYS`` also holds PR 2's four stages' keys, which ``part-files.md`` states.
+    values["COUNT_KEYS"] = frozenset().union(*(tachi_parts.STAGE_COUNT_KEYS[stage] for stage in PR1_STAGES))
+    return values
 
 
 def parse_stage_agents(text: str) -> Dict[str, str]:
@@ -1374,16 +2016,20 @@ def parse_slots(text: str) -> Dict[str, Dict[str, Optional[FrozenSet[str]]]]:
     return out
 
 
-def parse_reserved_slots(text: str) -> List[Tuple[str, str]]:
-    """The ``(kind, argument)`` samples of the slots the reference reserves for later stages."""
+def parse_reserved_slots(text: str) -> List[Tuple[str, str, Tuple[str, ...]]]:
+    """The ``(kind, argument, stages)`` samples of the slots the reference reserves for later stages, with the stages that it names.
+
+    A stage's name is the reference's words with a hyphen for each space, which is the code's name for it: ``chain narratives``."""
     table = table_after(text, "### Slots reserved for later stages", where="part-file-contract-shared.md")
-    samples: List[Tuple[str, str]] = []
-    for kind_cell, argument_cell, _resolves, _stage in table.rows:
+    samples: List[Tuple[str, str, Tuple[str, ...]]] = []
+    for kind_cell, argument_cell, _resolves, stage_cell in table.rows:
         kind = strip_ticks(kind_cell)
+        stages = tuple(strip_ticks(stage).replace(" ", "-") for stage in stage_cell.split(", "))
         for argument in ticks(argument_cell):
-            samples.append((kind, argument.replace("<finding ID>", "S-1")))
+            samples.append((kind, argument.replace("<finding ID>", "S-1"), stages))
         if "a band name" in argument_cell:
-            samples.append((kind, "Critical"))
+            samples.append((kind, "critical", stages))  # a band as a ``count`` or ``pct`` slot spells it (part-files.md, "Slots")
+            samples.append((kind, "Critical", ()))  # a risk level's spelling is no argument in any stage
     return samples
 
 
@@ -1452,6 +2098,190 @@ def parse_escape_references(text: str) -> FrozenSet[str]:
     return frozenset(re.findall(r"&#?[A-Za-z0-9]+;", section_text(text, "## Output Escaping", "part-file-contract-shared.md")))
 
 
+# --- PR 2's entries of the same tables (T091; the integration step of tasks.md) ---------------------------------------------------------
+# The reference above describes PR 1's two stages, and says that later stages join its tables when they ship. T091 put PR 2's four stages
+# and 30 key sets in ``tachi_parts``, so the families below read the code's PR 1 slice, and these parsers read the texts that state PR 2's
+# entries: the record and brief reference (shipped), and two contracts under ``specs/`` (build-time documents).
+
+# KEY_SETS name -> (the record and brief reference's heading, the steps from that template's JSON example to the object that has the keys).
+TEMPLATE_KEY_SETS = {
+    "dispatch-record": ("## Dispatch Record", ()),
+    "record-scope": ("## Dispatch Record", ("scope",)),
+    "brief": ("## Brief", ()),
+    "brief-inputs": ("## Brief", ("inputs",)),
+    "idmap": ("## ID Map", ()),
+    "phase1-inventory": ("## Phase 1 Inventory", ()),
+    "inventory-component": ("## Phase 1 Inventory", ("components", 0)),
+    "inventory-flow": ("## Phase 1 Inventory", ("data_flows", 0)),
+    "inventory-zone": ("## Phase 1 Inventory", ("trust_zones", 0)),
+    "phase1-dispatch": ("## Dispatch Table", ()),
+    "dispatch-row": ("## Dispatch Table", ("rows", 0)),
+}
+# The brief's ``baseline_focus`` is null in its example, so the keys of its entry come from the key table: the twelfth set.
+TEMPLATE_NAMES = tuple(TEMPLATE_KEY_SETS) + ("brief-focus",)
+PART_FILES_NAMES = ("check-handoff", "handoff-counts", "handoff-error", "fragment", "analysis-item", "roadmap-item")
+RECORDS_NAMES = ("sections", "sections-frontmatter", "sections-baseline", "sections-gate", "sections-gap", "sections-rows",
+                 "chains", "chain", "chain-member", "chain-narratives", "chain-text", "trees-item")
+# The section manifest's objects inside ``frontmatter``, by the path of keys that leads to each: the KEY_SETS name.
+SECTIONS_NESTED = {(): "sections-frontmatter", ("baseline",): "sections-baseline", ("coverage_gate",): "sections-gate",
+                   ("coverage_gate", "gaps"): "sections-gap"}
+SECTION_SIGN = chr(0xA7)  # part-files.md opens its first six parts with it ("**<sign>6 Check hand-off"); this source stays ASCII
+
+
+def required_only(keys: Sequence[str]) -> Tuple[FrozenSet[str], FrozenSet[str]]:
+    """A key set whose keys are all required, which is what the code holds for every PR 2 set but one."""
+    return (frozenset(keys), frozenset())
+
+
+def parse_template_key_sets(text: str) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
+    """The 12 key sets of the record and brief reference's templates: each template's example, and the objects nested in it."""
+    out = {name: required_only(list(get_at(template_json(text, anchor), steps))) for name, (anchor, steps) in TEMPLATE_KEY_SETS.items()}
+    focus = key_row(table_after(text, "## Brief", where=DISPATCH_RECORD_BRIEF), "baseline_focus", DISPATCH_RECORD_BRIEF)[1]
+    out["brief-focus"] = required_only(re.findall(r'"([a-z_]+)":', focus))
+    return out
+
+
+def parse_part_files_key_sets(text: str) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
+    """The 6 key sets that part-files.md gives in its tables: the check hand-off (section 6) and the two findings items."""
+    where = "part-files.md"
+    handoff = table_after(text, "**" + SECTION_SIGN + "6 Check hand-off", where=where)
+    findings = table_after(text, "**The findings items.**", where=where)
+    counts = key_row(handoff, "counts", where)[1]
+    if "exactly these keys" not in counts:
+        raise ReferenceDrift("%s: the hand-off's counts row no longer says 'exactly these keys'" % where)
+    envelope = table_after(text, "**" + SECTION_SIGN + "1 Part", where=where)
+    return {
+        "check-handoff": required_only([strip_ticks(row[0]) for row in handoff.rows]),
+        "handoff-counts": required_only(ticks(counts.split("exactly these keys", 1)[1])),
+        "handoff-error": required_only(brace_keys(key_row(handoff, "error", where)[1], where, "error")),
+        "fragment": required_only(brace_keys(key_row(envelope, "fragments", where)[1], where, "fragments")),
+        "analysis-item": required_only(ticks(key_row(findings, "threat_analysis", where)[1])),
+        "roadmap-item": required_only(ticks(key_row(findings, "remediation_roadmap", where)[1])),
+    }
+
+
+def contract_block(text: str, schema: str, where: str) -> str:
+    """The one fenced block of a contract whose first line names ``schema``."""
+    blocks = [fence.body for fence in fences(text) if schema in fence.body.split("\n", 1)[0]]
+    if len(blocks) != 1:
+        raise ReferenceDrift("%s: expected one fenced block that opens with %s, found %d" % (where, schema, len(blocks)))
+    return blocks[0]
+
+
+def pseudo_json_keys(text: str, where: str) -> Dict[Tuple[str, ...], List[str]]:
+    """The keys of each object in a contract's JSON-like text, by the path of keys that leads to it. A list stands for its element.
+
+    ``{"a": 1, "b": {"c": [{"d": 2}]}}`` gives ``{(): [a, b], (b,): [c], (b, c): [d]}``. A quoted word is a key when a colon follows it,
+    and a value otherwise, as in ``"pass"|"warn"``."""
+    found: Dict[Tuple[str, ...], List[str]] = {}
+    open_ones: List[Tuple[Tuple[str, ...], bool]] = []  # the path of each open ``{`` or ``[``, and whether it is an object
+    last_key = ""
+    for match in re.finditer(r'"([^"]*)"(\s*:)?|[{}\[\]]', text):
+        token = match.group(0)
+        if token in ("{", "["):
+            path = (open_ones[-1][0] + ((last_key,) if open_ones[-1][1] else ())) if open_ones else ()
+            open_ones.append((path, token == "{"))
+            if token == "{":
+                found.setdefault(path, [])
+        elif token in ("}", "]"):
+            if not open_ones:
+                raise ReferenceDrift("%s: a closing bracket with no opening one in the manifest's frontmatter" % where)
+            open_ones.pop()
+        elif match.group(2) and open_ones and open_ones[-1][1]:
+            found[open_ones[-1][0]].append(match.group(1))
+            last_key = match.group(1)
+    return found
+
+
+def parse_section_manifest(text: str) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
+    """The 6 key sets of the section manifest (``sections.json``): its top level, the frontmatter's objects and the 14 row-count names."""
+    where = "threat-model-records.md"
+    body = contract_block(text, '"tachi.sections/1"', where)
+    rows = re.search(r"(?m)^rows \{([^}]*)\}", body)
+    start = body.find("frontmatter {")
+    if rows is None or start < 0:
+        raise ReferenceDrift("%s: the section manifest's frontmatter or rows moved" % where)
+    start += len("frontmatter ")
+    depth = 0
+    for end in range(start, len(body)):
+        depth += {"{": 1, "}": -1}.get(body[end], 0)
+        if depth == 0:
+            break
+    else:
+        raise ReferenceDrift("%s: the section manifest's frontmatter has no closing brace" % where)
+    out = {"sections": required_only(re.findall(r"(?m)^([a-z_]+) ", body)),
+           "sections-rows": required_only(re.findall(r'"([a-z_]+)"', rows.group(1)))}
+    for path, keys in pseudo_json_keys(body[start:end + 1], where).items():
+        if path not in SECTIONS_NESTED:
+            raise ReferenceDrift("%s: the section manifest has an object at %s that this module doesn't map to a key set" % (where, path))
+        out[SECTIONS_NESTED[path]] = required_only(keys)
+    return out
+
+
+def parse_records_key_sets(text: str) -> Dict[str, Tuple[FrozenSet[str], FrozenSet[str]]]:
+    """The 12 key sets that threat-model-records.md gives in prose and fenced blocks: the section manifest's six, the chain files' five
+    and the tree item. The chain block names its nested sets itself, in its ``chain (chain):`` and ``member (chain-member):`` lines."""
+    where = "threat-model-records.md"
+    out = parse_section_manifest(text)
+    sets: Dict[str, List[str]] = {"chains": []}
+    current = "chains"
+    for line in contract_block(text, '"tachi.chains/1"', where).splitlines():
+        header = re.match(r"^[a-z_]+ \(([a-z-]+)\):$", line)
+        keyed = re.match(r"^(?:  )?([a-z_]+) +\S", line)  # a key, at the block's margin or one step in; a continuation line is far in
+        if header:
+            current = header.group(1)
+            sets[current] = []
+        elif keyed:
+            sets[current].append(keyed.group(1))
+    out.update({name: required_only(keys) for name, keys in sets.items()})
+    narratives = re.search(r'`(\{"schema": "tachi\.chain-narratives/1"[^`]*)`', text)
+    chain_text = re.search(r"exactly the keys ((?:`[a-z_]+`(?:, | and )?)+) \(`chain-text`\)", text)
+    tree_item = re.search(r"`\{([a-z_, ]+)\}` \(the last under Rule 3 only\)", text)
+    if not (narratives and chain_text and tree_item):
+        raise ReferenceDrift("%s: the chain narratives' form, the chain-text sentence or the tree item's keys moved" % where)
+    out["chain-narratives"] = required_only(re.findall(r'"([a-z_]+)":', narratives.group(1).split("{CHAIN-ID", 1)[0]))
+    out["chain-text"] = required_only(ticks(chain_text.group(1)))
+    keys = [key.strip() for key in tree_item.group(1).split(",")]
+    out["trees-item"] = (frozenset(keys[:-1]), frozenset(keys[-1:]))  # the last, ``similarity_score``, is the Rule 3 unit's alone
+    return out
+
+
+def parse_pr2_stage_agents(text: str) -> Dict[str, str]:
+    """PR 2's stages and their agents, from the sentence ``STAGE_AGENTS gains ...``: an agent's name follows the stage(s) it serves."""
+    sentences = re.findall(r"`STAGE_AGENTS` gains ([^\n]+)", text)
+    if len(sentences) != 1:
+        raise ReferenceDrift("part-files.md: expected one sentence that says what STAGE_AGENTS gains, found %d" % len(sentences))
+    agents: Dict[str, str] = {}
+    waiting: List[str] = []
+    for token in ticks(sentences[0]):
+        if token.startswith("tachi-"):
+            agents.update((stage, token) for stage in waiting)
+            waiting = []
+        else:
+            waiting.append(token)
+    if waiting or not agents:
+        raise ReferenceDrift("part-files.md: the STAGE_AGENTS sentence leaves %s with no agent" % (waiting or "every stage"))
+    return agents
+
+
+def parse_pr2_counts(text: str) -> Dict[str, FrozenSet[str]]:
+    """The closed ``counts`` keys of PR 2's four stages, from the table of PR 2's stage records."""
+    out: Dict[str, FrozenSet[str]] = {}
+    for row in table_after(text, "**PR 2's stage records**", where="part-files.md").rows:
+        if not ticks(row[0]):
+            raise ReferenceDrift("part-files.md: a row of PR 2's stage records names no stage")
+        out[ticks(row[0])[0]] = frozenset(ticks(row[1]))
+    return out
+
+
+def code_pr2_stage_agents() -> Dict[str, str]:
+    return {stage: agent for stage, agent in tachi_parts.STAGE_AGENTS.items() if stage not in PR1_STAGES}
+
+
+def code_pr2_counts() -> Dict[str, FrozenSet[str]]:
+    return {stage: frozenset(keys) for stage, keys in tachi_parts.STAGE_COUNT_KEYS.items() if stage not in PR1_STAGES}
+
+
 PART_FAMILIES = (
     Family("key sets (24)", PART_CONTRACT, parse_key_sets, code_key_sets,
            ("| `cvss_vector` |", "| `cvss_vectors` |"),
@@ -1459,10 +2289,12 @@ PART_FAMILIES = (
     Family("closed values", PART_CONTRACT, parse_closed_values, code_closed_values,
            ("`found`, `partial` or `missing`", "`found`, `partially` or `missing`"),
            lambda v: dict(v, CONTROL_CATEGORIES=v["CONTROL_CATEGORIES"] | frozenset(["extra"]))),
-    Family("stage agents", PART_CONTRACT, parse_stage_agents, lambda: dict(tachi_parts.STAGE_AGENTS),
+    Family("stage agents", PART_CONTRACT, parse_stage_agents,
+           lambda: {stage: tachi_parts.STAGE_AGENTS[stage] for stage in PR1_STAGES if stage in tachi_parts.STAGE_AGENTS},
            ("| `risk-score` | `tachi-risk-scorer` |", "| `risk-score` | `tachi-risk-scorers` |"),
            lambda v: dict(v, **{"risk-score": "tachi-other"})),
-    Family("slots in use", PART_CONTRACT, parse_slots, lambda: tachi_parts.SLOT_TABLE,
+    Family("slots in use", PART_CONTRACT, parse_slots,
+           lambda: {stage: tachi_parts.SLOT_TABLE[stage] for stage in PR1_STAGES if stage in tachi_parts.SLOT_TABLE},
            ("`auth_barriers`, `network_boundaries` | your own count", "`auth_barriers` | your own count"),
            lambda v: dict(v, **{"risk-score": dict(v["risk-score"], band=frozenset(["severity", "extra"]))})),
     Family("fixed fallback sentences (24)", PART_CONTRACT, parse_fallbacks, lambda: dict(tachi_parts.FALLBACK_SENTENCES),
@@ -1483,14 +2315,38 @@ PART_FAMILIES = (
            lambda v: v | frozenset(["&extra;"])),
 )
 
+# PR 2's entries, each compared with the one text that states them. A key set is (required, optional), as the families above hold them.
+PR2_KEY_SET_FAMILIES = (
+    Family("PR 2 key sets, templates (12)", DISPATCH_RECORD_BRIEF, parse_template_key_sets, lambda: code_key_sets_named(TEMPLATE_NAMES),
+           ('"end_marker": true,', '"end_markers": true,'),
+           lambda v: dict(v, brief=(v["brief"][0] | frozenset(["extra"]), v["brief"][1]))),
+    Family("PR 2 key sets, part-files.md (6)", PART_FILES_CONTRACT, parse_part_files_key_sets,
+           lambda: code_key_sets_named(PART_FILES_NAMES),
+           ("`{code, message, finding_ids, remedy}`", "`{code, message, finding_id, remedy}`"),
+           lambda v: dict(v, fragment=(v["fragment"][0] | frozenset(["extra"]), v["fragment"][1]))),
+    Family("PR 2 key sets, threat-model-records.md (12)", THREAT_MODEL_RECORDS, parse_records_key_sets,
+           lambda: code_key_sets_named(RECORDS_NAMES),
+           ('"missing_category": TOKEN', '"missing_categories": TOKEN'),
+           lambda v: dict(v, chain=(v["chain"][0] | frozenset(["extra"]), v["chain"][1]))),
+)
+PR2_FAMILIES = (
+    Family("PR 2 stage agents", PART_FILES_CONTRACT, parse_pr2_stage_agents, code_pr2_stage_agents,
+           ("`trees` (`tachi-attack-tree-delta`)", "`trees` (`tachi-attack-tree-deltas`)"),
+           lambda v: dict(v, trees="tachi-other")),
+    Family("PR 2 count keys", PART_FILES_CONTRACT, parse_pr2_counts, code_pr2_counts,
+           ("`rule`, `renumbered`", "`rules`, `renumbered`"),
+           lambda v: dict(v, trees=v["trees"] | frozenset(["extra"]))),
+) + PR2_KEY_SET_FAMILIES
+ALL_PART_FAMILIES = PART_FAMILIES + PR2_FAMILIES
 
-@pytest.mark.parametrize("family", PART_FAMILIES, ids=lambda f: f.name)
+
+@pytest.mark.parametrize("family", ALL_PART_FAMILIES, ids=lambda f: f.name)
 def test_part_file_contract_equals_tachi_parts(family):
     problems = diff(family.name, family.parse(text_of(family.path)), family.code())
     assert not problems, "\n".join(problems)
 
 
-@pytest.mark.parametrize("family", PART_FAMILIES, ids=lambda f: f.name)
+@pytest.mark.parametrize("family", ALL_PART_FAMILIES, ids=lambda f: f.name)
 def test_a_drifted_part_reference_is_noticed(family):
     text = text_of(family.path)
     old, new = family.doc_edit
@@ -1498,14 +2354,19 @@ def test_a_drifted_part_reference_is_noticed(family):
     assert diff(family.name, family.parse(text.replace(old, new, 1)), family.code())
 
 
-@pytest.mark.parametrize("family", PART_FAMILIES, ids=lambda f: f.name)
+@pytest.mark.parametrize("family", ALL_PART_FAMILIES, ids=lambda f: f.name)
 def test_drifted_part_code_is_noticed(family):
     assert diff(family.name, family.parse(text_of(family.path)), family.code_edit(family.code()))
 
 
 def test_the_key_set_tables_are_15_and_the_inline_sets_are_9_and_together_all_of_key_sets():
     assert len(KEY_SET_TABLES) == 15 and len(INLINE_KEY_SETS) == 9
-    assert set(KEY_SET_TABLES) | set(INLINE_KEY_SETS) == set(tachi_parts.KEY_SETS)
+    # PR 1's 24 names are the reference's. PR 2's 30 are the parses of the three PR 2 key-set families, so a key set that no text
+    # pins, or that two texts pin, fails here.
+    groups = [set(KEY_SET_TABLES) | set(INLINE_KEY_SETS)] + [set(family.parse(text_of(family.path))) for family in PR2_KEY_SET_FAMILIES]
+    assert [len(group) for group in groups] == [24, 12, 6, 12]
+    assert len(set().union(*groups)) == sum(len(group) for group in groups), "a key set is pinned twice"
+    assert set().union(*groups) == set(tachi_parts.KEY_SETS)
 
 
 def test_the_part_parsers_find_the_counts_the_reference_states():
@@ -1518,6 +2379,50 @@ def test_the_part_parsers_find_the_counts_the_reference_states():
     assert len(identifiers["patterns"]) == 7 and len(identifiers["prefix_order"]) == 12
     closed = parse_closed_values(text)
     assert len(closed) == 12 and all(closed.values()) and len(closed["COUNT_KEYS"]) == 16
+
+
+def test_the_pr2_parsers_find_the_counts_the_contracts_state():
+    contract = text_of(PART_FILES_CONTRACT)
+    templates = parse_template_key_sets(text_of(DISPATCH_RECORD_BRIEF))
+    part_files = parse_part_files_key_sets(contract)
+    records = parse_records_key_sets(text_of(THREAT_MODEL_RECORDS))
+    assert len(templates) == 12 and len(part_files) == 6 and len(records) == 12
+    assert all(required for required, _optional in {**templates, **part_files, **records}.values()), "a parse that found no key"
+    assert len(templates["dispatch-record"][0]) == 14
+    assert [len(part_files[name][0]) for name in ("check-handoff", "handoff-counts", "handoff-error")] == [8, 8, 4]
+    assert [len(records[name][0]) for name in ("sections-rows", "chains", "chain", "chain-member")] == [14, 9, 6, 3]
+    assert records["trees-item"] == (frozenset(["finding_id", "delta_status", "action"]), frozenset(["similarity_score"]))
+    assert sorted(parse_pr2_stage_agents(contract)) == ["report", "threat-model", "threats-md", "trees"]
+    sizes = {stage: len(keys) for stage, keys in parse_pr2_counts(contract).items()}
+    assert sizes == {"threat-model": 8, "threats-md": 4, "trees": 3, "report": 4}
+
+
+def test_the_pr2_readers_find_what_they_name_and_fail_loudly_otherwise():
+    assert pseudo_json_keys('{"a": 1, "b": {"c": [{"d": 2}], "e": "x"|"y"}}', "sample") == {
+        (): ["a", "b"], ("b",): ["c", "e"], ("b", "c"): ["d"]}
+    with pytest.raises(ReferenceDrift):
+        pseudo_json_keys('{"a": 1}}', "sample")
+    blocks = '```\nschema "x/1" | a\n```\n\n```\nschema "x/1" | b\n```\n'
+    assert contract_block(blocks, "| b", "sample") == 'schema "x/1" | b'
+    for schema in ('"x/1"', '"y/1"'):  # two blocks name it, or none does
+        with pytest.raises(ReferenceDrift):
+            contract_block(blocks, schema, "sample")
+    assert parse_pr2_stage_agents("- `STAGE_AGENTS` gains `a` and `b`, both `tachi-x`, `c` (`tachi-y`).\n") == {
+        "a": "tachi-x", "b": "tachi-x", "c": "tachi-y"}
+    for sentence in ("- `STAGE_AGENTS` gains `a`, `b` (`tachi-x`) and `c`.\n", "- `STAGE_AGENTS` gains nothing.\n", "no such sentence"):
+        with pytest.raises(ReferenceDrift):
+            parse_pr2_stage_agents(sentence)
+
+
+def test_every_stage_of_the_code_is_pinned_and_the_pr1_stages_keep_one_set_of_count_keys():
+    pr2 = set(parse_pr2_stage_agents(text_of(PART_FILES_CONTRACT)))
+    assert set(tachi_parts.STAGE_AGENTS) == set(PR1_STAGES) | pr2
+    assert set(tachi_parts.STAGE_COUNT_KEYS) == set(tachi_parts.STAGE_AGENTS), "each stage has its own closed counts"
+    assert set(parse_pr2_counts(text_of(PART_FILES_CONTRACT))) == pr2
+    # The reference's ``counts`` row is one set, so PR 1's two stages must hold the same one, or the union that the family compares
+    # with it would hide a drift in either.
+    assert len({tachi_parts.STAGE_COUNT_KEYS[stage] for stage in PR1_STAGES}) == 1
+    assert tachi_parts.COUNT_KEYS == frozenset().union(*tachi_parts.STAGE_COUNT_KEYS.values())
 
 
 def test_the_fixed_sentences_and_the_truncation_table_agree_on_the_24_narrative_paths():
@@ -1538,18 +2443,26 @@ def test_every_fixed_sentence_has_no_digit_and_no_slot():
 def test_the_reserved_slots_are_not_accepted_and_the_slots_in_use_are_accepted_in_their_stages_alone():
     text = text_of(PART_CONTRACT)
     in_use = parse_slots(text)
+    assert set(in_use) <= set(tachi_parts.SLOT_TABLE), "the reference lists a stage that the code has no slot table for"
     samples = {"finding": "S-1", "ref": "CWE-89"}
     every_pair = {(kind, argument) for kinds in in_use.values() for kind, args in kinds.items()
                   for argument in ([samples[kind]] if args is None else sorted(args))}
-    for stage in tachi_parts.SLOT_TABLE:
+    for stage in in_use:
         for kind, argument in sorted(every_pair):
             slot = "{{%s:%s}}" % (kind, argument)
             listed = kind in in_use[stage] and (in_use[stage][kind] is None or argument in in_use[stage][kind])
             accepted = tachi_parts.narrative_problem(slot, stage) is None
             assert accepted == listed, "%s in stage %s: accepted=%s, listed=%s" % (slot, stage, accepted, listed)
-    for kind, argument in parse_reserved_slots(text):
+    # A reserved slot is accepted by the later stage that the reference names for it, and by no other stage: PR 2's `report` and chain
+    # narratives now have slot tables, so "reserved" ends there, and the stages of the two tables are every slot table the code has.
+    reserved = parse_reserved_slots(text)
+    named = set(in_use) | {stage for _kind, _argument, stages in reserved for stage in stages}
+    assert set(tachi_parts.SLOT_TABLE) == named, "the code's slot tables and the stages that the reference's two slot tables name differ"
+    for kind, argument, stages in reserved:
         for stage in tachi_parts.SLOT_TABLE:
-            assert tachi_parts.narrative_problem("{{%s:%s}}" % (kind, argument), stage) is not None, (kind, argument, stage)
+            accepted = tachi_parts.narrative_problem("{{%s:%s}}" % (kind, argument), stage) is None
+            assert accepted == (stage in stages), "{{%s:%s}} in stage %s: accepted=%s, the reference reserves it for %s" % (
+                kind, argument, stage, accepted, list(stages))
 
 
 # =============================================================================
@@ -1639,7 +2552,7 @@ def stage_of(field: str) -> str:
 
 
 def test_the_base_items_are_valid_for_both_stages():
-    for stage in tachi_parts.STAGE_AGENTS:
+    for stage in PR1_STAGES:  # ``base_item`` builds the scorer's item and the controls' item alone
         result = classify(stage, base_item(stage))
         assert result.state == "done" and result.flags == {}, (stage, result.state, result.detail)
 
@@ -1831,7 +2744,6 @@ COMPLETION_RULE = (
 # paraphrased it. No copy of either may survive. Step 3's "start a wave only after every agent of the wave before it" orders
 # the waves, and stays.
 PER_WAVE_WORDINGS = ("`reconcile` only after every agent in the wave", "`reconcile` only after every agent of the wave")
-ADR_050 = "docs/architecture/02_ADRs/ADR-050-large-architecture-output-authority.md"
 
 # A script that a W2 text names and that lane R1 writes in the same wave. T047 wires it into INSTALL_MANIFEST.md
 # after the lanes return, so until the script is in the tree, naming it is allowed. Once the file exists, only

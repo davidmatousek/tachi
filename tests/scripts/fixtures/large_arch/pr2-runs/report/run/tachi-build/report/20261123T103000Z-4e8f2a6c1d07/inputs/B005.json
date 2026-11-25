@@ -1,0 +1,23 @@
+{
+  "agent_type": "tachi-threat-report",
+  "attempt": 1,
+  "batch_id": "B005",
+  "finding_ids": [],
+  "params": {
+    "reference_digest": "867b6b5c5fb8e75ab6eb75bd6f454cdc3279a381783c49ec61d005317c3bffbf",
+    "scoring_date": "2026-11-23",
+    "trees_plan_id": "20261123T101500Z-7a1c3e5d9b02"
+  },
+  "part_path": "/synthetic-case/run/.tachi-build/report/20261123T103000Z-4e8f2a6c1d07/parts/B005.a1.json",
+  "plan_id": "20261123T103000Z-4e8f2a6c1d07",
+  "refs": {},
+  "schema": "tachi.batch-input/1",
+  "stage": "report",
+  "tree_paths": {},
+  "units": [
+    {
+      "key": "themes",
+      "section": "cross_cutting_themes"
+    }
+  ]
+}

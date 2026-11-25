@@ -55,6 +55,7 @@ import tachi_parts  # noqa: E402  -- the escapers whose references the decoder r
 
 from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     SEVERITY_ORDINAL,
+    CHAIN_OUTCOME_LABEL,
     HEADER_ALIASES,
     classify_maestro_coverage_state,
     normalize_header,
@@ -77,7 +78,9 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     ReferenceSetError,
     parse_reference_set,
     decode_references,
+    attack_tree_source,
     parse_attack_chains,
+    parse_chain_outcome,
     parse_correlation_groups,
     parse_controls_assessment_inputs,
     parse_sarif_member_set,
@@ -90,6 +93,7 @@ from tachi_parsers import (  # noqa: E402  -- import after sys.path mutation
     _find_table_with_column,
     _ids_of_a_bolded_lead,
     _per_finding_layers,
+    _fence_roles,
     _unfenced_lines,
     _FIRST_CELL,
     _TITLE_SEPARATOR,
@@ -4095,3 +4099,926 @@ def test_the_agentic_app_rows_wider_than_their_header_give_the_layer_that_sits_b
         parse_markdown_table(text, "### 4.2 LLM Threats (LLM)", overlong=overlong)
         assert line in overlong and text.split("\n")[line - 1].startswith("| LLM-5 |"), (relative, "premise: the row is wider than its header")
         assert parse_finding_layers(text)["LLM-5"] == _FOUNDATION, relative
+
+
+# =============================================================================
+# Feature 374 (PR 2, W2', T116): parse_chain_outcome, the attack chain outcome record (ADR-050 D13, P-3)
+#
+# threats.md holds one line, `**Attack chain outcome**: OUTCOME`. `attack-chains.py render` writes it, and `check` rewrites it when the chain
+# file disagrees with it (R-24). `detect_artifacts`, `prepare_attack_chains`, the check and the report assembly read it through this one
+# function. The cases state the contract's grammar (contracts/threat-model-records.md, "The outcome record") from the contract, and not from
+# the module's patterns:
+#
+#   forms      chains written (N); candidates C; surfaced S     N 1..999999, C 0..999999 and not below N, S 1..5 and not above N
+#              0 chains passed filter (R); candidates C
+#              skipped (R)                                      R is 1..80 characters of [A-Za-z0-9 .,:=-], and not blank
+#   otherwise  no record line is "absent", two or more are "multiple", and one line that is no form is "malformed"
+#   reading    lines outside code fences only (ADR-050 D3, "Finding a section"), split on "\n", trailing space, tab and CR ignored, and no
+#              heading needed
+# =============================================================================
+
+_OUTCOME_KEYS = ["form", "chain_count", "candidate_count", "surfaced_count", "reason", "text", "lines"]
+_OUTCOME_LABEL = "**Attack chain outcome**: "   # the contract's label, spelled out here, so that a change to the constant fails a test
+_WRITTEN_VALUE = "chains written (3); candidates 5; surfaced 3"
+_BODY_AT = 15   # the 0-based line of the first line that `_in_a_threat_model` puts under the outcome heading
+
+
+def _outcome(form, chains=None, candidates=None, surfaced=None, reason=None, text=None, lines=()):
+    """What ``parse_chain_outcome`` returns, spelled out: all seven keys, and ``None`` for what the record doesn't state."""
+    return {"form": form, "chain_count": chains, "candidate_count": candidates, "surfaced_count": surfaced, "reason": reason, "text": text,
+            "lines": list(lines)}
+
+
+def _record_line(value):
+    return _OUTCOME_LABEL + value
+
+
+def _in_a_threat_model(*body):
+    """A ``threats.md`` in the joiner's shape: frontmatter, Section 4, the ``body`` lines under the outcome heading, and Section 5."""
+    return "\n".join(["---", 'schema_version: "1.4"', 'date: "2026-11-24"', "---", "", "# Threat Model", "", "## 4. Findings", "",
+                      "| ID | Status | Component | MAESTRO Layer | Threat | Risk Level |", "|---|---|---|---|---|---|",
+                      "| S-1 | NEW | Gateway | L3 | A threat. | High |", "", "## Attack Chain Outcome", ""] + list(body) + ["", "## 5. Coverage Matrix", ""])
+
+
+def test_parse_chain_outcome_takes_one_text_and_its_label_is_the_contracts():
+    assert list(inspect.signature(parse_chain_outcome).parameters) == ["content"]
+    assert CHAIN_OUTCOME_LABEL == _OUTCOME_LABEL
+    assert re.match(r"^\*\*Attack chain outcome\*\*: ", CHAIN_OUTCOME_LABEL), "the contract's pattern matches the label"
+    assert _in_a_threat_model("x").split("\n")[_BODY_AT] == "x", "the helper puts its body where these cases say"
+
+
+@pytest.mark.parametrize("text", ["", None, "no record", _record_line("skipped (x)"), _record_line("maybe"),
+                                  _record_line("skipped (x)") + "\n" + _record_line("skipped (y)")],
+                         ids=["empty", "none", "absent", "skipped", "malformed", "multiple"])
+def test_every_result_has_the_same_seven_keys_and_is_a_new_dict_each_time(text):
+    first = parse_chain_outcome(text)
+    kept = dict(first, lines=list(first["lines"]))
+    assert list(first) == _OUTCOME_KEYS
+    first["lines"].append(99)
+    first["form"] = "changed"
+    again = parse_chain_outcome(text)
+    assert again == kept and again is not first and again["lines"] is not first["lines"], "a caller's changes to a result reach no other result"
+
+
+# ---- the three forms ---------------------------------------------------------------------------------------------
+
+def _form_case(name, value, form, chains=None, candidates=None, surfaced=None, reason=None):
+    """``(id, the text after the label, what it reads as)``: one record line, so line 0, and the whole of the value as its text."""
+    return (name, value, _outcome(form, chains, candidates, surfaced, reason, text=value, lines=[0]))
+
+
+OUTCOME_FORM_CASES = [
+    _form_case("written", _WRITTEN_VALUE, "written", 3, 5, 3),
+    _form_case("written-the-least", "chains written (1); candidates 1; surfaced 1", "written", 1, 1, 1),
+    _form_case("written-the-most", "chains written (999999); candidates 999999; surfaced 5", "written", 999999, 999999, 5),
+    _form_case("written-candidates-equal-chains", "chains written (5); candidates 5; surfaced 5", "written", 5, 5, 5),
+    _form_case("written-fewer-than-five-all-surface", "chains written (4); candidates 9; surfaced 4", "written", 4, 9, 4),
+    _form_case("written-five-surface-at-most", "chains written (120); candidates 340; surfaced 5", "written", 120, 340, 5),
+    # S is not min(5, N): a chain that ends at a terminal-impact finding that a higher chain ends at doesn't surface (S-3(f)), so S <= N.
+    _form_case("written-fewer-surface-than-the-cap-allows", "chains written (2); candidates 2; surfaced 1", "written", 2, 2, 1),
+    _form_case("written-candidates-with-leading-zeros", "chains written (3); candidates 005; surfaced 3", "written", 3, 5, 3),
+    _form_case("zero", "0 chains passed filter (no candidate links); candidates 4", "zero", 0, 4, 0, "no candidate links"),
+    _form_case("zero-no-candidates", "0 chains passed filter (no STRIDE findings); candidates 0", "zero", 0, 0, 0, "no STRIDE findings"),
+    _form_case("zero-the-most-candidates", "0 chains passed filter (no chain with a Critical or High finding); candidates 999999", "zero", 0, 999999, 0,
+               "no chain with a Critical or High finding"),
+    _form_case("skipped", "skipped (inventory missing)", "skipped", reason="inventory missing"),
+    _form_case("skipped-a-reason-of-80-characters", "skipped (%s)" % ("r" * 80), "skipped", reason="r" * 80),
+    _form_case("skipped-a-reason-of-one-character", "skipped (-)", "skipped", reason="-"),
+    _form_case("skipped-every-mark-the-alphabet-has", "skipped (a.b,c:d=e-f g)", "skipped", reason="a.b,c:d=e-f g"),
+    _form_case("skipped-a-reason-as-written", "skipped ( two  spaces )", "skipped", reason=" two  spaces "),
+]
+
+
+@pytest.mark.parametrize("name,value,expected", OUTCOME_FORM_CASES, ids=[case[0] for case in OUTCOME_FORM_CASES])
+def test_the_three_forms_read_as_the_contract_gives_them(name, value, expected):
+    assert parse_chain_outcome(_record_line(value)) == expected
+    assert parse_chain_outcome(_record_line(value) + "\n") == expected, "a final newline changes nothing"
+
+
+# "Reasons for 0 chains", "Reasons the script gives for skipped" and "Reasons the check gives for skipped", as the contract lists them. X and Y
+# of the check's three count reasons are numerals.
+OUTCOME_CONTRACT_REASONS = [
+    "no STRIDE findings", "fewer than two layers with STRIDE findings", "no candidate links", "no chain with a Critical or High finding",
+    "Section 7 unreadable", "inventory missing", "inventory invalid",
+    "no outcome recorded", "outcome record malformed", "multiple outcome records", "attack-chains.md missing", "attack-chains.md unexpected",
+    "attack-chains.md unreadable", "full chains 3 expected 4", "compact rows 98 expected 100", "remainder 7 expected 8", "frontmatter counts differ",
+]
+
+
+@pytest.mark.parametrize("reason", OUTCOME_CONTRACT_REASONS)
+def test_every_reason_the_contract_lists_is_a_reason_in_both_forms_that_take_one(reason):
+    skipped = "skipped (%s)" % reason
+    zero = "0 chains passed filter (%s); candidates 2" % reason
+    assert parse_chain_outcome(_record_line(skipped)) == _outcome("skipped", reason=reason, text=skipped, lines=[0])
+    assert parse_chain_outcome(_record_line(zero)) == _outcome("zero", 0, 2, 0, reason, zero, [0])
+
+
+_OUTCOME_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,:=-")
+
+
+def test_a_reason_takes_exactly_the_contracts_alphabet_in_both_forms_that_take_one():
+    """The first 768 code points and some look-alikes of the line, space and dash characters, each put inside a reason. The text is split on
+    ``\\n`` only, so the other line boundaries of ``str.splitlines`` are in the reason, and the alphabet refuses them."""
+    for code in list(range(0x300)) + [0x2028, 0x2029, 0x2010, 0x2212, 0xFF0D, 0xFF1A, 0x3000, 0xFEFF]:
+        char = chr(code)
+        if char == "\n":
+            continue   # it ends the line, so it is never in a reason
+        assert parse_chain_outcome(_record_line("skipped (a%sb)" % char))["form"] == ("skipped" if char in _OUTCOME_ALPHABET else "malformed"), hex(code)
+        assert parse_chain_outcome(_record_line("0 chains passed filter (a%sb); candidates 1" % char))["form"] == \
+            ("zero" if char in _OUTCOME_ALPHABET else "malformed"), hex(code)
+
+
+def test_the_counts_follow_the_contracts_limits_over_a_grid():
+    """An oracle that is written from the contract: N is 1..999999, C is at most 999999 and not below N, and S is 1..5 and not above N."""
+    numbers = (0, 1, 2, 3, 4, 5, 6, 7, 8, 99999, 100000, 999999, 1000000)
+    for chains in numbers:
+        for candidates in numbers:
+            for surfaced in range(0, 8):
+                value = "chains written (%d); candidates %d; surfaced %d" % (chains, candidates, surfaced)
+                valid = 1 <= chains <= 999999 and chains <= candidates <= 999999 and 1 <= surfaced <= min(5, chains)
+                found = parse_chain_outcome(_record_line(value))
+                if valid:
+                    assert found == _outcome("written", chains, candidates, surfaced, text=value, lines=[0]), value
+                else:
+                    assert found == _outcome("malformed", lines=[0]), value
+    for candidates in numbers:
+        value = "0 chains passed filter (no candidate links); candidates %d" % candidates
+        assert parse_chain_outcome(_record_line(value))["form"] == ("zero" if candidates <= 999999 else "malformed"), value
+
+
+# ---- one record line that is no form ------------------------------------------------------------------------------
+
+OUTCOME_MALFORMED_VALUES = [
+    ("nothing", ""),
+    ("spaces-only", "   "),
+    ("a-word", "ok"),
+    ("the-shorthand-of-the-adr-for-written", "chains written (3)"),
+    ("written-without-surfaced", "chains written (3); candidates 5"),
+    ("written-without-candidates", "chains written (3); surfaced 3"),
+    ("written-in-another-order", "chains written (3); surfaced 3; candidates 5"),
+    ("written-with-no-numbers", "chains written"),
+    ("written-with-zero-chains", "chains written (0); candidates 3; surfaced 0"),
+    ("chains-with-a-leading-zero", "chains written (03); candidates 5; surfaced 3"),
+    ("chains-with-seven-digits", "chains written (1000000); candidates 1000000; surfaced 5"),
+    ("candidates-with-seven-digits", "chains written (3); candidates 1000000; surfaced 3"),
+    ("candidates-below-chains", "chains written (3); candidates 2; surfaced 3"),
+    ("surfaced-zero", "chains written (3); candidates 5; surfaced 0"),
+    ("surfaced-six", "chains written (9); candidates 9; surfaced 6"),
+    ("surfaced-above-chains", "chains written (3); candidates 5; surfaced 4"),
+    ("surfaced-with-a-leading-zero", "chains written (3); candidates 5; surfaced 03"),
+    ("negative-chains", "chains written (-3); candidates 5; surfaced 3"),
+    ("fractional-chains", "chains written (3.0); candidates 5; surfaced 3"),
+    ("signed-candidates", "chains written (3); candidates +5; surfaced 3"),
+    ("written-with-a-full-stop", "chains written (3); candidates 5; surfaced 3."),
+    ("written-with-trailing-words", "chains written (3); candidates 5; surfaced 3 chains"),
+    ("written-with-two-spaces", "chains written (3);  candidates 5; surfaced 3"),
+    ("written-without-a-space-before-the-parenthesis", "chains written(3); candidates 5; surfaced 3"),
+    ("written-capitalised", "Chains written (3); candidates 5; surfaced 3"),
+    ("a-fullwidth-digit", "chains written (３); candidates 5; surfaced 3"),
+    ("an-arabic-indic-digit", "chains written (3); candidates ٥; surfaced 3"),
+    ("written-then-skipped", _WRITTEN_VALUE + "; skipped (x)"),
+    ("zero-without-candidates", "0 chains passed filter (no candidate links)"),
+    ("zero-with-no-number-for-candidates", "0 chains passed filter (no candidate links); candidates"),
+    ("zero-with-an-empty-reason", "0 chains passed filter (); candidates 4"),
+    ("zero-with-a-blank-reason", "0 chains passed filter (   ); candidates 4"),
+    ("zero-candidates-with-seven-digits", "0 chains passed filter (x); candidates 1000000"),
+    ("zero-with-trailing-words", "0 chains passed filter (x); candidates 4 and more"),
+    ("zero-with-a-leading-zero-before-the-count", "00 chains passed filter (x); candidates 4"),
+    ("one-chain-passed-filter", "1 chains passed filter (x); candidates 4"),
+    ("skipped-bare", "skipped"),
+    ("skipped-with-an-empty-reason", "skipped ()"),
+    ("skipped-with-a-blank-reason", "skipped ( )"),
+    ("skipped-with-a-tab-for-a-reason", "skipped (\t)"),
+    ("skipped-with-two-parentheses", "skipped (a)(b)"),
+    ("skipped-with-trailing-words", "skipped (x) now"),
+    ("skipped-capitalised", "Skipped (x)"),
+    ("skipped-with-two-spaces", "skipped  (x)"),
+    ("skipped-with-a-reason-of-81-characters", "skipped (%s)" % ("r" * 81)),
+    ("skipped-with-a-semicolon", "skipped (a; b)"),
+    ("skipped-with-markup", "skipped (**x**)"),
+    ("skipped-with-a-pipe", "skipped (a|b)"),
+    ("skipped-with-a-backslash", "skipped (a\\b)"),
+    ("skipped-with-a-quote", 'skipped ("x")'),
+    ("skipped-with-a-hash", "skipped (#x)"),
+    ("skipped-with-an-accent", "skipped (café)"),
+    ("a-second-space-after-the-label", " skipped (x)"),
+    ("a-tab-after-the-label", "\tskipped (x)"),
+    ("a-trailing-no-break-space", "skipped (x) "),
+]
+
+
+@pytest.mark.parametrize("name,value", OUTCOME_MALFORMED_VALUES, ids=[case[0] for case in OUTCOME_MALFORMED_VALUES])
+def test_one_record_line_that_is_no_form_is_malformed_and_its_text_is_given_to_nobody(name, value):
+    assert parse_chain_outcome(_record_line(value)) == _outcome("malformed", lines=[0])
+    assert parse_chain_outcome(_in_a_threat_model(_record_line(value))) == _outcome("malformed", lines=[_BODY_AT])
+
+
+# ---- no record line -----------------------------------------------------------------------------------------------
+
+OUTCOME_ABSENT_TEXTS = [
+    ("empty", ""),
+    ("no-text-at-all", None),
+    ("a-newline", "\n"),
+    ("prose", "A threat model.\n\n## 5. Coverage Matrix\n"),
+    ("the-heading-without-a-line", "## Attack Chain Outcome\n\n## 5. Coverage Matrix\n"),
+    ("the-label-without-its-space", "**Attack chain outcome**:"),
+    ("the-label-with-no-space-before-the-value", "**Attack chain outcome**:skipped (x)"),
+    ("the-label-with-a-space-before-its-colon", "**Attack chain outcome** : skipped (x)"),
+    ("another-case", "**Attack Chain Outcome**: skipped (x)"),
+    ("lower-case", "**attack chain outcome**: skipped (x)"),
+    ("not-bold", "Attack chain outcome: skipped (x)"),
+    ("italic", "*Attack chain outcome*: skipped (x)"),
+    ("indented", " **Attack chain outcome**: skipped (x)"),
+    ("indented-by-a-tab", "\t**Attack chain outcome**: skipped (x)"),
+    ("in-a-block-quote", "> **Attack chain outcome**: skipped (x)"),
+    ("in-a-list", "- **Attack chain outcome**: skipped (x)"),
+    ("in-a-table-cell", "| **Attack chain outcome**: skipped (x) |"),
+    ("after-other-text", "A line. **Attack chain outcome**: skipped (x)"),
+    ("the-flag-of-an-earlier-version", '---\nschema_version: "1.4"\nhas-attack-chains: true\n---\n'),
+]
+
+
+@pytest.mark.parametrize("name,text", OUTCOME_ABSENT_TEXTS, ids=[case[0] for case in OUTCOME_ABSENT_TEXTS])
+def test_a_text_with_no_record_line_is_absent(name, text):
+    assert parse_chain_outcome(text) == _outcome("absent")
+
+
+# ---- two or more record lines -------------------------------------------------------------------------------------
+
+OUTCOME_SECOND_LINES = [
+    ("the-same-line-twice", _record_line(_WRITTEN_VALUE)),
+    ("another-form", _record_line("skipped (inventory missing)")),
+    ("a-malformed-line", _record_line("maybe")),
+    ("an-empty-record", _OUTCOME_LABEL),
+]
+
+
+@pytest.mark.parametrize("name,second", OUTCOME_SECOND_LINES, ids=[case[0] for case in OUTCOME_SECOND_LINES])
+def test_a_second_record_line_makes_multiple_whatever_it_says(name, second):
+    text = _in_a_threat_model(_record_line(_WRITTEN_VALUE), second)
+    assert parse_chain_outcome(text) == _outcome("multiple", lines=[_BODY_AT, _BODY_AT + 1])
+
+
+def test_record_lines_apart_are_all_given_in_order_and_two_malformed_lines_are_multiple_too():
+    text = "\n".join([_record_line("maybe"), "prose", _record_line("skipped (x)"), "", _record_line("nope"), "```", _record_line(_WRITTEN_VALUE), "```"])
+    assert parse_chain_outcome(text) == _outcome("multiple", lines=[0, 2, 4]), "the fenced fourth line is not one"
+    assert parse_chain_outcome("\n".join([_record_line("maybe"), _record_line("nope")])) == _outcome("multiple", lines=[0, 1])
+
+
+# ---- code fences --------------------------------------------------------------------------------------------------
+
+_OUTCOME_RECORD = _record_line(_WRITTEN_VALUE)
+
+
+def _written_at(*lines):
+    return _outcome("written", 3, 5, 3, text=_WRITTEN_VALUE, lines=lines)
+
+
+OUTCOME_FENCED_CASES = [
+    ("a-fenced-record-is-not-a-record", "```\n" + _OUTCOME_RECORD + "\n```\n", _outcome("absent")),
+    ("a-record-in-tildes-is-not-a-record", "~~~\n" + _OUTCOME_RECORD + "\n~~~\n", _outcome("absent")),
+    ("a-record-in-a-fence-with-an-info-string", "```text\n" + _OUTCOME_RECORD + "\n```\n", _outcome("absent")),
+    ("a-shorter-line-does-not-close-a-longer-fence", "````\n```\n" + _OUTCOME_RECORD + "\n````\n", _outcome("absent")),
+    ("a-fenced-copy-does-not-make-two", _OUTCOME_RECORD + "\n```\n" + _OUTCOME_RECORD + "\n```\n", _written_at(0)),
+    ("a-record-after-the-fence-counts", "```\n" + _OUTCOME_RECORD + "\n```\n" + _OUTCOME_RECORD + "\n", _written_at(3)),
+    ("a-record-before-the-fence-counts", _OUTCOME_RECORD + "\n```\nquoted\n```\n", _written_at(0)),
+    ("an-unclosed-fence-hides-what-follows-it", "```\ntext\n" + _OUTCOME_RECORD + "\n", _outcome("absent")),
+    ("a-fence-around-the-frontmatter-closes-before-the-record", "```yaml\n---\nx: 1\n---\n```\n" + _OUTCOME_RECORD + "\n", _written_at(5)),
+    ("a-crlf-file-with-a-fenced-record", "```\r\n" + _OUTCOME_RECORD + "\r\n```\r\n", _outcome("absent")),
+    ("a-fence-mark-inside-a-line-opens-no-fence", "text ``` text\n" + _OUTCOME_RECORD + "\n", _written_at(1)),
+    ("a-run-of-two-backticks-opens-no-fence", "``\n" + _OUTCOME_RECORD + "\n", _written_at(1)),
+]
+
+
+@pytest.mark.parametrize("name,text,expected", OUTCOME_FENCED_CASES, ids=[case[0] for case in OUTCOME_FENCED_CASES])
+def test_a_line_in_a_code_fence_is_not_a_record_line(name, text, expected):
+    assert parse_chain_outcome(text) == expected
+
+
+@pytest.mark.parametrize("name,text,expected", FENCE_CASES, ids=[case[0] for case in FENCE_CASES])
+def test_the_record_is_found_by_the_one_fence_rule_of_match_heading(name, text, expected):
+    """``FENCE_CASES`` is ``match_heading(outside_fences=True)``'s table, with a heading line in each. Each heading line is made a record line
+    here, and the first record line outside a fence is the one that ``match_heading`` finds, so the two readers can't drift apart."""
+    as_records = text.replace(_HEADING_LINE, _OUTCOME_RECORD)
+    first = match_heading(r"^\*\*Attack chain outcome\*\*: ", as_records, outside_fences=True)
+    assert first == expected, name
+    assert parse_chain_outcome(as_records)["lines"][:1] == ([] if expected is None else [expected]), name
+
+
+# ---- line endings, whitespace and placement -----------------------------------------------------------------------
+
+def test_a_crlf_file_and_trailing_whitespace_read_as_the_lf_file_does():
+    base = _in_a_threat_model(_record_line(_WRITTEN_VALUE))
+    expected = _outcome("written", 3, 5, 3, text=_WRITTEN_VALUE, lines=[_BODY_AT])
+    assert parse_chain_outcome(base) == expected
+    assert parse_chain_outcome(base.replace("\n", "\r\n")) == expected
+    for trailer in (" ", "  ", "\t", " \t ", "\r", " \r"):
+        assert parse_chain_outcome(_in_a_threat_model(_record_line(_WRITTEN_VALUE) + trailer)) == expected, repr(trailer)
+
+
+def test_a_record_is_found_as_the_first_line_and_as_the_last_with_no_final_newline():
+    assert parse_chain_outcome(_OUTCOME_RECORD) == _written_at(0)
+    assert parse_chain_outcome("a\nb\nc\n" + _OUTCOME_RECORD) == _written_at(3)
+    assert parse_chain_outcome("a\nb\nc\n" + _OUTCOME_RECORD + "\n") == _written_at(3)
+
+
+def test_the_record_is_the_line_so_the_heading_that_the_writer_puts_over_it_is_not_needed():
+    reason = "fewer than two layers with STRIDE findings"
+    zero = "0 chains passed filter (%s); candidates 0" % reason
+    under_its_heading = _in_a_threat_model(_record_line(zero))
+    found = parse_chain_outcome(under_its_heading)
+    assert found == _outcome("zero", 0, 0, 0, reason, zero, [_BODY_AT])
+    assert parse_chain_outcome(under_its_heading.replace("## Attack Chain Outcome", "## 6. Risk Summary")) == found, "another heading over the line"
+    at_the_end = _in_a_threat_model() + _record_line(zero) + "\n"
+    assert parse_chain_outcome(at_the_end) == _outcome("zero", 0, 0, 0, reason, zero, [at_the_end.split("\n").index(_record_line(zero))]), "no heading at all"
+
+
+# ---- shipped inputs, and a hostile text ---------------------------------------------------------------------------
+
+def test_every_shipped_threat_model_reads_cleanly():
+    """A threats.md from before this feature has no record, so it reads as absent and the readers fall back to the chain file's presence (D13,
+    US-2 #4). One that carries a record must carry it once, in a form."""
+    paths = sorted((REPO_ROOT / "examples").rglob("threats.md"))
+    assert len(paths) >= 10
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        found = parse_chain_outcome(text)
+        assert found["form"] in ("absent", "written", "zero", "skipped"), path.relative_to(REPO_ROOT).as_posix()
+        if _OUTCOME_LABEL not in text:
+            assert found == _outcome("absent"), path.relative_to(REPO_ROOT).as_posix()
+
+
+def test_a_hostile_text_is_read_in_one_linear_pass_and_a_long_value_is_refused_at_once():
+    started = time.perf_counter()
+    record = _record_line("skipped (x)")
+    many = parse_chain_outcome("\n".join([record] * 100000))
+    assert many["form"] == "multiple" and many["lines"] == list(range(100000))
+    assert parse_chain_outcome("```\n" + "\n".join([record] * 100000) + "\n```\n") == _outcome("absent")
+    for value in ("skipped (" + "a" * 5000000 + ")", "skipped (" + "a" * 80 + "(" * 1000000, "chains written (" + "9" * 1000000 + ")",
+                  "0 chains passed filter (" + " " * 2000000 + ")", " " * 3000000):
+        assert parse_chain_outcome(_record_line(value)) == _outcome("malformed", lines=[0])
+    assert time.perf_counter() - started < 5, "the record is no longer read in one linear pass"
+
+
+# =============================================================================
+# Feature 374 (PR 2, W2', T159): attack_tree_source, one tree file's Mermaid source (ADR-050 D14, RD-16; S1P-A48)
+#
+# Two layers hold a tree file to the same content checks: `tachi-stage.py reconcile --stage trees` when a batch lands, and `assemble-report.py` when
+# it copies the tree and when it takes Section 5's source from it. One function makes the checks (contracts/module-signatures.md), so the layers
+# can't disagree. The cases state the contract's rule, and not the module's code:
+#
+#   input     the file's bytes, read as bytes. The caller allow-lists the ID, guards the path and caps the read, and none of that is here.
+#   checks    in this order, and the first to fail names the problem:
+#             not-utf-8                  the bytes are not strict UTF-8
+#             forbidden-character        a character that tachi_parts.forbidden_character returns, a carriage return among them
+#             no-block, several-blocks   the text doesn't hold exactly one fenced code block, by the one fence rule of _unfenced_lines. A block is
+#                                        counted at its opening fence, so a closed block and then a fence that nothing closes are two (S1P-A73)
+#             not-mermaid                the opening fence's info string, trimmed of the spaces and tabs at its two ends, isn't `mermaid`: it is
+#                                        CommonMark's info string, compared exactly, so `mer maid` and `Mermaid` are not (S1P-A74)
+#             unclosed                   nothing closes the fence, and a fence that nothing closes is never the tree's block (RD-16)
+#             empty-block               no line between the fences holds anything but spaces and tabs: no diagram was written (S1P-A75)
+#   result    (source, None), the lines strictly between the two fence lines, joined by "\n" as the file holds them, or (None, problem). The source
+#             always holds a line that isn't blank.
+# =============================================================================
+
+# ---- the fence rule, as lines with a role ------------------------------------------------------------------------
+
+# (id, the lines, the role of each: None outside every fence, else "open", "inside" or "close")
+FENCE_ROLE_CASES = [
+    ("no-fence", ["a", "b"], [None, None]),
+    ("empty", [], []),
+    ("one-block", ["a", "```", "b", "```", "c"], [None, "open", "inside", "close", None]),
+    ("tildes", ["~~~", "b", "~~~"], ["open", "inside", "close"]),
+    ("an-info-string-opens-and-an-empty-block-closes", ["```mermaid", "```"], ["open", "close"]),
+    ("a-fence-that-nothing-closes-runs-to-the-end", ["a", "```", "b", "~~~", "c"], [None, "open", "inside", "inside", "inside"]),
+    ("two-blocks-with-nothing-between", ["```", "a", "```", "~~~", "b", "~~~"], ["open", "inside", "close", "open", "inside", "close"]),
+    ("a-shorter-closer-stays-inside", ["````", "```", "````"], ["open", "inside", "close"]),
+    ("a-longer-closer-closes", ["```", "a", "`````"], ["open", "inside", "close"]),
+    ("another-character-stays-inside", ["```", "~~~", "```"], ["open", "inside", "close"]),
+    ("a-line-with-an-info-string-never-closes", ["```", "```mermaid", "```"], ["open", "inside", "close"]),
+    ("a-line-with-text-after-the-run-never-closes", ["```", "``` x", "```~", "```"], ["open", "inside", "inside", "close"]),
+    ("a-closer-may-end-in-spaces-tabs-and-a-carriage-return", ["```", "```  \t\r"], ["open", "close"]),
+    ("a-fence-may-be-led-by-spaces-and-tabs", ["   ```", "x", "\t```"], ["open", "inside", "close"]),
+    ("a-fence-led-by-another-whitespace-is-prose", [_NBSP + "```", "x"], [None, None]),
+    ("a-backtick-in-a-backtick-info-string-opens-none", ["```a`b", "x"], [None, None]),
+    ("a-backtick-in-a-tilde-info-string-is-fine", ["~~~ a`b", "x", "~~~"], ["open", "inside", "close"]),
+    ("a-run-of-two-opens-none", ["``", "~~", "x"], [None, None, None]),
+    ("a-fence-line-inside-a-fence-opens-nothing-more", ["~~~~", "```", "x", "~~~~", "y"], ["open", "inside", "inside", "close", None]),
+]
+
+
+@pytest.mark.parametrize("name,lines,roles", FENCE_ROLE_CASES, ids=[case[0] for case in FENCE_ROLE_CASES])
+def test_fence_roles_marks_each_line_as_outside_every_fence_or_as_the_opening_inside_or_closing_line_of_one(name, lines, roles):
+    found = list(_fence_roles(lines))
+    assert [role for _, _, role in found] == roles, name
+    assert [(index, line) for index, line, _ in found] == list(enumerate(lines)), "each line comes back with its own index, in order"
+
+
+def test_the_lines_that_have_no_role_are_the_lines_that_unfenced_lines_gives():
+    """``_unfenced_lines`` is what ``match_heading``, ``parse_finding_layers`` and ``parse_chain_outcome`` read, and ``attack_tree_source`` reads
+    the blocks of the same rule from ``_fence_roles``, so the two can't read a text two ways."""
+    for text in [case[1] for case in FENCE_CASES] + [case[1] for case in OUTCOME_FENCED_CASES]:
+        lines = text.split("\n")
+        assert list(_unfenced_lines(lines)) == [(index, line) for index, line, role in _fence_roles(lines) if role is None], repr(text)
+    for name, lines, roles in FENCE_ROLE_CASES:
+        assert [index for index, _ in _unfenced_lines(lines)] == [index for index, role in enumerate(roles) if role is None], name
+
+
+# ---- the cases: a tree file as an agent writes it, and each way that it goes wrong ----------------------------------
+
+_TREE_PROBLEMS = ["not-utf-8", "forbidden-character", "no-block", "several-blocks", "not-mermaid", "unclosed", "empty-block"]   # the contract's seven, in its order
+_TREE_HEAD = ["# Attack Tree: S-1", "", "**Finding**: S-1 | Risk Level: Critical", ""]
+_TREE_BODY = ["graph TD", '    Goal["[GOAL] A synthetic goal"]', '    Goal --> A["[OR] A step"]', "    classDef critical fill:#d32f2f,color:#fff"]
+_TREE_SOURCE = "\n".join(_TREE_BODY)
+
+
+def _tree_file(*lines, ending="\n"):
+    """A tree file's bytes: ``lines`` joined by ``\\n``, then ``ending``."""
+    return ("\n".join(lines) + ending).encode("utf-8")
+
+
+def _fenced(opener="```mermaid", body=_TREE_BODY, closer="```", head=_TREE_HEAD, tail=(), ending="\n"):
+    """A tree file in the agent's shape: the header lines, one fenced block and any ``tail`` lines. ``closer=None`` leaves the fence open."""
+    closing = [] if closer is None else [closer]
+    return _tree_file(*(list(head) + [opener] + list(body) + closing + list(tail)), ending=ending)
+
+
+def _tree_bytes_with(extra):
+    """Three tree files with ``extra`` (bytes) planted once: in the heading, inside the block and after the block."""
+    head, block = b"# Attack Tree: S-1", b"```mermaid\ngraph TD\n    A --> B"
+    return [head + b" " + extra + b"\n\n" + block + b"\n```\n", head + b"\n\n" + block + b" " + extra + b"\n```\n",
+            head + b"\n\n" + block + b"\n```\nNotes " + extra + b"\n"]
+
+
+# Four-backtick and four-tilde fences hold lines that are fence lines of a shorter run, or of the other character, or that carry text: none of them closes.
+_INNER_BACKTICK_LINES = ["```", "```text", "``` ", "  ```", "\t```mermaid", "~~~", "``", "```` x"]
+_INNER_TILDE_LINES = ["~~~", "~~~text", "```", "````", "  ~~~", "~~ "]
+_MESSY_BODY = ["", "graph TD", "    A --> B   ", "\tC --> D\t", "", ""]   # blank lines at both ends, trailing spaces and a tab: kept exactly
+_WIDE_BODY = ['    A["Café → leaf ☃ \U0001f600"]', '    B["a run ``` of backticks, and ````` more"]', "    C --> D\twith a tab"]
+
+# (id, the file, the source it gives)
+ATTACK_TREE_FORMS = [
+    ("three-backticks", _fenced(), _TREE_SOURCE),
+    ("three-tildes", _fenced("~~~mermaid", closer="~~~"), _TREE_SOURCE),
+    ("four-backticks-hold-shorter-fence-lines", _fenced("````mermaid", _TREE_BODY[:2] + _INNER_BACKTICK_LINES + _TREE_BODY[2:], "````"),
+     "\n".join(_TREE_BODY[:2] + _INNER_BACKTICK_LINES + _TREE_BODY[2:])),
+    ("four-tildes-hold-shorter-fence-lines", _fenced("~~~~mermaid", _TREE_BODY[:2] + _INNER_TILDE_LINES + _TREE_BODY[2:], "~~~~"),
+     "\n".join(_TREE_BODY[:2] + _INNER_TILDE_LINES + _TREE_BODY[2:])),
+    ("a-longer-closer-closes", _fenced(closer="`````"), _TREE_SOURCE),
+    ("a-longer-tilde-closer-closes", _fenced("~~~mermaid", closer="~~~~~~"), _TREE_SOURCE),
+    ("tilde-lines-inside-a-backtick-block", _fenced(body=_TREE_BODY + ["~~~", "~~~~~"]), "\n".join(_TREE_BODY + ["~~~", "~~~~~"])),
+    ("backtick-lines-inside-a-tilde-block", _fenced("~~~mermaid", _TREE_BODY + ["```", "`````"], "~~~"), "\n".join(_TREE_BODY + ["```", "`````"])),
+    ("an-inner-line-that-starts-with-a-run-but-has-text-after-it", _fenced(body=_TREE_BODY + ["``` still inside", "```~"]),
+     "\n".join(_TREE_BODY + ["``` still inside", "```~"])),
+    ("spaces-around-the-info-string", _fenced("```  mermaid  "), _TREE_SOURCE),
+    ("tabs-around-the-info-string", _fenced("```\tmermaid\t"), _TREE_SOURCE),
+    ("a-space-before-the-info-string-in-tildes", _fenced("~~~ mermaid", closer="~~~"), _TREE_SOURCE),
+    ("spaces-and-tabs-mixed-around-the-info-string", _fenced("``` \t mermaid \t  "), _TREE_SOURCE),   # trimmed at its two ends, and only there (S1P-A74)
+    ("a-fence-led-by-spaces", _fenced("   ```mermaid", closer="   ```"), _TREE_SOURCE),
+    ("a-fence-led-by-more-spaces-than-markdown-allows", _fenced("      ```mermaid", closer="      ```"), _TREE_SOURCE),
+    ("a-fence-led-by-a-tab", _fenced("\t```mermaid", closer="\t```"), _TREE_SOURCE),
+    ("an-opener-that-is-led-and-a-closer-that-is-not", _fenced("  ```mermaid"), _TREE_SOURCE),
+    ("a-closer-with-trailing-spaces-and-a-tab", _fenced(closer="```  \t"), _TREE_SOURCE),
+    ("no-final-newline", _fenced(ending=""), _TREE_SOURCE),
+    ("the-fence-is-the-first-line", _fenced(head=()), _TREE_SOURCE),
+    ("header-lines-that-hold-fence-marks-but-open-no-fence", _fenced(head=["# Attack Tree: S-1", "", "A ``` span ``` and a `` pair and ~~ tildes", "``a`b", ""]),
+     _TREE_SOURCE),
+    ("prose-headings-and-a-table-after-the-block", _fenced(tail=["", "## Notes", "", "Prose with a ``` mark inline.", "| a | b |", "|---|---|"]), _TREE_SOURCE),
+    ("blank-lines-and-trailing-whitespace-are-kept-exactly", _fenced(body=_MESSY_BODY), "\n".join(_MESSY_BODY)),
+    ("non-ascii-labels-and-inner-backtick-runs-are-kept", _fenced(body=_WIDE_BODY), "\n".join(_WIDE_BODY)),
+    ("a-byte-order-mark-before-the-heading", b"\xef\xbb\xbf" + _fenced(), _TREE_SOURCE),
+    # A block with nothing in it is `empty-block` (S1P-A75), so these are the other side of that edge: one line that holds anything else is a block
+    # that the check passes, whatever else is blank around it. The check is structural, so another kind of whitespace is not blank.
+    ("one-character-is-not-empty", _fenced(body=["x"]), "x"),
+    ("one-line-after-blank-lines", _fenced(body=["", "  ", "\t", "x", ""]), "\n  \n\t\nx\n"),
+    ("one-line-before-blank-lines", _fenced(body=["x", "  ", "\t"]), "x\n  \n\t"),
+    ("a-line-that-ends-in-spaces-and-a-tab", _fenced(body=["x \t"]), "x \t"),
+    ("a-no-break-space-is-not-blank", _fenced(body=[_NBSP]), _NBSP),
+    ("an-ideographic-space-is-not-blank", _fenced(body=[chr(0x3000)]), chr(0x3000)),
+    ("a-zero-width-space-is-not-blank", _fenced(body=[chr(0x200B)]), chr(0x200B)),
+    ("a-shorter-fence-line-is-text-and-not-blank", _fenced("````mermaid", body=["```"], closer="````"), "```"),
+]
+
+ATTACK_TREE_NO_BLOCK = [
+    ("empty", b""),
+    ("a-newline", b"\n"),
+    ("whitespace-only", b"  \n\t\n   "),
+    ("prose-only", _tree_file(*_TREE_HEAD, "No diagram was written.")),
+    ("the-diagram-with-no-fence", _tree_file(*_TREE_HEAD, *_TREE_BODY)),
+    ("an-indented-code-block", _tree_file(*_TREE_HEAD, *["    " + line for line in _TREE_BODY])),
+    ("a-fence-mark-inside-a-line", _tree_file(*_TREE_HEAD, "Use ```mermaid to open a block", "and ``` to end it")),
+    ("a-backtick-in-the-info-string-opens-no-fence", _tree_file(*_TREE_HEAD, "```a`b", *_TREE_BODY)),
+    ("a-code-span-on-one-line", _tree_file(*_TREE_HEAD, "```mermaid graph TD```")),
+    ("a-run-of-two-backticks", _tree_file("``mermaid", *_TREE_BODY, "``")),
+    ("a-run-of-two-tildes", _tree_file("~~mermaid", *_TREE_BODY, "~~")),
+    ("a-fence-led-by-a-no-break-space", _tree_file(_NBSP + "```mermaid", *_TREE_BODY, _NBSP + "```")),
+    ("an-html-block", _tree_file("<pre>", *_TREE_BODY, "</pre>")),
+]
+
+ATTACK_TREE_SEVERAL = [
+    ("the-same-block-twice", _fenced(tail=["", "```mermaid", *_TREE_BODY, "```"])),
+    ("a-mermaid-block-then-a-text-block", _fenced(tail=["", "```text", "x", "```"])),
+    ("a-text-block-then-a-mermaid-block", _tree_file(*_TREE_HEAD, "```text", "x", "```", "", "```mermaid", *_TREE_BODY, "```")),
+    ("two-blocks-with-no-line-between", _tree_file("```mermaid", *_TREE_BODY, "```", "```mermaid", *_TREE_BODY, "```")),
+    ("a-backtick-block-then-a-tilde-block", _fenced(tail=["", "~~~mermaid", *_TREE_BODY, "~~~"])),
+    ("three-blocks", _fenced(tail=["", "```text", "x", "```", "", "```text", "y", "```"])),
+    # A block is counted at its opening fence, closed or not (S1P-A73, confirmed): a renderer runs a fence that nothing closes to the end of the file, so the
+    # file shows two blocks, and the second one's text would reach the copied tree unchecked.
+    ("a-closed-block-then-a-fence-that-nothing-closes", _fenced(tail=["", "```mermaid", "graph TD"])),
+    ("a-closed-block-then-an-unclosed-fence-of-blank-lines", _fenced(tail=["", "```mermaid", "", "  "])),
+    ("an-empty-closed-block-then-a-fence-that-nothing-closes", _fenced(body=[], tail=["", "```mermaid", "graph TD"])),
+    ("a-closed-block-then-a-bare-fence-line", _fenced(tail=["```"])),
+    ("a-closed-block-then-a-fence-line-with-text", _fenced(tail=["``` done"])),
+    ("a-closed-block-then-a-tilde-fence-that-nothing-closes", _fenced(tail=["~~~"])),
+    ("two-blocks-that-are-not-mermaid", _tree_file("```text", "a", "```", "```text", "b", "```")),
+    ("two-blocks-and-the-second-is-neither-mermaid-nor-closed", _tree_file("```mermaid", "a", "```", "```text", "b")),
+]
+
+ATTACK_TREE_NOT_MERMAID = [
+    ("text", _fenced("```text")),
+    ("python", _fenced("```python")),
+    ("no-info-string", _fenced("```")),
+    ("no-info-string-in-tildes", _fenced("~~~", closer="~~~")),
+    ("a-capital-first-letter", _fenced("```Mermaid")),
+    ("all-capitals", _fenced("```MERMAID")),
+    ("a-longer-word", _fenced("```mermaids")),
+    ("a-prefixed-word", _fenced("```xmermaid")),
+    ("a-hyphenated-name", _fenced("```mermaid-js")),
+    ("a-digit-after-it", _fenced("```mermaid2")),
+    ("a-second-word", _fenced("```mermaid title")),
+    ("a-second-word-in-tildes", _fenced("~~~mermaid title", closer="~~~")),
+    # The info string is trimmed at its two ends and no further (S1P-A74): a space or tab inside it stays, and a renderer takes its first word as the
+    # language, so none of these draws a diagram.
+    ("a-space-inside-it", _fenced("```mer maid")),
+    ("a-tab-inside-it", _fenced("```mer\tmaid")),
+    ("a-space-and-a-tab-inside-it", _fenced("``` mer \t maid")),
+    ("a-space-after-each-letter", _fenced("```m e r m a i d")),
+    ("a-space-inside-it-in-tildes", _fenced("~~~mer maid", closer="~~~")),
+    ("a-space-inside-it-and-spaces-around-it", _fenced("```  mer maid  ")),
+    ("a-space-inside-it-and-nothing-closes-it", _fenced("```mer maid", closer=None)),
+    ("a-space-inside-it-and-an-empty-block", _fenced("```mer maid", body=[])),
+    ("an-info-string-of-only-spaces-and-tabs", _fenced("```  \t ")),
+    ("an-info-string-of-only-spaces-and-tabs-in-tildes", _fenced("~~~ \t", closer="~~~")),
+    ("an-attribute-list", _fenced("```mermaid{theme: dark}")),
+    ("braces-around-it", _fenced("```{mermaid}")),
+    ("a-dot-before-it", _fenced("```.mermaid")),
+    ("punctuation-after-it", _fenced("```mermaid,")),
+    ("a-no-break-space-before-it", _fenced("```" + _NBSP + "mermaid")),
+    ("a-zero-width-space-after-it", _fenced("```mermaid" + chr(0x200B))),
+    ("an-ideographic-space-before-it", _fenced("```" + chr(0x3000) + "mermaid")),
+    ("a-backtick-after-it-in-tildes", _fenced("~~~mermaid`", closer="~~~")),
+    ("unclosed-and-not-mermaid", _fenced("```text", closer=None)),
+    ("a-bare-fence-that-nothing-closes", _fenced("```", closer=None)),
+    ("a-lone-fence-line", _tree_file(*_TREE_HEAD, "```")),
+    ("a-mermaid-block-inside-another-fence", _tree_file(*_TREE_HEAD, "````text", "```mermaid", *_TREE_BODY, "```", "````")),
+]
+
+ATTACK_TREE_UNCLOSED = [
+    ("the-closing-fence-is-missing", _fenced(closer=None)),
+    ("no-closing-fence-and-no-final-newline", _fenced(closer=None, ending="")),
+    ("the-opener-is-the-last-line", _tree_file(*_TREE_HEAD, "```mermaid")),
+    ("the-opener-is-the-last-line-and-has-no-newline", _tree_file(*_TREE_HEAD, "```mermaid", ending="")),
+    ("a-tilde-closer-for-a-backtick-fence", _fenced(closer="~~~")),
+    ("a-backtick-closer-for-a-tilde-fence", _fenced("~~~mermaid", closer="```")),
+    ("a-shorter-closer", _fenced("````mermaid", closer="```")),
+    ("a-shorter-tilde-closer", _fenced("~~~~mermaid", closer="~~~")),
+    ("a-closer-with-text-after-it", _fenced(closer="``` done")),
+    ("a-closer-with-another-mark-after-it", _fenced(closer="```~")),
+    ("a-closer-with-an-info-string", _fenced(closer="```mermaid")),
+    ("a-closer-led-by-a-no-break-space", _fenced(closer=_NBSP + "```")),
+    # `unclosed` is checked before `empty-block`: a fence that nothing closes holds no block, so there is no empty one to name (S1P-A75)
+    ("an-opener-and-nothing-after-it-in-the-file", _fenced(body=[], closer=None)),
+    ("blank-lines-after-the-opener-and-no-closer", _fenced(body=["", "  ", "\t"], closer=None)),
+    ("an-empty-body-and-a-closer-with-text-after-it", _fenced(body=[], closer="``` done")),
+    ("an-empty-body-and-a-shorter-closer", _fenced("````mermaid", body=[], closer="```")),
+]
+
+# A block with no line between its fences, or only blank ones (spaces and tabs only, CommonMark's blank line): the agent wrote no diagram (S1P-A75).
+ATTACK_TREE_EMPTY_BLOCK = [
+    ("nothing-between-the-fences", _fenced(body=[])),
+    ("one-blank-line", _fenced(body=[""])),
+    ("two-blank-lines", _fenced(body=["", ""])),
+    ("a-line-of-spaces", _fenced(body=["    "])),
+    ("a-line-of-a-tab", _fenced(body=["\t"])),
+    ("spaces-and-tabs-on-several-lines", _fenced(body=["  ", "\t", " \t ", "", "\t\t"])),
+    ("in-tildes", _fenced("~~~mermaid", body=[], closer="~~~")),
+    ("blank-lines-in-tildes", _fenced("~~~mermaid", body=["", "  "], closer="~~~")),
+    ("a-longer-closer", _fenced(body=[], closer="`````")),
+    ("a-closer-with-trailing-spaces-and-a-tab", _fenced(body=["  "], closer="```  \t")),
+    ("spaces-around-the-info-string", _fenced("```  mermaid  ", body=[])),
+    ("a-fence-led-by-spaces", _fenced("   ```mermaid", body=[""], closer="   ```")),
+    ("no-final-newline", _fenced(body=[], ending="")),
+    ("the-fence-is-the-first-line", _fenced(head=(), body=[])),
+    ("text-outside-the-block-does-not-fill-it", _fenced(body=[""], tail=["", "## Notes", "", *_TREE_BODY])),
+    ("a-byte-order-mark-before-the-heading", b"\xef\xbb\xbf" + _fenced(body=[])),
+]
+
+ATTACK_TREE_BAD_UTF8 = [
+    ("a-lone-continuation-byte", b"\x80"),
+    ("a-truncated-two-byte-sequence", b"\xc3"),
+    ("a-truncated-four-byte-sequence", b"\xf0\x9f\x98"),
+    ("an-overlong-nul", b"\xc0\x80"),
+    ("an-overlong-slash", b"\xc0\xaf"),
+    ("an-encoded-surrogate", b"\xed\xa0\x80"),
+    ("a-code-point-above-the-range", b"\xf4\x90\x80\x80"),
+    ("a-latin-1-letter", b"caf\xe9"),
+    ("a-byte-that-never-occurs", b"\xff"),
+]
+
+# The characters that tachi_parts.forbidden_character returns, from each of its classes and at the edge of each: C0 (a carriage return among
+# them), DEL and C1, the separators, the bidi controls and the Unicode tag block. A lone surrogate is a UTF-8 error, and has its own case above.
+_TREE_FORBIDDEN = [0x00, 0x01, 0x07, 0x08, 0x0B, 0x0C, 0x0D, 0x1B, 0x1F, 0x7F, 0x80, 0x85, 0x9F, 0x061C, 0x200E, 0x200F, 0x2028, 0x2029, 0x202A, 0x202E,
+                   0x2066, 0x2069, 0xE0001, 0xE0041, 0xE007F]
+_ALL_TREE_FILES = [case[1] for case in ATTACK_TREE_FORMS] + [case[1] for case in ATTACK_TREE_NO_BLOCK] + [case[1] for case in ATTACK_TREE_SEVERAL] + \
+                  [case[1] for case in ATTACK_TREE_NOT_MERMAID] + [case[1] for case in ATTACK_TREE_UNCLOSED] + [case[1] for case in ATTACK_TREE_BAD_UTF8] + \
+                  [case[1] for case in ATTACK_TREE_EMPTY_BLOCK] + \
+                  [data for code in _TREE_FORBIDDEN for data in _tree_bytes_with(chr(code).encode("utf-8"))]   # forbidden-character: each one planted three ways
+# Every character below U+0300 is tried by the sweeps below, and each edge of each class of tachi_parts.forbidden_character above that. A lone surrogate can't be encoded.
+_TREE_SWEEP_EDGES = [0x061B, 0x061C, 0x061D, 0x200B, 0x200C, 0x200D, 0x200E, 0x200F, 0x2010, 0x2027, 0x2028, 0x2029, 0x202A, 0x202E, 0x202F, 0x2065, 0x2066,
+                     0x2069, 0x206A, 0xD7FF, 0xE000, 0xFEFF, 0xFFFD, 0xFFFF, 0x10000, 0xDFFFF, 0xE0000, 0xE0001, 0xE007F, 0xE0080, 0x10FFFF]
+
+
+def test_attack_tree_source_takes_the_files_bytes_and_a_text_is_a_callers_bug():
+    assert list(inspect.signature(attack_tree_source).parameters) == ["data"]
+    good = _fenced()
+    assert attack_tree_source(good) == (_TREE_SOURCE, None)
+    assert attack_tree_source(bytearray(good)) == (_TREE_SOURCE, None)
+    for wrong in (good.decode("utf-8"), None, 7, [good], memoryview(good)):
+        with pytest.raises(TypeError, match="bytes"):
+            attack_tree_source(wrong)
+
+
+def test_a_result_is_a_pair_of_a_source_and_no_problem_or_of_no_source_and_a_problem():
+    assert len(_ALL_TREE_FILES) >= 200, "premise: every table is in the list, and the 75 files that plant a forbidden character"
+    reached = set()
+    for data in _ALL_TREE_FILES:
+        result = attack_tree_source(data)
+        assert type(result) is tuple and len(result) == 2
+        source, problem = result
+        assert (source is None) != (problem is None), "one of the two is None, and never both or neither"
+        assert source is None or type(source) is str
+        assert problem is None or problem in _TREE_PROBLEMS, "a problem is one of the contract's seven words, which never quote the file"
+        assert source is None or set(source) - {" ", "\t", "\n"}, "a source always holds a line that isn't blank, because a block with none is empty-block (S1P-A75)"
+        reached.add(problem)
+    assert reached == set(_TREE_PROBLEMS) | {None}, "the tables reach each of the seven words and a source, and no other word is ever returned"
+
+
+# ---- a file that passes -------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("name,data,source", ATTACK_TREE_FORMS, ids=[case[0] for case in ATTACK_TREE_FORMS])
+def test_a_tree_file_with_one_closed_mermaid_block_gives_the_lines_between_its_fences(name, data, source):
+    assert attack_tree_source(data) == (source, None), name
+
+
+@pytest.mark.parametrize("name,data,source", ATTACK_TREE_FORMS, ids=[case[0] for case in ATTACK_TREE_FORMS])
+def test_the_source_is_what_the_fence_rule_covers_between_the_two_fence_lines(name, data, source):
+    """The oracle is ``_unfenced_lines``, the rule of ``match_heading``: one block covers one run of lines, and the source is that run without its
+    first and last line."""
+    lines = data.decode("utf-8").split("\n")
+    outside = {index for index, _ in _unfenced_lines(lines)}
+    covered = [index for index in range(len(lines)) if index not in outside]
+    assert covered == list(range(covered[0], covered[-1] + 1)), name
+    assert "\n".join(lines[covered[0] + 1:covered[-1]]) == source, name
+
+
+def test_characters_outside_the_forbidden_set_pass_wherever_they_lie():
+    """Tab, a no-break space, the joiners, a variation selector, a zero-width space, a soft hyphen, a byte order mark and an astral emoji are not in
+    step 10's set, so a label may hold them."""
+    for char in ("\t", _NBSP, "\u200c", "\u200d", "\ufe0f", "\u200b", "\u00ad", "\ufeff", "\u2060", "\U0001f600"):
+        assert tachi_parts.forbidden_character(char) is None, "premise: %r is not forbidden" % char
+        for data in _tree_bytes_with(char.encode("utf-8")):
+            assert attack_tree_source(data)[1] is None, repr(char)
+        assert attack_tree_source(_fenced(body=["a" + char + "b"])) == ("a" + char + "b", None), repr(char)
+
+
+# ---- a file that has no block, or several -------------------------------------------------------------------------
+
+@pytest.mark.parametrize("name,data", ATTACK_TREE_NO_BLOCK, ids=[case[0] for case in ATTACK_TREE_NO_BLOCK])
+def test_a_text_that_opens_no_fence_is_no_block(name, data):
+    assert attack_tree_source(data) == (None, "no-block"), name
+
+
+@pytest.mark.parametrize("name,data", ATTACK_TREE_SEVERAL, ids=[case[0] for case in ATTACK_TREE_SEVERAL])
+def test_a_text_that_opens_two_fences_is_several_blocks_whether_or_not_the_second_closes(name, data):
+    assert attack_tree_source(data) == (None, "several-blocks"), name
+
+
+# ---- a block that is not Mermaid, or not closed ------------------------------------------------------------------
+
+@pytest.mark.parametrize("name,data", ATTACK_TREE_NOT_MERMAID, ids=[case[0] for case in ATTACK_TREE_NOT_MERMAID])
+def test_one_block_whose_info_string_is_not_mermaid_is_not_mermaid_closed_or_not(name, data):
+    assert attack_tree_source(data) == (None, "not-mermaid"), name
+
+
+@pytest.mark.parametrize("name,data", ATTACK_TREE_UNCLOSED, ids=[case[0] for case in ATTACK_TREE_UNCLOSED])
+def test_a_mermaid_fence_that_nothing_closes_is_unclosed_and_gives_no_source(name, data):
+    assert attack_tree_source(data) == (None, "unclosed"), name
+
+
+@pytest.mark.parametrize("name,data", ATTACK_TREE_EMPTY_BLOCK, ids=[case[0] for case in ATTACK_TREE_EMPTY_BLOCK])
+def test_a_closed_mermaid_block_with_no_line_that_holds_more_than_spaces_and_tabs_is_an_empty_block(name, data):
+    """The agent wrote no diagram. At ``reconcile`` that makes the batch invalid, so it is retried, and the file never ships a tree with nothing in it."""
+    assert attack_tree_source(data) == (None, "empty-block"), name
+
+
+# ---- a file that is not strict UTF-8, or holds a forbidden character ------------------------------------------------
+
+@pytest.mark.parametrize("name,bad", ATTACK_TREE_BAD_UTF8, ids=[case[0] for case in ATTACK_TREE_BAD_UTF8])
+def test_bytes_that_are_not_strict_utf_8_are_refused_wherever_they_lie(name, bad):
+    assert attack_tree_source(bad) == (None, "not-utf-8"), name
+    for data in _tree_bytes_with(bad):
+        assert attack_tree_source(data) == (None, "not-utf-8"), name
+
+
+def test_a_utf_16_file_is_not_utf_8():
+    assert attack_tree_source(_fenced().decode("utf-8").encode("utf-16")) == (None, "not-utf-8")
+    assert attack_tree_source(_fenced().decode("utf-8").encode("utf-16-le")) == (None, "forbidden-character"), "no byte order mark: the NULs are the first thing it hits"
+
+
+@pytest.mark.parametrize("code", _TREE_FORBIDDEN, ids=[hex(code) for code in _TREE_FORBIDDEN])
+def test_a_character_that_tachi_parts_forbids_is_refused_wherever_it_lies(code):
+    assert tachi_parts.forbidden_character(chr(code)) is not None, "premise: the character is in step 10's set"
+    for data in _tree_bytes_with(chr(code).encode("utf-8")):
+        assert attack_tree_source(data) == (None, "forbidden-character"), hex(code)
+
+
+def test_a_character_is_forbidden_in_a_tree_file_exactly_when_tachi_parts_forbids_it():
+    """The set has one definition, ``tachi_parts.forbidden_character``, so a later amendment to it reaches the tree files, and the two layers hold
+    them to the same set. Every character below U+0300 is tried, and each edge of each class above that. A lone surrogate can't be encoded."""
+    forbidden, allowed = 0, 0
+    for code in list(range(0x300)) + _TREE_SWEEP_EDGES:
+        char = chr(code)
+        result = attack_tree_source(_fenced(body=["a" + char + "b"]))
+        if tachi_parts.forbidden_character(char) is not None:
+            assert result == (None, "forbidden-character"), hex(code)
+            forbidden += 1
+        else:
+            assert result == ("a" + char + "b", None), hex(code)
+            allowed += 1
+    assert forbidden > 60 and allowed > 700, "premise: the sweep holds both kinds"
+
+
+def test_a_line_is_blank_only_when_it_holds_spaces_and_tabs_and_nothing_else():
+    """CommonMark's blank line (S1P-A75). A block whose lines are all blank is ``empty-block``, and one character of any other kind, another kind of
+    whitespace included, is a block that passes: the check is structural, and the diagram's syntax is the renderer's. The same characters as the sweep
+    above and every Unicode space, each as the whole body of a block. A newline only ends a line, so it leaves two empty lines, and the block is empty
+    all the same."""
+    blank, other_whitespace = [], 0
+    for code in list(range(0x300)) + _TREE_SWEEP_EDGES + list(range(0x2000, 0x200B)) + [0x1680, 0x205F, 0x3000]:
+        char = chr(code)
+        if tachi_parts.forbidden_character(char) is not None:
+            continue
+        result = attack_tree_source(_fenced(body=[char]))
+        if char in (" ", "\t", "\n"):
+            assert result == (None, "empty-block"), hex(code)
+            blank.append(char)
+        else:
+            assert result == (char, None), hex(code)
+            other_whitespace += char.isspace()
+    assert blank == ["\t", "\n", " "], "premise: a tab, a newline and a space are the only characters that leave a block blank, and the sweep tries each"
+    assert other_whitespace >= 12, "premise: the sweep holds other whitespace, a no-break space and the Unicode spaces among it"
+
+
+def test_a_crlf_file_is_refused_for_its_carriage_returns_and_the_lf_file_reads():
+    """A carriage return is in the set (S1P-A18), so a CRLF file is refused, and so is one carriage return anywhere. That is why the bytes are read as
+    bytes: a text-mode read would turn each into a newline, and the file would pass."""
+    lf = _fenced()
+    assert attack_tree_source(lf) == (_TREE_SOURCE, None)
+    assert attack_tree_source(lf.replace(b"\n", b"\r\n")) == (None, "forbidden-character")
+    assert attack_tree_source(lf.replace(b"\n", b"\r")) == (None, "forbidden-character")
+    assert attack_tree_source(lf.replace(b"\n```\n", b"\n```\r\n")) == (None, "forbidden-character"), "one carriage return, after the closing fence"
+    assert attack_tree_source(lf.replace(b"\n```\n", b"\n```\r\n").decode("utf-8").replace("\r", "").encode("utf-8")) == (_TREE_SOURCE, None)
+
+
+def test_the_checks_run_in_the_contracts_order_and_the_first_to_fail_names_the_problem():
+    two_blocks = _fenced(tail=["```text", "x", "```"])
+    assert attack_tree_source(two_blocks) == (None, "several-blocks")
+    assert attack_tree_source(two_blocks + b"\x00") == (None, "forbidden-character"), "the characters are checked before the blocks are counted"
+    assert attack_tree_source(two_blocks + b"\x00\xff") == (None, "not-utf-8"), "UTF-8 is checked before the characters"
+    assert attack_tree_source(b"no block here\x00") == (None, "forbidden-character")
+    assert attack_tree_source(b"no block here\x00\xff") == (None, "not-utf-8")
+    assert attack_tree_source(_tree_file("```text", "a", "```", "```text", "b")) == (None, "several-blocks"), "two fences, whatever their info strings and closers"
+    assert attack_tree_source(_fenced("```text", closer=None)) == (None, "not-mermaid"), "the info string is checked before the closer"
+    assert attack_tree_source(_fenced(closer=None)) == (None, "unclosed")
+    assert attack_tree_source(_fenced(closer=None, tail=["more prose"])) == (None, "unclosed"), "an unclosed fence runs to the end and covers the prose"
+    # `empty-block` is the last check (S1P-A75): each earlier one names its problem first, whether or not the block has anything in it
+    assert attack_tree_source(_fenced(body=[])) == (None, "empty-block")
+    assert attack_tree_source(_fenced(body=[]) + b"\xff") == (None, "not-utf-8")
+    assert attack_tree_source(_fenced(body=[]) + b"\x00") == (None, "forbidden-character")
+    assert attack_tree_source(_fenced(body=[], tail=["```text", "x", "```"])) == (None, "several-blocks")
+    assert attack_tree_source(_fenced("```text", body=[])) == (None, "not-mermaid")
+    assert attack_tree_source(_fenced("```mer maid", body=[])) == (None, "not-mermaid")
+    assert attack_tree_source(_fenced(body=[], closer=None)) == (None, "unclosed")
+    assert attack_tree_source(_tree_file(*_TREE_HEAD, "```", "```")) == (None, "not-mermaid"), "a bare pair of fence lines has no info string"
+
+
+def _faulty_tree(blocks, not_mermaid, unclosed, empty, forbidden, bad_utf8):
+    """A tree file with the faults that are switched on. ``blocks`` is ``"none"``, ``"one"`` or ``"several"``: the second block is always a text block, and
+    ``unclosed`` leaves the last block's fence open, so the second block is the one that is left open when there are two."""
+    lines = list(_TREE_HEAD)
+    if blocks == "none":
+        lines.append("No diagram was written.")
+    else:
+        closing = [] if unclosed and blocks == "one" else ["```"]
+        lines += ["```" + ("text" if not_mermaid else "mermaid")] + ([] if empty else ["graph TD"]) + closing
+        if blocks == "several":
+            lines += ["", "```text", "x"] + ([] if unclosed else ["```"])
+    return _tree_file(*lines) + (b"\x00" if forbidden else b"") + (b"\xff" if bad_utf8 else b"")
+
+
+def test_the_first_fault_in_the_contracts_order_names_the_problem_for_every_combination_of_faults():
+    """All 96 files that six switches make: the bytes, the characters, the number of blocks, the info string, the closer and the content of the block.
+    The contract's order is the one list below: the first fault that a file has is the one that is named."""
+    checked = {}
+    for blocks, not_mermaid, unclosed, empty, forbidden, bad_utf8 in itertools.product(("none", "one", "several"), *[(False, True)] * 5):
+        if bad_utf8:
+            expected = (None, "not-utf-8")
+        elif forbidden:
+            expected = (None, "forbidden-character")
+        elif blocks == "none":
+            expected = (None, "no-block")
+        elif blocks == "several":
+            expected = (None, "several-blocks")
+        elif not_mermaid:
+            expected = (None, "not-mermaid")
+        elif unclosed:
+            expected = (None, "unclosed")
+        elif empty:
+            expected = (None, "empty-block")
+        else:
+            expected = ("graph TD", None)
+        data = _faulty_tree(blocks, not_mermaid, unclosed, empty, forbidden, bad_utf8)
+        assert attack_tree_source(data) == expected, (blocks, not_mermaid, unclosed, empty, forbidden, bad_utf8)
+        checked[expected[1]] = checked.get(expected[1], 0) + 1
+    assert sorted(checked, key=str) == sorted(_TREE_PROBLEMS + [None], key=str), "premise: the 96 files name each problem and one is a pass"
+    assert checked[None] == 1 and checked["empty-block"] == 1 and checked["unclosed"] == 2, checked
+
+
+# ---- shipped files, a fuzz run and a hostile file ------------------------------------------------------------------
+
+def test_every_shipped_tree_file_reads_as_one_mermaid_block():
+    """The examples hold standalone tree files in the shape that agents write. Each one passes the checks that ``reconcile`` and ``trees`` hold a new
+    tree to, so the rule refuses nothing that the pipeline has shipped, and the source is the diagram."""
+    paths = sorted((REPO_ROOT / "examples").rglob("attack-trees/*-attack-tree.md"))
+    assert len(paths) >= 100
+    for path in paths:
+        relative = path.relative_to(REPO_ROOT).as_posix()
+        data = path.read_bytes()
+        source, problem = attack_tree_source(data)
+        assert problem is None, (relative, problem)
+        assert source and source in data.decode("utf-8"), relative
+        assert source.split()[0] in ("graph", "flowchart"), relative
+
+
+_TREE_FUZZ_LINES = ["", "prose", "# A heading", "graph TD", "    A --> B", "```", "```mermaid", "```text", "```mermaid ", "``` mermaid", "````", "````mermaid",
+                    "`````", "~~~", "~~~mermaid", "~~~~", "  ```mermaid", "\t```", "``` done", "```a`b", "``", "text ``` text", _NBSP + "```mermaid", "~~~ x`y",
+                    "  ", " \t ", _NBSP]   # the last three: two blank lines, and a line of another kind of whitespace, which isn't blank
+
+
+def test_a_fuzzed_file_gets_the_verdict_that_its_fences_give():
+    """Random files from fence-shaped lines. The verdict is worked out again from the roles of the lines and from ``_unfenced_lines``, so the control
+    flow of the function (its early return at a second fence, its order of checks) is held to the contract's wording."""
+    rng = random.Random(374159)
+    seen = {}
+    for _ in range(6000):
+        lines = [rng.choice(_TREE_FUZZ_LINES) for _ in range(rng.randint(0, 9))]
+        data = ("\n".join(lines) + rng.choice(["", "\n"])).encode("utf-8")
+        text_lines = data.decode("utf-8").split("\n")
+        roles = [role for _, _, role in _fence_roles(text_lines)]
+        if roles.count("open") == 0:
+            expected = (None, "no-block")
+        elif roles.count("open") > 1:
+            expected = (None, "several-blocks")
+        else:
+            first = roles.index("open")
+            opener = text_lines[first].lstrip(" \t")
+            info = opener.lstrip(opener[0])
+            if not re.fullmatch(r"[ \t]*mermaid[ \t]*", info):
+                expected = (None, "not-mermaid")
+            elif "close" not in roles:
+                expected = (None, "unclosed")
+            else:
+                last = roles.index("close")
+                outside = {index for index, _ in _unfenced_lines(text_lines)}
+                assert [index for index in range(len(text_lines)) if index not in outside] == list(range(first, last + 1)), repr(data)
+                block = text_lines[first + 1:last]
+                expected = (None, "empty-block") if all(set(line) <= {" ", "\t"} for line in block) else ("\n".join(block), None)
+        assert attack_tree_source(data) == expected, repr(data)
+        seen[expected[1]] = seen.get(expected[1], 0) + 1
+    assert all(seen.get(verdict, 0) >= 20 for verdict in (None, "no-block", "several-blocks", "not-mermaid", "unclosed", "empty-block")), seen
+
+
+def test_a_hostile_file_at_the_cap_is_read_in_one_linear_pass():
+    started = time.perf_counter()
+    cap = tachi_parts.MAX_PART_BYTES
+    assert attack_tree_source(b"```\n" * (cap // 4)) == (None, "several-blocks"), "the second fence ends the scan"
+    assert attack_tree_source(b"```mermaid\n" + b"a" * (cap - 100) + b"\n```\n") == ("a" * (cap - 100), None), "one very long line"
+    assert attack_tree_source(b"```" + b"x" * (cap - 100) + b"\n```\n") == (None, "not-mermaid"), "a very long info string"
+    assert attack_tree_source(b"`" * (cap - 100)) == (None, "not-mermaid"), "a very long fence mark"
+    assert attack_tree_source(b"\n" * cap) == (None, "no-block"), "a very long run of empty lines"
+    assert attack_tree_source(b"```mermaid\n" + b"\n" * (cap - 100) + b"```\n") == (None, "empty-block"), "a very long block of empty lines"
+    assert attack_tree_source(b"```mermaid\n" + b" \t" * ((cap - 100) // 2) + b"\n```\n") == (None, "empty-block"), "one very long blank line"
+    assert attack_tree_source(b"```mermaid\n" + b" \n" * ((cap - 100) // 2) + b"x\n```\n") == (" \n" * ((cap - 100) // 2) + "x", None), "blank lines, then one"
+    body = ["    A%d --> B%d" % (number, number) for number in range(30000)]
+    assert attack_tree_source(_fenced(body=body)) == ("\n".join(body), None), "many lines in the block"
+    assert time.perf_counter() - started < 5, "a tree file is no longer read in one linear pass"

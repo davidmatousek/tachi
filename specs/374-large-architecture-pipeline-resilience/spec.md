@@ -849,6 +849,8 @@ Definitions are in PRD §10:
 - FR-N4.5 to FR-N4.7;
 - D-5's membership and identity for all three files, except through SV-3.
 
+> *W2′ entry erratum (2026-11-24, PM):* In scope gains #443's items 1–4 as a behavior-preserving consolidation of the stage-entry path at W2′'s entry (T151, T152; S1P-A10 to S1P-A12), together with the planner's copies of D3's guard. PR 2 refers to #443 and leaves it open for the remaining items (S1P-A13). No FR, SC, non-goal, split valve or release-notes item changes.
+
 ### Out of scope
 
 - **NG1 to NG10**, as the PRD states them:

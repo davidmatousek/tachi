@@ -1,0 +1,27 @@
+{
+  "agent_type": "tachi-threat-report",
+  "batch_id": "B001",
+  "finding_ids": [],
+  "fragments": [
+    {
+      "slot_key": "risk_posture",
+      "text": "The posture is shaped by {{count:critical}} critical and {{count:high}} high findings among {{count:open}} open findings, and {{count:new}} of them are new in this run. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. The posture also reflects how long these weaknesses have stayed open and how many components share each one. "
+    },
+    {
+      "slot_key": "top_threats",
+      "text": "The most serious threats are {{finding:I-5}} on {{name:component:I-5}} and {{finding:AG-1}} on {{name:component:AG-1}}."
+    },
+    {
+      "slot_key": "key_recommendations",
+      "text": "Close the critical findings first, beginning with {{finding:I-5}}, then work through the high findings in the order of the roadmap."
+    },
+    {
+      "slot_key": "compliance",
+      "text": "Several findings bear on access control, audit and data protection duties, so the owners of those duties should read the roadmap."
+    }
+  ],
+  "items": [],
+  "plan_id": "20261123T103000Z-4e8f2a6c1d07",
+  "schema": "tachi.part/1",
+  "stage": "report"
+}

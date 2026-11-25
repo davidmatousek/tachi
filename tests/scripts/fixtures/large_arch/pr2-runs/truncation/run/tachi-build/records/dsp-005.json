@@ -1,0 +1,32 @@
+{
+  "agent_type": "tachi-denial-of-service",
+  "brief": "/synthetic-case/run/.tachi-build/briefs/dsp-005.json",
+  "count": 3,
+  "dispatch_id": "dsp-005",
+  "end_marker": true,
+  "local_ids": [
+    "D-1",
+    "D-2",
+    "D-3"
+  ],
+  "origin": "planned",
+  "prompt": "Read and follow the brief at /synthetic-case/run/.tachi-build/briefs/dsp-005.json.",
+  "reason": null,
+  "schema": "tachi.dispatch-record/1",
+  "scope": {
+    "components": [
+      "edge-gateway",
+      "auth-broker",
+      "intake-agent",
+      "planner-agent",
+      "worker-2",
+      "tool-server-1",
+      "model-gateway",
+      "vector-store-a",
+      "audit-ledger"
+    ]
+  },
+  "status": "complete",
+  "superseded_by": [],
+  "supersedes": null
+}

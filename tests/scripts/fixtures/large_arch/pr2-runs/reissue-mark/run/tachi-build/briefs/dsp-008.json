@@ -1,0 +1,52 @@
+{
+  "agent_type": "tachi-tool-abuse",
+  "baseline_focus": [
+    {
+      "component": "intake-agent",
+      "covered": [
+        "R",
+        "D",
+        "E",
+        "AG",
+        "LLM"
+      ]
+    },
+    {
+      "component": "planner-agent",
+      "covered": [
+        "E",
+        "AG"
+      ]
+    },
+    {
+      "component": "worker-2",
+      "covered": [
+        "I",
+        "AG",
+        "LLM"
+      ]
+    },
+    {
+      "component": "tool-server-1",
+      "covered": [
+        "S",
+        "R",
+        "AG",
+        "LLM"
+      ]
+    }
+  ],
+  "dispatch_id": "dsp-008",
+  "inputs": {
+    "architecture": "/synthetic-case/run/architecture.md",
+    "dispatch_table": "/synthetic-case/run/.tachi-build/phase1/dispatch.json",
+    "inventory": "/synthetic-case/run/.tachi-build/phase1/inventory.json"
+  },
+  "schema": "tachi.brief/1",
+  "targets": [
+    "intake-agent",
+    "planner-agent",
+    "worker-2",
+    "tool-server-1"
+  ]
+}

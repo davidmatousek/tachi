@@ -1,0 +1,20 @@
+{
+  "agent_type": "tachi-human-trust-exploitation",
+  "brief": "/synthetic-case/run/.tachi-build/briefs/dsp-022.json",
+  "count": 0,
+  "dispatch_id": "dsp-022",
+  "end_marker": true,
+  "local_ids": [],
+  "origin": "redispatch",
+  "prompt": "Read and follow the brief at /synthetic-case/run/.tachi-build/briefs/dsp-022.json.",
+  "reason": null,
+  "schema": "tachi.dispatch-record/1",
+  "scope": {
+    "components": [
+      "tool-server-1"
+    ]
+  },
+  "status": "complete",
+  "superseded_by": [],
+  "supersedes": "dsp-009"
+}

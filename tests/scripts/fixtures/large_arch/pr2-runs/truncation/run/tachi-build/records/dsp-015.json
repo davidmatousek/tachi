@@ -1,0 +1,22 @@
+{
+  "agent_type": "tachi-agent-autonomy",
+  "brief": "/synthetic-case/run/.tachi-build/briefs/dsp-015.json",
+  "count": 1,
+  "dispatch_id": "dsp-015",
+  "end_marker": true,
+  "local_ids": [
+    "AG-1"
+  ],
+  "origin": "redispatch",
+  "prompt": "Read and follow the brief at /synthetic-case/run/.tachi-build/briefs/dsp-015.json.",
+  "reason": null,
+  "schema": "tachi.dispatch-record/1",
+  "scope": {
+    "components": [
+      "intake-agent"
+    ]
+  },
+  "status": "complete",
+  "superseded_by": [],
+  "supersedes": "dsp-007"
+}

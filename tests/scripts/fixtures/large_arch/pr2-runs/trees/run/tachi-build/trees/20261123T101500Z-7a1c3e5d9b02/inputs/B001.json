@@ -1,0 +1,107 @@
+{
+  "agent_type": "tachi-attack-tree-delta",
+  "attempt": 1,
+  "batch_id": "B001",
+  "finding_ids": [
+    "S-4",
+    "T-1",
+    "I-1",
+    "I-4",
+    "I-5",
+    "D-2",
+    "E-1",
+    "E-3",
+    "AG-1",
+    "AG-2",
+    "AG-3",
+    "LLM-1"
+  ],
+  "params": {
+    "reference_digest": "867b6b5c5fb8e75ab6eb75bd6f454cdc3279a381783c49ec61d005317c3bffbf",
+    "rule_applied": "Rule 2",
+    "scoring_date": "2026-11-23"
+  },
+  "part_path": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/parts/B001.a1.json",
+  "plan_id": "20261123T101500Z-7a1c3e5d9b02",
+  "refs": {
+    "baseline_dir": "/synthetic-case/baseline"
+  },
+  "schema": "tachi.batch-input/1",
+  "stage": "trees",
+  "tree_paths": {
+    "AG-1": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/ag-1-attack-tree.md",
+    "AG-2": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/ag-2-attack-tree.md",
+    "AG-3": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/ag-3-attack-tree.md",
+    "D-2": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/d-2-attack-tree.md",
+    "E-1": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/e-1-attack-tree.md",
+    "E-3": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/e-3-attack-tree.md",
+    "I-1": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/i-1-attack-tree.md",
+    "I-4": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/i-4-attack-tree.md",
+    "I-5": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/i-5-attack-tree.md",
+    "LLM-1": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/llm-1-attack-tree.md",
+    "S-4": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/s-4-attack-tree.md",
+    "T-1": "/synthetic-case/run/.tachi-build/trees/20261123T101500Z-7a1c3e5d9b02/trees/t-1-attack-tree.md"
+  },
+  "units": [
+    {
+      "action": "generated_fresh",
+      "delta_status": "UNCHANGED",
+      "finding_id": "S-4"
+    },
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "T-1"
+    },
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "I-1"
+    },
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "I-4"
+    },
+    {
+      "action": "generated_fresh",
+      "delta_status": "NEW",
+      "finding_id": "I-5"
+    },
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "D-2"
+    },
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "E-1"
+    },
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "E-3"
+    },
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "AG-1"
+    },
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "AG-2"
+    },
+    {
+      "action": "generated_fresh",
+      "delta_status": "UPDATED",
+      "finding_id": "AG-3"
+    },
+    {
+      "action": "regenerated",
+      "delta_status": "UNCHANGED",
+      "finding_id": "LLM-1"
+    }
+  ]
+}

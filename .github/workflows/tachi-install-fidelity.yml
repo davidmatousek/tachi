@@ -36,11 +36,13 @@
 # wave, and each module's author-lane wiring commit bundles the module with
 # its paths and invocation entry so the module is never ungated.
 #
-# F-374 (ADR-050 D16): three jobs run PR 1's offline modules on synthetic
-# fixtures, with no model, no network and no Typst. W1 wired the first
-# modules, W2 added test_tachi_scoring_rules.py and
+# F-374 (ADR-050 D16): three jobs run the offline modules of PR 1 and PR 2 on
+# synthetic fixtures, with no model, no network and no Typst. W1 wired the
+# first modules, W2 added test_tachi_scoring_rules.py and
 # test_render_risk_scores.py, and W3 (T039) added
-# test_render_compensating_controls.py.
+# test_render_compensating_controls.py. PR 2's W2' (T114) adds
+# test_threats_md_join.py, test_threats_sarif.py, test_chain_script.py and
+# test_report_assembly.py. PR 2's W3' adds test_threat_model_checks.py.
 #   - f374-offline (ubuntu-latest, Python 3.11) runs the module list under
 #     pytest-cov. Its first step is the coverage gate: at least 80% line
 #     coverage over the new scripts, counting in-process runs only
@@ -56,7 +58,10 @@
 #     change to either module, the renderer or the planner reruns this job.
 #     From W3 it drives render-compensating-controls.py too, on the same
 #     harness (the controls stage reads the scorer's run), so a change to the
-#     controls renderer reruns this job as well.
+#     controls renderer reruns this job as well. From PR 2 (T099) it drives
+#     generate-threats-sarif.py as well, on the project of
+#     test_threats_sarif.py, so a change to the generator or to that module
+#     reruns this job too.
 # Lock-step (KB 3, H7): a module, its input surfaces, its `paths:` entries and
 # its invocation line in each f374 job that runs it land in one commit. The two
 # module lists are one list, except that f374-offline also runs
@@ -151,7 +156,18 @@ on:
       #     W3 (T039) adds the controls renderer, which also matches
       #     scripts/*.py, and its test module, which reads the same output
       #     templates and imports helpers from test_render_risk_scores.py.
-      #     Only the three new test modules need an entry ---
+      #     W2' (T114) adds PR 2's four entries, which match scripts/*.py,
+      #     and their four test modules. Those read only inputs that an entry
+      #     above already covers: the output templates (templates/tachi/**),
+      #     skill references (.claude/skills/**), the shipped examples
+      #     (examples/**) and the large_arch fixtures. The write confinement
+      #     suite (report-posture) imports the run builders of three of them,
+      #     and each module needs an entry of its own anyway.
+      #     test_contract_text_374.py also reads two files that no glob above
+      #     covers: ADR-050's text (the completion rule, the end marker's
+      #     words and its recorded frame) and the records contract (the
+      #     recorded frame and the class table).
+      #     Only the four new test modules and those two files need an entry ---
       - tests/scripts/test_tachi_parts.py
       - tests/scripts/test_tachi_stage.py
       - tests/scripts/test_runtime_floor_374.py
@@ -163,6 +179,13 @@ on:
       - tests/scripts/test_tachi_scoring_rules.py     # F-374 (T047) — tachi_scoring_rules.py's goldens (W2)
       - tests/scripts/test_render_risk_scores.py      # F-374 (T047) — render-risk-scores.py's goldens (W2); test_sarif_identity.py imports its harness
       - tests/scripts/test_render_compensating_controls.py   # F-374 (T039) — render-compensating-controls.py's goldens (W3); imports test_render_risk_scores.py's helpers
+      - tests/scripts/test_threats_md_join.py         # F-374 (T114) — join-threats-md.py's goldens (W2'); imports the two renderers' helpers; test_write_confinement.py imports its run builder
+      - tests/scripts/test_threats_sarif.py           # F-374 (T114) — generate-threats-sarif.py's goldens (W2'); imports test_render_risk_scores.py and test_sarif_identity.py, and test_sarif_identity.py imports its project
+      - tests/scripts/test_chain_script.py            # F-374 (T114) — attack-chains.py's goldens (W2'); test_write_confinement.py imports its run builder
+      - tests/scripts/test_report_assembly.py         # F-374 (T114) — assemble-report.py's goldens (W2'); test_write_confinement.py imports its run builder
+      - docs/architecture/02_ADRs/ADR-050-large-architecture-output-authority.md   # F-374 (T114) — test_contract_text_374.py reads the completion rule and the end marker's words (input)
+      - specs/374-large-architecture-pipeline-resilience/contracts/threat-model-records.md   # F-374 (T114) — test_contract_text_374.py reads the recorded frame and the class table (input)
+      - specs/374-large-architecture-pipeline-resilience/contracts/part-files.md   # F-374 (T114, W2′ close) — test_contract_text_374.py reads PR 2's key sets, stages and slots (input)
       - tests/scripts/generate_large_arch_fixture.py  # F-374 (T020) — the fixture generator test_fixture_374.py drives
       - tests/scripts/fixtures/large_arch/**          # F-374 (T019) — the synthetic large-architecture fixture (S-4)
       - tests/scripts/coverage-f374.ini               # F-374 (D16) — the coverage gate's config
@@ -274,8 +297,13 @@ jobs:
       # the other. test_write_confinement.py runs the three report-assembler
       # commands (extract --build-dir, typst compile, extract
       # --remove-build-dir) in a throwaway adopter project and fails on any
-      # write outside {out} and $TMPDIR (F-391 T015, SC-005). Keep both
-      # modules here in lock-step with the `paths:` list above (F-250 rule).
+      # write outside {out} and $TMPDIR (F-391 T015, SC-005). From F-374 it
+      # also runs each of PR 1's and PR 2's installed entries in a project of
+      # its own, with the same check (ADR-050 D16). PR 2's groups build their
+      # synthetic runs with the builders of test_threats_md_join.py,
+      # test_chain_script.py and test_report_assembly.py, which need only
+      # what is installed here. Keep both modules here in lock-step with the
+      # `paths:` list above (F-250 rule).
       - name: Run report-posture suite (K13 stale-data gate + F-391 write confinement)
         run: |
           python3 -m pytest \
@@ -283,10 +311,11 @@ jobs:
             tests/scripts/test_write_confinement.py \
             -v
 
-  # F-374 (T022, T047, T039, ADR-050 D16), W1 to W3: PR 1's offline modules on synthetic fixtures. This job and
-  # f374-py39-floor run one module list, except that this job also runs test_sarif_common_affected_assets.py, so
-  # that sarif_common.py's coverage counts that module's tests. pytest-cov is a test dependency only: the shipped
-  # scripts stay stdlib-only (NFR-2). Keep the list in lock-step with the `paths:` list above (F-250 rule, H7).
+  # F-374 (T022, T047, T039, T114, ADR-050 D16), W1 to W3 and PR 2's W2': the offline modules of both PRs on synthetic
+  # fixtures. This job and f374-py39-floor run one module list, except that this job also runs
+  # test_sarif_common_affected_assets.py, so that sarif_common.py's coverage counts that module's tests. pytest-cov is
+  # a test dependency only: the shipped scripts stay stdlib-only (NFR-2). Keep the list in lock-step with the `paths:`
+  # list above (F-250 rule, H7).
   f374-offline:
     name: f374-offline
     runs-on: ubuntu-latest
@@ -315,6 +344,10 @@ jobs:
             tests/scripts/test_tachi_scoring_rules.py \
             tests/scripts/test_render_risk_scores.py \
             tests/scripts/test_render_compensating_controls.py \
+            tests/scripts/test_threats_md_join.py \
+            tests/scripts/test_threats_sarif.py \
+            tests/scripts/test_chain_script.py \
+            tests/scripts/test_report_assembly.py \
             tests/scripts/test_runtime_floor_374.py \
             tests/scripts/test_tachi_parsers.py \
             tests/scripts/test_sarif_identity.py \
@@ -335,9 +368,9 @@ jobs:
           python3 -m pytest --cov=scripts --cov-report= tests/scripts/test_tachi_parsers.py
           python3 -m coverage report --include=scripts/tachi_parsers.py --precision=1 --show-missing --fail-under=44.9
 
-  # F-374 (T022, T047, T039, ADR-050 D16), W1 to W3: the Python 3.9 floor (S-11). The shipped scripts run on 3.9 and
-  # later, so their tests run on 3.9 too. 3.9 is pinned to ubuntu-24.04, an image that has it (#396). No coverage
-  # here: the gate runs once, in f374-offline. conftest.py imports PyYAML, so it is installed.
+  # F-374 (T022, T047, T039, T114, ADR-050 D16), W1 to W3 and PR 2's W2': the Python 3.9 floor (S-11). The shipped
+  # scripts run on 3.9 and later, so their tests run on 3.9 too. 3.9 is pinned to ubuntu-24.04, an image that has it
+  # (#396). No coverage here: the gate runs once, in f374-offline. conftest.py imports PyYAML, so it is installed.
   f374-py39-floor:
     name: f374-py39-floor
     runs-on: ubuntu-24.04
@@ -362,6 +395,10 @@ jobs:
             tests/scripts/test_tachi_scoring_rules.py \
             tests/scripts/test_render_risk_scores.py \
             tests/scripts/test_render_compensating_controls.py \
+            tests/scripts/test_threats_md_join.py \
+            tests/scripts/test_threats_sarif.py \
+            tests/scripts/test_chain_script.py \
+            tests/scripts/test_report_assembly.py \
             tests/scripts/test_runtime_floor_374.py \
             tests/scripts/test_tachi_parsers.py \
             tests/scripts/test_sarif_identity.py \
@@ -370,12 +407,13 @@ jobs:
             tests/scripts/test_cvss_category_defaults.py \
             -v
 
-  # F-374 (T022, T047, T039, ADR-050 D16), W1 to W3: the one module whose real case-insensitive-volume case needs a
-  # macOS runner (D7, KB 24), because macOS is the platform most adopters use. The other cases fake the filesystem
-  # and run on both Linux jobs above. From W2 the module also renders risk-scores.sarif through the renderer
-  # (FR-E.2), and from W3 compensating-controls.sarif through the controls renderer, so its inputs are the two
-  # renderers, the planner, the helpers they import and test_render_risk_scores.py, whose project harness it imports;
-  # each matches an entry in `paths:` above.
+  # F-374 (T022, T047, T039, T114, ADR-050 D16), W1 to W3 and PR 2's W2': the one module whose real
+  # case-insensitive-volume case needs a macOS runner (D7, KB 24), because macOS is the platform most adopters use. The
+  # other cases fake the filesystem and run on both Linux jobs above. From W2 the module also renders
+  # risk-scores.sarif through the renderer (FR-E.2), from W3 compensating-controls.sarif through the controls
+  # renderer, and from PR 2 threats.sarif through generate-threats-sarif.py (T099), so its inputs are the two
+  # renderers, the generator, the planner, the helpers they import, and test_render_risk_scores.py and
+  # test_threats_sarif.py, whose project harnesses it imports; each matches an entry in `paths:` above.
   f374-macos:
     name: f374-macos
     runs-on: macos-latest

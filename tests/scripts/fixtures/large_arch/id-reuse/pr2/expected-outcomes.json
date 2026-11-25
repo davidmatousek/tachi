@@ -1,0 +1,213 @@
+{
+  "baseline": {
+    "mark": {
+      "AG": 5,
+      "AGP": 2,
+      "D": 9,
+      "E": 3,
+      "I": 5,
+      "LLM": 9,
+      "MI": 4,
+      "OI": 3,
+      "R": 6,
+      "S": 8,
+      "T": 6,
+      "TE": 2
+    },
+    "mark_above_open": [
+      "S",
+      "T",
+      "R",
+      "I",
+      "D",
+      "AGP",
+      "LLM",
+      "MI"
+    ],
+    "mark_above_seed": [
+      "S",
+      "T",
+      "R",
+      "I",
+      "D",
+      "AGP",
+      "LLM",
+      "MI"
+    ],
+    "mark_line": "**ID high-water mark**: `S-8, T-6, R-6, I-5, D-9, E-3, AG-5, AGP-2, LLM-9, OI-3, MI-4, TE-2`",
+    "mark_present": true,
+    "open_highest": {
+      "AG": 5,
+      "AGP": 1,
+      "D": 3,
+      "E": 3,
+      "I": 4,
+      "LLM": 6,
+      "MI": 2,
+      "OI": 3,
+      "R": 4,
+      "S": 4,
+      "T": 3,
+      "TE": 2
+    },
+    "resolved_highest": {
+      "S": 6,
+      "T": 4
+    },
+    "seed": {
+      "AG": 5,
+      "AGP": 1,
+      "D": 3,
+      "E": 3,
+      "I": 4,
+      "LLM": 6,
+      "MI": 2,
+      "OI": 3,
+      "R": 4,
+      "S": 6,
+      "T": 4,
+      "TE": 2
+    },
+    "threats": "baseline/threats.md"
+  },
+  "id_mark": {
+    "kept": [
+      "S",
+      "T",
+      "R",
+      "I",
+      "D",
+      "E",
+      "AGP",
+      "OI",
+      "MI",
+      "TE"
+    ],
+    "line": "**ID high-water mark**: `S-8, T-6, R-6, I-5, D-9, E-3, AG-6, AGP-2, LLM-10, OI-3, MI-4, TE-2`",
+    "moved": [
+      "AG",
+      "LLM"
+    ],
+    "reference": {
+      "AG": 5,
+      "AGP": 2,
+      "D": 9,
+      "E": 3,
+      "I": 5,
+      "LLM": 9,
+      "MI": 4,
+      "OI": 3,
+      "R": 6,
+      "S": 8,
+      "T": 6,
+      "TE": 2
+    },
+    "result": {
+      "AG": 6,
+      "AGP": 2,
+      "D": 9,
+      "E": 3,
+      "I": 5,
+      "LLM": 10,
+      "MI": 4,
+      "OI": 3,
+      "R": 6,
+      "S": 8,
+      "T": 6,
+      "TE": 2
+    },
+    "run_highest": {
+      "AG": 6,
+      "AGP": 1,
+      "D": 3,
+      "E": 3,
+      "I": 5,
+      "LLM": 10,
+      "MI": 2,
+      "OI": 3,
+      "R": 4,
+      "S": 5,
+      "T": 4,
+      "TE": 2
+    },
+    "spelling": "canonical, no leading zeros: the run's own AGP row is AGP-01 and its mark entry AGP-2"
+  },
+  "notes": [
+    "The run is the gated world's threats.md, complete, with its NEW findings renumbered where the case needs it. Its baseline is a stub of Section 4c and Section 7, with the mark line where the baseline has one. Every carried finding in the run is in the baseline's Section 7, and so are the three findings that the run resolved.",
+    "id_mark.result is what `tachi-stage.py id-mark` must write (ruling B, ADR-050 D7): per prefix, the larger of the run's highest ID and the baseline's mark, or, where the baseline has none, its highest live or Section 4c ID. The run's own Section 4c never decides a prefix here, so the case does not depend on how 'highest' is read. The line is in canonical spelling and in S-2's prefix order. (No script exists yet: the values come from the ruling's words, and T092 and T095 are the first to run a script on them.)",
+    "reissue.flagged is what `check-threat-model.py` must report with the reused-id code (D12): a NEW finding whose ID the baseline used, or that sits at or below the baseline's mark. It warns and exits 5. Carried findings (UNCHANGED, UPDATED) are never flagged, whatever their numbers are.",
+    "The mark sits above the baseline's live IDs for eight prefixes (S, T, R, I, D, AGP, LLM and MI). The numbers between belong to findings that earlier runs resolved and that no list holds any more, apart from S-6 and T-4, which Section 4c holds. It equals the highest live ID for E, AG, OI and TE.",
+    "S-5 is the case that only the mark catches: no baseline list holds S-5, and it sits above the baseline's live IDs, but the mark is S-8. T-4 is a NEW finding with a number that the baseline's Section 4c holds, so it is reused twice over. I-5 equals the mark exactly, and 'at or below' includes it.",
+    "AG-6 is the control: it numbers just above a mark that equals the highest live ID. LLM-10 numbers above the mark and skips LLM-7 to LLM-9, which is what PR 2's item 1 says ('numbering can skip'). Neither is flagged.",
+    "The mark does not move down: for eight prefixes the run's highest ID is below the baseline's mark, and the result keeps the mark. It moves for AG and LLM only."
+  ],
+  "reissue": {
+    "count": 3,
+    "exit_code": 5,
+    "flagged": [
+      "S-5",
+      "T-4",
+      "I-5"
+    ],
+    "new_findings": {
+      "AG-6": {
+        "baseline_highest_open": 5,
+        "boundary": false,
+        "flagged": false,
+        "mark": 5,
+        "reasons": []
+      },
+      "I-5": {
+        "baseline_highest_open": 4,
+        "boundary": true,
+        "flagged": true,
+        "mark": 5,
+        "reasons": [
+          "at-or-below-mark"
+        ]
+      },
+      "LLM-10": {
+        "baseline_highest_open": 6,
+        "boundary": false,
+        "flagged": false,
+        "mark": 9,
+        "reasons": []
+      },
+      "S-5": {
+        "baseline_highest_open": 4,
+        "boundary": false,
+        "flagged": true,
+        "mark": 8,
+        "reasons": [
+          "at-or-below-mark"
+        ]
+      },
+      "T-4": {
+        "baseline_highest_open": 3,
+        "boundary": false,
+        "flagged": true,
+        "mark": 6,
+        "reasons": [
+          "baseline-resolved",
+          "at-or-below-mark"
+        ]
+      }
+    },
+    "reads": "the baseline's mark, or with none the seed from its live IDs and Section 4c",
+    "unflagged_new": [
+      "AG-6",
+      "LLM-10"
+    ]
+  },
+  "run": {
+    "baseline_source": "baseline/threats.md",
+    "date": "2026-11-23",
+    "how": "copy the scenario directory to a working directory and run from there: the front matter's baseline.source and every path here are relative to it. id-mark takes run/threats.md as --threats and baseline/threats.md as --baseline, and writes the mark into a copy",
+    "threats": "run/threats.md"
+  },
+  "scenario": "pr2",
+  "schema": "tachi.fixture-expected/1",
+  "stage": "id-mark+reissue-check",
+  "summary": "S-4's id-reuse variant for PR 2: a baseline whose high-water mark sits above its live IDs (ruling B).",
+  "variant": "id-reuse"
+}

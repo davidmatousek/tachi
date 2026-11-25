@@ -1,0 +1,24 @@
+{
+  "agent_type": "tachi-human-trust-exploitation",
+  "brief": "/synthetic-case/run/.tachi-build/briefs/dsp-021.json",
+  "count": 1,
+  "dispatch_id": "dsp-021",
+  "end_marker": false,
+  "local_ids": [
+    "TE-1"
+  ],
+  "origin": "redispatch",
+  "prompt": "Read and follow the brief at /synthetic-case/run/.tachi-build/briefs/dsp-021.json.",
+  "reason": "overflow_error",
+  "schema": "tachi.dispatch-record/1",
+  "scope": {
+    "components": [
+      "worker-2"
+    ]
+  },
+  "status": "superseded",
+  "superseded_by": [
+    "dsp-024"
+  ],
+  "supersedes": "dsp-009"
+}

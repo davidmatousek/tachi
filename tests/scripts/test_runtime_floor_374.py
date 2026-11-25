@@ -16,6 +16,16 @@ imports, so this module checks what it can't:
    function-level ``import yaml``. This can. Gated tests drive entries in-process, but a process
    alone shows a clean ``sys.modules``, so this module uses subprocesses (ADR-050 D16, H15).
 
+   PR 2's four entries (T150) take one small synthetic world each. The SARIF generator and the chain
+   script read a threat model (the chain script also an inventory), and the joiner and the assembler
+   take plans, batch inputs and parts, which ``_batch_stage`` writes in place of the planner of PR 2's
+   batch stages, because that planner is another lane's. A run that exits 0 and writes nothing, or
+   whose slots fell back to a fixed sentence, fails ``OUTPUTS`` and ``FALLBACK_WORDS`` here, so the
+   comparison can't pass over two empty runs. The worlds hold the clean first run of each entry and,
+   for the generator and the joiner, a run beside it that has a baseline. They leave out the error
+   paths, the assembler's baseline, pattern and chain sections, and the chain script's fixed text. The
+   unit modules cover those, in process.
+
 Extending it in a later wave (W2's renderer and scoring-rules module, W3's controls renderer, PR 2's
 scripts and T150's rewritten ``generate-threats-sarif.py``):
 
@@ -26,12 +36,14 @@ scripts and T150's rewritten ``generate-threats-sarif.py``):
 * Add a deny-list row when a review finds a post-3.9 API this net missed, with a case in
   ``FLAGGED`` or ``CLEAN`` so the checker keeps its own regression test.
 
-Standard library only, and Python 3.9 syntax (this module itself runs in the 3.9 job).
+Standard library and, in this process only, the shipped helpers ``tachi_parts`` and ``tachi_parsers`` (the stand-in
+planner takes their layout, schemas and digest from them). Python 3.9 syntax: this module itself runs in the 3.9 job.
 """
 
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import os
 import re
@@ -48,7 +60,8 @@ SCRIPTS_DIR = REPO_ROOT / "scripts"
 SUBPROCESS_TIMEOUT = 120
 
 # --------------------------------------------------------------------------- the script lists
-# W1's, W2's and W3's scripts. A missing file is a failure: T012, T013, T014, T015, T016, T018, T140, T028, T042 and T035 write them.
+# W1's, W2's and W3's scripts, and PR 2's W2' four. A missing file is a failure: T012, T013, T014, T015, T016, T018, T140, T028, T042 and T035
+# write the first group, and T100, T106, T116, T117, T108 and T109 the second.
 REQUIRED_NOW = (
     "tachi_parts.py",
     "tachi_scoring.py",
@@ -57,16 +70,17 @@ REQUIRED_NOW = (
     "tachi_scoring_rules.py",  # W2 (lane R1b): T042 to T044
     "render-risk-scores.py",  # W2 (lane R1): T028, T045, T046 and T050
     "render-compensating-controls.py",  # W3 (lane R2): T035, T053 and T059; its core-path driver is T036's
+    # PR 2, W2' (T150). generate-threats-sarif.py exists today, so it is not "new" until PR 2 rewrites it on the shared emitter (T100).
+    "generate-threats-sarif.py",  # lane R3b: T099 and T100
+    "join-threats-md.py",  # lane HL: T106 and T107
+    "attack-chains.py",  # lane OC: T115 to T117
+    "assemble-report.py",  # lane T: T108 and T109
 )
 
 # Scripts a later wave adds, with the wave that lands each. While one is missing its checks skip with
 # this reason. Once it exists the checks run on it, and the move to REQUIRED_NOW is the wave's own
-# one-line edit. T150 (PR 2) adds scripts/generate-threats-sarif.py to REQUIRED_NOW, because that
-# file exists today and is not "new" until PR 2 rewrites it on the shared emitter.
+# one-line edit. W3' adds check-threat-model.py (T096), and T098 wires it.
 PLANNED = {
-    "join-threats-md.py": "PR 2, W2' (lane OS)",
-    "attack-chains.py": "PR 2, W2' (lane OC)",
-    "assemble-report.py": "PR 2, W2' (lane T)",
     "check-threat-model.py": "PR 2, W3' (lane OC)",
 }
 
@@ -728,18 +742,351 @@ def _drive_render_compensating_controls(interp, workdir):
     return steps, _tree(workdir)
 
 
+# ---- PR 2's four entries (T150). Each runs one small synthetic world, written byte for byte the same for both interpreters. The SARIF generator
+# ---- and the chain script read a threat model (the chain script also an inventory), and the joiner and the assembler take plans, batch inputs
+# ---- and parts. None of them reads the clock, a random source or a file's mtime, so a difference between the two runs can only be what an
+# ---- unimportable ``yaml`` changed. The planner of PR 2's batch stages (``tachi-stage.py plan --stage threats-md|trees|report``) is another lane's
+# ---- and lands in its own wave, so a stand-in writes those plans, as the entries' own test modules do: this module then waits on no planner, and
+# ---- what a stand-in gets wrong an entry refuses in its own words, which the failing assertion prints.
+
+
+def _shipped():
+    """``tachi_parts`` and ``tachi_parsers``, imported in this process only. The stand-in planners take the document layout, the schemas, the version and
+    the reference digest from them, so that a stand-in can't drift from what an entry reads. The entries run in the children above, which import what they
+    import themselves."""
+    if str(SCRIPTS_DIR) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS_DIR))
+    import tachi_parsers
+    import tachi_parts
+
+    return tachi_parts, tachi_parsers
+
+
+class _Steps(object):
+    """One driver's steps in one interpreter: each one's arguments, exit code and streams, normalized, in the order run."""
+
+    def __init__(self, interp, cwd):
+        self.interp, self.cwd, self.steps = interp, cwd, []
+
+    def __call__(self, script, args):
+        proc = self.interp.run(script, args, self.cwd)
+        self.steps.append({"args": _normalize(" ".join(str(a) for a in args)), "code": proc.returncode,
+                           "stdout": _normalize(proc.stdout), "stderr": _normalize(proc.stderr)})
+        return proc
+
+
+def _fresh(workdir):
+    """An empty ``workdir``. Both interpreters run in this one path, so the absolute paths that the files and the streams record are alike."""
+    if workdir.exists():
+        shutil.rmtree(str(workdir))
+    workdir.mkdir(parents=True)
+
+
+def _put(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(text.encode("utf-8"))
+    return path
+
+
+def _put_json(path, document):
+    """``document`` as the planner writes one (sorted keys, a two-space indent). Returns the SHA-256 of what it wrote."""
+    data = (json.dumps(document, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+    return hashlib.sha256(data).hexdigest()
+
+
+def _plan_input(path):
+    data = path.read_bytes()
+    return {"path": str(path), "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
+
+
+def _batch_stage(out, stage, agent, plan_id, batches, params, inputs, batch_size):
+    """A batch stage's plan, its pointer, and each batch's input and part, as ``plan`` and the agents leave them once every batch is ``done`` at its first
+    attempt. Returns the plan's digest, which the entry takes as ``--plan-digest``.
+
+    A batch is ``{"units": [...], "items": [...], "fragments": [...], "trees": {finding ID: path}}``, the last three optional, and its finding IDs are the
+    ones that its units name. The layout, the schemas and the version are the shipped helpers', so only the contents are written here.
+    """
+    tp = _shipped()[0]
+    entries = []
+    for number, batch in enumerate(batches, 1):
+        units, batch_id = batch["units"], "B%03d" % number
+        finding_ids = [unit["finding_id"] for unit in units if "finding_id" in unit]
+        part = tp.part_path(str(out), stage, plan_id, batch_id, 1)
+        digest = _put_json(Path(tp.input_path(str(out), stage, plan_id, batch_id)), {
+            "schema": tp.BATCH_INPUT_SCHEMA, "plan_id": plan_id, "batch_id": batch_id, "stage": stage, "agent_type": agent, "finding_ids": finding_ids,
+            "attempt": 1, "part_path": part, "tree_paths": batch.get("trees", {}), "units": units, "refs": {}, "params": params})
+        _put_json(Path(part), {"schema": tp.PART_SCHEMA, "plan_id": plan_id, "batch_id": batch_id, "stage": stage, "agent_type": agent,
+                               "finding_ids": finding_ids, "items": batch.get("items", []), "fragments": batch.get("fragments", [])})
+        entries.append({"batch_id": batch_id, "parent": None, "attempt": 1, "finding_ids": finding_ids, "input_sha256": digest, "state": "done"})
+    digest = _put_json(Path(tp.plan_path(str(out), stage, plan_id)), {
+        "schema": tp.PLAN_SCHEMA, "plan_id": plan_id, "stage": stage, "agent_type": agent, "created_utc": "2026-11-25T09:00:00Z", "tachi_version": tp.VERSION,
+        "inputs": inputs, "refs": {}, "architecture_warning": None, "params": params, "batch_size": batch_size,
+        "unit_count": sum(len(batch["units"]) for batch in batches), "preimage": {}, "out_snapshot": None,
+        "retry_budget": {"limit": 2 * len(entries), "used": 0}, "batches": entries})
+    _put_json(Path(tp.pointer_path(str(out), stage)), {"schema": tp.POINTER_SCHEMA, "plan_id": plan_id})
+    return digest
+
+
+# ---- generate-threats-sarif.py (T100): one threat model, with and without a baseline. The first is the reference set that the scorer's driver uses
+# ---- (nine findings, a zone, an Affected Assets block). The second carries those findings beside a new one, names its baseline run, groups two
+# ---- findings (Section 4a) and lists one as resolved (Section 4c), so the baseline state, the correlation properties and the resolved check run too.
+
+def _aware_threats_md():
+    text = _carry_threats_md().replace(
+        "  source: null", '  source: "run/threats.md"\n  date: "2026-11-22"\n  finding_count: 9\n  run_id: "2026-11-22T10-15-00"', 1)
+    groups = ("## 4a. Correlated Findings\n\n| Group | Findings | Component | Threat Summary | Risk Level |\n|---|---|---|---|---|\n"
+              "| CG-1 | S-1, T-9 | Gateway 9 | Related weaknesses at the edge | High |\n\n")
+    resolved = ("## 4c. Resolved Findings\n\n| ID | Component | Threat | Last Risk Level | Resolution Reason |\n|---|---|---|---|---|\n"
+                "| I-7 | Legacy Cache | Stale entries leak data | Medium | Component removed from the architecture |\n\n")
+    return text.replace("## 7. Recommended Actions", groups + resolved + "## 7. Recommended Actions")
+
+
+def _drive_generate_threats_sarif(interp, workdir):
+    """--version, then ``--threats FILE --out DIR --architecture PATH`` over the first threat model and again over the baseline-aware one."""
+    _seed(workdir, _floor_threats_md())
+    script, step = SCRIPTS_DIR / "generate-threats-sarif.py", _Steps(interp, workdir)
+    architecture = "docs/security/architecture.md"
+    step(script, ["--version"])
+    step(script, ["--threats", workdir / "run" / "threats.md", "--out", workdir / "run", "--architecture", architecture])
+    _put(workdir / "run2" / "threats.md", _aware_threats_md())
+    step(script, ["--threats", workdir / "run2" / "threats.md", "--out", workdir / "run2", "--architecture", architecture])
+    return step.steps, _tree(workdir)
+
+
+# ---- join-threats-md.py (T106): the ``threats-md`` stage over a section manifest. The first world is a first run of three findings (a STRIDE, an
+# ---- Agentic and an LLM one) and a row in each of Section 1's two tables. The second has a baseline: a resolved finding, and a row in each of
+# ---- Section 8's tables.
+
+_JOIN_PLAN = "20261125T090000Z-0a1b2c3d4e5f"
+_JOIN_LAYER = "L4 \u2014 Deployment Infrastructure"
+# In S-2 order: (ID, component, risk level, pattern, OWASP reference, status in a baseline-aware run).
+_JOIN_FINDINGS = (("S-1", "Gateway", "Critical", "\u2014", "ASI-01", "NEW"),
+                  ("AG-1", "Planner Agent", "High", "temporal_attack", "ASI-06", "UNCHANGED"),
+                  ("LLM-1", "Planner Agent", "Medium", "\u2014", "LLM01:2026", "UPDATED"))
+_JOIN_RESOLVED = {"finding_id": "I-7", "component": "Legacy Cache", "threat": "Stale entries leak data", "last_risk_level": "Medium",
+                  "resolution_reason": "Component removed from the architecture"}
+_JOIN_MATRIX = {"Critical": ("HIGH", "HIGH"), "High": ("MEDIUM", "HIGH"), "Medium": ("MEDIUM", "MEDIUM")}  # likelihood and impact of a risk level
+
+
+def _join_values(finding, baseline):
+    """Every value that a finding's rows can hold, under the key names of ``tachi_parts.THREATS_MD_SECTIONS``."""
+    finding_id, component, risk, pattern, owasp, status = finding
+    likelihood, impact = _JOIN_MATRIX[risk]
+    return {"finding_id": finding_id, "status": status if baseline else "NEW", "component": component, "maestro_layer": _JOIN_LAYER,
+            "threat": "Threat %s against %s" % (finding_id, component), "likelihood": likelihood, "impact": impact, "risk_level": risk,
+            "mitigation": "Mitigation for %s" % finding_id, "owasp_reference": owasp, "pattern": pattern}
+
+
+def _join_world(out, baseline):
+    """The section manifest, and a ``threats-md`` plan with a part for every table that has a row. Returns the plan's digest."""
+    tp = _shipped()[0]
+    rows = {section.key: 0 for section in tp.THREATS_MD_SECTIONS if section.keyed == "row"}
+    rows.update(components=1, data_flows=1, lifecycle=int(baseline), baseline_reference=int(baseline))
+    batches = []
+    for section in tp.THREATS_MD_SECTIONS:
+        if section.keyed == "row":
+            units = [{"section": section.key, "row": number} for number in range(1, rows[section.key] + 1)]
+            items = [{name: "%s %d" % (name, unit["row"]) for name in section.keys} for unit in units]
+        elif section.keyed == "resolved":
+            units = [{"section": section.key, "finding_id": _JOIN_RESOLVED["finding_id"]}] if baseline else []
+            items = [dict(_JOIN_RESOLVED)] if baseline else []
+        else:
+            chosen = [f for f in _JOIN_FINDINGS if section.keyed == "open" or f[0].partition("-")[0] in section.prefixes]
+            units = [{"section": section.key, "finding_id": f[0]} for f in chosen]
+            items = [{name: _join_values(f, baseline)[name] for name in section.keys} for f in chosen]
+        if units:
+            batches.append({"units": units, "items": items})
+    front_baseline = ({"source": "baseline/threats.md", "date": "2026-11-18", "finding_count": 4, "run_id": "2026-11-18T09-00-00"} if baseline
+                      else {"source": None, "date": None, "finding_count": None, "run_id": None})
+    manifest = out / tp.BUILD_DIR / "sections.json"  # the manifest's fixed place, which the plan records among its inputs
+    _put_json(manifest, {
+        "schema": tp.SECTIONS_SCHEMA,
+        "frontmatter": {"date": "2026-11-25", "input_format": "mermaid", "classification": "confidential", "run_id": "2026-11-25T09-00-00",
+                        "baseline": front_baseline, "coverage_gate": {"status": "pass", "gaps": []}},
+        "open": [f[0] for f in _JOIN_FINDINGS], "resolved": [_JOIN_RESOLVED["finding_id"]] if baseline else None, "rows": rows})
+    return _batch_stage(out, "threats-md", "tachi-orchestrator", _JOIN_PLAN, batches, {"scoring_date": "2026-11-25"},
+                        {"sections": _plan_input(manifest)}, None)
+
+
+def _drive_join_threats_md(interp, workdir):
+    """--version, then ``--out DIR PLAN`` for the first world and again for the baseline-aware one."""
+    _fresh(workdir)
+    script, step = SCRIPTS_DIR / "join-threats-md.py", _Steps(interp, workdir)
+    step(script, ["--version"])
+    for name, baseline in (("run", False), ("run2", True)):
+        step(script, ["--out", workdir / name, "--plan", _JOIN_PLAN, "--plan-digest", _join_world(workdir / name, baseline)])
+    return step.steps, _tree(workdir)
+
+
+# ---- assemble-report.py (T108, T109): the ``trees`` stage, then the ``report`` stage that pins it. Two findings, a Critical one with a tree and a
+# ---- Medium one without; a first run with no chain, so Section 6 prints the outcome and the report holds no chain part.
+
+_ASM_TREES, _ASM_REPORT = "20261125T100000Z-aaaaaaaaaaaa", "20261125T110000Z-bbbbbbbbbbbb"
+# (ID, the Section 7 category, the report's category key, risk level, component, threat, mitigation)
+_ASM_FINDINGS = (("S-1", "Spoofing", "spoofing", "Critical", "Gateway", "Session token replay", "Bind each token to its client"),
+                 ("T-1", "Tampering", "tampering", "Medium", "Order Service", "Order payload tampering", "Sign every order payload"))
+
+
+def _asm_threats_md():
+    rows = "\n".join("| %s | NEW | %s | \u2014 | %s | L4 | %s | %s | %s |" % (fid, title, component, threat, risk, mitigation)
+                     for fid, title, _key, risk, component, threat, mitigation in _ASM_FINDINGS)
+    return ('---\nschema_version: "1.4"\ndate: "2026-11-25"\ninput_format: "mermaid"\nclassification: "confidential"\nrun_id: "2026-11-25T09-00-00"\n'
+            'baseline:\n  source: null\n  date: null\n  finding_count: null\n  run_id: null\ncoverage_gate:\n  status: "pass"\n  gaps: []\n---\n\n'
+            "# Threat Model Report\n\n## 7. Recommended Actions\n\n"
+            "| Finding ID | Status | Category | Pattern | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |\n"
+            "|---|---|---|---|---|---|---|---|---|\n" + rows + "\n\n"
+            "## Attack Chain Outcome\n\n**Attack chain outcome**: 0 chains passed filter (no candidate links); candidates 0\n")
+
+
+def _asm_tree_text(finding_id):
+    """A standalone tree file as the tree agent writes it: a header, then one fenced Mermaid block with a non-ASCII label, so a copy is shown byte for byte."""
+    return ("# Attack Tree: %s\n\n**Risk Level**: Critical\n**Component**: Gateway\n**Threat**: Session token replay\n\n```mermaid\ngraph TD\n"
+            '    Goal["[GOAL] Attack on %s"]\n    Goal --> A["[OR] First route"]\n    A --> A1["Caf\u00e9 leaf"]\n```\n' % (finding_id, finding_id))
+
+
+def _asm_trees_world(out):
+    """threats.md and a ``trees`` plan with one batch, whose agent wrote the tree of S-1. Returns the plan's digest and the reference digest (the report's too)."""
+    tp, parsers = _shipped()
+    threats = _put(out / "threats.md", _asm_threats_md())
+    reference = tp.reference_digest(parsers.parse_reference_set(threats.read_text(encoding="utf-8")))
+    tree = Path(tp.plan_dir(str(out), "trees", _ASM_TREES)) / "trees" / "s-1-attack-tree.md"
+    _put(tree, _asm_tree_text("S-1"))
+    unit = {"finding_id": "S-1", "delta_status": "NEW", "action": "generated_fresh"}
+    params = {"scoring_date": "2026-11-25", "rule_applied": "no-baseline", "reference_digest": reference}
+    digest = _batch_stage(out, "trees", "tachi-attack-tree-delta", _ASM_TREES, [{"units": [unit], "items": [dict(unit)], "trees": {"S-1": str(tree)}}],
+                          params, {"threats": _plan_input(threats)}, 12)
+    return digest, reference
+
+
+def _asm_report_world(out, reference):
+    """A ``report`` plan that pins the trees plan and the manifest that ``trees`` wrote: one part for each required section, then the findings'. Returns its digest."""
+    tp = _shipped()[0]
+
+    def sentence(name):
+        return "A fixed sentence for the %s." % name.replace(".", " ").replace("_", " ")
+
+    def section(name, keys, texts=None):
+        return {"units": [{"section": name, "key": key} for key in keys],
+                "fragments": [{"slot_key": key, "text": (texts or {}).get(key) or sentence(key)} for key in keys]}
+
+    def row(name, finding):
+        return {"section": name, "finding_id": finding[0], "component": finding[4], "threat": finding[5], "risk_level": finding[3],
+                "mitigation": finding[6], "agentic_pattern": "none", "delta_status": "NEW"}
+
+    themes = {"units": [{"section": "cross_cutting_themes", "key": "themes"}],
+              "fragments": [{"slot_key": "theme.1.title", "text": "A shared weakness in identity handling"},
+                            {"slot_key": "theme.1.body", "text": "Both findings come from one missing check between the gateway and the services behind it."}]}
+    analysis = {"units": [dict(row("threat_analysis", f), tree=f[3] == "Critical") for f in _ASM_FINDINGS],
+                "items": [{"finding_id": f[0], "narrative": "A fixed account of {{finding:%s}}." % f[0],
+                           "tree_summary": ("A fixed summary of the tree of {{finding:%s}}." % f[0]) if f[3] == "Critical" else None} for f in _ASM_FINDINGS]}
+    roadmap = {"units": [row("remediation_roadmap", f) for f in _ASM_FINDINGS],
+               "items": [{"finding_id": "S-1", "effort": "Medium", "dependencies": None},
+                         {"finding_id": "T-1", "effort": "Low", "dependencies": "Follows the fix for {{finding:S-1}}."}]}
+    slots = {"risk_posture": "The model holds {{count:open}} open findings, and {{pct:critical}} percent of them are Critical.",  # the slots resolve at assembly
+             "top_threats": "The top threat is {{finding:S-1}} on {{name:component:S-1}}, rated {{band:risk:S-1}}."}
+    batches = [section("exec_summary", ["risk_posture", "top_threats", "key_recommendations"], slots),
+               section("architecture_overview", ["system_context", "trust_boundaries"]),
+               section("threat_categories", ["category." + f[2] for f in _ASM_FINDINGS]), themes, analysis, roadmap]
+    inputs = {"threats": _plan_input(out / "threats.md"), "trees_plan": _plan_input(Path(tp.plan_path(str(out), "trees", _ASM_TREES))),
+              "tree_manifest": _plan_input(out / "attack-trees" / ".manifest.json")}
+    params = {"scoring_date": "2026-11-25", "reference_digest": reference, "trees_plan_id": _ASM_TREES}
+    return _batch_stage(out, "report", "tachi-threat-report", _ASM_REPORT, batches, params, inputs, None)
+
+
+def _drive_assemble_report(interp, workdir):
+    """--version, ``trees`` over the trees plan, then ``report`` over a report plan that pins the trees plan and the manifest that ``trees`` wrote."""
+    _fresh(workdir)
+    script, step, out = SCRIPTS_DIR / "assemble-report.py", _Steps(interp, workdir), workdir / "run"
+    step(script, ["--version"])
+    digest, reference = _asm_trees_world(out)
+    trees = step(script, ["trees", "--run-dir", out, "--plan", _ASM_TREES, "--plan-digest", digest])
+    if trees.returncode != 0:  # the report plan pins the manifest that ``trees`` writes. The caller's check of the codes then names this step, with its stderr
+        return step.steps, _tree(workdir)
+    step(script, ["report", "--run-dir", out, "--plan", _ASM_REPORT, "--plan-digest", _asm_report_world(out, reference)])
+    return step.steps, _tree(workdir)
+
+
+# ---- attack-chains.py (T116, T117): Phase 3.5's three modes over one run. T-1 (layer 5, High), T-2 (layer 6, Medium) and E-1 (layer 3, Critical) lie
+# ---- along two flows, which gives one chain of three. ``plan`` forms it and prints it, the driver writes the title and narrative that the orchestrator
+# ---- would, ``render`` writes attack-chains.md and the outcome record, and ``check`` finds the two in agreement.
+
+_CHAIN_PLAN = "20261125T120000Z-0123456789ab"  # the run-level plan, for check's hand-off file
+# (ID, the Section 7 category, component, MAESTRO layer, risk level)
+_CHAIN_FINDINGS = (("T-1", "Tampering", "ingest-gateway", 5, "High"), ("T-2", "Tampering", "policy-checker", 6, "Medium"),
+                   ("E-1", "Elevation of Privilege", "agent-core", 3, "Critical"))
+_CHAIN_LAYERS = {3: "Agent Framework", 5: "Evaluation and Observability", 6: "Security and Compliance"}
+_CHAIN_FLOWS = (("ingest-gateway", "policy-checker"), ("policy-checker", "agent-core"))
+_CHAIN_ID = re.compile(r"CHAIN-[0-9]{3,6}")
+
+
+def _chain_threats_md():
+    rows = "\n".join("| %s | NEW | %s | \u2014 | %s | L%d \u2014 %s | A synthetic weakness of %s. | %s | Close the gap behind %s. |"
+                     % (fid, title, component, layer, _CHAIN_LAYERS[layer], component, risk, fid) for fid, title, component, layer, risk in _CHAIN_FINDINGS)
+    return ('---\nschema_version: "1.4"\ndate: "2026-11-25"\ninput_format: "free-text"\nclassification: "confidential"\nrun_id: "2026-11-25T09-00-00"\n'
+            'baseline:\n  source: null\n  date: null\n  finding_count: null\n  run_id: null\ncoverage_gate:\n  status: "pass"\n  gaps: []\n---\n\n'
+            "# Threat Model Report\n\n## 5. Coverage Matrix\n\nThe coverage tables are left out of this file.\n\n## 7. Recommended Actions\n\n"
+            "| Finding ID | Status | Category | Pattern | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |\n"
+            "|---|---|---|---|---|---|---|---|---|\n" + rows + "\n\n## Affected Assets\n\n| Finding ID | Affected Assets |\n|---|---|\n"
+            + "\n".join("| %s | [] |" % f[0] for f in _CHAIN_FINDINGS) + "\n")
+
+
+def _chain_inventory():
+    components = [{"name": component, "dfd_type": "Process", "maestro_layer": "L%d" % layer, "description": "A synthetic component."}
+                  for _fid, _title, component, layer, _risk in _CHAIN_FINDINGS]
+    return {"schema": _shipped()[0].INVENTORY_SCHEMA, "components": components,
+            "data_flows": [{"source": a, "destination": b, "data": "Task requests", "protocol": "HTTPS"} for a, b in _CHAIN_FLOWS],
+            "trust_zones": [{"name": "Test Zone", "components": [c["name"] for c in components]}]}
+
+
+def _drive_attack_chains(interp, workdir):
+    _fresh(workdir)
+    tp = _shipped()[0]
+    script, step, run = SCRIPTS_DIR / "attack-chains.py", _Steps(interp, workdir), workdir / "run"
+    _put(run / "threats.md", _chain_threats_md())
+    _put_json(run / tp.BUILD_DIR / "phase1" / "inventory.json", _chain_inventory())
+    step(script, ["--version"])
+    planned = step(script, ["plan", "--run-dir", run])
+    texts = {chain_id: {"title": "A path from an exposed weakness to its final impact",
+                        "narrative": "The attacker starts at {{finding:T-1}} on {{name:component:T-1}} and reaches {{count:members}} findings across "
+                                     "{{count:layers}} layers, so each step prepares the one after it."}  # the slots resolve at render
+             for chain_id in dict.fromkeys(_CHAIN_ID.findall(planned.stdout))}
+    _put_json(run / tp.BUILD_DIR / "chains" / "narratives.json", {"schema": tp.CHAIN_NARRATIVES_SCHEMA, "narratives": texts})
+    step(script, ["render", "--run-dir", run])
+    (run / tp.BUILD_DIR / "threat-model" / _CHAIN_PLAN / "checks").mkdir(parents=True)  # as the run-level plan leaves it
+    step(script, ["check", "--run-dir", run, "--plan", _CHAIN_PLAN])
+    return step.steps, _tree(workdir)
+
+
 # Exit codes of the steps above. tachi-stage.py: --version, plan, reconcile (halves), reconcile (complete), fail,
 # architecture-source. render-risk-scores.py: --version, then plan, reconcile (complete) and render for a first run and again
 # for a second run that carries the first's findings. render-compensating-controls.py: --version, then for each of those two
-# runs the scorer's three steps and the controls stage's three.
+# runs the scorer's three steps and the controls stage's three. PR 2's: generate-threats-sarif.py: --version, then a first run
+# and a baseline-aware one. join-threats-md.py: --version, then a first run and a baseline-aware one. assemble-report.py:
+# --version, trees, report. attack-chains.py: --version, plan, render, check.
 EXPECTED_CODES = {"tachi-stage.py": [0, 0, 3, 0, 0, 0], "render-risk-scores.py": [0, 0, 0, 0, 0, 0, 0],
-                  "render-compensating-controls.py": [0] + [0] * 6 + [0] * 6}
+                  "render-compensating-controls.py": [0] + [0] * 6 + [0] * 6,
+                  "generate-threats-sarif.py": [0, 0, 0], "join-threats-md.py": [0, 0, 0], "assemble-report.py": [0, 0, 0],
+                  "attack-chains.py": [0, 0, 0, 0]}
+
+# What each PR 2 entry's clean run writes, as paths in the working tree. No driver seeds any of them, so a run that exits 0 and writes none (a world that
+# drifted into a path with nothing to do) fails here, and can't pass by comparing two runs of the same nothing.
+OUTPUTS = {"generate-threats-sarif.py": ("run/threats.sarif", "run2/threats.sarif"), "join-threats-md.py": ("run/threats.md", "run2/threats.md"),
+           "assemble-report.py": ("run/attack-trees/.manifest.json", "run/attack-trees/s-1-attack-tree.md", "run/threat-report.md"),
+           "attack-chains.py": ("run/attack-chains.md",)}
+# The words that every fixed sentence of the two narrative stages shares (``tachi_parts.REPORT_FALLBACKS`` and ``attack-chains.py``'s fixed narrative). A clean
+# world's outputs hold none: a slot that failed to resolve would leave one, and the lookup behind it would then not run in this module's children.
+FALLBACK_WORDS = "broke the narrative rules"
 
 # One driver per entry script, each `(Interpreter, workdir) -> (steps, tree)`. A later wave adds its entry's
-# driver here: PR 2's entries. The controls renderer's driver (T036) was written first and skipped while the script was
+# driver here. The controls renderer's driver (T036) was written first and skipped while the script was
 # PLANNED and missing. W3 (T039) moved the script to REQUIRED_NOW, so the driver runs and a missing script fails.
+# T150 added PR 2's four, and W3's `check-threat-model.py` (T096, wired by T098) takes its driver here when it lands.
 CORE_PATH_DRIVERS = {"tachi-stage.py": _drive_tachi_stage, "render-risk-scores.py": _drive_render_risk_scores,
-                     "render-compensating-controls.py": _drive_render_compensating_controls}
+                     "render-compensating-controls.py": _drive_render_compensating_controls,
+                     "generate-threats-sarif.py": _drive_generate_threats_sarif, "join-threats-md.py": _drive_join_threats_md,
+                     "assemble-report.py": _drive_assemble_report, "attack-chains.py": _drive_attack_chains}
 
 
 def _entry_scripts():
@@ -769,6 +1116,10 @@ def test_core_path_output_is_byte_identical_with_yaml_unimportable(name, shim, t
     assert blocked_steps == plain_steps
     assert blocked_tree == plain_tree
     assert plain_tree, "the run wrote nothing, so the comparison proves nothing"
+    unwritten = [path for path in OUTPUTS.get(name, ()) if path not in plain_tree]
+    assert not unwritten, "the run did not write %s, so the comparison did not cover the entry's work" % ", ".join(unwritten)
+    fell_back = [path for path in OUTPUTS.get(name, ()) if FALLBACK_WORDS in plain_tree[path]]
+    assert not fell_back, "a fixed sentence replaced the text of the world in %s: one of its slots did not resolve" % ", ".join(fell_back)
 
 
 def test_the_normalizer_masks_only_what_is_fresh_on_every_run():

@@ -282,21 +282,36 @@ def _fence_marker(line: str):
     return (char, run, stripped[run:]) if run >= 3 else None
 
 
-def _unfenced_lines(lines: Sequence[str]) -> Iterator[Tuple[int, str]]:
-    """``(index, line)`` of each line that no fenced code block covers, in order. A fence line is covered, and so is every line up to
-    the one that closes it. This is the one fence rule of :func:`match_heading` (``outside_fences=True``, whose docstring states it)
-    and of :func:`parse_finding_layers`, so a section and a table are found outside a fence by the same reading."""
+def _fence_roles(lines: Sequence[str]) -> Iterator[Tuple[int, str, Optional[str]]]:
+    """``(index, line, role)`` of every line, in order: the one place that the fence rule is written down.
+
+    ``role`` is ``None`` for a line that no fenced code block covers. A line that one covers is ``"open"`` (the fence line that opens the
+    block), ``"close"`` (the fence line that closes it) or ``"inside"`` (every line between those two). A fence that nothing closes has an
+    ``"open"`` line and ``"inside"`` lines to the end of the text, and no ``"close"`` line. The rule itself is :func:`match_heading`'s
+    ``outside_fences`` (its docstring states it).
+    """
     fence = None  # (character, run length) of the fence that is open
     for index, line in enumerate(lines):
         marker = _fence_marker(line)
         if fence is not None:
             if marker is not None and marker[0] == fence[0] and marker[1] >= fence[1] and not marker[2].strip(" \t\r"):
                 fence = None
-            continue
-        if marker is not None and not (marker[0] == "`" and "`" in marker[2]):
+                yield index, line, "close"
+            else:
+                yield index, line, "inside"
+        elif marker is not None and not (marker[0] == "`" and "`" in marker[2]):
             fence = marker[:2]
-            continue
-        yield index, line
+            yield index, line, "open"
+        else:
+            yield index, line, None
+
+
+def _unfenced_lines(lines: Sequence[str]) -> Iterator[Tuple[int, str]]:
+    """``(index, line)`` of each line that no fenced code block covers, in order. A fence line is covered, and so is every line up to
+    the one that closes it. This is the one fence rule of :func:`match_heading` (``outside_fences=True``, whose docstring states it)
+    and of :func:`parse_finding_layers`, so a section and a table are found outside a fence by the same reading. It is the lines of
+    :func:`_fence_roles` that have no role, so :func:`attack_tree_source`, which needs the blocks themselves, reads the same rule."""
+    return ((index, line) for index, line, role in _fence_roles(lines) if role is None)
 
 
 def match_heading(pattern: str, text: str, *, outside_fences: bool = False) -> Optional[int]:
@@ -3141,6 +3156,155 @@ def _parse_chain_breaking_controls(section_text: str) -> list:
         controls.append(current)
 
     return controls
+
+
+# =============================================================================
+# Attack Chain Outcome Record (F-374, ADR-050 D13, T116)
+# =============================================================================
+#
+# One line of threats.md records what Phase 3.5 did. ``attack-chains.py render`` upserts it after the join, and ``check`` rewrites it when
+# the chain file disagrees with it (R-24). Its grammar is in contracts/threat-model-records.md ("The outcome record"). Every reader of the
+# outcome goes through :func:`parse_chain_outcome`, so the grammar and the fence rule are stated once.
+
+# A record line starts with this, as the contract's ``^\*\*Attack chain outcome\*\*: `` says. It is public so that a writer's line and this
+# reader's match can't drift apart.
+CHAIN_OUTCOME_LABEL = "**Attack chain outcome**: "
+
+# The contract's R, a reason: 1 to 80 characters of this alphabet. It holds no parenthesis and no semicolon, so each form's pattern ends it
+# without ambiguity, and no character of it is markup in a markdown cell or in a Typst string.
+_CHAIN_OUTCOME_REASON = "[A-Za-z0-9 .,:=-]{1,80}"
+_CHAIN_OUTCOME_WRITTEN = re.compile(r"chains written \(([1-9][0-9]{0,5})\); candidates ([0-9]{1,6}); surfaced ([1-5])")
+_CHAIN_OUTCOME_ZERO = re.compile(r"0 chains passed filter \((%s)\); candidates ([0-9]{1,6})" % _CHAIN_OUTCOME_REASON)
+_CHAIN_OUTCOME_SKIPPED = re.compile(r"skipped \((%s)\)" % _CHAIN_OUTCOME_REASON)
+
+
+def parse_chain_outcome(content: str) -> dict:
+    """Read the attack chain outcome record of a ``threats.md``: one line, ``**Attack chain outcome**: OUTCOME`` (ADR-050 D13, P-3; T116).
+
+    The rest of the line must be wholly one of three forms (the contract's grammar, where ``N``, ``C`` and ``S`` are numerals and ``R`` is a
+    reason):
+
+    * ``chains written (N); candidates C; surfaced S``, with ``N`` from 1 to 999999, ``C`` of at most six digits and not below ``N``, and
+      ``S`` from 1 to 5 and not above ``N``;
+    * ``0 chains passed filter (R); candidates C``;
+    * ``skipped (R)``.
+
+    ``R`` is 1 to 80 characters of ``A-Z a-z 0-9 space . , : = -``, and not blank. Every reason that the contract lists fits it. The parser
+    holds no list of reasons, because the checks add to the list.
+
+    Returns a new dict with these seven keys, every time:
+
+    * ``form``: ``"written"``, ``"zero"`` or ``"skipped"`` when the text has one record line and it is that form. Otherwise ``"absent"`` (no
+      record line), ``"multiple"`` (two or more) or ``"malformed"`` (one, and it is none of the forms). The check words these three as
+      ``skipped (no outcome recorded)``, ``skipped (multiple outcome records)`` and ``skipped (outcome record malformed)`` (D13).
+    * ``chain_count``, ``candidate_count`` and ``surfaced_count``: ``N``, ``C`` and ``S`` as ints, under the names of the keys in
+      ``attack-chains.md``'s frontmatter. ``"zero"`` gives ``0``, ``C`` and ``0``, because ``S`` can't exceed ``N``. ``"skipped"`` and every
+      form that isn't a record give ``None`` for all three.
+    * ``reason``: ``R`` as written for ``"zero"`` and ``"skipped"``, and ``None`` otherwise.
+    * ``text``: OUTCOME as written, without trailing whitespace, for the three forms, and ``None`` otherwise. Only the contract's alphabet
+      and digits can reach it, so a reader may print it in a markdown cell or a Typst string. The text of a line that is no form never leaves
+      this function.
+    * ``lines``: the 0-based index of each record line in ``content.split("\\n")``, in order, and ``[]`` when there is none. A writer that
+      replaces the record replaces these lines, whatever the form.
+
+    **How it reads.** A record line begins with :data:`CHAIN_OUTCOME_LABEL` and lies outside every code fence, by the one fence rule of
+    :func:`match_heading`'s ``outside_fences`` (ADR-050 D3, "Finding a section"), so a finding's quoted evidence can't make a second record
+    or hide the first. A fence that nothing closes covers the rest of the text, so a record after it reads as absent. No heading is needed:
+    the heading is the writer's placement, and the record is the line. The text is split on ``\\n`` only, and trailing spaces, tabs and
+    carriage returns are ignored, so a CRLF file reads. Two or more record lines are ``"multiple"`` whatever they say.
+
+    It raises nothing on content and reads no file. It doesn't look at ``attack-chains.md``, whose agreement with the record is the check's
+    business (FR-K4.1b). A reader that falls back to the file's presence does so only when this returns ``"absent"``, as a ``threats.md`` of
+    an earlier version has no record (D13).
+    """
+    records = [(index, line) for index, line in _unfenced_lines((content or "").split("\n")) if line.startswith(CHAIN_OUTCOME_LABEL)]
+    outcome = {"form": "absent", "chain_count": None, "candidate_count": None, "surfaced_count": None, "reason": None, "text": None,
+               "lines": [index for index, _ in records]}
+    if len(records) > 1:
+        outcome["form"] = "multiple"
+    elif records:
+        text = records[0][1][len(CHAIN_OUTCOME_LABEL):].rstrip(" \t\r")
+        outcome["form"] = "malformed"
+        written = _CHAIN_OUTCOME_WRITTEN.fullmatch(text)
+        zero = _CHAIN_OUTCOME_ZERO.fullmatch(text)
+        skipped = _CHAIN_OUTCOME_SKIPPED.fullmatch(text)
+        if written:
+            chains, candidates, surfaced = (int(numeral) for numeral in written.groups())
+            if chains <= candidates and surfaced <= chains:   # the contract's C >= N and S <= N
+                outcome.update(form="written", chain_count=chains, candidate_count=candidates, surfaced_count=surfaced, text=text)
+        elif zero and zero.group(1).strip():
+            outcome.update(form="zero", chain_count=0, candidate_count=int(zero.group(2)), surfaced_count=0, reason=zero.group(1), text=text)
+        elif skipped and skipped.group(1).strip():
+            outcome.update(form="skipped", reason=skipped.group(1), text=text)
+    return outcome
+
+
+# =============================================================================
+# Attack Tree File Source (F-374, ADR-050 D14, RD-16, T159)
+# =============================================================================
+#
+# A tree file is a standalone attack tree that an agent writes under ``attack-trees/``: a heading, the finding's header lines and one Mermaid
+# diagram. Two layers hold it to the same content checks, ``tachi-stage.py reconcile --stage trees`` when the batch lands and
+# ``assemble-report.py`` when it copies the file and when it takes Section 5's source from it. One function makes those checks, so the two
+# layers can't disagree (S1P-A48, contracts/module-signatures.md). It lives here, and not in ``tachi_parts``, because the fence rule is here
+# and C1 keeps ``tachi_parts`` from importing this module.
+
+def attack_tree_source(data: bytes) -> Tuple[Optional[str], Optional[str]]:
+    """A tree file's Mermaid source, or the first problem that the file has: ``(source, None)`` or ``(None, problem)`` (ADR-050 D14, RD-16; T159).
+
+    ``data`` is the file's bytes. A caller reads them through ``tachi_parts.read_capped``, at most ``tachi_parts.MAX_PART_BYTES``, and never in
+    text mode, which would turn a carriage return into a newline and hide it from the second check. The checks run in this order, and the
+    first to fail names the problem:
+
+    * ``"not-utf-8"``: the bytes are not strict UTF-8.
+    * ``"forbidden-character"``: the text holds a character that :func:`tachi_parts.forbidden_character` returns, a carriage return among them.
+    * ``"no-block"`` or ``"several-blocks"``: the text doesn't hold exactly one fenced code block, by the one fence rule of
+      :func:`_fence_roles`. Every fence that opens is a block, whatever follows it, so a second fence that nothing closes is
+      ``"several-blocks"`` (S1P-A73).
+    * ``"not-mermaid"``: the opening fence's info string isn't ``mermaid``. The info string is CommonMark's: the text after the fence's run,
+      trimmed of the spaces and tabs at its two ends and no further, and compared exactly. So ``mermaid`` with spaces or tabs around it
+      passes, and ``Mermaid``, ``mermaid title`` and ``mer maid`` don't (S1P-A74). A bare fence has no info string.
+    * ``"unclosed"``: nothing closes the fence. A fence that nothing closes is never the tree's block (RD-16), so it holds no diagram, though
+      it still counts as a block that opened in the check above.
+    * ``"empty-block"``: no line between the fences holds anything but spaces and tabs, so the agent wrote no diagram (S1P-A75). Another
+      kind of whitespace, a no-break space for one, is not blank here: the check is structural, and the diagram's syntax is the renderer's.
+
+    ``source`` is the lines strictly between the two fence lines, joined by ``"\\n"``, as the file holds them: no line is trimmed, and no
+    text is added. It always holds a line that isn't blank, because a block with none is ``"empty-block"``. Whatever lies outside the block,
+    a heading and the header lines included, is not read. A problem is one of the seven words above and never quotes the text.
+
+    It reads no file and builds no path: each caller allow-lists the finding ID, builds and guards the path, and reads the bytes, so a file over
+    the cap never reaches it. It raises nothing on content, and a ``TypeError`` for anything but bytes, which is a caller's bug. The callers
+    are ``tachi-stage.py reconcile`` for each tree that a batch names (T092), and ``assemble-report.py`` for each tree that ``trees`` copies and
+    each source that ``report`` embeds (T108, T109).
+    """
+    if not isinstance(data, (bytes, bytearray)):
+        raise TypeError("attack_tree_source takes a file's bytes, not %s" % type(data).__name__)
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        return None, "not-utf-8"
+    if tachi_parts.forbidden_character(text) is not None:
+        return None, "forbidden-character"
+    lines = text.split("\n")
+    opened, info, closed = None, "", None   # the opening fence's line index and info string, and the closing fence's line index
+    for index, line, role in _fence_roles(lines):
+        if role == "open":
+            if opened is not None:
+                return None, "several-blocks"
+            opened, info = index, _fence_marker(line)[2]
+        elif role == "close":
+            closed = index
+    if opened is None:
+        return None, "no-block"
+    if info.strip(" \t") != "mermaid":
+        return None, "not-mermaid"
+    if closed is None:
+        return None, "unclosed"
+    block = lines[opened + 1:closed]
+    if not any(line.strip(" \t") for line in block):
+        return None, "empty-block"
+    return "\n".join(block), None
 
 
 # =============================================================================

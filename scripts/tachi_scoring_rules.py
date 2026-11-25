@@ -46,7 +46,6 @@ from __future__ import annotations
 
 import os
 import re
-import stat
 import sys
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -356,37 +355,19 @@ def _decode(text: str) -> str:
     return tachi_parsers.decode_references(text)
 
 
+# ``tachi_parts.read_capped``'s reasons in this module's words: a file that can't be opened, isn't a regular file or fails to read is ``missing``.
+_READ_REASONS = {"unopenable": "missing", "not-a-regular-file": "missing", "unreadable": "missing"}
+
+
 def _read_bytes(path: Any) -> Tuple[Optional[bytes], Optional[str]]:
     """A regular file's bytes, or the reason it can't be read: ``missing`` or ``too-large``.
 
     The file is opened without following a link and must be a regular file, and the read stops at the
-    16 MiB cap that D3 gives an agent-written markdown or SARIF input (step 2).
+    16 MiB cap that D3 gives an agent-written markdown or SARIF input (step 2). ``tachi_parts.read_capped`` is the one reader.
     """
     if path is None:
         return None, "missing"
-    flags = os.O_RDONLY
-    for name in ("O_NOFOLLOW", "O_NONBLOCK", "O_CLOEXEC"):
-        flags |= getattr(os, name, 0)
-    try:
-        descriptor = os.open(os.fspath(path), flags)
-    except OSError:
-        return None, "missing"
-    try:
-        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
-            return None, "missing"
-        chunks, total = [], 0
-        while True:
-            chunk = os.read(descriptor, 65536)
-            if not chunk:
-                return b"".join(chunks), None
-            chunks.append(chunk)
-            total += len(chunk)
-            if total > tachi_parts.MAX_AGENT_INPUT_BYTES:
-                return None, "too-large"
-    except OSError:
-        return None, "missing"
-    finally:
-        os.close(descriptor)
+    return tachi_parts.read_capped(path, tachi_parts.MAX_AGENT_INPUT_BYTES, _READ_REASONS)
 
 
 def _unreadable(reason: str, issues: Tuple[InputIssue, ...] = (), ids: frozenset = frozenset()) -> BaselineScores:

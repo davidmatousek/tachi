@@ -27,6 +27,12 @@
 - **Ruled at W6 (S3, 2026-11-24) from the Step 8 economy gate's EC-2, additive:** `tachi_parts.snapshot_key(relpath: str) -> str`, the planner's private `_snapshot_key` made public.
   - **What it is.** A file's key in the plan's `out_snapshot`: its path, or `./unrecordable:` and the SHA-256 of its bytes for a name that `path_problem` refuses (SA-5). The planner keeps its own name for it, as an alias.
   - **Who calls it.** The planner (`plan`'s snapshot, and `fail`'s declared-paths check) and each renderer's declared-paths check, so a file that was there at plan time and hasn't changed is found by one key in all three. Before EC-2 each renderer looked up the raw path, so a name such as macOS's `Icon` and a carriage return made a clean run warn `undeclared-paths-unrecordable` and exit 5. Only the key is shared: the walk and the undeclared check stay three copies, which SA-12's follow-up (T080) hoists.
+- **Ruled at W2′'s entry (S1′, 2026-11-24), additive:** `tachi_parsers.parse_chain_outcome` and `tachi_parsers.CHAIN_OUTCOME_LABEL`, the first slice of T116 (lane OC, in `f94dabb`; S1P-A22, S1P-A23). No name is renamed or removed. They are described below.
+- **Ruled at W2′'s entry (#443, items 1–4; S1′, 2026-11-24), additive: the shared stage-entry path in `tachi_parts`** (S1P-A40). T151 wrote 27 names in `ee1e3e3`, and R3b-1 added the argument checks, `entry_arguments` and `plan_arguments`, in `db8c7c3` (S1P-PM7). Two more names, `directory_argument` and `plan_id_argument`, and an `option` keyword on `entry_arguments` and `run_entry`, follow for the `--run-dir` entries (S1P-A42). `STAGED_OUTPUTS` follows for PR 2's batch stages (S1P-A57), and `tachi_parsers.attack_tree_source` for the tree files (S1P-A48). The walk and the undeclared check, which EC-2 left as three copies, are now `walk_out` and `undeclared_paths`. No name is renamed or removed, and each entry keeps its own names (the section below).
+- **Ruled at T090 (S1′, 2026-11-25; S1P-A38 item 5) and recorded at T162, additive:** `tachi-stage.py`'s `watch`, `WATCH_SECONDS` and `WATCH_POLL_SECONDS`, which T156 wrote in `95c6a04` (S1P-A71, the section below). At T162 too, `tachi_parsers.attack_tree_source`, which T159 wrote in `1e2c28d`, gains a seventh problem word, `empty-block`, checked last, and its readings are ruled (S1P-A73 to S1P-A75, its section). No caller exists yet, and each one maps every problem to its own refusal. No name is renamed or removed.
+- **Ruled at W2′'s batch (S1′, 2026-11-25):**
+  - additive: `trusted_plan(..., unpinned=(), banner=None, pinned_by=None)`, three keywords added last, so that `assemble-report.py`'s `_guard` becomes one call (S1P-A90, the section below); and `chain-outcome:earlier-file-moved` in `HANDOFF_WARNING_CODES_BY_CHECK["attack-chains"]`, after `chain-outcome:rewritten` (S1P-A91; `part-files.md`, R3). R3b writes both in its `tachi_parts` slice;
+  - one removal, as `sarif-result.md` ruled at W1: `sarif_common.PREFIX_TO_RULE`, which this file never listed, goes with its last user (S1P-A84).
 
 **Shared conventions.**
 - Every module has `from __future__ import annotations` and runs on Python 3.9 (S-11). Annotations use `typing` forms, so nothing here needs 3.10.
@@ -461,6 +467,75 @@ def parse_finding_layers(content: str) -> Dict[str, str]: ...  # canonical findi
 - **Who calls it.** The scorer renderer's `_prepare` and the controls renderer's `_read_reference`, each in place of its own Section 7 loop and keeping its `setdefault`, and the planner's controls unit row (T067b's M3, `layer`). So the unit row's `layer` equals the renderer's structured value, which `_check_cells` compares with the agent's §2 cell.
 - **Tests** go in `tests/scripts/test_tachi_parsers.py`, the ratchet file. The shipped examples are read-only inputs for them (S-12(a)).
 
+## `scripts/tachi_parsers.py`: one PR 2 addition (ruled at W2′'s entry, S1′, 2026-11-24; T116's first slice, lane OC)
+
+```python
+CHAIN_OUTCOME_LABEL: str = "**Attack chain outcome**: "
+
+def parse_chain_outcome(content: str) -> dict: ...  # the attack-chain outcome record of a threats.md (ADR-050 D13, P-3)
+```
+
+- **What it reads.** The record line that `threat-model-records.md`, "The outcome record", defines.
+  - A record line starts with `CHAIN_OUTCOME_LABEL`, its trailing space included, at the line's first character. It must lie outside every code fence, by `_unfenced_lines`, the fence rule of `match_heading(outside_fences=True)` and `parse_finding_layers` (S1P-A22).
+  - No heading is needed: the heading is where the writer places the line, and the record is the line itself.
+  - The text is split on `\n` only, and trailing spaces, tabs and carriage returns are ignored, so a CRLF file reads. Any other trailing whitespace makes the line `malformed`.
+- **What it returns.** A new dict, with these seven keys every time, in this order:
+
+  | Key | Value |
+  |---|---|
+  | `form` | `"written"`, `"zero"` or `"skipped"` when there is exactly one record line and the rest of it is wholly that form. Otherwise `"absent"` (no record line), `"multiple"` (two or more, whatever they say) or `"malformed"` (one, in no form) |
+  | `chain_count`, `candidate_count`, `surfaced_count` | N, C and S as ints, under `attack-chains.md`'s frontmatter names. `"zero"` gives `0`, C and `0`. Every other form gives `None` for all three |
+  | `reason` | R as written, for `"zero"` and `"skipped"`; otherwise `None` |
+  | `text` | OUTCOME as written, without its trailing whitespace, for the three forms; otherwise `None`. Only the grammar's alphabet and digits can reach it, so a reader may print it in a markdown cell or a Typst string. A malformed line's text never leaves the function |
+  | `lines` | the 0-based index, in `content.split("\n")`, of each record line outside fences, in order; `[]` when there is none |
+
+- **The six forms, and the grammar each one holds to:**
+  - **`written`:** `chains written (N); candidates C; surfaced S`, with N from 1 to 999999 and no leading zero, C of at most six digits and `C >= N`, and S from 1 to 5 and `S <= N`;
+  - **`zero`:** `0 chains passed filter (R); candidates C`;
+  - **`skipped`:** `skipped (R)`;
+  - **`absent`**, **`multiple`** and **`malformed`**, as in the table above.
+
+  R is 1 to 80 characters of `A-Z a-z 0-9 space . , : = -`, and a blank R is `malformed`, because D13 requires a stated reason. A line that breaks `C >= N` or `S <= N` is `malformed` too. The parser holds no list of reasons, so the checks can add reasons without changing it.
+- **What it doesn't do.** It raises nothing on content, and it reads no file. It doesn't compare the record with `attack-chains.md`, because that is the check's job (FR-K4.1b).
+- **Who calls it.**
+  - `check` (T117) maps `absent`, `malformed` and `multiple` to its own `skipped (no outcome recorded)`, `skipped (outcome record malformed)` and `skipped (multiple outcome records)`.
+  - `assemble-report.py report` (T109) includes `attack_chains` only for `written`, and otherwise prints `text`.
+  - `detect_artifacts` and `prepare_attack_chains` (T120) fall back to the file's presence only on `absent` (D13).
+  - **The writers.** `render`'s upsert and `check`'s rewrite (T117) replace the lines that `lines` names, and write `CHAIN_OUTCOME_LABEL` + OUTCOME. They never scan with a second rule.
+- **Tests** go in `tests/scripts/test_tachi_parsers.py`, the ratchet file. Any later change adds keys, last, and renames none.
+
+## `scripts/tachi_parsers.py`: a second PR 2 addition (ruled at W2′'s entry, pass 3, S1′, 2026-11-24; S1P-A48)
+
+```python
+def attack_tree_source(data: bytes) -> Tuple[Optional[str], Optional[str]]: ...  # (the Mermaid source, None), or (None, problem)
+```
+
+T159 wrote it in `1e2c28d` (lane OC). Its three readings were ruled at T162 (2026-11-25), below.
+
+- **What it checks.** D14's checks on a tree file's content (`part-files.md`, "The tree files"), in this order, and the first that fails names the problem:
+  - `data` is strict UTF-8, or the problem is `not-utf-8`;
+  - no character that `tachi_parts.forbidden_character` returns, or `forbidden-character`;
+  - exactly one fenced code block, by `_unfenced_lines`' fence rule, or `no-block` or `several-blocks`;
+  - that block's opening info string is `mermaid`, or `not-mermaid`;
+  - a closing fence ends it, or `unclosed`;
+  - a line between its fences holds something other than spaces and tabs, or `empty-block` (S1P-A75).
+- **The readings (ruled at T162, from T159's three questions).**
+  - **A block is counted at its opening fence (S1P-A73, confirmed).** Every fence that opens is a block, closed or not, so a closed Mermaid block followed by a fence that nothing closes is `several-blocks`. CommonMark runs an unclosed fence to the end of the file, so a renderer shows that file as two blocks, and the trailing one's text would reach the copied `attack-trees/` file unchecked. S1P-A48's "an unclosed fence is no block" means that it never counts as the tree's Mermaid block, not that the count skips it. A lone Mermaid fence that nothing closes is still `unclosed`, and a lone non-Mermaid one `not-mermaid`.
+  - **The info string is CommonMark's (S1P-A74, reversed in part).** It is the text after the opening fence's run, trimmed of leading and trailing spaces and tabs, and it must equal `mermaid` exactly. A space or tab inside it stays, so `mer maid` is `not-mermaid`, as are `mermaid title` and `mermaid{theme: dark}`. "Without spaces or tabs" in S1P-A48 and `part-files.md` means CommonMark's trim: a renderer takes the info string's first word as the language, so `mer maid` would draw no diagram. The comparison stays case-sensitive (confirmed), so `Mermaid` and `MERMAID` are `not-mermaid`. Every shipped tree file writes `mermaid`.
+  - **An empty block is a problem (S1P-A75, reversed).** A block with no line between its fences, or only blank lines (spaces and tabs only, CommonMark's blank line), is `empty-block`. It is checked last, after `unclosed`. An empty block is an agent that wrote no diagram. At `reconcile` it makes the batch `invalid`, so the batch is retried with the same units, where `("", None)` would ship a tree with no diagram into `attack-trees/` and Section 5, and leave the failure to whatever draws it later. A line of other whitespace, such as a no-break space, isn't blank by this rule: the check is structural, and the diagram's syntax stays with the Mermaid renderer.
+- **What it returns.** The source is the lines strictly between the two fence lines, joined by `\n`, as the file holds them: no line is trimmed and nothing is added. Since S1P-A75 it always holds a line that isn't blank. A problem is one of seven fixed words, and never quotes the file's text. It raises `TypeError` for anything but `bytes` or `bytearray`, which is a caller's bug, and nothing on content.
+- **The fence rule** is written once, in the private `_fence_roles`, which gives each line's role: none, `open`, `inside` or `close`. `_unfenced_lines` is its lines with no role, with the same output as before. Neither is a signature of record.
+- **What it doesn't do.** It reads no file and builds no path. Each caller allow-lists the ID, builds and guards the path, and reads the bytes through `tachi_parts.read_capped`, at most `MAX_PART_BYTES`.
+- **Who calls it.** `tachi-stage.py reconcile --stage trees`, for each named tree (T092), and `assemble-report.py trees`, for each tree it copies, and `report`, for Section 5's source (T108, T109). So both layers hold a tree to one rule (D14).
+- **Tests** go in `tests/scripts/test_tachi_parsers.py`, the ratchet file: one case per problem and per fence form, inner backtick runs and a tilde fence included. It lands before T092's `trees` reconcile and T108's code. The team-lead names its lane, because `tachi_parsers.py` is OC's file in W2′.
+- **Lane OC's follow-up for S1P-A74 and S1P-A75,** before T092's `trees` reconcile and T108's code call the function:
+  - the info check compares `info.strip(" \t")` with `mermaid`, in place of removing every space and tab;
+  - `empty-block` is checked after `unclosed`: a problem when no line between the fences holds anything but spaces and tabs;
+  - the pinned case `every-space-and-tab-in-the-info-string-is-removed` moves to the `not-mermaid` cases, and `an-empty-block-gives-an-empty-source` and `two-blank-lines-give-one-newline` become `empty-block` cases, beside one block of spaces and a tab;
+  - `empty-block` joins the test module's problem list, last, and the docstring and the module's comment follow.
+
+  The ratchet floor doesn't drop. Neither change touches the shared fence rule, so `match_heading` and `parse_finding_layers` are unchanged.
+
 ## `scripts/sarif_common.py`: one W2 addition (lane R0b, ruled at W2, 2026-11-23)
 
 ```python
@@ -537,6 +612,183 @@ def matrix_row_cells(row: str) -> List[str]: ...
     - no line that starts, after any whitespace, with `#` or `|`.
   - A detail names the finding and, for the keys, the key names that it found. It never echoes the row's or the body's text.
 - **The renderer reads §4 back with the same names.** It takes each block's Effort word after `**Effort Estimate**:` through `EFFORT_LEVELS`, and SARIF's `effort-estimate` is that word (ADR-050 D2). So the part check, the render and the from-disk check agree.
+
+## `scripts/tachi_parts.py`: the shared stage-entry path (ruled at W2′'s entry, #443, items 1–4; S1′, 2026-11-24)
+
+T151 wrote it in `ee1e3e3`, with `render-compensating-controls.py` on it as the equivalence proof. R3b-1 added the argument checks in `db8c7c3`. T152 moves `tachi-stage.py`, `render-risk-scores.py` and `tachi_scoring_rules.py` onto it, and PR 2's new entries use it from their first commit. Its scope is S1P-A10's list under S1P-A11 and S1P-A12 (S1P-PM1), with the argument checks (S1P-PM7) and the supporting names (S1P-PM8). Item 1's scorer and controls helpers and items 5 to 9 wait until after PR 2 (S1P-A13). PR 2 refers to #443 and leaves it open.
+
+```python
+# Failure, the entry's main, the parser and the argument checks
+class StageFailure(Exception):
+    def __init__(self, code: int, stage: Optional[str], reason: str, remedy: str = "", batch: Optional[Tuple[str, str]] = None,
+                 agent: Optional[str] = None, kept: Optional[str] = None) -> None: ...
+    def text(self) -> str: ...
+def run_entry(stage: Optional[str], renderer: str, args: argparse.Namespace, run: Callable[[argparse.Namespace], int], defect: bool = True) -> int: ...
+def entry_defect(stage: str, renderer: str, exc: Exception, kept: Optional[str]) -> StageFailure: ...
+def build_parser(renderer: str, description: str, out: bool = True, plan: bool = True) -> argparse.ArgumentParser: ...
+def entry_arguments(stage: str, out: object, plan_id: object, digest: object) -> str: ...
+def plan_arguments(stage: str, plan_id: object, digest: object) -> None: ...
+
+# D3's guard and the parts
+def trusted_plan(stage: str, out: str, plan_id: str, digest: str, complete: bool = False, read_inputs: bool = False,
+                 kept: bool = False) -> Tuple[Dict[str, Any], Dict[str, bytes]]: ...
+def entry_document(stage: str, path: str, out: str, schema: str, what: str, kept: Optional[str] = None) -> Dict[str, Any]: ...
+def plan_input_bytes(stage: str, entry: Mapping[str, Any], name: str, kept: Optional[str] = None) -> bytes: ...
+def digest_or_none(path: str, out: Optional[str] = None) -> Optional[str]: ...
+def read_parts(stage: str, out: str, plan: Mapping[str, Any]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, List[str]], Dict[str, int]]: ...
+class RunCore(object): ...  # cwd, warnings, issues, sources, counts, rows, groups, assignments, open_ids, threats_text,
+                            # finding_layer, component_info, component_zone, source_file, uri; warn(code, detail)
+
+# The reader and the walker
+RENDERER_READ_REASONS: Dict[str, str] = {"missing": "unreadable", "unopenable": "unreadable"}
+def read_capped(path: object, limit: int, reasons: Optional[Mapping[str, str]] = None) -> Tuple[Optional[bytes], Optional[str]]: ...
+def first_forbidden(value: Any, path: str = "", json_only: bool = False) -> Optional[Tuple[str, str]]: ...
+def forbidden_problem(source: str, finding_id: Optional[str], value: Any, place: Optional[Callable[[str], Optional[str]]] = None,
+                      json_only: bool = False, path: str = "") -> Optional[str]: ...
+
+# The write path, the record and the walk
+RETRY_REMEDY: str = "re-run the command; the earlier outputs were left or put back as they were"
+def stage_and_move(stage: str, out: str, plan_id: str, files: Mapping[str, str], check: Callable[[Dict[str, str]], List[str]], kept: str,
+                   reason_text: Optional[Callable[[Optional[str]], str]] = None) -> None: ...
+def stage_record(stage: str, out: str, plan: Mapping[str, Any], digest: str, counts: Dict[str, int], outputs: List[Dict[str, str]],
+                 warnings: List[Dict[str, str]], undeclared: List[str], status: Optional[str] = None,
+                 error: Optional[Dict[str, Any]] = None) -> Dict[str, Any]: ...
+def write_stage_record(stage: str, renderer: str, out: str, plan: Mapping[str, Any], digest: str, counts: Dict[str, int],
+                       outputs: List[Dict[str, str]], warnings: List[Dict[str, str]], undeclared: List[str], kept: str,
+                       status: Optional[str] = None, error: Optional[Dict[str, Any]] = None) -> Dict[str, Any]: ...
+def output_entries(out: str, names: Iterable[str]) -> List[Dict[str, str]]: ...
+def walk_out(out: str) -> Iterable[Tuple[str, int, int]]: ...
+def undeclared_paths(stage: str, out: str, plan: Mapping[str, Any]) -> Tuple[List[str], List[Dict[str, str]]]: ...
+
+# Small helpers
+def utc_now() -> str: ...
+def dump_json(obj: Any) -> str: ...
+def record_warning(code: str, detail: str) -> Dict[str, str]: ...
+def shorten(text: str, limit: int) -> str: ...
+def relative_path(path: str, cwd: str) -> Optional[str]: ...
+def yaml_quoted(text: Optional[str]) -> str: ...
+```
+
+- **The failure class.** `StageFailure` is D4's stop. It holds `code`, `stage`, `reason`, `remedy`, `batch` (`(batch ID, its finding IDs)`), `agent` and `kept`. `text()` is D4's message: `TACHI <STAGE> FAILED: <reason>`, then `Batch <id>: <IDs>`, `Agent: <type>`, `Remedy: <text>` and `Kept for diagnosis: <dir>`, each left out when its value is empty. A `stage` of `None` reads `STAGE`. Every name in this section that refuses raises this class, never an entry's own (the raised type, below). This is the section's exception to "content problems never raise": a refusal here is the entry's failure.
+- **An entry's `main`.** `run_entry` runs `run(args)`. A `StageFailure` prints `text()` on stderr and returns its `code`. With `defect`, any other exception becomes `entry_defect`'s exit 4, `an unexpected error stopped the render (<type>: <detail>, at <file>:<line>)`, with the remedy `report this as a bug in <renderer>; the earlier outputs were left or put back as they were`. It keeps the plan directory when `args` names `--out` and a plan ID that passes the allow-list. Without `defect`, as in the planner, the exception is raised again.
+- **The parser.** `build_parser` adds `--version`, which prints `<renderer> <VERSION> (python X.Y.Z)`, and then `--out`, `--plan` and `--plan-digest`, each required. `out=False` leaves out `--out`, and `plan=False` the pair. The entry adds its own arguments.
+- **The argument checks (S1P-PM7).** An entry runs `entry_arguments` before it reads anything, so the first check that fails is the one reported:
+  - `--out` is a directory: exit 1, `--out is not a directory`, remedy `create it or correct --out`;
+  - then `plan_arguments`: `--plan` passes the plan allow-list (exit 2, `--plan is not a plan ID`, `pass the plan ID that plan printed`), then `--plan-digest` is 64 lowercase hex digits (exit 2, `--plan-digest is not a SHA-256 in lowercase hex`, `pass the digest that the last plan or reconcile printed`).
+
+  It returns `--out` as an absolute path. A value that isn't a `str` is refused the same way, never with a `TypeError`. No failure has a batch, agent or kept line. `tachi-stage.py` keeps its own `--out` check, which vets the path and names it (D7), and then calls `plan_arguments` (S1P-A42).
+- **D3's guard.** `trusted_plan` returns `(plan, inputs)` once the pointer, the plan's digest, its ID and stage, its inputs and every batch input check out. It writes nothing. A refusal is exit 2, or 1 for a missing file. Its three flags keep each caller's behavior:
+  - `complete` refuses a batch that is still `pending` or `failed`, naming the first. It runs after the plan is known to be this one and before any input is read. Both renderers pass it;
+  - `read_inputs=True`, a renderer's, reads each input in name order, capped at `MAX_AGENT_INPUT_BYTES`, into `inputs`, through `plan_input_bytes`. An I/O error on a batch input is not caught. `False`, the planner's, digests each input in the plan's order through `digest_or_none`, so an unreadable file counts as changed, and `inputs` is empty;
+  - `kept` names the plan directory on every refusal after the pointer's.
+
+  `entry_document` is `read_document` with D4's codes: 1 for a missing file, 2 for any other refusal. `plan_input_bytes` reads one digest-checked input, and a file that changed, vanished or passes the cap is exit 2. `read_parts` re-validates each `done` batch's part at its current attempt, and a part that no longer validates is exit 1 if missing and 2 otherwise, naming its batch.
+- **The run core.** `RunCore` holds the fields that both renderers' `Run` declare alike, and `warn`. `threats_path` stays in each entry's `Run`, because the renderers start it differently.
+- **The reader (item 2, EC-3).** `read_capped` opens the file with `O_NOFOLLOW` and `O_NONBLOCK`, requires a regular file, and reads until the end or past `limit`. A file of exactly `limit` bytes is read. It returns `(bytes, None)` or `(None, reason)`, and the reason is canonical: `missing`, `unopenable` (a link above all), `not-a-regular-file`, `unreadable` (the read failed once the file was open) or `too-large`.
+  - `limit` has no default, so a caller passes the cap when it calls, and a cap that a test or a later amendment changes is the one used.
+  - `reasons` is the caller's one-line map to its own words, and a reason it doesn't list is kept. The renderers' map is `RENDERER_READ_REASONS`. The loader's is `_READ_FAILURES`: `load_json` reads through `read_capped`, and its `PartError` kinds and details don't change. `tachi_scoring_rules`' maps `unopenable`, `not-a-regular-file` and `unreadable` to `missing` (T152).
+  - A path that isn't text or path-like is a `TypeError`, and one with a NUL a `ValueError`, as for `os.open`.
+- **The walker (item 3, EC-4).** `first_forbidden` returns `(path, character)` for the first string under `value` that holds a character `forbidden_character` returns, or `None`. It searches text, mapping keys, list and tuple items and a plain object's fields, in order. `path` is dotted, `a.0.b`, and is for a message only.
+  - **S1P-A12's parameter.** `json_only=True` limits the walk to what a JSON document holds: `dict` keys and values and `list` items. A tuple, another kind of mapping or a plain object then holds nothing. That is the planner's walk, so `test_tachi_stage.py` doesn't change. The default is the renderers' walk.
+  - `forbidden_problem` is the reason to refuse a value that an entry takes from an input that isn't a part, or `None`. It names `source`, the character's code point, and the finding, or `place`'s table and line, or "a component, zone or layer name". It never gives the text. The entry raises it with exit 2 and its own remedy.
+- **The write path.** `stage_and_move` writes each file of `files` to `staged/`, each with the bits of the canonical file it will replace (P1-2). It reads each back through `read_capped`, as strict UTF-8, passes the texts by name to `check`, and moves each onto its name only when `check` returns no problem. A `staged` that is a link or isn't a directory is exit 2. A problem, or a failed write, read or move, is exit 4, before any canonical file is touched. `reason_text` words a read-back reason for the message.
+- **The stage record.** `stage_record` builds a `tachi.stage-record/1` object for the plan: it derives the batch summary, the overflow events and retries and the finish time. A `status` of `None` reads `success-with-warnings` when there are warnings or undeclared paths, and `success` otherwise. It validates and writes nothing. `write_stage_record` builds the record, checks it against `validate_stage_record` and its 1 MiB cap, and writes it atomically, which ends a renderer's run. A record that fails its own contract is exit 4, `report this as a bug in <renderer>`, and a failed write is exit 4 with `RETRY_REMEDY`. `tachi-stage.py`'s `fail` and `close` build their records with `stage_record` and write them themselves, with their own exit 2 (S1P-A10, S1P-A11). `output_entries` is `outputs` for files that sit in `out` under their names.
+- **The walk (item 4).** `walk_out` yields `(relpath, size, mtime_ns)` for every file under `out`, in a fixed order, through no link to a directory. `undeclared_paths` returns the paths that are new or changed since the plan and that `is_declared_path` doesn't declare, looked up by `snapshot_key`, sorted and capped at `MAX_UNDECLARED_PATHS`. Its warnings are `declared-paths-skipped`, `undeclared-paths-unrecordable` and `undeclared-paths-truncated`.
+- **The supporting names (S1P-PM8; T151's decision 5).**
+  - `digest_or_none`: the planner's half of D3's guard;
+  - `output_entries` and `stage_record`: the record writer's arguments;
+  - `utc_now`: `YYYY-MM-DDTHH:MM:SSZ`, the stage record's one clock read. It replaces only existing reads, such as `finished_utc`, and a scoring date stays an input (NFR-2);
+  - `dump_json`: sorted keys, two-space indent, one trailing newline;
+  - `record_warning`: the code cut at 64 and a printable detail cut at 500;
+  - the two constants, `RETRY_REMEDY` and `RENDERER_READ_REASONS`.
+
+  `shorten`, `relative_path` and `yaml_quoted` are item 1's `_shorten`, `_relative` and `_quoted`.
+- **C1 holds.** `tachi_parts` imports no tachi module. The section adds `argparse` and `platform`, and `typing`'s `Callable`, `Iterable` and `Mapping`. A value from `tachi_parsers`, `tachi_scoring` or `sarif_common` comes in as an argument. So the S-13 allowance, the manifest, the AR-14 closures and the extractors' preflight fences don't change.
+- **Tests.** `test_tachi_parts.py`'s section 24 pins every name in-process (H15), and checks that the module docstring lists each one (`ENTRY_PATH_NAMES`). The hoist changes no other test file (E5).
+
+**The aliases each entry keeps (S1P-A11).** An entry keeps its own name for a shared one wherever a test or another module names it. It also keeps its `STAGE` and `RENDERER` literals, its 3.9 floor block, `sys.dont_write_bytecode`, and every message, exit code, reason string and cap. A private name that nothing else names is retired, and its call sites call the shared name.
+
+| Entry | Keeps, as an alias or a thin wrapper | Retires |
+|---|---|---|
+| `render-compensating-controls.py` (T151, in code) | `RenderError(tp.StageFailure)`, with its own constructor `(code, reason, remedy="", batch=None, kept=None)` and the stage fixed to `STAGE`; `Run(tp.RunCore)`; `_first_forbidden`; `_refuse_forbidden(source, finding_id, value, remedy, kept)`; `_relative`, `_quoted` and `_shorten`; `_load_plan(out, plan_id, digest)`, which is `trusted_plan(..., complete=True, read_inputs=True, kept=True)` and the plan's `refs`; `_stage_and_move(run, out, plan_id, files, digest, kept)`; `_write_record(run, out, plan, digest, files, kept)`; `_build_parser()`; `_run`; and `main(argv=None) -> int`, on `run_entry` | `_read_text_file`, `_defect`, `_document`, `_read_plan_input`, `_read_parts`, `_walk`, `_undeclared`, `_utc_now`, `_dump`, `_warning`, and its own `RETRY_REMEDY` |
+| `render-risk-scores.py` (T152, as planned) | as the controls renderer, and also `_refuse_forbidden(..., place=None)`; `_read_text_file(path)`, which is `read_capped(path, MAX_AGENT_INPUT_BYTES, RENDERER_READ_REASONS)`, for the architecture file; and `_stage_and_move` with its `reason_text`. `entry_arguments` runs after `ts.self_test()`, which stays first | as the controls renderer |
+| `tachi-stage.py` (T152, as planned) | `StageError = tp.StageFailure`; `_read_document` (`entry_document`); `_trusted_plan`, which is `trusted_plan(...)[0]`, not complete, digested and with no kept line; `_first_forbidden(value, path)` and `_refuse_forbidden_units`, both with `json_only=True`; `_walk` and `_undeclared_paths(out, stage, plan)`; `_digest_or_none`; `_plan_arguments = tp.plan_arguments`; and `main`, on `run_entry(None, "tachi-stage.py", args, args.run, defect=False)`. `fail` builds its record with `stage_record(..., status="failed", error=...)` and keeps `_write_document` and its exit 2. The argument parser, the floor block, `REASONS`, `_out_dir` and `_read_capped` stay byte for byte | `_HEX64`, once nothing reads it |
+| `tachi_scoring_rules.py` (T152, as planned) | `_read_bytes(path)`: `(None, "missing")` for no path, and otherwise `read_capped(path, MAX_AGENT_INPUT_BYTES, {"unopenable": "missing", "not-a-regular-file": "missing", "unreadable": "missing"})` | — |
+
+T152 records each row marked "as planned" as built, or amends it here.
+
+**The raised type (S1P-A41).** The shared names raise `StageFailure`, never an entry's subclass. So `isinstance(error, RenderError)` is false for a failure that a moved internal raises (`_load_plan`, `_stage_and_move`, `_write_record`). No caller catches the subclass: `main` catches the base, through `run_entry`. The messages and exit codes are the same, so S1P-PM2 holds.
+- **The condition.** An entry catches `StageFailure`, never only its own subclass, before it calls any shared name that raises. `render-risk-scores.py`'s `except RenderError` and `tachi-stage.py`'s `except StageError` move onto `run_entry`, or alias the base, before either entry calls one (T152's order, R3b-1's precondition). Otherwise a refusal would read as an unexpected error, with exit 4.
+- **Not built:** a `fail=` factory that would make the shared names raise an entry's class. Nothing needs it.
+
+**Ruled to follow (S1P-A42, S1P-A57).** R3b adds these before T108, T100, T106 and T116 write the code that uses them, with their unit tests in `test_tachi_parts.py`. Each is additive: a new name, or a keyword with a default, added last, that keeps every current caller's behavior and text.
+
+```python
+def entry_arguments(stage: str, out: object, plan_id: object, digest: object, option: str = "--out") -> str: ...
+def directory_argument(stage: Optional[str], value: object, option: str = "--out", code: int = 1) -> str: ...
+def plan_id_argument(stage: Optional[str], plan_id: object) -> None: ...
+def run_entry(stage: Optional[str], renderer: str, args: argparse.Namespace, run: Callable[[argparse.Namespace], int],
+              defect: bool = True, option: str = "--out") -> int: ...
+STAGED_OUTPUTS: Dict[str, Tuple[str, ...]]  # stage -> the names its writer stages under <plan_id>/staged/
+```
+
+- **`option`** is the spelling of an entry's directory option. `entry_arguments` uses it in its message and remedy, `<option> is not a directory` and `create it or correct <option>`. `run_entry`'s defect path reads the directory from the attribute it names, so `--run-dir` is `args.run_dir`.
+- **`directory_argument`** is `entry_arguments`' first check alone. `os.path.abspath(os.fspath(value))` must be a directory, or it is exit `code` with that message. It returns the absolute path. `entry_arguments` is `directory_argument(stage, out, option)`, then `plan_arguments`.
+- **`plan_id_argument`** is `plan_arguments`' first check alone, exit 2, and `plan_arguments` calls it.
+- **`run_entry`'s defect path never raises.** It keeps the plan directory only for a stage that `STAGE_AGENTS` knows and a `--plan` that passes the allow-list, so a defect always ends as D4's exit 4, whatever stage name an entry passes.
+- **`build_parser` doesn't change.** A `--run-dir` entry passes `out=False` and adds `--run-dir` itself, as a required option.
+- **`STAGED_OUTPUTS`** holds `CANONICAL_OUTPUTS` for PR 1's two stages, `("threats.md",)` for `threats-md`, `("threat-report.md",)` for `report`, and `()` for `trees` and `threat-model`. `staged_path` checks a name against it, in place of `CANONICAL_OUTPUTS`, so the joiner and the assembler stage through `stage_and_move` as the renderers do. `preimage_path` and `failed_path` keep `CANONICAL_OUTPUTS`, which is `()` for the three batch stages (`part-files.md`, "Readings ruled at W2′'s entry, pass 3"). No PR 1 path changes.
+
+| Entry | Its argument checks |
+|---|---|
+| `render-risk-scores.py`, `render-compensating-controls.py`, `join-threats-md.py` | `entry_arguments(STAGE, args.out, args.plan, args.plan_digest)` |
+| `assemble-report.py trees` and `report` | `entry_arguments(<the mode>, args.run_dir, args.plan, args.plan_digest, option="--run-dir")`, and `run_entry(..., option="--run-dir")` |
+| `generate-threats-sarif.py` | `directory_argument(<its banner name>, args.out)`: exit 1 |
+| `attack-chains.py plan` and `render` | `directory_argument(<its banner name>, args.run_dir, option="--run-dir")`: exit 1 |
+| `attack-chains.py check`, `check-threat-model.py` | `directory_argument(<its banner name>, args.run_dir, option="--run-dir", code=2)`, because `cli.md` gives neither an exit 1, then `plan_id_argument(<its banner name>, args.plan)` |
+| `tachi-stage.py` | its own `--out` check, then `plan_arguments` |
+
+The banner name is what each entry passes as `StageFailure`'s `stage`, which its own task sets.
+
+**Ruled to follow at W2′'s batch (S1P-A90, 2026-11-25).** R3b adds these keywords in its `tachi_parts` slice, with their cases in `test_tachi_parts.py`. They let a caller hold a plan to D3's guard when two of its inputs change by design (RR3) and the plan is pinned by another plan (S1P-A47), so `assemble-report.py` drops its 30-line copy of the guard, `_guard`, for one call per plan.
+
+```python
+def trusted_plan(stage: str, out: str, plan_id: str, digest: str, complete: bool = False, read_inputs: bool = False,
+                 kept: bool = False, unpinned: Tuple[str, ...] = (), banner: Optional[str] = None,
+                 pinned_by: Optional[str] = None) -> Tuple[Dict[str, Any], Dict[str, bytes]]: ...
+```
+
+- **`unpinned`** names inputs of the plan, keys of its `inputs`, that the guard neither digest-checks nor reads, in both branches of `read_inputs`. The returned `inputs` leaves them out, and the caller checks them its own way. A name that the plan doesn't hold is ignored, since `attack_chains` is there only for `chains written`. `report` passes `("threats", "attack_chains")` for its own plan and `("threats",)` for the trees plan it pins (RR3; `cli.md`, "Readings ruled at rev. 3").
+- **`banner`** is the stage that every refusal names in D4's message: `StageFailure.stage`, and the `stage` that the guard passes to `entry_document` and `plan_input_bytes`, the pointer's refusals included. `None` means `stage`. `kept` still names the checked plan's own directory, `plan_dir(out, stage, plan_id)`, so a refusal about the pinned trees plan reads `TACHI REPORT FAILED:` and keeps the trees plan's directory (S1P-A47, S1P-A89).
+- **`pinned_by`** is `None` when the command line named the plan, and every message is today's. When another plan pins this one, it is that plan as the messages name it, `"the report plan"`, and the two refusals that would name the command line read instead:
+  - the pointer: `the <stage> plan <plan_id> that <pinned_by> pins disagrees with current.json, which names <pointer's ID>`, remedy `re-run the command`;
+  - the digest: `the plan file's digest differs from the digest that <pinned_by> pins`, remedy `re-run the command`.
+- **Everything else is unchanged:** every other message, code and remedy, `complete`'s `then render` included, and the order of the checks. With the three defaults no caller's behavior or text changes (S1P-PM2), and section 24's existing pins hold.
+- **Tests** (R3b, `test_tachi_parts.py`, in-process): an unpinned input that changed, vanished or is over the cap passes and is absent from `inputs`, in both branches; an unpinned name that the plan doesn't hold is ignored; a refusal under `banner` carries that banner and keeps the checked plan's directory, the pointer's mismatch included; and `pinned_by`'s two messages and remedies. `ENTRY_PATH_NAMES`' docstring check follows the module docstring's signature line.
+- **T's call** (lane T, with T110): `tp.trusted_plan(stage, run.out, plan_id, digest, complete=True, read_inputs=True, kept=True, unpinned=unpinned, banner=run.stage, pinned_by=...)`, with `pinned_by="the report plan"` for the pinned trees plan and `None` for every other plan. `_guard`'s `what` argument and its `then assemble` wording go with it, and no test of T's pins them.
+
+## `scripts/tachi-stage.py`: the watch (ruled at T090, S1′, 2026-11-25; S1P-A38 item 5. T156 wrote it in `95c6a04`, recorded at T162: S1P-A71)
+
+```python
+# Phase 2's deadline, 90 minutes (ADR-050 D6), and the time between two looks at the records
+WATCH_SECONDS: int = 5400
+WATCH_POLL_SECONDS: int = 5
+
+def watch(out: Any, dispatch_ids: Any, seconds: float = WATCH_SECONDS,
+          poll: float = WATCH_POLL_SECONDS) -> Tuple[int, Dict[str, Any]]: ...
+```
+
+- **What it is.** The work of `tachi-stage.py watch`, which `main(argv)` routes to behind the thin `__main__` guard (`cli.md`; `threat-model-records.md`, "The watch"). It returns `(code, printed)`, and the command prints `printed` as its one JSON object:
+  - `(0, {"status": "done", "pending": []})` once every named dispatch has its record;
+  - `(3, {"status": "timed-out", "pending": [...]})` when the deadline passes first, with the IDs that have no record, in the order given.
+- **What it refuses.** Before it waits, it checks `out` and then the IDs, and raises `StageError` (`tp.StageFailure`) with code 2 and the stage `threat-model`, so the command prints D4's message and exits 2 (S1P-A70):
+  - `out` goes through the entry's own `_out_dir(..., missing_code=2)`, as every `tachi-stage.py` subcommand checks `--out` (S1P-A42): D7's path rule, then a directory, and a directory that isn't there is 2 as well. T156's task line named the shared helper, but the contract's reading stands, because `tp.directory_argument` makes no D7 vet;
+  - the IDs are 1 to `WAVE_SIZE` (16), each a full match of `tachi_parts`' dispatch pattern, none named twice. A bad ID is named as `repr` writes it, cut at 60 characters.
+- **How it waits.** The deadline is `seconds` on `time.monotonic()`, from the end of the checks. It looks once before the first sleep, so a wave that is already recorded returns at once, and once more after each sleep of `poll`. The last sleep is cut to what is left, so it returns at the deadline, and a record that lands during that sleep still counts. A record counts when its path passes D3's guard under `out` (`tp.path_guard_problem` is `None`): a regular file, with no link in its place or in the place of `records/` or `.tachi-build/`. The file is never opened.
+- **What it doesn't do.** It writes nothing: no record, no stage record and no directory. The orchestrator writes each `timed_out` record from exit 3 (ADR-050 D6). It reads no environment variable, and the command line takes no deadline, so `seconds` and `poll` are the one way a test sets smaller ones.
+- **`WATCH_SECONDS`' line.** In the script it is the one line `WATCH_SECONDS = 5400`, unannotated and with nothing after it, because T160's live demonstration lowers the deadline to 300 by editing that line in an installed copy (ADR-050 D6). A W5′ re-amendment changes the value here, in ADR-050 D6 and in its Known limitations together.
+- **Private names.** `_watch_ids(dispatch_ids) -> List[str]`, `_recorded(out, dispatch_id) -> bool`, `_run_watch(args) -> int` and `WATCH_STAGE`, the refusals' banner, aren't signatures of record. If T161 fires, it removes this section's names with the code.
+- **Tests** are in `tests/scripts/test_tachi_stage.py`, in-process with `time.monotonic` and `time.sleep` replaced (H15), with one real-interpreter case for the exit codes.
 
 ## The persisted-inputs format: `risk-scores.md` §6 and `compensating-controls.md` §7
 

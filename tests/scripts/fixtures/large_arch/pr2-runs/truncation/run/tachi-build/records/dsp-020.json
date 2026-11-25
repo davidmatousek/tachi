@@ -1,0 +1,20 @@
+{
+  "agent_type": "tachi-human-trust-exploitation",
+  "brief": "/synthetic-case/run/.tachi-build/briefs/dsp-020.json",
+  "count": 0,
+  "dispatch_id": "dsp-020",
+  "end_marker": true,
+  "local_ids": [],
+  "origin": "redispatch",
+  "prompt": "Read and follow the brief at /synthetic-case/run/.tachi-build/briefs/dsp-020.json.",
+  "reason": null,
+  "schema": "tachi.dispatch-record/1",
+  "scope": {
+    "components": [
+      "planner-agent"
+    ]
+  },
+  "status": "complete",
+  "superseded_by": [],
+  "supersedes": "dsp-009"
+}

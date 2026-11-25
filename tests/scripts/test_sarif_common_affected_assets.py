@@ -4,9 +4,13 @@ Exercises :func:`sarif_common.parse_affected_assets` — the inverse of the
 deterministic populator (``scripts/populate-affected-assets.py`` ->
 ``render_affected_assets_block``). The extractor parses the always-present
 ``## Affected Assets`` markdown table back into ``{finding_id: [tags]}`` and is
-the single value source the SARIF regeneration / verification tier reads, so the
-generators (`generate-threats-sarif.py`, `generate-risk-scores-sarif.py`) never
-independently re-derive from ``component_asset_map``.
+the single value source that the shipped SARIF writers read from a compiled
+``threats.md``: the generator (``generate-threats-sarif.py``) copies each
+finding's value from the block and never re-derives it from
+``component_asset_map``, and the renderer (``render-risk-scores.py``) reads the
+block through it too and checks it against the architecture file's own tags
+(ADR-050 D2, S-13). ``generate-risk-scores-sarif.py``, which read it as well,
+was retired at F-374 PR 1 (ADR-050 D1, #357).
 
 Test coverage targets (the extractor's EDGE cases only — the populator render
 side is T007, cross-format SARIF equality is T013):

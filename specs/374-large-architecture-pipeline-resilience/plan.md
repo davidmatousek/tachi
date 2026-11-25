@@ -272,6 +272,8 @@ The lanes follow the feasibility check's §3.1. Each hot file has one lane per w
 > - **PR 2's post-squash integration.** T127 names the method and the full-tree parity check, a departure from the rebase described below.
 >
 > The windows and centrals below are the plan stage's.
+>
+> **At W2′'s entry (2026-11-24, S1P-A8).** PR 2 no longer rebases. T085 merged PR 1's final head, then a marker built on `origin/main`, and ran KB 18's parity check (`test-results/w2-entry-pr2.md`). Later integrations are plain merges of `origin/main` at wave boundaries, and T127 re-merges only if `main` has moved. The spec's "merge `origin/main`" (§ The split) is met by the marker merge.
 
 **PR 1: Tracks S and R** (planning central about T0 + 8.0; TW-0 bounds it at 9.0 days)
 - **W0 (0.35 d).**
@@ -316,7 +318,7 @@ The lanes follow the feasibility check's §3.1. Each hot file has one lane per w
   - The follow-ups (S-16), and delivery as a `fix(374)` patch.
 
 **PR 2: Track O** (about T0 + 11 to 12; bounded at its planning central + 1.0)
-- **Branch.** The Track O lanes may start after the cut line, on their own branch cut from the cut-line commit. PR 2's base is always `main` (KB 25). After PR 1 squash-merges, the branch is rebased onto `origin/main`, and the full tree is diffed (KB 18).
+- **Branch.** The Track O lanes may start after the cut line, on their own branch cut from the cut-line commit. PR 2's base is always `main` (KB 25). After PR 1 squash-merged, W2′'s entry merged PR 1's final head and then a marker built on `origin/main` (T085), with KB 18's parity check. Later wave boundaries merge `origin/main` plainly, with the same check.
 - **Before W2′:** ADR-050's items O-α (`phase2`), O-β (`threats-md`) and O-γ (the `report` payload), and RR3's plan check for the report assembler, are ruled, and `/aod.tasks` prices their contingencies (D6).
 - **W2′ and W3′.**
   - **O2:** records, briefs and the ID map; the persisted Phase 1 tables; Phase 2 re-dispatch built against S-9's spike.
@@ -430,7 +432,7 @@ This plan cites the re-review's findings as RR1–RR6 (N1–N6 in its results fi
 
 ## Risks (deltas over the PRD and the spec)
 
-- **PR 2 drifts while PR 1 is in review.** *Mitigation:* the cut-line commit is the only shared base. PR 2 rebases onto `origin/main` once, after PR 1's squash, with a full-tree diff (KB 18). Its base is `main` throughout (KB 25).
+- **PR 2 drifts while PR 1 is in review.** *Mitigation:* the cut-line commit is the only shared base. After PR 1's squash, PR 2 merges a marker built on `origin/main` once, at W2′'s entry (T085), then merges `origin/main` plainly at later wave boundaries, each time with KB 18's parity check. Its base is `main` throughout (KB 25).
 - **A slip in the scoring-rules module.** PR 1's 8.0-day central depends on its separate lane in W2 (feasibility §13.2). *Mitigation:* D5 rules the module in. If R1b slips, the team-lead re-projects at the P0 checkpoint. A PR 1 projection above 9.0 days goes back to the PM whatever drives it (condition 4, under "Carried to `/aod.tasks`").
 - **The S-1 measurement disagrees with the planning assumption** (about 40 findings per scorer batch). *Mitigation:* the batch sizes are constants recorded in ADR-050 D6 from the W1 fixture measurement. A batch that overflows live is re-planned narrower and recorded (TW-L2).
 - **The drift-form readers widen the parser surface** (S-12). *Mitigation:* the forms are a closed list taken from tachi's own four samples, with each sample a read-only test input, and anything else stops before dispatch.

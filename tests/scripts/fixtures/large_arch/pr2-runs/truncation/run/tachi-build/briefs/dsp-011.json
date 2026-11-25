@@ -1,0 +1,20 @@
+{
+  "agent_type": "tachi-data-poisoning",
+  "baseline_focus": null,
+  "dispatch_id": "dsp-011",
+  "inputs": {
+    "architecture": "/synthetic-case/run/architecture.md",
+    "dispatch_table": "/synthetic-case/run/.tachi-build/phase1/dispatch.json",
+    "inventory": "/synthetic-case/run/.tachi-build/phase1/inventory.json"
+  },
+  "schema": "tachi.brief/1",
+  "targets": [
+    "edge-gateway",
+    "intake-agent",
+    "planner-agent",
+    "worker-2",
+    "tool-server-1",
+    "model-gateway",
+    "vector-store-a"
+  ]
+}

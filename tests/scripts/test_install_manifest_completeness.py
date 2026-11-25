@@ -86,14 +86,15 @@ SCRIPT_REF_RE = re.compile(r"(?<![\w./-])(?:\./)?scripts/[\w-]+\.py")
 # (extract-report-data.py, extract-infographic-data.py,
 # populate-affected-assets.py, tachi_parsers.py, tachi_parts.py,
 # tachi_scoring.py, tachi_scoring_rules.py, sarif_common.py, tachi-stage.py,
-# render-risk-scores.py, render-compensating-controls.py) is a required script.
-EXCLUDED: dict[str, str] = {
-    # F-374 (T022). sarif-identity-shared.md's dormant `threats.sarif` section names the generator that takes over
-    # when it ships. Until then the file is still written under sarif-specification.md, and the script stays
-    # tachi-internal: ADR-050 D1 rewrites it and installs it at PR 2. T114 adds it to the manifest, and deletes this
-    # entry in the same commit.
-    "scripts/generate-threats-sarif.py": "named by the dormant threats.sarif section; installed at PR 2 (ADR-050 D1, T114)",
-}
+# render-risk-scores.py, render-compensating-controls.py, join-threats-md.py,
+# attack-chains.py, assemble-report.py, generate-threats-sarif.py) is a
+# required script.
+#
+# F-374 (T114) emptied the list. Its one entry was scripts/generate-threats-sarif.py,
+# which sarif-identity-shared.md's `threats.sarif` section names. The script stayed tachi-internal until ADR-050 D1's
+# rewrite shipped it at PR 2, and T114 added it to the manifest and deleted the entry in the same commit. The dict stays,
+# so that a later exclusion is one line and a reason.
+EXCLUDED: dict[str, str] = {}
 
 # The distributable scripts (spec FR-K2.1, NFR-2, S-13) -- named
 # explicitly rather than derived from the reference scan, so S-13 keeps
@@ -102,7 +103,12 @@ EXCLUDED: dict[str, str] = {
 # helpers (imported by the entries) and tachi-stage.py (an entry), then W2's
 # tachi_scoring_rules.py (a helper) and render-risk-scores.py (an entry), then
 # W3's render-compensating-controls.py (an entry, so DISTRIBUTED_HELPERS below
-# is unchanged: it imports only helpers that are already listed).
+# is unchanged: it imports only helpers that are already listed). PR 2's W2'
+# (T114) adds four entries and no helper, so DISTRIBUTED_HELPERS is unchanged
+# again: join-threats-md.py and attack-chains.py import tachi_parsers and
+# tachi_parts, assemble-report.py adds tachi_scoring and tachi_scoring_rules,
+# and generate-threats-sarif.py imports sarif_common, tachi_parsers,
+# tachi_parts and tachi_scoring. check-threat-model.py joins in W3' (T098).
 REQUIRED_SCRIPT_NAMES = (
     "extract-report-data.py",
     "extract-infographic-data.py",
@@ -115,6 +121,10 @@ REQUIRED_SCRIPT_NAMES = (
     "tachi_scoring_rules.py",
     "render-risk-scores.py",
     "render-compensating-controls.py",
+    "join-threats-md.py",
+    "attack-chains.py",
+    "assemble-report.py",
+    "generate-threats-sarif.py",
 )
 
 # The sibling modules a distributable script may import at module load besides the standard library: the

@@ -1,0 +1,2736 @@
+{
+  "components": [
+    {
+      "description": "Scores agent runs against fixed cases",
+      "dfd_type": "Process",
+      "maestro_layer": "L5",
+      "name": "eval-bench-1"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-2"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-3"
+    },
+    {
+      "description": "Hosts the agent workers",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "runtime-pool-4"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-5"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-6"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-7"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-8"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-9"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-10"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-11"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-12"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-13"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-14"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-15"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-16"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-17"
+    },
+    {
+      "description": "Scores agent runs against fixed cases",
+      "dfd_type": "Process",
+      "maestro_layer": "L5",
+      "name": "eval-bench-18"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-19"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-20"
+    },
+    {
+      "description": "Serves a hosted model endpoint to the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "model-host-21"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-22"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-23"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-24"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-25"
+    },
+    {
+      "description": "Hosts the agent workers",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "runtime-pool-26"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-27"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-28"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-29"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-30"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-31"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-32"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-33"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-34"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-35"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-36"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-37"
+    },
+    {
+      "description": "Scores agent runs against fixed cases",
+      "dfd_type": "Process",
+      "maestro_layer": "L5",
+      "name": "eval-bench-38"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-39"
+    },
+    {
+      "description": "Collects traces from the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L5",
+      "name": "trace-sink-40"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-41"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-42"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-43"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-44"
+    },
+    {
+      "description": "Serves a hosted model endpoint to the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "model-host-45"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-46"
+    },
+    {
+      "description": "Hosts the agent workers",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "runtime-pool-47"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-48"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-49"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-50"
+    },
+    {
+      "description": "Serves a hosted model endpoint to the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "model-host-51"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-52"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-53"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-54"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-55"
+    },
+    {
+      "description": "Adapter whose layer was never classified",
+      "dfd_type": "Process",
+      "maestro_layer": "Unclassified",
+      "name": "legacy-adapter-56"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-57"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-58"
+    },
+    {
+      "description": "Adapter whose layer was never classified",
+      "dfd_type": "Process",
+      "maestro_layer": "Unclassified",
+      "name": "legacy-adapter-59"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-60"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-61"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-62"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-63"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-64"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-65"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-66"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-67"
+    },
+    {
+      "description": "Hosts the agent workers",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "runtime-pool-68"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-69"
+    },
+    {
+      "description": "Hosts the agent workers",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "runtime-pool-70"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-71"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-72"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-73"
+    },
+    {
+      "description": "Scores agent runs against fixed cases",
+      "dfd_type": "Process",
+      "maestro_layer": "L5",
+      "name": "eval-bench-74"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-75"
+    },
+    {
+      "description": "Scores agent runs against fixed cases",
+      "dfd_type": "Process",
+      "maestro_layer": "L5",
+      "name": "eval-bench-76"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-77"
+    },
+    {
+      "description": "Collects traces from the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L5",
+      "name": "trace-sink-78"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-79"
+    },
+    {
+      "description": "Collects traces from the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L5",
+      "name": "trace-sink-80"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-81"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-82"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-83"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-84"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-85"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-86"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-87"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-88"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-89"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-90"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-91"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-92"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-93"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-94"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-95"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-96"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-97"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-98"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-99"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-100"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-101"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-102"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-103"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-104"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-105"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-106"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-107"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-108"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-109"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-110"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-111"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-112"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-113"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-114"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-115"
+    },
+    {
+      "description": "Hosts the agent workers",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "runtime-pool-116"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-117"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-118"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-119"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-120"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-121"
+    },
+    {
+      "description": "Collects traces from the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L5",
+      "name": "trace-sink-122"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-123"
+    },
+    {
+      "description": "Scores agent runs against fixed cases",
+      "dfd_type": "Process",
+      "maestro_layer": "L5",
+      "name": "eval-bench-124"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-125"
+    },
+    {
+      "description": "Collects traces from the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L5",
+      "name": "trace-sink-126"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-127"
+    },
+    {
+      "description": "Collects traces from the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L5",
+      "name": "trace-sink-128"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-129"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-130"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-131"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-132"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-133"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-134"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-135"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-136"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-137"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-138"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-139"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-140"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-141"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-142"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-143"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-144"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-145"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-146"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-147"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-148"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-149"
+    },
+    {
+      "description": "Serves a hosted model endpoint to the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "model-host-150"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-151"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-152"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-153"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-154"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-155"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-156"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-157"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-158"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-159"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-160"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-161"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-162"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-163"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-164"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-165"
+    },
+    {
+      "description": "Hosts the agent workers",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "runtime-pool-166"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-167"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-168"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-169"
+    },
+    {
+      "description": "Collects traces from the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L5",
+      "name": "trace-sink-170"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-171"
+    },
+    {
+      "description": "Scores agent runs against fixed cases",
+      "dfd_type": "Process",
+      "maestro_layer": "L5",
+      "name": "eval-bench-172"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-173"
+    },
+    {
+      "description": "Scores agent runs against fixed cases",
+      "dfd_type": "Process",
+      "maestro_layer": "L5",
+      "name": "eval-bench-174"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-175"
+    },
+    {
+      "description": "Scores agent runs against fixed cases",
+      "dfd_type": "Process",
+      "maestro_layer": "L5",
+      "name": "eval-bench-176"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-177"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-178"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-179"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-180"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-181"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-182"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-183"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-184"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-185"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-186"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-187"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-188"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-189"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-190"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-191"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-192"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-193"
+    },
+    {
+      "description": "Serves a hosted model endpoint to the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "model-host-194"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-195"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-196"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-197"
+    },
+    {
+      "description": "Serves a hosted model endpoint to the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "model-host-198"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-199"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-200"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-201"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-202"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-203"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-204"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-205"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-206"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-207"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-208"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-209"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-210"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-211"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-212"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-213"
+    },
+    {
+      "description": "Hosts the agent workers",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "runtime-pool-214"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-215"
+    },
+    {
+      "description": "Hosts the agent workers",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "runtime-pool-216"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-217"
+    },
+    {
+      "description": "Collects traces from the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L5",
+      "name": "trace-sink-218"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-219"
+    },
+    {
+      "description": "Scores agent runs against fixed cases",
+      "dfd_type": "Process",
+      "maestro_layer": "L5",
+      "name": "eval-bench-220"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-221"
+    },
+    {
+      "description": "Scores agent runs against fixed cases",
+      "dfd_type": "Process",
+      "maestro_layer": "L5",
+      "name": "eval-bench-222"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-223"
+    },
+    {
+      "description": "Scores agent runs against fixed cases",
+      "dfd_type": "Process",
+      "maestro_layer": "L5",
+      "name": "eval-bench-224"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-225"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-226"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-227"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-228"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-229"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-230"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-231"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-232"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-233"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-234"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-235"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-236"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-237"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-238"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-239"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-240"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-241"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-242"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-243"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-244"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-245"
+    },
+    {
+      "description": "Computes embeddings for retrieval",
+      "dfd_type": "Process",
+      "maestro_layer": "L1",
+      "name": "embed-node-246"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-247"
+    },
+    {
+      "description": "Holds the retrieval index",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "vector-index-248"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-249"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-250"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-251"
+    },
+    {
+      "description": "Keeps engineered features for the agents",
+      "dfd_type": "Data Store",
+      "maestro_layer": "L2",
+      "name": "feature-store-252"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-253"
+    },
+    {
+      "description": "Routes tool calls from the agents",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "tool-router-254"
+    },
+    {
+      "description": "Front end for operators",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "user-portal-255"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-256"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-257"
+    },
+    {
+      "description": "Hosts the agent workers",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "runtime-pool-258"
+    },
+    {
+      "description": "Keeps the signed audit records",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "audit-vault-259"
+    },
+    {
+      "description": "Hosts the agent workers",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "runtime-pool-260"
+    },
+    {
+      "description": "Plans and runs one class of task",
+      "dfd_type": "Process",
+      "maestro_layer": "L3",
+      "name": "task-agent-261"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-262"
+    },
+    {
+      "description": "Checks each action against policy",
+      "dfd_type": "Process",
+      "maestro_layer": "L6",
+      "name": "policy-gate-263"
+    },
+    {
+      "description": "Rolls out agent releases",
+      "dfd_type": "Process",
+      "maestro_layer": "L4",
+      "name": "deploy-hub-264"
+    },
+    {
+      "description": "Exposes the platform to a partner system",
+      "dfd_type": "External Entity",
+      "maestro_layer": "L7",
+      "name": "partner-api-265"
+    }
+  ],
+  "data_flows": [
+    {
+      "data": "Model calls",
+      "destination": "policy-gate-2",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "eval-bench-1"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "tool-router-3",
+      "protocol": "gRPC (mTLS)",
+      "source": "policy-gate-2"
+    },
+    {
+      "data": "Run events",
+      "destination": "partner-api-7",
+      "protocol": "gRPC (mTLS)",
+      "source": "tool-router-3"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "audit-vault-5",
+      "protocol": "gRPC (mTLS)",
+      "source": "runtime-pool-4"
+    },
+    {
+      "data": "Task requests",
+      "destination": "task-agent-6",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "audit-vault-5"
+    },
+    {
+      "data": "Task requests",
+      "destination": "partner-api-7",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "task-agent-6"
+    },
+    {
+      "data": "Task requests",
+      "destination": "audit-vault-9",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "deploy-hub-8"
+    },
+    {
+      "data": "Run events",
+      "destination": "task-agent-10",
+      "protocol": "gRPC (mTLS)",
+      "source": "audit-vault-9"
+    },
+    {
+      "data": "Model calls",
+      "destination": "user-portal-11",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "task-agent-10"
+    },
+    {
+      "data": "Run events",
+      "destination": "vector-index-13",
+      "protocol": "gRPC (mTLS)",
+      "source": "embed-node-12"
+    },
+    {
+      "data": "Task requests",
+      "destination": "task-agent-14",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "vector-index-13"
+    },
+    {
+      "data": "Model calls",
+      "destination": "task-agent-16",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "deploy-hub-15"
+    },
+    {
+      "data": "Model calls",
+      "destination": "user-portal-17",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "task-agent-16"
+    },
+    {
+      "data": "Task requests",
+      "destination": "policy-gate-19",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "eval-bench-18"
+    },
+    {
+      "data": "Task requests",
+      "destination": "task-agent-20",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "policy-gate-19"
+    },
+    {
+      "data": "Task requests",
+      "destination": "vector-index-22",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "model-host-21"
+    },
+    {
+      "data": "Task requests",
+      "destination": "vector-index-24",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "tool-router-23"
+    },
+    {
+      "data": "Model calls",
+      "destination": "tool-router-25",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "runtime-pool-26"
+    },
+    {
+      "data": "Model calls",
+      "destination": "deploy-hub-28",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "tool-router-27"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "partner-api-29",
+      "protocol": "gRPC (mTLS)",
+      "source": "deploy-hub-28"
+    },
+    {
+      "data": "Task requests",
+      "destination": "feature-store-32",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "task-agent-33"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "task-agent-31",
+      "protocol": "gRPC (mTLS)",
+      "source": "feature-store-32"
+    },
+    {
+      "data": "Run events",
+      "destination": "partner-api-30",
+      "protocol": "gRPC (mTLS)",
+      "source": "task-agent-31"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "policy-gate-35",
+      "protocol": "gRPC (mTLS)",
+      "source": "deploy-hub-34"
+    },
+    {
+      "data": "Model calls",
+      "destination": "tool-router-37",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "vector-index-36"
+    },
+    {
+      "data": "Model calls",
+      "destination": "eval-bench-38",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "tool-router-39"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "policy-gate-41",
+      "protocol": "gRPC (mTLS)",
+      "source": "trace-sink-40"
+    },
+    {
+      "data": "Model calls",
+      "destination": "task-agent-43",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "embed-node-42"
+    },
+    {
+      "data": "Run events",
+      "destination": "embed-node-42",
+      "protocol": "gRPC (mTLS)",
+      "source": "tool-router-44"
+    },
+    {
+      "data": "Model calls",
+      "destination": "model-host-45",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "tool-router-46"
+    },
+    {
+      "data": "Run events",
+      "destination": "model-host-45",
+      "protocol": "gRPC (mTLS)",
+      "source": "runtime-pool-47"
+    },
+    {
+      "data": "Model calls",
+      "destination": "feature-store-49",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "embed-node-48"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "embed-node-48",
+      "protocol": "gRPC (mTLS)",
+      "source": "embed-node-50"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "model-host-51",
+      "protocol": "gRPC (mTLS)",
+      "source": "user-portal-52"
+    },
+    {
+      "data": "Model calls",
+      "destination": "model-host-51",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "feature-store-53"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "vector-index-54",
+      "protocol": "gRPC (mTLS)",
+      "source": "tool-router-55"
+    },
+    {
+      "data": "Model calls",
+      "destination": "vector-index-54",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "legacy-adapter-56"
+    },
+    {
+      "data": "Task requests",
+      "destination": "tool-router-58",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "vector-index-57"
+    },
+    {
+      "data": "Task requests",
+      "destination": "legacy-adapter-59",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "vector-index-57"
+    },
+    {
+      "data": "Task requests",
+      "destination": "partner-api-61",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "vector-index-60"
+    },
+    {
+      "data": "Model calls",
+      "destination": "partner-api-63",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "tool-router-62"
+    },
+    {
+      "data": "Model calls",
+      "destination": "tool-router-64",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "partner-api-65"
+    },
+    {
+      "data": "Run events",
+      "destination": "audit-vault-67",
+      "protocol": "gRPC (mTLS)",
+      "source": "deploy-hub-66"
+    },
+    {
+      "data": "Run events",
+      "destination": "runtime-pool-68",
+      "protocol": "gRPC (mTLS)",
+      "source": "task-agent-69"
+    },
+    {
+      "data": "Run events",
+      "destination": "audit-vault-71",
+      "protocol": "gRPC (mTLS)",
+      "source": "runtime-pool-70"
+    },
+    {
+      "data": "Run events",
+      "destination": "partner-api-73",
+      "protocol": "gRPC (mTLS)",
+      "source": "deploy-hub-72"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "audit-vault-75",
+      "protocol": "gRPC (mTLS)",
+      "source": "eval-bench-74"
+    },
+    {
+      "data": "Run events",
+      "destination": "audit-vault-77",
+      "protocol": "gRPC (mTLS)",
+      "source": "eval-bench-76"
+    },
+    {
+      "data": "Run events",
+      "destination": "tool-router-79",
+      "protocol": "gRPC (mTLS)",
+      "source": "trace-sink-78"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "audit-vault-81",
+      "protocol": "gRPC (mTLS)",
+      "source": "trace-sink-80"
+    },
+    {
+      "data": "Run events",
+      "destination": "policy-gate-82",
+      "protocol": "gRPC (mTLS)",
+      "source": "task-agent-83"
+    },
+    {
+      "data": "Run events",
+      "destination": "tool-router-85",
+      "protocol": "gRPC (mTLS)",
+      "source": "audit-vault-84"
+    },
+    {
+      "data": "Model calls",
+      "destination": "tool-router-87",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "audit-vault-86"
+    },
+    {
+      "data": "Task requests",
+      "destination": "task-agent-89",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "policy-gate-88"
+    },
+    {
+      "data": "Model calls",
+      "destination": "audit-vault-90",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "partner-api-91"
+    },
+    {
+      "data": "Run events",
+      "destination": "tool-router-93",
+      "protocol": "gRPC (mTLS)",
+      "source": "partner-api-92"
+    },
+    {
+      "data": "Model calls",
+      "destination": "feature-store-95",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "user-portal-94"
+    },
+    {
+      "data": "Run events",
+      "destination": "embed-node-96",
+      "protocol": "gRPC (mTLS)",
+      "source": "task-agent-97"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "tool-router-99",
+      "protocol": "gRPC (mTLS)",
+      "source": "embed-node-98"
+    },
+    {
+      "data": "Run events",
+      "destination": "vector-index-101",
+      "protocol": "gRPC (mTLS)",
+      "source": "embed-node-100"
+    },
+    {
+      "data": "Model calls",
+      "destination": "embed-node-102",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "user-portal-103"
+    },
+    {
+      "data": "Model calls",
+      "destination": "task-agent-105",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "vector-index-104"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "tool-router-107",
+      "protocol": "gRPC (mTLS)",
+      "source": "feature-store-106"
+    },
+    {
+      "data": "Run events",
+      "destination": "feature-store-108",
+      "protocol": "gRPC (mTLS)",
+      "source": "user-portal-109"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "partner-api-111",
+      "protocol": "gRPC (mTLS)",
+      "source": "tool-router-110"
+    },
+    {
+      "data": "Model calls",
+      "destination": "partner-api-113",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "tool-router-112"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "deploy-hub-114",
+      "protocol": "gRPC (mTLS)",
+      "source": "audit-vault-115"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "runtime-pool-116",
+      "protocol": "gRPC (mTLS)",
+      "source": "tool-router-117"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "deploy-hub-118",
+      "protocol": "gRPC (mTLS)",
+      "source": "audit-vault-119"
+    },
+    {
+      "data": "Run events",
+      "destination": "partner-api-121",
+      "protocol": "gRPC (mTLS)",
+      "source": "deploy-hub-120"
+    },
+    {
+      "data": "Run events",
+      "destination": "policy-gate-123",
+      "protocol": "gRPC (mTLS)",
+      "source": "trace-sink-122"
+    },
+    {
+      "data": "Task requests",
+      "destination": "audit-vault-125",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "eval-bench-124"
+    },
+    {
+      "data": "Model calls",
+      "destination": "tool-router-127",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "trace-sink-126"
+    },
+    {
+      "data": "Model calls",
+      "destination": "trace-sink-128",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "policy-gate-129"
+    },
+    {
+      "data": "Task requests",
+      "destination": "tool-router-131",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "policy-gate-130"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "audit-vault-132",
+      "protocol": "gRPC (mTLS)",
+      "source": "task-agent-133"
+    },
+    {
+      "data": "Model calls",
+      "destination": "audit-vault-134",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "task-agent-135"
+    },
+    {
+      "data": "Run events",
+      "destination": "task-agent-137",
+      "protocol": "gRPC (mTLS)",
+      "source": "audit-vault-136"
+    },
+    {
+      "data": "Run events",
+      "destination": "audit-vault-138",
+      "protocol": "gRPC (mTLS)",
+      "source": "partner-api-139"
+    },
+    {
+      "data": "Run events",
+      "destination": "task-agent-141",
+      "protocol": "gRPC (mTLS)",
+      "source": "user-portal-140"
+    },
+    {
+      "data": "Model calls",
+      "destination": "partner-api-142",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "feature-store-143"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "tool-router-145",
+      "protocol": "gRPC (mTLS)",
+      "source": "embed-node-144"
+    },
+    {
+      "data": "Task requests",
+      "destination": "embed-node-146",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "task-agent-147"
+    },
+    {
+      "data": "Run events",
+      "destination": "feature-store-149",
+      "protocol": "gRPC (mTLS)",
+      "source": "embed-node-148"
+    },
+    {
+      "data": "Run events",
+      "destination": "partner-api-151",
+      "protocol": "gRPC (mTLS)",
+      "source": "model-host-150"
+    },
+    {
+      "data": "Model calls",
+      "destination": "tool-router-153",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "vector-index-152"
+    },
+    {
+      "data": "Task requests",
+      "destination": "vector-index-154",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "tool-router-155"
+    },
+    {
+      "data": "Task requests",
+      "destination": "feature-store-156",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "partner-api-157"
+    },
+    {
+      "data": "Task requests",
+      "destination": "partner-api-159",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "task-agent-158"
+    },
+    {
+      "data": "Run events",
+      "destination": "tool-router-160",
+      "protocol": "gRPC (mTLS)",
+      "source": "partner-api-161"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "deploy-hub-162",
+      "protocol": "gRPC (mTLS)",
+      "source": "policy-gate-163"
+    },
+    {
+      "data": "Model calls",
+      "destination": "deploy-hub-164",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "task-agent-165"
+    },
+    {
+      "data": "Task requests",
+      "destination": "policy-gate-167",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "runtime-pool-166"
+    },
+    {
+      "data": "Run events",
+      "destination": "deploy-hub-168",
+      "protocol": "gRPC (mTLS)",
+      "source": "partner-api-169"
+    },
+    {
+      "data": "Task requests",
+      "destination": "audit-vault-171",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "trace-sink-170"
+    },
+    {
+      "data": "Run events",
+      "destination": "policy-gate-173",
+      "protocol": "gRPC (mTLS)",
+      "source": "eval-bench-172"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "eval-bench-174",
+      "protocol": "gRPC (mTLS)",
+      "source": "tool-router-175"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "eval-bench-176",
+      "protocol": "gRPC (mTLS)",
+      "source": "policy-gate-177"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "audit-vault-178",
+      "protocol": "gRPC (mTLS)",
+      "source": "task-agent-179"
+    },
+    {
+      "data": "Run events",
+      "destination": "tool-router-181",
+      "protocol": "gRPC (mTLS)",
+      "source": "audit-vault-180"
+    },
+    {
+      "data": "Model calls",
+      "destination": "tool-router-183",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "policy-gate-182"
+    },
+    {
+      "data": "Model calls",
+      "destination": "task-agent-185",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "policy-gate-184"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "partner-api-187",
+      "protocol": "gRPC (mTLS)",
+      "source": "audit-vault-186"
+    },
+    {
+      "data": "Run events",
+      "destination": "tool-router-189",
+      "protocol": "gRPC (mTLS)",
+      "source": "user-portal-188"
+    },
+    {
+      "data": "Run events",
+      "destination": "vector-index-191",
+      "protocol": "gRPC (mTLS)",
+      "source": "partner-api-190"
+    },
+    {
+      "data": "Model calls",
+      "destination": "tool-router-193",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "embed-node-192"
+    },
+    {
+      "data": "Task requests",
+      "destination": "tool-router-195",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "model-host-194"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "embed-node-196",
+      "protocol": "gRPC (mTLS)",
+      "source": "vector-index-197"
+    },
+    {
+      "data": "Model calls",
+      "destination": "model-host-198",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "user-portal-199"
+    },
+    {
+      "data": "Run events",
+      "destination": "task-agent-201",
+      "protocol": "gRPC (mTLS)",
+      "source": "feature-store-200"
+    },
+    {
+      "data": "Task requests",
+      "destination": "task-agent-203",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "vector-index-202"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "feature-store-204",
+      "protocol": "gRPC (mTLS)",
+      "source": "partner-api-205"
+    },
+    {
+      "data": "Task requests",
+      "destination": "task-agent-206",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "partner-api-207"
+    },
+    {
+      "data": "Run events",
+      "destination": "partner-api-209",
+      "protocol": "gRPC (mTLS)",
+      "source": "tool-router-208"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "audit-vault-211",
+      "protocol": "gRPC (mTLS)",
+      "source": "deploy-hub-210"
+    },
+    {
+      "data": "Model calls",
+      "destination": "deploy-hub-212",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "task-agent-213"
+    },
+    {
+      "data": "Task requests",
+      "destination": "runtime-pool-214",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "audit-vault-215"
+    },
+    {
+      "data": "Run events",
+      "destination": "partner-api-217",
+      "protocol": "gRPC (mTLS)",
+      "source": "runtime-pool-216"
+    },
+    {
+      "data": "Run events",
+      "destination": "audit-vault-219",
+      "protocol": "gRPC (mTLS)",
+      "source": "trace-sink-218"
+    },
+    {
+      "data": "Task requests",
+      "destination": "eval-bench-220",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "policy-gate-221"
+    },
+    {
+      "data": "Model calls",
+      "destination": "eval-bench-222",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "tool-router-223"
+    },
+    {
+      "data": "Task requests",
+      "destination": "eval-bench-224",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "audit-vault-225"
+    },
+    {
+      "data": "Task requests",
+      "destination": "task-agent-227",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "policy-gate-226"
+    },
+    {
+      "data": "Model calls",
+      "destination": "audit-vault-228",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "task-agent-229"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "audit-vault-230",
+      "protocol": "gRPC (mTLS)",
+      "source": "tool-router-231"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "tool-router-233",
+      "protocol": "gRPC (mTLS)",
+      "source": "policy-gate-232"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "user-portal-235",
+      "protocol": "gRPC (mTLS)",
+      "source": "policy-gate-234"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "task-agent-237",
+      "protocol": "gRPC (mTLS)",
+      "source": "partner-api-236"
+    },
+    {
+      "data": "Task requests",
+      "destination": "feature-store-239",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "user-portal-238"
+    },
+    {
+      "data": "Model calls",
+      "destination": "task-agent-241",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "embed-node-240"
+    },
+    {
+      "data": "Run events",
+      "destination": "task-agent-243",
+      "protocol": "gRPC (mTLS)",
+      "source": "embed-node-242"
+    },
+    {
+      "data": "Task requests",
+      "destination": "embed-node-244",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "feature-store-245"
+    },
+    {
+      "data": "Task requests",
+      "destination": "user-portal-247",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "embed-node-246"
+    },
+    {
+      "data": "Task requests",
+      "destination": "task-agent-249",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "vector-index-248"
+    },
+    {
+      "data": "Task requests",
+      "destination": "task-agent-251",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "feature-store-250"
+    },
+    {
+      "data": "Run events",
+      "destination": "user-portal-253",
+      "protocol": "gRPC (mTLS)",
+      "source": "feature-store-252"
+    },
+    {
+      "data": "Run events",
+      "destination": "user-portal-255",
+      "protocol": "gRPC (mTLS)",
+      "source": "tool-router-254"
+    },
+    {
+      "data": "Task requests",
+      "destination": "task-agent-256",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "partner-api-257"
+    },
+    {
+      "data": "Task requests",
+      "destination": "runtime-pool-258",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "audit-vault-259"
+    },
+    {
+      "data": "Model calls",
+      "destination": "runtime-pool-260",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "task-agent-261"
+    },
+    {
+      "data": "Policy checks",
+      "destination": "policy-gate-263",
+      "protocol": "gRPC (mTLS)",
+      "source": "deploy-hub-262"
+    },
+    {
+      "data": "Model calls",
+      "destination": "partner-api-265",
+      "protocol": "HTTPS (TLS 1.3)",
+      "source": "deploy-hub-264"
+    }
+  ],
+  "schema": "tachi.phase1-inventory/1",
+  "trust_zones": [
+    {
+      "components": [
+        "tool-router-3",
+        "task-agent-6",
+        "task-agent-10",
+        "embed-node-12",
+        "task-agent-14",
+        "task-agent-16",
+        "task-agent-20",
+        "model-host-21",
+        "tool-router-23",
+        "tool-router-25",
+        "tool-router-27",
+        "task-agent-31",
+        "task-agent-33",
+        "tool-router-37",
+        "tool-router-39",
+        "embed-node-42",
+        "task-agent-43",
+        "tool-router-44",
+        "model-host-45",
+        "tool-router-46",
+        "embed-node-48",
+        "embed-node-50",
+        "model-host-51",
+        "tool-router-55",
+        "tool-router-58",
+        "tool-router-62",
+        "tool-router-64",
+        "task-agent-69",
+        "tool-router-79",
+        "task-agent-83",
+        "tool-router-85",
+        "tool-router-87",
+        "task-agent-89",
+        "tool-router-93",
+        "embed-node-96",
+        "task-agent-97",
+        "embed-node-98",
+        "tool-router-99",
+        "embed-node-100",
+        "embed-node-102",
+        "task-agent-105",
+        "tool-router-107",
+        "tool-router-110",
+        "tool-router-112",
+        "tool-router-117",
+        "tool-router-127",
+        "tool-router-131",
+        "task-agent-133",
+        "task-agent-135",
+        "task-agent-137",
+        "task-agent-141",
+        "embed-node-144",
+        "tool-router-145",
+        "embed-node-146",
+        "task-agent-147",
+        "embed-node-148",
+        "model-host-150",
+        "tool-router-153",
+        "tool-router-155",
+        "task-agent-158",
+        "tool-router-160",
+        "task-agent-165",
+        "tool-router-175",
+        "task-agent-179",
+        "tool-router-181",
+        "tool-router-183",
+        "task-agent-185",
+        "tool-router-189",
+        "embed-node-192",
+        "tool-router-193",
+        "model-host-194",
+        "tool-router-195",
+        "embed-node-196",
+        "model-host-198",
+        "task-agent-201",
+        "task-agent-203",
+        "task-agent-206",
+        "tool-router-208",
+        "task-agent-213",
+        "tool-router-223",
+        "task-agent-227",
+        "task-agent-229",
+        "tool-router-231",
+        "tool-router-233",
+        "task-agent-237",
+        "embed-node-240",
+        "task-agent-241",
+        "embed-node-242",
+        "task-agent-243",
+        "embed-node-244",
+        "embed-node-246",
+        "task-agent-249",
+        "task-agent-251",
+        "tool-router-254",
+        "task-agent-256",
+        "task-agent-261"
+      ],
+      "name": "Agent Runtime Zone"
+    },
+    {
+      "components": [
+        "vector-index-13",
+        "vector-index-22",
+        "vector-index-24",
+        "feature-store-32",
+        "vector-index-36",
+        "feature-store-49",
+        "feature-store-53",
+        "vector-index-54",
+        "vector-index-57",
+        "vector-index-60",
+        "feature-store-95",
+        "vector-index-101",
+        "vector-index-104",
+        "feature-store-106",
+        "feature-store-108",
+        "feature-store-143",
+        "feature-store-149",
+        "vector-index-152",
+        "vector-index-154",
+        "feature-store-156",
+        "vector-index-191",
+        "vector-index-197",
+        "feature-store-200",
+        "vector-index-202",
+        "feature-store-204",
+        "feature-store-239",
+        "feature-store-245",
+        "vector-index-248",
+        "feature-store-250",
+        "feature-store-252"
+      ],
+      "name": "Data Zone"
+    },
+    {
+      "components": [
+        "partner-api-7",
+        "user-portal-11",
+        "user-portal-17",
+        "partner-api-29",
+        "partner-api-30",
+        "user-portal-52",
+        "partner-api-61",
+        "partner-api-63",
+        "partner-api-65",
+        "partner-api-73",
+        "partner-api-91",
+        "partner-api-92",
+        "user-portal-94",
+        "user-portal-103",
+        "user-portal-109",
+        "partner-api-111",
+        "partner-api-113",
+        "partner-api-121",
+        "partner-api-139",
+        "user-portal-140",
+        "partner-api-142",
+        "partner-api-151",
+        "partner-api-157",
+        "partner-api-159",
+        "partner-api-161",
+        "partner-api-169",
+        "partner-api-187",
+        "user-portal-188",
+        "partner-api-190",
+        "user-portal-199",
+        "partner-api-205",
+        "partner-api-207",
+        "partner-api-209",
+        "partner-api-217",
+        "user-portal-235",
+        "partner-api-236",
+        "user-portal-238",
+        "user-portal-247",
+        "user-portal-253",
+        "user-portal-255",
+        "partner-api-257",
+        "partner-api-265"
+      ],
+      "name": "Edge DMZ"
+    },
+    {
+      "components": [
+        "eval-bench-1",
+        "policy-gate-2",
+        "runtime-pool-4",
+        "audit-vault-5",
+        "deploy-hub-8",
+        "audit-vault-9",
+        "deploy-hub-15",
+        "eval-bench-18",
+        "policy-gate-19",
+        "runtime-pool-26",
+        "deploy-hub-28",
+        "deploy-hub-34",
+        "policy-gate-35",
+        "eval-bench-38",
+        "trace-sink-40",
+        "policy-gate-41",
+        "runtime-pool-47",
+        "legacy-adapter-56",
+        "legacy-adapter-59",
+        "deploy-hub-66",
+        "audit-vault-67",
+        "runtime-pool-68",
+        "runtime-pool-70",
+        "audit-vault-71",
+        "deploy-hub-72",
+        "eval-bench-74",
+        "audit-vault-75",
+        "eval-bench-76",
+        "audit-vault-77",
+        "trace-sink-78",
+        "trace-sink-80",
+        "audit-vault-81",
+        "policy-gate-82",
+        "audit-vault-84",
+        "audit-vault-86",
+        "policy-gate-88",
+        "audit-vault-90",
+        "deploy-hub-114",
+        "audit-vault-115",
+        "runtime-pool-116",
+        "deploy-hub-118",
+        "audit-vault-119",
+        "deploy-hub-120",
+        "trace-sink-122",
+        "policy-gate-123",
+        "eval-bench-124",
+        "audit-vault-125",
+        "trace-sink-126",
+        "trace-sink-128",
+        "policy-gate-129",
+        "policy-gate-130",
+        "audit-vault-132",
+        "audit-vault-134",
+        "audit-vault-136",
+        "audit-vault-138",
+        "deploy-hub-162",
+        "policy-gate-163",
+        "deploy-hub-164",
+        "runtime-pool-166",
+        "policy-gate-167",
+        "deploy-hub-168",
+        "trace-sink-170",
+        "audit-vault-171",
+        "eval-bench-172",
+        "policy-gate-173",
+        "eval-bench-174",
+        "eval-bench-176",
+        "policy-gate-177",
+        "audit-vault-178",
+        "audit-vault-180",
+        "policy-gate-182",
+        "policy-gate-184",
+        "audit-vault-186",
+        "deploy-hub-210",
+        "audit-vault-211",
+        "deploy-hub-212",
+        "runtime-pool-214",
+        "audit-vault-215",
+        "runtime-pool-216",
+        "trace-sink-218",
+        "audit-vault-219",
+        "eval-bench-220",
+        "policy-gate-221",
+        "eval-bench-222",
+        "eval-bench-224",
+        "audit-vault-225",
+        "policy-gate-226",
+        "audit-vault-228",
+        "audit-vault-230",
+        "policy-gate-232",
+        "policy-gate-234",
+        "runtime-pool-258",
+        "audit-vault-259",
+        "runtime-pool-260",
+        "deploy-hub-262",
+        "policy-gate-263",
+        "deploy-hub-264"
+      ],
+      "name": "Operations Zone"
+    }
+  ]
+}

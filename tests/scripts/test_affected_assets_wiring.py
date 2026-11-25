@@ -500,17 +500,20 @@ def test_populate_preserves_existing_tables_byte_stable():
 # This section replicates the PRODUCTION sequence verbatim: populate (the single
 # deterministic value authority) → THEN emit each SARIF surface, both sourcing the
 # value from the populator's block and never re-deriving it from
-# ``component_asset_map``. The threats-sarif path calls the generator's
-# ``build_sarif`` exactly as its ``main()`` does, with the shared
-# ``sarif_common.parse_affected_assets`` extractor. The risk-scores path runs
-# ``render-risk-scores.py`` itself, in-process, on the populated document: F-374
-# (T054, #357) retired ``generate-risk-scores-sarif.py``, so the surface under
-# test is the ``risk-scores.sarif`` that the renderer writes, not a result built
-# by hand. ``tachi-stage.py`` plans, one valid part is written per batch,
-# ``reconcile`` completes the plan, and the renderer reads the block, checks it
-# against the architecture file's own tags and writes the file (ADR-050 D2, S-13).
+# ``component_asset_map``. The threats-sarif path runs
+# ``generate-threats-sarif.py`` itself, in-process, through ``main(argv)``, on the
+# populated document: F-374 (T100, ADR-050 D1) rewrote it as the shipped
+# generator on the shared emitter, so the surface under test is the
+# ``threats.sarif`` that it writes, not a result built by hand from its
+# internals. It copies each finding's value from the block. The risk-scores path
+# runs ``render-risk-scores.py`` itself, in-process, on the populated document:
+# F-374 (T054, #357) retired ``generate-risk-scores-sarif.py``, so the surface
+# under test is the ``risk-scores.sarif`` that the renderer writes.
+# ``tachi-stage.py`` plans, one valid part is written per batch, ``reconcile``
+# completes the plan, and the renderer reads the block, checks it against the
+# architecture file's own tags and writes the file (ADR-050 D2, S-13).
 # The project harness is the renderer goldens' (``test_render_risk_scores.py``),
-# imported when a case first needs it.
+# imported when a case first needs it; its ``invoke`` drives both entries.
 #
 # Hyphenated script filenames are not importable by name; loaded via
 # ``importlib.util.spec_from_file_location`` (the same precedent the module
@@ -538,7 +541,7 @@ def _load_script_module(filename: str, modname: str):
     return module
 
 
-_gen_threats = _load_script_module("generate-threats-sarif.py", "generate_threats_sarif")
+_gen_threats = _load_script_module("generate-threats-sarif.py", "generate_threats_sarif")  # the shipped generator: driven through its main(argv), never its internals
 
 
 @functools.lru_cache(maxsize=None)
@@ -558,34 +561,22 @@ def _renderer_entries():
 # Cross-format worked-example fixture builders
 # -----------------------------------------------------------------------------
 #
-# The populator reads the Section 7 table (parse_threats_findings); the
-# threats-sarif generator reads the Section 3 STRIDE table (its own
-# parse_findings, which requires the "## 3. STRIDE Threat Tables" .. "## 5."
-# boundaries and 10-column rows with a bracketed [STATUS]). A single cross-format
-# threats.md must therefore carry BOTH tables, keyed on the same finding IDs and
+# The populator reads the Section 7 table (parse_threats_findings), and so do the
+# two SARIF writers: the generator takes its member set from Section 7 through
+# the reference-set wrapper (ADR-050 D8), as the renderer does. One cross-format
+# threats.md therefore carries one findings table, keyed on the finding IDs and
 # components, so that one populate→emit pass feeds all three surfaces from one
-# document. ``_arch`` (T007) is reused verbatim for the architecture input.
-
-
-def _xfmt_stride_row(fid: str, component: str, status: str = "NEW") -> str:
-    """One 10-column Section 3 STRIDE row (the shape generator.parse_findings reads).
-
-    Columns: ``Finding ID | [STATUS] | Component | MAESTRO | Pattern | Threat |
-    Likelihood | Impact | Risk Level | Mitigation`` — exactly the 10 fields
-    ``generate-threats-sarif.py::parse_findings`` unpacks for a STRIDE prefix.
-    """
-    return (
-        f"| {fid} | [{status}] | {component} | L7 — Agent Ecosystem | — | "
-        f"Threat narrative for {fid} | HIGH | HIGH | High | Mitigation for {fid} |"
-    )
+# document. (Before T100 the generator read a Section 3 STRIDE table of its own,
+# between the "## 3." and "## 5." headings, and the fixture carried one.)
+# ``_arch`` (T007) is reused verbatim for the architecture input.
 
 
 def _xfmt_section7_row(fid: str, component: str, status: str = "NEW") -> str:
     """One Section 7 Recommended Actions row (the shape the populator reads).
 
     Columns: ``Finding ID | Status | Component | Threat | Risk Level |
-    Mitigation`` — ``parse_threats_findings`` keys by column name, so this subset
-    joins the same ``fid``/``component`` the STRIDE row above declares.
+    Mitigation`` — ``parse_threats_findings`` keys by column name, and so does
+    the reference-set wrapper that both SARIF writers read.
     """
     return (
         f"| {fid} | [{status}] | {component} | Threat narrative for {fid} | "
@@ -597,13 +588,11 @@ def _xfmt_threats(findings: "list[tuple[str, str]]") -> str:
     """Assemble a cross-format threats.md from ``(finding_id, component)`` pairs.
 
     Emits Section 1's Components table and Section 2's Trust Zones table (the
-    scope data that ``render-risk-scores.py`` reads for each component's type and
-    zone, and that the threats-sarif generator's component metadata reads),
-    Section 3 (STRIDE table — read by the threats-sarif generator), Section 5
-    (boundary marker the generator requires), and Section 7 (Recommended
-    Actions — read by the populator and by the renderer's reference set). Every
-    finding appears in BOTH the Section 3 and Section 7 tables so the populator,
-    the threats-sarif generator and the renderer key on an identical finding set.
+    scope data that ``render-risk-scores.py`` and the threats-sarif generator
+    read for each component's type, layer and zone), and Section 7
+    (Recommended Actions — read by the populator, by the renderer's reference set
+    and by the generator's). Every finding appears in Section 7, so the
+    populator, the generator and the renderer key on an identical finding set.
     """
     components = []
     seen = set()
@@ -629,17 +618,6 @@ def _xfmt_threats(findings: "list[tuple[str, str]]") -> str:
         f"| Application Zone | Trusted | {', '.join(components)} |\n"
     )
 
-    stride = (
-        "## 3. STRIDE Threat Tables\n\n"
-        "| Finding ID | Status | Component | MAESTRO Layer | Agentic Pattern | "
-        "Threat | Likelihood | Impact | Risk Level | Mitigation |\n"
-        "|---|---|---|---|---|---|---|---|---|---|\n"
-        + "".join(_xfmt_stride_row(fid, comp) + "\n" for fid, comp in findings)
-    )
-
-    # Section 5 boundary marker — parse_findings slices Section 3 .. Section 5.
-    coverage = "## 5. Coverage Matrix\n\nCoverage details elided for the fixture.\n"
-
     section7 = (
         "## 7. Recommended Actions\n\n"
         "| Finding ID | Status | Component | Threat | Risk Level | Mitigation |\n"
@@ -653,30 +631,47 @@ def _xfmt_threats(findings: "list[tuple[str, str]]") -> str:
         + "\n"
         + zone_table
         + "\n"
-        + stride
-        + "\n"
-        + coverage
-        + "\n"
         + section7
     )
 
 
-def _threats_sarif_assets_by_id(populated_threats_md: str) -> dict:
-    """Emit threats.sarif from the populated threats.md and return id→assets.
+def _generate_threats_sarif(populated_threats_md: str, arch: str, root: Path, flag: bool = True) -> Path:
+    """Run ``generate-threats-sarif.py`` on the populated ``threats.md``; return the path of the ``threats.sarif`` it wrote.
 
-    Replicates ``generate-threats-sarif.py::main`` exactly: parse component
-    metadata, parse the shared ``affected_assets`` block, parse Section 3/4
-    findings, then ``build_sarif``. Returns the per-result
-    ``properties.affected_assets`` keyed by finding ID (``findingId/v1``
+    The generator runs in-process through ``main(argv)``, as ``/tachi.threat-model`` runs it at Step 2.10 (ADR-050 D1; H15): it reads
+    the compiled ``threats.md`` (Section 7 for the findings, Sections 1 and 2 for each component, and the populator's block for
+    ``affected_assets``) and writes ``threats.sarif`` beside it. ``root`` must not exist yet: the project is built under it, a run
+    directory and the architecture file at the default path. With ``flag`` the command's own path is passed as ``--architecture``, and
+    without it the generator's chain starts at the body line and reaches the default (ADR-050 D7). The driver is the renderer
+    goldens' ``invoke``.
+    """
+    harness, _stage, _renderer = _renderer_entries()
+    run_dir = root / "run"
+    run_dir.mkdir(parents=True)
+    threats = run_dir / "threats.md"
+    threats.write_text(populated_threats_md, encoding="utf-8")
+    architecture = root / "docs" / "security" / "architecture.md"
+    architecture.parent.mkdir(parents=True)
+    architecture.write_text(arch, encoding="utf-8")
+    argv = ["--threats", threats, "--out", run_dir] + (["--architecture", "docs/security/architecture.md"] if flag else [])
+    result = harness.invoke(_gen_threats, argv, root)
+    assert result.code == 0, result.describe()
+    if flag:  # the architecture path resolves, and the run is clean
+        assert result.err == "", result.describe()
+    else:  # the chain's one warning is the absent body line, and the default path still resolves
+        assert result.err.count("WARNING") == 1 and "architecture-path:body-line:absent" in result.err, result.describe()
+    return run_dir / "threats.sarif"
+
+
+def _threats_sarif_assets_by_id(populated_threats_md: str, arch: str, root: Path) -> dict:
+    """Emit threats.sarif from the populated threats.md (``_generate_threats_sarif``) and return id→assets.
+
+    Returns the per-result ``properties.affected_assets`` keyed by finding ID (``findingId/v1``
     fingerprint) — and, importantly, asserts the literal snake_case key is
     present in each result's raw ``properties`` dict (contract §3 key-string
     identity, architect LOW advisory).
     """
-    md_path = _write_threats(populated_threats_md, "threats-xfmt.md")
-    component_meta = _gen_threats.parse_component_metadata(populated_threats_md)
-    affected_by_id = parse_affected_assets(populated_threats_md)
-    findings = _gen_threats.parse_findings(md_path)
-    sarif = _gen_threats.build_sarif(findings, component_meta, affected_by_id)
+    sarif = json.loads(_generate_threats_sarif(populated_threats_md, arch, root).read_text(encoding="utf-8"))
 
     out: dict = {}
     for result in sarif["runs"][0]["results"]:
@@ -740,18 +735,9 @@ def _risk_scores_sarif_assets_by_id(populated_threats_md: str, arch: str, findin
     return out
 
 
-# ``tmp_path``-scoped writer — every generated artifact lives under the test's
-# temporary directory; nothing is written into ``examples/`` or committed. Set by
-# the fixture-driven tests below before calling the SARIF emitters.
-_TMP_DIR: Path | None = None
-
-
-def _write_threats(content: str, name: str) -> Path:
-    """Write ``content`` to ``_TMP_DIR/name`` and return the path (tmp-scoped)."""
-    assert _TMP_DIR is not None, "_TMP_DIR not set — call inside a tmp_path test"
-    path = _TMP_DIR / name
-    path.write_text(content, encoding="utf-8")
-    return path
+# Every generated artifact lives under the test's ``tmp_path``; nothing is written
+# into ``examples/`` or committed. Both emitters build their project under a root
+# that each case passes (``_generate_threats_sarif``, ``_render_risk_scores``).
 
 
 # -----------------------------------------------------------------------------
@@ -773,9 +759,6 @@ def test_sc006_cross_format_equality_table(tmp_path):
     all three surfaces (present, not missing), and identical element order (no
     re-sort / dedup divergence between surfaces).
     """
-    global _TMP_DIR
-    _TMP_DIR = tmp_path
-
     # Two differently-tagged components + one untagged component.
     arch = _arch(
         'DB[("Records Store<br/>[asset:phi,pii]")]',
@@ -797,7 +780,7 @@ def test_sc006_cross_format_equality_table(tmp_path):
     block = parse_affected_assets(populated)
 
     # Production step 2: emit BOTH SARIF surfaces from the SAME populated doc.
-    threats_sarif = _threats_sarif_assets_by_id(populated)
+    threats_sarif = _threats_sarif_assets_by_id(populated, arch, tmp_path / "threats-sarif-run")
     risk_sarif = _risk_scores_sarif_assets_by_id(populated, arch, worked, tmp_path / "risk-scores-run")
 
     expected = {
@@ -835,9 +818,6 @@ def test_sc006_untagged_finding_is_present_not_missing(tmp_path):
     ``"affected_assets": []`` in the block and BOTH SARIF surfaces — never an
     omitted key. Asserts membership before value so an omission fails loudly.
     """
-    global _TMP_DIR
-    _TMP_DIR = tmp_path
-
     arch = _arch(
         'DB[("Records Store<br/>[asset:pii]")]',
         'Web["Public Web Frontend"]',  # untagged
@@ -849,7 +829,7 @@ def test_sc006_untagged_finding_is_present_not_missing(tmp_path):
     populated = populator.populate(arch, _xfmt_threats(worked))
 
     block = parse_affected_assets(populated)
-    threats_sarif = _threats_sarif_assets_by_id(populated)
+    threats_sarif = _threats_sarif_assets_by_id(populated, arch, tmp_path / "threats-sarif-run")
     risk_sarif = _risk_scores_sarif_assets_by_id(populated, arch, worked, tmp_path / "risk-scores-run")
 
     for surface_name, surface in (
@@ -875,9 +855,6 @@ def test_sc006_key_string_is_snake_case_in_both_sarif_surfaces(tmp_path):
     This re-runs the emitters and re-asserts the key on the raw envelopes here so
     the key-string check is a first-class test, not only an internal helper guard.
     """
-    global _TMP_DIR
-    _TMP_DIR = tmp_path
-
     arch = _arch(
         'DB[("Records Store<br/>[asset:phi,pii]")]',
         'Web["Public Web Frontend"]',  # untagged → [] result must still carry the key
@@ -888,12 +865,8 @@ def test_sc006_key_string_is_snake_case_in_both_sarif_surfaces(tmp_path):
     ]
     populated = populator.populate(arch, _xfmt_threats(worked))
 
-    # threats.sarif — inspect the raw envelope's result.properties keys.
-    md_path = _write_threats(populated, "threats-keycheck.md")
-    component_meta = _gen_threats.parse_component_metadata(populated)
-    affected_by_id = parse_affected_assets(populated)
-    t_findings = _gen_threats.parse_findings(md_path)
-    threats_sarif = _gen_threats.build_sarif(t_findings, component_meta, affected_by_id)
+    # threats.sarif — the file the generator wrote: inspect each result's raw properties keys.
+    threats_sarif = json.loads(_generate_threats_sarif(populated, arch, tmp_path / "threats-sarif-run").read_text(encoding="utf-8"))
 
     t_results = threats_sarif["runs"][0]["results"]
     assert t_results, "threats.sarif produced no results for the worked example"
@@ -924,32 +897,25 @@ def test_sc006_emitted_sarif_serializes_to_valid_json(tmp_path):
     """Both emitted SARIF envelopes round-trip through JSON with the field intact.
 
     Structural guard mirroring the production write step: the threats-sarif
-    generator writes ``json.dumps(sarif, indent=2)``, so that envelope is
-    serialized and re-parsed here; the renderer writes ``risk-scores.sarif``
-    itself, so that file is read back from disk and parsed. Either way the
-    snake_case ``affected_assets`` value must survive JSON encoding
-    byte-for-byte (same list, same order) on both surfaces. Written under
-    ``tmp_path`` only.
+    generator writes its file through the shared emitter (two-space JSON, ASCII,
+    one final newline), so the file is read back from disk and parsed, and its
+    text must be exactly what re-serializing the parsed envelope gives; the
+    renderer writes ``risk-scores.sarif`` itself, so that file is read back from
+    disk and parsed. Either way the snake_case ``affected_assets`` value must
+    survive JSON encoding byte-for-byte (same list, same order) on both
+    surfaces. Written under ``tmp_path`` only.
     """
-    global _TMP_DIR
-    _TMP_DIR = tmp_path
-
     arch = _arch(
         'DB[("Records Store<br/>[asset:auth,phi,pii]")]',
         'Web["Public Web Frontend"]',
     )
     worked = [("S-1", "Records Store"), ("I-2", "Public Web Frontend")]
     populated = populator.populate(arch, _xfmt_threats(worked))
-    affected_by_id = parse_affected_assets(populated)
 
-    # threats.sarif → JSON file → re-parse.
-    md_path = _write_threats(populated, "threats-json.md")
-    t_findings = _gen_threats.parse_findings(md_path)
-    t_meta = _gen_threats.parse_component_metadata(populated)
-    t_sarif = _gen_threats.build_sarif(t_findings, t_meta, affected_by_id)
-    t_out = tmp_path / "threats.sarif"
-    t_out.write_text(json.dumps(t_sarif, indent=2) + "\n", encoding="utf-8")
-    t_reloaded = json.loads(t_out.read_text(encoding="utf-8"))
+    # threats.sarif → the file the generator wrote (the production write step) → re-parse.
+    t_text = _generate_threats_sarif(populated, arch, tmp_path / "threats-sarif-run").read_text(encoding="utf-8")
+    t_reloaded = json.loads(t_text)
+    assert t_text == json.dumps(t_reloaded, indent=2) + "\n", "the file is the emitter's two-space JSON and loses nothing in a round trip"
 
     t_by_id = {
         r["partialFingerprints"]["findingId/v1"]: r["properties"]["affected_assets"]
@@ -1272,120 +1238,74 @@ def test_sc004_affected_assets_independent_of_score_fields():
 
 
 # =============================================================================
-# ===== FR-014 (F-295 / T010-T011) — input-path-derived artifactLocation.uri =====
+# ===== FR-014 (F-295 / T010-T011), as ADR-050 D7 rules it — the URI is the architecture file =====
 # =============================================================================
 #
 # generate-threats-sarif.py::build_result used to hardcode
 # ``locations[0].physicalLocation.artifactLocation.uri`` to the literal string
-# ``"examples/agentic-app/sample-report/threats.md"``. F-295 FR-014 replaces
-# that constant with ``artifact_uri_for(input_path)``, threaded through
-# ``build_sarif`` / ``build_result`` as a ``source_uri`` parameter (default =
-# the original constant, so any caller that omits it — including this
-# module's pre-existing SC-006 tests above — keeps emitting the pre-FR-014
-# uri byte-for-byte; this is the seam that makes the T010 L-a proof's
-# BEFORE/AFTER ``cmp`` on the CLI path byte-identical for the agentic-app
-# fixture). These tests cover: (1) the derivation helper's repo-relative POSIX
-# normalization for an in-repo target, (2) its fallback for a non-agentic-app
-# path OUTSIDE the repo (a pytest ``tmp_path`` fixture file — the exact case
-# plan.md D-C / this task calls out), (3) real end-to-end wiring into the
-# emitted SARIF envelope, and (4) the default-parameter backward-compatibility
-# guarantee the L-a proof depends on.
+# ``"examples/agentic-app/sample-report/threats.md"``. F-295 FR-014 replaced
+# that constant with ``artifact_uri_for(input_path)``, a repo-relative POSIX path
+# derived from the generator's own input, threaded through ``build_sarif`` /
+# ``build_result`` as a ``source_uri`` parameter whose default kept the old
+# constant. F-374 (T100; ADR-050 D1 and D7) rewrote the generator on the shared
+# emitter, and ``artifact_uri_for`` doesn't survive: the URI is now the user's
+# architecture file, one shared resolver sets it, and no script derives one from
+# its input or takes a finished one. FR-014's intent lives on in two cases, below:
+# the URI is repo-relative POSIX whatever path the caller typed, and it is never
+# the stale agentic-app constant.
+#
+# Four cases pinned the retired function and its seam. Two are retired, because the
+# identity layer pins their cases through the resolver now:
+#
+# * ``test_fr014_artifact_uri_for_repo_relative_path_matches_second_example``: an
+#   in-repo input path derived its repo-relative spelling. The resolver's
+#   repo-relative spelling is pinned by ``test_threats_sarif.py``'s
+#   ``test_uri_the_flag_is_resolved_in_code_so_an_absolute_path_becomes_the_repo_relative_spelling``
+#   and by ``test_sarif_identity.py`` section 22's carrier chain.
+# * ``test_fr014_artifact_uri_for_tmp_path_outside_repo_falls_back_to_resolved_posix``:
+#   a path outside the repository kept its resolved absolute POSIX path. D7
+#   refuses a path outside the working directory (``outside-root``), warns and
+#   falls back, which section 22's ``URI_CASES`` pin.
+#
+# The other two follow D1 and D7 here, on the generator's file: the wiring case and
+# the default-seam case (``source_uri`` omitted, so the agentic-app constant).
 
 
-def test_fr014_artifact_uri_for_repo_relative_path_matches_second_example():
-    """``artifact_uri_for`` derives the exact FR-014 second example's uri.
+def test_fr014_every_result_carries_the_resolvers_architecture_uri_never_the_old_constant(tmp_path):
+    """The generator's file points at the architecture file, as the resolver spells it, and not at the stale constant.
 
-    T010: for an in-repo target path (the ``examples/multi-tenant-rag-app/``
-    baseline this feature's US-2 commits), the derived uri equals the path
-    expressed relative to the repository root in POSIX form — matching
-    plan.md D-C / quickstart.md Stage 2.3's second worked example exactly:
-    input ``examples/multi-tenant-rag-app/threats.md`` -> uri
-    ``examples/multi-tenant-rag-app/threats.md``.
+    FR-014 wiring guard on the production call sequence (the generator through ``main(argv)``, on a ``threats.md`` that sits under a
+    non-agentic-app ``tmp_path`` outside the repository): every result's ``locations[0].physicalLocation.artifactLocation.uri`` is the
+    architecture file's repo-relative POSIX spelling, whatever the path of the ``threats.md`` that was read, and never the pre-FR-014
+    hardcoded constant.
     """
-    target = REPO_ROOT / "examples" / "multi-tenant-rag-app" / "threats.md"
-
-    uri = _gen_threats.artifact_uri_for(target)
-
-    assert uri == "examples/multi-tenant-rag-app/threats.md"
-
-
-def test_fr014_artifact_uri_for_tmp_path_outside_repo_falls_back_to_resolved_posix(tmp_path):
-    """A non-agentic-app path OUTSIDE the repo (pytest ``tmp_path``) still normalizes.
-
-    T011 covering assertion (the exact case the task calls out): pytest's
-    ``tmp_path`` fixture lives under the OS temp directory, outside
-    ``REPO_ROOT``, so ``relative_to`` raises ``ValueError`` internally and
-    ``artifact_uri_for`` falls back to the resolved absolute POSIX path —
-    still deterministic and platform-normalized (no backslashes), and never
-    the stale agentic-app constant.
-    """
-    target = tmp_path / "threats.md"
-    target.write_text("placeholder", encoding="utf-8")
-
-    uri = _gen_threats.artifact_uri_for(target)
-
-    assert uri == target.resolve().as_posix()
-    assert uri != "examples/agentic-app/sample-report/threats.md"
-    assert "\\" not in uri  # POSIX-normalized regardless of platform
-
-
-def test_fr014_build_sarif_wires_derived_uri_into_artifact_location(tmp_path):
-    """``build_sarif``/``build_result`` emit the derived uri, not the old constant.
-
-    FR-014 wiring guard: exercises the real production call sequence
-    (``parse_findings`` -> ``build_sarif``) against a ``threats.md`` written at
-    a non-agentic-app ``tmp_path``, with ``source_uri`` computed by
-    ``artifact_uri_for`` exactly as ``generate-threats-sarif.py::main()`` does.
-    Confirms every result's
-    ``locations[0].physicalLocation.artifactLocation.uri`` equals the derived
-    uri, not the pre-FR-014 hardcoded constant.
-    """
-    global _TMP_DIR
-    _TMP_DIR = tmp_path
-
     arch = _arch('DB[("Records Store<br/>[asset:pii]")]')
     worked = [("S-1", "Records Store")]
     populated = populator.populate(arch, _xfmt_threats(worked))
 
-    md_path = _write_threats(populated, "threats-fr014.md")
-    component_meta = _gen_threats.parse_component_metadata(populated)
-    affected_by_id = parse_affected_assets(populated)
-    findings = _gen_threats.parse_findings(md_path)
+    path = _generate_threats_sarif(populated, arch, tmp_path / "threats-sarif-run")
+    results = json.loads(path.read_text(encoding="utf-8"))["runs"][0]["results"]
 
-    source_uri = _gen_threats.artifact_uri_for(md_path)
-    sarif = _gen_threats.build_sarif(findings, component_meta, affected_by_id, source_uri)
-
-    results = sarif["runs"][0]["results"]
     assert results, "no results produced for the FR-014 wiring fixture"
     for result in results:
         got_uri = result["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
-        assert got_uri == source_uri == md_path.resolve().as_posix()
+        assert got_uri == "docs/security/architecture.md"
         assert got_uri != "examples/agentic-app/sample-report/threats.md"
+        assert str(tmp_path) not in got_uri and "\\" not in got_uri  # repo-relative and POSIX, never the absolute path of the input
 
 
-def test_fr014_build_sarif_default_source_uri_preserves_agentic_app_constant(tmp_path):
-    """Omitting ``source_uri`` still yields the original agentic-app constant.
+def test_fr014_with_no_architecture_flag_the_default_path_applies_and_the_old_constant_is_gone(tmp_path):
+    """Without ``--architecture`` the resolver's chain reaches the default path, never the agentic-app constant.
 
-    L-a regression guard: ``build_sarif``'s ``source_uri`` parameter defaults
-    to the exact string the hardcoded constant used to be, so any caller that
-    does not pass it explicitly (e.g. this module's pre-existing SC-006 tests
-    above) keeps emitting the pre-FR-014 uri byte-for-byte. This default is
-    what makes the T010 L-a proof's BEFORE/AFTER ``cmp`` on
-    ``generate-threats-sarif.py``'s CLI path (which DOES pass ``source_uri``)
-    byte-identical for the ``examples/agentic-app/`` fixture.
+    The old ``source_uri`` default kept the constant for a caller that omitted it. That seam went with ``build_sarif`` (D1), so a run that
+    names no architecture path has no body line either and falls to ``docs/security/architecture.md`` (ADR-050 D7), which exists here.
     """
-    global _TMP_DIR
-    _TMP_DIR = tmp_path
-
     arch = _arch('DB[("Records Store<br/>[asset:pii]")]')
     worked = [("S-1", "Records Store")]
     populated = populator.populate(arch, _xfmt_threats(worked))
-    md_path = _write_threats(populated, "threats-fr014-default.md")
-    component_meta = _gen_threats.parse_component_metadata(populated)
-    affected_by_id = parse_affected_assets(populated)
-    findings = _gen_threats.parse_findings(md_path)
 
-    sarif = _gen_threats.build_sarif(findings, component_meta, affected_by_id)  # source_uri omitted
+    path = _generate_threats_sarif(populated, arch, tmp_path / "threats-sarif-run", flag=False)
 
-    uri = sarif["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
-    assert uri == "examples/agentic-app/sample-report/threats.md"
+    uri = json.loads(path.read_text(encoding="utf-8"))["runs"][0]["results"][0]["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
+    assert uri == "docs/security/architecture.md"
+    assert uri != "examples/agentic-app/sample-report/threats.md"

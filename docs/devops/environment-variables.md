@@ -170,6 +170,8 @@ There is **no new secret to provision**. The `workflow_dispatch` input `inject_s
 
 Neither change reads or introduces an environment variable — both are pure `paths:` trigger-list (+ one pytest-invocation line for T017) lock-step edits per the F-250 convention.
 
+**Since Feature 374, PR 2 (2026-11-25):** `normalize_owasp_id` retired with the old `scripts/generate-threats-sarif.py`, and so did its matrix in `test_owasp_2026_contract.py` (ADR-048's 2026-11-25 note). The module stays in `tachi-pytest.yml` with the FR-012a taxa contract and two cases on the rewritten generator. No environment variable is involved.
+
 **Reference**: `specs/362-remap-owasp-llm-top10-2026/spec.md` (FR-012a). Workflow walkthrough: `docs/devops/CI_CD_GUIDE.md` → "Tachi Pytest Workflow" → "Feature History" and → "Tachi Catalog Drift Guard Workflow" → "Feature History".
 
 ---

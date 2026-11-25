@@ -1,0 +1,134 @@
+{
+  "rows": [
+    {
+      "ai": [],
+      "component": "client-portal",
+      "stride": [
+        "S",
+        "R"
+      ]
+    },
+    {
+      "ai": [
+        "LLM"
+      ],
+      "component": "edge-gateway",
+      "stride": [
+        "S",
+        "T",
+        "R",
+        "I",
+        "D",
+        "E"
+      ]
+    },
+    {
+      "ai": [],
+      "component": "auth-broker",
+      "stride": [
+        "S",
+        "T",
+        "R",
+        "I",
+        "D",
+        "E"
+      ]
+    },
+    {
+      "ai": [
+        "AG",
+        "LLM"
+      ],
+      "component": "intake-agent",
+      "stride": [
+        "S",
+        "T",
+        "R",
+        "I",
+        "D",
+        "E"
+      ]
+    },
+    {
+      "ai": [
+        "AG",
+        "LLM"
+      ],
+      "component": "planner-agent",
+      "stride": [
+        "S",
+        "T",
+        "R",
+        "I",
+        "D",
+        "E"
+      ]
+    },
+    {
+      "ai": [
+        "AG",
+        "LLM"
+      ],
+      "component": "worker-2",
+      "stride": [
+        "S",
+        "T",
+        "R",
+        "I",
+        "D",
+        "E"
+      ]
+    },
+    {
+      "ai": [
+        "AG",
+        "LLM"
+      ],
+      "component": "tool-server-1",
+      "stride": [
+        "S",
+        "T",
+        "R",
+        "I",
+        "D",
+        "E"
+      ]
+    },
+    {
+      "ai": [
+        "LLM"
+      ],
+      "component": "model-gateway",
+      "stride": [
+        "S",
+        "T",
+        "R",
+        "I",
+        "D",
+        "E"
+      ]
+    },
+    {
+      "ai": [
+        "LLM"
+      ],
+      "component": "vector-store-a",
+      "stride": [
+        "T",
+        "I",
+        "D"
+      ]
+    },
+    {
+      "ai": [],
+      "component": "audit-ledger",
+      "stride": [
+        "T",
+        "R",
+        "I",
+        "D"
+      ]
+    }
+  ],
+  "schema": "tachi.phase1-dispatch/1"
+}
