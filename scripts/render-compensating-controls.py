@@ -1853,13 +1853,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _run(args: argparse.Namespace) -> int:
-    out = os.path.abspath(os.fspath(args.out))
-    if not os.path.isdir(out):
-        raise RenderError(1, "--out is not a directory", "create it or correct --out")
-    if not tp.id_matches("plan", args.plan):
-        raise RenderError(2, "--plan is not a plan ID", "pass the plan ID that plan printed")
-    if re.fullmatch(r"[0-9a-f]{64}", args.plan_digest, re.ASCII) is None:
-        raise RenderError(2, "--plan-digest is not a SHA-256 in lowercase hex", "pass the digest that the last plan or reconcile printed")
+    out = tp.entry_arguments(stage=STAGE, out=args.out, plan_id=args.plan, digest=args.plan_digest)
     kept = tp.plan_dir(out, STAGE, args.plan)
 
     plan, inputs, refs = _load_plan(out, args.plan, args.plan_digest)
@@ -1885,7 +1879,7 @@ def _run(args: argparse.Namespace) -> int:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    return tp.run_entry(STAGE, RENDERER, _build_parser().parse_args(argv), _run)
+    return tp.run_entry(stage=STAGE, renderer=RENDERER, args=_build_parser().parse_args(argv), run=_run)
 
 
 if __name__ == "__main__":  # pragma: no cover  (a process alone shows it: test_runtime_floor_374.py, test_write_confinement.py)

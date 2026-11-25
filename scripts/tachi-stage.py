@@ -118,7 +118,6 @@ REASONS = {
 }
 
 _DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", re.ASCII)
-_HEX64 = re.compile(r"[0-9a-f]{64}", re.ASCII)
 
 
 # D4's stop, with its exit code and its four-line message, is ``tachi_parts``' (#443): this entry's own name for it, with the same constructor and
@@ -167,12 +166,9 @@ def _out_dir(stage: str, out: Any, missing_code: int = 1) -> str:
     return text
 
 
-def _plan_arguments(stage: str, plan_id: str, digest: str) -> None:
-    """D3: IDs and digests pass their allow-lists, as ASCII full matches, before they become paths."""
-    if not tp.id_matches("plan", plan_id):
-        raise StageError(2, stage, "--plan is not a plan ID", "pass the plan ID that plan printed")
-    if not isinstance(digest, str) or _HEX64.fullmatch(digest) is None:
-        raise StageError(2, stage, "--plan-digest is not a SHA-256 in lowercase hex", "pass the digest that the last plan or reconcile printed")
+# D3: IDs and digests pass their allow-lists, as ASCII full matches, before they become paths. These two checks are ``tachi_parts``' (#443), which the
+# renderers and the new entries share. ``_out_dir`` stays this entry's own: it vets the path (D7), names it in its message and takes its exit code.
+_plan_arguments = tp.plan_arguments
 
 
 # A file's digest, or None when it is missing, unreadable, or (given ``out``) fails the path guard. ``reconcile`` and ``fail`` check what the plan
@@ -1307,7 +1303,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
-    return tp.run_entry(None, "tachi-stage.py", args, args.run, defect=False)  # D4's four-line message and exit code; any other exception is raised again
+    return tp.run_entry(stage=None, renderer="tachi-stage.py", args=args, run=args.run, defect=False)  # D4's four-line message and exit code; any other exception is raised again
 
 
 if __name__ == "__main__":  # pragma: no cover  (a process alone shows it: test_exit_codes_come_from_a_real_interpreter)
