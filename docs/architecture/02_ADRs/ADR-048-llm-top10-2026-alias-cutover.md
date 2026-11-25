@@ -15,6 +15,12 @@
 > - **PR 2.** `scripts/generate-threats-sarif.py`, rewritten as the shipped `threats.sarif` generator on the shared emitter.
 > - The authored-prose enforcement points stay for the surfaces that remain model-authored, such as `threats.md`'s tables. D1 and D2 stand.
 
+> **Note (2026-11-25, Feature 374, PR 2; S1P-A92)**: `normalize_owasp_id` retires with the old `scripts/generate-threats-sarif.py`, which PR 2 rewrites on the shared emitter ([ADR-050](ADR-050-large-architecture-output-authority.md) D1). Its one caller wrote the result property `owasp_id`, which no `threats.sarif` contract names, so the new generator writes no such property (ADR-050's S1P-A28), and the regex that D2 pinned has no caller left.
+>
+> - **D2, superseded in part.** The parser side of D2's lockstep goes with the function, and so does its covering matrix in `tests/scripts/test_owasp_2026_contract.py`. 16 of the matrix's 22 items exercised branches that only `owasp_id` used: the LLM, ASI and MCP token forms, zero-padding, the breadcrumb and passthrough cases and the unmapped prefix. The other 6, each STRIDE prefix's OWASP 2021 category, still hold through each STRIDE rule's `relationships`, and one case pins them. FR-012b's unmatched-reference warning in `classify_framework_items` stays, so a drifted token form is still loud at extraction time. A future grammar change now moves D3's enforcement points and their tests in lockstep.
+> - **D3, the shipped `threats.sarif` generator.** What it writes of its own, the driver's rules, their `help` and the taxonomies, names no OWASP LLM token but 2026's, and the module's surviving section (b) pins that. The prose it copies from `threats.md` stays under the authored-prose enforcement points.
+> - **D1 stands.** Token surfaces still carry pure tokens only, because exact-match readers such as `classify_framework_items` read them, and adopters' tools may too.
+
 ## Context
 
 OWASP published the Top 10 for LLM Applications 2026 (v1.0, 2026-08-04). The rank order changed, so bare codes changed meaning (LLM03: Supply Chain in 2025 → Excessive Agency in 2026); LLM07:2025 System Prompt Leakage was renamed and re-scoped to LLM08:2026 Hidden Context Exposure. Downstream consumers may be pinned to 2025 identifiers. F-362 (PRD FR-6 / spec FR-006) requires this alias/cutover decision **before any remap mechanics**, because it constrains every emission surface.

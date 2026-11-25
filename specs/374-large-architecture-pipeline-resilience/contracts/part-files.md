@@ -435,14 +435,14 @@ A field that falls back or is cut is counted in the report stage's record (`narr
 - **Section 9,** when planned: `### Finding Lifecycle Breakdown`, from Section 7's statuses and Section 4c; `### Remediation Progress`, with its fragment; and `### Baseline Reference`, from the frontmatter.
 
 **The assembler's checks and exit codes.** RR3 sets what it checks before it reads a part (ADR-050 D6).
-- **Exit 1:** the plan, an input, a batch input or a part is missing or unreadable.
+- **Exit 1:** the plan, an input, a batch input or a part is missing or unreadable. That includes `attack-chains.md` when the final record says `chains written` and the file is gone, because the plan doesn't pin it (RR3; S1P-A88, below).
 - **Exit 2:**
   - a plan's digest or pointer differs, a batch isn't `done`, or a part fails re-validation, for the report plan or the trees plan it pins;
   - an input's digest differs, except `threats.md`'s and `attack-chains.md`'s;
   - the reference set's digest differs from `params.reference_digest`;
   - for `chains written`, `attack-chains.md` doesn't hold exactly the planned surfaced chains;
   - a value it takes from an input that isn't a part holds a character that `tachi_parts.forbidden_character` returns. It is refused where the value is taken, naming the finding, the field and the regenerate remedy (ADR-050 D3, P0-4; erratum S1P-A18). In `trees`, that covers a carried tree file.
-- **Exit 4:** FR-K5.3, FR-K5.5 or FR-K5.7 fails (ADR-050 D14), or the staged file holds a character in step 10's set (P0-4's backstop, through `tachi_parts.forbidden_character`, as the joiner checks).
+- **Exit 4:** FR-K5.3, FR-K5.5 or FR-K5.7 fails (ADR-050 D14), or the staged file holds a character in step 10's set (P0-4's backstop, through `tachi_parts.forbidden_character`, as the joiner checks). Since `trees` applies FR-K5.7's listing rule first (S1P-A91, below), a `.md` file that `report` finds unlisted appeared after `trees`, and its remedy is `move the file out of attack-trees/ and re-run the command`, never "run trees again".
 - **Exit 0:** the stamped file, staged under `report/<plan_id>/staged/`, replaces `{out}/threat-report.md` (`os.replace`), overwriting any file an agent wrote, and the report stage's record is written. On any other code the canonical file isn't written.
 
 **Sizes (ADR-050 D6).** Each size is ⌊8,000 × 2.598 ÷ p90⌋ items: 22 for `threat_analysis` (p90 931 bytes) and 144 for `remediation_roadmap` (p90 144 bytes). The p90 is an item's bytes at two-space indentation, measured on the seven shipped example reports (115 analysis items and 160 roadmap rows), with each digit-bearing word written as a slot. The analysis items still held today's risk wording, which moves to the lead, so the size is conservative. A section part is one batch at planning. T130's fixture run confirms the sizes from the live parts.
@@ -479,7 +479,7 @@ Rule 3 is the agent's judgment: D14's Rule 2 regenerates every tree, "with Rule 
 - **One function.** `tachi_parsers.attack_tree_source` makes the content checks, strict UTF-8, the characters and the one Mermaid block, for both callers, so `reconcile` and `trees` can't disagree (`module-signatures.md`). Each caller builds and guards the path and reads the bytes itself.
 - **The codes.**
   - At `reconcile`, a named tree that fails a check makes the batch `invalid`, so it is retried with the same units. A named tree that is missing makes the batch `missing`, so it is halved (D6's `trees` row; R11).
-  - At `trees`, a tree that fails a check is exit 2. A tree that is missing, and a Critical and High set that differs from the generated and carried trees, are exit 4, FR-K5.5 applied early (D14; RD-8). A generated tree that fails at `trees` has changed since `reconcile`, so it is exit 2 too.
+  - At `trees`, a tree that fails a check is exit 2. A tree that is missing, and a Critical and High set that differs from the generated and carried trees, are exit 4, FR-K5.5 applied early (D14; RD-8). A generated tree that fails at `trees` has changed since `reconcile`, so it is exit 2 too. A `.md` file in `attack-trees/` that this run doesn't write is exit 4 as well, FR-K5.7 applied early (S1P-A91, "An earlier run's outputs", below).
   - `trees` validates everything before it writes anything (RD-7). It stages nothing: once every check has passed, it writes `attack-trees/` directly, with the atomic write. So `STAGED_OUTPUTS["trees"]` is `()`.
 
 ### `report`'s check of the trees plan (S1P-A47, RD-15)
@@ -504,7 +504,7 @@ Rule 3 is the agent's judgment: D14's Rule 2 regenerates every tree, "with Rule 
 ### The check hand-off (S1P-A52 and S1P-A53; R3, R4)
 
 - **Validity (R3).** §6's `status` rule is part of a file's validity, as the rules for `check` and `plan_id` are: a `status` other than the one that `error` and `warnings` give fails the load. The warning codes are closed per check:
-  - `attack-chains`: `chain-outcome:rewritten`;
+  - `attack-chains`: `chain-outcome:rewritten`, and `chain-outcome:earlier-file-moved` (added at W2′'s batch, S1P-A91);
   - `provenance`: `section6:mismatch`, `id:reissued`, `coverage-gap:unrecovered:no_end_marker`, `coverage-gap:unrecovered:overflow_error` and `correlation-member-repeated`.
 
   Any other code fails the load, the other check's codes included. The validator is T091's, and each check validates its own file before it writes it.
@@ -563,3 +563,29 @@ Everything else is undeclared. That includes:
 - anything under `.tachi-build/phase2/`, which item O-α leaves with no plan.
 
 PR 1's two stages keep their branch. R3b writes the new branch with T091's stage enums (T091b), and pins each clause in `test_tachi_parts.py`. It narrows D4's shorthand `attack-trees/*` to the files that `assemble-report.py trees` writes, and ADR-050 D4 follows (erratum S1P-A62).
+
+## Readings ruled at W2′'s batch (S1′, 2026-11-25)
+
+These come from lane T's T108 and T109 (`9da3ea5`, readings RD-18 to RD-21 and its open questions), lane OC's T116 and T117 (`927af72`, `d81e85f`) and lane R3b's T100 (`7e405e6`). The rulings are S1P-A80 onward. `cli.md`, `sarif-result.md`, `threat-model-records.md` and `module-signatures.md` hold the rest.
+
+### An earlier run's outputs (S1P-A91)
+
+`/tachi.threat-model` always writes to a new timestamped directory, so this arises only when a run reuses `{out}`, which the run-level plan allows: it snapshots `{out}` and keeps a pre-image of each canonical file (D4). One rule then covers every output name:
+- **An earlier run's file is never taken for this run's output, and is replaced only by this run's own output under the same name.** Where this run writes the name, the atomic write replaces it, and a failed run gets a canonical file back from its pre-image (D4, S1P-A55).
+- **A canonical file that this run doesn't write is moved aside, because its pre-image keeps it.** That is `attack-chains.md`, for a `0 chains` or `skipped` outcome. The check renames it to `attack-chains.inconsistent.md`, and when its bytes are the run-level plan's pre-image the record stands, with the warning `chain-outcome:earlier-file-moved` (`threat-model-records.md`, "An earlier run's `attack-chains.md`"). The chain phase never stops the run (R-24), and it needn't: `fail` restores the file.
+- **Any other file under an output name stops the run at the step that guards it, before any reader takes it.** That is a `.md` file in `attack-trees/` that this run doesn't write. `attack-trees/` has no pre-image (D4's set), so a move would leave a failed run's earlier directory short of its trees.
+- **Nothing is deleted**, and the remedy is a new output directory, which the command always uses, or moving the file out by hand.
+
+**At `trees` (FR-K5.7, early).** After `attack-trees/` passes its existing checks (made when absent; exit 2 when it is a link or lies outside `--run-dir`) and before the first tree is written, every name that `os.listdir` gives in it and that ends in `.md`, a directory's included, must be one this run writes: `<id-lowercase>-attack-tree.md` for each open Critical and High finding, the set that FR-K5.5's early check has just confirmed. Any other is exit 4, `FR-K5.7: attack-trees/ holds <names>, which this run does not write`, naming the first five and then a count, with the remedy `move the file out of attack-trees/ and re-run the command`. Nothing is written and no record is made (RD-7, RD-20). An earlier tree under a name this run writes is replaced, and a name that doesn't end in `.md`, such as the manifest or an image, isn't a tree file to FR-K5.7. `report` keeps FR-K5.7 whole for a file that appears after `trees`. One private helper in `assemble-report.py` gives both modes the predicate. T applies this with T110, with these cases: an earlier tree outside the set, exit 4 with the tree left in place and nothing written; an earlier tree under a planned name, replaced, exit 0; a non-`.md` file, left alone, exit 0; a directory named `x.md`, exit 4; and `report`'s new remedy text.
+
+**Why not the other two places.**
+- **The trees plan** would copy FR-K5.7's predicate into `tachi-stage.py`, and it can't see a file that a helper writes during the tree batches. `trees` sees both, before the report batches run. The cost is the tree batches of a run that reuses a directory.
+- **The undeclared-paths check** can't catch either case. A tree's name is declared (S1P-A62), an earlier file that this run never touched isn't new or changed since the snapshot, and `close` runs after Step 2.9 and only warns.
+
+### `report` and a missing `attack-chains.md` (S1P-A88, RD-19)
+
+Confirmed as T built it. When the final record says `chains written`, a missing `attack-chains.md` is exit 1, because the plan doesn't pin it (RR3), so it is an input read when needed. A link, or a file that isn't regular, is exit 2 (D3's guard). A pinned input that vanished since the plan is exit 2 instead, in the guard's words, `changed (or vanished)`, because its digest is the plan's evidence. At Step 2.9 the case is an anomaly: Step 2.8's check has already rewritten a `chains written` record whose file is missing.
+
+### Which plan a refusal keeps (S1P-A89, S1P-A47)
+
+T's application is confirmed. A refusal names the directory of the plan whose own file or value fails. That is the trees plan's for its plan file and pointer, its `params` (`rule_applied`, `reference_digest`), its `refs.baseline_dir`, and its batch inputs and parts, an item in two batches included. It is the report plan's for everything else, FR-K5.3, FR-K5.5 and FR-K5.7 included: they check `attack-trees/` and the merged manifest, which no plan directory holds, and they are the report stage's own checks (D14).

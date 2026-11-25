@@ -30,6 +30,9 @@
 - **Ruled at W2′'s entry (S1′, 2026-11-24), additive:** `tachi_parsers.parse_chain_outcome` and `tachi_parsers.CHAIN_OUTCOME_LABEL`, the first slice of T116 (lane OC, in `f94dabb`; S1P-A22, S1P-A23). No name is renamed or removed. They are described below.
 - **Ruled at W2′'s entry (#443, items 1–4; S1′, 2026-11-24), additive: the shared stage-entry path in `tachi_parts`** (S1P-A40). T151 wrote 27 names in `ee1e3e3`, and R3b-1 added the argument checks, `entry_arguments` and `plan_arguments`, in `db8c7c3` (S1P-PM7). Two more names, `directory_argument` and `plan_id_argument`, and an `option` keyword on `entry_arguments` and `run_entry`, follow for the `--run-dir` entries (S1P-A42). `STAGED_OUTPUTS` follows for PR 2's batch stages (S1P-A57), and `tachi_parsers.attack_tree_source` for the tree files (S1P-A48). The walk and the undeclared check, which EC-2 left as three copies, are now `walk_out` and `undeclared_paths`. No name is renamed or removed, and each entry keeps its own names (the section below).
 - **Ruled at T090 (S1′, 2026-11-25; S1P-A38 item 5) and recorded at T162, additive:** `tachi-stage.py`'s `watch`, `WATCH_SECONDS` and `WATCH_POLL_SECONDS`, which T156 wrote in `95c6a04` (S1P-A71, the section below). At T162 too, `tachi_parsers.attack_tree_source`, which T159 wrote in `1e2c28d`, gains a seventh problem word, `empty-block`, checked last, and its readings are ruled (S1P-A73 to S1P-A75, its section). No caller exists yet, and each one maps every problem to its own refusal. No name is renamed or removed.
+- **Ruled at W2′'s batch (S1′, 2026-11-25):**
+  - additive: `trusted_plan(..., unpinned=(), banner=None, pinned_by=None)`, three keywords added last, so that `assemble-report.py`'s `_guard` becomes one call (S1P-A90, the section below); and `chain-outcome:earlier-file-moved` in `HANDOFF_WARNING_CODES_BY_CHECK["attack-chains"]`, after `chain-outcome:rewritten` (S1P-A91; `part-files.md`, R3). R3b writes both in its `tachi_parts` slice;
+  - one removal, as `sarif-result.md` ruled at W1: `sarif_common.PREFIX_TO_RULE`, which this file never listed, goes with its last user (S1P-A84).
 
 **Shared conventions.**
 - Every module has `from __future__ import annotations` and runs on Python 3.9 (S-11). Annotations use `typing` forms, so nothing here needs 3.10.
@@ -746,6 +749,23 @@ STAGED_OUTPUTS: Dict[str, Tuple[str, ...]]  # stage -> the names its writer stag
 | `tachi-stage.py` | its own `--out` check, then `plan_arguments` |
 
 The banner name is what each entry passes as `StageFailure`'s `stage`, which its own task sets.
+
+**Ruled to follow at W2′'s batch (S1P-A90, 2026-11-25).** R3b adds these keywords in its `tachi_parts` slice, with their cases in `test_tachi_parts.py`. They let a caller hold a plan to D3's guard when two of its inputs change by design (RR3) and the plan is pinned by another plan (S1P-A47), so `assemble-report.py` drops its 30-line copy of the guard, `_guard`, for one call per plan.
+
+```python
+def trusted_plan(stage: str, out: str, plan_id: str, digest: str, complete: bool = False, read_inputs: bool = False,
+                 kept: bool = False, unpinned: Tuple[str, ...] = (), banner: Optional[str] = None,
+                 pinned_by: Optional[str] = None) -> Tuple[Dict[str, Any], Dict[str, bytes]]: ...
+```
+
+- **`unpinned`** names inputs of the plan, keys of its `inputs`, that the guard neither digest-checks nor reads, in both branches of `read_inputs`. The returned `inputs` leaves them out, and the caller checks them its own way. A name that the plan doesn't hold is ignored, since `attack_chains` is there only for `chains written`. `report` passes `("threats", "attack_chains")` for its own plan and `("threats",)` for the trees plan it pins (RR3; `cli.md`, "Readings ruled at rev. 3").
+- **`banner`** is the stage that every refusal names in D4's message: `StageFailure.stage`, and the `stage` that the guard passes to `entry_document` and `plan_input_bytes`, the pointer's refusals included. `None` means `stage`. `kept` still names the checked plan's own directory, `plan_dir(out, stage, plan_id)`, so a refusal about the pinned trees plan reads `TACHI REPORT FAILED:` and keeps the trees plan's directory (S1P-A47, S1P-A89).
+- **`pinned_by`** is `None` when the command line named the plan, and every message is today's. When another plan pins this one, it is that plan as the messages name it, `"the report plan"`, and the two refusals that would name the command line read instead:
+  - the pointer: `the <stage> plan <plan_id> that <pinned_by> pins disagrees with current.json, which names <pointer's ID>`, remedy `re-run the command`;
+  - the digest: `the plan file's digest differs from the digest that <pinned_by> pins`, remedy `re-run the command`.
+- **Everything else is unchanged:** every other message, code and remedy, `complete`'s `then render` included, and the order of the checks. With the three defaults no caller's behavior or text changes (S1P-PM2), and section 24's existing pins hold.
+- **Tests** (R3b, `test_tachi_parts.py`, in-process): an unpinned input that changed, vanished or is over the cap passes and is absent from `inputs`, in both branches; an unpinned name that the plan doesn't hold is ignored; a refusal under `banner` carries that banner and keeps the checked plan's directory, the pointer's mismatch included; and `pinned_by`'s two messages and remedies. `ENTRY_PATH_NAMES`' docstring check follows the module docstring's signature line.
+- **T's call** (lane T, with T110): `tp.trusted_plan(stage, run.out, plan_id, digest, complete=True, read_inputs=True, kept=True, unpinned=unpinned, banner=run.stage, pinned_by=...)`, with `pinned_by="the report plan"` for the pinned trees plan and `None` for every other plan. `_guard`'s `what` argument and its `then assemble` wording go with it, and no test of T's pins them.
 
 ## `scripts/tachi-stage.py`: the watch (ruled at T090, S1′, 2026-11-25; S1P-A38 item 5. T156 wrote it in `95c6a04`, recorded at T162: S1P-A71)
 
