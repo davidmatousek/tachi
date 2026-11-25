@@ -1638,7 +1638,7 @@ def atomic_write(path: object, data: Any, mode_of: Optional[object] = None) -> N
         raise
 
 
-VERSION = "4.48.4"  # x-release-please-version
+VERSION = "4.48.5"  # x-release-please-version
 
 _STAMP_PREFIX = "<!-- tachi-provenance:"
 _RENDERER = re.compile(r"[A-Za-z0-9_.-]{1,64}", re.ASCII)
