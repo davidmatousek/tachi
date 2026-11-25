@@ -109,7 +109,7 @@ trees [{"finding_id": ID, "delta_status": "NEW"|"UNCHANGED"|"UPDATED",
         "file_path": "attack-trees/{id-lowercase}-attack-tree.md"}]   Critical first, then High, each in S-2 order
 summary {"fresh", "carried_forward", "regenerated"}: ints summing to attack_tree_count
 ```
-A tree batch's part is its manifest: D3's envelope, with one item per finding, `{finding_id, delta_status, action, similarity_score}` (the last under Rule 3 only), where `delta_status` and `action` equal the batch input's. Each tree goes to the path the batch input's `tree_paths` names, and the merge adds `file_path` (ADR-050 D6).
+A tree batch's part is its manifest: D3's envelope, with one item per finding, `{finding_id, delta_status, action, similarity_score}` (the last under Rule 3 only). `delta_status` equals the batch input's. So does `action`, except for a Rule 3 unit, one whose batch input says `regenerated`: its item says `regenerated` or `carried_forward`, which is the agent's Rule 3 decision, and it alone carries `similarity_score` (erratum S1P-A43; `part-files.md`, "Readings ruled at W2′'s entry, pass 3"). Each tree goes to the path the batch input's `tree_paths` names, and the merge adds `file_path` (ADR-050 D6).
 
 **Chain files** (`chains/`, D13). Their key sets are closed and were ruled at W2′'s entry (S1P-A30). `tachi_parts.KEY_SETS` holds them under the names in brackets, with no optional key. Each file is written with `tachi_parts.atomic_write` and read with the strict loader.
 - `chains/chains.json`: `tachi.chains/1` (`chains`). Only `attack-chains.py plan` writes it, on every run of `plan`, unusable inputs included. `render` reads it.
@@ -169,7 +169,7 @@ Phase 2 has no plan. The orchestrator dispatches by these rules, writing a brief
 **Coverage-gap dispatches** (Phase 3b's targeted re-analysis, `coverage-requirements.md` Step 5) belong to no lineage. Each is one dispatch per gap and agent, scoped to the gap's one component. The gate retries nothing, so a truncated one is `unrecovered`: its findings are dropped, and its gap resolves `dispatch_failure`.
 
 **The detector** (T090, S1P-A31 and S1P-A32; ADR-050 D6, item O-α). The orchestrator judges each dispatch once, from what reaches its context, and writes the dispatch's record then. On Claude Code 2.1.331 a delivered report reaches it only as a hand-back message, and every other ending only as a notification (S-9 §4).
-- **The report** is the text that the harness frames as the agent's final report: on 2.1.331, the lines between the `[Subagent hand-back]` frame line and the closing `</agent-message>` tag. The frame line, that tag and the fixed paragraph after it are the harness's, not the agent's.
+- **The report** is the agent's own delivered text. Any line that the harness adds around it is ignored when present, and when there is none, the whole delivered text is the report. The recorded example is Claude Code 2.1.331's frame: the line that opens the message, the `<agent-message>` tags, the `[Subagent hand-back]` line, the fixed paragraph after the closing tag, and a two-space indent on every report line (amended at S1P-A39).
 - **The predicate.** Take the report's last line that isn't blank once leading and trailing whitespace are removed, which also removes the harness's two-space indent. It is the end marker when it is exactly `TACHI-END`, and the overflow line when it is `TACHI-OVERFLOW`, alone or followed by a space.
 - **A notification** decides only when no report came. Its `<status>` alone decides nothing, because `completed` also carries the no-report and interim endings: its summary and result text decide. A `completed` notification whose result says the report was delivered as a message is judged by that message.
 
@@ -186,6 +186,7 @@ Phase 2 has no plan. The orchestrator dispatches by these rules, writing a brief
 - A record with `end_marker` `true` is `complete`. Any other is truncated: `superseded` or `unrecovered`, by the lineage rules above.
 - The marker isn't a finding. It is stripped before compiling and never enters `threats.md`. The overflow line carries no object, and nothing reads it past its first word.
 - The agents' text for the two lines is in `finding-format-shared.md`, which every threat agent reads, and this table is in `dispatch-record-brief-shared.md`'s End Marker section. ADR-050 D6 holds the words of both.
+- **Drift fails loudly** (S1P-A39). Every path to `complete` runs through a report whose last line is exactly the marker. So a frame or a notification whose wording changes can only make a dispatch truncated, or pending until its watch times it out. It can never make a cut report complete. The one silent case, a delivery that drops a long report's middle lines, is checked at T130. The predicate's home names the recorded version, 2.1.331, beside the frame example, and `test_contract_text_374.py` pins it (ADR-050 D6).
 
 **The watch** (T090, S1P-A33 to S1P-A35; the PM's S1P-PM9; ADR-050 D6, "A dispatch that never returns"). It bounds a dispatch that never returns, so that a blocked tool call in a Phase 2 agent can't hang the run.
 ```
