@@ -64,6 +64,15 @@ lane's results file, "For the code halves", for the architect and for T092's pla
   ``threats.md`` after the trees stage ran.
 * **RD-16, an unclosed fence** is not a Mermaid block, so a tree file whose fence never closes is refused with the other bad trees.
 * **RD-17, Section 5 with no tree** prints the template's note ("No Critical or High findings identified."), as the template says.
+* **RD-18, the first checks** are ``tachi_parts.entry_arguments``' (S1P-A42), with ``option="--run-dir"``: the directory first (exit 1, ``--run-dir is not a
+  directory``), then ``--plan`` and ``--plan-digest`` (exit 2), each in the contract's words. A plan file that is gone is exit 1, and one that is a link exit 2.
+* **RD-19, a missing input and a vanished one.** A file that D3's guard pins by digest and that is gone since the plan is exit 2 (the guard's own words,
+  "changed (or vanished)"), in ``trees`` for ``threats.md`` and in ``report`` for the trees plan and the manifest. A file that the plan doesn't pin,
+  ``threats.md`` and ``attack-chains.md`` in ``report`` (RR3), is read when it is needed, and a missing one is exit 1 (part-files.md: "an input ... is missing").
+* **RD-20, a write that fails part way.** ``trees`` writes the trees first and the manifest last, with no stage record, and exits 4 with a remedy that says to
+  run ``trees`` again (it replaces every file it writes), not the staged writers' "the earlier outputs were left or put back".
+* **RD-21, the staged-file backstop** (P0-4's, and D4's from-disk check) can't be reached through a part, because the intake refuses what it checks. So these tests
+  replace ``_assemble`` with a copy that damages the text, and require exit 4, the agent's report left where it was, and nothing in the run but the staged copy.
 
 Standard library, PyYAML (the tests' own dependency) and pytest only, and Python 3.9 syntax.
 """
@@ -76,6 +85,7 @@ import io
 import json
 import os
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -150,11 +160,11 @@ CHAINS = [("CHAIN-001", "Token replay reaches order tampering"), ("CHAIN-002", "
 # S1P-A18: the predicate's set, one sample for each class it returns, and the ones it leaves allowed (ADR-050 D3, step 10).
 FORBIDDEN_SAMPLES = [
     ("nul", "\x00"), ("escape", "\x1b"), ("delete", "\x7f"), ("next-line", "\x85"), ("carriage-return", "\r"),
-    ("line-separator", " "), ("paragraph-separator", " "), ("left-to-right-mark", "‎"),
-    ("right-to-left-override", "‮"), ("left-to-right-isolate", "⁦"), ("arabic-letter-mark", "؜"),
+    ("line-separator", "\u2028"), ("paragraph-separator", "\u2029"), ("left-to-right-mark", "\u200e"),
+    ("right-to-left-override", "\u202e"), ("left-to-right-isolate", "\u2066"), ("arabic-letter-mark", "\u061c"),
     ("tag-letter-a", "\U000e0041"),
 ]
-ALLOWED_SAMPLES = [("tab", "\t"), ("zero-width-joiner", "‍"), ("variation-selector", "️"), ("no-break-space", " ")]
+ALLOWED_SAMPLES = [("tab", "\t"), ("zero-width-joiner", "\u200d"), ("variation-selector", "\ufe0f"), ("no-break-space", "\u00a0")]
 
 
 def s2(finding_id):
@@ -427,13 +437,17 @@ class LazyEntry(object):
     def __init__(self, request):
         self.request = request
 
-    def main(self, argv=None):
+    def load(self):
+        """The loaded module. A test that replaces one of its internals (the staged-file backstop) takes it from here, so it changes the module that ``main`` runs."""
         if not ASSEMBLER.is_file():
             pytest.fail("scripts/assemble-report.py does not exist yet: T108 and T109 write it to these tests (TDD), and %s needs it" % self.request.node.name,
                         pytrace=False)
         if "module" not in _ENTRY:
             _ENTRY["module"] = _load_hyphenated_script("assemble_report_under_test", "assemble-report.py")
-        return _ENTRY["module"].main(argv)
+        return _ENTRY["module"]
+
+    def main(self, argv=None):
+        return self.load().main(argv)
 
 
 @pytest.fixture
@@ -1023,6 +1037,12 @@ def run_refused(world, assembler, mode, code, known_plan=True, **kwargs):
     return res
 
 
+def repin_trees_plan(world):
+    """The report plan pins the trees plan's file, so a test that edits that plan re-pins it: the digest check then passes, and only the check under test refuses."""
+    size = world.plan_path("trees").stat().st_size
+    world.rewrite_plan("report", lambda doc: doc["inputs"]["trees_plan"].update(sha256=world.digest["trees"], bytes=size))
+
+
 # =============================================================================
 # 1. The entry: arguments and the exit table (cli.md, RD-1, RD-2)
 # =============================================================================
@@ -1063,6 +1083,39 @@ def test_cli_a_run_directory_with_no_plan_is_a_missing_input(assembler, tmp_path
     res = invoke(assembler, [mode, "--run-dir", run, "--plan", TREES_ID if mode == "trees" else REPORT_ID, "--plan-digest", "0" * 64], tmp_path)
     assert res.code == 1, res.describe()
     assert_failure(res, mode)
+    assert tree_state(run) == {}
+
+
+@pytest.mark.parametrize("what", ["nothing at that path", "a regular file"])
+@pytest.mark.parametrize("mode", MODES)
+def test_cli_a_run_dir_that_is_not_a_directory_is_exit_1_in_the_shared_words_and_comes_before_the_plan_checks(assembler, tmp_path, mode, what):
+    """S1P-A42: the directory option is the first check of every entry, so a bad ``--plan`` and a bad digest beside it are never reached."""
+    target = tmp_path / "run"
+    if what == "a regular file":
+        target.write_text("not a directory", encoding="utf-8")
+    before = tree_state(tmp_path)
+    res = invoke(assembler, [mode, "--run-dir", target, "--plan", "not-a-plan", "--plan-digest", "not-a-digest"], tmp_path)
+    assert res.code == 1, res.describe()
+    assert_failure(res, mode)
+    assert "--run-dir is not a directory" in res.err and "Remedy: create it or correct --run-dir" in res.err, res.describe()
+    assert tree_state(tmp_path) == before
+    assert target.exists() is (what == "a regular file"), "nothing is created at the path"
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_cli_the_plan_checks_follow_the_directory_check_each_in_the_contracts_words_and_exit_2(assembler, tmp_path, mode):
+    run = tmp_path / "run"
+    run.mkdir()
+    plan_id = {"trees": TREES_ID, "report": REPORT_ID}[mode]
+    bad_plan = invoke(assembler, [mode, "--run-dir", run, "--plan", plan_id.upper(), "--plan-digest", "0" * 64], tmp_path)
+    assert bad_plan.code == 2, bad_plan.describe()
+    assert_failure(bad_plan, mode)
+    assert "--plan is not a plan ID" in bad_plan.err and "Remedy: pass the plan ID that plan printed" in bad_plan.err, bad_plan.describe()
+    bad_digest = invoke(assembler, [mode, "--run-dir", run, "--plan", plan_id, "--plan-digest", "G" * 64], tmp_path)
+    assert bad_digest.code == 2, bad_digest.describe()
+    assert_failure(bad_digest, mode)
+    assert "--plan-digest is not a SHA-256 in lowercase hex" in bad_digest.err, bad_digest.describe()
+    assert "Remedy: pass the digest that the last plan or reconcile printed" in bad_digest.err, bad_digest.describe()
     assert tree_state(run) == {}
 
 
@@ -1170,6 +1223,132 @@ def test_guard_a_reference_set_that_changed_since_the_plan_exits_2(assembler, ma
     assert "| Medium | Rate limit each client |" in text
     world.threats_path.write_text(text.replace("| Medium | Rate limit each client |", "| High | Rate limit each client |"), encoding="utf-8")
     run_refused(world, assembler, mode, 2)
+
+
+@pytest.mark.parametrize("what", ["the plan pointer", "plan.json"])
+@pytest.mark.parametrize("mode", MODES)
+def test_guard_a_plan_pointer_or_plan_file_that_is_gone_is_a_missing_input_exit_1(assembler, make, mode, what):
+    world = make("report")
+    {"the plan pointer": world.pointer_path, "plan.json": world.plan_path}[what](mode).unlink()
+    res = run_refused(world, assembler, mode, 1, known_plan=(what == "plan.json"))
+    assert ("%s is missing" % what) in res.err, res.describe()
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_guard_a_plan_file_that_is_a_link_exits_2_naming_the_path_guard(assembler, make, mode):
+    world = make("report")
+    path = world.plan_path(mode)
+    real = world.root / "elsewhere-plan.json"
+    real.write_bytes(path.read_bytes())
+    path.unlink()
+    path.symlink_to(real)
+    res = run_refused(world, assembler, mode, 2)
+    assert "path guard" in res.err and "symlink" in res.err, res.describe()
+
+
+@pytest.mark.parametrize("what", ["the plan pointer", "plan.json"])
+def test_report_a_pinned_trees_plan_that_is_gone_fails_as_a_report_failure(assembler, make, what):
+    """The report plan pins the trees plan's file as an input, so a file that vanished is the guard's "changed (or vanished)"; a pointer that did is a missing input."""
+    world = make("report")
+    {"the plan pointer": world.pointer_path, "plan.json": world.plan_path}[what]("trees").unlink()
+    res = run_refused(world, assembler, "report", 1 if what == "the plan pointer" else 2, known_plan=False)
+    assert ("the plan pointer is missing" if what == "the plan pointer" else "trees_plan changed (or vanished) since plan") in res.err, res.describe()
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_guard_a_batch_input_whose_finding_ids_are_not_the_plans_exits_2(assembler, make, mode):
+    """The input is edited and re-pinned, so it passes its own contract and the digest, and only the comparison with the plan's entry refuses it."""
+    world = make("report")
+    batch = world.batch_ids(mode)[0 if mode == "trees" else -2]   # a batch of findings: the first trees batch, and the threat_analysis batch of the report
+    world.edit_input(mode, batch, lambda doc: doc.update(finding_ids=list(reversed(doc["finding_ids"]))))
+    res = run_refused(world, assembler, mode, 2)
+    assert "is for another batch" in res.err and batch in res.err, res.describe()
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_guard_threats_md_that_is_not_strict_utf_8_exits_2(assembler, make, mode):
+    world = make("report")
+    world.threats_path.write_bytes(world.threats_path.read_bytes() + b"\xff\xfe\n")
+    if mode == "trees":   # the trees plan pins the file's bytes, so the plan has to be re-pinned for the check on its content to be the one that refuses it
+        world.rewrite_plan("trees", lambda doc: doc["inputs"].update(threats=plan_input(world.threats_path)))
+    res = run_refused(world, assembler, mode, 2)
+    assert "threats.md is not strict UTF-8" in res.err, res.describe()
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_guard_a_threats_md_without_section_7_exits_2_with_the_readers_words(assembler, make, mode):
+    world = make("report")
+    text = world.threats_path.read_text(encoding="utf-8")
+    assert "## 7. Recommended Actions" in text
+    world.threats_path.write_text(text.replace("## 7. Recommended Actions", "## 7. Something else"), encoding="utf-8")
+    if mode == "trees":
+        world.rewrite_plan("trees", lambda doc: doc["inputs"].update(threats=plan_input(world.threats_path)))
+    res = run_refused(world, assembler, mode, 2)
+    assert "threats.md" in res.err and "Section 7" in res.err and "is missing" in res.err and "Remedy:" in res.err, res.describe()
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_guard_threats_md_that_is_gone_is_exit_2_where_the_plan_pins_it_and_exit_1_where_it_does_not(assembler, make, mode):
+    """RD-19. ``trees`` pins the file's bytes, so a file that vanished is the guard's "changed (or vanished)". ``report`` reads it when it needs it (RR3)."""
+    world = make("report")
+    world.threats_path.unlink()
+    res = run_refused(world, assembler, mode, {"trees": 2, "report": 1}[mode])
+    assert "threats" in res.err, res.describe()
+    assert ("since plan" in res.err) is (mode == "trees"), res.describe()
+
+
+def test_report_threats_md_over_the_size_cap_exits_2(assembler, make):
+    world = make("report")
+    with open(str(world.threats_path), "ab") as handle:
+        handle.write(b"#" * (tp.MAX_AGENT_INPUT_BYTES + 1))
+    res = run_refused(world, assembler, "report", 2)
+    assert "threats.md is over the size cap" in res.err, res.describe()
+
+
+@pytest.mark.parametrize("mode", MODES)
+def test_guard_a_trees_plan_with_no_valid_rule_exits_2(assembler, make, mode):
+    world = make("report")
+    world.rewrite_plan("trees", lambda doc: doc["params"].update(rule_applied="Rule 9"))
+    if mode == "report":
+        repin_trees_plan(world)
+    res = run_refused(world, assembler, mode, 2)
+    assert "params.rule_applied" in res.err, res.describe()
+
+
+def test_trees_a_plan_with_no_threats_input_exits_2(assembler, make):
+    world = make("trees")
+    world.rewrite_plan("trees", lambda doc: doc["inputs"].pop("threats"))
+    res = run_refused(world, assembler, "trees", 2)
+    assert "no threats input" in res.err, res.describe()
+
+
+@pytest.mark.parametrize("what", ["pins no trees plan", "pins no manifest"])
+def test_report_a_plan_that_does_not_pin_the_trees_plan_and_the_manifest_exits_2(assembler, make, what):
+    world = make("report")
+    world.rewrite_plan("report", lambda doc: doc["inputs"].pop("trees_plan" if what == "pins no trees plan" else "tree_manifest"))
+    res = run_refused(world, assembler, "report", 2)
+    assert "doesn't pin a trees plan and a tree manifest" in res.err, res.describe()
+
+
+@pytest.mark.parametrize("name", ["trees_plan", "tree_manifest", "threats"])
+def test_report_a_plan_input_that_is_not_the_file_the_run_directory_holds_exits_2(assembler, make, name):
+    """A pinned input is read where the plan says, so a plan that points one at a copy elsewhere is refused even when the copy has the same bytes."""
+    world = make("report")
+    own = Path(read_json(world.plan_path("report"))["inputs"][name]["path"])
+    other = world.root / ("copy-of-" + own.name.lstrip("."))
+    other.write_bytes(own.read_bytes())
+    world.rewrite_plan("report", lambda doc: doc["inputs"][name].update(path=str(other)))
+    res = run_refused(world, assembler, "report", 2)
+    assert ("%s input is not" % name) in res.err, res.describe()
+
+
+@pytest.mark.parametrize("section", ["exec_summary", "cross_cutting_themes"])
+def test_report_a_plan_with_no_part_for_a_required_section_exits_2(assembler, make, section):
+    world = make("report")
+    index = next(n for n, section_plan in enumerate(world.section_plan()) if section_plan[0] == section)
+    world.rewrite_plan("report", lambda doc: doc["batches"].pop(index))
+    res = run_refused(world, assembler, "report", 2)
+    assert ("holds no %s part" % section) in res.err, res.describe()
 
 
 # =============================================================================
@@ -1349,6 +1528,9 @@ def broken_tree_text(variant, finding_id):
         "two blocks": good + "\n" + good,
         "not mermaid": good.replace("```mermaid", "```text"),
         "unclosed": good[:good.rindex("```")],  # reading: a fence that never closes is not a Mermaid block
+        # S1P-A70: a block with no line between its fences holds no diagram, whatever copy of ``attack_tree_source`` is loaded (the parser names it
+        # ``empty-block``, and until that copy lands the script fails a source of ``""`` itself).
+        "empty block": "# Attack Tree: %s\n\n```mermaid\n```\n" % finding_id,
     }[variant]
 
 
@@ -1357,7 +1539,7 @@ def tree_to_break(world, where):
     return ("S-1", world.baseline_tree_path("S-1")) if where == "carried" else ("I-1", world.source_tree_path("I-1"))
 
 
-@pytest.mark.parametrize("variant", ["no block", "two blocks", "not mermaid", "unclosed"])
+@pytest.mark.parametrize("variant", ["no block", "two blocks", "not mermaid", "unclosed", "empty block"])
 @pytest.mark.parametrize("where", ["carried", "generated"])
 def test_trees_a_tree_file_without_exactly_one_mermaid_block_exits_2_naming_the_finding(assembler, make, where, variant):
     world = make("trees", rule="rule1")
@@ -1420,6 +1602,69 @@ def test_trees_a_tree_path_that_leaves_the_plans_trees_directory_or_runs_through
     assert "S-1" in res.err, res.describe()
 
 
+@pytest.mark.parametrize("how", ["another finding's file in the plan's trees directory", "its own name, in another run's plan directory"])
+def test_trees_a_batch_input_that_names_another_file_as_a_tree_exits_2_naming_the_finding(assembler, make, how):
+    """The batch input's path is held to the one the script builds from ``--run-dir``, the stage, the plan and the ID. The contract's own test of the path (its last
+    three parts) passes both of these, so only that comparison refuses them. Nothing is copied from the file that the input names."""
+    world = make("trees")
+    if how.startswith("another"):
+        named = world.source_tree_path("T-1")
+    else:
+        named = world.root / "elsewhere" / world.plan_id("trees") / "trees" / tree_name("S-1")
+        named.parent.mkdir(parents=True)
+        named.write_bytes(world.source_tree_path("S-1").read_bytes())
+    world.edit_input("trees", "B001", lambda doc: doc["tree_paths"].update({"S-1": str(named)}))
+    res = run_refused(world, assembler, "trees", 2)
+    assert "S-1" in res.err and "not the plan's own trees/ path" in res.err, res.describe()
+
+
+def test_trees_two_batches_that_hold_an_item_for_one_finding_exit_2_naming_it_and_the_second_batch(assembler, make):
+    """One tree can't be written by two batches. B002's plan entry, batch input and part all name S-1 as well, as a planner that listed it twice would have written them."""
+    world = make("trees")
+    first_input = read_json(world.input_path("trees", "B001"))
+    unit = next(u for u in first_input["units"] if u["finding_id"] == "S-1")
+    item = next(i for i in read_json(world.part_path("trees", "B001"))["items"] if i["finding_id"] == "S-1")
+
+    def edit_input(doc):
+        doc["finding_ids"].append("S-1")
+        doc["units"].append(unit)
+        doc["tree_paths"]["S-1"] = first_input["tree_paths"]["S-1"]
+
+    def edit_part(doc):
+        doc["finding_ids"].append("S-1")
+        doc["items"].append(item)
+
+    world.edit_input("trees", "B002", edit_input)
+    world.rewrite_plan("trees", lambda doc: next(e for e in doc["batches"] if e["batch_id"] == "B002")["finding_ids"].append("S-1"))
+    world.rewrite_json(world.part_path("trees", "B002"), edit_part)
+    res = run_refused(world, assembler, "trees", 2)
+    assert "two batches hold an item for S-1" in res.err and "B002" in res.err, res.describe()
+
+
+# ---- the baseline that a carried tree comes from (R-6: a ``refs`` path is a candidate, never trusted, D3)
+
+@pytest.mark.parametrize("how", ["a directory outside the working directory", "a link to a directory outside it"])
+def test_trees_a_baseline_directory_that_leaves_the_working_directory_exits_2(assembler, make, how):
+    """The copy outside holds every carried tree, so the run would pass if nothing checked where the baseline is."""
+    world = make("trees", rule="rule1")
+    outside = world.root.parent / ("outside-" + world.root.name)
+    shutil.copytree(str(world.baseline), str(outside))
+    if how.startswith("a link"):
+        shutil.rmtree(str(world.baseline))
+        world.baseline.symlink_to(outside)
+    else:
+        world.rewrite_plan("trees", lambda doc: doc["refs"].update(baseline_dir=str(outside)))
+    res = run_refused(world, assembler, "trees", 2)
+    assert "baseline" in res.err.lower(), res.describe()
+
+
+def test_trees_a_baseline_directory_that_is_gone_leaves_every_carried_tree_missing_and_exits_4(assembler, make):
+    world = make("trees", rule="rule1")
+    shutil.rmtree(str(world.baseline))
+    res = run_refused(world, assembler, "trees", 4)
+    assert "FR-K5.5" in res.err and "S-1" in res.err, res.describe()
+
+
 # ---- FR-K5.5, applied early: a tree still missing exits 4
 
 def test_trees_a_generated_tree_that_was_never_written_exits_4_naming_it(assembler, make):
@@ -1447,6 +1692,45 @@ def test_trees_a_tree_for_a_finding_that_is_not_critical_or_high_exits_4(assembl
     world = make("trees", extra_units=("D-1",))
     res = run_refused(world, assembler, "trees", 4)
     assert "D-1" in res.err, res.describe()
+
+
+# ---- where ``trees`` writes: attack-trees/ is written directly, so what is in its way and what a failed write leaves are pinned (RD-7, RD-20)
+
+def test_trees_an_attack_trees_directory_that_is_a_link_exits_2_and_nothing_is_written_through_it(assembler, make):
+    world = make("trees")
+    target = world.root / "elsewhere-trees"
+    target.mkdir()
+    (world.out / "attack-trees").symlink_to(target)
+    res = run_refused(world, assembler, "trees", 2)
+    assert "attack-trees/ is a symbolic link" in res.err, res.describe()
+    assert list(target.iterdir()) == [], "the link's target is untouched"
+
+
+def test_trees_an_attack_trees_name_that_is_a_file_exits_4_and_the_remedy_says_to_run_trees_again(assembler, make):
+    world = make("trees")
+    (world.out / "attack-trees").write_text("in the way", encoding="utf-8")
+    res = run_refused(world, assembler, "trees", 4)
+    assert "attack-trees/ could not be created" in res.err and "run assemble-report.py trees again" in res.err, res.describe()
+
+
+def test_trees_a_write_that_fails_part_way_exits_4_with_the_manifest_unwritten_and_no_stage_record(assembler, make, monkeypatch):
+    """The trees go first and the manifest last (RD-20), so a manifest on disk is never newer than the trees it lists, and there is no record of a stage that didn't end."""
+    world = make("trees")
+    real, calls = tp.atomic_write, []
+
+    def failing(path, data, mode_of=None):
+        calls.append(os.fspath(path))
+        if len(calls) == 3:
+            raise OSError(28, "No space left on device")
+        return real(path, data, mode_of=mode_of)
+
+    monkeypatch.setattr(tp, "atomic_write", failing)
+    res = world.run(assembler, "trees")
+    assert res.code == 4, res.describe()
+    assert_failure(res, "trees", world.plan_id("trees"))
+    assert "the trees could not be written (No space left on device)" in res.err and "run assemble-report.py trees again" in res.err, res.describe()
+    assert not world.manifest_path.exists() and not world.record_path("trees").exists()
+    assert sorted(p.name for p in (world.out / "attack-trees").iterdir()) == sorted(tree_name(i) for i in world.ch_ids[:2]), "the two before the failure, whole"
 
 
 # ---- S1P-A18: the forbidden-character predicate, at the tree checks (exit 2, D4)
@@ -1545,6 +1829,35 @@ def test_report_a_trees_part_that_is_missing_exits_1(assembler, make):
     world = make("report")
     world.part_path("trees", "B001").unlink()
     run_refused(world, assembler, "report", 1)
+
+
+def _outside_baseline(world):
+    outside = world.root.parent / ("outside-" + world.root.name)
+    shutil.copytree(str(world.baseline), str(outside))
+    world.rewrite_plan("trees", lambda doc: doc["refs"].update(baseline_dir=str(outside)))
+    repin_trees_plan(world)
+
+
+TREES_PLAN_REFUSALS = {
+    "a batch that is not done": lambda world: (world.rewrite_plan("trees", lambda doc: doc["batches"][0].update(state="pending")), repin_trees_plan(world)),
+    "no valid rule": lambda world: (world.rewrite_plan("trees", lambda doc: doc["params"].update(rule_applied="Rule 9")), repin_trees_plan(world)),
+    "a reference digest that differs": lambda world: (world.rewrite_plan("trees", lambda doc: doc["params"].update(reference_digest="0" * 64)), repin_trees_plan(world)),
+    "a baseline outside the working directory": _outside_baseline,
+    "a part that is gone": lambda world: world.part_path("trees", "B001").unlink(),
+}
+
+
+@pytest.mark.parametrize("case", sorted(TREES_PLAN_REFUSALS))
+def test_report_what_it_refuses_about_the_trees_plan_is_kept_for_diagnosis_where_that_plan_is(assembler, make, case):
+    """S1P-A47: the report holds the plan it pins to the checks of its own, under its own banner, and a refusal about that plan names that plan's directory.
+    (Any other refusal names the report plan's, which every other test of this mode shows through ``run_refused``.)"""
+    world = make("report", rule="rule1")
+    TREES_PLAN_REFUSALS[case](world)
+    res = world.run(assembler, "report")
+    assert res.code in (1, 2), res.describe()
+    assert_failure(res, "report")
+    kept = re.search(r"(?m)^Kept for diagnosis: (.*)$", res.err)
+    assert kept is not None and world.plan_id("trees") in kept.group(1) and world.plan_id("report") not in kept.group(1), res.describe()
 
 
 def test_report_a_manifest_that_changed_since_the_plan_exits_2(assembler, make):
@@ -1787,6 +2100,30 @@ def test_report_chains_written_but_the_chain_file_does_not_hold_the_planned_chai
     run_refused(world, assembler, "report", 2)
 
 
+@pytest.mark.parametrize("how", ["gone", "a link"])
+def test_report_chains_written_but_the_chain_file_is_gone_or_a_link_is_refused(assembler, make, how):
+    """The plan lists ``attack-chains.md`` as an input for ``chains written``, so a missing one is a missing input (exit 1). A link is a guard failure (exit 2)."""
+    world = make("report", planned_chains=True, outcome=OUTCOME_WRITTEN)
+    if how == "gone":
+        world.chains_path.unlink()
+    else:
+        real = world.root / "elsewhere-chains.md"
+        real.write_bytes(world.chains_path.read_bytes())
+        world.chains_path.unlink()
+        world.chains_path.symlink_to(real)
+    res = run_refused(world, assembler, "report", 1 if how == "gone" else 2)
+    assert "attack-chains.md fails the path guard" in res.err, res.describe()
+
+
+@pytest.mark.parametrize("outcome", [None, "chains written (abc)", OUTCOME_SKIPPED + "\n**Attack chain outcome**: " + OUTCOME_ZERO], ids=["absent", "malformed", "multiple"])
+def test_report_section_6_for_an_outcome_record_that_cannot_be_read_prints_the_fixed_sentence_and_no_chain(assembler, make, outcome):
+    """``attack-chains.py check`` rewrites such a record before Step 2.9, so this only holds if the check didn't run. The report neither guesses a chain nor stops."""
+    world = make("report", outcome=outcome)
+    report_ok(world, assembler)
+    section = section_text(world.report_text, 6)
+    assert "No attack chain outcome record is readable in threats.md." in section and not re.search(r"(?m)^#{3,4} CHAIN-", section)
+
+
 # ---- FR-K5.3, FR-K5.5 and FR-K5.7: each exits 4 (ADR-050 D14)
 
 @pytest.mark.parametrize("rule,finding_id", [("rule1", "S-1"), ("rule2", "T-2")])
@@ -1860,6 +2197,71 @@ def test_report_a_trees_part_that_changed_after_the_merge_makes_the_manifest_sta
     run_refused(world, assembler, "report", 4)
 
 
+MANIFEST_DAMAGE = {
+    "not JSON": b"{this is not json",
+    "a duplicate key": b'{"schema_version": "1.0", "schema_version": "1.0"}',
+    "a NaN": b'{"schema_version": "1.0", "attack_tree_count": NaN}',
+    "nested too deep": b"[" * 100000,
+    "not UTF-8": b"\xff\xfe{}",
+    "no list of trees": b'{"schema_version": "1.0", "trees": 3}',
+    "a tree with no finding ID": b'{"schema_version": "1.0", "trees": [{"finding_id": "not-an-id"}]}',
+}
+
+
+@pytest.mark.parametrize("damage", sorted(MANIFEST_DAMAGE))
+def test_report_a_manifest_that_is_not_the_schema_1_0_json_exits_4(assembler, make, damage):
+    """FR-K5.7. The report plan is re-pinned over the damaged file, so the digest check passes and the manifest's own check is the one that refuses it."""
+    world = make("report")
+    world.manifest_path.write_bytes(MANIFEST_DAMAGE[damage])
+    pinned = plan_input(world.manifest_path)
+    world.rewrite_plan("report", lambda doc: doc["inputs"].update(tree_manifest=pinned))
+    res = run_refused(world, assembler, "report", 4)
+    assert "FR-K5.7" in res.err, res.describe()
+
+
+@pytest.mark.parametrize("gone", ["the file", "the directory"])
+def test_report_a_carried_tree_whose_baseline_file_is_gone_exits_4_naming_it(assembler, make, gone):
+    """FR-K5.3 compares each carried tree with its baseline file, so a baseline that is missing is a failed comparison, not a skipped one."""
+    world = make("report", rule="rule1")
+    if gone == "the file":
+        world.baseline_tree_path("S-1").unlink()
+    else:
+        shutil.rmtree(str(world.baseline))
+    res = run_refused(world, assembler, "report", 4)
+    assert "FR-K5.3" in res.err and "S-1" in res.err and "has no baseline file" in res.err, res.describe()
+
+
+def test_report_a_baseline_directory_that_leaves_the_working_directory_exits_2(assembler, make):
+    world = make("report", rule="rule1")
+    outside = world.root.parent / ("outside-" + world.root.name)
+    shutil.copytree(str(world.baseline), str(outside))
+    world.rewrite_plan("trees", lambda doc: doc["refs"].update(baseline_dir=str(outside)))
+    repin_trees_plan(world)
+    res = run_refused(world, assembler, "report", 2)
+    assert "baseline" in res.err.lower(), res.describe()
+
+
+def test_report_a_tree_file_that_is_a_link_exits_2_naming_the_finding(assembler, make):
+    world = make("report")
+    path = world.tree_path("S-1")
+    real = world.root / "elsewhere-tree.md"
+    real.write_bytes(path.read_bytes())
+    path.unlink()
+    path.symlink_to(real)
+    res = run_refused(world, assembler, "report", 2)
+    assert "S-1" in res.err and "path guard" in res.err, res.describe()
+
+
+def test_report_an_attack_trees_directory_that_is_a_link_exits_2(assembler, make):
+    """With no tree to guard one by one, the directory itself is what is checked: a listing through a link would show files that aren't this run's."""
+    world = make("report", rule="no-op")
+    moved = world.root / "elsewhere-trees"
+    (world.out / "attack-trees").rename(moved)
+    (world.out / "attack-trees").symlink_to(moved)
+    res = run_refused(world, assembler, "report", 2)
+    assert "attack-trees/ is a symbolic link" in res.err, res.describe()
+
+
 # ---- the roadmap and S1P-A20: a group's primary is D8's, never "its first member in Section 4a"
 
 def test_report_the_roadmap_has_one_row_for_each_open_finding_in_risk_component_and_id_order(assembler, make):
@@ -1906,6 +2308,21 @@ def test_report_a_group_row_sorts_by_the_groups_highest_risk_level_and_takes_the
     row = rows[3]
     assert row["Component"] == "Admin Console" and "(CG-1)" in row["Dependencies"] and "OI-1" in row["Dependencies"]
     assert row["Mitigation"].index("Enforce least privilege") < row["Mitigation"].index("Encode all model output")
+
+
+@pytest.mark.parametrize("change", ["a group that the plan did not have", "a group that the plan had and the file has lost"])
+def test_report_a_roadmap_whose_rows_changed_since_the_plan_exits_2_naming_both_sets(assembler, make, change):
+    """Section 4a is outside the reference digest (RD-9), so a plan can stand while the groups change. Then a peer has an item and no row, or a row has no item, and
+    the table would hold a finding twice or leave one out. The report refuses it."""
+    if change.startswith("a group that the plan did not"):
+        world = make("report", rule="rule2")
+        world.groups = [("CG-1", ["T-1", "T-2"])]
+    else:
+        world = make("report", rule="rule2", groups=A20_GROUPS)
+        world.groups = []
+    world.write_threats()
+    res = run_refused(world, assembler, "report", 2)
+    assert "the roadmap parts hold items for" in res.err and "Section 4a" in res.err, res.describe()
 
 
 # ---- the sinks (ADR-050 D3, "Output"): every cell takes the cell sink and every fragment the prose sink
@@ -1985,7 +2402,7 @@ def test_report_every_character_the_predicate_returns_is_refused_in_a_standalone
 
 def test_report_a_forbidden_character_in_a_chain_title_exits_2_naming_the_chain(assembler, make):
     world = make("report", planned_chains=True, outcome=OUTCOME_WRITTEN)
-    world.chains_path.write_text(make_attack_chains_md(CHAINS).replace("Token replay", "Token ‮ replay"), encoding="utf-8")
+    world.chains_path.write_text(make_attack_chains_md(CHAINS).replace("Token replay", "Token \u202e replay"), encoding="utf-8")
     res = run_refused(world, assembler, "report", 2)
     assert "CHAIN-001" in res.err, res.describe()
 
@@ -2000,8 +2417,59 @@ def test_report_a_part_that_holds_a_forbidden_character_fails_the_part_checks_wi
         assert b"\\ud800" in world.part_path("report", "B001").read_bytes()
     else:
         batch = world.batch_ids("report")[-2]  # the threat_analysis findings part
-        world.rewrite_json(world.part_path("report", batch), lambda doc: doc["items"][0].update(narrative=doc["items"][0]["narrative"] + "‮"))
+        world.rewrite_json(world.part_path("report", batch), lambda doc: doc["items"][0].update(narrative=doc["items"][0]["narrative"] + "\u202e"))
     run_refused(world, assembler, "report", 2)
+
+
+def test_report_a_forbidden_character_in_a_batch_input_row_exits_2_naming_the_finding(assembler, make):
+    """A findings batch input holds rows of ``threats.md`` as data. The plan pins the file by its digest, but the row is still a value taken from an input that
+    isn't a part (S1P-A18), and the lead is built from it."""
+    world = make("report")
+    batch = world.batch_ids("report")[-2]
+    world.edit_input("report", batch, lambda doc: doc["units"][0].update(threat="Session \x1b token replay"))
+    res = run_refused(world, assembler, "report", 2)
+    assert "S-1" in res.err, res.describe()
+
+
+def rename_in_findings_batch(world, batch_id, old, new):
+    """Make ``old`` read as ``new`` in one findings batch of the report: its entry in the plan, the batch input and the part, as a planner and an agent that had
+    meant ``new`` would have written them."""
+    def renamed(ids):
+        return [new if i == old else i for i in ids]
+
+    def edit_input(doc):
+        doc["finding_ids"] = renamed(doc["finding_ids"])
+        for unit in doc["units"]:
+            if unit["finding_id"] == old:
+                unit["finding_id"] = new
+
+    def edit_part(doc):
+        doc["finding_ids"] = renamed(doc["finding_ids"])
+        for item in doc["items"]:
+            if item["finding_id"] == old:
+                item["finding_id"] = new
+
+    world.edit_input("report", batch_id, edit_input)
+    world.rewrite_plan("report", lambda doc: [entry.update(finding_ids=renamed(entry["finding_ids"])) for entry in doc["batches"] if entry["batch_id"] == batch_id])
+    world.rewrite_json(world.part_path("report", batch_id), edit_part)
+
+
+def test_report_an_analysis_item_for_a_finding_that_is_not_open_exits_2_naming_it(assembler, make):
+    """E-9 is a finding that no row of Section 7 holds. Its part and its batch input agree with the plan, so only the check against the reference set sees it."""
+    world = make("report")
+    rename_in_findings_batch(world, world.batch_ids("report")[-2], "E-1", "E-9")
+    res = run_refused(world, assembler, "report", 2)
+    assert "E-9" in res.err and "not an open finding" in res.err, res.describe()
+
+
+def test_report_a_critical_or_high_finding_with_no_tree_summary_exits_2_naming_it(assembler, make):
+    """The batch input and the part agree that S-1 has no tree, but the merged manifest has one for it, so Section 5 would have no one-sentence summary to show."""
+    world = make("report")
+    batch = world.batch_ids("report")[-2]
+    world.edit_input("report", batch, lambda doc: next(unit for unit in doc["units"] if unit["finding_id"] == "S-1").update(tree=False))
+    world.rewrite_json(world.part_path("report", batch), lambda doc: next(item for item in doc["items"] if item["finding_id"] == "S-1").update(tree_summary=None))
+    res = run_refused(world, assembler, "report", 2)
+    assert "no tree summary for S-1" in res.err, res.describe()
 
 
 # ---- what the file's frontmatter takes from the reference set, the manifest and threats.md (part-files.md, "The assembler's layout")
@@ -2096,3 +2564,53 @@ def test_report_a_fragment_over_its_limit_is_cut_at_the_limit_and_counted(assemb
     report_ok(world, assembler)
     assert section_text(world.report_text, 1).count("word") == 300
     assert world.record("report")["counts"]["truncations"] == 1
+
+
+def test_report_a_slot_that_does_not_resolve_takes_the_fields_fixed_sentence_in_its_own_sink_and_is_counted(assembler, make):
+    """``S-99`` and ``D-99`` pass the slot grammar, so each part stands. Neither is a row of the reference set, so the lookup returns ``None`` and the field falls back at
+    assembly (D3's table): a fragment and a finding's narrative in the prose sink, and a roadmap cell in the cell sink. Nothing the agent wrote for them is kept."""
+    world = make("report")
+    reword(world, "risk_posture", "Start with {{finding:S-99}}.")
+    analysis, roadmap = world.batch_ids("report")[-2:]
+    world.rewrite_json(world.part_path("report", analysis), lambda doc: doc["items"][0].update(narrative="On {{name:component:S-99}} the plan is clear."))
+    world.rewrite_json(world.part_path("report", roadmap), lambda doc: doc["items"][0].update(dependencies="Blocked by {{band:risk:D-99}}."))
+    report_ok(world, assembler)
+    text = world.report_text
+    assert "This passage is not shown because the text the agent wrote broke the narrative rules." in section_text(text, 1)
+    assert "No narrative is shown for this finding because the text the agent wrote broke the narrative rules." in section_text(text, 3)
+    row = roadmap_rows(world)[0]
+    assert row["Finding ID"] == "S-1" and row["Dependencies"] == "No dependency note is shown because the text the agent wrote broke the narrative rules."
+    assert "S-99" not in text and "D-99" not in text and "Start with" not in text and "the plan is clear" not in text
+    assert world.record("report")["counts"]["narrative_fallbacks"] == 3
+
+
+# ---- the staged-file backstop (RD-21): the file is read back from disk and checked before it replaces anything (D4; P0-4)
+
+BACKSTOP = {
+    "a character from step 10's set": (lambda text: text.replace("## 1. ", "## 1. \x1b", 1), "U+001B"),
+    "no provenance stamp": (lambda text: "\n".join(line for line in text.split("\n") if not line.startswith("<!-- tachi-provenance")), "provenance stamp"),
+    "another run's provenance stamp": (lambda text: re.sub(r"input-digest=sha256:[0-9a-f]{64}", "input-digest=sha256:" + "0" * 64, text), "provenance stamp"),
+    "a tree whose source differs from its file's": (lambda text: text.replace("Goal[", "Goal [", 1), "Mermaid source of S-1"),
+    "sections that are not numbered in order": (lambda text: text.replace("## 3. ", "## 9. ", 1), "not numbered 1 to 8 in order"),   # six sections, the roadmap and the appendix
+}
+
+
+@pytest.mark.parametrize("case", sorted(BACKSTOP))
+def test_report_a_staged_file_that_fails_its_check_exits_4_and_replaces_nothing(assembler, make, monkeypatch, case):
+    """Through a part no such text can be built, because the intake refuses what each check looks for, so the builder is replaced by one that damages its text. The
+    staged copy stays under the plan for diagnosis, and the agent's report, every earlier file and the stage record are as they were."""
+    mutate, expected = BACKSTOP[case]
+    world = make("report")
+    world.report_path.write_text("# Threat Report\n\nAn agent wrote this.\n", encoding="utf-8")
+    module = assembler.load()
+    real = module._assemble
+    monkeypatch.setattr(module, "_assemble", lambda *args: mutate(real(*args)))
+    before = tree_state(world.out)
+    res = world.run(assembler, "report")
+    assert res.code == 4, res.describe()
+    assert_failure(res, "report", world.plan_id("report"))
+    assert "a completeness or parity check failed on the staged files" in res.err and expected in res.err, res.describe()
+    after = tree_state(world.out)
+    assert all(after.get(path) == digest for path, digest in before.items()), "the agent's report and every other file stand"
+    assert {path for path in after if path not in before} == {".tachi-build/report/%s/staged/threat-report.md" % world.plan_id("report")}
+    assert not world.record_path("report").exists()
