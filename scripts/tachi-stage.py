@@ -67,7 +67,6 @@ if sys.version_info < (3, 9):  # the floor, checked before any other import (ADR
 
 import argparse
 import datetime
-import json
 import os
 import platform
 import re
@@ -122,39 +121,19 @@ _DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", re.ASCII)
 _HEX64 = re.compile(r"[0-9a-f]{64}", re.ASCII)
 
 
-class StageError(Exception):
-    """A stop with D4's exit code and its four-line message."""
-
-    def __init__(self, code: int, stage: Optional[str], reason: str, remedy: str = "", batch: Optional[tuple] = None,
-                 agent: Optional[str] = None, kept: Optional[str] = None) -> None:
-        super().__init__(reason)
-        self.code, self.stage, self.reason, self.remedy = code, stage, reason, remedy
-        self.batch, self.agent, self.kept = batch, agent, kept
-
-    def text(self) -> str:
-        lines = ["TACHI %s FAILED: %s" % ((self.stage or "STAGE").upper(), self.reason)]
-        if self.batch:
-            lines.append("Batch %s: %s" % self.batch)
-        if self.agent:
-            lines.append("Agent: %s" % self.agent)
-        if self.remedy:
-            lines.append("Remedy: %s" % self.remedy)
-        if self.kept:
-            lines.append("Kept for diagnosis: %s" % self.kept)
-        return "\n".join(lines)
+# D4's stop, with its exit code and its four-line message, is ``tachi_parts``' (#443): this entry's own name for it, with the same constructor and
+# ``text()``. The plan guard and the document reader that moved there raise it too, so ``main`` catches one class (S1P-A11).
+StageError = tp.StageFailure
 
 
 # =============================================================================
 # Small helpers: time, documents, arguments
 # =============================================================================
 
-def _utc_now() -> str:
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def _dump(obj: Any) -> str:
-    """Stable JSON: sorted keys, two-space indent, ASCII escapes, one trailing newline."""
-    return json.dumps(obj, indent=2, sort_keys=True) + "\n"
+# This entry's names for what ``tachi_parts`` shares with the renderers (#443): the clock, and stable JSON (sorted keys, two-space indent, ASCII
+# escapes, one trailing newline).
+_utc_now = tp.utc_now
+_dump = tp.dump_json
 
 
 def _write_document(stage: str, path: str, obj: Dict[str, Any], schema: str, validator: Any) -> str:
@@ -196,14 +175,9 @@ def _plan_arguments(stage: str, plan_id: str, digest: str) -> None:
         raise StageError(2, stage, "--plan-digest is not a SHA-256 in lowercase hex", "pass the digest that the last plan or reconcile printed")
 
 
-def _digest_or_none(path: str, out: Optional[str] = None) -> Optional[str]:
-    """A file's digest, or None when it is missing, unreadable, or (given ``out``) fails the path guard."""
-    if out is not None and tp.path_guard_problem(path, out) is not None:
-        return None
-    try:
-        return tp.file_digest(path)
-    except OSError:
-        return None
+# A file's digest, or None when it is missing, unreadable, or (given ``out``) fails the path guard. ``reconcile`` and ``fail`` check what the plan
+# recorded through it, so a file that can't be read counts as one that changed.
+_digest_or_none = tp.digest_or_none
 
 
 def _waves(out: str, stage: str, plan_id: str, entries: List[Dict[str, Any]]) -> List[List[Dict[str, str]]]:
@@ -313,25 +287,11 @@ def _sarif_unit_row(finding_id: str, details: Dict[str, Optional[str]]) -> Dict[
 def _first_forbidden(value: Any, path: str) -> Optional[tuple]:
     """``(path, character)`` of the first string under ``value`` that holds a character D3's step 10 forbids, or ``None`` (P0-4).
 
-    Text, mapping keys and the items of a list are searched in order, and a number or ``None`` holds no text. ``path`` is dotted, and is
-    for a message only. The character set is ``tachi_parts.forbidden_character``'s, so the parts, the renderers' inputs and this planner
-    share one definition. (Both renderers keep a copy of this walk; SA-12 hoists the three.)
+    ``tachi_parts.first_forbidden``, the one walk that the parts, the renderers' inputs and this planner share, limited here to what a JSON
+    document holds (S1P-A12): text, ``dict`` keys and values, and ``list`` items, in order. A tuple, another kind of mapping, an object, a
+    number and ``None`` hold no text. ``path`` is dotted, and is for a message only.
     """
-    if isinstance(value, str):
-        found = tp.forbidden_character(value)
-        return (path, found) if found is not None else None
-    if isinstance(value, dict):
-        children = value.items()
-    elif isinstance(value, list):
-        children = enumerate(value)
-    else:
-        return None
-    for key, child in children:
-        label = "%s.%s" % (path, key)
-        found = _first_forbidden(key, label) or _first_forbidden(child, label)   # a key is text too
-        if found is not None:
-            return found
-    return None
+    return tp.first_forbidden(value, path, json_only=True)
 
 
 def _refuse_forbidden_units(stage: str, units: List[Dict[str, Any]], text_path: str) -> None:
@@ -344,17 +304,16 @@ def _refuse_forbidden_units(stage: str, units: List[Dict[str, Any]], text_path: 
     (``text_path`` for a row's text, the baseline's ``compensating-controls.md`` for a carried result), with the regenerate-or-edit
     remedy. It gives the character's code point and never the text, so it can't carry the character to a terminal.
     """
+    plain = os.path.basename(text_path)
     for unit in units:
         for key, value in unit.items():
-            found = _first_forbidden(value, key)
-            if found is None:
-                continue
             carried = key in CARRIED_KEYS
-            name = "compensating-controls.md" if carried else os.path.basename(text_path)
-            where = ("the baseline " if carried else "") + name
-            command = "/tachi.compensating-controls" if carried else "/tachi.risk-score" if name == "risk-scores.sarif" else "/tachi.threat-model"
-            raise StageError(2, stage, "%s holds the character U+%04X, which the part contract forbids, in the %s of %s"
-                             % (where, ord(found[1]), ascii(found[0])[1:-1], unit["finding_id"]),
+            where = "the baseline compensating-controls.md" if carried else plain
+            problem = tp.forbidden_problem(where, unit["finding_id"], value, json_only=True, path=key)
+            if problem is None:
+                continue
+            command = "/tachi.compensating-controls" if carried else "/tachi.risk-score" if plain == "risk-scores.sarif" else "/tachi.threat-model"
+            raise StageError(2, stage, problem,
                              "regenerate %s with %s, or edit the value to remove the character, then re-run the command" % (where, command))
 
 
@@ -437,17 +396,9 @@ def _input_entry(stage: str, path: str, raw: Optional[bytes] = None) -> Dict[str
     return {"path": os.path.abspath(path), "sha256": tp.sha256_hex(raw), "bytes": len(raw)}
 
 
-def _walk(out: str):
-    """``(relative path, size, mtime_ns)`` for every file under ``out``, in a fixed order. Links to directories aren't followed."""
-    for directory, subdirs, files in os.walk(out):
-        subdirs.sort()
-        for name in sorted(files):
-            path = os.path.join(directory, name)
-            try:
-                status = os.lstat(path)
-            except OSError:  # pragma: no cover  (a file removed while the walk runs)
-                continue
-            yield os.path.relpath(path, out).replace(os.sep, "/"), status.st_size, max(0, status.st_mtime_ns)
+# ``(relative path, size, mtime_ns)`` for every file under ``out``, in a fixed order, links to directories not followed: the walk that D4's snapshot
+# and the declared-paths check share with the renderers (#443).
+_walk = tp.walk_out
 
 
 # A file's key in the plan's ``out_snapshot`` is ``tachi_parts.snapshot_key`` (SA-5), which both renderers look a file up by too (EC-2). This name is
@@ -947,45 +898,21 @@ def plan_stage(stage: str, out: Any, date: str, threats: Any = None, risk_scores
 # reconcile
 # =============================================================================
 
-def _read_document(stage: str, path: str, out: str, schema: str, what: str) -> Dict[str, Any]:
-    """``tachi_parts.read_document`` with D4's exit codes: 1 for a missing file, 2 for anything the contract refuses."""
-    try:
-        return tp.read_document(path, out, schema)
-    except tp.PartError as exc:
-        if exc.kind == "missing":
-            raise StageError(1, stage, "%s is missing" % what, "re-run the plan step") from None
-        raise StageError(2, stage, "%s is not acceptable (%s)" % (what, exc.detail), "re-run the command") from None
+# ``tachi_parts.read_document`` with D4's exit codes: 1 for a missing file, 2 for anything the contract refuses. The renderers read their documents
+# through it too (#443).
+_read_document = tp.entry_document
 
 
 def _trusted_plan(stage: str, out: str, plan_id: str, digest: str) -> Dict[str, Any]:
     """The plan ``--plan`` names, once the pointer, its digest, its inputs and every batch input check out.
 
     Planner state is checked, not trusted (D3): a plan file or batch input edited after ``plan``, a ``--plan`` that
-    disagrees with ``current.json``, an input that changed, or a digest that differs all exit 2.
+    disagrees with ``current.json``, an input that changed, or a digest that differs all exit 2. The guard is
+    ``tachi_parts.trusted_plan``, which the renderers share. This is the planner's use of it: a plan with a batch still
+    pending or failed is fine (``reconcile`` and ``fail`` work with those), each input is digested and never read, and
+    a refusal names no kept directory.
     """
-    pointer = _read_document(stage, tp.pointer_path(out, stage), out, tp.POINTER_SCHEMA, "the plan pointer")
-    if pointer["plan_id"] != plan_id:
-        raise StageError(2, stage, "--plan %s disagrees with current.json, which names %s" % (plan_id, pointer["plan_id"]),
-                         "pass the plan ID that plan printed")
-    path = tp.plan_path(out, stage, plan_id)
-    problem = tp.path_guard_problem(path, out)
-    if problem == "missing":
-        raise StageError(1, stage, "plan.json is missing", "re-run the plan step")
-    if problem is not None:
-        raise StageError(2, stage, "plan.json failed the path guard (%s)" % problem, "re-run the command")
-    if tp.file_digest(path) != digest:
-        raise StageError(2, stage, "the plan file's digest differs from --plan-digest",
-                         "pass the digest that the last plan or reconcile printed; if the plan was edited, re-run the command")
-    plan = _read_document(stage, path, out, tp.PLAN_SCHEMA, "plan.json")
-    if (plan["plan_id"], plan["stage"]) != (plan_id, stage):
-        raise StageError(2, stage, "plan.json is for another plan or stage", "re-run the command")
-    for name, entry in plan["inputs"].items():
-        if _digest_or_none(entry["path"]) != entry["sha256"]:
-            raise StageError(2, stage, "the input %s changed (or vanished) since plan" % name, "re-run the command")
-    for entry in plan["batches"]:
-        if _digest_or_none(tp.input_path(out, stage, plan_id, entry["batch_id"]), out) != entry["input_sha256"]:
-            raise StageError(2, stage, "the batch input %s changed after plan" % entry["batch_id"], "re-run the command")
-    return plan
+    return tp.trusted_plan(stage, out, plan_id, digest)[0]
 
 
 def _read_batch(stage: str, out: str, plan: Dict[str, Any], entry: Dict[str, Any]) -> tp.PartResult:
@@ -1092,20 +1019,9 @@ def _undeclared_paths(out: str, stage: str, plan: Dict[str, Any]) -> tuple:
 
     Returns ``(paths, warnings)``. The paths are sorted and capped at ``MAX_UNDECLARED_PATHS``, and a cut adds the
     warning ``undeclared-paths-truncated`` with the full count (ruled at W1). A plan with no snapshot skips the check.
+    This is ``tachi_parts.undeclared_paths``, which the renderers share, in this entry's argument order (#443).
     """
-    snapshot = plan["out_snapshot"]
-    if snapshot is None:
-        return [], [{"code": "declared-paths-skipped", "detail": "the plan took no snapshot of the output directory"}]
-    found = sorted(relpath for relpath, size, mtime in _walk(out)
-                   if snapshot.get(_snapshot_key(relpath)) != [size, mtime] and not tp.is_declared_path(relpath, stage, plan["plan_id"]))
-    recordable = [relpath for relpath in found if tp.path_problem(relpath) is None]
-    warnings = []
-    if len(recordable) != len(found):
-        warnings.append({"code": "undeclared-paths-unrecordable", "detail": "%d undeclared paths have names a record can't hold" % (len(found) - len(recordable))})
-    if len(recordable) > tp.MAX_UNDECLARED_PATHS:
-        warnings.append({"code": "undeclared-paths-truncated",
-                         "detail": "%d undeclared paths in all; the first %d are listed" % (len(recordable), tp.MAX_UNDECLARED_PATHS)})
-    return recordable[:tp.MAX_UNDECLARED_PATHS], warnings
+    return tp.undeclared_paths(stage, out, plan)
 
 
 def _move_and_restore(stage: str, out: str, plan: Dict[str, Any]) -> tuple:
@@ -1190,7 +1106,6 @@ def fail_stage(stage: str, out: Any, plan_id: str, digest: str, reason: str, det
     what, remedy = REASONS[reason]
     first = next((e for e in plan["batches"] if e["state"] == "failed"), None) if reason == "unrecoverable-batch" else None
     kept = tp.plan_dir(out, stage, plan_id)
-    events, retries = tp.retry_history(stage, out, plan)
     undeclared, undeclared_warnings = _undeclared_paths(out, stage, plan)
     # D7's order puts the explicit candidate's warning first. A plan that fails its trust checks has no say in the record.
     planned_warning = [dict(plan["architecture_warning"])] if trusted and plan["architecture_warning"] is not None else []
@@ -1200,24 +1115,16 @@ def fail_stage(stage: str, out: Any, plan_id: str, digest: str, reason: str, det
             result = _read_batch(stage, out, plan, entry)
             if result.state == "done":
                 accepted.update({item["finding_id"]: item for item in result.part["items"]})
-    record: Dict[str, Any] = {
-        "schema": tp.STAGE_RECORD_SCHEMA, "stage": stage, "plan_id": plan_id, "status": "failed", "tachi_version": tp.VERSION,
-        "started_utc": plan["created_utc"], "finished_utc": _utc_now(),
-        "input_digest": tp.input_digest({
-            "sources": {name: entry["sha256"] for name, entry in sorted(plan["inputs"].items())}, "params": plan["params"],
-            "items": [accepted[key] for key in sorted(accepted, key=tp.finding_sort_key)], "fragments": []}),
-        "counts": {"units": plan["unit_count"], "open": plan["unit_count"]},
-        "batches": {"planned": sum(1 for e in plan["batches"] if e["parent"] is None),
-                    "dispatched": sum(1 for e in plan["batches"] if e["parent"] is None) + plan["retry_budget"]["used"],
-                    "done": sum(1 for e in plan["batches"] if e["state"] == "done"), "retried": plan["retry_budget"]["used"],
-                    "split": sum(1 for e in plan["batches"] if e["state"] == "split"),
-                    "exhausted": sum(1 for e in plan["batches"] if e["state"] == "failed")},
-        "overflow_events": events, "retries": retries, "warnings": planned_warning + warnings + undeclared_warnings,
-        "undeclared_paths": undeclared, "outputs": [],
-        "error": {"code": reason, "message": what + (": " + detail if detail else ""),
-                  "batch_id": first["batch_id"] if first else None, "finding_ids": list(first["finding_ids"]) if first else [],
-                  "remedy": remedy},
-    }
+    input_digest = tp.input_digest({
+        "sources": {name: entry["sha256"] for name, entry in sorted(plan["inputs"].items())}, "params": plan["params"],
+        "items": [accepted[key] for key in sorted(accepted, key=tp.finding_sort_key)], "fragments": []})
+    record = tp.stage_record(
+        stage, out, plan, input_digest, {"units": plan["unit_count"], "open": plan["unit_count"]}, [],
+        planned_warning + warnings + undeclared_warnings, undeclared, status="failed",
+        error={"code": reason, "message": what + (": " + detail if detail else ""),
+               "batch_id": first["batch_id"] if first else None, "finding_ids": list(first["finding_ids"]) if first else [],
+               "remedy": remedy})
+    record["plan_id"] = plan_id  # the plan this step was asked to fail: unlike ``trusted_plan``, this step never checks that plan.json names itself
     record_path = tp.stage_record_path(out, stage, plan_id)
     _write_document(stage, record_path, record, tp.STAGE_RECORD_SCHEMA, tp.validate_stage_record)  # first, before any move
 
@@ -1400,11 +1307,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
-    try:
-        return args.run(args)
-    except StageError as exc:
-        sys.stderr.write(exc.text() + "\n")
-        return exc.code
+    return tp.run_entry(None, "tachi-stage.py", args, args.run, defect=False)  # D4's four-line message and exit code; any other exception is raised again
 
 
 if __name__ == "__main__":  # pragma: no cover  (a process alone shows it: test_exit_codes_come_from_a_real_interpreter)
