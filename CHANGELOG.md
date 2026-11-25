@@ -1071,6 +1071,13 @@ Reference: PRD #296, BLP-04 Adoption Push Wave 1 (Distribution Launch).
 
 ---
 
+## [4.48.5](https://github.com/davidmatousek/tachi/compare/v4.48.4...v4.48.5) (2026-11-24)
+
+
+### Bug Fixes
+
+* **374:** large-architecture pipeline resilience, part 1 (Track R) ([#423](https://github.com/davidmatousek/tachi/issues/423)) ([d03ee9a](https://github.com/davidmatousek/tachi/commit/d03ee9ae5c53ba758a6af2267342104cc4271cbf))
+
 ## [4.48.4](https://github.com/davidmatousek/tachi/compare/v4.48.3...v4.48.4) (2026-11-21)
 
 
