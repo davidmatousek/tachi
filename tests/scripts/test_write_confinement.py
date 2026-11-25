@@ -35,9 +35,9 @@ What each group proves:
   mmdc starts and before anything is written. Needs no Typst.
 - legacy mode (``--output``) still writes next to the artifacts, as before.
 - AR-14: a stock ``python3 scripts/<entry> --help`` of each installed entry
-  script that imports ``tachi_parsers`` (the three extractors, ``tachi-stage.py``
-  and the two renderers), with its local-import closure installed beside
-  it, leaves no bytecode cache, in the project or under a test-owned
+  script that imports ``tachi_parsers`` (the three extractors, ``tachi-stage.py``,
+  the two renderers and PR 2's four entries), with its local-import closure installed
+  beside it, leaves no bytecode cache, in the project or under a test-owned
   ``PYTHONPYCACHEPREFIX``.
 - F-374 (ADR-050 D16): ``tachi-stage.py`` runs ``plan``, ``reconcile`` and
   ``fail`` for each batched stage on the gated fixture, in a throwaway project,
@@ -59,6 +59,13 @@ What each group proves:
   script by path, so its install is its import closure. Every write of a first run, and
   of a run over earlier outputs, lands under ``--out``, and none of the scorer's files
   changes; a refused run writes nothing; no run writes bytecode. Needs no Typst.
+- F-374 (ADR-050 D16), PR 2: ``join-threats-md.py``, ``attack-chains.py``, ``assemble-report.py``
+  and ``generate-threats-sarif.py`` each run as a process in a project of their own.
+  The generator reads the gated fixture; the other three read a synthetic run that their
+  own test modules build, and this module takes the builder from them. Every write lands
+  under the one directory that the entry writes (``--out``, or ``--run-dir`` for the chain
+  script and the assembler), the inputs and the baseline are unchanged, a refused run
+  writes nothing, and no run writes bytecode. Needs no Typst.
 - AR-1 case 4 and the T015 static assertion: no fenced block in the eight
   recipe documents names ``templates/tachi/`` as a write target or uses ``/tmp``.
 
@@ -1075,13 +1082,17 @@ ENTRY_SCRIPTS_IMPORTING_PARSERS = (
     "tachi-stage.py",
     "render-risk-scores.py",
     "render-compensating-controls.py",
+    "join-threats-md.py",
+    "attack-chains.py",
+    "assemble-report.py",
+    "generate-threats-sarif.py",
 )
 
 # The scripts an entry loads by path when it runs. No import statement names them, so the import closure can't see
 # them, and an install places them beside the entry all the same (the manifest lists each). ``render-risk-scores.py``
 # takes the populator's component join (ADR-050 D2), and stops with exit 1 when the file is not installed.
 # ``render-compensating-controls.py`` loads none (it reads the threat model that its plan names, and joins no component
-# to an asset tag), so it has no row.
+# to an asset tag), so it has no row. Nor have PR 2's four entries, which import their helpers and load nothing else.
 LOADED_BY_PATH = {
     "render-risk-scores.py": ("populate-affected-assets.py",),
 }  # type: Dict[str, Tuple[str, ...]]
@@ -1177,40 +1188,32 @@ STAGES = {
 StageState = Tuple[Snapshot, Snapshot]
 
 
-class StageProject:
-    """A throwaway adopter project that runs ``tachi-stage.py`` on the gated fixture.
+class EntryProject:
+    """A throwaway adopter project that runs installed entry scripts, and the checks that every F-374 group makes of a run.
 
-    Layout under ``root``: ``project/`` is the working directory. It holds ``scripts/`` (the entry and its
-    local-import closure, as an install places them), ``run/`` (the fixture's three inputs: ``threats.md``,
-    ``risk-scores.md`` and ``architecture.md``) and ``out/``, which exists before the first command, as a command
-    creates it. ``systmp/`` is ``$TMPDIR`` of every child, and ``pycache-prefix/`` takes any bytecode an
-    interpreter writes outside the project.
+    Layout under ``root``: ``project/`` is the working directory. It holds ``scripts/``, where each entry that the project
+    is given sits with its local-import closure, as an install places them. ``systmp/`` is ``$TMPDIR`` of every child, and
+    ``pycache-prefix/`` takes any bytecode an interpreter writes outside the project. ``out_name`` is the one directory of
+    ``project/`` that a run may write: ``out`` for the entries that take ``--out``, and ``run`` for the two that take
+    ``--run-dir``. A subclass makes that directory and puts the run's inputs where its entry reads them.
     """
 
-    def __init__(self, root: Path):
+    out_name = "out"
+
+    def __init__(self, root: Path, *entries: str):
         self.cwd = root / "project"
-        self.out = self.cwd / "out"
-        self.inputs = self.cwd / "run"
+        self.out = self.cwd / self.out_name
         self.systmp = root / "systmp"
         self.prefix = root / "pycache-prefix"
         scripts = self.cwd / "scripts"
-        for directory in (scripts, self.inputs, self.out, self.systmp, self.prefix):
+        for directory in (scripts, self.systmp, self.prefix):
             directory.mkdir(parents=True)
-        _install_with_closure(STAGE_ENTRY, scripts)
-        for source, name in (
-            (GATED_FIXTURE / "baseline" / "threats.md", "threats.md"),
-            (GATED_FIXTURE / "baseline" / "risk-scores.md", "risk-scores.md"),
-            (GATED_FIXTURE / "architecture" / "architecture.md", "architecture.md"),
-        ):
-            shutil.copy2(str(source), str(self.inputs / name))
+        for entry in entries:
+            _install_with_closure(entry, scripts)
 
     def state(self) -> StageState:
         """The whole project, and ``$TMPDIR`` apart from it, as two snapshots."""
         return _snapshot(self.cwd), _snapshot(self.systmp)
-
-    def run(self, *args: str) -> "subprocess.CompletedProcess":
-        """``python3 scripts/tachi-stage.py ARGS``: the stock invocation, with bytecode caching left on."""
-        return self.run_entry(STAGE_ENTRY, *args)
 
     def run_entry(self, entry: str, *args: str) -> "subprocess.CompletedProcess":
         """``python3 scripts/<entry> ARGS`` in the project: the stock invocation, with bytecode caching left on."""
@@ -1231,14 +1234,14 @@ class StageProject:
     def assert_writes_only_under_out(
         self, before: StageState, after: StageState, label: str, also: Tuple[str, ...] = ()
     ) -> Tuple[Set[str], Set[str], Set[str]]:
-        """Every path added, changed or removed since ``before`` sits under ``out/`` or is one of ``also``.
+        """Every path added, changed or removed since ``before`` sits under ``out_name`` or is one of ``also``.
 
         ``$TMPDIR`` must be as it was: the stage's writes are atomic in their own directory, so nothing goes there.
         Returns ``(added, changed, removed)`` over the project.
         """
         added, changed, removed = _diff(before[0], after[0])
-        stray = sorted(p for p in added | changed | removed if not any(_within(p, base) for base in ("out",) + also))
-        assert not stray, "%s: wrote outside out/: %s" % (label, stray)
+        stray = sorted(p for p in added | changed | removed if not any(_within(p, base) for base in (self.out_name,) + also))
+        assert not stray, "%s: wrote outside %s/: %s" % (label, self.out_name, stray)
         assert before[1] == after[1], "%s: wrote under $TMPDIR: %s" % (label, sorted(set(before[1]) ^ set(after[1])))
         return added, changed, removed
 
@@ -1254,6 +1257,33 @@ class StageProject:
             for path in self.prefix.rglob(module.stem + ".cpython-*.pyc")
         )
         assert not cached, "a run cached the project's own modules under the prefix: %s" % cached
+
+
+class StageProject(EntryProject):
+    """A throwaway adopter project that runs ``tachi-stage.py`` on the gated fixture.
+
+    Layout under ``root``: ``project/`` is the working directory. It holds ``scripts/`` (the entry and its
+    local-import closure, as an install places them), ``run/`` (the fixture's three inputs: ``threats.md``,
+    ``risk-scores.md`` and ``architecture.md``) and ``out/``, which exists before the first command, as a command
+    creates it. ``systmp/`` is ``$TMPDIR`` of every child, and ``pycache-prefix/`` takes any bytecode an
+    interpreter writes outside the project.
+    """
+
+    def __init__(self, root: Path):
+        super().__init__(root, STAGE_ENTRY)
+        self.inputs = self.cwd / "run"
+        for directory in (self.inputs, self.out):
+            directory.mkdir(parents=True)
+        for source, name in (
+            (GATED_FIXTURE / "baseline" / "threats.md", "threats.md"),
+            (GATED_FIXTURE / "baseline" / "risk-scores.md", "risk-scores.md"),
+            (GATED_FIXTURE / "architecture" / "architecture.md", "architecture.md"),
+        ):
+            shutil.copy2(str(source), str(self.inputs / name))
+
+    def run(self, *args: str) -> "subprocess.CompletedProcess":
+        """``python3 scripts/tachi-stage.py ARGS``: the stock invocation, with bytecode caching left on."""
+        return self.run_entry(STAGE_ENTRY, *args)
 
 
 @pytest.mark.parametrize("stage", sorted(STAGES))
@@ -1670,6 +1700,368 @@ def test_render_compensating_controls_refuses_without_writing(tmp_path: Path, ca
     refused = project.render_controls(plan_id, digest)
     assert refused.returncode == code, _describe(refused)
     assert "TACHI COMPENSATING-CONTROLS FAILED" in refused.stderr, _describe(refused)
+    assert project.state() == before, "a refused run must write nothing"
+    project.assert_no_bytecode()
+
+
+# =============================================================================
+# F-374 (ADR-050 D16), PR 2: the four Track O entries write only under {out} and leave no bytecode
+# =============================================================================
+#
+# ``join-threats-md.py``, ``attack-chains.py``, ``assemble-report.py`` and ``generate-threats-sarif.py`` each run as a process, in a project
+# of their own. Every path that a run adds, changes or removes must sit under the one directory that its entry writes: ``--out`` for the joiner
+# and the generator, ``--run-dir`` for the chain script and the assembler. The generator reads the gated fixture. The other three read a run that
+# the planner (T092's PR 2 modes) and the orchestrator leave, and neither is part of this process, so each of their test modules builds that run
+# from the contracts' key sets, checked by ``tachi_parts``' own validators, and this module takes the builder from it. Each builder is imported
+# when a case first needs it, as ``test_sarif_identity.py`` does for its harness, so a change in one of those modules can't break the F-391 cases
+# or PR 1's groups. A refused run writes nothing, and no run writes bytecode. Needs no Typst.
+#
+# AOD-SIMPLIFICATION: three of the runs are stand-ins for T092's planner and the orchestrator — upgrade: drive tachi-stage.py's PR 2 plans here once T092 lands
+
+JOIN_ENTRY = "join-threats-md.py"
+CHAINS_ENTRY = "attack-chains.py"
+ASSEMBLE_ENTRY = "assemble-report.py"
+SARIF_ENTRY = "generate-threats-sarif.py"
+# The run-level plan's ID, which only ``attack-chains.py check`` takes, for its hand-off file's place.
+CHAINS_PLAN_ID = "20261124T120000Z-0123456789ab"
+# What an earlier run, or an agent, left where an entry writes: each entry replaces its own file and leaves every other path as it was.
+EARLIER_THREATS = b"# the earlier run's threats.md\n"
+EARLIER_SARIF = b'{"earlier": "run"}\n'
+EARLIER_TREE = b"# the earlier run's attack tree\n"
+EARLIER_REPORT = b"# the report that an agent wrote\n"
+
+
+def _files_among(snap: Snapshot, paths: Set[str]) -> Set[str]:
+    """The paths of ``paths`` that ``snap`` records as files: a directory that a write makes on its way is no output of its own."""
+    return {p for p in paths if snap[p][0] == "file"}
+
+
+@pytest.mark.parametrize("out_name", ("out", "run"))
+def test_the_checks_every_group_relies_on_flag_what_they_exist_to_flag(tmp_path: Path, out_name: str):
+    """Each check of ``EntryProject`` is shown red on a planted fault, so that a green group means something.
+
+    A write beside the entry's directory, a write under the other directory that an entry may take (``run/`` is a stray in a project whose entry
+    takes ``--out``, and ``out/`` in one whose entry takes ``--run-dir``), a write under ``$TMPDIR`` and a bytecode cache are each refused. A write
+    under the entry's own directory is not.
+    """
+    other = "run" if out_name == "out" else "out"
+    project = type("Probe", (EntryProject,), {"out_name": out_name})(tmp_path)
+    for name in (out_name, other):
+        (project.cwd / name).mkdir()
+    start = project.state()
+
+    (project.cwd / out_name / "inside.txt").write_text("written by the entry", encoding="utf-8")
+    project.assert_writes_only_under_out(start, project.state(), "an inside write")
+    project.assert_no_bytecode()
+
+    for stray in (project.cwd / "beside.txt", project.cwd / other / "other.txt"):
+        stray.write_text("written outside", encoding="utf-8")
+        with pytest.raises(AssertionError, match="wrote outside %s/" % out_name):
+            project.assert_writes_only_under_out(start, project.state(), "a stray write")
+        stray.unlink()
+    (project.systmp / "tmpfile").write_text("written to TMPDIR", encoding="utf-8")
+    with pytest.raises(AssertionError, match="wrote under .TMPDIR"):
+        project.assert_writes_only_under_out(start, project.state(), "a TMPDIR write")
+    (project.systmp / "tmpfile").unlink()
+
+    (project.cwd / "scripts" / "__pycache__").mkdir()
+    with pytest.raises(AssertionError, match="wrote bytecode"):
+        project.assert_no_bytecode()
+    (project.cwd / "scripts" / "__pycache__").rmdir()
+    (project.prefix / "x").mkdir()
+    (project.prefix / "x" / "helper.cpython-311.pyc").write_bytes(b"\0")
+    (project.cwd / "scripts" / "helper.py").write_text("", encoding="utf-8")
+    with pytest.raises(AssertionError, match="cached the project's own modules"):
+        project.assert_no_bytecode()
+
+
+class JoinProject(EntryProject):
+    """An ``EntryProject`` that runs ``join-threats-md.py`` on a synthetic ``threats-md`` run in ``out/``.
+
+    ``JoinRun`` (``test_threats_md_join.py``) leaves the run as the orchestrator and the planner would: the section manifest, the plan, its pointer,
+    a batch input for each part and the parts. ``planned=False`` leaves the manifest alone, so the run has no plan.
+    """
+
+    def __init__(self, root: Path, planned: bool = True):
+        from .test_threats_md_join import Run as JoinRun  # imported when a case first needs it
+
+        super().__init__(root, JOIN_ENTRY)
+        self.world = JoinRun(self.cwd)
+        if planned:
+            self.world.ready()
+        else:
+            self.world.write_manifest()
+
+    def join(self, plan_id: Optional[str] = None, digest: Optional[str] = None) -> "subprocess.CompletedProcess":
+        """``python3 scripts/join-threats-md.py --out out --plan ID --plan-digest HEX``: the orchestrator's step after the last reconcile."""
+        return self.run_entry(JOIN_ENTRY, "--out", "out", "--plan", plan_id or self.world.plan_id,
+                              "--plan-digest", digest or self.world.digest)
+
+
+@pytest.mark.parametrize("earlier", (False, True), ids=("first-run", "over-earlier-output"))
+def test_join_threats_md_writes_only_under_out(tmp_path: Path, earlier: bool):
+    """The joiner writes ``threats.md`` and its stage record under ``--out``, and changes nothing that it reads.
+
+    Over an earlier ``threats.md`` the file changes instead of appearing. The staged copy moves onto its name, so no file is left in a
+    staging directory, and ``$TMPDIR`` stays as it was: the joiner stages inside the plan directory.
+    """
+    project = JoinProject(tmp_path)
+    if earlier:
+        (project.out / "threats.md").write_bytes(EARLIER_THREATS)
+    start = project.state()
+
+    joined = project.join()
+    assert joined.returncode == 0, _describe(joined)
+    end = project.state()
+    added, changed, removed = project.assert_writes_only_under_out(start, end, "after join")
+    record = "out/.tachi-build/threats-md/%s/stage-record.json" % project.world.plan_id
+    assert _files_among(end[0], added) == ({record} if earlier else {"out/threats.md", record}), sorted(added)
+    assert changed == ({"out/threats.md"} if earlier else set()) and not removed, (changed, removed)
+    if earlier:
+        assert (project.out / "threats.md").read_bytes() != EARLIER_THREATS
+    assert set(json.loads(joined.stdout)) == {"record", "counts"}, _describe(joined)
+    assert not [p for p in end[0] if "/staged/" in p and end[0][p][0] == "file"], "the staged file moved onto its name"
+    project.assert_no_bytecode()
+
+
+@pytest.mark.parametrize("case", ("digest-mismatch", "no-plan"))
+def test_join_threats_md_refuses_without_writing(tmp_path: Path, case: str):
+    """A digest that differs exits 2 and a run with no plan exits 1, and neither writes anything."""
+    project = JoinProject(tmp_path, planned=(case == "digest-mismatch"))
+    plan_id, code = (None, 2) if case == "digest-mismatch" else ("20261122T100000Z-0123456789ab", 1)
+    before = project.state()
+
+    refused = project.join(plan_id, "0" * 64)
+    assert refused.returncode == code, _describe(refused)
+    assert "TACHI THREATS-MD FAILED" in refused.stderr, _describe(refused)
+    assert project.state() == before, "a refused run must write nothing"
+    project.assert_no_bytecode()
+
+
+class ChainsProject(EntryProject):
+    """An ``EntryProject`` that runs ``attack-chains.py`` on a synthetic run in ``run/``, the entry's ``--run-dir``.
+
+    ``plain_islands`` (``test_chain_script.py``) writes the run's ``threats.md`` and its Phase 1 inventory: two islands, so two surfaced
+    chains. ``make_plan_dir`` leaves the run-level plan's directory, with its ``checks/``, as ``tachi-stage.py plan --stage threat-model`` would,
+    because ``check`` writes its hand-off file there and nothing makes the plan directory for it.
+    """
+
+    out_name = "run"
+
+    def __init__(self, root: Path):
+        from .test_chain_script import plain_islands  # imported when a case first needs it
+
+        super().__init__(root, CHAINS_ENTRY)
+        self.world = plain_islands(self.cwd, 2)
+        self.world.make_plan_dir(CHAINS_PLAN_ID)
+
+    def chains(self, mode: str, *args: str) -> "subprocess.CompletedProcess":
+        """``python3 scripts/attack-chains.py MODE --run-dir run ARGS``."""
+        return self.run_entry(CHAINS_ENTRY, mode, "--run-dir", "run", *args)
+
+    def narrate(self, plan_stdout: str) -> List[str]:
+        """The orchestrator's narratives, for the surfaced chains that ``plan`` printed and for those only. Returns their IDs."""
+        from .test_chain_script import default_texts, surfaced_ids, write_narratives  # imported when a case first needs them
+
+        ids = surfaced_ids(plan_stdout)
+        write_narratives(self.world, default_texts(ids))
+        return ids
+
+
+def test_attack_chains_plan_render_and_check_write_only_under_the_run_directory(tmp_path: Path):
+    """Phase 3.5's three calls, each held to what its contract lets it write, and all of them to ``--run-dir``.
+
+    ``plan`` writes ``chains.json`` and nothing else. ``render`` writes ``attack-chains.md`` and upserts the outcome record in ``threats.md``, the one
+    file that it changes. ``check`` on that record changes nothing and writes its hand-off file. The orchestrator's ``narratives.json`` is written
+    between the first two, by this test, and the Phase 1 inventory is read and never written.
+    """
+    project = ChainsProject(tmp_path)
+    start = project.state()
+
+    planned = project.chains("plan")
+    assert planned.returncode == 0, _describe(planned)
+    after_plan = project.state()
+    added, changed, removed = project.assert_writes_only_under_out(start, after_plan, "after plan")
+    assert _files_among(after_plan[0], added) == {"run/.tachi-build/chains/chains.json"} and not changed and not removed, (added, changed, removed)
+
+    assert len(project.narrate(planned.stdout)) == 2, "two islands surface two chains: %s" % _describe(planned)
+    narrated = project.state()
+
+    rendered = project.chains("render")
+    assert rendered.returncode == 0, _describe(rendered)
+    after_render = project.state()
+    added, changed, removed = project.assert_writes_only_under_out(narrated, after_render, "after render")
+    assert _files_among(after_render[0], added) == {"run/attack-chains.md"} and changed == {"run/threats.md"} and not removed, (added, changed, removed)
+
+    checked = project.chains("check", "--plan", CHAINS_PLAN_ID)
+    assert checked.returncode == 0, _describe(checked)
+    end = project.state()
+    added, changed, removed = project.assert_writes_only_under_out(after_render, end, "after check")
+    handoff = "run/.tachi-build/threat-model/%s/checks/attack-chains.json" % CHAINS_PLAN_ID
+    assert _files_among(end[0], added) == {handoff} and not changed and not removed, (added, changed, removed)
+
+    project.assert_writes_only_under_out(start, end, "over the whole run")
+    assert _under(end[0], "run/.tachi-build/phase1") == _under(start[0], "run/.tachi-build/phase1"), "the inventory is read, never written"
+    project.assert_no_bytecode()
+
+
+# Each refusal, with the exit code that its mode gives it: a ``--run-dir`` that is no directory is 1 for ``plan`` and ``render`` and 2 for ``check``,
+# whose codes have no 1 (``contracts/cli.md``), and a ``render`` that finds no ``chains.json`` is 1.
+CHAINS_REFUSALS = {
+    "plan-no-run-dir": (("plan", "--run-dir", "no-such-dir"), 1),
+    "render-no-chains-json": (("render", "--run-dir", "run"), 1),
+    "check-no-run-dir": (("check", "--run-dir", "no-such-dir", "--plan", CHAINS_PLAN_ID), 2),
+}  # type: Dict[str, Tuple[Tuple[str, ...], int]]
+
+
+@pytest.mark.parametrize("case", sorted(CHAINS_REFUSALS))
+def test_attack_chains_refuses_without_writing(tmp_path: Path, case: str):
+    """A run directory that isn't there, and a ``render`` with no ``chains.json``, are refused with their own exit codes, and write nothing."""
+    project = ChainsProject(tmp_path)
+    argv, code = CHAINS_REFUSALS[case]
+    before = project.state()
+
+    refused = project.run_entry(CHAINS_ENTRY, *argv)
+    assert refused.returncode == code, _describe(refused)
+    assert "TACHI ATTACK-CHAINS FAILED" in refused.stderr, _describe(refused)
+    assert project.state() == before, "a refused run must write nothing"
+    project.assert_no_bytecode()
+
+
+class AssembleProject(EntryProject):
+    """An ``EntryProject`` that runs ``assemble-report.py`` on a synthetic run in ``run/``, the entry's ``--run-dir``.
+
+    ``World`` (``test_report_assembly.py``) leaves the ``trees`` stage as the planner and the attack-tree agents would: ``threats.md``, the plan, a
+    batch input and a part for each batch, the agents' tree files and an earlier run's ``baseline/``. ``rule1`` takes most trees from that
+    baseline and generates the rest, so the baseline is read and the plan's own tree files are copied. ``report_stage`` adds the ``report`` stage's
+    plan and parts, which the planner writes after ``trees`` has run, on the manifest that ``trees`` wrote.
+    """
+
+    out_name = "run"
+
+    def __init__(self, root: Path):
+        from .test_report_assembly import World as ReportWorld  # imported when a case first needs it
+
+        super().__init__(root, ASSEMBLE_ENTRY)
+        self.world = ReportWorld(self.cwd, rule="rule1").build("trees")
+
+    def assemble(self, mode: str, plan_id: Optional[str] = None, digest: Optional[str] = None) -> "subprocess.CompletedProcess":
+        """``python3 scripts/assemble-report.py MODE --run-dir run --plan ID --plan-digest HEX``."""
+        return self.run_entry(ASSEMBLE_ENTRY, mode, "--run-dir", "run", "--plan", plan_id or self.world.ids[mode],
+                              "--plan-digest", digest or self.world.digest[mode])
+
+    def report_stage(self) -> None:
+        """The ``report`` stage's plan, batch inputs and parts, as the planner leaves them once ``trees`` has exited 0."""
+        self.world.build_report()
+
+
+@pytest.mark.parametrize("earlier", (False, True), ids=("first-run", "over-earlier-output"))
+def test_assemble_report_trees_and_report_write_only_under_the_run_directory(tmp_path: Path, earlier: bool):
+    """``trees`` copies and merges the trees under ``attack-trees/``, and ``report`` writes ``threat-report.md``. Each writes its stage record.
+
+    Nothing else under ``--run-dir`` changes: the plans, the batch inputs, the parts, the agents' tree files and ``threats.md`` are read, and the
+    baseline is read and never written. Over an earlier run, a tree and the report that an agent wrote are replaced, and each changes instead of
+    appearing. ``$TMPDIR`` stays as it was.
+    """
+    project = AssembleProject(tmp_path)
+    world = project.world
+    trees = {world.tree_path(finding_id).relative_to(project.cwd).as_posix() for finding_id in world.tree_ids}
+    replaced = sorted(trees)[0]
+    if earlier:
+        (project.cwd / replaced).parent.mkdir(parents=True, exist_ok=True)
+        (project.cwd / replaced).write_bytes(EARLIER_TREE)
+        (project.out / "threat-report.md").write_bytes(EARLIER_REPORT)
+    start = project.state()
+
+    first = project.assemble("trees")
+    assert first.returncode == 0, _describe(first)
+    after_trees = project.state()
+    added, changed, removed = project.assert_writes_only_under_out(start, after_trees, "after trees")
+    outputs = trees | {"run/attack-trees/.manifest.json", "run/.tachi-build/trees/%s/stage-record.json" % world.ids["trees"]}
+    assert _files_among(after_trees[0], added) | changed == outputs and not removed, (sorted(added), sorted(changed), sorted(removed))
+    assert changed == ({replaced} if earlier else set()), changed
+    assert _under(after_trees[0], "baseline") == _under(start[0], "baseline"), "the baseline is read, never written"
+
+    project.report_stage()
+    staged = project.state()
+    second = project.assemble("report")
+    assert second.returncode == 0, _describe(second)
+    end = project.state()
+    added, changed, removed = project.assert_writes_only_under_out(staged, end, "after report")
+    outputs = {"run/threat-report.md", "run/.tachi-build/report/%s/stage-record.json" % world.ids["report"]}
+    assert _files_among(end[0], added) | changed == outputs and not removed, (sorted(added), sorted(changed), sorted(removed))
+    assert changed == ({"run/threat-report.md"} if earlier else set()), changed
+    assert (project.out / "threat-report.md").read_bytes() != EARLIER_REPORT
+
+    project.assert_writes_only_under_out(start, end, "over the whole run")
+    assert _under(end[0], "baseline") == _under(start[0], "baseline"), "the baseline is read, never written"
+    project.assert_no_bytecode()
+
+
+@pytest.mark.parametrize("case", ("trees-digest-mismatch", "report-no-plan"))
+def test_assemble_report_refuses_without_writing(tmp_path: Path, case: str):
+    """A ``trees`` plan digest that differs exits 2, and a ``report`` stage with no plan exits 1. Neither writes anything."""
+    project = AssembleProject(tmp_path)
+    mode, code = ("trees", 2) if case == "trees-digest-mismatch" else ("report", 1)
+    before = project.state()
+
+    refused = project.assemble(mode, plan_id=project.world.ids[mode], digest="0" * 64)
+    assert refused.returncode == code, _describe(refused)
+    assert "TACHI %s FAILED" % mode.upper() in refused.stderr, _describe(refused)
+    assert project.state() == before, "a refused run must write nothing"
+    project.assert_no_bytecode()
+
+
+class SarifProject(StageProject):
+    """A ``StageProject`` that also installs ``generate-threats-sarif.py``, which reads the fixture's ``threats.md`` and ``architecture.md``."""
+
+    def __init__(self, root: Path):
+        super().__init__(root)
+        _install_with_closure(SARIF_ENTRY, self.cwd / "scripts")
+
+    def generate(self, *args: str) -> "subprocess.CompletedProcess":
+        """``python3 scripts/generate-threats-sarif.py ARGS``: Step 2.10, which passes the command's own architecture path."""
+        return self.run_entry(SARIF_ENTRY, *args)
+
+
+SARIF_ARGS = ("--threats", "run/threats.md", "--out", "out", "--architecture", "run/architecture.md")
+
+
+@pytest.mark.parametrize("earlier", (False, True), ids=("first-run", "over-earlier-output"))
+def test_generate_threats_sarif_writes_only_under_out(tmp_path: Path, earlier: bool):
+    """The generator writes ``threats.sarif`` under ``--out`` and nothing else, and leaves its inputs and the scripts as they were.
+
+    Over an earlier file it changes instead of appearing. It keeps no plan directory and no record, so that one file is the whole write set.
+    """
+    project = SarifProject(tmp_path)
+    if earlier:
+        (project.out / "threats.sarif").write_bytes(EARLIER_SARIF)
+    start = project.state()
+
+    generated = project.generate(*SARIF_ARGS)
+    assert generated.returncode == 0, _describe(generated)
+    end = project.state()
+    added, changed, removed = project.assert_writes_only_under_out(start, end, "after generate")
+    assert _files_among(end[0], added) == (set() if earlier else {"out/threats.sarif"}), sorted(added)
+    assert changed == ({"out/threats.sarif"} if earlier else set()) and not removed, (changed, removed)
+    printed = json.loads(generated.stdout)
+    assert printed["output"] == "threats.sarif" and printed["results"] > 0, _describe(generated)
+    if earlier:
+        assert (project.out / "threats.sarif").read_bytes() != EARLIER_SARIF
+    project.assert_no_bytecode()
+
+
+@pytest.mark.parametrize("case", ("no-threats-file", "no-out-directory"))
+def test_generate_threats_sarif_refuses_without_writing(tmp_path: Path, case: str):
+    """A ``--threats`` file that isn't there and an ``--out`` that is no directory are both exit 1, and write nothing."""
+    project = SarifProject(tmp_path)
+    argv = (("--threats", "run/missing.md", "--out", "out") if case == "no-threats-file"
+            else ("--threats", "run/threats.md", "--out", "no-such-dir"))
+    before = project.state()
+
+    refused = project.generate(*argv)
+    assert refused.returncode == 1, _describe(refused)
+    assert "TACHI THREATS-SARIF FAILED" in refused.stderr, _describe(refused)
     assert project.state() == before, "a refused run must write nothing"
     project.assert_no_bytecode()
 
