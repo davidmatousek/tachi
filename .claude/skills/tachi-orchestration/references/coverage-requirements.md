@@ -157,30 +157,34 @@ Each name is the typed `subagent_type` of a roster agent. Dispatch by that name,
 
 For compound categories (`agentic`, `llm`), dispatch **all** listed agents. Findings from any of the listed agents satisfy the coverage requirement.
 
-### Re-Analysis Context Payload
+### Re-Analysis Dispatch
 
-Each targeted re-analysis agent receives the same context payload structure as Phase 2, but scoped to a single component:
+Each targeted re-analysis is a dispatch of its own, made under the orchestrator's Dispatch Protocol, with the templates in `.claude/skills/tachi-shared/references/dispatch-record-brief-shared.md`. This reference sets no payload of its own:
 
-1. **Target component**: The specific component with the coverage gap.
-2. **Full architecture context**: All components, data flows, trust boundaries (same as Phase 2).
-3. **Analysis scope**: The missing threat category.
-4. **Scope constraint**: `"Targeted re-analysis for coverage gap: analyze {component} for {category} threats only."`
-
-When in baseline mode, the re-analysis uses the same **isolated discovery context** rules as Phase 2 -- no finding descriptions, scores, or mitigations are provided. Only the coverage summary is included to prevent anchoring bias.
+1. **One dispatch for each gap and agent.** A compound category (`agentic`, `llm`) gives one dispatch for each listed agent.
+2. **The next unused dispatch ID**, taken when you decide to make the dispatch, before you write its brief.
+3. **A brief** (`tachi.brief/1`) whose one target is the gap's component. It points at the architecture snapshot and the two Phase 1 files, and copies none of them. In baseline mode its `baseline_focus` keeps the **isolated discovery** rule of Phase 2: the coverage summary only, with no finding descriptions, scores, mitigations or finding IDs, to prevent anchoring bias.
+4. **The fixed prompt, and nothing else**: `Read and follow the brief at {brief_path}.`
+5. **One record**, with `origin` `coverage-gap`, `supersedes` `null` and a scope of exactly the gap's component.
 
 ### Re-Analysis Result Handling
 
+The dispatch's record decides the outcome, and the end-marker rule in the dispatch record and brief reference reads the return.
+
 | Outcome | Action |
 |---------|--------|
-| Findings produced | Merge new findings into the finding set. Assign sequential IDs after the highest existing ID in the category. Set `delta_status` to `NEW`. |
-| No findings produced | The category was analyzed but no threats were found. Gap resolved as `"analyzed_clean"`. |
-| Agent dispatch failure | Gap unresolved with resolution `"dispatch_failure"`. Coverage gate reports as warning -- does not block pipeline. |
+| Findings produced (a `complete` record whose `count` is above 0) | Merge the new findings into the finding set, and set `delta_status` to `NEW`. Their IDs follow Phase 3's numbering and are recorded in the ID map: this reference sets no ID rule of its own. |
+| No findings produced (a `complete` record whose `count` is 0) | The category was analyzed but no threats were found. Gap resolved as `"analyzed_clean"`. |
+| Truncated return (an `unrecovered` record, with `reason` `no_end_marker`, `overflow_error`, `agent_failed` or `timed_out`) | The findings are dropped, even those the return held. Gap unresolved with resolution `"dispatch_failure"`. Coverage gate reports as warning -- does not block pipeline. The run's check then warns `coverage-gap:unrecovered:<reason>`, with exit 5. |
+
+An agent that can't be spawned is not a row of this table: it is the stop of typed dispatch rule 2 in the orchestrator, and it ends the run.
 
 ### Re-Analysis Constraints
 
 - **Run once per gap**: Each gap gets exactly one re-analysis attempt. No retry loops.
 - **No recursive coverage checks**: Do not re-run the coverage gate after re-analysis. The gate runs once, dispatches once, and reports results.
 - **Non-blocking**: The coverage gate produces warnings, not errors. The pipeline always continues to Risk Level Validation regardless of gap resolution outcomes.
+- **No lineage**: A re-analysis dispatch belongs to no lineage, is never `superseded` and is never re-dispatched. The dispatches run in waves of at most 16, and each wave starts its own watch with its Agent calls, as Phase 2's waves do.
 
 ### Updated Coverage Gate Output
 

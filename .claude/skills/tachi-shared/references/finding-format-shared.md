@@ -159,7 +159,7 @@ When a finding does not conform to the schema, the orchestrator applies recovery
 
 1. Missing or malformed `id`: Assign the next sequential ID in the appropriate category.
 2. Non-enum `likelihood` or `impact`: Map to the closest valid value (e.g., "high" -> "HIGH", "moderate" -> "MEDIUM") or default to "MEDIUM". Recompute `risk_level`.
-3. Missing `component`: Use the target component name from the dispatch record.
+3. Missing `component`: Use the target component name from the brief.
 4. Missing `mitigation`: Enter `"[No mitigation provided by agent -- review required]"`.
 5. Annotate the finding by appending a warning to the Mitigation field.
 6. Include the annotated finding in all downstream computations.
@@ -216,13 +216,29 @@ When constructing a finding, populate each field as follows:
 
 - **`id`**: Assign sequentially within your prefix (e.g., `S-1` for the first spoofing finding this run).
 - **`category`**: Use the canonical enum value from the Category Enum Values section — not a display name.
-- **`component`**: Use the exact component name from the orchestrator dispatch record. Do not paraphrase or abbreviate.
+- **`component`**: Use the exact component name from your brief's `targets`. Do not paraphrase or abbreviate.
 - **`threat`**: 1–3 sentences describing what the attacker does AND which trust assumption they violate. Be concrete about the attack path on this specific component — avoid generic CVE-style descriptions.
 - **`likelihood`** / **`impact`**: Assess using OWASP factors (attacker skill, opportunity, detection difficulty for likelihood; loss of confidentiality/integrity/availability + accountability for impact). Pick `LOW`, `MEDIUM`, or `HIGH`.
 - **`risk_level`**: Compute via the OWASP 3x3 matrix in the Risk Level Computation section — do not assign independently. Mismatches are corrected by the orchestrator.
 - **`mitigation`**: Actionable, technology-specific guidance. Name the mechanism (mTLS with certificate pinning, Argon2id password hashing, step-up auth for admin operations). Do not emit generic advice ("use strong auth").
 - **`references`**: Required for `agentic` and `llm` categories, optional for STRIDE. Cite from your agent's Primary Sources list in `detection-patterns.md` to maintain traceability.
-- **`dfd_element_type`**: Use the DFD classification provided by the orchestrator dispatch record (`External Entity`, `Process`, `Data Store`, `Data Flow`).
+- **`dfd_element_type`**: Use the DFD classification in the inventory your brief names (`External Entity`, `Process`, `Data Store`, `Data Flow`).
+
+### Ending Your Report
+
+When your report lists every finding, end it with this line, alone and exactly as written, and write nothing after it:
+
+```
+TACHI-END
+```
+
+End with it too when you found nothing. If your findings can't all fit in one report, don't stop mid-list, and don't end with `TACHI-END`. End instead with this line, alone and exactly as written:
+
+```
+TACHI-OVERFLOW
+```
+
+If you were stopped at an output limit and told to resume, end with `TACHI-END` only if the report you send lists every finding. Otherwise end with `TACHI-OVERFLOW`.
 
 ### Risk Level Computation Example
 

@@ -284,7 +284,7 @@ Phase objectives:
 1. Apply the STRIDE-per-Element normalization table to map each component's DFD type to its applicable STRIDE categories.
 2. Apply AI keyword dispatch rules to identify components requiring AI-specific threat analysis.
 3. Check the dispatch table against the self-check in the dispatch rules reference, then persist it as `phase1/dispatch.json`. The file is this phase's intermediate output: print no copy of it.
-4. Plan the dispatches, write a brief for each one, and invoke the threat agents with the fixed prompt that points each at its brief.
+4. Plan the dispatches, write a brief for each one, and invoke the threat agents with the fixed prompt that points each at its brief. Start a watch with each wave, so that an agent that never returns can't hold the run.
 5. Record every return in a dispatch record, and re-dispatch a truncated return per component, within the retry caps.
 
 Do not write a brief or invoke any agent until the dispatch table file has been written.
@@ -309,7 +309,7 @@ When invoking an agent, set `subagent_type` to the agent's roster name, characte
    ```
 
    In Phase 3b, an agent that started and then failed is a different case. It is the coverage gate's `dispatch_failure`, which stays a warning.
-3. **Run shipped scripts only.** The only commands you run are shipped scripts that this file names. Write each as one `python3 scripts/<name>.py` call with literal arguments: no `$(...)` substitution, no backtick substitution, no `xargs` and no `bash -c`. If a script this file names is missing, stop with an error that names the script and says to re-run `scripts/install.sh`, and write none in its place.
+3. **Run shipped scripts only.** The only commands you run are shipped scripts that this file names: the populator in Phase 3.7, and `scripts/tachi-stage.py watch`, which bounds each wave of Phase 2 and Phase 3b dispatches (see Dispatch). Write each as one `python3 scripts/<name>.py` call with literal arguments: no `$(...)` substitution, no backtick substitution, no `xargs` and no `bash -c`. If a script this file names is missing, stop with an error that names the script and says to re-run `scripts/install.sh`, and write none in its place.
 
 ---
 
@@ -327,9 +327,9 @@ When `baseline.present == false`, Phase 2 operates in standard stateless mode wi
 
 The orchestrator supports two dispatch modes. Both produce identical output -- the dispatch mode affects execution order only, not results.
 
-**Parallel Mode**: Plan the dispatches, write the briefs, invoke the whole planned set concurrently as one wave, and record each return as its agent reports completion. Go on to Phase 3 only when no dispatch is pending.
+**Parallel Mode**: Plan the dispatches, write the briefs, invoke the whole planned set concurrently as one wave with its watch, and record each return as it arrives. Go on to Phase 3 only when no dispatch is pending.
 
-**Sequential Mode**: Same preparation, but invoke agents one at a time in category order: S, T, R, I, D, E, AG (agent-autonomy then tool-abuse then human-trust-exploitation), LLM (prompt-injection then data-poisoning then model-theft then output-integrity then misinformation). Collect findings from each agent before invoking the next.
+**Sequential Mode**: Same preparation, but invoke agents one at a time in category order: S, T, R, I, D, E, AG (agent-autonomy then tool-abuse then human-trust-exploitation), LLM (prompt-injection then data-poisoning then model-theft then output-integrity then misinformation). Collect findings from each agent before invoking the next. Each dispatch is then a wave of its own, with its own watch.
 
 Both modes dispatch through the Agent tool, one call per dispatch, and every call names a roster agent by `subagent_type` under the typed dispatch rules above. In either mode, a re-dispatch or a coverage-gap dispatch comes after the planned set, as a wave of its own.
 
@@ -361,32 +361,50 @@ Before you dispatch, write the brief to `{out}/.tachi-build/briefs/{dispatch_id}
 
 #### Dispatch
 
-Dispatch with the Agent tool. Set `subagent_type` to the agent's roster name, and send this prompt and nothing else, with the brief's absolute path filled in: `Read and follow the brief at <brief path>.`
+Dispatch with the Agent tool. Set `subagent_type` to the agent's roster name and `description` to the dispatch's ID, and send this prompt and nothing else, with the brief's absolute path filled in: `Read and follow the brief at <brief path>.` Every notice about an agent carries its `description`, so the ID is how a notice names its dispatch.
 
-Start at most 16 dispatches at once, which leaves margin under the platform's limit of 20. The planned set is one wave. When more are pending, start the lowest-numbered 16, and start each further wave only after every agent of the wave before it has reported completion and has its record.
+Start at most 16 dispatches at once, which leaves margin under the platform's limit of 20. The planned set is one wave. When more are pending, start the lowest-numbered ones that fit, and start each further wave only after every dispatch of the wave before it has its record.
 
-**Completion rule.** Use a return only after its agent has reported completion. While an agent you dispatched is still running, don't compile Phase 3, report a result or return to your caller, so that no agent outlives you. The same holds when you stop for an error: wait for the agents still running, then reply. An agent that starts and then fails has returned nothing usable, which counts as a return with no end marker.
+**The watch.** An agent can block on a tool call that never returns, and nothing would wake you. So with each wave's Agent calls, or right after them and before you end your turn, start that wave's watch: one call to the Bash tool, with its `run_in_background` option set, that names exactly the wave's dispatches. A planned wave, a re-dispatch wave and a coverage-gap wave each start one. Make the call with the placeholders filled in as literal values:
+
+```bash
+python3 scripts/tachi-stage.py watch --out '{out}' <dispatch_ids>
+```
+
+`{out}` is the absolute output directory. `<dispatch_ids>` is the wave's dispatch IDs, 1 to 16 of them, each written out in full and separated by spaces, with none repeated. The watch writes nothing. Every few seconds it looks for the record file of each dispatch it names, and it exits 0 as soon as every one has its record. If its deadline passes first, it exits 3 and prints the dispatches that still have none. Its exit resumes you, as an agent's completion does.
+
+- **Exit 0** needs nothing from you.
+- **Exit 3** means the deadline passed. Each dispatch of that wave that still has no record has timed out, and the watch printed them: write its record with `reason` `timed_out`, and treat it as a truncated return. Skip a dispatch that has its record by now.
+- **Any other exit** is your own error, and the run fails. Stop as the section When a Lineage Is Exhausted says, and make your reply `TACHI THREAT MODEL FAILED:` followed by the exit code and what the watch printed, with this remedy: re-run the command, and report the watch's output if it fails again.
+
+**Completion rule.** Use a return only after its agent has reported completion. While an agent you dispatched is still running, don't compile Phase 3, report a result or return to your caller, so that no agent outlives you. To wait, end your turn, and resume on each completion notice. Never call `SubagentHandback` while a dispatch is pending. That call hands your report to your caller, and a report sent while an agent you dispatched is running goes out too early. The same holds when you stop for an error: wait for the agents still running, then reply.
+
+- **A failed agent has returned.** An agent that starts and then fails has returned nothing usable. Its failure notice is the `agent_failed` row of the End Marker section's table, and that row decides what you write.
+- **A timed-out dispatch has returned.** Once its wave's watch has timed a dispatch out, it counts as returned: it no longer holds its wave, the error path's wait or your reply. It still counts against the 16 in flight until its late notice arrives, so a wave starts at most 16 less those agents. When they leave no room for a pending dispatch, the run fails as for an exhausted lineage, and the error names the oldest record that timed out.
+- **After your reply,** make no tool call, even if a late message resumes you. End your turn.
 
 #### Record Each Return
 
-When an agent reports completion, write its record once, to `{out}/.tachi-build/records/{dispatch_id}.json`. A record is a manifest, not a copy of the return: it holds no finding text, scores or mitigations. It is a JSON object with exactly these keys:
+Judge each dispatch once, from what reaches you, and write its record once, to `{out}/.tachi-build/records/{dispatch_id}.json`. You write it when the dispatch's return arrives, or when its wave's watch times it out. A record is a manifest, not a copy of the return: it holds no finding text, scores or mitigations. It is a JSON object with exactly these keys:
 
 - `schema`: `tachi.dispatch-record/1`.
 - `dispatch_id` and `agent_type`, as in the brief, and `scope`, which is `{"components": [<names>]}`.
 - `origin`: `planned`, `redispatch` or `coverage-gap`.
 - `brief`: the brief's absolute path. `prompt`: the fixed prompt, with that path filled in, word for word.
 - `end_marker`, `status`, `reason`, `supersedes` and `superseded_by`, set as below.
-- `count`: the number of findings the return holds. `local_ids`: the ID each finding carries, in the order the return lists them, or `null` for a finding with no usable ID. Both describe what the return held, even when it was cut off.
+- `count`: the number of findings the return holds. `local_ids`: the ID each finding carries, in the order the return lists them, or `null` for a finding with no usable ID. Both describe what the return held, even when it was cut off. A dispatch that sent no report, `agent_failed` or `timed_out`, has `count` 0 and `local_ids` `[]`.
 
-Classify each return by the end-marker rule in the End Marker section of the dispatch record and brief reference. The rule decides `end_marker`, and `reason` for a truncated return. This file adds no rule of its own, so the predicate has one home.
+Classify each return by the end-marker rule in the End Marker section of the dispatch record and brief reference. The rule decides `end_marker`, and `reason` for a truncated return. It also names the notices that are no return, such as an interim one, and a dispatch whose notice is no return stays pending. This file adds no rule of its own, so the predicate has one home.
 
 | The return | `end_marker` | `status` | `reason` | `superseded_by` |
 |------------|--------------|----------|----------|-----------------|
 | closes with the end marker | `true` | `complete` | `null` | `[]` |
-| is truncated, and a retry is left | `false` | `superseded` | `no_end_marker` or `overflow_error` | the IDs of its replacements |
-| is truncated, and no retry is left | `false` | `unrecovered` | `no_end_marker` or `overflow_error` | `[]` |
+| is truncated, and a retry is left | `false` | `superseded` | `no_end_marker`, `overflow_error`, `agent_failed` or `timed_out` | the IDs of its replacements |
+| is truncated, and no retry is left | `false` | `unrecovered` | `no_end_marker`, `overflow_error`, `agent_failed` or `timed_out` | `[]` |
 
 `supersedes` is `null` for a planned or coverage-gap dispatch, and for a re-dispatch it is the truncated parent's ID. Only a `complete` record is live. The findings of a `superseded` or `unrecovered` record leave the set: don't compile them, even though you hold them.
+
+A record is written once. A return or a notice for a dispatch that already has its record changes nothing, and its findings are never compiled. That includes an agent that timed out and then returns late. When the watch's exit and a return for a dispatch it lists arrive in the same resume, judge the return first, so that the dispatch gets its own record and not `timed_out`.
 
 #### Re-Dispatch a Truncated Return
 
@@ -396,21 +414,24 @@ Each planned dispatch starts a lineage, at attempt 1. A replacement joins its pa
 - **Repeat.** Any other truncated dispatch of attempt 1 or 2 is `superseded` by one replacement with the same scope.
 - **End.** A truncated dispatch of attempt 3 is `unrecovered`, and its lineage is exhausted.
 
-For a `superseded` record, allocate the replacements' IDs first: the next unused numbers, consecutive, in the order of the scope. Then write the truncated record, with its `reason` and `superseded_by`. A replacement's own record, when it is written, has `origin` `redispatch`, `supersedes` naming the truncated record, its own scope and the same agent. Write a replacement's brief only when you start its wave, and keep in its `baseline_focus` only the entries of its own targets.
+Every truncated record follows these rules, whatever its `reason`: a `timed_out` record is split, repeated or ended like any other. For a `superseded` record, allocate the replacements' IDs first: the next unused numbers, consecutive, in the order of the scope. Then write the truncated record, with its `reason` and `superseded_by`. A replacement's own record, when it is written, has `origin` `redispatch`, `supersedes` naming the truncated record, its own scope and the same agent. Write a replacement's brief only when you start its wave, and keep in its `baseline_focus` only the entries of its own targets.
 
-Start no replacement until the wave is over. When every agent of the wave has reported completion and has its record, write the pending briefs and start them as the next wave. Repeat until no dispatch is pending. Then every planned pair is in exactly one `complete` record of its lineage, and you proceed to Phase 3.
+Start no replacement until the wave is over. When every dispatch of the wave has its record, from a return or from the watch's timeout, write the pending briefs and start them as the next wave, with a watch of its own. Repeat until no dispatch is pending. At most 16 are in flight, and each agent that timed out counts until its late notice arrives, so a wave starts at most 16 less those agents. If they leave no room for a pending dispatch, the run fails as the completion rule says. Then every planned pair is in exactly one `complete` record of its lineage, and you proceed to Phase 3.
 
 #### When a Lineage Is Exhausted
 
-When a planned dispatch's lineage ends `unrecovered`, the run fails. Write no further brief, and start no dispatch. Wait for the agents still running, and write each one's record when it reports completion. A truncated return among them is `unrecovered` too, because nothing will replace it. Then make this error your reply, naming the first record that ended `unrecovered`, and write nothing more:
+When a planned dispatch's lineage ends `unrecovered`, the run fails. Write no further brief, and start no dispatch. Wait for the agents still running, and write each one's record when its return arrives. The wait is bounded: each wave's watch times out an agent that never returns, and you don't wait for an agent that timed out. A truncated return among them, a timed-out one included, is `unrecovered` too, because nothing will replace it. Then make this error your reply, naming the first record that ended `unrecovered`, and write nothing more:
 
 ```text
 TACHI THREAT MODEL FAILED: a Phase 2 dispatch could not be completed within the retry caps
 Record: <dispatch_id>
 Agent: <subagent_type>
 Components: <the record's components, separated by commas>
+Reason: <the record's reason>
 Remedy: re-run the command, and report the record if the same dispatch fails again
 ```
+
+When the reason is `timed_out`, add this to the remedy: the agent may still be running: stop it, or end the session, before you re-run.
 
 A coverage-gap dispatch belongs to no lineage and never fails the run (see Phase 3b).
 
@@ -456,7 +477,7 @@ Also **load `schemas/coverage-checklists.yaml`** using the Read tool before exec
 
 The coverage gate verifies that all required threat categories have been evaluated for each component type. It runs in both baseline and stateless modes. After evaluation, if gaps are detected, dispatch targeted re-analysis for each missing component-category pair following the protocol in the reference. The coverage gate produces warnings, not errors -- the pipeline always continues to Risk Level Validation regardless of gap resolution outcomes.
 
-**Coverage-gap dispatches.** Make each targeted re-analysis a dispatch of its own, under the Dispatch Protocol: one for each gap and agent, with the next unused ID, a brief whose one target is the gap's component, the fixed prompt, and a record with `origin` `coverage-gap` and `supersedes` `null`. The brief and the fixed prompt replace the re-analysis payload that the coverage requirements reference describes, and in a baseline run the brief's `baseline_focus` keeps the isolation rule. Start them in waves of at most 16. The gate retries nothing, so a coverage-gap dispatch belongs to no lineage, is never `superseded`, and never fails the run. Its record is `complete`, or `unrecovered` when the return is truncated. The findings of an `unrecovered` record are dropped, and its gap resolves `dispatch_failure`, the gate's warning.
+**Coverage-gap dispatches.** Make each targeted re-analysis a dispatch of its own, under the Dispatch Protocol: one for each gap and agent, with the next unused ID, a brief whose one target is the gap's component, the fixed prompt, and a record with `origin` `coverage-gap` and `supersedes` `null`. The coverage requirements reference sets out the same dispatch, and in a baseline run the brief's `baseline_focus` keeps the isolation rule. Start them in waves of at most 16, and start each wave's watch with its Agent calls. The gate retries nothing, so a coverage-gap dispatch belongs to no lineage, is never `superseded`, and never fails the run. Its record is `complete`, or `unrecovered` when the return is truncated or timed out. The findings of an `unrecovered` record are dropped, and its gap resolves `dispatch_failure`, the gate's warning.
 
 ---
 
@@ -916,6 +937,8 @@ After Phase 4 completes and `threats.md` is written:
 2. **Fresh-context invocation**: Invoke the report agent (`subagent_type` `tachi-threat-report`, under the typed dispatch rules in the Agent Invocation Protocol) passing ONLY the `threats.md` file path inside a `<report-input>` boundary. Do NOT pass accumulated pipeline state, intermediate inventories, or dispatch logs.
 
 3. **Output placement**: The report agent writes `threat-report.md` and `attack-trees/` to the same directory as `threats.md`. Phase 5 is complete when both are written.
+
+**No watch.** The watch bounds the waves of Phase 2 and Phase 3b alone: the planned, re-dispatch and coverage-gap waves. Start none for a Phase 5 dispatch, whatever its wave.
 
 ---
 

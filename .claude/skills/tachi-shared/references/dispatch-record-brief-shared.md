@@ -9,9 +9,7 @@ consumers:
 
 # Dispatch Record and Brief — Shared Reference
 
-> **Only the end marker is provisional.** Its text, its rule and the `reason` it sets for a truncated return are confirmed once the overflow spike has planted the four failure classes (a stop mid-reasoning, a stop mid-output, a stall and an empty return) and recorded what a dispatcher sees for each, and the detector is built against that table. Every other template here is final.
-
-The orchestrator reads this file before it writes the Phase 1 inventory. It holds the template of each working file that Phases 1 to 3 write: the Phase 1 inventory and dispatch table, one brief before each Phase 2 dispatch, one record when the return arrives, and the ID map at the end of Phase 3. It also holds the fixed prompt that points an agent at its brief, and the end marker that closes a complete return.
+The orchestrator reads this file before it writes the Phase 1 inventory. It holds the template of each working file that Phases 1 to 3 write: the Phase 1 inventory and dispatch table, one brief before each Phase 2 dispatch, one record when the return arrives or its watch times it out, and the ID map at the end of Phase 3. It also holds the fixed prompt that points an agent at its brief, and the detector that tells a complete return from a truncated one by the end marker that closes it.
 
 ---
 
@@ -24,7 +22,7 @@ Every path sits under the run's output directory, written `{out}` below, and is 
 | Phase 1 inventory | `{out}/.tachi-build/phase1/inventory.json` | once, before any dispatch | 512 KiB |
 | Phase 1 dispatch table | `{out}/.tachi-build/phase1/dispatch.json` | once, before any dispatch | 256 KiB |
 | Brief | `{out}/.tachi-build/briefs/{dispatch_id}.json` | once, before its dispatch | 32 KiB |
-| Dispatch record | `{out}/.tachi-build/records/{dispatch_id}.json` | once, when the return arrives | 64 KiB |
+| Dispatch record | `{out}/.tachi-build/records/{dispatch_id}.json` | once, when the return arrives or the watch times it out | 64 KiB |
 | ID map | `{out}/.tachi-build/idmap.json` | once, at the end of Phase 3 | 256 KiB |
 
 The orchestrator writes all five files itself, each in one Write call, and never rewrites one or reads one back. They are working files, not output. The threat agents are read-only: they write no brief and no record.
@@ -136,11 +134,11 @@ One record per dispatch, at most 64 KiB. It is a manifest, not a copy of the ret
 | `status` | `"complete"`, `"superseded"` (truncated, and replaced) or `"unrecovered"` (truncated, and not replaced). `"complete"` exactly when `end_marker` is `true`. A `"coverage-gap"` record is never `"superseded"` |
 | `supersedes` | The `DSP` this dispatch replaces, or `null`. It is set exactly when `origin` is `"redispatch"` |
 | `superseded_by` | A list of `DSP`s, the replacements. It is non-empty exactly when `status` is `"superseded"` |
-| `reason` | `"no_end_marker"` or `"overflow_error"`, or `null`. It is `null` exactly when `status` is `"complete"` |
-| `count` | An integer from 0 to 2,000: the findings the return holds |
-| `local_ids` | A list of `ID` or `null`, one per finding, so its length equals `count`. These are the agent's own provisional IDs, and `null` marks a finding with no usable ID |
+| `reason` | `"no_end_marker"`, `"overflow_error"`, `"agent_failed"` or `"timed_out"`, or `null`. It is `null` exactly when `status` is `"complete"`. The End Marker section's table sets it |
+| `count` | An integer from 0 to 2,000: the findings the return holds. It is 0 when no report came, which is `reason` `"agent_failed"` or `"timed_out"` |
+| `local_ids` | A list of `ID` or `null`, one per finding, so its length equals `count`, and `[]` when no report came. These are the agent's own provisional IDs, and `null` marks a finding with no usable ID |
 
-**Truncation.** A return that didn't close with the end marker is truncated, and it gets no `"complete"` record. When a retry is left, first allocate the IDs of the replacements. Then write the truncated record once, as `"superseded"`, with its `reason` and `superseded_by`, and let each replacement name it in `supersedes`. With no retry left, write it once as `"unrecovered"`, naming no replacement. Either way its findings leave the completeness set: only a `"complete"` record is live. The orchestrator's Dispatch Protocol holds the retry rules.
+**Truncation.** A return that didn't close with the end marker is truncated, and it gets no `"complete"` record. So is a dispatch that never returned before its wave's watch timed it out. When a retry is left, first allocate the IDs of the replacements. Then write the truncated record once, as `"superseded"`, with its `reason` and `superseded_by`, and let each replacement name it in `supersedes`. With no retry left, write it once as `"unrecovered"`, naming no replacement. Either way its findings leave the completeness set: only a `"complete"` record is live. The orchestrator's Dispatch Protocol holds the retry rules.
 
 ---
 
@@ -219,26 +217,29 @@ Read and follow the brief at {brief_path}.
 
 ---
 
-## End Marker (provisional)
+## End Marker
 
-A complete Phase 2 return closes with an end marker, so a dispatcher can tell a finished return from a cut-off one. The threat agents already read `finding-format-shared.md`, so the marker's text moves there once the detector is built, and no agent file changes.
+A complete Phase 2 return closes with an end marker, so the dispatcher can tell a finished return from a cut-off one. This section is the one home of the detector: how the orchestrator reads a return, and what it records for each ending. The agents' text is not here. It is in `finding-format-shared.md`, in the section "Ending Your Report", which every threat agent reads. That text tells an agent to end a report that lists every finding with `TACHI-END`, alone on its last line, and to end one whose findings can't all fit with `TACHI-OVERFLOW`, alone on its last line. No agent spec names either line.
 
-**Text for the agents** (provisional):
+**The detector.** The orchestrator judges each dispatch once, from what reaches its context, and writes the dispatch's record then. On Claude Code 2.1.331 a delivered report reaches it only as a hand-back message, and every other ending only as a notification.
 
-> When you have listed every finding, end your reply with this line, alone and exactly as written, and write nothing after it:
->
-> `TACHI-END`
->
-> If your findings can't fit in one reply, don't stop mid-list. End instead with one line that starts `TACHI-OVERFLOW ` and carries a single `tachi.overflow/1` JSON object.
+- **The report** is the agent's own delivered text. Any line that the harness adds around it is ignored when present, and when there is none, the whole delivered text is the report. The recorded example is Claude Code 2.1.331's frame: the line that opens the message, the `<agent-message>` tags, the `[Subagent hand-back]` line, the fixed paragraph after the closing tag, and a two-space indent on every report line. So the report is what lies between the `[Subagent hand-back]` line and the closing `</agent-message>` tag.
+- **The predicate.** Take the report's last line that isn't blank once leading and trailing whitespace are removed, which also removes the harness's two-space indent. It is the end marker when it is exactly `TACHI-END`, and the overflow line when it is `TACHI-OVERFLOW`, alone or followed by a space. Any other last line is neither.
+- **A notification** decides only when no report came. Its `<status>` alone decides nothing, because `completed` also carries the no-report and interim endings: its summary and result text decide. A `completed` notification whose result says that the report was delivered as a message is judged by that message.
 
-**Rule for the dispatcher** (provisional). Take the last non-blank line of the return, with trailing whitespace trimmed:
+**The classes.** `end_marker` is `true` only in the first row. A record without a report has `count` 0 and `local_ids` `[]`.
 
-| Last line | `end_marker` | `reason` |
-|-----------|--------------|----------|
-| exactly `TACHI-END` | `true` | `null` |
-| starts with `TACHI-OVERFLOW ` | `false` | `"overflow_error"` |
-| anything else, or no return at all | `false` | `"no_end_marker"` |
+| What reaches the orchestrator for the dispatch | `end_marker` | `reason` | `count`, `local_ids` |
+|---|---|---|---|
+| a report whose last line is the end marker | `true` | `null` | the report's findings |
+| a report whose last line is the overflow line | `false` | `"overflow_error"` | the report's findings |
+| a report whose last line is anything else: the placeholder that an empty hand-back becomes, a cut report, or one that left the marker off | `false` | `"no_end_marker"` | the report's findings |
+| no report, and a `failed` notification: an output-cap stop in reasoning or in output (the client has already retried it), an API error or a refusal | `false` | `"agent_failed"` | `0`, `[]` |
+| no report, and a final `completed` notification that says no report was delivered: a plain-text or turn-limit ending | `false` | `"no_end_marker"` | `0`, `[]` |
+| an interim `completed` notification: the agent "has not reported yet", and the result "may be interim" | not a return: the dispatch stays pending, and its deadline runs on | | |
+| nothing before its wave's watch exits 3 | `false` | `"timed_out"` | `0`, `[]` |
 
-A return with `end_marker` `true` gets a `"complete"` record. Any other return is truncated, and its record is `"superseded"` when a retry is left and `"unrecovered"` when none is.
-
-The marker is not a finding: strip it before compiling, and it never enters `threats.md`. An overflow line is advisory. A missing end marker triggers the same retry, so no decision depends on the overflow object.
+- A record with `end_marker` `true` is `complete`. Any other is truncated: `superseded` when a retry is left, `unrecovered` when none is. The orchestrator's Dispatch Protocol holds the lineage rules.
+- The marker is not a finding: strip it before compiling, and it never enters `threats.md`. The overflow line carries no object, and nothing reads it past its first word.
+- A return or a notice for a dispatch that already has its record changes nothing, and its findings are never compiled, even from an agent that timed out and returns late.
+- **Drift.** The detector is stated against Claude Code 2.1.331. A frame or a notice that reads differently on another version can only make a dispatch truncated, or pending until its watch times it out. It can't make a cut report complete, because a cut removes the report's tail, where the marker is. So drift fails the run loudly, and loses no finding quietly.

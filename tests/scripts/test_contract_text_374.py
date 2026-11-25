@@ -27,6 +27,11 @@ Inputs (read-only; repository-relative; every one matches an existing ``paths:``
   ``scripts/extract-report-data.py``, ``scripts/extract-infographic-data.py`` and ``scripts/tachi_parsers.py``,
   read as text for their imports (section 11).
 
+Two inputs sit outside that rule: no ``paths:`` glob covers ``docs/architecture/02_ADRs/ADR-050-*.md`` (the completion
+rule, section 12, and the end marker's words and recorded frame, section 7) or ``specs/374-large-architecture-pipeline-
+resilience/contracts/threat-model-records.md`` (the recorded frame and the class table, section 7). A change to only one
+of them reaches these pins when another input next runs the job.
+
 What each section proves:
 
 1. and 2. The helpers. Fences, tables and anchors are read the same way for every reference. A
@@ -42,11 +47,14 @@ What each section proves:
    record and brief reference (T094), are in the shared skill's Loading Table with the consumers they
    declare.
 6. The orchestrator's shell fences are single ``python3`` calls of shipped scripts (FR-N4.4; guard C6).
-7. PR 2's Track O text is live (ADR-050 D11; T093, T094). PR 1 pinned it inert, and T094 inverted the
+7. PR 2's Track O text is live (ADR-050 D11; T093, T094, T111, T157). PR 1 pinned it inert, and T094 inverted the
    pin: the orchestrator's Phases 1 to 3 load the record and brief reference and agree with its five
    templates, the old inline protocol is gone, and the dispatch rules' table rows follow the persisted
-   file's order. The end marker is still in no agent spec, no command and not in
-   ``finding-format-shared.md``: those pins stay until T097 and T111 flip them (AR-T7).
+   file's order. T111 and T157 made the end marker final (AR-T7): its text is in ``finding-format-shared.md``
+   in the words of ADR-050 D6 and in no agent spec or command, its detector is the End Marker section of the
+   record and brief reference, which agrees with the ADR and the contract on the recorded frame (S1P-A39), and
+   the orchestrator carries the watch, the completion rule's readings, the four reasons and the exhausted
+   lineage's error. Step 5 of the coverage requirements is a dispatch under the same protocol (S1P-A25).
 8. ``sarif-identity-shared.md`` equals ``sarif_common`` (T005): tools, categories, rule IDs, the
    three ``tachi-plh/1`` vectors, ruling C's sentences, the resolver's and the result's names, the
    result shape and key order, and the 14 emitter constants. The ``dormant`` status of
@@ -134,6 +142,8 @@ ORCHESTRATION_SKILL = ORCHESTRATION + "/SKILL.md"
 COVERAGE_REQUIREMENTS = ORCHESTRATION + "/references/coverage-requirements.md"
 DISPATCH_RULES = ORCHESTRATION + "/references/dispatch-rules.md"
 COVERAGE_CHECKLISTS = "schemas/coverage-checklists.yaml"
+ADR_050 = "docs/architecture/02_ADRs/ADR-050-large-architecture-output-authority.md"
+THREAT_MODEL_RECORDS = "specs/374-large-architecture-pipeline-resilience/contracts/threat-model-records.md"
 INSTALL_MANIFEST = "INSTALL_MANIFEST.md"
 ADAPTER_README = "adapters/claude-code/README.md"
 ADAPTER_AGENTS = "adapters/claude-code/agents"
@@ -899,20 +909,21 @@ def test_the_command_scanner_flags_what_c6_forbids(body):
 
 
 # =============================================================================
-# 7. PR 2's Track O text is live (ADR-050 D11; T093, T094). PR 1 pinned it inert (T010), and T094 inverted the
-#    pin: the orchestrator's Phases 1 to 3 load the record and brief reference and agree with its templates. The
-#    end marker is not live yet, so its pins below stay as PR 1 left them, until T097 and T111 flip them (AR-T7).
+# 7. PR 2's Track O text is live (ADR-050 D11; T093, T094, T111, T157). PR 1 pinned it inert (T010), and T094 inverted the
+#    pin: the orchestrator's Phases 1 to 3 load the record and brief reference and agree with its templates. T111 and
+#    T157 made the end marker final and flipped its pins (AR-T7): the text moved into finding-format-shared.md, the
+#    detector is final, and the orchestrator carries the watch (ADR-050 D6, S1P-A31 to S1P-A39).
 # =============================================================================
 
 ORCHESTRATOR_SPEC = "%s/orchestrator.md" % AGENTS_DIR
 
 
 def end_marker_tokens() -> Set[str]:
-    """The end marker's provisional text, read from the record and brief reference: ``TACHI-END`` and ``TACHI-OVERFLOW``."""
-    section = section_text(text_of(DISPATCH_RECORD_BRIEF), "## End Marker (provisional)", DISPATCH_RECORD_BRIEF)
+    """The end marker's two lines, read from the End Marker section of the record and brief reference: ``TACHI-END`` and ``TACHI-OVERFLOW``."""
+    section = section_text(text_of(DISPATCH_RECORD_BRIEF), "## End Marker", DISPATCH_RECORD_BRIEF)
     tokens = set(re.findall(r"TACHI-[A-Z]+", section))
     if tokens != {"TACHI-END", "TACHI-OVERFLOW"}:
-        raise ReferenceDrift("the end marker's provisional text moved: %s" % sorted(tokens))
+        raise ReferenceDrift("the end marker's lines moved: %s" % sorted(tokens))
     return tokens
 
 
@@ -942,30 +953,107 @@ def test_only_the_orchestrator_names_the_record_and_brief_reference_among_the_ag
     assert set(frontmatter_list(text_of(DISPATCH_RECORD_BRIEF), "consumers")) == {"orchestrator"}
 
 
-def test_the_record_and_brief_reference_is_final_except_for_its_end_marker():
+def test_the_record_and_brief_reference_is_final():
     text = text_of(DISPATCH_RECORD_BRIEF)
     assert frontmatter_scalar(text, "status") is None, "the reference still says it is staged"
     assert "Staged: nothing loads this file yet" not in text
-    assert "**Only the end marker is provisional.**" in text
-    assert "## End Marker (provisional)" in text
+    assert "Only the end marker is provisional" not in text, "the banner is back"
+    assert "(provisional)" not in text, "a section of the reference is provisional again"
+    assert [line for line in text.splitlines() if line.startswith("## End Marker")] == ["## End Marker"]
 
 
-def test_finding_format_has_neither_the_end_marker_nor_the_brief_rename():
+# ADR-050 D6 (T090, S1P-A32) gives the end marker's words as a block quote, and T111 moved them into finding-format-shared.md,
+# where each marker line is a code block and not a code span. So the two are compared as paragraphs.
+MARKER_INTRO = "These are its words, in this order."
+
+
+def adr_marker_paragraphs() -> List[str]:
+    """The end marker's words as ADR-050 D6 quotes them: the paragraphs of the block quote that follows ``MARKER_INTRO``."""
+    lines = text_of(ADR_050).splitlines()
+    starts = [i for i, line in enumerate(lines) if MARKER_INTRO in line]
+    if len(starts) != 1:
+        raise ReferenceDrift("%s: expected one line that introduces the marker's words, found %d" % (ADR_050, len(starts)))
+    quoted: List[str] = []
+    for line in lines[starts[0] + 1:]:
+        stripped = line.strip()
+        if stripped.startswith(">"):
+            quoted.append(stripped[1:].strip())
+        elif quoted:
+            break
+        elif stripped:
+            raise ReferenceDrift("%s: the marker's words don't follow their introduction" % ADR_050)
+    return [paragraph for paragraph in "\n".join(quoted).split("\n\n") if paragraph.strip()]
+
+
+def finding_format_marker_paragraphs(text: str) -> List[str]:
+    """The paragraphs of finding-format-shared.md's "Ending Your Report", with each marker code block read as a code span."""
+    section = section_text(text, "### Ending Your Report", FINDING_FORMAT, keep_fences=True)
+    section = re.sub(r"```[^\n]*\n(.*?)\n```", lambda match: "`%s`" % match.group(1), section, flags=re.S)
+    return [paragraph.strip() for paragraph in re.split(r"\n\s*\n", section) if paragraph.strip()]
+
+
+def test_finding_format_carries_the_end_marker_in_the_words_of_adr_050():
     text = text_of(FINDING_FORMAT)
+    words = adr_marker_paragraphs()
+    assert len(words) == 5, "the marker is two lead-ins, two marker lines and the sentence for a resumed agent: %s" % words
+    assert finding_format_marker_paragraphs(text) == words, "the agents' text drifted from ADR-050 D6's words"
+    # One home: the two lines are in that subsection and nowhere else in the file, and it sits in the producers' part.
+    section = section_text(text, "### Ending Your Report", FINDING_FORMAT, keep_fences=True)
+    assert text.count(section) == 1
+    outside = text.replace(section, "")
     for token in sorted(end_marker_tokens()):
-        assert token not in text, "finding-format-shared.md already carries %s" % token
-    assert not re.search(r"\bbrief\b", text, re.IGNORECASE), "finding-format-shared.md already says 'brief'"
-    assert text.count("dispatch record") >= 3, "the three 'dispatch record' places D11 renames in PR 2 are gone"
+        assert token not in outside, "finding-format-shared.md names %s outside its Ending Your Report section" % token
+    producers = section_text(text, "## For Threat Agents (Producers)", FINDING_FORMAT)
+    headings = [line for line in producers.splitlines() if line.startswith("### ")]
+    assert headings.index("### Ending Your Report") == headings.index("### Field Construction Guidance") + 1
 
 
-def test_no_agent_spec_or_command_carries_the_end_marker_yet():
+def test_finding_format_says_brief_where_it_said_dispatch_record():
+    text = text_of(FINDING_FORMAT)
+    assert "3. Missing `component`: Use the target component name from the brief." in text
+    assert "- **`component`**: Use the exact component name from your brief's `targets`." in text
+    assert "- **`dfd_element_type`**: Use the DFD classification in the inventory your brief names (" in text
+    assert "dispatch record" not in text.lower(), "D11 renames every 'dispatch record' in this file"
+
+
+def test_a_drifted_end_marker_text_is_noticed():
+    text = text_of(FINDING_FORMAT)
+    words = adr_marker_paragraphs()
+    for old, new in (("alone and exactly as written", "alone"), ("End with it too when you found nothing. ", ""),
+                     ("Otherwise end with `TACHI-OVERFLOW`.", "Otherwise stop."), ("```\nTACHI-OVERFLOW\n```", "```\nTACHI-OVERFLOW \n```")):
+        assert old in text, old
+        assert finding_format_marker_paragraphs(text.replace(old, new, 1)) != words, "no change was noticed: %r" % old
+
+
+def files_naming_a_marker_line(texts: Dict[str, str]) -> Set[str]:
+    """The paths, among ``texts``, that name ``TACHI-END`` or ``TACHI-OVERFLOW``."""
     markers = sorted(end_marker_tokens())
-    files = [(AGENTS_DIR + "/%s.md" % stem) for stem in AGENT_STEMS]
-    files += [p.relative_to(REPO_ROOT).as_posix() for p in sorted((REPO_ROOT / COMMANDS_DIR).glob("tachi.*.md"))]
-    for path in files:
-        text = text_of(path)
-        for token in markers:
-            assert token not in text, "%s already mentions %s, which T097 and T111 add" % (path, token)
+    return {path for path, text in texts.items() if any(token in text for token in markers)}
+
+
+def claude_texts() -> Dict[str, str]:
+    """Every Markdown file under the agents, the commands and the skills, by its repository-relative path."""
+    found: Dict[str, str] = {}
+    for base in (AGENTS_DIR, COMMANDS_DIR, SKILLS_DIR):
+        for path in sorted((REPO_ROOT / base).rglob("*.md")):
+            found[path.relative_to(REPO_ROOT).as_posix()] = path.read_text(encoding="utf-8")
+    return found
+
+
+def test_the_two_marker_lines_have_two_homes_and_no_agent_spec_or_command_names_either():
+    """The agents' text is in finding-format-shared.md and the detector in the record and brief reference. Nothing else under
+    .claude/ names either line, so no protected detection file changes (the F-142 invariant, KB 6) and no third copy can drift."""
+    texts = claude_texts()
+    assert {FINDING_FORMAT, DISPATCH_RECORD_BRIEF} <= set(texts), "a home moved"
+    assert files_naming_a_marker_line(texts) == {FINDING_FORMAT, DISPATCH_RECORD_BRIEF}
+
+
+def test_a_third_file_that_names_a_marker_line_is_noticed():
+    texts = claude_texts()
+    texts[ORCHESTRATOR_SPEC] += "\nEnd your report with TACHI-END.\n"
+    assert files_naming_a_marker_line(texts) == {FINDING_FORMAT, DISPATCH_RECORD_BRIEF, ORCHESTRATOR_SPEC}
+    del texts[FINDING_FORMAT]
+    assert FINDING_FORMAT not in files_naming_a_marker_line(texts), "the scan reads the texts it is given, not the tree"
 
 
 # The orchestrator writes the working files, and no other agent names one: the threat agents are read-only.
@@ -1031,11 +1119,12 @@ TEMPLATES = (
 )
 TEMPLATE_IDS = [row[0] for row in TEMPLATES]
 _DISPATCH_ID = re.compile(r"dsp-[0-9]{3,4}")
-# The record's closed values (ADR-050 D6 and D11). The end marker's table sets ``reason``, so T090 may change it.
+# The record's closed values (ADR-050 D6 and D11). The End Marker section's class table sets ``reason``: T090 added
+# ``agent_failed`` (a failed agent has no report) and ``timed_out`` (the watch's deadline), S1P-A31 and S1P-A33.
 RECORD_VALUES = {
     "origin": ("planned", "redispatch", "coverage-gap"),
     "status": ("complete", "superseded", "unrecovered"),
-    "reason": ("no_end_marker", "overflow_error"),
+    "reason": ("no_end_marker", "overflow_error", "agent_failed", "timed_out"),
 }
 
 
@@ -1157,8 +1246,10 @@ def test_the_records_closed_values_agree_in_the_reference_the_orchestrator_and_t
             assert "`%s`" % value in orchestrator, "the orchestrator never writes %s for %s" % (value, key)
     table = table_after(spec_text("orchestrator"), "#### Record Each Return", where=ORCHESTRATOR_SPEC)
     assert [strip_ticks(row[2]) for row in table.rows] == list(RECORD_VALUES["status"])
-    rule = table_after(reference, "**Rule for the dispatcher**", where=DISPATCH_RECORD_BRIEF)
-    assert {strip_ticks(row[2]).strip('"') for row in rule.rows} == set(RECORD_VALUES["reason"]) | {"null"}
+    for row in table.rows[1:]:   # a truncated return takes any of the four reasons, in the table's words
+        assert enum_after(row[3]) == list(RECORD_VALUES["reason"]), row
+    rule = table_after(reference, "**The classes.**", where=DISPATCH_RECORD_BRIEF)
+    assert {strip_ticks(row[2]).strip('"') for row in rule.rows if row[2].strip()} == set(RECORD_VALUES["reason"]) | {"null"}
 
 
 def test_the_orchestrator_sends_the_fixed_prompt_and_classifies_returns_by_the_reference_s_end_marker_rule():
@@ -1203,6 +1294,270 @@ def test_the_dispatch_rules_example_rows_follow_the_normalization_the_roster_and
         assert stride_list == stride_of[dfd_type], component
         assert ai_list == [key for key in ("AG", "LLM") if key in ai_list], "%s: AI categories go in the persisted order" % component
         assert int(total) == len(stride_list) + sum(counts[key] for key in ai_list), component
+
+
+# --- the detector's home and the recorded frame (T157; ADR-050 D6, item O-alpha; S1P-A31, S1P-A39) --------------------------
+
+# Claude Code 2.1.331 is the version on which S-9's spike recorded the frame that wraps a delivered report. The detector's
+# home, ADR-050 D6 and the records contract each say so in one sentence, and the three must name the same version and the
+# same frame strings. Changing the version is a decision made in all three and here, after R-27's smoke run on that release.
+RECORDED_VERSION = "2.1.331"
+FRAME_STRINGS = ("<agent-message>", "[Subagent hand-back]")   # the sentence names them in this order
+CLOSING_TAG = "</agent-message>"                              # only the home names it: it says where the report ends
+_RECORDED_FRAME = re.compile(r"The recorded example is Claude Code ([0-9]+\.[0-9]+\.[0-9]+)'s frame:(.*?)every report line")
+PREDICATE_SENTENCE = ("Take the report's last line that isn't blank once leading and trailing whitespace are removed, "
+                      "which also removes the harness's two-space indent.")
+FRAME_TEXTS = {"the detector's home": DISPATCH_RECORD_BRIEF, "ADR-050 D6": ADR_050, "the records contract": THREAT_MODEL_RECORDS}
+
+
+def frame_problems(texts: Dict[str, str]) -> List[str]:
+    """Why the texts that record the hand-back frame disagree with each other or with the recorded version. An empty list is a pass."""
+    problems: List[str] = []
+    for name, text in sorted(texts.items()):
+        flat = " ".join(text.split())
+        found = _RECORDED_FRAME.findall(flat)
+        if len(found) != 1:
+            problems.append("%s: expected one sentence that records the frame, found %d" % (name, len(found)))
+            continue
+        version, listed = found[0]
+        if version != RECORDED_VERSION:
+            problems.append("%s: records Claude Code %s, not %s" % (name, version, RECORDED_VERSION))
+        if tuple(_TICKED.findall(listed)) != FRAME_STRINGS:
+            problems.append("%s: names the frame strings %s, not %s" % (name, _TICKED.findall(listed), list(FRAME_STRINGS)))
+        if flat.count(PREDICATE_SENTENCE) != 1:
+            problems.append("%s: lacks the predicate's first sentence, word for word" % name)
+    return problems
+
+
+def frame_texts() -> Dict[str, str]:
+    return {name: text_of(path) for name, path in FRAME_TEXTS.items()}
+
+
+def test_the_home_the_adr_and_the_contract_name_the_same_version_and_frame_strings():
+    texts = frame_texts()
+    assert frame_problems(texts) == []
+    home = section_text(texts["the detector's home"], "## End Marker", DISPATCH_RECORD_BRIEF)
+    assert "`%s`" % CLOSING_TAG in home, "the home doesn't say where the report ends"
+    assert "stated against Claude Code %s" % RECORDED_VERSION in home, "the home's drift note names no version"
+
+
+@pytest.mark.parametrize("which", sorted(FRAME_TEXTS))
+@pytest.mark.parametrize("old, new", [
+    ("Claude Code 2.1.331's frame", "Claude Code 2.1.340's frame"),
+    ("the `[Subagent hand-back]` line", "the hand-back line"),
+    ("the `<agent-message>` tags", "the message tags"),
+    ("The recorded example is Claude Code", "The example is Claude Code"),
+    ("Take the report's last line that isn't blank", "Take the report's last line"),
+])
+def test_a_drifted_frame_in_any_one_of_the_three_texts_is_noticed(which, old, new):
+    texts = frame_texts()
+    assert old in texts[which], "%s no longer has %r" % (which, old)
+    texts[which] = texts[which].replace(old, new, 1)
+    assert frame_problems(texts), "a change to %s went unnoticed: %r" % (which, old)
+
+
+def class_table(path: str, anchor: str) -> Table:
+    return table_after(text_of(path), anchor, where=path)
+
+
+def test_the_class_table_has_seven_rows_with_the_four_reasons_and_a_count_of_zero_without_a_report():
+    table = class_table(DISPATCH_RECORD_BRIEF, "**The classes.**")
+    assert table.header[1:] == ["`end_marker`", "`reason`", "`count`, `local_ids`"]
+    assert len(table.rows) == 7, "S1P-A31's table has seven rows"
+    assert [strip_ticks(row[2]).strip('"') for row in table.rows] == [
+        "null", "overflow_error", "no_end_marker", "agent_failed", "no_end_marker", "", "timed_out"]
+    assert [strip_ticks(row[1]) for row in table.rows[:5] + table.rows[6:]] == ["true", "false", "false", "false", "false", "false"]
+    assert table.rows[5][1].startswith("not a return: the dispatch stays pending"), "an interim notice is no return"
+    assert [row[3] for row in (table.rows[3], table.rows[4], table.rows[6])] == ["`0`, `[]`"] * 3, "no report means count 0"
+    assert {strip_ticks(row[2]).strip('"') for row in table.rows if row[2].strip()} - {"null"} == set(RECORD_VALUES["reason"])
+
+
+def class_table_problems(home_text: str, contract_text: str) -> List[str]:
+    """How the home's class table differs from the records contract's in the three columns that carry the rule. [] is a pass."""
+    home = table_after(home_text, "**The classes.**", where=DISPATCH_RECORD_BRIEF)
+    contract = table_after(contract_text, "**The detector**", where=THREAT_MODEL_RECORDS)
+    problems: List[str] = []
+    if home.header[1:] != contract.header[1:]:
+        problems.append("the headers differ: %s and %s" % (home.header[1:], contract.header[1:]))
+    if len(home.rows) != len(contract.rows):
+        problems.append("the home has %d rows and the contract %d" % (len(home.rows), len(contract.rows)))
+    for number, (mine, theirs) in enumerate(zip(home.rows, contract.rows), start=1):
+        if mine[1:] != theirs[1:]:
+            problems.append("row %d differs: %s and %s" % (number, mine[1:], theirs[1:]))
+    return problems
+
+
+def test_the_class_table_is_the_records_contracts_in_every_column_but_the_first():
+    assert class_table_problems(text_of(DISPATCH_RECORD_BRIEF), text_of(THREAT_MODEL_RECORDS)) == []
+
+
+@pytest.mark.parametrize("old, new", [
+    ('`false` | `"agent_failed"` | `0`, `[]` |', '`false` | `"failed"` | `0`, `[]` |'),
+    ('`false` | `"timed_out"` | `0`, `[]` |', '`false` | `"timed_out"` | the report\'s findings |'),
+    ("not a return: the dispatch stays pending, and its deadline runs on", "a return that is not recorded"),
+])
+@pytest.mark.parametrize("which", ["the home", "the contract"])
+def test_a_drifted_class_table_row_is_noticed(which, old, new):
+    texts = {"the home": text_of(DISPATCH_RECORD_BRIEF), "the contract": text_of(THREAT_MODEL_RECORDS)}
+    assert old in texts[which], "%s no longer has %r" % (which, old)
+    texts[which] = texts[which].replace(old, new, 1)
+    assert class_table_problems(texts["the home"], texts["the contract"]), "a change to %s went unnoticed: %r" % (which, old)
+
+
+def test_the_record_template_gives_a_count_of_zero_and_no_ids_when_no_report_came():
+    """T157: ``count`` is 0 and ``local_ids`` is ``[]`` for ``agent_failed`` and ``timed_out``, in the template's key table and
+    in the orchestrator's words for the record."""
+    cells = {strip_ticks(row[0]): row[1] for row in template_of("## Dispatch Record")[1].rows}
+    assert "It is 0 when no report came, which is `reason` `\"agent_failed\"` or `\"timed_out\"`" in cells["count"]
+    assert "and `[]` when no report came" in cells["local_ids"]
+    assert "So is a dispatch that never returned before its wave's watch timed it out." in text_of(DISPATCH_RECORD_BRIEF)
+    assert "has `count` 0 and `local_ids` `[]`" in orchestrator_slice("dispatch record")
+
+
+def test_the_detector_reads_the_report_by_its_last_line_and_a_notification_only_when_no_report_came():
+    home = section_text(text_of(DISPATCH_RECORD_BRIEF), "## End Marker", DISPATCH_RECORD_BRIEF)
+    assert PREDICATE_SENTENCE in home
+    assert "It is the end marker when it is exactly `TACHI-END`, and the overflow line when it is `TACHI-OVERFLOW`, alone or followed by a space." in home
+    assert "**A notification** decides only when no report came. Its `<status>` alone decides nothing" in home
+    assert "A `completed` notification whose result says that the report was delivered as a message is judged by that message." in home
+    assert "The overflow line carries no object, and nothing reads it past its first word." in home
+    assert "stays pending" in home and "changes nothing" in home, "an interim notice and a late return are both left out"
+    assert "finding-format-shared.md" in home and "No agent spec names either line." in home, "the agents' text has one home"
+
+
+# --- the orchestrator's watch and its completion rule's readings (T111; ADR-050 D6, S1P-A33 to S1P-A35, S1P-A38) ------------------
+
+WATCH_CALL = "python3 scripts/tachi-stage.py watch --out '{out}' <dispatch_ids>"
+HANDBACK_RULE = "Never call `SubagentHandback` while a dispatch is pending."
+AFTER_REPLY_RULE = "**After your reply,** make no tool call, even if a late message resumes you. End your turn."
+TIMED_OUT_CLAUSE = ("Once its wave's watch has timed a dispatch out, it counts as returned: it no longer holds its wave, the error path's "
+                    "wait or your reply. It still counts against the 16 in flight until its late notice arrives, so a wave starts at "
+                    "most 16 less those agents. When they leave no room for a pending dispatch, the run fails as for an exhausted "
+                    "lineage, and the error names the oldest record that timed out.")
+FAILED_AGENT_CLAUSE = "Its failure notice is the `agent_failed` row of the End Marker section's table, and that row decides what you write."
+SAME_RESUME_RULE = ("When the watch's exit and a return for a dispatch it lists arrive in the same resume, judge the return first, "
+                    "so that the dispatch gets its own record and not `timed_out`.")
+TIMED_OUT_REMEDY = "the agent may still be running: stop it, or end the session, before you re-run"
+RE_DISPATCH_WAVE = ("When every dispatch of the wave has its record, from a return or from the watch's timeout, write the pending briefs "
+                    "and start them as the next wave, with a watch of its own.")
+
+
+def test_each_wave_starts_the_watch_with_one_literal_fence_and_names_its_dispatch_in_the_agent_call():
+    text = spec_text("orchestrator")
+    section = section_text(text, "#### Dispatch", ORCHESTRATOR_SPEC, keep_fences=True)
+    shell = [fence.body.strip() for fence in fences(section) if fence.label.lower() in SHELL_LABELS]
+    assert shell == [WATCH_CALL], "the Dispatch section's one shell fence is the watch"
+    assert not command_problems(shell[0], shipped_scripts()), "H13: one python3 call of a shipped script, with literal arguments"
+    assert [fence.body.strip() for fence in fences(text) if "tachi-stage.py" in fence.body] == [WATCH_CALL], "no other fence runs it"
+    assert "Set `subagent_type` to the agent's roster name and `description` to the dispatch's ID" in section
+    assert "with its `run_in_background` option set" in section, "the watch runs in the background, which is what resumes the agent"
+    assert "with each wave's Agent calls, or right after them and before you end your turn, start that wave's watch" in section
+    assert "A planned wave, a re-dispatch wave and a coverage-gap wave each start one." in section
+    rule_3 = re.search(r"^3\. \*\*Run shipped scripts only\.\*\*.*$", text, re.M)
+    assert rule_3 and "`scripts/tachi-stage.py watch`" in rule_3.group(0), "typed dispatch rule 3 names the watch"
+
+
+def test_the_watchs_three_exits_are_routed():
+    section = section_text(spec_text("orchestrator"), "#### Dispatch", ORCHESTRATOR_SPEC)
+    bullets = {match.group(1): match.group(2) for match in re.finditer(r"^- \*\*(Exit 0|Exit 3|Any other exit)\*\*(.*)$", section, re.M)}
+    assert sorted(bullets) == ["Any other exit", "Exit 0", "Exit 3"]
+    assert "needs nothing from you" in bullets["Exit 0"]
+    assert "`reason` `timed_out`" in bullets["Exit 3"] and "treat it as a truncated return" in bullets["Exit 3"]
+    assert "Skip a dispatch that has its record by now." in bullets["Exit 3"]
+    assert "`TACHI THREAT MODEL FAILED:`" in bullets["Any other exit"] and "the run fails" in bullets["Any other exit"]
+
+
+def test_the_completion_rule_reads_a_failed_agent_a_timed_out_dispatch_and_the_reply():
+    text = spec_text("orchestrator")
+    section = section_text(text, "#### Dispatch", ORCHESTRATOR_SPEC)
+    assert HANDBACK_RULE in section, "the SubagentHandback sentence"
+    assert AFTER_REPLY_RULE in section, "the rule for after the reply"
+    assert TIMED_OUT_CLAUSE in section, "the timed-out clause"
+    assert FAILED_AGENT_CLAUSE in section, "a failed agent is the table's agent_failed row"
+    assert "which counts as a return with no end marker" not in text, "a failed agent is no longer a return with no end marker"
+    assert "wait for the agents still running, then reply" in section, "the error path's wait stays"
+    assert "To wait, end your turn, and resume on each completion notice." in section
+
+
+def test_a_return_judged_in_the_same_resume_as_the_watchs_exit_wins_and_a_second_notice_changes_nothing():
+    section = section_text(spec_text("orchestrator"), "#### Record Each Return", ORCHESTRATOR_SPEC)
+    assert SAME_RESUME_RULE in section
+    assert "A record is written once. A return or a notice for a dispatch that already has its record changes nothing" in section
+    assert "its findings are never compiled" in section
+    assert "A dispatch that sent no report, `agent_failed` or `timed_out`, has `count` 0 and `local_ids` `[]`." in section
+    assert "the notices that are no return, such as an interim one, and a dispatch whose notice is no return stays pending" in section
+
+
+def test_a_timed_out_record_is_re_dispatched_like_any_truncated_one_and_a_wave_waits_for_every_record():
+    text = spec_text("orchestrator")
+    section = section_text(text, "#### Re-Dispatch a Truncated Return", ORCHESTRATOR_SPEC)
+    assert RE_DISPATCH_WAVE in section
+    assert "a `timed_out` record is split, repeated or ended like any other" in section
+    assert "At most 16 are in flight, and each agent that timed out counts until its late notice arrives, so a wave starts at most 16 less those agents." in section
+    assert "If they leave no room for a pending dispatch, the run fails as the completion rule says." in section
+    assert "has reported completion and has its record" not in text, "the wave no longer waits for completion notices alone"
+
+
+def test_the_exhausted_lineage_error_names_the_reason_and_the_timed_out_remedy():
+    section = section_text(spec_text("orchestrator"), "#### When a Lineage Is Exhausted", ORCHESTRATOR_SPEC, keep_fences=True)
+    errors = [fence.body.splitlines() for fence in fences(section) if fence.label == "text"]
+    assert len(errors) == 1
+    assert [line.split(":", 1)[0] for line in errors[0]] == [
+        "TACHI THREAT MODEL FAILED", "Record", "Agent", "Components", "Reason", "Remedy"]
+    assert "Reason: <the record's reason>" in errors[0]
+    assert "When the reason is `timed_out`, add this to the remedy: %s." % TIMED_OUT_REMEDY in section
+    assert "The wait is bounded: each wave's watch times out an agent that never returns, and you don't wait for an agent that timed out." in section
+
+
+def test_phase_3b_starts_a_watch_for_each_coverage_gap_wave_and_phase_5_starts_none():
+    text = spec_text("orchestrator")
+    gate = section_text(text, "### Phase 3b: Coverage Gate", ORCHESTRATOR_SPEC)
+    assert "Start them in waves of at most 16, and start each wave's watch with its Agent calls." in gate
+    assert "`unrecovered` when the return is truncated or timed out" in gate
+    assert "replace the re-analysis payload" not in gate, "the coverage requirements no longer describe a payload"
+    report = section_text(text, "### Phase 5 Dispatch", ORCHESTRATOR_SPEC)
+    assert "**No watch.** The watch bounds the waves of Phase 2 and Phase 3b alone" in report
+    assert "Start none for a Phase 5 dispatch, whatever its wave." in report
+
+
+def test_the_watch_is_the_orchestrators_only_background_call_and_the_sequential_mode_gives_each_dispatch_its_own():
+    text = spec_text("orchestrator")
+    assert text.count("run_in_background") == 1
+    assert "Each dispatch is then a wave of its own, with its own watch." in text
+    assert "invoke the whole planned set concurrently as one wave with its watch" in text
+
+
+# --- Step 5 of the coverage requirements, a dispatch under the same protocol (T157; S1P-A25, S1P-A38 item 4) ------------------
+
+
+def test_step_5_re_analyses_each_gap_as_a_dispatch_with_a_brief_and_takes_the_truncated_case_as_unrecovered():
+    text = text_of(COVERAGE_REQUIREMENTS)
+    for gone in ("Re-Analysis Context Payload", "Scope constraint", "Targeted re-analysis for coverage gap: analyze",
+                 "Assign sequential IDs after the highest existing ID", "Agent dispatch failure"):
+        assert gone not in text, "the inline payload protocol is back: %r" % gone
+    dispatch = section_text(text, "### Re-Analysis Dispatch", COVERAGE_REQUIREMENTS)
+    assert "made under the orchestrator's Dispatch Protocol" in dispatch
+    assert DISPATCH_RECORD_BRIEF in dispatch
+    assert fixed_prompt() in dispatch, "the fixed prompt, word for word"
+    for needed in ("One dispatch for each gap and agent", "The next unused dispatch ID", "`tachi.brief/1`", "whose one target is the gap's component",
+                   "`origin` `coverage-gap`", "`supersedes` `null`", "**isolated discovery**", "no finding descriptions, scores, mitigations or finding IDs"):
+        assert needed in dispatch, needed
+    handling = section_text(text, "### Re-Analysis Result Handling", COVERAGE_REQUIREMENTS)
+    outcomes = table_after(text, "### Re-Analysis Result Handling", where=COVERAGE_REQUIREMENTS).rows
+    assert [row[0].split(" (")[0] for row in outcomes] == ["Findings produced", "No findings produced", "Truncated return"]
+    assert "this reference sets no ID rule of its own" in outcomes[0][1]
+    assert "`\"analyzed_clean\"`" in outcomes[1][1]
+    for reason in RECORD_VALUES["reason"]:
+        assert "`%s`" % reason in outcomes[2][0], "the truncated row names %s" % reason
+    assert "an `unrecovered` record" in outcomes[2][0]
+    assert "`\"dispatch_failure\"`" in outcomes[2][1] and "does not block pipeline" in outcomes[2][1]
+    assert "`coverage-gap:unrecovered:<reason>`, with exit 5" in outcomes[2][1]
+    assert "typed dispatch rule 2" in handling, "a spawn failure is the orchestrator's stop, not a gap's resolution"
+    constraints = section_text(text, "### Re-Analysis Constraints", COVERAGE_REQUIREMENTS)
+    assert "belongs to no lineage, is never `superseded` and is never re-dispatched" in constraints
+    assert "waves of at most 16, and each wave starts its own watch" in constraints
+    for kept in ("**Run once per gap**", "**No recursive coverage checks**", "**Non-blocking**"):
+        assert kept in constraints, kept
 
 
 # =============================================================================
@@ -2087,7 +2442,6 @@ COMPLETION_RULE = (
 # paraphrased it. No copy of either may survive. Step 3's "start a wave only after every agent of the wave before it" orders
 # the waves, and stays.
 PER_WAVE_WORDINGS = ("`reconcile` only after every agent in the wave", "`reconcile` only after every agent of the wave")
-ADR_050 = "docs/architecture/02_ADRs/ADR-050-large-architecture-output-authority.md"
 
 # A script that a W2 text names and that lane R1 writes in the same wave. T047 wires it into INSTALL_MANIFEST.md
 # after the lanes return, so until the script is in the tree, naming it is allowed. Once the file exists, only
