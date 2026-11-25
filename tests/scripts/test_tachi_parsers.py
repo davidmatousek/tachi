@@ -4471,10 +4471,14 @@ def test_a_hostile_text_is_read_in_one_linear_pass_and_a_long_value_is_refused_a
 #   checks    in this order, and the first to fail names the problem:
 #             not-utf-8                  the bytes are not strict UTF-8
 #             forbidden-character        a character that tachi_parts.forbidden_character returns, a carriage return among them
-#             no-block, several-blocks   the text doesn't hold exactly one fenced code block, by the one fence rule of _unfenced_lines
-#             not-mermaid                the opening fence's info string, once its spaces and tabs are removed, isn't `mermaid`
-#             unclosed                   nothing closes the fence, and a fence that nothing closes is no block (RD-16)
-#   result    (source, None), the lines strictly between the two fence lines, joined by "\n" as the file holds them, or (None, problem)
+#             no-block, several-blocks   the text doesn't hold exactly one fenced code block, by the one fence rule of _unfenced_lines. A block is
+#                                        counted at its opening fence, so a closed block and then a fence that nothing closes are two (S1P-A73)
+#             not-mermaid                the opening fence's info string, trimmed of the spaces and tabs at its two ends, isn't `mermaid`: it is
+#                                        CommonMark's info string, compared exactly, so `mer maid` and `Mermaid` are not (S1P-A74)
+#             unclosed                   nothing closes the fence, and a fence that nothing closes is never the tree's block (RD-16)
+#             empty-block               no line between the fences holds anything but spaces and tabs: no diagram was written (S1P-A75)
+#   result    (source, None), the lines strictly between the two fence lines, joined by "\n" as the file holds them, or (None, problem). The source
+#             always holds a line that isn't blank.
 # =============================================================================
 
 # ---- the fence rule, as lines with a role ------------------------------------------------------------------------
@@ -4522,7 +4526,7 @@ def test_the_lines_that_have_no_role_are_the_lines_that_unfenced_lines_gives():
 
 # ---- the cases: a tree file as an agent writes it, and each way that it goes wrong ----------------------------------
 
-_TREE_PROBLEMS = ["not-utf-8", "forbidden-character", "no-block", "several-blocks", "not-mermaid", "unclosed"]   # the contract's six, spelled out here
+_TREE_PROBLEMS = ["not-utf-8", "forbidden-character", "no-block", "several-blocks", "not-mermaid", "unclosed", "empty-block"]   # the contract's seven, in its order
 _TREE_HEAD = ["# Attack Tree: S-1", "", "**Finding**: S-1 | Risk Level: Critical", ""]
 _TREE_BODY = ["graph TD", '    Goal["[GOAL] A synthetic goal"]', '    Goal --> A["[OR] A step"]', "    classDef critical fill:#d32f2f,color:#fff"]
 _TREE_SOURCE = "\n".join(_TREE_BODY)
@@ -4569,8 +4573,7 @@ ATTACK_TREE_FORMS = [
     ("spaces-around-the-info-string", _fenced("```  mermaid  "), _TREE_SOURCE),
     ("tabs-around-the-info-string", _fenced("```\tmermaid\t"), _TREE_SOURCE),
     ("a-space-before-the-info-string-in-tildes", _fenced("~~~ mermaid", closer="~~~"), _TREE_SOURCE),
-    # RD-16's words are "without spaces or tabs", so every one is removed, not only the ones at the ends: a reading to confirm with the architect
-    ("every-space-and-tab-in-the-info-string-is-removed", _fenced("``` mer \t maid"), _TREE_SOURCE),
+    ("spaces-and-tabs-mixed-around-the-info-string", _fenced("``` \t mermaid \t  "), _TREE_SOURCE),   # trimmed at its two ends, and only there (S1P-A74)
     ("a-fence-led-by-spaces", _fenced("   ```mermaid", closer="   ```"), _TREE_SOURCE),
     ("a-fence-led-by-more-spaces-than-markdown-allows", _fenced("      ```mermaid", closer="      ```"), _TREE_SOURCE),
     ("a-fence-led-by-a-tab", _fenced("\t```mermaid", closer="\t```"), _TREE_SOURCE),
@@ -4584,8 +4587,16 @@ ATTACK_TREE_FORMS = [
     ("blank-lines-and-trailing-whitespace-are-kept-exactly", _fenced(body=_MESSY_BODY), "\n".join(_MESSY_BODY)),
     ("non-ascii-labels-and-inner-backtick-runs-are-kept", _fenced(body=_WIDE_BODY), "\n".join(_WIDE_BODY)),
     ("a-byte-order-mark-before-the-heading", b"\xef\xbb\xbf" + _fenced(), _TREE_SOURCE),
-    ("an-empty-block-gives-an-empty-source", _fenced(body=[]), ""),
-    ("two-blank-lines-give-one-newline", _fenced(body=["", ""]), "\n"),
+    # A block with nothing in it is `empty-block` (S1P-A75), so these are the other side of that edge: one line that holds anything else is a block
+    # that the check passes, whatever else is blank around it. The check is structural, so another kind of whitespace is not blank.
+    ("one-character-is-not-empty", _fenced(body=["x"]), "x"),
+    ("one-line-after-blank-lines", _fenced(body=["", "  ", "\t", "x", ""]), "\n  \n\t\nx\n"),
+    ("one-line-before-blank-lines", _fenced(body=["x", "  ", "\t"]), "x\n  \n\t"),
+    ("a-line-that-ends-in-spaces-and-a-tab", _fenced(body=["x \t"]), "x \t"),
+    ("a-no-break-space-is-not-blank", _fenced(body=[_NBSP]), _NBSP),
+    ("an-ideographic-space-is-not-blank", _fenced(body=[chr(0x3000)]), chr(0x3000)),
+    ("a-zero-width-space-is-not-blank", _fenced(body=[chr(0x200B)]), chr(0x200B)),
+    ("a-shorter-fence-line-is-text-and-not-blank", _fenced("````mermaid", body=["```"], closer="````"), "```"),
 ]
 
 ATTACK_TREE_NO_BLOCK = [
@@ -4611,7 +4622,11 @@ ATTACK_TREE_SEVERAL = [
     ("two-blocks-with-no-line-between", _tree_file("```mermaid", *_TREE_BODY, "```", "```mermaid", *_TREE_BODY, "```")),
     ("a-backtick-block-then-a-tilde-block", _fenced(tail=["", "~~~mermaid", *_TREE_BODY, "~~~"])),
     ("three-blocks", _fenced(tail=["", "```text", "x", "```", "", "```text", "y", "```"])),
+    # A block is counted at its opening fence, closed or not (S1P-A73, confirmed): a renderer runs a fence that nothing closes to the end of the file, so the
+    # file shows two blocks, and the second one's text would reach the copied tree unchecked.
     ("a-closed-block-then-a-fence-that-nothing-closes", _fenced(tail=["", "```mermaid", "graph TD"])),
+    ("a-closed-block-then-an-unclosed-fence-of-blank-lines", _fenced(tail=["", "```mermaid", "", "  "])),
+    ("an-empty-closed-block-then-a-fence-that-nothing-closes", _fenced(body=[], tail=["", "```mermaid", "graph TD"])),
     ("a-closed-block-then-a-bare-fence-line", _fenced(tail=["```"])),
     ("a-closed-block-then-a-fence-line-with-text", _fenced(tail=["``` done"])),
     ("a-closed-block-then-a-tilde-fence-that-nothing-closes", _fenced(tail=["~~~"])),
@@ -4631,6 +4646,19 @@ ATTACK_TREE_NOT_MERMAID = [
     ("a-hyphenated-name", _fenced("```mermaid-js")),
     ("a-digit-after-it", _fenced("```mermaid2")),
     ("a-second-word", _fenced("```mermaid title")),
+    ("a-second-word-in-tildes", _fenced("~~~mermaid title", closer="~~~")),
+    # The info string is trimmed at its two ends and no further (S1P-A74): a space or tab inside it stays, and a renderer takes its first word as the
+    # language, so none of these draws a diagram.
+    ("a-space-inside-it", _fenced("```mer maid")),
+    ("a-tab-inside-it", _fenced("```mer\tmaid")),
+    ("a-space-and-a-tab-inside-it", _fenced("``` mer \t maid")),
+    ("a-space-after-each-letter", _fenced("```m e r m a i d")),
+    ("a-space-inside-it-in-tildes", _fenced("~~~mer maid", closer="~~~")),
+    ("a-space-inside-it-and-spaces-around-it", _fenced("```  mer maid  ")),
+    ("a-space-inside-it-and-nothing-closes-it", _fenced("```mer maid", closer=None)),
+    ("a-space-inside-it-and-an-empty-block", _fenced("```mer maid", body=[])),
+    ("an-info-string-of-only-spaces-and-tabs", _fenced("```  \t ")),
+    ("an-info-string-of-only-spaces-and-tabs-in-tildes", _fenced("~~~ \t", closer="~~~")),
     ("an-attribute-list", _fenced("```mermaid{theme: dark}")),
     ("braces-around-it", _fenced("```{mermaid}")),
     ("a-dot-before-it", _fenced("```.mermaid")),
@@ -4658,6 +4686,31 @@ ATTACK_TREE_UNCLOSED = [
     ("a-closer-with-another-mark-after-it", _fenced(closer="```~")),
     ("a-closer-with-an-info-string", _fenced(closer="```mermaid")),
     ("a-closer-led-by-a-no-break-space", _fenced(closer=_NBSP + "```")),
+    # `unclosed` is checked before `empty-block`: a fence that nothing closes holds no block, so there is no empty one to name (S1P-A75)
+    ("an-opener-and-nothing-after-it-in-the-file", _fenced(body=[], closer=None)),
+    ("blank-lines-after-the-opener-and-no-closer", _fenced(body=["", "  ", "\t"], closer=None)),
+    ("an-empty-body-and-a-closer-with-text-after-it", _fenced(body=[], closer="``` done")),
+    ("an-empty-body-and-a-shorter-closer", _fenced("````mermaid", body=[], closer="```")),
+]
+
+# A block with no line between its fences, or only blank ones (spaces and tabs only, CommonMark's blank line): the agent wrote no diagram (S1P-A75).
+ATTACK_TREE_EMPTY_BLOCK = [
+    ("nothing-between-the-fences", _fenced(body=[])),
+    ("one-blank-line", _fenced(body=[""])),
+    ("two-blank-lines", _fenced(body=["", ""])),
+    ("a-line-of-spaces", _fenced(body=["    "])),
+    ("a-line-of-a-tab", _fenced(body=["\t"])),
+    ("spaces-and-tabs-on-several-lines", _fenced(body=["  ", "\t", " \t ", "", "\t\t"])),
+    ("in-tildes", _fenced("~~~mermaid", body=[], closer="~~~")),
+    ("blank-lines-in-tildes", _fenced("~~~mermaid", body=["", "  "], closer="~~~")),
+    ("a-longer-closer", _fenced(body=[], closer="`````")),
+    ("a-closer-with-trailing-spaces-and-a-tab", _fenced(body=["  "], closer="```  \t")),
+    ("spaces-around-the-info-string", _fenced("```  mermaid  ", body=[])),
+    ("a-fence-led-by-spaces", _fenced("   ```mermaid", body=[""], closer="   ```")),
+    ("no-final-newline", _fenced(body=[], ending="")),
+    ("the-fence-is-the-first-line", _fenced(head=(), body=[])),
+    ("text-outside-the-block-does-not-fill-it", _fenced(body=[""], tail=["", "## Notes", "", *_TREE_BODY])),
+    ("a-byte-order-mark-before-the-heading", b"\xef\xbb\xbf" + _fenced(body=[])),
 ]
 
 ATTACK_TREE_BAD_UTF8 = [
@@ -4677,7 +4730,12 @@ ATTACK_TREE_BAD_UTF8 = [
 _TREE_FORBIDDEN = [0x00, 0x01, 0x07, 0x08, 0x0B, 0x0C, 0x0D, 0x1B, 0x1F, 0x7F, 0x80, 0x85, 0x9F, 0x061C, 0x200E, 0x200F, 0x2028, 0x2029, 0x202A, 0x202E,
                    0x2066, 0x2069, 0xE0001, 0xE0041, 0xE007F]
 _ALL_TREE_FILES = [case[1] for case in ATTACK_TREE_FORMS] + [case[1] for case in ATTACK_TREE_NO_BLOCK] + [case[1] for case in ATTACK_TREE_SEVERAL] + \
-                  [case[1] for case in ATTACK_TREE_NOT_MERMAID] + [case[1] for case in ATTACK_TREE_UNCLOSED] + [case[1] for case in ATTACK_TREE_BAD_UTF8]
+                  [case[1] for case in ATTACK_TREE_NOT_MERMAID] + [case[1] for case in ATTACK_TREE_UNCLOSED] + [case[1] for case in ATTACK_TREE_BAD_UTF8] + \
+                  [case[1] for case in ATTACK_TREE_EMPTY_BLOCK] + \
+                  [data for code in _TREE_FORBIDDEN for data in _tree_bytes_with(chr(code).encode("utf-8"))]   # forbidden-character: each one planted three ways
+# Every character below U+0300 is tried by the sweeps below, and each edge of each class of tachi_parts.forbidden_character above that. A lone surrogate can't be encoded.
+_TREE_SWEEP_EDGES = [0x061B, 0x061C, 0x061D, 0x200B, 0x200C, 0x200D, 0x200E, 0x200F, 0x2010, 0x2027, 0x2028, 0x2029, 0x202A, 0x202E, 0x202F, 0x2065, 0x2066,
+                     0x2069, 0x206A, 0xD7FF, 0xE000, 0xFEFF, 0xFFFD, 0xFFFF, 0x10000, 0xDFFFF, 0xE0000, 0xE0001, 0xE007F, 0xE0080, 0x10FFFF]
 
 
 def test_attack_tree_source_takes_the_files_bytes_and_a_text_is_a_callers_bug():
@@ -4691,14 +4749,18 @@ def test_attack_tree_source_takes_the_files_bytes_and_a_text_is_a_callers_bug():
 
 
 def test_a_result_is_a_pair_of_a_source_and_no_problem_or_of_no_source_and_a_problem():
-    assert len(_ALL_TREE_FILES) >= 90, "premise: every table is in the list"
+    assert len(_ALL_TREE_FILES) >= 200, "premise: every table is in the list, and the 75 files that plant a forbidden character"
+    reached = set()
     for data in _ALL_TREE_FILES:
         result = attack_tree_source(data)
         assert type(result) is tuple and len(result) == 2
         source, problem = result
         assert (source is None) != (problem is None), "one of the two is None, and never both or neither"
         assert source is None or type(source) is str
-        assert problem is None or problem in _TREE_PROBLEMS, "a problem is one of the contract's six words, which never quote the file"
+        assert problem is None or problem in _TREE_PROBLEMS, "a problem is one of the contract's seven words, which never quote the file"
+        assert source is None or set(source) - {" ", "\t", "\n"}, "a source always holds a line that isn't blank, because a block with none is empty-block (S1P-A75)"
+        reached.add(problem)
+    assert reached == set(_TREE_PROBLEMS) | {None}, "the tables reach each of the seven words and a source, and no other word is ever returned"
 
 
 # ---- a file that passes -------------------------------------------------------------------------------------------
@@ -4753,6 +4815,12 @@ def test_a_mermaid_fence_that_nothing_closes_is_unclosed_and_gives_no_source(nam
     assert attack_tree_source(data) == (None, "unclosed"), name
 
 
+@pytest.mark.parametrize("name,data", ATTACK_TREE_EMPTY_BLOCK, ids=[case[0] for case in ATTACK_TREE_EMPTY_BLOCK])
+def test_a_closed_mermaid_block_with_no_line_that_holds_more_than_spaces_and_tabs_is_an_empty_block(name, data):
+    """The agent wrote no diagram. At ``reconcile`` that makes the batch invalid, so it is retried, and the file never ships a tree with nothing in it."""
+    assert attack_tree_source(data) == (None, "empty-block"), name
+
+
 # ---- a file that is not strict UTF-8, or holds a forbidden character ------------------------------------------------
 
 @pytest.mark.parametrize("name,bad", ATTACK_TREE_BAD_UTF8, ids=[case[0] for case in ATTACK_TREE_BAD_UTF8])
@@ -4777,10 +4845,8 @@ def test_a_character_that_tachi_parts_forbids_is_refused_wherever_it_lies(code):
 def test_a_character_is_forbidden_in_a_tree_file_exactly_when_tachi_parts_forbids_it():
     """The set has one definition, ``tachi_parts.forbidden_character``, so a later amendment to it reaches the tree files, and the two layers hold
     them to the same set. Every character below U+0300 is tried, and each edge of each class above that. A lone surrogate can't be encoded."""
-    edges = [0x061B, 0x061C, 0x061D, 0x200B, 0x200C, 0x200D, 0x200E, 0x200F, 0x2010, 0x2027, 0x2028, 0x2029, 0x202A, 0x202E, 0x202F, 0x2065, 0x2066, 0x2069,
-             0x206A, 0xD7FF, 0xE000, 0xFEFF, 0xFFFD, 0xFFFF, 0x10000, 0xDFFFF, 0xE0000, 0xE0001, 0xE007F, 0xE0080, 0x10FFFF]
     forbidden, allowed = 0, 0
-    for code in list(range(0x300)) + edges:
+    for code in list(range(0x300)) + _TREE_SWEEP_EDGES:
         char = chr(code)
         result = attack_tree_source(_fenced(body=["a" + char + "b"]))
         if tachi_parts.forbidden_character(char) is not None:
@@ -4790,6 +4856,27 @@ def test_a_character_is_forbidden_in_a_tree_file_exactly_when_tachi_parts_forbid
             assert result == ("a" + char + "b", None), hex(code)
             allowed += 1
     assert forbidden > 60 and allowed > 700, "premise: the sweep holds both kinds"
+
+
+def test_a_line_is_blank_only_when_it_holds_spaces_and_tabs_and_nothing_else():
+    """CommonMark's blank line (S1P-A75). A block whose lines are all blank is ``empty-block``, and one character of any other kind, another kind of
+    whitespace included, is a block that passes: the check is structural, and the diagram's syntax is the renderer's. The same characters as the sweep
+    above and every Unicode space, each as the whole body of a block. A newline only ends a line, so it leaves two empty lines, and the block is empty
+    all the same."""
+    blank, other_whitespace = [], 0
+    for code in list(range(0x300)) + _TREE_SWEEP_EDGES + list(range(0x2000, 0x200B)) + [0x1680, 0x205F, 0x3000]:
+        char = chr(code)
+        if tachi_parts.forbidden_character(char) is not None:
+            continue
+        result = attack_tree_source(_fenced(body=[char]))
+        if char in (" ", "\t", "\n"):
+            assert result == (None, "empty-block"), hex(code)
+            blank.append(char)
+        else:
+            assert result == (char, None), hex(code)
+            other_whitespace += char.isspace()
+    assert blank == ["\t", "\n", " "], "premise: a tab, a newline and a space are the only characters that leave a block blank, and the sweep tries each"
+    assert other_whitespace >= 12, "premise: the sweep holds other whitespace, a no-break space and the Unicode spaces among it"
 
 
 def test_a_crlf_file_is_refused_for_its_carriage_returns_and_the_lf_file_reads():
@@ -4814,6 +4901,57 @@ def test_the_checks_run_in_the_contracts_order_and_the_first_to_fail_names_the_p
     assert attack_tree_source(_fenced("```text", closer=None)) == (None, "not-mermaid"), "the info string is checked before the closer"
     assert attack_tree_source(_fenced(closer=None)) == (None, "unclosed")
     assert attack_tree_source(_fenced(closer=None, tail=["more prose"])) == (None, "unclosed"), "an unclosed fence runs to the end and covers the prose"
+    # `empty-block` is the last check (S1P-A75): each earlier one names its problem first, whether or not the block has anything in it
+    assert attack_tree_source(_fenced(body=[])) == (None, "empty-block")
+    assert attack_tree_source(_fenced(body=[]) + b"\xff") == (None, "not-utf-8")
+    assert attack_tree_source(_fenced(body=[]) + b"\x00") == (None, "forbidden-character")
+    assert attack_tree_source(_fenced(body=[], tail=["```text", "x", "```"])) == (None, "several-blocks")
+    assert attack_tree_source(_fenced("```text", body=[])) == (None, "not-mermaid")
+    assert attack_tree_source(_fenced("```mer maid", body=[])) == (None, "not-mermaid")
+    assert attack_tree_source(_fenced(body=[], closer=None)) == (None, "unclosed")
+    assert attack_tree_source(_tree_file(*_TREE_HEAD, "```", "```")) == (None, "not-mermaid"), "a bare pair of fence lines has no info string"
+
+
+def _faulty_tree(blocks, not_mermaid, unclosed, empty, forbidden, bad_utf8):
+    """A tree file with the faults that are switched on. ``blocks`` is ``"none"``, ``"one"`` or ``"several"``: the second block is always a text block, and
+    ``unclosed`` leaves the last block's fence open, so the second block is the one that is left open when there are two."""
+    lines = list(_TREE_HEAD)
+    if blocks == "none":
+        lines.append("No diagram was written.")
+    else:
+        closing = [] if unclosed and blocks == "one" else ["```"]
+        lines += ["```" + ("text" if not_mermaid else "mermaid")] + ([] if empty else ["graph TD"]) + closing
+        if blocks == "several":
+            lines += ["", "```text", "x"] + ([] if unclosed else ["```"])
+    return _tree_file(*lines) + (b"\x00" if forbidden else b"") + (b"\xff" if bad_utf8 else b"")
+
+
+def test_the_first_fault_in_the_contracts_order_names_the_problem_for_every_combination_of_faults():
+    """All 96 files that six switches make: the bytes, the characters, the number of blocks, the info string, the closer and the content of the block.
+    The contract's order is the one list below: the first fault that a file has is the one that is named."""
+    checked = {}
+    for blocks, not_mermaid, unclosed, empty, forbidden, bad_utf8 in itertools.product(("none", "one", "several"), *[(False, True)] * 5):
+        if bad_utf8:
+            expected = (None, "not-utf-8")
+        elif forbidden:
+            expected = (None, "forbidden-character")
+        elif blocks == "none":
+            expected = (None, "no-block")
+        elif blocks == "several":
+            expected = (None, "several-blocks")
+        elif not_mermaid:
+            expected = (None, "not-mermaid")
+        elif unclosed:
+            expected = (None, "unclosed")
+        elif empty:
+            expected = (None, "empty-block")
+        else:
+            expected = ("graph TD", None)
+        data = _faulty_tree(blocks, not_mermaid, unclosed, empty, forbidden, bad_utf8)
+        assert attack_tree_source(data) == expected, (blocks, not_mermaid, unclosed, empty, forbidden, bad_utf8)
+        checked[expected[1]] = checked.get(expected[1], 0) + 1
+    assert sorted(checked, key=str) == sorted(_TREE_PROBLEMS + [None], key=str), "premise: the 96 files name each problem and one is a pass"
+    assert checked[None] == 1 and checked["empty-block"] == 1 and checked["unclosed"] == 2, checked
 
 
 # ---- shipped files, a fuzz run and a hostile file ------------------------------------------------------------------
@@ -4833,7 +4971,8 @@ def test_every_shipped_tree_file_reads_as_one_mermaid_block():
 
 
 _TREE_FUZZ_LINES = ["", "prose", "# A heading", "graph TD", "    A --> B", "```", "```mermaid", "```text", "```mermaid ", "``` mermaid", "````", "````mermaid",
-                    "`````", "~~~", "~~~mermaid", "~~~~", "  ```mermaid", "\t```", "``` done", "```a`b", "``", "text ``` text", _NBSP + "```mermaid", "~~~ x`y"]
+                    "`````", "~~~", "~~~mermaid", "~~~~", "  ```mermaid", "\t```", "``` done", "```a`b", "``", "text ``` text", _NBSP + "```mermaid", "~~~ x`y",
+                    "  ", " \t ", _NBSP]   # the last three: two blank lines, and a line of another kind of whitespace, which isn't blank
 
 
 def test_a_fuzzed_file_gets_the_verdict_that_its_fences_give():
@@ -4854,7 +4993,7 @@ def test_a_fuzzed_file_gets_the_verdict_that_its_fences_give():
             first = roles.index("open")
             opener = text_lines[first].lstrip(" \t")
             info = opener.lstrip(opener[0])
-            if info.replace(" ", "").replace("\t", "") != "mermaid":
+            if not re.fullmatch(r"[ \t]*mermaid[ \t]*", info):
                 expected = (None, "not-mermaid")
             elif "close" not in roles:
                 expected = (None, "unclosed")
@@ -4862,10 +5001,11 @@ def test_a_fuzzed_file_gets_the_verdict_that_its_fences_give():
                 last = roles.index("close")
                 outside = {index for index, _ in _unfenced_lines(text_lines)}
                 assert [index for index in range(len(text_lines)) if index not in outside] == list(range(first, last + 1)), repr(data)
-                expected = ("\n".join(text_lines[first + 1:last]), None)
+                block = text_lines[first + 1:last]
+                expected = (None, "empty-block") if all(set(line) <= {" ", "\t"} for line in block) else ("\n".join(block), None)
         assert attack_tree_source(data) == expected, repr(data)
         seen[expected[1]] = seen.get(expected[1], 0) + 1
-    assert all(seen.get(verdict, 0) >= 20 for verdict in (None, "no-block", "several-blocks", "not-mermaid", "unclosed")), seen
+    assert all(seen.get(verdict, 0) >= 20 for verdict in (None, "no-block", "several-blocks", "not-mermaid", "unclosed", "empty-block")), seen
 
 
 def test_a_hostile_file_at_the_cap_is_read_in_one_linear_pass():
@@ -4876,6 +5016,9 @@ def test_a_hostile_file_at_the_cap_is_read_in_one_linear_pass():
     assert attack_tree_source(b"```" + b"x" * (cap - 100) + b"\n```\n") == (None, "not-mermaid"), "a very long info string"
     assert attack_tree_source(b"`" * (cap - 100)) == (None, "not-mermaid"), "a very long fence mark"
     assert attack_tree_source(b"\n" * cap) == (None, "no-block"), "a very long run of empty lines"
+    assert attack_tree_source(b"```mermaid\n" + b"\n" * (cap - 100) + b"```\n") == (None, "empty-block"), "a very long block of empty lines"
+    assert attack_tree_source(b"```mermaid\n" + b" \t" * ((cap - 100) // 2) + b"\n```\n") == (None, "empty-block"), "one very long blank line"
+    assert attack_tree_source(b"```mermaid\n" + b" \n" * ((cap - 100) // 2) + b"x\n```\n") == (" \n" * ((cap - 100) // 2) + "x", None), "blank lines, then one"
     body = ["    A%d --> B%d" % (number, number) for number in range(30000)]
     assert attack_tree_source(_fenced(body=body)) == ("\n".join(body), None), "many lines in the block"
     assert time.perf_counter() - started < 5, "a tree file is no longer read in one linear pass"

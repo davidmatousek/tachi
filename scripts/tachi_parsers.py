@@ -3260,13 +3260,18 @@ def attack_tree_source(data: bytes) -> Tuple[Optional[str], Optional[str]]:
     * ``"forbidden-character"``: the text holds a character that :func:`tachi_parts.forbidden_character` returns, a carriage return among them.
     * ``"no-block"`` or ``"several-blocks"``: the text doesn't hold exactly one fenced code block, by the one fence rule of
       :func:`_fence_roles`. Every fence that opens is a block, whatever follows it, so a second fence that nothing closes is
-      ``"several-blocks"``.
-    * ``"not-mermaid"``: the opening fence's info string, once its spaces and tabs are removed, isn't ``mermaid``. A bare fence has none.
-    * ``"unclosed"``: nothing closes the fence. A fence that nothing closes is no block (RD-16), so it holds no diagram.
+      ``"several-blocks"`` (S1P-A73).
+    * ``"not-mermaid"``: the opening fence's info string isn't ``mermaid``. The info string is CommonMark's: the text after the fence's run,
+      trimmed of the spaces and tabs at its two ends and no further, and compared exactly. So ``mermaid`` with spaces or tabs around it
+      passes, and ``Mermaid``, ``mermaid title`` and ``mer maid`` don't (S1P-A74). A bare fence has no info string.
+    * ``"unclosed"``: nothing closes the fence. A fence that nothing closes is never the tree's block (RD-16), so it holds no diagram, though
+      it still counts as a block that opened in the check above.
+    * ``"empty-block"``: no line between the fences holds anything but spaces and tabs, so the agent wrote no diagram (S1P-A75). Another
+      kind of whitespace, a no-break space for one, is not blank here: the check is structural, and the diagram's syntax is the renderer's.
 
     ``source`` is the lines strictly between the two fence lines, joined by ``"\\n"``, as the file holds them: no line is trimmed, and no
-    text is added. A block with no line between its fences gives ``""``, so a caller tests the problem and never the source. Whatever lies
-    outside the block, a heading and the header lines included, is not read. A problem is one of the six words above and never quotes the text.
+    text is added. It always holds a line that isn't blank, because a block with none is ``"empty-block"``. Whatever lies outside the block,
+    a heading and the header lines included, is not read. A problem is one of the seven words above and never quotes the text.
 
     It reads no file and builds no path: each caller allow-lists the finding ID, builds and guards the path, and reads the bytes, so a file over
     the cap never reaches it. It raises nothing on content, and a ``TypeError`` for anything but bytes, which is a caller's bug. The callers
@@ -3292,11 +3297,14 @@ def attack_tree_source(data: bytes) -> Tuple[Optional[str], Optional[str]]:
             closed = index
     if opened is None:
         return None, "no-block"
-    if info.replace(" ", "").replace("\t", "") != "mermaid":
+    if info.strip(" \t") != "mermaid":
         return None, "not-mermaid"
     if closed is None:
         return None, "unclosed"
-    return "\n".join(lines[opened + 1:closed]), None
+    block = lines[opened + 1:closed]
+    if not any(line.strip(" \t") for line in block):
+        return None, "empty-block"
+    return "\n".join(block), None
 
 
 # =============================================================================
