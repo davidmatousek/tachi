@@ -1,13 +1,13 @@
 # Agent Assignments: Large-Architecture Pipeline Resilience (F-374)
 
-**Source**: `tasks.md` v1.4 (after the `/aod.analyze` gate, which re-ran clean), on its v1.4 triple sign-off (2026-11-22: PM and Architect APPROVED_WITH_CONCERNS, Team-Lead APPROVED). Produced by `/aod.tasks` Step 6. Where this file and tasks.md differ, tasks.md governs.
+**Source**: `tasks.md` v1.5 (2026-11-24), which folds session S1′'s W2′-entry rulings (S1P-T1 to T16, S1P-A1 to A17 and S1P-PM1 to PM6) into v1.4. v1.4 came after the `/aod.analyze` gate, which re-ran clean, and carries the triple sign-off of 2026-11-22 (PM and Architect APPROVED_WITH_CONCERNS, Team-Lead APPROVED). Produced by `/aod.tasks` Step 6. Where this file and tasks.md differ, tasks.md governs.
 
 **Agents**: only exact names from `.claude/agents/_README.md`.
 - The `tachi-*` agents are subjects under test, never assignees.
 - The team-lead assigns and signs off, and is never an assignee.
 - The `orchestrator` runs every wave and holds the gates.
 
-**Scope**: 150 tasks in two PRs. PR 1 is 91 tasks (Tracks S and R, draft #423). PR 2 is 59 tasks (Track O, base `main`). Task IDs aren't monotonic after v1.0, so phase and wave carry the order.
+**Scope**: 154 tasks in two PRs. PR 1 is 91 tasks (Tracks S and R, #423, delivered as `d03ee9a`). PR 2 is 63 tasks (Track O, #425, base `main`): v1.5 adds T151, T152, T154 and T155, and leaves T153 unused. Task IDs aren't monotonic after v1.0, so phase and wave carry the order.
 
 ## 1. Agent Assignment Matrix
 
@@ -155,11 +155,11 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | T093 | US4 | O2 | `senior-backend-engineer` | 0.45 | Once T086 commits, write the orchestrator's Phases 1–3 (D11) |
 | T148 | — | F | `tester` | 0.25 | Build PR 2's fixture cases that wait on no ruling: S-4's chain-cap variant (more than… |
 
-**W2′** (20 tasks)
+**W2′** (24 tasks)
 
 | Task | Story | Lane | Agent | Est. (d) | Task, in brief |
 |---|---|---|---|---|---|
-| T085 | — | X | `devops` | 0.10 | At W2′'s entry, merge PR 1's committed W3 tip, only once its push (T039) is green… |
+| T085 | — | X | `devops` | 0.20 | Done (v1.5): T127's integration at W2′'s entry: M1 `7abc02a`, the marker `bed95a9`, M2 `bb0154b`; parity PASS |
 | T090 | — | ADR | `architect` | 0.10 | Rule O-α's end-marker predicate from T104's layout table (deferral condition 3), and… |
 | T091 | — | R3b | `senior-backend-engineer` | 0.30 | Add PR 2's key sets to `tachi_parts.py` (D15, RR5), with validator cases: **Records**… |
 | T092 | — | OS | `senior-backend-engineer` | 0.50 | Add `tachi-stage.py`'s PR 2 modes, with their tests: the run-level `threat-model` plan… |
@@ -167,18 +167,22 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | T099 | US6b | R3b | `senior-backend-engineer` | 0.30 | Write the `threats.sarif` tests first, with the identity cases and FR-E.13's pin |
 | T100 | US6b | R3b | `senior-backend-engineer` | 0.40 | Rewrite `generate-threats-sarif.py` as the installed generator, on the shared emitter… |
 | T103 | US1b | F | `tester` | 0.45 | First, regenerate `fixtures/large_arch/` from the merged generator, since T148 and… |
-| T104 | US1b | L | `tester` | 0.30 | Once each W2′ lane's first task is in flight (TL-T12), run S-9's spike live, under the… |
-| T105 | US1b | OS | `senior-backend-engineer` | 0.30 k | Contingency O-α, only if T086 fires it: a records mode in `tachi-stage.py reconcile`,… |
-| T106 | US1b | OS | `senior-backend-engineer` | 0.25 | Write `join-threats-md.py` |
-| T107 | US1b | OS | `senior-backend-engineer` | 0.30 k | Contingency O-β, only if T087 fires it: the joiner's manifest and payload checks, with… |
+| T104 | US1b | L | `tester` | 0.30 | With W2′'s step-3 dispatches (H14's throttle is retired), run S-9's spike live, under the… |
+| T105 | US1b | OS | `senior-backend-engineer` | 0.30 k | Contingency O-α: not fired at T089, so it doesn't run |
+| T106 | US1b | HL | `senior-backend-engineer` | 0.25 | Write `join-threats-md.py` on the shared path (moved from OS, v1.5) |
+| T107 | US1b | HL | `senior-backend-engineer` | 0.30 k | Contingency O-β, fired at T089: the joiner's manifest and payload checks (moved from OS, v1.5) |
 | T108 | US1b | T | `senior-backend-engineer` | 0.40 | Write `assemble-report.py trees`, tests first (D14) |
 | T109 | US1b | T | `senior-backend-engineer` | 0.50 | Write `assemble-report.py report`, tests first (D14) |
-| T110 | US1b | T | `senior-backend-engineer` | 0.25 k | Contingency O-γ, only if T088 fires it: the richer report payload's validator cases… |
-| T114 | US1b | X | `devops` | 0.25 | Wire W2′ in lock-step (H7) |
+| T110 | US1b | T | `senior-backend-engineer` | 0.25 k | Contingency O-γ, fired at T089: the richer report payload's validator cases… |
+| T114 | US1b | X | `devops` | 0.35 | W2′'s three pushes (H6's two entry exceptions, then the wave) and its lock-step wiring (H7) |
 | T115 | US2 | OCt | `tester` | 0.35 | Write the tests first for `attack-chains.py` (D13): two `plan` runs are… |
 | T116 | US2 | OC | `senior-backend-engineer` | 0.50 | First, while OCt writes T115 and OC would otherwise idle, land… |
 | T117 | US2 | OC | `senior-backend-engineer` | 0.40 | Write `attack-chains.py render` and `check` (D13, FR-K4.1, FR-K4.1b, R-24) |
 | T150 | US6b | R3b | `senior-backend-engineer` | 0.10 | Extend S-11's `test_runtime_floor_374.py` for PR 2 (E1) |
+| T151 | — | HL | `senior-backend-engineer` | 0.45 | #443's hoist, part 1 (v1.5): the shared stage-entry path in `tachi_parts`, with the controls renderer on it (S1P-A10 to S1P-A12) |
+| T152 | — | HL | `senior-backend-engineer` | 0.30 | #443's hoist, part 2: the planner, the risk renderer and the scoring rules on the shared path, then E1–E5 and S1P-PM2's check |
+| T154 | — | ADR | `architect` | 0.15 | W2′'s entry: the cross-read (S1P-A4), and the hoist's contract text (S1P-A16) |
+| T155 | — | G | `orchestrator` | 0.10 | W2′'s entry gate: the census (PR 2's pre-state), the dispatch gates and TW-HL |
 
 **W3′** (14 tasks)
 
@@ -204,10 +208,10 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | Task | Story | Lane | Agent | Est. (d) | Task, in brief |
 |---|---|---|---|---|---|
 | T123 | — | PM | `product-manager` | 0.10 c | Conditional, only if T089 or T122 fires: rule on PR 2's projection above its bound |
-| T124 | — | E2E | `tester` | 0.50 | Run the threat-model stage's offline end-to-end test on the fixture, in a scratch clone |
-| T125 | — | REV | `code-reviewer` | 0.30 | Review PR 2's delta against PR 1's final head, since GitHub's diff includes PR 1 until… |
-| T126 | — | SEC | `security-analyst` | 0.20 | Run the Step 7 scan, naming PR 2's scripts |
-| T127 | — | X | `devops` | 0.25 | After PR 1's squash-merge, integrate by one clean method (AR-T8): merge PR 1's final… |
+| T124 | — | E2E | `tester` | 0.40, +0.10 c | Run the threat-model stage's offline end-to-end test on the fixture, in a scratch clone. The re-run after T127 is conditional (v1.5) |
+| T125 | — | REV | `code-reviewer` | 0.35 | Review PR 2's delta, `git diff origin/main...HEAD` (GitHub's diff since T085), with the hoist included |
+| T126 | — | SEC | `security-analyst` | 0.25 | Run the Step 7 scan on `git diff origin/main...HEAD`, naming PR 2's scripts and the hoisted helpers |
+| T127 | — | X | `devops` | 0.15 | The integration's residual (v1.5): a plain re-merge only if `main` moved, the parity re-check, D16's figures, the push and TW-CI |
 | T128 | — | ADR | `architect` | 0.15 | Hold the P1′ checkpoint, after T124–T127 |
 
 **W5′** (7 tasks)
@@ -251,9 +255,9 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | Wave | Session | Lanes: agent instance (base effort in d) | Pacing chain + tail | Window (d) |
 |---|---|---|---|---|
 | W1′ | S2 | X: `devops` (0.15); ADR: `architect` (0.50); G: `orchestrator` (0.10); O2: `senior-backend-engineer` (0.45); F: `tester` (0.25) | the rulings T086–T088 → T089; T093 during PR 1's W3 | inside PR 1's W2–W3 |
-| W2′ | S1′ | X: `devops` (0.35); ADR: `architect` (0.10); R3b: `senior-backend-engineer` (1.10); OS: `senior-backend-engineer` (0.75, +0.60 c/k); O2: `senior-backend-engineer` (0.20); F: `tester` (0.45); L: `tester` (0.30); T: `senior-backend-engineer` (0.90, +0.25 c/k); OCt: `tester` (0.35); OC: `senior-backend-engineer` (0.90) | T085 → T115 → T116 → T117: 1.3 + 0.05 throttle + 0.1 | 1.7 |
-| W3′ | S1′ | OC: `senior-backend-engineer` (0.80); O3: `senior-backend-engineer` (0.90); X: `devops` (0.50); O2: `senior-backend-engineer` (1.00); T: `senior-backend-engineer` (0.45); P′: `senior-backend-engineer` (0.60); G: `orchestrator` (0.10) | T111 → T112 → T118: 1.0 + W3′ throttle 0.1 + 0.2 | 1.35 |
-| W4′ | S2′ | PM: `product-manager` (0.00, +0.10 c/k); E2E: `tester` (0.50); REV: `code-reviewer` (0.30); SEC: `security-analyst` (0.20); X: `devops` (0.25); ADR: `architect` (0.15) | T124's first run (0.4) → T127 → T124's re-run (0.1): 0.75 + 0.15 | 0.95 |
+| W2′ | S1′ | X: `devops` (0.55); ADR: `architect` (0.25); G: `orchestrator` (0.10); HL: `senior-backend-engineer` (1.00, +0.30 k, fired); R3b: `senior-backend-engineer` (1.10); OS: `senior-backend-engineer` (0.50, +0.30 k, not fired); O2: `senior-backend-engineer` (0.20); F: `tester` (0.45); L: `tester` (0.30); T: `senior-backend-engineer` (0.90, +0.25 k, fired); OCt: `tester` (0.35); OC: `senior-backend-engineer` (0.90) | v1.5: T085 → the entry gate → T151 → T152 (E1–E5) → T116 → T117 → T150: 2.0 with TW-ADR's increments, + 0.1 | 2.5 |
+| W3′ | S1′ | OC: `senior-backend-engineer` (0.80); O3: `senior-backend-engineer` (0.90); X: `devops` (0.50); O2: `senior-backend-engineer` (1.00); T: `senior-backend-engineer` (0.45); P′: `senior-backend-engineer` (0.60); G: `orchestrator` (0.10) | T111 → T112 → T118: 1.12 with TW-ADR's increments, and no throttle (H14 is retired, v1.5), + 0.2 | 1.4 |
+| W4′ | S2′ | PM: `product-manager` (0.00, +0.10 c/k); E2E: `tester` (0.40, +0.10 c/k); REV: `code-reviewer` (0.35); SEC: `security-analyst` (0.25); X: `devops` (0.15); ADR: `architect` (0.15) | v1.5: T124 (0.4) → T127's residual (0.15): 0.55 + 0.15 | 0.7 |
 | W5′ | L′ | X: `devops` (0.15); L: `tester` (1.55); G: `orchestrator` (0.10); PM: `product-manager` (0.00, +0.10 c/k) | the live matrix's wall clock, with T145 | 2.0 |
 | W6′ | S3′ | CO: `product-manager` (0.30); CO: `architect` (0.20); CO: `devops` (0.40); CO: `orchestrator` (0.15) | T136 → T137 → T138: 0.6 + 0.15 | 0.75 (+0.15 coordination) |
 
@@ -265,12 +269,12 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | S2 | PR 1's W3 and W4, plus PR 2's W1′ | a handoff after T070 (M4) |
 | L | PR 1's W5 | the W5 gate, T077 (M5a) |
 | S3 | PR 1's W6 | PR 1 delivered, T082 and T083 (M6a) |
-| S1′ | PR 2's W2′ and W3′, run beside PR 1's S2–S3 in PR 2's own worktree | the NEXT-SESSION handoff at T122 |
+| S1′ | PR 2's W2′ and W3′, in PR 2's own worktree. W2′ includes its entry: T085, the entry gate, the hoist and the two entry pushes. Two waves, so it stays under the three-wave ceiling | the NEXT-SESSION handoff at T122 |
 | S2′ | PR 2's W4′ | P1′, T128 |
 | L′ | PR 2's W5′ | the W5′ gate, T133 (M5b) |
 | S3′ | PR 2's W6′ | PR 2 delivered, T138 and T139 (M6b) |
 
-**Lane CO** (W6, W6′) runs one agent per close-out task: `product-manager` for the notes and bookkeeping, `architect` for the KB entry, design rows and follow-ups, `devops` for the regeneration and delivery, and `orchestrator` for the completion report and the tail (F4). Lane X holds W5's and W5′'s adopter setup (T072, T129). Lane F regenerates the fixture at the start of T103 (C2).
+**Lane CO** (W6, W6′) runs one agent per close-out task: `product-manager` for the notes and bookkeeping, `architect` for the KB entry, design rows and follow-ups, `devops` for the regeneration and delivery, and `orchestrator` for the completion report and the tail (F4). Lane X holds W5's and W5′'s adopter setup (T072, T129). Lane F regenerates the fixture at the start of T103 (C2), inside W2′'s entry gate and before the pre-hoist push (S1P-A5). Lane X also makes W2′'s three pushes (T114). Lane HL (v1.5) runs #443's hoist at W2′'s entry (T151, T152), then the joiner (T106, T107).
 
 ## 3. Quality Gates Between Waves
 
@@ -283,14 +287,15 @@ One row per task, grouped by PR and then by wave. Estimates are in eng-days. "c"
 | G4 | T077 (orchestrator) | W5's end (M5a) | the live matrix's dispositions | TW-L2, the PM's 25% fallback return and the SC-8 overage (→ T078) |
 | G5 | T083 (orchestrator) | after PR 1 merges (M6a) | the completion report for the team-lead's sign-off; the `[POST-MERGE]` tail issue | — |
 | G1′ | T089 (orchestrator) | W1′'s end | O-α, O-β, O-γ and RR3 ruled as ADR-050 rev. 3; contingencies marked fired or not | TW-ADR; PR 2's bound, the all-three case included (→ PM with T123); TW-N3 |
+| G1′e (v1.5) | T155 (orchestrator) | W2′'s entry | T085's parity (done); T154's cross-read; T103's regeneration slice; the entry census, which is PR 2's pre-state (S1P-PM5); T152's E1–E5 and S1P-PM2's check before any code against the hoist | TW-HL; TW-CI at the pre-hoist push and at the entry push (T114); TW-N3 |
 | G2′ | T122 (orchestrator, invoking the team-lead) | W3′'s end | PR 2 re-projected from actual lane times | PR 2's bound (→ T123), TW-N3, TW-CI (T098) |
-| G3′ | T127 (devops), then T128 (architect) | W4′'s end | the post-squash merge and full-tree parity check; one push green; ADR-050 D16's coverage gate, with its figures recorded (the owning lanes close any shortfall); P1′ | TW-CI (→ T071) |
+| G3′ | T127 (devops), then T128 (architect) | W4′'s end | T127's residual (v1.5): a plain re-merge only if `main` moved, and the parity re-check; one push green against the entry's totals; ADR-050 D16's coverage gate, with its figures recorded (the owning lanes close any shortfall); P1′ | TW-CI (→ T071) |
 | G4′ | T133 (orchestrator) | W5′'s end (M5b) | the live matrix's dispositions | TW-L1 (from T130 → T134), TW-L2, TW-L3, TW-CTX, the PM's 25% fallback return (→ T134) |
 | G5′ | T139 (orchestrator) | after PR 2 merges (M6b) | the completion report for the team-lead's sign-off; the `[POST-MERGE]` tail issue | — |
 
 **ADR-050 D16's coverage gate** (v1.3, D1):
 - **Wiring.** T022 wires it (W1, checked at G1). It is extended by T047 (W2, G2), T039 (W3), T114 (W2′) and T098 (W3′, G2′), each in the same commit as its wave's gated modules. The wiring also uses "F-373's S-13 import gate" for the stdlib-only import check (F2).
-- **Records.** The figures are recorded at G3 (T069) and G3′ (T127).
+- **Records.** The figures are recorded at G3 (T069) and G3′ (T127). Since v1.5 they are also recorded at W2′'s entry, by T152's E2.
 - **The DoD.** tasks.md's DoD item 2 now requires unit coverage of at least 80% on the gated modules, per ADR-050 D16 (constitution VI, VII).
 
 ## 4. Time Estimates (copied from tasks.md)
@@ -304,19 +309,26 @@ Each window is max(longest stated chain × 1.25, chain + push-and-gate tail), ro
 | PR | Start | W2′ | W3′ | W4′ | W5′ | W6′ | Coordination | Central | Floor / ceiling |
 |---|---|---|---|---|---|---|---|---|---|
 | 2 | T0 + 7.0 (PR 1's W3 end) | 1.8 | 1.35 | 0.95 | 2.0 | 0.75 | 0.15 | **T0 + 14.0** | 10.95 / 22.15 |
+| 2, v1.5 | T0 + 7.0 (the plan's basis) | 2.5 | 1.4 | 0.7 | 2.0 | 0.75 | 0.15 | **T0 + 14.5** | 11.45 / 22.95 |
 
 - **PR 1** against TW-0, re-based to **T0 + 11.0** (condition 4, Option A): a margin of 0.95.
 - **PR 2** against its bound, **T0 + 15.0**:
   - all three contingencies: T0 + 14.6 (margin 0.4);
   - T150's runtime floor (+0.1) lengthens W2′'s chain (re-run F10);
-  - W3′'s throttle (+0.1) and T124's re-run (+0.05) are now in the central (F8).
+  - W3′'s throttle (+0.1) and T124's re-run (+0.05) are now in the central (F8). v1.5 removes both: H14 is retired, and T124's re-run is conditional;
+  - **v1.5:** T0 + 14.5 on the plan's basis, a margin of 0.5. On the measured basis it is about T0 + 10.15. Across the hoist's estimate band it runs from T0 + 14.25 to 14.85, and TW-HL caps the fallback at about T0 + 14.75.
 - **Ratio.** PR 1 implies 0.45, on 22.57 base eng-days. Confidence LOW–MEDIUM.
 - **W1′** runs inside PR 1's W2–W3 (T0 + 2.95 to 7.0), off PR 2's critical path.
 
 ## 5. Binding Dispatch Overrides
 
 - **Lanes F and OCt (`tester`).** Their output is pytest under `tests/scripts/`, with `conftest.py`. No Gherkin, no `.feature` files, and no `tests/features/`. The orchestrator rejects any such output at integration (TL-T5).
-- **Reviewer tasks T064, T067, T068, T125 and T126.** Review and scan the new scripts as production code. This overrides the knowledge-system supplement's "no application code" framing, as F-373 and F-391 did (C-9).
+- **Reviewer tasks T064, T067, T068, T125 and T126.** Review and scan the new scripts as production code. This overrides the knowledge-system supplement's "no application code" framing, as F-373 and F-391 did (C-9). T125 and T126 diff `origin/main...HEAD`, which since T085 is GitHub's own diff, #443's hoist included (v1.5, S1P-A7).
+- **Lane HL (`senior-backend-engineer`), #443's hoist (T151, T152; v1.5):**
+  - **Scope:** exactly S1P-A10's list, under S1P-A11 and S1P-A12. Anything beyond it goes to the PM (S1P-PM1).
+  - **No user-visible change** for any caller (S1P-PM2).
+  - **E1–E5 must be green** before any lane writes code against the hoist (condition 5).
+  - **References:** commits and the PR say "Refs #443", never a closing keyword (S1P-PM3).
 - **Team-lead re-projections.** The orchestrator invokes the team-lead for T062 and T122. The team-lead is never dispatched as a task's assignee.
 - **The H-rules**, in brief (tasks.md holds the full text):
   - **H1:** no pytest, extractor or renderer runs in the main tree. Use a scratch clone of the committed tip, run `/aod.build` with `--no-tests`, and check `git status` after every agent returns.
@@ -325,33 +337,33 @@ Each window is max(longest stated chain × 1.25, chain + push-and-gate tail), ro
   - **H4:** an init-baseline target edit regenerates the baseline in the same commit. Run the script in the integration tree, then Test-1 in a scratch clone.
   - **H5:** no commit while a dispatched agent is still writing. For a mid-wave hand-off, the orchestrator commits a returned task's paths on its lane branch, in that lane's own worktree, and dependents cherry-pick it. The wave still integrates once.
   - **H9:** each lane works in its own worktree and is integrated by cherry-pick. Never read another lane's uncommitted files, and never switch branches in the main checkout.
-  - **H14:** while a PR 1 live run or T104 is in flight, at most two PR 2 lanes have agents in flight.
-    - The longest-chain lane always holds a slot: OC, or OS when a contingency fires. In W3′, O2 and O3 hold the slots.
-    - The first usage-limit interruption of a PR 1 live run turns the throttle into a full hold until that live wave ends.
-    - An interruption is never a TW-L2 attempt.
+  - **H6:** commit before gating; push once per wave, and never a records-only push. v1.5 adds two exceptions in W2′, and all three of W2′'s pushes are T114's:
+    - the pre-hoist push: T085's merges with T103's slice, before T151 commits. It is the pre-state's CI half;
+    - the entry push: the hoist, once E1–E5 are green.
+  - **H14:** retired for PR 2 at v1.5 (S1P-T7). PR 1 is delivered, so the throttle, its escalation and the five-lane fallback no longer apply, and T104 triggers nothing. Two parts stay:
+    - the cap: five senior-backend-engineer lanes in flight;
+    - the usage clause: an interruption is never a TW-L2 attempt.
 
 ## 6. Capacity
 
-- **The cap.** At most five `senior-backend-engineer` lanes run at once, counted across both PRs:
-  - W1, W2, W2′ and W3′ reach five;
-  - W3 has four;
-  - W1′ adds O2's T093 only during PR 1's W3.
-- **The conditional fix lane (FX).** T146 covers W4's review findings, and T147 covers W5's TW-L2 fix-and-rerun (0.25 d each). It counts toward the cap.
-- **The five-lane fallback (H14).** While FX runs, PR 2 yields one lane:
-  - in W2′, O2 holds T094, which has 1.5 d of slack;
-  - in W3′, P′ (T120, T121) slips first, within W3′, which has 0.65 d of slack.
+- **The cap.** At most five `senior-backend-engineer` lanes have agents in flight at once:
+  - W1, W2 and W3′ reach five, and W3 has four;
+  - W2′ has six lanes (HL, R3b, OS, T, OC and O2), but never more than five in flight (v1.5). It reaches five at the hoist's start and again from about W2′ + 1.17 to 1.53, with fewer in between;
+  - W1′ added O2's T093 only during PR 1's W3.
+- **The conditional fix lane (FX).** T146 covers W4's review findings, and T147 covers W5's TW-L2 fix-and-rerun (0.25 d each). It counted toward the cap. PR 1 is delivered, so it can't run again (v1.5).
+- **The five-lane fallback (H14)** is retired at v1.5: with no FX lane, PR 2 yields nothing. It used to make O2 hold T094 in W2′, and P′ slip first in W3′.
 - **The load rule.** No agent instance runs above 80% of its wave window.
 
 ### Load by agent
 
 | Agent | Tasks | Effort (d), conditional and contingency included |
 |---|---|---|
-| `senior-backend-engineer` | 76 | 23.75 |
+| `senior-backend-engineer` | 78 | 24.50 |
 | `tester` | 20 | 6.90 |
-| `devops` | 20 | 3.82 |
-| `architect` | 11 | 1.90 |
+| `devops` | 20 | 3.92 |
+| `architect` | 12 | 2.05 |
 | `product-manager` | 7 | 1.10 |
-| `orchestrator` | 9 | 1.00 |
-| `code-reviewer` | 2 | 0.60 |
-| `security-analyst` | 3 | 0.55 |
+| `orchestrator` | 10 | 1.10 |
+| `code-reviewer` | 2 | 0.65 |
+| `security-analyst` | 3 | 0.60 |
 | `debugger` | 2 | 0.40 |
