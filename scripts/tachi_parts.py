@@ -107,10 +107,10 @@ message, exit code, reason string and cap it had (S1P-A11):
   it returns ``--out`` as an absolute path. ``plan_arguments(stage, plan_id, digest)`` is its last two checks, for an entry that checks ``--out`` in its own
   way. ``directory_argument(stage, value, option="--out", code=1)`` is the first check alone, for an entry whose directory option is spelled another way or
   has another exit code (``--run-dir``), and ``plan_id_argument(stage, plan_id)`` is ``plan_arguments``' first check alone (S1P-A42).
-* D3's guard: ``trusted_plan(stage, out, plan_id, digest, complete=False, read_inputs=False, kept=False)`` returns ``(plan, inputs)`` once the pointer,
-  the digest, the inputs and the batch inputs check out, with ``entry_document(stage, path, out, schema, what, kept=None)`` (``read_document`` with D4's
-  exit codes), ``plan_input_bytes(stage, entry, name, kept=None)`` and ``digest_or_none(path, out=None)``. ``read_parts(stage, out, plan)`` returns
-  ``(items, flags, counts)`` from every done batch's part.
+* D3's guard: ``trusted_plan(stage, out, plan_id, digest, complete=False, read_inputs=False, kept=False, unpinned=(), banner=None, pinned_by=None)``
+  returns ``(plan, inputs)`` once the pointer, the digest, the inputs and the batch inputs check out, with ``entry_document(stage, path, out, schema, what,
+  kept=None)`` (``read_document`` with D4's exit codes), ``plan_input_bytes(stage, entry, name, kept=None)`` and ``digest_or_none(path, out=None)``.
+  ``read_parts(stage, out, plan)`` returns ``(items, flags, counts)`` from every done batch's part.
 * ``RunCore``: the fields that both renderers' ``Run`` hold alike (``warnings``, ``issues``, ``sources``, ``counts``, the threat model's bookkeeping),
   with ``warn(code, detail)``.
 * ``read_capped(path, limit, reasons=None)``: the one capped reader that follows no link, returning ``(bytes, reason)``. The reason is ``missing``,
@@ -173,6 +173,14 @@ message, exit code, reason string and cap it had (S1P-A11):
 * ``reference_digest(reference_set)``: the SHA-256 of a reference set's canonical JSON, the one value of ``params.reference_digest`` and ``chains.json``.
 * The closed values beside them: ``NO_REPORT_REASONS`` (the two reasons that mean no report came), ``PLANNED_TREE_ACTIONS``, ``THREATS_MD_LEVELS``,
   ``ACTION_PATTERNS``, ``INPUT_FORMATS``, ``GATE_STATUSES`` and ``GAP_RESOLUTIONS``.
+
+**Added at W2' (the batch rulings, S1P-A90 and S1P-A91):**
+
+* ``trusted_plan`` gains ``unpinned``, ``banner`` and ``pinned_by``, last, so that ``assemble-report.py`` holds both of its plans to the one guard: the
+  report plan, whose ``threats`` and ``attack_chains`` inputs change by design after ``plan`` (RR3), and the trees plan that the report plan pins (S1P-A47).
+  With the defaults nothing changes (S1P-PM2).
+* ``HANDOFF_WARNING_CODES_BY_CHECK["attack-chains"]`` gains ``chain-outcome:earlier-file-moved``, after ``chain-outcome:rewritten``: ``check`` moved an earlier
+  run's ``attack-chains.md`` aside, and the record stands, because the run-level plan's pre-image keeps the file. ``HANDOFF_WARNING_CODES`` follows.
 """
 from __future__ import annotations
 
@@ -399,9 +407,10 @@ HANDOFF_CHECKS = ("attack-chains", "provenance")  # a hand-off's `check` is its 
 HANDOFF_STATUSES = ("pass", "warn", "fail")
 HANDOFF_ERROR_CODES = ("no-records", "envelope", "lineage", "provenance", "completeness")  # the failed rule of FR-N4.5 and FR-N4.6
 # The check hand-off's closed warning codes, per check (part-files.md section 6; S1P-A52): a code of the other check, or of no list, fails the load.
-# `coverage-gap:unrecovered:<reason>` takes the record's reasons.
+# `coverage-gap:unrecovered:<reason>` takes the record's reasons. The chain check's second code, `chain-outcome:earlier-file-moved`, is S1P-A91's: `check`
+# moved an earlier run's `attack-chains.md` aside and the record stands.
 HANDOFF_WARNING_CODES_BY_CHECK: Dict[str, Tuple[str, ...]] = {
-    "attack-chains": ("chain-outcome:rewritten",),
+    "attack-chains": ("chain-outcome:rewritten", "chain-outcome:earlier-file-moved"),
     "provenance": (("section6:mismatch", "id:reissued") + tuple("coverage-gap:unrecovered:" + reason for reason in DISPATCH_REASONS)
                    + ("correlation-member-repeated",)),
 }
@@ -3338,12 +3347,13 @@ def plan_input_bytes(stage: str, entry: Mapping[str, Any], name: str, kept: Opti
 
 
 def trusted_plan(stage: str, out: str, plan_id: str, digest: str, complete: bool = False, read_inputs: bool = False,
-                 kept: bool = False) -> Tuple[Dict[str, Any], Dict[str, bytes]]:
+                 kept: bool = False, unpinned: Tuple[str, ...] = (), banner: Optional[str] = None,
+                 pinned_by: Optional[str] = None) -> Tuple[Dict[str, Any], Dict[str, bytes]]:
     """The plan ``--plan`` names, once the pointer, its digest, its inputs and every batch input check out: D3's guard, "planner state is checked, not trusted".
 
     A plan file or batch input edited after ``plan``, a ``--plan`` that disagrees with ``current.json``, an input that changed, or a digest that
-    differs is a ``StageFailure`` with exit 2 (1 for a file that is missing). Returns ``(plan, inputs)``. Nothing is written. Three flags choose how
-    an entry uses the guard, and each keeps that entry's behavior:
+    differs is a ``StageFailure`` with exit 2 (1 for a file that is missing). Returns ``(plan, inputs)``. Nothing is written. Six keywords choose how
+    an entry uses the guard, and each keeps that entry's behavior at its default (S1P-PM2):
 
     * ``complete``: refuse a plan with a batch still ``pending`` or ``failed`` (exit 2, naming the first), after the plan is known to be this one and
       before any input is read. A renderer needs every batch done. The planner's ``reconcile`` and ``fail`` work with the others.
@@ -3352,37 +3362,56 @@ def trusted_plan(stage: str, out: str, plan_id: str, digest: str, complete: bool
       unexpected error. ``False`` is the planner's: each input is digested, in the plan's order, ``inputs`` is empty, and a file that can't be read
       counts as a changed one (``digest_or_none``).
     * ``kept``: each refusal after the pointer's names the plan directory in D4's ``Kept for diagnosis`` line. The pointer's own never does.
+
+    The last three are for a caller that holds two plans to the guard while one of them is pinned by the other (``assemble-report.py``; S1P-A47, S1P-A90):
+
+    * ``unpinned``: names of inputs of the plan that the guard neither digest-checks nor reads, in both branches of ``read_inputs``, because they change
+      by design after ``plan`` and the caller checks them its own way (RR3). ``inputs`` leaves them out. A name that the plan doesn't hold is ignored.
+    * ``banner``: the stage that every refusal names, as ``StageFailure.stage`` and as the ``stage`` that ``entry_document`` and ``plan_input_bytes``
+      take, the pointer's own refusals included. ``None`` means ``stage``. The paths, the stage that the plan must name and ``kept`` stay the
+      checked plan's own, so a refusal about the trees plan under the banner ``report`` keeps the trees plan's directory.
+    * ``pinned_by``: ``None`` when the command line named the plan. When another plan pins it, that plan as the messages name it (``the report plan``),
+      and the two refusals that would name ``--plan`` or ``--plan-digest``, which the user never passed for this plan, read ``the <stage> plan <ID> that
+      <pinned_by> pins disagrees with current.json, which names <ID>`` and ``the plan file's digest differs from the digest that <pinned_by> pins``,
+      each with the remedy ``re-run the command``.
     """
     held = plan_dir(out, stage, plan_id) if kept else None
-    pointer = entry_document(stage, pointer_path(out, stage), out, POINTER_SCHEMA, "the plan pointer")
+    shown = stage if banner is None else banner
+    skipped = frozenset(unpinned)
+    pointer = entry_document(shown, pointer_path(out, stage), out, POINTER_SCHEMA, "the plan pointer")
     if pointer["plan_id"] != plan_id:
-        raise StageFailure(2, stage, "--plan %s disagrees with current.json, which names %s" % (plan_id, pointer["plan_id"]),
-                           "pass the plan ID that plan printed", kept=held)
+        if pinned_by is None:
+            raise StageFailure(2, shown, "--plan %s disagrees with current.json, which names %s" % (plan_id, pointer["plan_id"]),
+                               "pass the plan ID that plan printed", kept=held)
+        raise StageFailure(2, shown, "the %s plan %s that %s pins disagrees with current.json, which names %s" % (stage, plan_id, pinned_by, pointer["plan_id"]),
+                           "re-run the command", kept=held)
     path = plan_path(out, stage, plan_id)
     problem = path_guard_problem(path, out)
     if problem == "missing":
-        raise StageFailure(1, stage, "plan.json is missing", "re-run the plan step", kept=held)
+        raise StageFailure(1, shown, "plan.json is missing", "re-run the plan step", kept=held)
     if problem is not None:
-        raise StageFailure(2, stage, "plan.json failed the path guard (%s)" % problem, "re-run the command", kept=held)
+        raise StageFailure(2, shown, "plan.json failed the path guard (%s)" % problem, "re-run the command", kept=held)
     if file_digest(path) != digest:
-        raise StageFailure(2, stage, "the plan file's digest differs from --plan-digest",
-                           "pass the digest that the last plan or reconcile printed; if the plan was edited, re-run the command", kept=held)
-    plan = entry_document(stage, path, out, PLAN_SCHEMA, "plan.json", held)
+        if pinned_by is None:
+            raise StageFailure(2, shown, "the plan file's digest differs from --plan-digest",
+                               "pass the digest that the last plan or reconcile printed; if the plan was edited, re-run the command", kept=held)
+        raise StageFailure(2, shown, "the plan file's digest differs from the digest that %s pins" % pinned_by, "re-run the command", kept=held)
+    plan = entry_document(shown, path, out, PLAN_SCHEMA, "plan.json", held)
     if (plan["plan_id"], plan["stage"]) != (plan_id, stage):
-        raise StageFailure(2, stage, "plan.json is for another plan or stage", "re-run the command", kept=held)
+        raise StageFailure(2, shown, "plan.json is for another plan or stage", "re-run the command", kept=held)
     if complete:
         unfinished = [entry for entry in plan["batches"] if entry["state"] in ("pending", "failed")]
         if unfinished:
             first = unfinished[0]
-            raise StageFailure(2, stage, "batch %s is %s, so the plan is not complete" % (first["batch_id"], first["state"]),
+            raise StageFailure(2, shown, "batch %s is %s, so the plan is not complete" % (first["batch_id"], first["state"]),
                                "run reconcile until it exits 0, then render", batch=(first["batch_id"], ", ".join(first["finding_ids"])), kept=held)
     inputs: Dict[str, bytes] = {}
     if read_inputs:
-        inputs = {name: plan_input_bytes(stage, entry, name, held) for name, entry in sorted(plan["inputs"].items())}
+        inputs = {name: plan_input_bytes(shown, entry, name, held) for name, entry in sorted(plan["inputs"].items()) if name not in skipped}
     else:
         for name, entry in plan["inputs"].items():
-            if digest_or_none(entry["path"]) != entry["sha256"]:
-                raise StageFailure(2, stage, "the input %s changed (or vanished) since plan" % name, "re-run the command", kept=held)
+            if name not in skipped and digest_or_none(entry["path"]) != entry["sha256"]:
+                raise StageFailure(2, shown, "the input %s changed (or vanished) since plan" % name, "re-run the command", kept=held)
     for entry in plan["batches"]:
         stored = input_path(out, stage, plan_id, entry["batch_id"])
         if read_inputs:
@@ -3390,7 +3419,7 @@ def trusted_plan(stage: str, out: str, plan_id: str, digest: str, complete: bool
         else:
             changed = digest_or_none(stored, out) != entry["input_sha256"]
         if changed:
-            raise StageFailure(2, stage, "the batch input %s changed after plan" % entry["batch_id"], "re-run the command", kept=held)
+            raise StageFailure(2, shown, "the batch input %s changed after plan" % entry["batch_id"], "re-run the command", kept=held)
     return plan, inputs
 
 

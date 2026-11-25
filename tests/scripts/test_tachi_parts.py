@@ -4107,6 +4107,16 @@ def test_the_module_docstring_lists_each_name_of_the_stage_entry_path_and_each_h
         assert thing.__doc__, name
 
 
+def test_the_module_docstring_gives_the_guards_signature_as_it_is_and_the_guard_documents_each_keyword():
+    """The docstring's signature line follows the function (S1P-A90), so the three keywords of the batch ruling are in it, with their defaults."""
+    parameters = inspect.signature(_api("trusted_plan")).parameters.values()
+    line = "trusted_plan(%s)" % ", ".join(p.name if p.default is p.empty else "%s=%r" % (p.name, p.default) for p in parameters)
+    assert line == "trusted_plan(stage, out, plan_id, digest, complete=False, read_inputs=False, kept=False, unpinned=(), banner=None, pinned_by=None)"
+    assert line in " ".join(tachi_parts.__doc__.split())
+    for keyword in ("unpinned", "banner", "pinned_by"):
+        assert "``%s``" % keyword in _api("trusted_plan").__doc__, keyword
+
+
 def stop_lines(error):
     return error.text().split("\n")
 
@@ -4517,6 +4527,215 @@ def test_a_batch_input_that_cannot_be_read_is_a_mismatch_for_the_planner_and_an_
             _api("trusted_plan")(laid.stage, laid.out, PLAN, laid.digest, read_inputs=True)
     finally:
         laid.batch_input.chmod(0o644)
+
+
+# --- the guard's three keywords, for a plan that another plan pins (S1P-A90)
+#
+# `assemble-report.py` holds two plans to D3's guard. The report plan has two inputs that change by design after `plan` (RR3: `threats` and
+# `attack_chains`), and the trees plan, which the report plan pins (S1P-A47), is one that the user never named with `--plan` or `--plan-digest`. So
+# `unpinned` leaves inputs out of the guard, `banner` names the stage that is running, and `pinned_by` words the two refusals that would name a command
+# line the user never typed. The defaults change nothing (S1P-PM2), which every case above pins for them.
+
+AS_A_RENDERER = dict(complete=True, read_inputs=True, kept=True)   # as `render-*.py` and `assemble-report.py` call the guard
+AS_THE_PLANNER = dict(complete=True, kept=True)                    # as `tachi-stage.py` checks the trees plan: digests only, and still complete
+GUARD_CALLS = pytest.mark.parametrize("flags", [AS_A_RENDERER, AS_THE_PLANNER], ids=["a renderer's", "the planner's"])
+
+
+def refusal_of(laid, plan_id, digest, **flags):
+    """The ``StageFailure`` that the guard raises for these arguments (the guard writes nothing, so a lay-out can be asked again)."""
+    with pytest.raises(_api("StageFailure")) as excinfo:
+        _api("trusted_plan")(laid.stage, laid.out, plan_id, digest, **flags)
+    return excinfo.value
+
+
+def damage_nothing(laid):
+    return PLAN, laid.digest
+
+
+def damage_the_pointer_missing(laid):
+    laid.pointer.unlink()
+    return PLAN, laid.digest
+
+
+def damage_the_pointer_unacceptable(laid):
+    laid.pointer.write_text("{", encoding="utf-8")
+    return PLAN, laid.digest
+
+
+def damage_the_plan_file_missing(laid):
+    laid.plan_file.unlink()
+    return PLAN, laid.digest
+
+
+def damage_the_plan_file_a_link(laid):
+    laid.plan_file.unlink()
+    laid.plan_file.symlink_to(laid.pointer)
+    return PLAN, laid.digest
+
+
+def damage_the_plan_file(laid, **changes):
+    laid.plan_file.write_text(json.dumps(dict(laid.plan, **changes), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return PLAN, _api("file_digest")(laid.plan_file)
+
+
+def damage_an_input(laid):
+    laid.files["threats"].write_bytes(b"# threats, edited\n")
+    return PLAN, laid.digest
+
+
+def damage_the_batch_input(laid):
+    laid.batch_input.write_bytes(laid.batch_input.read_bytes() + b" ")
+    return PLAN, laid.digest
+
+
+# Every refusal of the guard, in the order it is made: what the lay-out's batch state is, how to damage it, and what ``--plan`` and ``--plan-digest`` then say.
+GUARD_REFUSALS = {
+    "the pointer is missing": ("done", damage_the_pointer_missing),
+    "the pointer is not acceptable": ("done", damage_the_pointer_unacceptable),
+    "the pointer names another plan": ("done", lambda laid: (OTHER_PLAN, laid.digest)),
+    "plan.json is missing": ("done", damage_the_plan_file_missing),
+    "plan.json is a link": ("done", damage_the_plan_file_a_link),
+    "the digest differs": ("done", lambda laid: (PLAN, "0" * 64)),
+    "plan.json is not acceptable": ("done", lambda laid: damage_the_plan_file(laid, extra=1)),
+    "plan.json is for another plan": ("done", lambda laid: damage_the_plan_file(laid, plan_id=OTHER_PLAN)),
+    "a batch is pending": ("pending", damage_nothing),
+    "an input changed": ("done", damage_an_input),
+    "a batch input changed": ("done", damage_the_batch_input),
+}
+POINTERS_OWN_REFUSALS = ("the pointer is missing", "the pointer is not acceptable")   # they name no plan directory: D4's `Kept for diagnosis` leaves them out
+
+
+def test_the_guards_signature_is_the_rulings_with_the_three_keywords_added_last():
+    parameters = inspect.signature(_api("trusted_plan")).parameters
+    assert [(name, parameter.default) for name, parameter in parameters.items()] == [
+        ("stage", inspect.Parameter.empty), ("out", inspect.Parameter.empty), ("plan_id", inspect.Parameter.empty), ("digest", inspect.Parameter.empty),
+        ("complete", False), ("read_inputs", False), ("kept", False), ("unpinned", ()), ("banner", None), ("pinned_by", None)]
+
+
+@GUARD_CALLS
+@pytest.mark.parametrize("label", sorted(GUARD_REFUSALS))
+def test_the_three_keywords_at_their_defaults_change_no_refusal_and_no_result(tmp_path, label, flags):
+    state, damage = GUARD_REFUSALS[label]
+    laid = lay_out_plan(tmp_path, state=state)
+    plan_id, digest = damage(laid)
+    plain = refusal_of(laid, plan_id, digest, **flags)
+    named = refusal_of(laid, plan_id, digest, unpinned=(), banner=None, pinned_by=None, **flags)
+    assert (named.code, named.stage, named.reason, named.remedy, named.batch, named.agent, named.kept) == (
+        plain.code, plain.stage, plain.reason, plain.remedy, plain.batch, plain.agent, plain.kept)
+    assert plain.stage == laid.stage, "a refusal names the plan's own stage when no banner is given"
+
+
+@GUARD_CALLS
+def test_the_keywords_at_their_defaults_return_what_a_plan_that_checks_out_returns(tmp_path, flags):
+    laid = lay_out_plan(tmp_path)
+    trusted = _api("trusted_plan")
+    assert trusted(laid.stage, laid.out, PLAN, laid.digest, **flags) == trusted(
+        laid.stage, laid.out, PLAN, laid.digest, unpinned=(), banner=None, pinned_by=None, **flags)
+
+
+# `unpinned`
+
+@pytest.mark.parametrize("scenario", ["changed", "vanished", "over the cap"])
+@GUARD_CALLS
+def test_an_unpinned_input_that_changed_vanished_or_is_over_the_cap_passes_and_is_left_out_of_what_is_read(tmp_path, monkeypatch, flags, scenario):
+    laid = lay_out_plan(tmp_path, inputs={"alpha": b"a\n", "threats": b"# threats\n"})
+    trusted = _api("trusted_plan")
+    if scenario == "changed":
+        laid.files["threats"].write_bytes(b"# threats, edited\n")
+    elif scenario == "vanished":
+        laid.files["threats"].unlink()
+    else:
+        monkeypatch.setattr(tachi_parts, "MAX_AGENT_INPUT_BYTES", 4)   # D3 step 2's 16 MiB, made small: `alpha` (2 bytes) fits and `threats` (10 bytes) does not
+    reads_bytes = "read_inputs" in flags   # only a renderer reads an input's bytes, so only a renderer meets the cap
+    if scenario != "over the cap" or reads_bytes:
+        assert refusal_of(laid, PLAN, laid.digest, **flags).reason == "the input threats changed (or vanished) since plan", "without `unpinned`, it is refused"
+    plan, inputs = trusted(laid.stage, laid.out, PLAN, laid.digest, unpinned=("threats",), **flags)
+    assert plan["plan_id"] == PLAN
+    assert inputs == ({"alpha": b"a\n"} if reads_bytes else {}), "what a renderer reads leaves the unpinned input out"
+
+
+@GUARD_CALLS
+def test_an_unpinned_input_excuses_only_itself_and_leaves_the_batch_inputs_checked(tmp_path, flags):
+    laid = lay_out_plan(tmp_path, inputs={"zeta": b"z\n", "middle": b"m\n", "alpha": b"a\n"}, sort_keys=False)
+    assert list(json.loads(laid.plan_file.read_text(encoding="utf-8"))["inputs"]) == ["zeta", "middle", "alpha"]
+    for path in laid.files.values():
+        path.write_bytes(b"changed\n")
+    trusted = _api("trusted_plan")
+    assert refusal_of(laid, PLAN, laid.digest, unpinned=("alpha", "zeta"), **flags).reason == "the input middle changed (or vanished) since plan"
+    laid.files["middle"].write_bytes(b"m\n")
+    plan, inputs = trusted(laid.stage, laid.out, PLAN, laid.digest, unpinned=("alpha", "zeta"), **flags)
+    assert plan["plan_id"] == PLAN and inputs == ({"middle": b"m\n"} if "read_inputs" in flags else {})
+    laid.batch_input.write_bytes(laid.batch_input.read_bytes() + b" ")
+    assert refusal_of(laid, PLAN, laid.digest, unpinned=("alpha", "middle", "zeta"), **flags).reason == "the batch input B001 changed after plan"
+
+
+@GUARD_CALLS
+def test_an_unpinned_name_that_the_plan_does_not_hold_is_ignored(tmp_path, flags):
+    """`attack_chains` is a name of the report plan only for a `chains written` record, so the caller names it always."""
+    laid = lay_out_plan(tmp_path)
+    plan, inputs = _api("trusted_plan")(laid.stage, laid.out, PLAN, laid.digest, unpinned=("attack_chains", "never_an_input"), **flags)
+    assert plan == laid.plan and inputs == ({"threats": b"# threats\n"} if "read_inputs" in flags else {})
+    laid.files["threats"].write_bytes(b"# threats, edited\n")
+    assert refusal_of(laid, PLAN, laid.digest, unpinned=("attack_chains",), **flags).reason == "the input threats changed (or vanished) since plan"
+
+
+# `banner`
+
+@GUARD_CALLS
+@pytest.mark.parametrize("label", sorted(GUARD_REFUSALS))
+def test_a_banner_names_its_stage_on_every_refusal_the_pointers_included_and_the_kept_directory_stays_the_plans_own(tmp_path, label, flags):
+    state, damage = GUARD_REFUSALS[label]
+    laid = lay_out_plan(tmp_path, state=state)
+    plan_id, digest = damage(laid)
+    plain = refusal_of(laid, plan_id, digest, **flags)
+    named = refusal_of(laid, plan_id, digest, banner="report", **flags)
+    assert plain.stage == laid.stage and named.stage == "report"
+    assert named.text().split("\n")[0] == "TACHI REPORT FAILED: " + plain.reason
+    assert (named.code, named.reason, named.remedy, named.batch, named.agent) == (plain.code, plain.reason, plain.remedy, plain.batch, plain.agent)
+    assert named.kept == plain.kept == (None if label in POINTERS_OWN_REFUSALS else _api("plan_dir")(laid.out, laid.stage, plan_id)), \
+        "the plan directory is the checked plan's own, `%s`'s, whatever the banner says" % laid.stage
+
+
+# `pinned_by`
+
+@GUARD_CALLS
+@pytest.mark.parametrize("label", sorted(GUARD_REFUSALS))
+def test_pinned_by_rewords_the_two_refusals_that_name_the_command_line_and_no_other(tmp_path, label, flags):
+    state, damage = GUARD_REFUSALS[label]
+    laid = lay_out_plan(tmp_path, state=state)
+    plan_id, digest = damage(laid)
+    plain = refusal_of(laid, plan_id, digest, **flags)
+    pinned = refusal_of(laid, plan_id, digest, pinned_by="the report plan", **flags)
+    reworded = {
+        "the pointer names another plan": "the %s plan %s that the report plan pins disagrees with current.json, which names %s" % (laid.stage, OTHER_PLAN, PLAN),
+        "the digest differs": "the plan file's digest differs from the digest that the report plan pins",
+    }
+    reason, remedy = (reworded[label], "re-run the command") if label in reworded else (plain.reason, plain.remedy)
+    assert (pinned.code, pinned.stage, pinned.reason, pinned.remedy, pinned.batch, pinned.kept) == (plain.code, laid.stage, reason, remedy, plain.batch, plain.kept)
+    assert (pinned.reason != plain.reason) == (label in reworded), "exactly those two are reworded"
+
+
+def test_pinned_by_is_the_text_of_the_message_as_it_is_given(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    assert refusal_of(laid, PLAN, "0" * 64, pinned_by="the other plan").reason == "the plan file's digest differs from the digest that the other plan pins"
+    assert refusal_of(laid, OTHER_PLAN, laid.digest, pinned_by="the other plan").reason == \
+        "the %s plan %s that the other plan pins disagrees with current.json, which names %s" % (laid.stage, OTHER_PLAN, PLAN)
+
+
+def test_the_assemblers_call_for_a_plan_that_another_plan_pins_passes_and_refuses_in_the_pinners_words(tmp_path):
+    """The call that lane T makes for the trees plan (`report` mode): `threats` and `attack_chains` change by design, so they aren't held to the plan."""
+    laid = lay_out_plan(tmp_path, inputs={"threats": b"# threats\n", "attack_chains": b"# chains\n", "alpha": b"a\n"})
+    call = dict(AS_A_RENDERER, unpinned=("threats", "attack_chains"), banner="report", pinned_by="the report plan")
+    laid.files["threats"].write_bytes(b"# threats, as the run's joiner wrote them\n")
+    laid.files["attack_chains"].unlink()
+    plan, inputs = _api("trusted_plan")(laid.stage, laid.out, PLAN, laid.digest, **call)
+    assert plan == laid.plan and inputs == {"alpha": b"a\n"}
+    assert refusal_of(laid, PLAN, "0" * 64, **call).text().split("\n") == [
+        "TACHI REPORT FAILED: the plan file's digest differs from the digest that the report plan pins", "Remedy: re-run the command",
+        "Kept for diagnosis: " + laid.kept]
+    laid.files["alpha"].write_bytes(b"changed\n")
+    assert refusal_of(laid, PLAN, laid.digest, **call).text().split("\n") == [
+        "TACHI REPORT FAILED: the input alpha changed (or vanished) since plan", "Remedy: re-run the command", "Kept for diagnosis: " + laid.kept]
 
 
 def test_a_document_is_read_with_d4s_exit_codes(tmp_path):
@@ -6133,6 +6352,7 @@ HANDOFF_ERROR = {"code": "provenance", "message": "2 findings have no provenance
 HANDOFF_VARIANTS = {
     "attack-chains, pass": valid_handoff("attack-chains"),
     "attack-chains, rewritten": warned("chain-outcome:rewritten", check="attack-chains"),
+    "attack-chains, an earlier file moved aside": warned("chain-outcome:earlier-file-moved", check="attack-chains"),   # S1P-A91
     "provenance, pass": valid_handoff(),
     "provenance, section 6 mismatches": warned("section6:mismatch", "section6:mismatch"),
     "provenance, a reissued ID": warned("id:reissued"),
@@ -6191,11 +6411,21 @@ HANDOFF_VIOLATIONS = [
       for code in ("section6:mismatch", "id:reissued", "coverage-gap:unrecovered:no_end_marker", "coverage-gap:unrecovered:overflow_error",
                    "coverage-gap:unrecovered:agent_failed", "coverage-gap:unrecovered:timed_out")],
     ("attack-chains", "an unknown warning code", lambda doc: doc.update(status="warn", warnings=[{"code": "made-up:code", "detail": "d"}])),
+    ("attack-chains", "a near miss of the earlier-file code", lambda doc: doc.update(
+        status="warn", warnings=[{"code": "chain-outcome:earlier-file-removed", "detail": "d"}])),
+    ("attack-chains", "the earlier-file code with a trailing newline", lambda doc: doc.update(
+        status="warn", warnings=[{"code": "chain-outcome:earlier-file-moved\n", "detail": "d"}])),
     ("attack-chains", "a warning that is good and one that isn't", lambda doc: doc.update(
         status="warn", warnings=[{"code": "chain-outcome:rewritten", "detail": "d"}, {"code": "id:reissued", "detail": "d"}])),
+    ("attack-chains", "the earlier-file warning that is good and one that isn't", lambda doc: doc.update(
+        status="warn", warnings=[{"code": "chain-outcome:earlier-file-moved", "detail": "d"}, {"code": "correlation-member-repeated", "detail": "d"}])),
     ("provenance", "the chain check's warning", lambda doc: doc.update(status="warn", warnings=[{"code": "chain-outcome:rewritten", "detail": "d"}])),
+    ("provenance", "the chain check's earlier-file warning", lambda doc: doc.update(
+        status="warn", warnings=[{"code": "chain-outcome:earlier-file-moved", "detail": "d"}])),
     ("provenance", "the chain check's warning after a good one", lambda doc: doc.update(
         status="warn", warnings=[{"code": "id:reissued", "detail": "d"}, {"code": "chain-outcome:rewritten", "detail": "d"}])),
+    ("provenance", "the chain check's earlier-file warning after a good one", lambda doc: doc.update(
+        status="warn", warnings=[{"code": "id:reissued", "detail": "d"}, {"code": "chain-outcome:earlier-file-moved", "detail": "d"}])),
     ("provenance", "an unrecovered reason in capitals", lambda doc: doc.update(status="warn", warnings=[{"code": "coverage-gap:unrecovered:TIMED_OUT", "detail": "d"}])),
     ("provenance", "an unrecovered reason that is a near miss", lambda doc: doc.update(
         status="warn", warnings=[{"code": "coverage-gap:unrecovered:timed-out", "detail": "d"}])),
@@ -6246,6 +6476,7 @@ HANDOFF_VIOLATIONS = [
     ("attack-chains", "a failed check", setter(("status",), "fail")),
     ("attack-chains", "a failed check with an error", lambda doc: doc.update(status="fail", error=dict(HANDOFF_ERROR))),
     ("attack-chains", "pass with a warning", lambda doc: doc.update(warnings=[{"code": "chain-outcome:rewritten", "detail": "d"}])),
+    ("attack-chains", "pass with an earlier-file warning", lambda doc: doc.update(warnings=[{"code": "chain-outcome:earlier-file-moved", "detail": "d"}])),
 ]
 
 
@@ -6261,12 +6492,12 @@ def test_the_hand_offs_closed_values_are_the_contracts():
     assert tuple(_api("HANDOFF_STATUSES")) == ("pass", "warn", "fail")
     assert tuple(_api("HANDOFF_ERROR_CODES")) == ("no-records", "envelope", "lineage", "provenance", "completeness")
     assert dict(_api("HANDOFF_WARNING_CODES_BY_CHECK")) == {
-        "attack-chains": ("chain-outcome:rewritten",),
+        "attack-chains": ("chain-outcome:rewritten", "chain-outcome:earlier-file-moved"),
         "provenance": ("section6:mismatch", "id:reissued", "coverage-gap:unrecovered:no_end_marker", "coverage-gap:unrecovered:overflow_error",
                        "coverage-gap:unrecovered:agent_failed", "coverage-gap:unrecovered:timed_out", "correlation-member-repeated")}, \
-        "closed for each check (S1P-A52), with one coverage-gap code for each of the record's four reasons (T090)"
+        "closed for each check (S1P-A52), with one coverage-gap code for each of the record's four reasons (T090) and the chain check's second code (S1P-A91)"
     assert tuple(_api("HANDOFF_WARNING_CODES")) == (
-        "chain-outcome:rewritten", "section6:mismatch", "id:reissued", "coverage-gap:unrecovered:no_end_marker",
+        "chain-outcome:rewritten", "chain-outcome:earlier-file-moved", "section6:mismatch", "id:reissued", "coverage-gap:unrecovered:no_end_marker",
         "coverage-gap:unrecovered:overflow_error", "coverage-gap:unrecovered:agent_failed", "coverage-gap:unrecovered:timed_out",
         "correlation-member-repeated"), "the union, in the contract's order"
     assert ["coverage-gap:unrecovered:" + reason for reason in _api("DISPATCH_REASONS")] == [

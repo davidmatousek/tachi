@@ -1007,15 +1007,12 @@ def test_the_short_forms_are_never_emitted():
     assert {"tachi/ai/agentic-threats", "tachi/ai/llm-threats"} <= emitted
 
 
-def test_the_rule_map_agrees_with_the_identifier_allow_list_the_scoring_resolver_and_the_legacy_map():
+def test_the_rule_map_agrees_with_the_identifier_allow_list_and_the_scoring_resolver():
     prefixes = set(sc.RULE_ID_BY_PREFIX)
-    assert prefixes == set(tachi_parts.FINDING_PREFIXES) == set(tachi_scoring.PREFIX_CATEGORY) == set(sc.PREFIX_TO_RULE)
+    assert prefixes == set(tachi_parts.FINDING_PREFIXES) == set(tachi_scoring.PREFIX_CATEGORY)
     for prefix in prefixes:
         category = tachi_scoring.category_for_prefix(prefix)
         assert sc.RULE_ID_BY_PREFIX[prefix] == sc.RULE_ID_BY_CATEGORY[category]
-        legacy = sc.PREFIX_TO_RULE[prefix]
-        # The legacy map keeps the short AI forms for the two generators that still emit them.
-        assert sc.RULE_ID_BY_PREFIX[prefix] == (legacy + "-threats" if legacy.startswith("tachi/ai/") else legacy)
 
 
 def test_every_category_has_a_rule_and_the_resolver_never_leaves_one_out():
@@ -2189,13 +2186,7 @@ def test_the_module_keeps_python_3_9_grammar_and_future_annotations():
 
 
 def test_the_legacy_helpers_keep_their_names_and_values():
-    assert sc.PREFIX_TO_RULE == {
-        "S": "tachi/stride/spoofing", "T": "tachi/stride/tampering", "R": "tachi/stride/repudiation",
-        "I": "tachi/stride/information-disclosure", "D": "tachi/stride/denial-of-service",
-        "E": "tachi/stride/elevation-of-privilege",
-        "AG": "tachi/ai/agentic", "AGP": "tachi/ai/agentic", "LLM": "tachi/ai/llm", "OI": "tachi/ai/llm",
-        "MI": "tachi/ai/llm", "TE": "tachi/ai/agentic",
-    }
+    assert not hasattr(sc, "PREFIX_TO_RULE"), "the short-form rule map went with its last user (S1P-A84)"
     assert sc.SEVERITY_TO_LEVEL == {"Critical": "error", "High": "error", "Medium": "warning", "Low": "note", "Note": "note"}
     assert sc.prefix_for("AGP-12") == "AGP" and sc.level_for_band("Low") == "note" and sc.level_for_band("x") == "warning"
     assert sc.REPO_ROOT == REPO_ROOT

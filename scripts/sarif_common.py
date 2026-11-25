@@ -2,15 +2,18 @@
 
 This module has two layers.
 
-**The legacy helpers.** The canonical `PREFIX_TO_RULE` mapping (rule URIs for
-`generate-threats-sarif.py`), the severity-to-SARIF-level mapping, finding-ID prefix extraction,
-a threats.md -> component metadata parser and the SARIF envelope. The other user of these,
-`generate-risk-scores-sarif.py`, was retired at PR 1 (ADR-050 D1, #357): `render-risk-scores.py`
-writes `risk-scores.sarif` through the shared emitter below. The emit shape of the generator
-that remains (logicalLocations array vs logicalLocation object, kind label vocabulary) stays in
-it to preserve byte-identity (ADR-021). The helpers keep their names, values and behavior while
-it exists, and PR 2 rewrites it onto the shared emitter. `PREFIX_TO_RULE`'s AI values are the
-short forms it emits (`tachi/ai/agentic`); the shared emitter below never emits them.
+**The legacy helpers.** The severity-to-SARIF-level mapping (`SEVERITY_TO_LEVEL`,
+`level_for_band`), the SARIF envelope (`build_sarif_envelope`), finding-ID prefix extraction
+(`prefix_for`), a threats.md -> component metadata parser (`parse_component_metadata`) and
+`REPO_ROOT`. They were written for the two old SARIF generators. `generate-risk-scores-sarif.py`
+was retired at PR 1 (ADR-050 D1, #357): `render-risk-scores.py` writes `risk-scores.sarif` through
+the shared emitter below. `generate-threats-sarif.py` was rewritten onto the shared emitter at
+PR 2. Their rule-URI map, `PREFIX_TO_RULE`, went with its last user (S1P-A84): its AI values were
+the short forms (`tachi/ai/agentic`, `tachi/ai/llm`), which the shared emitter never emits. The
+level mapping and the envelope are the emitter's own now. `prefix_for`, `parse_component_metadata`
+and `REPO_ROOT` have no caller in `scripts/` and keep their names, values and behavior: removing
+`parse_component_metadata` would drop this module's import of `tachi_parsers`, so it waits for
+PR 2's follow-ups (T136).
 
 **The shared emitter** (ADR-050 D7 and D8). It implements the rules in
 `.claude/skills/tachi-shared/references/sarif-identity-shared.md`, and a drift test keeps the two
@@ -65,22 +68,6 @@ SARIF_SCHEMA_URI = (
     "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/"
     "schema/sarif-schema-2.1.0.json"
 )
-
-
-PREFIX_TO_RULE = {
-    "S": "tachi/stride/spoofing",
-    "T": "tachi/stride/tampering",
-    "R": "tachi/stride/repudiation",
-    "I": "tachi/stride/information-disclosure",
-    "D": "tachi/stride/denial-of-service",
-    "E": "tachi/stride/elevation-of-privilege",
-    "AG": "tachi/ai/agentic",
-    "AGP": "tachi/ai/agentic",
-    "LLM": "tachi/ai/llm",
-    "OI": "tachi/ai/llm",
-    "MI": "tachi/ai/llm",
-    "TE": "tachi/ai/agentic",
-}
 
 
 SEVERITY_TO_LEVEL = {
