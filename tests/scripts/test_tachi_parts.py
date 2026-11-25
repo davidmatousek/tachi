@@ -27,14 +27,18 @@ Sections
 """
 from __future__ import annotations
 
+import argparse
 import ast
 import inspect
 import json
 import os
+import platform
 import re
 import subprocess
 import sys
 import unicodedata
+from collections.abc import Mapping
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -4032,3 +4036,876 @@ def test_a_part_file_whose_body_has_no_effort_reads_as_invalid(tmp_path):
     item["recommendation_body"] = "\n".join(body_lines()[:3])
     result = read(tmp_path, make_part(kind=CONTROLS, ids=("S-1",), items=[item]), ids=("S-1",), kind=CONTROLS)
     assert result.state == "invalid" and result.part is None
+
+
+# =============================================================================
+# 24. The stage-entry path (W2' entry, #443 items 1 to 4)
+#
+# What the planner and both renderers each held a copy of now lives in `tachi_parts`: D4's failure class and its four-line message, the one capped
+# reader that follows no link, the one walker for a forbidden character, D3's guard for a plan, the staged write, the declared-paths walk, the stage
+# record and an entry's `main`. Each entry's own tests (`test_tachi_stage.py`, `test_render_risk_scores.py`, `test_render_compensating_controls.py`)
+# pin what that entry does with them. These cases pin the shared names on their own, in-process (H15), with every outcome that a caller maps.
+# =============================================================================
+
+ENTRY_PATH_NAMES = (
+    "StageFailure", "run_entry", "entry_defect", "build_parser", "trusted_plan", "entry_document", "plan_input_bytes", "digest_or_none", "read_parts",
+    "RunCore", "read_capped", "RENDERER_READ_REASONS", "first_forbidden", "forbidden_problem", "stage_and_move", "stage_record", "write_stage_record",
+    "output_entries", "walk_out", "undeclared_paths", "utc_now", "dump_json", "record_warning", "shorten", "relative_path", "yaml_quoted", "RETRY_REMEDY")
+
+
+@pytest.mark.parametrize("name", ENTRY_PATH_NAMES)
+def test_the_module_docstring_lists_each_name_of_the_stage_entry_path_and_each_has_its_own(name):
+    assert name in tachi_parts.__doc__, name
+    thing = _api(name)
+    if callable(thing):
+        assert thing.__doc__, name
+
+
+def stop_lines(error):
+    return error.text().split("\n")
+
+
+def test_a_stage_failure_prints_d4s_four_lines_and_leaves_out_an_empty_one():
+    error = _api("StageFailure")(4, "compensating-controls", "a check failed", "re-run it", batch=("B001", "S-1, T-2"),
+                                 agent="tachi-risk-scorer", kept="/work/out/.tachi-build/x")
+    assert stop_lines(error) == ["TACHI COMPENSATING-CONTROLS FAILED: a check failed", "Batch B001: S-1, T-2", "Agent: tachi-risk-scorer",
+                                 "Remedy: re-run it", "Kept for diagnosis: /work/out/.tachi-build/x"]
+    bare = _api("StageFailure")(2, "risk-score", "a reason")
+    assert stop_lines(bare) == ["TACHI RISK-SCORE FAILED: a reason"]
+    assert _api("StageFailure")(2, None, "a reason").text() == "TACHI STAGE FAILED: a reason"
+    assert (bare.code, bare.stage, bare.reason, bare.remedy, bare.batch, bare.agent, bare.kept) == (2, "risk-score", "a reason", "", None, None, None)
+    assert isinstance(bare, Exception) and str(bare) == "a reason"
+
+
+def test_an_entrys_own_failure_class_can_fix_the_stage_and_is_still_the_shared_one():
+    class RenderError(_api("StageFailure")):
+        def __init__(self, code, reason, remedy="", batch=None, kept=None):
+            super().__init__(code, "risk-score", reason, remedy, batch, None, kept)
+
+    error = RenderError(1, "an input is missing", "create it", kept="/work/kept")
+    assert isinstance(error, _api("StageFailure")) and error.code == 1
+    assert stop_lines(error) == ["TACHI RISK-SCORE FAILED: an input is missing", "Remedy: create it", "Kept for diagnosis: /work/kept"]
+
+
+# --- the one capped reader (SA-12, EC-3)
+
+HAS_PIPES = hasattr(os, "mkfifo")
+
+
+def reading_cases(tmp_path):
+    """One of each thing a reader meets, under a directory of its own."""
+    base = tmp_path / "read"
+    base.mkdir()
+    (base / "regular.txt").write_bytes(b"0123456789")
+    (base / "empty.txt").write_bytes(b"")
+    (base / "a-directory").mkdir()
+    (base / "real").mkdir()
+    (base / "real" / "inner.txt").write_bytes(b"inside")
+    os.symlink("regular.txt", str(base / "link-to-file"))
+    os.symlink("a-directory", str(base / "link-to-directory"))
+    os.symlink("nowhere", str(base / "dangling"))
+    os.symlink("real", str(base / "linked-parent"))
+    if HAS_PIPES:
+        os.mkfifo(str(base / "pipe"))
+    return base
+
+
+READING_OUTCOMES = {
+    "regular.txt": (b"0123456789", None),
+    "empty.txt": (b"", None),
+    "absent.txt": (None, "missing"),
+    "a-directory": (None, "not-a-regular-file"),
+    "link-to-file": (None, "unopenable"),
+    "link-to-directory": (None, "unopenable"),
+    "dangling": (None, "unopenable"),
+    "regular.txt/": (None, "unopenable"),
+    "linked-parent/inner.txt": (b"inside", None),
+}
+if HAS_PIPES:
+    READING_OUTCOMES["pipe"] = (None, "not-a-regular-file")
+
+
+@pytest.mark.parametrize("name", sorted(READING_OUTCOMES))
+def test_the_one_reader_gives_a_canonical_reason_for_everything_it_meets(tmp_path, name):
+    """The leaf is never followed (a link is ``unopenable``, whatever it points at), a parent directory that is a link is, and nothing blocks on a pipe."""
+    base = reading_cases(tmp_path)
+    assert _api("read_capped")(str(base) + "/" + name, 1 << 20) == READING_OUTCOMES[name]
+
+
+def test_the_one_reader_stops_at_its_cap_and_a_file_of_exactly_the_cap_is_read(tmp_path):
+    base = reading_cases(tmp_path)
+    path = str(base / "regular.txt")
+    assert _api("read_capped")(path, 10) == (b"0123456789", None)
+    assert _api("read_capped")(path, 9) == (None, "too-large")
+    assert _api("read_capped")(path, 0) == (None, "too-large") and _api("read_capped")(str(base / "empty.txt"), 0) == (b"", None)
+    big = base / "big.bin"
+    big.write_bytes(b"x" * 200000)   # more than three chunks of 65,536
+    assert _api("read_capped")(str(big), 200000) == (b"x" * 200000, None)
+    assert _api("read_capped")(str(big), 199999) == (None, "too-large")
+
+
+@pytest.mark.skipif(not hasattr(os, "geteuid") or os.geteuid() == 0, reason="needs an ordinary user: root ignores permission bits")
+def test_a_file_that_cannot_be_opened_for_want_of_permission_is_unopenable(tmp_path):
+    path = tmp_path / "secret.txt"
+    path.write_bytes(b"x")
+    path.chmod(0)
+    try:
+        assert _api("read_capped")(str(path), 10) == (None, "unopenable")
+    finally:
+        path.chmod(0o644)
+
+
+def test_the_reasons_map_is_the_callers_one_line_vocabulary_and_a_reason_it_leaves_out_is_kept(tmp_path):
+    base = reading_cases(tmp_path)
+    renderers = _api("RENDERER_READ_REASONS")
+    assert renderers == {"missing": "unreadable", "unopenable": "unreadable"}
+    cases = {"absent.txt": "unreadable", "link-to-file": "unreadable", "a-directory": "not-a-regular-file"}
+    assert {name: _api("read_capped")(str(base / name), 10, renderers)[1] for name in cases} == cases
+    assert _api("read_capped")(str(base / "regular.txt"), 3, renderers) == (None, "too-large")
+    assert _api("read_capped")(str(base / "regular.txt"), 10, renderers) == (b"0123456789", None), "no reason when the file is read"
+    one_word = {"unopenable": "missing", "not-a-regular-file": "missing", "unreadable": "missing"}   # tachi_scoring_rules' vocabulary
+    assert [_api("read_capped")(str(base / name), 3, one_word)[1] for name in ("absent.txt", "link-to-file", "a-directory", "regular.txt")] \
+        == ["missing", "missing", "missing", "too-large"]
+
+
+@pytest.mark.parametrize("broken", ["read", "fstat"])
+def test_a_failure_after_the_open_is_unreadable_and_the_descriptor_is_still_closed(tmp_path, monkeypatch, broken):
+    path = tmp_path / "f.txt"
+    path.write_bytes(b"abc")
+    closed, real_close = [], os.close
+
+    def fail(*args, **kwargs):
+        raise OSError(5, "an input/output error")
+
+    with monkeypatch.context() as patched:
+        patched.setattr(os, broken, fail)
+        patched.setattr(os, "close", lambda descriptor: (closed.append(descriptor), real_close(descriptor)))
+        assert _api("read_capped")(str(path), 10) == (None, "unreadable")
+    assert len(closed) == 1
+
+
+def test_a_path_that_is_not_a_path_is_an_error_of_the_call_and_not_a_reason(tmp_path):
+    with pytest.raises(TypeError):
+        _api("read_capped")(None, 10)
+    with pytest.raises(ValueError):
+        _api("read_capped")(str(tmp_path / "a\x00b"), 10)
+    assert _api("read_capped")(tmp_path / "absent", 10) == (None, "missing"), "a path-like object is read as its path"
+
+
+def test_the_loaders_reader_gives_its_own_reasons_from_the_canonical_ones(tmp_path):
+    """``load_json`` reads through the one reader. Its ``PartError`` kinds and details are what they were before the reader moved."""
+    base = reading_cases(tmp_path)
+    read = _api("_read_regular_file")
+    assert read(str(base / "regular.txt"), 10) == b"0123456789" and read(str(base / "empty.txt"), 10) == b""
+    expected = {
+        "absent.txt": ("missing", "no file at the planned path"),
+        "a-directory": ("invalid", "the planned path is not a regular file"),
+        "link-to-file": ("invalid", "the file cannot be opened without following a link"),
+        "regular.txt/": ("invalid", "the file cannot be opened without following a link"),
+    }
+    if HAS_PIPES:
+        expected["pipe"] = ("invalid", "the planned path is not a regular file")
+    for name, (kind, detail) in expected.items():
+        with pytest.raises(_api("PartError")) as excinfo:
+            read(str(base) + "/" + name, 10)
+        assert (excinfo.value.kind, excinfo.value.detail) == (kind, detail), name
+    with pytest.raises(_api("PartError")) as excinfo:
+        read(str(base / "regular.txt"), 9)
+    assert (excinfo.value.kind, excinfo.value.detail) == ("unparseable", "the file is over the size cap of 9 bytes")
+
+
+def test_a_read_that_fails_after_the_open_is_invalid_in_the_loaders_words(tmp_path, monkeypatch):
+    path = tmp_path / "f.txt"
+    path.write_bytes(b"abc")
+
+    def fail(*args, **kwargs):
+        raise OSError(5, "an input/output error")
+
+    monkeypatch.setattr(os, "read", fail)
+    with pytest.raises(_api("PartError")) as excinfo:
+        _api("_read_regular_file")(str(path), 10)
+    assert (excinfo.value.kind, excinfo.value.detail) == ("invalid", "the file could not be read")
+
+
+# --- the one walker, and the reason to refuse (SA-12, EC-4)
+
+class PlainObject(object):
+    def __init__(self, **fields):
+        self.__dict__.update(fields)
+
+
+class OtherMapping(Mapping):
+    """A mapping that isn't a ``dict``."""
+
+    def __getitem__(self, key):
+        return "v\x1b"
+
+    def __iter__(self):
+        return iter(["k"])
+
+    def __len__(self):
+        return 1
+
+
+def test_the_walker_reads_text_keys_items_and_fields_and_nothing_else():
+    """The renderers' traversal, which is the default."""
+    found, escape = _api("first_forbidden"), "\x1b"
+    assert found("") is None and found("clean text, with a tab\tand a newline\n") is None
+    assert found("a" + escape) == ("", escape) and found("a" + escape, "x") == ("x", escape)
+    assert found({"a": [{"b": ("x", "y" + escape)}]}) == ("a.0.b.1", escape), "mappings, lists and tuples, with a dotted path"
+    assert found({"k" + RIGHT_TO_LEFT_OVERRIDE: 1}) == ("k" + RIGHT_TO_LEFT_OVERRIDE, RIGHT_TO_LEFT_OVERRIDE), "a key is text too"
+    assert found(PlainObject(owner="Ann", notes={"rationale.cvss": "ok" + escape})) == ("notes.rationale.cvss", escape), "a plain object's fields"
+    assert found(OtherMapping()) == ("k", escape), "any mapping"
+    assert found({"a": 1, "b": "z" + escape, "c": "y" + escape}) == ("b", escape), "the first, in order"
+    assert found(["fine", [["deep" + chr(0xD800)]]], "p") == ("p.1.0.0", chr(0xD800)), "a lone surrogate is in the set"
+    assert found([1, 2.5, None, True, Decimal("1.0"), b"bytes", object()]) is None, "a number or None holds no text, and bytes aren't text"
+
+
+def test_the_walker_limited_to_json_reads_text_keys_and_dicts_and_lists_and_nothing_else():
+    """The planner's traversal: what a JSON document holds."""
+    walk, escape = (lambda value, path="x": _api("first_forbidden")(value, path, True)), "\x1b"
+    assert [walk(value) for value in ("clean", "", 7, None, True, 1.5, ("a" + escape,), {"ok": 1})] == [None] * 8
+    assert walk("a" + escape + "b") == ("x", escape)
+    assert walk({"a": ["ok", {"b": "c" + RIGHT_TO_LEFT_OVERRIDE + "d"}]}) == ("x.a.1.b", RIGHT_TO_LEFT_OVERRIDE)
+    assert walk({"k\x00ey": "fine"}) == ("x.k\x00ey", "\x00"), "a key is text too"
+    assert walk([0, "\ud800"]) == ("x.1", "\ud800")
+    assert walk(PlainObject(owner="a" + escape)) is None and walk(({"a": "b" + escape},)) is None, "a plain object and a tuple hold nothing"
+    assert walk(OtherMapping()) is None, "another kind of mapping holds nothing"
+    assert walk(type("Ordered", (dict,), {})({"a": ["b" + escape]})) == ("x.a.0", escape), "a subclass of dict is a dict"
+
+
+def test_the_refusals_reason_names_the_source_the_character_and_the_place_and_never_the_text():
+    problem = _api("forbidden_problem")
+    assert problem("threats.md", "S-1", {"threat": "ok"}) is None and problem("threats.md", None, "clean") is None
+    one = problem("threats.md", "S-1", {"rationale": {"cvss": "a\x1bb"}})
+    assert one == "threats.md holds the character U+001B, which the part contract forbids, in the rationale.cvss of S-1"
+    assert "\x1b" not in one
+    named = problem("risk-scores.sarif", None, (("Gateway", "Process"), {"Z" + RIGHT_TO_LEFT_OVERRIDE: 1}))
+    assert named == "risk-scores.sarif holds the character U+202E, which the part contract forbids, in a component, zone or layer name"
+    placed = problem("threats.md", None, ["x\x1b"], place=lambda char: "Section 1's component table, threats.md line 42")
+    assert placed == "threats.md holds the character U+001B, which the part contract forbids, in Section 1's component table, threats.md line 42"
+    assert problem("threats.md", None, ["x\x1b"], place=lambda char: None).endswith("in a component, zone or layer name"), "no place found"
+    assert problem("threats.md", "S-1", ["x\x1b"], place=lambda char: "never used for a finding").endswith("in the 0 of S-1")
+    assert problem("x.md", "T-2", {"k\\y": "a\x1b"}).endswith("in the k\\\\y of T-2"), "the path is shown escaped, so it can't carry a character either"
+    assert problem("x.md", None, ("a\x1b",), json_only=True) is None and problem("x.md", None, ["a\x1b"], json_only=True) is not None
+    assert problem("x.md", "S-1", "a\x1b", json_only=True, path="mitigation") == \
+        "x.md holds the character U+001B, which the part contract forbids, in the mitigation of S-1", "the planner names a unit's field and walks its value"
+    assert problem("x.md", "S-1", {"a": ["b\x1b"]}, json_only=True, path="evidence").endswith("in the evidence.a.0 of S-1")
+
+
+# --- the small helpers every entry used to define
+
+def test_the_clock_the_dump_and_the_warning_are_the_records_forms():
+    assert re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", _api("utc_now")())
+    assert _api("dump_json")({"b": [1, "\u00e9"], "a": None}) == '{\n  "a": null,\n  "b": [\n    1,\n    "\\u00e9"\n  ]\n}\n'
+    assert _api("record_warning")("c" * 70, "ok\x1b\ttext\n" + "d" * 600) == {"code": "c" * 64, "detail": ("ok  text " + "d" * 600)[:500]}
+    assert _api("record_warning")("a-code", "a detail") == {"code": "a-code", "detail": "a detail"}
+    assert _api("RETRY_REMEDY") == "re-run the command; the earlier outputs were left or put back as they were"
+
+
+def test_shorten_keeps_limit_minus_three_and_adds_three_dots():
+    shorten = _api("shorten")
+    assert shorten("abcdef", 6) == "abcdef" and shorten("abcdefg", 6) == "abc..." and shorten("", 3) == "" and shorten("abcd", 3) == "..."
+
+
+def test_yaml_quoted_is_a_double_quoted_scalar_or_null_for_what_the_frontmatter_readers_cannot_carry():
+    quoted = _api("yaml_quoted")
+    assert quoted("docs/architecture.md") == '"docs/architecture.md"' and quoted("") == '""'
+    assert [quoted(value) for value in (None, 'a"b', "a\\b", "a\nb", "a\x1bb", "tab\there")] == ["null"] * 6
+
+
+def test_a_path_is_relative_to_the_working_directory_by_identity_or_none(tmp_path):
+    relative = _api("relative_path")
+    cwd = tmp_path / "work"
+    (cwd / "a").mkdir(parents=True)
+    (cwd / "a" / "b.txt").write_text("x")
+    assert relative(str(cwd / "a" / "b.txt"), str(cwd)) == "a/b.txt" and relative(str(cwd), str(cwd)) == "."
+    assert relative(str(cwd / "a" / "later.txt"), str(cwd)) == "a/later.txt", "a file that isn't there yet"
+    assert relative(str(tmp_path / "elsewhere.txt"), str(cwd)) is None
+    os.symlink(str(cwd), str(tmp_path / "alias"))   # as macOS spells its temporary directory
+    assert relative(str(tmp_path / "alias" / "a" / "b.txt"), str(cwd)) == "a/b.txt"
+
+
+# --- D3's guard for a plan, and the part reader
+
+def lay_out_plan(base, state="done", stage="risk-score", inputs=None, sort_keys=True):
+    """A plan on disk with its pointer, its inputs and one batch input, as ``plan`` writes them. Returns a namespace of what a test touches."""
+    out, run = base / "out", base / "run"
+    out.mkdir(parents=True)
+    run.mkdir()
+    kind = SCORER if stage == "risk-score" else CONTROLS
+    files = {}
+    for name, data in (inputs or {"threats": b"# threats\n"}).items():
+        files[name] = run / (name + ".md")
+        files[name].write_bytes(data)
+    plan = valid_plan()
+    plan.update(stage=stage, agent_type=kind["agent_type"], out_snapshot={}, preimage=dict.fromkeys(_api("CANONICAL_OUTPUTS")[stage]),
+                inputs={name: {"path": str(path), "sha256": _api("sha256_hex")(path.read_bytes()), "bytes": path.stat().st_size} for name, path in files.items()},
+                refs={name: str(path) for name, path in files.items()})
+    batch_input = Path(_api("input_path")(str(out), stage, PLAN, "B001"))
+    batch_input.parent.mkdir(parents=True)
+    batch_input.write_text(json.dumps(valid_batch_input(kind)), encoding="utf-8")
+    plan["batches"][0].update(state=state, input_sha256=_api("file_digest")(batch_input))
+    plan_file = Path(_api("plan_path")(str(out), stage, PLAN))
+    plan_file.write_text(json.dumps(plan, indent=2, sort_keys=sort_keys) + "\n", encoding="utf-8")
+    pointer = Path(_api("pointer_path")(str(out), stage))
+    pointer.write_text(json.dumps({"schema": "tachi.plan-pointer/1", "plan_id": PLAN}), encoding="utf-8")
+    return type("Laid", (), dict(out=str(out), plan=plan, files=files, batch_input=batch_input, plan_file=plan_file, pointer=pointer, stage=stage,
+                                 digest=_api("file_digest")(plan_file), kept=_api("plan_dir")(str(out), stage, PLAN)))
+
+
+def stops(call, *args, **kwargs):
+    """What the ``StageFailure`` that ``call`` raises holds, as ``(code, reason, remedy, batch, kept)``."""
+    with pytest.raises(_api("StageFailure")) as excinfo:
+        call(*args, **kwargs)
+    error = excinfo.value
+    return error.code, error.reason, error.remedy, error.batch, error.kept
+
+
+@pytest.mark.parametrize("flags", [dict(complete=True, read_inputs=True, kept=True), dict()], ids=["a renderer's", "the planner's"])
+def test_a_plan_that_checks_out_is_returned_with_what_the_flags_ask_for(tmp_path, flags):
+    laid = lay_out_plan(tmp_path)
+    plan, inputs = _api("trusted_plan")(laid.stage, laid.out, PLAN, laid.digest, **flags)
+    assert plan == laid.plan and plan["batches"][0]["state"] == "done"
+    assert inputs == ({"threats": b"# threats\n"} if flags else {})
+
+
+def test_each_refusal_of_a_plan_is_d4s_code_and_words_and_names_the_kept_directory_only_when_asked_to(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    trusted = _api("trusted_plan")
+    for flags, held in ((dict(), None), (dict(kept=True), laid.kept)):
+        assert stops(trusted, laid.stage, laid.out, PLAN, "0" * 64, **flags) == (
+            2, "the plan file's digest differs from --plan-digest",
+            "pass the digest that the last plan or reconcile printed; if the plan was edited, re-run the command", None, held)
+        assert stops(trusted, laid.stage, laid.out, OTHER_PLAN, laid.digest, **flags) == (
+            2, "--plan %s disagrees with current.json, which names %s" % (OTHER_PLAN, PLAN), "pass the plan ID that plan printed", None,
+            _api("plan_dir")(laid.out, laid.stage, OTHER_PLAN) if flags else None)
+    pointer_text = laid.pointer.read_text(encoding="utf-8")
+    laid.pointer.write_text("{", encoding="utf-8")
+    code, reason, remedy, _batch, held = stops(trusted, laid.stage, laid.out, PLAN, laid.digest, kept=True)
+    assert (code, remedy, held) == (2, "re-run the command", None), "the pointer's own refusal never names the kept directory"
+    assert reason.startswith("the plan pointer is not acceptable (") and reason.endswith(")")
+    laid.pointer.unlink()
+    assert stops(trusted, laid.stage, laid.out, PLAN, laid.digest, kept=True) == (1, "the plan pointer is missing", "re-run the plan step", None, None)
+    laid.pointer.write_text(pointer_text, encoding="utf-8")
+    laid.plan_file.unlink()
+    assert stops(trusted, laid.stage, laid.out, PLAN, laid.digest, kept=True) == (1, "plan.json is missing", "re-run the plan step", None, laid.kept)
+    laid.plan_file.symlink_to(laid.pointer)
+    code, reason, remedy, _batch, held = stops(trusted, laid.stage, laid.out, PLAN, laid.digest, kept=True)
+    assert (code, remedy, held) == (2, "re-run the command", laid.kept) and reason.startswith("plan.json failed the path guard (")
+
+
+def test_a_plan_file_that_is_not_acceptable_or_belongs_to_another_stage_is_refused(tmp_path):
+    laid = lay_out_plan(tmp_path / "first")
+    laid.plan_file.write_text(json.dumps(dict(laid.plan, extra=1), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    code, reason, remedy, _batch, held = stops(_api("trusted_plan"), laid.stage, laid.out, PLAN, _api("file_digest")(laid.plan_file), kept=True)
+    assert (code, remedy, held) == (2, "re-run the command", laid.kept)
+    assert reason == "plan.json is not acceptable (plan does not have exactly the contract's keys)"
+    other = lay_out_plan(tmp_path / "second", stage="compensating-controls")   # its pointer names this plan, and its plan file holds a risk-score plan
+    other.plan_file.write_text(json.dumps(laid.plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    assert stops(_api("trusted_plan"), "compensating-controls", other.out, PLAN, _api("file_digest")(other.plan_file))[:3] == (
+        2, "plan.json is for another plan or stage", "re-run the command")
+
+
+@pytest.mark.parametrize("state", ["pending", "failed"])
+def test_a_plan_with_a_batch_that_is_not_done_is_refused_only_when_it_must_be_complete(tmp_path, state):
+    laid = lay_out_plan(tmp_path, state=state)
+    assert stops(_api("trusted_plan"), laid.stage, laid.out, PLAN, laid.digest, complete=True, kept=True) == (
+        2, "batch B001 is %s, so the plan is not complete" % state, "run reconcile until it exits 0, then render", ("B001", "S-1, T-2, R-3"), laid.kept)
+    plan, _inputs = _api("trusted_plan")(laid.stage, laid.out, PLAN, laid.digest)
+    assert plan["batches"][0]["state"] == state
+
+
+def test_the_completeness_check_comes_before_any_input_is_read(tmp_path):
+    laid = lay_out_plan(tmp_path, state="pending")
+    laid.files["threats"].write_bytes(b"changed")
+    assert stops(_api("trusted_plan"), laid.stage, laid.out, PLAN, laid.digest, complete=True, read_inputs=True)[1].startswith("batch B001 is pending")
+
+
+@pytest.mark.parametrize("flags", [dict(read_inputs=True, kept=True), dict()], ids=["a renderer's", "the planner's"])
+def test_an_input_that_changed_or_vanished_since_plan_is_refused_by_either_check(tmp_path, flags):
+    laid = lay_out_plan(tmp_path)
+    expected = (2, "the input threats changed (or vanished) since plan", "re-run the command", None, laid.kept if flags else None)
+    laid.files["threats"].write_bytes(b"# threats, edited\n")
+    assert stops(_api("trusted_plan"), laid.stage, laid.out, PLAN, laid.digest, **flags) == expected
+    laid.files["threats"].unlink()
+    assert stops(_api("trusted_plan"), laid.stage, laid.out, PLAN, laid.digest, **flags) == expected
+
+
+def test_a_renderer_reads_each_input_under_the_cap_and_the_planner_only_digests_it(tmp_path, monkeypatch):
+    laid = lay_out_plan(tmp_path)
+    monkeypatch.setattr(tachi_parts, "MAX_AGENT_INPUT_BYTES", 4)   # D3 step 2's 16 MiB, made small: the input (10 bytes) is over it
+    assert stops(_api("trusted_plan"), laid.stage, laid.out, PLAN, laid.digest, read_inputs=True)[1] == "the input threats changed (or vanished) since plan"
+    plan, inputs = _api("trusted_plan")(laid.stage, laid.out, PLAN, laid.digest)
+    assert inputs == {} and plan["plan_id"] == PLAN
+
+
+def test_a_renderer_checks_the_inputs_in_name_order_and_the_planner_in_the_plans_order(tmp_path):
+    laid = lay_out_plan(tmp_path, inputs={"zeta": b"z\n", "alpha": b"a\n"}, sort_keys=False)
+    assert list(json.loads(laid.plan_file.read_text(encoding="utf-8"))["inputs"]) == ["zeta", "alpha"]
+    laid.files["zeta"].write_bytes(b"changed\n")
+    laid.files["alpha"].write_bytes(b"changed\n")
+    assert stops(_api("trusted_plan"), laid.stage, laid.out, PLAN, laid.digest, read_inputs=True)[1] == "the input alpha changed (or vanished) since plan"
+    assert stops(_api("trusted_plan"), laid.stage, laid.out, PLAN, laid.digest)[1] == "the input zeta changed (or vanished) since plan"
+
+
+@pytest.mark.parametrize("flags", [dict(read_inputs=True, kept=True), dict()], ids=["a renderer's", "the planner's"])
+def test_a_batch_input_that_changed_or_stopped_being_a_regular_file_is_refused_by_either_check(tmp_path, flags):
+    laid = lay_out_plan(tmp_path)
+    expected = (2, "the batch input B001 changed after plan", "re-run the command", None, laid.kept if flags else None)
+    laid.batch_input.write_bytes(laid.batch_input.read_bytes() + b" ")
+    assert stops(_api("trusted_plan"), laid.stage, laid.out, PLAN, laid.digest, **flags) == expected
+    laid.batch_input.unlink()
+    laid.batch_input.symlink_to(laid.pointer)
+    assert stops(_api("trusted_plan"), laid.stage, laid.out, PLAN, laid.digest, **flags) == expected
+
+
+@pytest.mark.skipif(not hasattr(os, "geteuid") or os.geteuid() == 0, reason="needs an ordinary user: root ignores permission bits")
+def test_a_batch_input_that_cannot_be_read_is_a_mismatch_for_the_planner_and_an_error_for_a_renderer(tmp_path):
+    """The one place where the two checks differ in what they do with an I/O error, kept as each entry had it."""
+    laid = lay_out_plan(tmp_path)
+    laid.batch_input.chmod(0)
+    try:
+        assert stops(_api("trusted_plan"), laid.stage, laid.out, PLAN, laid.digest)[1] == "the batch input B001 changed after plan"
+        with pytest.raises(PermissionError):
+            _api("trusted_plan")(laid.stage, laid.out, PLAN, laid.digest, read_inputs=True)
+    finally:
+        laid.batch_input.chmod(0o644)
+
+
+def test_a_document_is_read_with_d4s_exit_codes(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    read = _api("entry_document")
+    assert read(laid.stage, str(laid.pointer), laid.out, "tachi.plan-pointer/1", "the plan pointer") == {"schema": "tachi.plan-pointer/1", "plan_id": PLAN}
+    assert stops(read, laid.stage, str(laid.pointer) + ".gone", laid.out, "tachi.plan-pointer/1", "the plan pointer", "/kept") == (
+        1, "the plan pointer is missing", "re-run the plan step", None, "/kept")
+    laid.pointer.write_text('{"schema": "tachi.plan-pointer/1"}', encoding="utf-8")
+    code, reason, remedy, _batch, held = stops(read, laid.stage, str(laid.pointer), laid.out, "tachi.plan-pointer/1", "the plan pointer")
+    assert (code, remedy, held) == (2, "re-run the command", None) and reason.startswith("the plan pointer is not acceptable (")
+
+
+def test_a_plan_input_is_read_under_the_cap_and_refused_when_it_changed(tmp_path, monkeypatch):
+    laid = lay_out_plan(tmp_path)
+    entry = laid.plan["inputs"]["threats"]
+    assert _api("plan_input_bytes")(laid.stage, entry, "threats") == b"# threats\n"
+    changed = (2, "the input threats changed (or vanished) since plan", "re-run the command", None, "/kept")
+    assert stops(_api("plan_input_bytes"), laid.stage, dict(entry, sha256="0" * 64), "threats", "/kept") == changed
+    assert stops(_api("plan_input_bytes"), laid.stage, dict(entry, path=str(tmp_path / "gone")), "threats", "/kept") == changed
+    monkeypatch.setattr(tachi_parts, "MAX_AGENT_INPUT_BYTES", 9)
+    assert stops(_api("plan_input_bytes"), laid.stage, entry, "threats", "/kept") == changed, "ten bytes is over a cap of nine"
+    monkeypatch.setattr(tachi_parts, "MAX_AGENT_INPUT_BYTES", 10)
+    assert _api("plan_input_bytes")(laid.stage, entry, "threats") == b"# threats\n"
+
+
+def test_a_digest_is_none_for_a_file_that_is_missing_unreadable_or_fails_the_path_guard(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    digest = _api("digest_or_none")
+    assert digest(str(laid.plan_file)) == laid.digest == digest(str(laid.plan_file), laid.out)
+    assert digest(str(laid.plan_file) + ".gone") is None and digest(str(tmp_path / "run")) is None, "missing, and a directory that can't be read as a file"
+    assert digest(str(laid.files["threats"]), laid.out) is None, "a file outside --out fails the guard when --out is given, and only then"
+    assert digest(str(laid.files["threats"])) == _api("sha256_hex")(b"# threats\n")
+
+
+def stub_parts(monkeypatch, results):
+    """Make ``read_part`` return ``results[batch_id]``, and record each call."""
+    calls = []
+
+    def read_part(path, out, plan_id, batch_id, stage, agent_type, finding_ids):
+        calls.append((os.path.basename(path), plan_id, batch_id, stage, agent_type, list(finding_ids)))
+        return results[batch_id]
+
+    monkeypatch.setattr(tachi_parts, "read_part", read_part)
+    return calls
+
+
+def done_result(items, flags=None, counts=None):
+    return tachi_parts.PartResult("done", "", {"items": items}, flags or {}, counts or {"narrative_fallbacks": 0, "truncations": 0})
+
+
+def test_the_parts_of_the_done_batches_are_read_for_their_current_attempt_and_their_items_flags_and_counts_joined(tmp_path, monkeypatch):
+    laid = lay_out_plan(tmp_path)
+    batch = {"input_sha256": HEX, "parent": None}
+    plan = dict(laid.plan, batches=[
+        dict(batch, batch_id="B001", attempt=1, finding_ids=["S-1"], state="split"),
+        dict(batch, batch_id="B001-1", attempt=2, finding_ids=["S-1"], state="done", parent="B001"),
+        dict(batch, batch_id="B002", attempt=3, finding_ids=["T-2", "R-3"], state="done"),
+        dict(batch, batch_id="B003", attempt=1, finding_ids=["E-4"], state="pending")])
+    calls = stub_parts(monkeypatch, {
+        "B001-1": done_result([{"finding_id": "S-1", "v": 1}], {"S-1": ["input:rationale.cvss:truncated"]}, {"narrative_fallbacks": 1, "truncations": 2}),
+        "B002": done_result([{"finding_id": "T-2"}, {"finding_id": "R-3"}], {"S-1": ["input:x:truncated"], "R-3": ["input:y:narrative-fallback"]},
+                            {"narrative_fallbacks": 3, "truncations": 0})})
+    items, flags, counts = _api("read_parts")("risk-score", laid.out, plan)
+    assert list(items) == ["S-1", "T-2", "R-3"] and items["S-1"]["v"] == 1
+    assert flags == {"S-1": ["input:rationale.cvss:truncated", "input:x:truncated"], "R-3": ["input:y:narrative-fallback"]}
+    assert counts == {"narrative_fallbacks": 4, "truncations": 2}
+    assert calls == [("B001-1.a2.json", PLAN, "B001-1", "risk-score", "tachi-risk-scorer", ["S-1"]),
+                     ("B002.a3.json", PLAN, "B002", "risk-score", "tachi-risk-scorer", ["T-2", "R-3"])], "a halved parent and a pending batch have no part to read"
+
+
+@pytest.mark.parametrize("state,code", [("missing", 1), ("invalid", 2), ("unparseable", 2), ("overflow", 2)])
+def test_a_part_that_no_longer_validates_stops_with_its_batch_named(tmp_path, monkeypatch, state, code):
+    laid = lay_out_plan(tmp_path)
+    stub_parts(monkeypatch, {"B001": tachi_parts.PartResult(state, "a detail")})
+    assert stops(_api("read_parts"), "risk-score", laid.out, laid.plan) == (
+        code, "the part of batch B001 is %s (a detail)" % state, "re-run the command: only a part that validates counts", ("B001", "S-1, T-2, R-3"), laid.kept)
+
+
+def test_a_part_on_disk_is_read_through_the_real_reader(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    part = Path(_api("part_path")(laid.out, "risk-score", PLAN, "B001", 1))
+    part.parent.mkdir(parents=True)
+    part.write_text(json.dumps(make_part(ids=("S-1", "T-2", "R-3"))), encoding="utf-8")
+    items, flags, counts = _api("read_parts")("risk-score", laid.out, laid.plan)
+    assert sorted(items) == ["R-3", "S-1", "T-2"] and flags == {} and counts == {"narrative_fallbacks": 0, "truncations": 0}
+    part.write_text("{", encoding="utf-8")
+    code, reason = stops(_api("read_parts"), "risk-score", laid.out, laid.plan)[:2]
+    assert code == 2 and reason.startswith("the part of batch B001 is unparseable (")
+    part.unlink()
+    assert stops(_api("read_parts"), "risk-score", laid.out, laid.plan)[0] == 1
+
+
+def test_the_run_core_holds_what_both_renderers_declared_alike_and_warns_in_the_records_form():
+    run = _api("RunCore")()
+    assert run.cwd == os.getcwd() and run.warnings == [] and run.issues == [] and run.sources == {} and run.rows == []
+    assert run.counts == {"narrative_fallbacks": 0, "truncations": 0} and run.groups == [] and run.assignments == {} and run.open_ids == set()
+    assert run.threats_text is None and run.source_file is None and run.uri == ""
+    assert run.finding_layer == {} and run.component_info == {} and run.component_zone == {} and not hasattr(run, "threats_path")
+    run.warn("a-code", "a detail\x1b")
+    assert run.warnings == [{"code": "a-code", "detail": "a detail "}]
+    other = _api("RunCore")()
+    assert other.warnings == [] and other.counts is not run.counts and other.rows is not run.rows, "no state is shared between runs"
+
+    class Run(_api("RunCore")):
+        def __init__(self):
+            super().__init__()
+            self.extra = 1
+
+    assert Run().extra == 1 and Run().rows == [] and isinstance(Run(), _api("RunCore"))
+
+
+# --- the staged write, the declared-paths walk and the stage record
+
+STAGED_FILES = {"risk-scores.md": "# scores\n", "risk-scores.sarif": '{"runs": []}\n'}
+
+
+def moved(laid, check=lambda texts: [], files=None, **kwargs):
+    return _api("stage_and_move")(laid.stage, laid.out, PLAN, files or STAGED_FILES, check, "/kept", **kwargs)
+
+
+def staged_directory(laid):
+    return Path(_api("plan_subdir")(laid.out, laid.stage, PLAN, "staged"))
+
+
+def test_the_files_are_staged_read_back_checked_and_only_then_moved(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    seen = []
+    moved(laid, lambda texts: seen.append(dict(texts)) or [])
+    assert seen == [STAGED_FILES] and list(seen[0]) == list(STAGED_FILES), "check gets the read-back text of each file, in the order they move"
+    assert {name: (Path(laid.out) / name).read_text(encoding="utf-8") for name in STAGED_FILES} == STAGED_FILES
+    assert list(staged_directory(laid).iterdir()) == [], "each staged file moved onto its canonical name"
+
+
+@pytest.mark.skipif(os.name != "posix", reason="permission bits")
+def test_a_staged_file_takes_the_permission_bits_of_the_canonical_file_it_replaces(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    (Path(laid.out) / "risk-scores.md").write_text("old\n", encoding="utf-8")
+    (Path(laid.out) / "risk-scores.md").chmod(0o600)
+    moved(laid)
+    assert (Path(laid.out) / "risk-scores.md").stat().st_mode & 0o777 == 0o600
+
+
+def test_a_failed_check_stops_with_exit_4_before_any_canonical_file_is_touched(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    (Path(laid.out) / "risk-scores.md").write_text("old\n", encoding="utf-8")
+    assert stops(moved, laid, lambda texts: ["the rows disagree"]) == (
+        4, "a completeness or parity check failed on the staged files: the rows disagree", _api("RETRY_REMEDY"), None, "/kept")
+    assert (Path(laid.out) / "risk-scores.md").read_text(encoding="utf-8") == "old\n" and not (Path(laid.out) / "risk-scores.sarif").exists()
+    assert sorted(path.name for path in staged_directory(laid).iterdir()) == sorted(STAGED_FILES), "what was staged stays, for diagnosis"
+
+
+@pytest.mark.parametrize("count,tail", [(1, ""), (5, ""), (6, "; and 1 more"), (8, "; and 3 more")])
+def test_the_check_names_its_first_five_problems_and_counts_the_rest(tmp_path, count, tail):
+    laid = lay_out_plan(tmp_path)
+    problems = ["problem %d" % number for number in range(1, count + 1)]
+    expected = "a completeness or parity check failed on the staged files: " + "; ".join(problems[:5]) + tail
+    assert stops(moved, laid, lambda texts: problems)[1] == expected
+
+
+@pytest.mark.parametrize("make", ["link", "file"])
+def test_a_staged_directory_that_is_a_link_or_not_a_directory_is_exit_2(tmp_path, make):
+    laid = lay_out_plan(tmp_path)
+    staged = staged_directory(laid)
+    if make == "link":
+        staged.symlink_to(tmp_path / "run")
+    else:
+        staged.write_text("not a directory", encoding="utf-8")
+    assert stops(moved, laid) == (2, "staged is a symbolic link or not a directory", "remove it and re-run", None, "/kept")
+    assert not (Path(laid.out) / "risk-scores.md").exists()
+
+
+def test_a_staged_write_that_fails_is_exit_4(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    plan_directory = Path(laid.kept)
+    for entry in sorted(plan_directory.rglob("*"), reverse=True):   # no staged directory can be made under a file
+        entry.rmdir() if entry.is_dir() else entry.unlink()
+    plan_directory.rmdir()
+    plan_directory.write_text("a file where the plan directory goes", encoding="utf-8")
+    code, reason, remedy, _batch, held = stops(moved, laid)
+    assert (code, remedy, held) == (4, _api("RETRY_REMEDY"), "/kept") and reason.startswith("the staged files could not be written (")
+
+
+def test_a_staged_file_that_cannot_be_read_back_is_exit_4_with_the_reason_in_the_renderers_words(tmp_path, monkeypatch):
+    laid = lay_out_plan(tmp_path)
+
+    def link_instead(path, data, mode_of=None):
+        os.symlink(str(tmp_path / "run"), path)
+
+    with monkeypatch.context() as patched:
+        patched.setattr(tachi_parts, "atomic_write", link_instead)
+        assert stops(moved, laid)[:3] == (4, "the staged risk-scores.md could not be read back (unreadable)", _api("RETRY_REMEDY"))
+
+
+def test_a_staged_file_over_the_cap_names_the_reason_and_the_callers_wording_of_it_when_given(tmp_path, monkeypatch):
+    laid = lay_out_plan(tmp_path)
+    monkeypatch.setattr(tachi_parts, "MAX_AGENT_INPUT_BYTES", 5)
+    assert stops(moved, laid)[1] == "the staged risk-scores.md could not be read back (too-large)"
+    assert stops(moved, laid, reason_text=lambda reason: "over the cap: %s" % reason)[1] == "the staged risk-scores.md could not be read back (over the cap: too-large)"
+
+
+def test_a_staged_file_that_is_not_strict_utf8_is_exit_4(tmp_path, monkeypatch):
+    laid = lay_out_plan(tmp_path)
+    monkeypatch.setattr(tachi_parts, "atomic_write", lambda path, data, mode_of=None: Path(path).write_bytes(b"\xff\xfe"))
+    assert stops(moved, laid)[:3] == (4, "the staged risk-scores.md is not strict UTF-8", _api("RETRY_REMEDY"))
+
+
+def test_a_move_that_fails_is_exit_4_and_names_the_file(tmp_path, monkeypatch):
+    laid = lay_out_plan(tmp_path)
+    real_replace = os.replace
+
+    def replace(source, destination):
+        if os.path.dirname(os.fspath(destination)) == laid.out:
+            raise OSError(5, "an input/output error")
+        real_replace(source, destination)
+
+    monkeypatch.setattr(os, "replace", replace)
+    assert stops(moved, laid) == (4, "the move of risk-scores.md onto its canonical name failed (an input/output error)", _api("RETRY_REMEDY"), None, "/kept")
+
+
+def test_the_walk_lists_each_file_under_out_in_a_fixed_order_and_enters_no_linked_directory(tmp_path):
+    out = tmp_path / "out"
+    for name in ("b", "a"):
+        (out / name).mkdir(parents=True)
+    for name in ("z.txt", "a/2.txt", "a/1.txt", "b/x.txt"):
+        (out / name).write_text("12345", encoding="utf-8")
+    os.symlink(str(out / "b"), str(out / "linked"))
+    os.symlink("nowhere", str(out / "dangling"))
+    walked = list(_api("walk_out")(str(out)))
+    assert [relpath for relpath, _size, _mtime in walked] == ["dangling", "z.txt", "a/1.txt", "a/2.txt", "b/x.txt"]
+    assert [size for _relpath, size, _mtime in walked][1:] == [5, 5, 5, 5] and all(isinstance(mtime, int) and mtime >= 0 for _r, _s, mtime in walked)
+
+
+def snapshot_of(out):
+    return {_api("snapshot_key")(relpath): [size, mtime] for relpath, size, mtime in _api("walk_out")(str(out))}
+
+
+def test_a_file_that_is_new_or_changed_since_the_plan_and_not_declared_is_found(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    out = Path(laid.out)
+    (out / "kept.txt").write_text("a", encoding="utf-8")
+    plan = dict(laid.plan, out_snapshot=snapshot_of(out))
+    assert _api("undeclared_paths")("risk-score", laid.out, plan) == ([], [])
+    (out / "kept.txt").write_text("changed", encoding="utf-8")
+    (out / "gen.py").write_text("x", encoding="utf-8")
+    (out / "risk-scores.md").write_text("declared, so not reported", encoding="utf-8")
+    Path(_api("part_path")(laid.out, "risk-score", PLAN, "B001", 1)).parent.mkdir(parents=True)
+    Path(_api("part_path")(laid.out, "risk-score", PLAN, "B001", 1)).write_text("{}", encoding="utf-8")
+    assert _api("undeclared_paths")("risk-score", laid.out, plan) == (["gen.py", "kept.txt"], [])
+    assert _api("undeclared_paths")("compensating-controls", laid.out, plan)[0] == [
+        ".tachi-build/risk-score/%s/parts/B001.a1.json" % PLAN, "gen.py", "kept.txt", "risk-scores.md"], "each stage declares its own files and no other stage's"
+
+
+def test_a_plan_with_no_snapshot_skips_the_declared_paths_check_and_says_so(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    assert _api("undeclared_paths")("risk-score", laid.out, dict(laid.plan, out_snapshot=None)) == (
+        [], [{"code": "declared-paths-skipped", "detail": "the plan took no snapshot of the output directory"}])
+
+
+def test_a_name_that_no_record_can_hold_is_counted_not_listed_and_is_not_new_when_it_was_there_at_plan_time(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    out = Path(laid.out)
+    odd = out / "Icon\r"
+    odd.write_text("x", encoding="utf-8")
+    plan = dict(laid.plan, out_snapshot=snapshot_of(out))
+    assert _api("undeclared_paths")("risk-score", laid.out, plan) == ([], []), "found again by the stand-in key, so not reported (EC-2)"
+    (out / "Other\r").write_text("y", encoding="utf-8")
+    assert _api("undeclared_paths")("risk-score", laid.out, plan) == (
+        [], [{"code": "undeclared-paths-unrecordable", "detail": "1 undeclared paths have names a record can't hold"}])
+
+
+def test_a_list_cut_at_the_cap_says_how_many_there_were(tmp_path, monkeypatch):
+    laid = lay_out_plan(tmp_path)
+    plan = dict(laid.plan, out_snapshot=snapshot_of(laid.out))
+    for number in range(4):
+        (Path(laid.out) / ("new%d.txt" % number)).write_text("x", encoding="utf-8")
+    monkeypatch.setattr(tachi_parts, "MAX_UNDECLARED_PATHS", 2)
+    assert _api("undeclared_paths")("risk-score", laid.out, plan) == (
+        ["new0.txt", "new1.txt"], [{"code": "undeclared-paths-truncated", "detail": "4 undeclared paths in all; the first 2 are listed"}])
+
+
+def test_the_outputs_of_a_record_are_each_files_path_and_digest(tmp_path):
+    (tmp_path / "a.md").write_bytes(b"one")
+    (tmp_path / "b.sarif").write_bytes(b"two")
+    assert _api("output_entries")(str(tmp_path), ["a.md", "b.sarif"]) == [
+        {"path": "a.md", "sha256": _api("sha256_hex")(b"one")}, {"path": "b.sarif", "sha256": _api("sha256_hex")(b"two")}]
+    assert _api("output_entries")(str(tmp_path), []) == []
+    with pytest.raises(OSError):
+        _api("output_entries")(str(tmp_path), ["absent.md"])
+
+
+def record_plan(laid):
+    batch = {"input_sha256": HEX, "attempt": 1}
+    return dict(laid.plan, retry_budget={"limit": 2, "used": 1}, batches=[
+        dict(batch, batch_id="B001", parent=None, finding_ids=["S-1"], state="done"),
+        dict(batch, batch_id="B002", parent=None, finding_ids=["T-2", "R-3"], state="split"),
+        dict(batch, batch_id="B002-1", parent="B002", attempt=2, finding_ids=["T-2"], state="done"),
+        dict(batch, batch_id="B003", parent=None, finding_ids=["E-4"], state="failed")])
+
+
+def test_a_stage_record_derives_its_summary_its_history_and_its_times_from_the_plan(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    plan = record_plan(laid)
+    record = _api("stage_record")("risk-score", laid.out, plan, "sha256:" + HEX, {"units": 3, "open": 3}, [], [], [])
+    assert record["batches"] == {"planned": 3, "dispatched": 4, "done": 2, "retried": 1, "split": 1, "exhausted": 1}
+    assert (record["overflow_events"], record["retries"]) == _api("retry_history")("risk-score", laid.out, plan)
+    assert record["schema"] == "tachi.stage-record/1" and (record["stage"], record["plan_id"]) == ("risk-score", PLAN)
+    assert record["started_utc"] == plan["created_utc"] and re.fullmatch(r"[0-9T:Z-]{20}", record["finished_utc"])
+    assert record["tachi_version"] == tachi_parts.VERSION and record["input_digest"] == "sha256:" + HEX
+    assert (record["counts"], record["outputs"], record["warnings"], record["undeclared_paths"], record["error"]) == ({"units": 3, "open": 3}, [], [], [], None)
+    assert _api("validate_stage_record")(record) is record
+
+
+def test_a_stage_records_status_is_given_or_follows_its_warnings_and_undeclared_paths(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    build = lambda warnings, undeclared, **kwargs: _api("stage_record")("risk-score", laid.out, laid.plan, "sha256:" + HEX, {"units": 3, "open": 3}, [], warnings, undeclared, **kwargs)["status"]   # noqa: E731
+    assert build([], []) == "success"
+    assert build([{"code": "w", "detail": "d"}], []) == "success-with-warnings" and build([], ["gen.py"]) == "success-with-warnings"
+    assert build([], [], status="failed", error={"code": "check-failed", "message": "m", "batch_id": None, "finding_ids": [], "remedy": "r"}) == "failed"
+    assert build([{"code": "w", "detail": "d"}], [], status="success") == "success", "a given status is kept"
+
+
+def test_a_stage_record_is_checked_then_written_to_the_plan_directory(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    record = _api("write_stage_record")("risk-score", "render-x.py", laid.out, laid.plan, "sha256:" + HEX, {"units": 3, "open": 3}, [], [], [], laid.kept)
+    path = Path(_api("stage_record_path")(laid.out, "risk-score", PLAN))
+    assert path.read_text(encoding="utf-8") == _api("dump_json")(record) and _api("validate_stage_record")(record) is record
+    assert record["status"] == "success"
+
+
+def test_a_record_that_fails_its_own_contract_or_its_cap_is_exit_4_and_is_not_written(tmp_path, monkeypatch):
+    laid = lay_out_plan(tmp_path)
+    path = Path(_api("stage_record_path")(laid.out, "risk-score", PLAN))
+    write = lambda: _api("write_stage_record")("risk-score", "render-x.py", laid.out, laid.plan, "sha256:" + HEX, {"units": 3, "open": 3}, [], [], [], "/kept")   # noqa: E731
+
+    def refuse(_record):
+        raise _api("PartError")("invalid", "a synthetic problem")
+
+    with monkeypatch.context() as patched:
+        patched.setattr(tachi_parts, "validate_stage_record", refuse)
+        assert stops(write) == (4, "the stage record this step wrote fails its own contract (a synthetic problem)", "report this as a bug in render-x.py", None, "/kept")
+    with monkeypatch.context() as patched:
+        patched.setitem(tachi_parts.MAX_DOCUMENT_BYTES, "tachi.stage-record/1", 10)
+        assert stops(write)[1] == "the stage record this step wrote fails its own contract (the record is over its size cap)"
+    assert not path.exists()
+
+
+def test_a_record_that_cannot_be_written_is_exit_4_with_the_retry_remedy(tmp_path):
+    laid = lay_out_plan(tmp_path)
+    elsewhere = tmp_path / "no-plan-directory-here"
+    elsewhere.mkdir()
+    code, reason, remedy, _batch, held = stops(_api("write_stage_record"), "risk-score", "render-x.py", str(elsewhere), laid.plan, "sha256:" + HEX,
+                                               {"units": 3, "open": 3}, [], [], [], "/kept")
+    assert (code, remedy, held) == (4, _api("RETRY_REMEDY"), "/kept") and reason.startswith("the stage record could not be written (")
+
+
+# --- an entry's arguments, its stop and its main
+
+def test_the_shared_arguments_are_the_version_the_out_directory_and_the_plan_with_its_digest(capsys):
+    parser = _api("build_parser")("render-x.py", "Render x.")
+    args = parser.parse_args(["--out", "o", "--plan", PLAN, "--plan-digest", HEX])
+    assert (args.out, args.plan, args.plan_digest) == ("o", PLAN, HEX) and parser.prog == "render-x.py" and parser.description == "Render x."
+    with pytest.raises(SystemExit) as excinfo:
+        parser.parse_args(["--version"])
+    assert excinfo.value.code == 0
+    assert capsys.readouterr().out == "render-x.py %s (python %s)\n" % (tachi_parts.VERSION, platform.python_version())
+    for missing in (["--plan", PLAN, "--plan-digest", HEX], ["--out", "o", "--plan-digest", HEX], ["--out", "o", "--plan", PLAN]):
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args(missing)
+        assert excinfo.value.code == 2
+    capsys.readouterr()
+    assert [action.dest for action in parser._actions] == ["help", "version", "out", "plan", "plan_digest"]
+    assert [action.help for action in parser._actions[2:]] == ["the run's output directory; everything is written under it", "the plan ID that plan printed",
+                                                                "the plan_digest that the last plan or reconcile printed"]
+
+
+def test_an_entry_that_takes_no_plan_or_no_out_leaves_those_arguments_out():
+    assert [action.dest for action in _api("build_parser")("x.py", "d", plan=False)._actions] == ["help", "version", "out"]
+    assert [action.dest for action in _api("build_parser")("x.py", "d", out=False)._actions] == ["help", "version", "plan", "plan_digest"]
+    assert [action.dest for action in _api("build_parser")("x.py", "d", out=False, plan=False)._actions] == ["help", "version"]
+
+
+def test_run_entry_returns_the_runs_code_and_prints_a_stop_in_d4s_four_lines(capsys):
+    args = argparse.Namespace()
+    assert _api("run_entry")("risk-score", "render-x.py", args, lambda parsed: 5) == 5 and capsys.readouterr() == ("", "")
+
+    def stop(parsed):
+        raise _api("StageFailure")(2, "risk-score", "a reason", "a remedy", kept="/kept")
+
+    assert _api("run_entry")("risk-score", "render-x.py", args, stop) == 2
+    assert capsys.readouterr() == ("", "TACHI RISK-SCORE FAILED: a reason\nRemedy: a remedy\nKept for diagnosis: /kept\n")
+
+
+def raise_value_error(message):
+    def run(parsed):
+        raise ValueError(message)
+    return run
+
+
+def test_run_entry_turns_an_unexpected_exception_into_an_exit_4_that_names_the_bug_and_keeps_the_plan_directory(tmp_path, capsys):
+    out = tmp_path / "out"
+    out.mkdir()
+    args = argparse.Namespace(out=str(out), plan=PLAN)
+    assert _api("run_entry")("risk-score", "render-x.py", args, raise_value_error("boom\x1b!")) == 4
+    lines = capsys.readouterr().err.split("\n")
+    assert re.fullmatch(r"TACHI RISK-SCORE FAILED: an unexpected error stopped the render \(ValueError: boom !, at test_tachi_parts\.py:[0-9]+\)", lines[0])
+    assert lines[1:] == ["Remedy: report this as a bug in render-x.py; the earlier outputs were left or put back as they were",
+                         "Kept for diagnosis: " + _api("plan_dir")(str(out), "risk-score", PLAN), ""]
+
+
+@pytest.mark.parametrize("fields", [dict(out="PLACEHOLDER", plan="not-a-plan-id"), dict(out="PLACEHOLDER", plan=None), dict(plan=PLAN), dict(out=None, plan=PLAN), dict()],
+                         ids=["a plan ID that fails its pattern", "no plan", "no out", "out is None", "neither"])
+def test_run_entry_names_no_kept_directory_when_the_arguments_name_no_plan(tmp_path, capsys, fields):
+    args = argparse.Namespace(**{key: (str(tmp_path) if value == "PLACEHOLDER" else value) for key, value in fields.items()})
+    assert _api("run_entry")("risk-score", "render-x.py", args, raise_value_error("boom")) == 4
+    assert "Kept for diagnosis" not in capsys.readouterr().err
+
+
+def test_run_entry_without_the_defect_wrapper_lets_an_unexpected_exception_through():
+    with pytest.raises(ValueError, match="boom"):
+        _api("run_entry")(None, "tachi-stage.py", argparse.Namespace(), raise_value_error("boom"), defect=False)
+
+    def stop(parsed):
+        raise _api("StageFailure")(2, "risk-score", "still printed")
+
+    assert _api("run_entry")(None, "tachi-stage.py", argparse.Namespace(), stop, defect=False) == 2
+
+
+def test_an_unexpected_errors_message_cuts_its_detail_at_200_and_names_where_it_was_raised():
+    try:
+        raise_value_error("x" * 300 + "\n")(None)
+    except ValueError as exc:
+        failure = _api("entry_defect")("compensating-controls", "render-y.py", exc, "/kept")
+    assert failure.code == 4 and failure.kept == "/kept" and isinstance(failure, _api("StageFailure"))
+    assert failure.reason.startswith("an unexpected error stopped the render (ValueError: " + "x" * 200 + ", at test_tachi_parts.py:")
+    assert failure.remedy == "report this as a bug in render-y.py; the earlier outputs were left or put back as they were"
+    assert failure.text().startswith("TACHI COMPENSATING-CONTROLS FAILED: an unexpected error")
+    assert "at unknown)" in _api("entry_defect")("risk-score", "render-y.py", ValueError("never raised"), None).reason, "an exception with no traceback"

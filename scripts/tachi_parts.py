@@ -94,6 +94,33 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
   by (EC-2): its path, or a digest stand-in for a name that no plan can hold (SA-5).
 * ``retry_history(stage, out, plan)``: a plan's ``(overflow_events, retries)``, read back from its parts on disk.
 
+**The stage-entry path (W2' entry, #443 items 1 to 4).** What the planner and both renderers each held a copy of, and what an entry script written
+later uses from its first commit. An entry keeps its own name for each (an alias or a thin wrapper), its ``STAGE`` and ``RENDERER`` literals, and every
+message, exit code, reason string and cap it had (S1P-A11):
+
+* ``StageFailure(code, stage, reason, remedy="", batch=None, agent=None, kept=None)``: a stop with D4's exit code and four-line message, ``text()``.
+  ``tachi-stage.py``'s ``StageError`` is this class, and a renderer's ``RenderError`` is a subclass that fixes the stage.
+  ``run_entry(stage, renderer, args, run, defect=True)`` is an entry's ``main``: it prints the message and returns the code, and turns an unexpected
+  exception into ``entry_defect(stage, renderer, exc, kept)``'s exit 4. ``build_parser(renderer, description, out=True, plan=True)`` is the arguments
+  entries share (``--version``, ``--out``, ``--plan`` and ``--plan-digest``).
+* D3's guard: ``trusted_plan(stage, out, plan_id, digest, complete=False, read_inputs=False, kept=False)`` returns ``(plan, inputs)`` once the pointer,
+  the digest, the inputs and the batch inputs check out, with ``entry_document(stage, path, out, schema, what, kept=None)`` (``read_document`` with D4's
+  exit codes), ``plan_input_bytes(stage, entry, name, kept=None)`` and ``digest_or_none(path, out=None)``. ``read_parts(stage, out, plan)`` returns
+  ``(items, flags, counts)`` from every done batch's part.
+* ``RunCore``: the fields that both renderers' ``Run`` hold alike (``warnings``, ``issues``, ``sources``, ``counts``, the threat model's bookkeeping),
+  with ``warn(code, detail)``.
+* ``read_capped(path, limit, reasons=None)``: the one capped reader that follows no link, returning ``(bytes, reason)``. The reason is ``missing``,
+  ``unopenable``, ``not-a-regular-file``, ``unreadable`` or ``too-large``, and ``reasons`` is the caller's one-line map to its own words
+  (``RENDERER_READ_REASONS`` is the renderers'). ``load_json`` reads through it, with its own ``PartError`` reasons.
+* ``first_forbidden(value, path="", json_only=False)``: the one walker for a character that D3's step 10 forbids, which searches text, mapping keys, list and
+  tuple items and a plain object's fields (``json_only``: ``dict`` and ``list`` only, the planner's). ``forbidden_problem(source, finding_id, value,
+  place=None, json_only=False, path="")`` is the refusal's reason, or ``None``; the entry raises it with exit 2 and its own remedy.
+* The write path: ``stage_and_move(stage, out, plan_id, files, check, kept, reason_text=None)`` stages, reads back, checks and moves the files;
+  ``stage_record(...)`` builds a ``tachi.stage-record/1`` object and ``write_stage_record(...)`` checks and writes it with exit 4 (a renderer's end of
+  run); ``output_entries(out, names)`` is its ``outputs``. ``walk_out(out)`` and ``undeclared_paths(stage, out, plan)`` are D4's declared-paths check.
+* Small helpers: ``utc_now()``, ``dump_json(obj)``, ``record_warning(code, detail)``, ``shorten(text, limit)``, ``relative_path(path, cwd)``,
+  ``yaml_quoted(text)`` and ``RETRY_REMEDY``.
+
 **Added at W3 (P0-4):**
 
 * ``forbidden_character(text)``: the first character of ``text`` that D3's step 10 forbids, or ``None``. Step 10 uses it,
@@ -111,12 +138,14 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
 """
 from __future__ import annotations
 
+import argparse
 import copy
 import dataclasses
 import datetime
 import hashlib
 import json
 import os
+import platform
 import re
 import stat
 import sys
@@ -124,7 +153,7 @@ import tempfile
 import textwrap
 import unicodedata
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple
 
 # Turn bytecode writing off before anything else loads (feature 391, FR-007; ADR-049 D8).
 # This helper is already compiled when this line runs and imports no local module itself,
@@ -511,32 +540,24 @@ def _scan(obj: Any) -> Tuple[int, bool]:
     return deepest, surrogate
 
 
+# The loader's one-line map for ``read_capped``'s reasons: ``reason -> (PartError kind, detail)``. A file over the cap is ``unparseable`` and
+# names the cap, so ``_read_regular_file`` builds that one where the cap is known.
+_READ_FAILURES = {
+    "missing": ("missing", "no file at the planned path"),
+    "unopenable": ("invalid", "the file cannot be opened without following a link"),
+    "not-a-regular-file": ("invalid", "the planned path is not a regular file"),
+    "unreadable": ("invalid", "the file could not be read"),
+}
+
+
 def _read_regular_file(path: object, max_bytes: int) -> bytes:
-    flags = os.O_RDONLY
-    for name in ("O_NOFOLLOW", "O_NONBLOCK", "O_CLOEXEC"):
-        flags |= getattr(os, name, 0)
-    try:
-        fd = os.open(os.fspath(path), flags)
-    except FileNotFoundError:
-        raise PartError("missing", "no file at the planned path")
-    except OSError:
-        raise PartError("invalid", "the file cannot be opened without following a link")
-    try:
-        if not stat.S_ISREG(os.fstat(fd).st_mode):
-            raise PartError("invalid", "the planned path is not a regular file")
-        chunks, total = [], 0
-        while True:
-            chunk = os.read(fd, 65536)
-            if not chunk:
-                return b"".join(chunks)
-            chunks.append(chunk)
-            total += len(chunk)
-            if total > max_bytes:
-                raise PartError("unparseable", "the file is over the size cap of %d bytes" % max_bytes)
-    except OSError:
-        raise PartError("invalid", "the file could not be read")
-    finally:
-        os.close(fd)
+    """A regular file's bytes through no link, or the ``PartError`` that says why not: ``read_capped`` with this loader's reasons."""
+    raw, reason = read_capped(path, max_bytes)
+    if raw is not None:
+        return raw
+    if reason == "too-large":
+        raise PartError("unparseable", "the file is over the size cap of %d bytes" % max_bytes)
+    raise PartError(*_READ_FAILURES[str(reason)])
 
 
 def load_json(path: object, out: object, max_bytes: int = MAX_PART_BYTES) -> Dict[str, Any]:
@@ -1858,3 +1879,509 @@ def retry_history(stage: str, out: object, plan: Dict[str, Any]) -> Tuple[List[D
                 retries.append({"batch_id": entry["batch_id"], "attempt": attempt, "cause": reason,
                                 "children": sorted(children.get(entry["batch_id"], [])) if attempt == entry["attempt"] else []})
     return events, retries
+
+
+# =============================================================================
+# The stage-entry path (W2' entry, #443 items 1 to 4): what every entry script shares
+#
+# Moved here from the two renderers and the planner, which each held a copy. Each entry keeps its own name for what it uses (an alias or a thin
+# wrapper) and its own messages, exit codes, reason strings and caps, so a caller sees no change (S1P-A11, S1P-PM2). C1 holds: nothing here
+# imports a tachi module, so a value from ``tachi_parsers``, ``tachi_scoring`` or ``sarif_common`` comes in as an argument.
+# =============================================================================
+
+# D4's remedy for a failure that a re-run clears: the earlier outputs were left or put back as they were. Both renderers say it.
+RETRY_REMEDY = "re-run the command; the earlier outputs were left or put back as they were"
+
+# ``read_capped``'s reasons in the renderers' words: a file that can't be opened, for any cause, is ``unreadable``. ``stage_and_move`` reads the staged
+# files back under it, and a renderer's own read of an input passes it too, so a message that names a reason uses one vocabulary.
+RENDERER_READ_REASONS = {"missing": "unreadable", "unopenable": "unreadable"}
+
+
+def utc_now() -> str:
+    """The current time as ``YYYY-MM-DDTHH:MM:SSZ``, UTC. The stage record's ``finished_utc`` is the one place a stage entry reads the clock."""
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def dump_json(obj: Any) -> str:
+    """Stable JSON for a document or a record: sorted keys, two-space indent, ASCII escapes, one trailing newline."""
+    return json.dumps(obj, indent=2, sort_keys=True) + "\n"
+
+
+def record_warning(code: str, detail: str) -> Dict[str, str]:
+    """One stage-record warning, its code and detail made safe for the record's rules, the detail cut at 500."""
+    return {"code": code[:64], "detail": "".join(char if char.isprintable() else " " for char in detail)[:500]}
+
+
+def shorten(text: str, limit: int) -> str:
+    """output-formatting.md's rule: over ``limit`` characters, keep ``limit - 3`` and add three dots."""
+    return text if len(text) <= limit else text[:limit - 3] + "..."
+
+
+def relative_path(path: str, cwd: str) -> Optional[str]:
+    """``path`` relative to the working directory with ``/`` separators, or ``None`` when it isn't under it.
+
+    The working directory is found by file identity, as ``under`` finds it, so a path that is spelled through a symbolic link (as macOS spells its
+    temporary directory) still reads as the tail below the directory, never as a ``..`` climb.
+    """
+    if not under(cwd, path):
+        return None
+    tail: List[str] = []
+    current = os.path.abspath(path)
+    while not (os.path.lexists(current) and os.path.samefile(current, cwd)):
+        tail.append(os.path.basename(current))
+        current = os.path.dirname(current)
+    return "/".join(reversed(tail)) or "."
+
+
+def yaml_quoted(text: Optional[str]) -> str:
+    """A YAML double-quoted scalar, or ``null`` for ``None`` or text that the frontmatter readers can't carry."""
+    if text is None or any(char in text for char in '"\\') or not text.isprintable():
+        return "null"
+    return '"%s"' % text
+
+
+class StageFailure(Exception):
+    """A stop with D4's exit code and its four-line message: ``TACHI <STAGE> FAILED``, the batch or agent, ``Remedy:`` and ``Kept for diagnosis:``.
+
+    ``stage`` names the stage in the banner (``None`` reads ``STAGE``). ``batch`` is ``(batch ID, its finding IDs)``, ``agent`` the typed agent that
+    could not be spawned, and ``kept`` the plan directory that is kept for diagnosis. A line whose value is empty is left out. An entry's own class is
+    this one (``tachi-stage.py``'s ``StageError``) or a subclass that fixes the stage (a renderer's ``RenderError``), and the code here raises this
+    class, so an entry's ``main`` catches it through ``run_entry``.
+    """
+
+    def __init__(self, code: int, stage: Optional[str], reason: str, remedy: str = "", batch: Optional[Tuple[str, str]] = None,
+                 agent: Optional[str] = None, kept: Optional[str] = None) -> None:
+        super().__init__(reason)
+        self.code, self.stage, self.reason, self.remedy = code, stage, reason, remedy
+        self.batch, self.agent, self.kept = batch, agent, kept
+
+    def text(self) -> str:
+        lines = ["TACHI %s FAILED: %s" % ((self.stage or "STAGE").upper(), self.reason)]
+        if self.batch:
+            lines.append("Batch %s: %s" % self.batch)
+        if self.agent:
+            lines.append("Agent: %s" % self.agent)
+        if self.remedy:
+            lines.append("Remedy: %s" % self.remedy)
+        if self.kept:
+            lines.append("Kept for diagnosis: %s" % self.kept)
+        return "\n".join(lines)
+
+
+def read_capped(path: object, limit: int, reasons: Optional[Mapping[str, str]] = None) -> Tuple[Optional[bytes], Optional[str]]:
+    """A regular file's bytes through no link, or ``(None, reason)``: the one capped reader (SA-12, EC-3).
+
+    The file is opened with ``O_NOFOLLOW`` and without blocking, must be a regular file, and is read in chunks until it ends or passes ``limit`` bytes
+    (a file of exactly ``limit`` bytes is read). It returns ``(bytes, None)``, and ``bytes`` is empty for an empty file. ``limit`` has no default: a
+    caller reads the cap it means when it calls, so a cap that a test or a later amendment changes is the one that is used.
+
+    The reason is canonical and names one cause: ``missing`` (nothing is there), ``unopenable`` (anything else stops the open, a link above all),
+    ``not-a-regular-file``, ``unreadable`` (the read failed once the file was open) and ``too-large``. ``reasons``, when given, is the caller's one-line
+    map from those to its own words; a reason that it doesn't list is kept as it is. A path that isn't text or a path-like object is a ``TypeError``,
+    and one with a NUL is a ``ValueError``, as for ``os.open``.
+    """
+    flags = os.O_RDONLY
+    for name in ("O_NOFOLLOW", "O_NONBLOCK", "O_CLOEXEC"):
+        flags |= getattr(os, name, 0)
+
+    def said(reason: str) -> str:
+        return reason if reasons is None else reasons.get(reason, reason)
+
+    try:
+        descriptor = os.open(os.fspath(path), flags)
+    except FileNotFoundError:
+        return None, said("missing")
+    except OSError:
+        return None, said("unopenable")
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            return None, said("not-a-regular-file")
+        chunks, total = [], 0
+        while True:
+            chunk = os.read(descriptor, 65536)
+            if not chunk:
+                return b"".join(chunks), None
+            chunks.append(chunk)
+            total += len(chunk)
+            if total > limit:
+                return None, said("too-large")
+    except OSError:
+        return None, said("unreadable")
+    finally:
+        os.close(descriptor)
+
+
+def first_forbidden(value: Any, path: str = "", json_only: bool = False) -> Optional[Tuple[str, str]]:
+    """``(path, character)`` of the first string under ``value`` that holds a character D3's step 10 forbids, or ``None``: the one walker (SA-12, EC-4).
+
+    Text, mapping keys, list and tuple items and the fields of a plain object are searched in order. A number, a date or ``None`` holds no text.
+    ``path`` is dotted, and is for a message only: ``a.0.b`` for the ``b`` of the first item under ``a``. The character set is
+    ``forbidden_character``'s, so the parts, the inputs and the written files share one definition. ``json_only`` limits the search to what a JSON
+    document holds, text, ``dict`` keys and values, and ``list`` items, which is all that the planner searches: a tuple, another kind of mapping and a
+    plain object hold nothing then.
+    """
+    if isinstance(value, str):
+        found = forbidden_character(value)
+        return (path, found) if found is not None else None
+    if json_only:
+        if isinstance(value, dict):
+            children = value.items()
+        elif isinstance(value, list):
+            children = enumerate(value)
+        else:
+            return None
+    elif isinstance(value, Mapping):
+        children = value.items()
+    elif isinstance(value, (list, tuple)):
+        children = enumerate(value)
+    elif hasattr(value, "__dict__"):
+        children = vars(value).items()
+    else:
+        return None
+    for key, child in children:
+        label = "%s.%s" % (path, key) if path else str(key)
+        found = first_forbidden(key, label, json_only) or first_forbidden(child, label, json_only)   # a key is text too
+        if found is not None:
+            return found
+    return None
+
+
+def forbidden_problem(source: str, finding_id: Optional[str], value: Any, place: Optional[Callable[[str], Optional[str]]] = None,
+                      json_only: bool = False, path: str = "") -> Optional[str]:
+    """The reason to refuse ``value``, which an entry takes from an input that isn't a part, or ``None`` when it holds no forbidden character.
+
+    Step 10 checks a part. Text from ``threats.md``, a SARIF or a baseline reaches the escapers unchecked, and a carriage return, an escape or a bidi
+    control would then forge a heading, drive a terminal or reorder what a reader sees (NFR-10, P0-4). So each value is checked where it is taken, and
+    the entry raises the reason with exit 2 and its own remedy. ``source`` names the file the value came from, and ``finding_id`` the finding it
+    belongs to: ``None`` is a component, zone or layer name, which ``place``, given the character, names by its table and line when it can. The reason
+    gives the character's code point and never the text, so it can't carry the character to a terminal. ``json_only`` is ``first_forbidden``'s, and
+    ``path`` is the name that the reason gives ``value`` (the field it is the value of), which the places inside it follow.
+    """
+    found = first_forbidden(value, path, json_only)
+    if found is None:
+        return None
+    if finding_id:
+        where = "the %s of %s" % (ascii(found[0])[1:-1], finding_id)
+    else:
+        where = (place(found[1]) if place is not None else None) or "a component, zone or layer name"
+    return "%s holds the character U+%04X, which the part contract forbids, in %s" % (source, ord(found[1]), where)
+
+
+def entry_document(stage: str, path: str, out: str, schema: str, what: str, kept: Optional[str] = None) -> Dict[str, Any]:
+    """``read_document`` with D4's exit codes: 1 for a missing file, 2 for anything the contract refuses (a ``StageFailure``)."""
+    try:
+        return read_document(path, out, schema)
+    except PartError as exc:
+        if exc.kind == "missing":
+            raise StageFailure(1, stage, "%s is missing" % what, "re-run the plan step", kept=kept) from None
+        raise StageFailure(2, stage, "%s is not acceptable (%s)" % (what, exc.detail), "re-run the command", kept=kept) from None
+
+
+def digest_or_none(path: str, out: Optional[str] = None) -> Optional[str]:
+    """A file's digest, or ``None`` when it is missing, unreadable, or (given ``out``) fails the path guard."""
+    if out is not None and path_guard_problem(path, out) is not None:
+        return None
+    try:
+        return file_digest(path)
+    except OSError:
+        return None
+
+
+def plan_input_bytes(stage: str, entry: Mapping[str, Any], name: str, kept: Optional[str] = None) -> bytes:
+    """A digest-checked plan input's bytes. A file that changed or vanished since plan, or one over ``MAX_AGENT_INPUT_BYTES``, is exit 2."""
+    try:
+        with open(entry["path"], "rb") as handle:
+            raw = handle.read(MAX_AGENT_INPUT_BYTES + 1)
+    except OSError:
+        raw = None
+    if raw is None or len(raw) > MAX_AGENT_INPUT_BYTES or sha256_hex(raw) != entry["sha256"]:
+        raise StageFailure(2, stage, "the input %s changed (or vanished) since plan" % name, "re-run the command", kept=kept)
+    return raw
+
+
+def trusted_plan(stage: str, out: str, plan_id: str, digest: str, complete: bool = False, read_inputs: bool = False,
+                 kept: bool = False) -> Tuple[Dict[str, Any], Dict[str, bytes]]:
+    """The plan ``--plan`` names, once the pointer, its digest, its inputs and every batch input check out: D3's guard, "planner state is checked, not trusted".
+
+    A plan file or batch input edited after ``plan``, a ``--plan`` that disagrees with ``current.json``, an input that changed, or a digest that
+    differs is a ``StageFailure`` with exit 2 (1 for a file that is missing). Returns ``(plan, inputs)``. Nothing is written. Three flags choose how
+    an entry uses the guard, and each keeps that entry's behavior:
+
+    * ``complete``: refuse a plan with a batch still ``pending`` or ``failed`` (exit 2, naming the first), after the plan is known to be this one and
+      before any input is read. A renderer needs every batch done. The planner's ``reconcile`` and ``fail`` work with the others.
+    * ``read_inputs``: how the plan's files are checked. ``True`` is a renderer's: each input is read, at most ``MAX_AGENT_INPUT_BYTES``, in name order,
+      and ``inputs`` holds its bytes (``plan_input_bytes``), and an I/O error while a batch input is checked is not caught, so it ends the run as an
+      unexpected error. ``False`` is the planner's: each input is digested, in the plan's order, ``inputs`` is empty, and a file that can't be read
+      counts as a changed one (``digest_or_none``).
+    * ``kept``: each refusal after the pointer's names the plan directory in D4's ``Kept for diagnosis`` line. The pointer's own never does.
+    """
+    held = plan_dir(out, stage, plan_id) if kept else None
+    pointer = entry_document(stage, pointer_path(out, stage), out, POINTER_SCHEMA, "the plan pointer")
+    if pointer["plan_id"] != plan_id:
+        raise StageFailure(2, stage, "--plan %s disagrees with current.json, which names %s" % (plan_id, pointer["plan_id"]),
+                           "pass the plan ID that plan printed", kept=held)
+    path = plan_path(out, stage, plan_id)
+    problem = path_guard_problem(path, out)
+    if problem == "missing":
+        raise StageFailure(1, stage, "plan.json is missing", "re-run the plan step", kept=held)
+    if problem is not None:
+        raise StageFailure(2, stage, "plan.json failed the path guard (%s)" % problem, "re-run the command", kept=held)
+    if file_digest(path) != digest:
+        raise StageFailure(2, stage, "the plan file's digest differs from --plan-digest",
+                           "pass the digest that the last plan or reconcile printed; if the plan was edited, re-run the command", kept=held)
+    plan = entry_document(stage, path, out, PLAN_SCHEMA, "plan.json", held)
+    if (plan["plan_id"], plan["stage"]) != (plan_id, stage):
+        raise StageFailure(2, stage, "plan.json is for another plan or stage", "re-run the command", kept=held)
+    if complete:
+        unfinished = [entry for entry in plan["batches"] if entry["state"] in ("pending", "failed")]
+        if unfinished:
+            first = unfinished[0]
+            raise StageFailure(2, stage, "batch %s is %s, so the plan is not complete" % (first["batch_id"], first["state"]),
+                               "run reconcile until it exits 0, then render", batch=(first["batch_id"], ", ".join(first["finding_ids"])), kept=held)
+    inputs: Dict[str, bytes] = {}
+    if read_inputs:
+        inputs = {name: plan_input_bytes(stage, entry, name, held) for name, entry in sorted(plan["inputs"].items())}
+    else:
+        for name, entry in plan["inputs"].items():
+            if digest_or_none(entry["path"]) != entry["sha256"]:
+                raise StageFailure(2, stage, "the input %s changed (or vanished) since plan" % name, "re-run the command", kept=held)
+    for entry in plan["batches"]:
+        stored = input_path(out, stage, plan_id, entry["batch_id"])
+        if read_inputs:
+            changed = path_guard_problem(stored, out) is not None or file_digest(stored) != entry["input_sha256"]
+        else:
+            changed = digest_or_none(stored, out) != entry["input_sha256"]
+        if changed:
+            raise StageFailure(2, stage, "the batch input %s changed after plan" % entry["batch_id"], "re-run the command", kept=held)
+    return plan, inputs
+
+
+def read_parts(stage: str, out: str, plan: Mapping[str, Any]) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, List[str]], Dict[str, int]]:
+    """Every done batch's part, re-validated against the plan: ``(items by canonical ID, flags by ID, counts)``.
+
+    Only the current plan's parts at each batch's current attempt count, so an earlier plan's part or an earlier attempt never does. A part that no
+    longer validates is a ``StageFailure`` that names its batch: exit 1 for a missing one, 2 for any other.
+    """
+    items: Dict[str, Dict[str, Any]] = {}
+    flags: Dict[str, List[str]] = {}
+    counts = {"narrative_fallbacks": 0, "truncations": 0}
+    kept = plan_dir(out, stage, plan["plan_id"])
+    for entry in plan["batches"]:
+        if entry["state"] != "done":  # a halved parent holds no part of its own
+            continue
+        result = read_part(part_path(out, stage, plan["plan_id"], entry["batch_id"], entry["attempt"]), out,
+                           plan["plan_id"], entry["batch_id"], stage, plan["agent_type"], entry["finding_ids"])
+        if result.state != "done":
+            raise StageFailure(1 if result.state == "missing" else 2, stage,
+                               "the part of batch %s is %s (%s)" % (entry["batch_id"], result.state, result.detail),
+                               "re-run the command: only a part that validates counts",
+                               batch=(entry["batch_id"], ", ".join(entry["finding_ids"])), kept=kept)
+        for item in result.part["items"]:
+            items[item["finding_id"]] = item
+        for finding_id, found in result.flags.items():
+            flags.setdefault(finding_id, []).extend(found)
+        for key in counts:
+            counts[key] += result.counts.get(key, 0)
+    return items, flags, counts
+
+
+class RunCore(object):
+    """What every renderer's run holds, whichever its stage: the fields that both renderers declare alike, which an entry's own ``Run`` extends.
+
+    ``warnings`` and ``issues`` are the stage record's warnings and the Input Issues, ``sources`` and ``counts`` the input digest's sources and the part
+    reader's counts, and the rest is the threat model's bookkeeping: its text, its file, the findings' layers, the components and their zones, the
+    reference set's rows and correlation groups and the architecture URI. ``threats_path`` isn't here, because the renderers start it differently.
+    """
+
+    def __init__(self) -> None:
+        self.cwd = os.getcwd()
+        self.warnings: List[Dict[str, str]] = []
+        self.issues: List[str] = []
+        self.sources: Dict[str, str] = {}
+        self.counts: Dict[str, int] = {"narrative_fallbacks": 0, "truncations": 0}
+        self.rows: List[Any] = []
+        self.groups: List[Dict[str, Any]] = []
+        self.assignments: Dict[str, Any] = {}
+        self.open_ids: set = set()
+        self.threats_text: Optional[str] = None
+        self.finding_layer: Dict[str, str] = {}
+        self.component_info: Dict[str, Tuple[str, str]] = {}
+        self.component_zone: Dict[str, str] = {}
+        self.source_file: Optional[str] = None
+        self.uri = ""
+
+    def warn(self, code: str, detail: str) -> None:
+        self.warnings.append(record_warning(code, detail))
+
+
+def stage_and_move(stage: str, out: str, plan_id: str, files: Mapping[str, str], check: Callable[[Dict[str, str]], List[str]], kept: str,
+                   reason_text: Optional[Callable[[Optional[str]], str]] = None) -> None:
+    """Write each file to ``staged/``, read it back, check it, and only then move each onto its canonical name (D4 steps 5 and 6; KB 22).
+
+    ``files`` maps each canonical name to its text, in the order the files move. Each staged file takes the permission bits of the canonical file it
+    will replace (P1-2), and a ``staged`` that is a link or not a directory stops the write with exit 2. The files are read back from disk, through
+    no link and at most ``MAX_AGENT_INPUT_BYTES``, as strict UTF-8, and ``check`` gets the read-back texts by name and returns the problems that it
+    found. Any problem stops with exit 4 before a canonical file is touched, and so does a failed write, read or move. ``reason_text`` words a read
+    failure's reason (``RENDERER_READ_REASONS``' vocabulary) for the message, and is the reason itself when it is ``None``.
+    """
+    staged_dir = plan_subdir(out, stage, plan_id, "staged")
+    try:
+        if os.path.islink(staged_dir) or (os.path.lexists(staged_dir) and not os.path.isdir(staged_dir)):
+            raise StageFailure(2, stage, "staged is a symbolic link or not a directory", "remove it and re-run", kept=kept)
+        os.makedirs(staged_dir, exist_ok=True)
+        for name, text in files.items():   # each staged file takes the permission bits of the canonical file it will replace (P1-2)
+            atomic_write(staged_path(out, stage, plan_id, name), text, mode_of=os.path.join(out, name))
+    except OSError as exc:
+        raise StageFailure(4, stage, "the staged files could not be written (%s)" % (exc.strerror or "error"), RETRY_REMEDY, kept=kept) from None
+    texts: Dict[str, str] = {}
+    for name in files:
+        raw, reason = read_capped(staged_path(out, stage, plan_id, name), MAX_AGENT_INPUT_BYTES, RENDERER_READ_REASONS)
+        if raw is None:
+            raise StageFailure(4, stage, "the staged %s could not be read back (%s)" % (name, reason if reason_text is None else reason_text(reason)),
+                               RETRY_REMEDY, kept=kept)
+        try:
+            texts[name] = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            raise StageFailure(4, stage, "the staged %s is not strict UTF-8" % name, RETRY_REMEDY, kept=kept) from None
+    problems = check(texts)
+    if problems:
+        raise StageFailure(4, stage, "a completeness or parity check failed on the staged files: %s%s" % (
+            "; ".join(problems[:5]), "; and %d more" % (len(problems) - 5) if len(problems) > 5 else ""), RETRY_REMEDY, kept=kept)
+    for name in files:
+        try:
+            os.replace(staged_path(out, stage, plan_id, name), os.path.join(out, name))
+        except OSError as exc:
+            raise StageFailure(4, stage, "the move of %s onto its canonical name failed (%s)" % (name, exc.strerror or "error"), RETRY_REMEDY, kept=kept) from None
+
+
+def walk_out(out: str) -> Iterable[Tuple[str, int, int]]:
+    """``(relative path, size, mtime_ns)`` for every file under ``out``, in a fixed order. Links to directories aren't followed."""
+    for directory, subdirs, files in os.walk(out):
+        subdirs.sort()
+        for name in sorted(files):
+            path = os.path.join(directory, name)
+            try:
+                status = os.lstat(path)
+            except OSError:  # pragma: no cover  (a file removed while the walk runs)
+                continue
+            yield os.path.relpath(path, out).replace(os.sep, "/"), status.st_size, max(0, status.st_mtime_ns)
+
+
+def undeclared_paths(stage: str, out: str, plan: Mapping[str, Any]) -> Tuple[List[str], List[Dict[str, str]]]:
+    """Paths new or changed since the plan that the stage's grammar doesn't declare (D4), sorted and capped: ``(paths, warnings)``.
+
+    A file is looked up in the plan's ``out_snapshot`` by ``snapshot_key``, so a name that no plan holds is found (EC-2). A path that a record can't
+    hold is left out of the list and counted in ``undeclared-paths-unrecordable``, and a list cut at ``MAX_UNDECLARED_PATHS`` adds
+    ``undeclared-paths-truncated`` with the full count. A plan with no snapshot skips the check, with ``declared-paths-skipped``.
+    """
+    snapshot = plan["out_snapshot"]
+    if snapshot is None:
+        return [], [record_warning("declared-paths-skipped", "the plan took no snapshot of the output directory")]
+    found = sorted(relpath for relpath, size, mtime in walk_out(out)   # a file is looked up by the planner's key for it, so a name that no plan holds is found (EC-2)
+                   if snapshot.get(snapshot_key(relpath)) != [size, mtime] and not is_declared_path(relpath, stage, plan["plan_id"]))
+    recordable = [relpath for relpath in found if path_problem(relpath) is None]
+    warnings = []
+    if len(recordable) != len(found):
+        warnings.append(record_warning("undeclared-paths-unrecordable", "%d undeclared paths have names a record can't hold" % (len(found) - len(recordable))))
+    if len(recordable) > MAX_UNDECLARED_PATHS:
+        warnings.append(record_warning("undeclared-paths-truncated", "%d undeclared paths in all; the first %d are listed" % (len(recordable), MAX_UNDECLARED_PATHS)))
+    return recordable[:MAX_UNDECLARED_PATHS], warnings
+
+
+def output_entries(out: str, names: Iterable[str]) -> List[Dict[str, str]]:
+    """A stage record's ``outputs`` for files that sit in ``out`` under their canonical names: each ``path`` with its SHA-256."""
+    return [{"path": name, "sha256": file_digest(os.path.join(out, name))} for name in names]
+
+
+def stage_record(stage: str, out: str, plan: Mapping[str, Any], digest: str, counts: Dict[str, int], outputs: List[Dict[str, str]],
+                 warnings: List[Dict[str, str]], undeclared: List[str], status: Optional[str] = None,
+                 error: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """A ``tachi.stage-record/1`` object for ``plan``: the batch summary, the overflow events and retries and the finish time are derived here.
+
+    ``status`` is given by the caller, and ``None`` reads ``success-with-warnings`` when there are warnings or undeclared paths and ``success``
+    otherwise, the renderers' rule. ``error`` is ``None`` for a stage that finished. Nothing is validated or written: ``write_stage_record`` does that
+    for a renderer, and a caller that ends a stage another way (``tachi-stage.py fail``) writes the record itself.
+    """
+    events, retries = retry_history(stage, out, dict(plan))
+    batches = plan["batches"]
+    return {
+        "schema": STAGE_RECORD_SCHEMA, "stage": stage, "plan_id": plan["plan_id"],
+        "status": status if status is not None else "success-with-warnings" if warnings or undeclared else "success", "tachi_version": VERSION,
+        "started_utc": plan["created_utc"], "finished_utc": utc_now(), "input_digest": digest, "counts": counts,
+        "batches": {"planned": sum(1 for e in batches if e["parent"] is None),
+                    "dispatched": sum(1 for e in batches if e["parent"] is None) + plan["retry_budget"]["used"],
+                    "done": sum(1 for e in batches if e["state"] == "done"), "retried": plan["retry_budget"]["used"],
+                    "split": sum(1 for e in batches if e["state"] == "split"), "exhausted": sum(1 for e in batches if e["state"] == "failed")},
+        "overflow_events": events, "retries": retries, "warnings": warnings, "undeclared_paths": undeclared,
+        "outputs": outputs, "error": error,
+    }
+
+
+def write_stage_record(stage: str, renderer: str, out: str, plan: Mapping[str, Any], digest: str, counts: Dict[str, int],
+                       outputs: List[Dict[str, str]], warnings: List[Dict[str, str]], undeclared: List[str], kept: str,
+                       status: Optional[str] = None, error: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Build a stage record (``stage_record``), check it against its own validator and its size cap, and write it to the plan directory; returns it.
+
+    A renderer's end of run, with D4's exit 4 for a record that fails its own contract (the message says to report a bug in ``renderer``, the entry's
+    installed file name) and for one that can't be written. The record is checked before it is written, so a stage never leaves a record that its
+    readers would refuse.
+    """
+    record = stage_record(stage, out, plan, digest, counts, outputs, warnings, undeclared, status, error)
+    try:
+        validate_stage_record(record)
+        text = dump_json(record)
+        if len(text) > MAX_DOCUMENT_BYTES[STAGE_RECORD_SCHEMA]:
+            raise PartError("invalid", "the record is over its size cap")
+        atomic_write(stage_record_path(out, stage, plan["plan_id"]), text)
+    except PartError as exc:
+        raise StageFailure(4, stage, "the stage record this step wrote fails its own contract (%s)" % exc.detail,
+                           "report this as a bug in %s" % renderer, kept=kept) from None
+    except OSError as exc:
+        raise StageFailure(4, stage, "the stage record could not be written (%s)" % (exc.strerror or "error"), RETRY_REMEDY, kept=kept) from None
+    return record
+
+
+def build_parser(renderer: str, description: str, out: bool = True, plan: bool = True) -> argparse.ArgumentParser:
+    """An entry's argument parser with the arguments that entries share: ``--version`` (the entry's name, ``VERSION`` and the interpreter's), then
+    ``--out`` and ``--plan`` with ``--plan-digest``, each required and each left out when its flag is false. The entry adds its own."""
+    parser = argparse.ArgumentParser(prog=renderer, description=description)
+    parser.add_argument("--version", action="version", version="%s %s (python %s)" % (renderer, VERSION, platform.python_version()))
+    if out:
+        parser.add_argument("--out", required=True, help="the run's output directory; everything is written under it")
+    if plan:
+        parser.add_argument("--plan", required=True, help="the plan ID that plan printed")
+        parser.add_argument("--plan-digest", required=True, help="the plan_digest that the last plan or reconcile printed")
+    return parser
+
+
+def entry_defect(stage: str, renderer: str, exc: Exception, kept: Optional[str]) -> StageFailure:
+    """An exception that no check meant to raise is a bug in the entry (or a hostile input it didn't expect): name it, with exit 4."""
+    frame = exc.__traceback__
+    while frame is not None and frame.tb_next is not None:
+        frame = frame.tb_next
+    where = "%s:%d" % (os.path.basename(frame.tb_frame.f_code.co_filename), frame.tb_lineno) if frame is not None else "unknown"
+    detail = "".join(char if char.isprintable() else " " for char in str(exc))[:200]
+    return StageFailure(4, stage, "an unexpected error stopped the render (%s: %s, at %s)" % (type(exc).__name__, detail, where),
+                        "report this as a bug in %s; the earlier outputs were left or put back as they were" % renderer, kept=kept)
+
+
+def run_entry(stage: Optional[str], renderer: str, args: argparse.Namespace, run: Callable[[argparse.Namespace], int], defect: bool = True) -> int:
+    """``run(args)`` with D4's failure handling, for an entry's ``main``: its exit code, or the code of the ``StageFailure`` that stopped it.
+
+    A ``StageFailure`` prints its four-line message on stderr and returns its code. With ``defect`` (the default), any other exception prints the same
+    message as an unexpected error (``entry_defect``) with exit 4, so the command's Step F runs on a defect too, and the plan directory is kept when
+    ``args`` names a plan. Without it, such an exception is raised again, as in ``tachi-stage.py``.
+    """
+    try:
+        return run(args)
+    except StageFailure as exc:
+        sys.stderr.write(exc.text() + "\n")
+        return exc.code
+    except Exception as exc:
+        if not defect:
+            raise
+        out, plan_id = getattr(args, "out", None), getattr(args, "plan", None)
+        kept = plan_dir(os.path.abspath(out), stage, plan_id) if out is not None and id_matches("plan", plan_id) else None
+        failure = entry_defect(stage, renderer, exc, kept)
+        sys.stderr.write(failure.text() + "\n")
+        return failure.code
