@@ -64,20 +64,31 @@ chains, which are the ones the orchestrator writes narratives for. It writes not
 
 **check** runs in the main session (FR-K4.1b, R-24). It reads the record through ``parse_chain_outcome``. ``chains written (N)`` passes when
 ``attack-chains.md`` has S full chains, ``min(100, N - S)`` compact rows, the remainder line last and frontmatter counts equal to the record's; ``0
-chains`` and ``skipped`` pass when the file is absent. A record that is absent, malformed or repeated, or a file that disagrees, is rewritten as
-``skipped (<reason>)``, the file is renamed to ``attack-chains.inconsistent.md``, and the hand-off (``tachi.check-handoff/1``, under the run-level plan's
-``checks/``) holds one ``chain-outcome:rewritten`` warning. A second check on the rewritten record passes. The hand-off's place is checked before
-anything changes, so a refusal changes nothing.
+chains`` and ``skipped`` pass when the file is absent. Like FR-K5.7, it confirms consistency and not provenance: it reads neither the provenance stamp
+nor ``schema_version`` (S1P-A93). A record that is absent, malformed or repeated, or a file that disagrees, is rewritten as ``skipped (<reason>)``, the
+file is renamed to ``attack-chains.inconsistent.md``, and the hand-off (``tachi.check-handoff/1``, under the run-level plan's ``checks/``) holds one
+``chain-outcome:rewritten`` warning. A second check on the rewritten record passes. The hand-off's place is checked before anything changes, so a
+refusal changes nothing.
 
-Exit codes are ``contracts/cli.md``'s. For ``plan``: 0 done (``written`` or ``zero``); 1 an input is missing or unreadable (``--run-dir``
-not a directory, or a ``skipped`` outcome whose input can't be read); 2 a guard or validation failure (``.tachi-build`` or ``chains`` is a
-link, ``chains.json`` can't be written, or a ``skipped`` outcome whose input is there but unusable); 4 a defect in this script (an
+- **An earlier run's chain file (S1P-A91).** A run that reuses its output directory and ends in ``0 chains`` or ``skipped`` writes no chain file, so
+  the earlier run's one is still there. When its SHA-256 is the run-level plan's ``preimage["attack-chains.md"]``, this run never touched it: ``check``
+  renames it to ``attack-chains.inconsistent.md``, the record stands, true, and the hand-off holds one ``chain-outcome:earlier-file-moved`` warning
+  (exit 5). ``fail`` puts the file back from the pre-image. Any other file takes the rewrite above: one that appeared or changed during this run, and any
+  file when the plan is missing, doesn't load or holds no pre-image for the name. The plan that ``--plan`` names is read through the strict loader, best
+  effort, and its own digest isn't checked: a forged plan can only keep a true record in place of the rewrite, because the file is renamed either way.
+  Nothing is deleted, and ``render`` moves nothing: only ``check`` holds the plan and the hand-off.
+
+Exit codes are ``contracts/cli.md``'s. For ``plan``: 0 done (``written`` or ``zero``); 1 an input is missing or can't be read (``--run-dir``
+not a directory, or a ``skipped`` outcome whose input is missing, a link, not a regular file or unreadable); 2 a guard or validation failure
+(``.tachi-build`` or ``chains`` is a link, ``chains.json`` can't be written, or a ``skipped`` outcome whose input is there but unusable: a
+``threats.md`` over the size cap, not strict UTF-8 or without a usable Section 7, or an inventory that fails its loader); 4 a defect in this script (an
 unexpected error, or a document that fails its own contract), which writes nothing. The orchestrator ignores them all (R-24), and a
 ``skipped`` outcome writes ``chains.json`` before it exits. For ``render``: 0 done, whatever the outcome (a ``skipped`` outcome's failure was
-``plan``'s) and narrative fallbacks included; 1 the run directory, ``chains.json`` or ``threats.md`` can't be read; 2 a refusal above, or a write that
-fails; 4 a defect. For ``check``: 0 passes; 5 rewrote the record; 2 anything else, a defect included, because its codes are 0, 2 and 5 and the command
-prints a 2 and goes on. ``render`` and ``check`` print one JSON object. Nothing here reads the clock, and the output depends on the inputs' content
-alone, never on where the run is or on dictionary order. Standard library plus the shared helpers, and Python 3.9 syntax.
+``plan``'s) and narrative fallbacks included; 1 the run directory, ``chains.json`` or ``threats.md`` is missing or can't be read; 2 a refusal above, a
+``threats.md`` over the size cap or not strict UTF-8, or a write that fails; 4 a defect. For ``check``: 0 passes; 5 rewrote the record or moved an
+earlier run's file; 2 anything else, a defect included, because its codes are 0, 2 and 5 and the command prints a 2 and goes on. ``render`` and
+``check`` print one JSON object. Nothing here reads the clock, and the output depends on the inputs' content alone, never on where the run is or on
+dictionary order. Standard library plus the shared helpers, and Python 3.9 syntax.
 """
 from __future__ import annotations
 
@@ -102,6 +113,7 @@ import tachi_parts as tp  # noqa: E402
 
 STAGE = "attack-chains"          # the banner of D4's failure message
 RENDERER = "attack-chains.py"    # the stamp's name: the installed file name, as a literal (contracts/cli.md)
+THREAT_MODEL = "threat-model"    # the run-level plan's stage: ``check`` takes its hand-off place and its pre-image from it
 THREATS = "threats.md"
 SURFACE_LIMIT = 5                # S-3(f)
 COMPACT_LIMIT = 100              # S-3(g): chains.json lists the surfaced chains and at most this many others, as attack-chains.md does
@@ -127,7 +139,8 @@ REMAINDER_LABEL = "**Consolidated chains not listed**: "
 FILE_VERSION = "1.1"                            # attack-chains.md's schema_version
 TITLE_LIMIT, NARRATIVE_LIMIT = 120, 2000        # ``chain-text``: a title's and a narrative's characters, before their slots resolve
 NARRATIVE_STAGE = "chain-narratives"            # D3's slot table for chain titles and narratives
-WARNING_CODE = "chain-outcome:rewritten"        # the one code of ``check``'s hand-off (S1P-A52)
+REWRITTEN_CODE = "chain-outcome:rewritten"      # ``check``'s hand-off warning when it rewrote the record (S1P-A52)
+MOVED_CODE = "chain-outcome:earlier-file-moved"  # ... and when it moved an earlier run's chain file aside and the record stands (S1P-A91)
 ARROW = " → "
 DASH = "—"
 NOTE = "This is a heuristic recommendation based on structural centrality analysis, not verified control effectiveness."
@@ -210,10 +223,13 @@ class Inputs(object):
 
 
 def _threats_text(run_dir: str) -> Tuple[Optional[str], int, str]:
-    """``(the text of threats.md, 0, "")``, or ``(None, an exit code, the detail)``: 1 for a file that can't be read, through no link and within the
-    cap, and 2 for one that is there but isn't strict UTF-8."""
+    """``(the text of threats.md, 0, "")``, or ``(None, an exit code, the detail)``: 1 for a file that can't be read (missing, a link, not a regular file,
+    or a read that fails), and 2 for one that is there but unusable, over the size cap or not strict UTF-8. That is D4's code for the input and the one
+    that the generator and the assembler give it (S1P-A86), so a file over the cap is 2 here too."""
     raw, reason = tp.read_capped(os.path.join(run_dir, THREATS), tp.MAX_AGENT_INPUT_BYTES)
     if raw is None:
+        if reason == "too-large":
+            return None, 2, "%s is over the size cap of %d bytes" % (THREATS, tp.MAX_AGENT_INPUT_BYTES)
         return None, 1, "%s could not be read (%s)" % (THREATS, reason)
     try:
         return raw.decode("utf-8"), 0, ""
@@ -223,7 +239,7 @@ def _threats_text(run_dir: str) -> Tuple[Optional[str], int, str]:
 
 def _read_section_7(run_dir: str, found: Inputs) -> Optional[Tuple[str, int, str, str]]:
     """The compiled ``threats.md``: its reference set, each finding's own layer and the set's digest. A file that can't be read is exit 1,
-    and one that is there but isn't strict UTF-8 or has no usable Section 7 is exit 2."""
+    and one that is there but unusable, over the size cap, not strict UTF-8 or with no usable Section 7, is exit 2."""
     text, code, detail = _threats_text(run_dir)
     if text is None:
         return SKIP_SECTION_7, code, detail, REGENERATE
@@ -836,15 +852,41 @@ def _handoff_directory(run_dir: str, plan_id: str) -> str:
     """``threat-model/<plan_id>/checks`` under ``.tachi-build``: the run-level plan's directory must be there, through no link, and ``checks`` must be a
     directory or absent. Checked before the check changes anything, so a refusal (exit 2) leaves the run as it was."""
     directory = run_dir
-    for name in (tp.BUILD_DIR, "threat-model", plan_id):
+    for name in (tp.BUILD_DIR, THREAT_MODEL, plan_id):
         directory = os.path.join(directory, name)
         if os.path.islink(directory) or not os.path.isdir(directory):
-            raise tp.StageFailure(2, STAGE, "the run-level plan %s has no directory under %s/threat-model" % (plan_id, tp.BUILD_DIR),
+            raise tp.StageFailure(2, STAGE, "the run-level plan %s has no directory under %s/%s" % (plan_id, tp.BUILD_DIR, THREAT_MODEL),
                                   "pass the run-level plan's ID, which Step 1.5 printed")
     checks = os.path.join(directory, "checks")
     if os.path.islink(checks) or (os.path.lexists(checks) and not os.path.isdir(checks)):
-        raise tp.StageFailure(2, STAGE, "%s/threat-model/%s/checks is a symbolic link or not a directory" % (tp.BUILD_DIR, plan_id), "remove it and re-run")
+        raise tp.StageFailure(2, STAGE, "%s/%s/%s/checks is a symbolic link or not a directory" % (tp.BUILD_DIR, THREAT_MODEL, plan_id), "remove it and re-run")
     return checks
+
+
+def _earlier_file(run_dir: str, plan_id: str, path: str) -> bool:
+    """Whether ``path`` is the chain file that an earlier run left in this output directory (ADR-050 D13, S1P-A91): its SHA-256 is the run-level plan's
+    ``preimage["attack-chains.md"]``, so nothing in this run wrote it.
+
+    The plan is read through D3's strict loader, best effort and without its own digest. A plan that is missing or doesn't load, a null pre-image, a file that
+    can't be read (a link, not a regular file, over the cap) and a file with other bytes all give ``False``, and the check then takes D13's rewrite. A forged plan
+    could only keep a true record in place of that rewrite, because the file is renamed either way."""
+    try:
+        plan = tp.read_document(tp.plan_path(run_dir, THREAT_MODEL, plan_id), run_dir, tp.PLAN_SCHEMA)
+    except tp.PartError:
+        return False
+    raw, _ = tp.read_capped(path, tp.MAX_AGENT_INPUT_BYTES)
+    return raw is not None and tp.sha256_hex(raw) == plan["preimage"].get(CHAIN_FILE)   # a null pre-image is no digest, so it never matches
+
+
+# AOD-SIMPLIFICATION: a file already at the quarantine name is replaced, as D13's rewrite always did, so a fixed output directory that alternates between outcomes keeps only the last file moved — upgrade: refuse when the name is taken, or keep each file under a name of its own, if a ruling says that nothing in a reused directory is ever replaced
+def _quarantine(run_dir: str, record: str) -> None:
+    """Rename ``attack-chains.md`` to the declared name that the check keeps for it, or exit 2 and say what state the record is left in. A link is renamed,
+    never followed, and nothing is deleted: the file keeps its bytes under the new name."""
+    try:
+        os.replace(os.path.join(run_dir, CHAIN_FILE), os.path.join(run_dir, QUARANTINED))
+    except OSError as exc:
+        raise tp.StageFailure(2, STAGE, "%s, but %s could not be renamed (%s)" % (record, CHAIN_FILE, exc.strerror or "error"),
+                              "rename it to %s, or run the check again" % QUARANTINED) from None
 
 
 def _check(run_dir: str, plan_id: str) -> int:
@@ -856,18 +898,17 @@ def _check(run_dir: str, plan_id: str) -> int:
     chain_path = os.path.join(run_dir, CHAIN_FILE)
     problem = _disagreement(chain_path, outcome)
     record, warnings = outcome["text"], []
-    if problem is not None:
+    if problem is not None and outcome["form"] in ("zero", "skipped") and _earlier_file(run_dir, plan_id, chain_path):
+        _quarantine(run_dir, "the record stands")   # a record with no chain file is true: this run wrote none, and the earlier run's is kept, aside
+        warnings.append(tp.record_warning(MOVED_CODE, "an earlier run's %s was renamed to %s; the outcome record '%s' stands" % (CHAIN_FILE, QUARANTINED, record)))
+    elif problem is not None:
         record = "skipped (%s)" % problem
         rewritten = _upsert_record(text, record)
         moved = os.path.lexists(chain_path)
         _write_text(os.path.join(run_dir, THREATS), rewritten)
         if moved:
-            try:
-                os.replace(chain_path, os.path.join(run_dir, QUARANTINED))   # a link is renamed, never followed
-            except OSError as exc:
-                raise tp.StageFailure(2, STAGE, "the record is now '%s', but %s could not be renamed (%s)" % (record, CHAIN_FILE, exc.strerror or "error"),
-                                      "rename it to %s, or run the check again" % QUARANTINED) from None
-        warnings.append(tp.record_warning(WARNING_CODE, "the outcome record was rewritten as '%s'; %s" % (
+            _quarantine(run_dir, "the record is now '%s'" % record)
+        warnings.append(tp.record_warning(REWRITTEN_CODE, "the outcome record was rewritten as '%s'; %s" % (
             record, "%s was renamed to %s" % (CHAIN_FILE, QUARANTINED) if moved else "there was no %s to rename" % CHAIN_FILE)))
     document = {"schema": tp.HANDOFF_SCHEMA, "check": "attack-chains", "plan_id": plan_id, "status": "warn" if warnings else "pass", "counts": None,
                 "batches": None, "warnings": warnings, "error": None}

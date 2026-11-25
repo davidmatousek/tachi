@@ -6,7 +6,9 @@ chain rules), FR-K4.1, FR-K4.1b and R-24, ``contracts/cli.md`` (the three modes 
 ``contracts/part-files.md`` section 6 (the check's hand-off file), never an implementation. T116 wrote ``plan`` to them and T117 wrote
 ``render`` and ``check``. Before the script existed each of them failed, and each failure named the behavior it needed. Sections 13b (T116's
 extra ``plan`` cases, which sit after section 13 because they use its builders) and 14b (T117's own cases, for what the contracts leave open
-and for the guards) were added with the code.
+and for the guards) were added with the code. Section 14c holds the architect's batch rulings for the script (S1P-A85 to S1P-A93): an earlier
+run's chain file, which ``check`` moves aside when it is the run-level plan's pre-image, and the readings that no case above reaches. A
+``threats.md`` over the size cap is exit 2 for every mode, and its cases sit beside the other unusable inputs.
 
 How they run (ADR-050 D16, H15): the entry is loaded through ``tests/conftest.py``'s ``_load_hyphenated_script``, inside a
 fixture, and driven in-process through ``main(argv)``, so pytest-cov counts it. While the script is missing the fixture hands out
@@ -259,6 +261,10 @@ class Run(object):
 
     def handoff(self, plan_id=PLAN_ID):
         return self.dir / ".tachi-build" / "threat-model" / plan_id / "checks" / "attack-chains.json"
+
+    def plan_file(self, plan_id):
+        """The run-level plan's own file, ``plan.json``, which the real planner writes and ``check`` reads for the pre-image (S1P-A91)."""
+        return self.dir / ".tachi-build" / "threat-model" / plan_id / "plan.json"
 
     def make_plan_dir(self, plan_id=PLAN_ID):
         """The run-level plan's directory, as ``tachi-stage.py plan --stage threat-model`` leaves it (P-6), with ``checks/``."""
@@ -629,8 +635,9 @@ def read_handoff(run, plan_id=PLAN_ID):
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=no_duplicate_keys)
 
 
-def assert_handoff(run, status, plan_id=PLAN_ID, outcome=None):
-    """``tachi.check-handoff/1`` for the chain check (part-files.md section 6): the closed key set, and the values it fixes."""
+def assert_handoff(run, status, plan_id=PLAN_ID, outcome=None, code="chain-outcome:rewritten"):
+    """``tachi.check-handoff/1`` for the chain check (part-files.md section 6): the closed key set, and the values it fixes. ``code`` is the one warning's
+    code: the check has two (S1P-A91), and a rewrite is the first."""
     doc = read_handoff(run, plan_id)
     assert set(doc) == HANDOFF_KEYS, "the hand-off's keys are %s" % sorted(doc)
     assert doc["schema"] == "tachi.check-handoff/1" and doc["check"] == "attack-chains" and doc["plan_id"] == plan_id
@@ -638,7 +645,7 @@ def assert_handoff(run, status, plan_id=PLAN_ID, outcome=None):
     assert doc["status"] == status, "status is %r, not %r" % (doc["status"], status)
     assert isinstance(doc["warnings"], list) and len(doc["warnings"]) == (1 if status == "warn" else 0), doc["warnings"]
     for warning in doc["warnings"]:
-        assert set(warning) == {"code", "detail"} and warning["code"] == "chain-outcome:rewritten", warning
+        assert set(warning) == {"code", "detail"} and warning["code"] == code, warning
         assert isinstance(warning["detail"], str) and len(warning["detail"]) <= 500
         if outcome is not None:
             assert outcome in warning["detail"], "the warning's detail does not carry the new record %r: %r" % (outcome, warning["detail"])
@@ -1871,11 +1878,18 @@ def skipped_with_a_threats_md(root, writer):
     return project
 
 
+def make_threats_over_the_cap(project):
+    """``threats.md`` one byte over D3's input cap, as a sparse file so that no test writes 16 MiB: it is there and it is a regular file, but it is unusable."""
+    with open(str(project.threats), "wb") as handle:
+        handle.truncate(shared_module("tachi_parts").MAX_AGENT_INPUT_BYTES + 1)
+
+
 @pytest.mark.parametrize("build,reason,code", [
     pytest.param(skipped_without_section_7, "Section 7 unreadable", 2, id="section-7-missing"),
     pytest.param(lambda root: skipped_with_a_threats_md(root, lambda p: p.threats.unlink()), "Section 7 unreadable", 1, id="threats-md-missing"),
     pytest.param(lambda root: skipped_with_a_threats_md(root, lambda p: p.threats.write_bytes(p.text().encode("utf-8") + b"\xff\xfe")),
                  "Section 7 unreadable", 2, id="threats-md-not-utf-8"),
+    pytest.param(lambda root: skipped_with_a_threats_md(root, make_threats_over_the_cap), "Section 7 unreadable", 2, id="threats-md-over-the-size-cap"),
     pytest.param(lambda root: Project(root, OK_FINDINGS, flows=OK_FLOWS, threats=make_threats([])), "Section 7 unreadable", 2,
                  id="section-7-empty"),
     pytest.param(skipped_without_inventory, "inventory missing", 1, id="inventory-missing"),
@@ -1905,6 +1919,27 @@ def test_plan_an_unusable_input_is_a_skipped_chains_json_and_a_named_failure(cha
     printed = json.loads(result.out)
     assert (printed["outcome"], printed["reason"], printed["surfaced"]) == ("skipped", reason, [])
     assert not project.md.exists()
+
+
+def test_threats_md_is_read_up_to_the_cap_and_refused_one_byte_past_it_by_every_mode(chains, tmp_path, monkeypatch):
+    """D3's cap is ``tachi_parts.MAX_AGENT_INPUT_BYTES``, and a file of exactly that size is read. One byte past it, ``threats.md`` is there but unusable: ``plan``
+    writes a skipped chains.json and exits 2 (S1P-A86; 1 is for a file that can't be read, as the generator and the assembler read it), naming the cap;
+    ``render`` has nowhere to put the record and exits 2, and ``check`` exits 2, each with nothing written."""
+    at_the_cap, over_the_cap = path3(tmp_path / "at"), path3(tmp_path / "over")
+    cap = at_the_cap.threats.stat().st_size
+    over_the_cap.threats.write_bytes(over_the_cap.threats.read_bytes() + b"\n")
+    monkeypatch.setattr(shared_module("tachi_parts"), "MAX_AGENT_INPUT_BYTES", cap)
+    must(run_plan(chains, at_the_cap), 0, "plan on a threats.md of exactly the cap")
+    assert read_chains_json(at_the_cap)["outcome"] == "written"
+    planned = must(run_plan(chains, over_the_cap), 2, "plan on a threats.md one byte over the cap")
+    doc = read_chains_json(over_the_cap)
+    assert (doc["outcome"], doc["reason"], doc["reference_digest"]) == ("skipped", "Section 7 unreadable", None)
+    assert "over the size cap of %d bytes" % cap in planned.err and planned.err.startswith("TACHI ATTACK-CHAINS FAILED: Section 7 unreadable"), planned.err
+    before = over_the_cap.files()
+    rendered = must(run_render(chains, over_the_cap), 2, "render")
+    checked = must(run_check(chains, over_the_cap), 2, "check")
+    assert "threats.md is over the size cap" in rendered.err and "threats.md is over the size cap" in checked.err
+    assert over_the_cap.files() == before and not over_the_cap.md.exists() and not over_the_cap.handoff().exists()
 
 
 def test_plan_a_run_dir_that_is_not_a_directory_exits_1_and_writes_nothing(chains, tmp_path):
@@ -2447,10 +2482,11 @@ def test_render_exits_2_when_an_output_cannot_be_written(chains, tmp_path):
 @pytest.mark.parametrize("damage,code", [
     pytest.param(lambda p: p.threats.unlink(), 1, id="missing"),
     pytest.param(lambda p: p.threats.write_bytes(p.text().encode("utf-8") + b"\xff\xfe"), 2, id="not-utf-8"),
+    pytest.param(make_threats_over_the_cap, 2, id="over-the-size-cap"),
 ])
 def test_render_cannot_put_a_record_into_a_threats_md_it_cannot_read(chains, tmp_path, damage, code):
-    """When plan found no usable Section 7 because threats.md can't be read, render has nowhere to put the record: exit 1 for a file that is missing and 2 for
-    one that isn't strict UTF-8, with nothing written."""
+    """When plan found no usable Section 7 because threats.md can't be read, render has nowhere to put the record: exit 1 for a file that is missing, and 2 for
+    one that isn't strict UTF-8 or is over the size cap (S1P-A86), with nothing written."""
     project = skipped_with_a_threats_md(tmp_path, damage)
     assert invoke(chains, ["plan", "--run-dir", project.dir]).code == code
     before = project.files()
@@ -2637,9 +2673,10 @@ def test_check_refuses_before_it_changes_anything_when_its_hand_off_has_no_place
     assert result.err.strip() and project.files() == before and not list(outside.iterdir()) and not project.quarantined.exists()
 
 
-@pytest.mark.parametrize("damage", ["missing", "not-utf-8", "link"])
+@pytest.mark.parametrize("damage", ["missing", "not-utf-8", "over-the-size-cap", "link"])
 def test_check_exits_2_and_writes_nothing_when_threats_md_cannot_be_read(chains, tmp_path, damage):
-    """A threats.md that is missing, isn't strict UTF-8 or is a link can't be read, so there is no record to check: exit 2, no hand-off, no change."""
+    """A threats.md that is missing, isn't strict UTF-8, is over the size cap or is a link can't be read, so there is no record to check: exit 2, no hand-off, no
+    change."""
     project = path3(tmp_path / "p")
     good_flow(chains, project)
     project.make_plan_dir()
@@ -2647,6 +2684,8 @@ def test_check_exits_2_and_writes_nothing_when_threats_md_cannot_be_read(chains,
         project.threats.unlink()
     elif damage == "not-utf-8":
         project.threats.write_bytes(project.threats.read_bytes() + b"\xff\xfe")
+    elif damage == "over-the-size-cap":
+        make_threats_over_the_cap(project)
     else:
         real = tmp_path / "real-threats.md"
         real.write_bytes(project.threats.read_bytes())
@@ -2784,6 +2823,252 @@ def test_a_record_that_does_not_read_back_as_written_is_a_defect_and_nothing_is_
     checked = invoke(chains, ["check", "--run-dir", project.dir, "--plan", PLAN_ID])
     assert checked.code == 2 and "does not read back as it was written" in checked.err, checked.describe()
     assert project.files() == before
+
+
+# =============================================================================
+# 14c. render and check: an earlier run's chain file, and what check does not verify (S1P-A91, S1P-A93)
+# =============================================================================
+#
+# A run that reuses its output directory and ends in ``0 chains`` or ``skipped`` writes no chain file, so an earlier run's one is still there when ``check`` runs. The
+# run-level plan took a pre-image of it at Step 1.5 (ADR-050 D4), which tells that file from one that this run, or a helper of it, wrote. These cases run the real
+# planner, ``tachi-stage.py plan --stage threat-model``, over a directory that holds the earlier file, so that the pre-image is the planner's own, then the chain phase
+# and the check. ``render`` moves nothing: only ``check``, which holds the plan and writes the hand-off, renames the file. The last cases pin the readings of S1P-A93
+# that no case above reaches.
+
+MOVED = "chain-outcome:earlier-file-moved"
+EARLIER_CHAIN_FILE = b"# Cross-Layer Attack Chains\n\nThe chain file of an earlier run in this output directory.\n"
+
+
+@pytest.fixture(scope="module")
+def planner():
+    """``tachi-stage.py``, loaded once: its run-level plan keeps the pre-image that the check reads."""
+    return _load_hyphenated_script("tachi_stage_for_chain_tests", "tachi-stage.py")
+
+
+def zero_chains_run(root):
+    """No flow, so no candidate link: '0 chains passed filter (no candidate links); candidates 0'."""
+    return Project(root, OK_FINDINGS, flows=[])
+
+
+EARLIER_RUNS = [
+    pytest.param(zero_chains_run, "0 chains passed filter (no candidate links); candidates 0", id="zero-chains"),
+    pytest.param(skipped_without_inventory, "skipped (inventory missing)", id="skipped-no-inventory"),
+    pytest.param(skipped_with_inventory("this is not json {"), "skipped (inventory invalid)", id="skipped-invalid-inventory"),
+]
+
+
+def level_plan(planner, run):
+    """Step 1.5: ``tachi-stage.py plan --stage threat-model`` over the run directory as it is. It keeps a pre-image of each of D4's four canonical files that is there,
+    ``attack-chains.md`` among them, and leaves the plan's directory, where the check puts its hand-off. Returns ``(plan_id, plan_digest)``."""
+    printed = json.loads(must(invoke(planner, ["plan", "--stage", "threat-model", "--out", run.dir, "--date", DATE]), 0, "plan --stage threat-model").out)
+    return printed["plan_id"], printed["plan_digest"]
+
+
+def reused_directory(chains, planner, root, build, earlier=EARLIER_CHAIN_FILE):
+    """A run into an output directory that holds an earlier run's chain file: the file is there at Step 1.5 (when ``earlier`` is not ``None``), then the chain phase
+    runs. ``plan`` and ``render`` exit 0, 1 or 2 here, as the orchestrator carries on whatever they return (R-24). Returns ``(the run, (plan ID, plan digest))``."""
+    run = build(root)
+    if earlier is not None:
+        run.md.write_bytes(earlier)
+    plan = level_plan(planner, run)
+    run_flow(chains, run)
+    return run, plan
+
+
+@pytest.mark.parametrize("build,record", EARLIER_RUNS)
+def test_check_moves_an_earlier_runs_chain_file_aside_and_the_record_stands(chains, planner, tmp_path, build, record):
+    """S1P-A91. A run into a reused directory that ends in 0 chains or skipped wrote no chain file, and render left the earlier run's where it was. Its bytes are the
+    run-level plan's pre-image, so check renames it to attack-chains.inconsistent.md with its bytes intact, leaves the record alone (it is true: this run wrote no
+    chain), warns chain-outcome:earlier-file-moved in the hand-off, on stdout and on stderr, and exits 5. A second check passes, and nothing else changed."""
+    run, (plan_id, _) = reused_directory(chains, planner, tmp_path, build)
+    assert the_record(run.text())["value"] == record, "the run's own outcome"
+    assert run.md.read_bytes() == EARLIER_CHAIN_FILE and not run.quarantined.exists(), "plan and render move nothing"
+    threats, before = run.threats.read_bytes(), run.files()
+    result = must(run_check(chains, run, plan_id), 5, "check")
+    added, removed, modified = changed(before, run.files())
+    assert added == {"attack-chains.inconsistent.md", ".tachi-build/threat-model/%s/checks/attack-chains.json" % plan_id}
+    assert removed == {"attack-chains.md"} and not modified, "check moved the file and wrote its hand-off, and nothing else"
+    assert run.quarantined.read_bytes() == EARLIER_CHAIN_FILE and not run.md.exists() and run.threats.read_bytes() == threats, "the record stands"
+    shown = json.loads(result.out)
+    assert shown["status"] == "warn" and shown["outcome"] == record and [w["code"] for w in shown["warnings"]] == [MOVED]
+    detail = shown["warnings"][0]["detail"]
+    assert "attack-chains.md" in detail and "attack-chains.inconsistent.md" in detail and record in detail and len(detail) <= 500, detail
+    assert "WARNING %s: %s" % (MOVED, detail) in result.err
+    assert_handoff(run, "warn", plan_id, outcome=record, code=MOVED)
+    assert read_handoff(run, plan_id)["warnings"] == shown["warnings"]
+    must(run_check(chains, run, plan_id), 0, "a second check")
+    assert run.quarantined.read_bytes() == EARLIER_CHAIN_FILE and not run.md.exists() and run.threats.read_bytes() == threats
+    assert_handoff(run, "pass", plan_id)
+
+
+def test_a_failed_run_gets_the_earlier_file_back_and_the_moved_copy_stays(chains, planner, tmp_path):
+    """The move loses nothing. When a later step fails the run, ``fail --stage threat-model`` puts the earlier run's file back from its pre-image (S1P-A55), the copy
+    that check moved stays where it was put (a declared path), and the failed record carries the hand-off's warning, so the fold accepts its code."""
+    run, (plan_id, digest) = reused_directory(chains, planner, tmp_path, zero_chains_run)
+    must(run_check(chains, run, plan_id), 5, "check")
+    failed = json.loads(must(invoke(planner, ["fail", "--stage", "threat-model", "--out", run.dir, "--plan", plan_id, "--plan-digest", digest,
+                                              "--reason", "check-failed"]), 0, "fail").out)
+    assert "attack-chains.md" in failed["restored"]
+    assert run.md.read_bytes() == EARLIER_CHAIN_FILE and run.quarantined.read_bytes() == EARLIER_CHAIN_FILE
+    record = json.loads((run.dir / ".tachi-build" / "threat-model" / plan_id / "stage-record.json").read_text(encoding="utf-8"))
+    assert record["status"] == "failed" and MOVED in [warning["code"] for warning in record["warnings"]]
+
+
+def edit_plan(run, plan_id, edit):
+    path = run.plan_file(plan_id)
+    plan = json.loads(path.read_text(encoding="utf-8"))
+    edit(plan)
+    path.write_text(json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def replace_with_a_link(path, copy):
+    """``path`` replaced by a link to ``copy``, which keeps its bytes. A platform that can't make a link skips the case."""
+    copy.write_bytes(path.read_bytes())
+    path.unlink()
+    try:
+        os.symlink(str(copy), str(path))
+    except (OSError, NotImplementedError):
+        pytest.skip("this platform cannot make a symlink")
+
+
+NOT_THE_EARLIER_FILE = [
+    # id, what happens after Step 1.5. In each case the file is not one that check can show to be the earlier run's, so D13's rewrite stands (S1P-A91).
+    pytest.param(lambda run, plan_id: run.md.write_bytes(EARLIER_CHAIN_FILE + b"\nA line that something wrote during this run.\n"), id="the-bytes-changed-during-the-run"),
+    pytest.param(lambda run, plan_id: run.plan_file(plan_id).unlink(), id="the-plan-file-is-missing"),
+    pytest.param(lambda run, plan_id: run.plan_file(plan_id).write_text("not json {", encoding="utf-8"), id="the-plan-file-is-not-json"),
+    pytest.param(lambda run, plan_id: edit_plan(run, plan_id, lambda plan: plan.update(schema="tachi.plan/9")), id="the-plan-has-another-schema"),
+    pytest.param(lambda run, plan_id: edit_plan(run, plan_id, lambda plan: plan.pop("preimage")), id="the-plan-has-no-pre-images"),
+    pytest.param(lambda run, plan_id: edit_plan(run, plan_id, lambda plan: plan["preimage"].update({"attack-chains.md": None})), id="the-pre-image-is-null"),
+    pytest.param(lambda run, plan_id: edit_plan(run, plan_id, lambda plan: plan["preimage"].update({"attack-chains.md": "0" * 64})), id="the-pre-image-is-another-digest"),
+    pytest.param(lambda run, plan_id: replace_with_a_link(run.plan_file(plan_id), run.dir / "plan-copy.json"), id="the-plan-file-is-a-link"),
+]
+
+
+@pytest.mark.parametrize("damage", NOT_THE_EARLIER_FILE)
+def test_check_takes_the_rewrite_for_a_file_it_cannot_show_to_be_the_earlier_runs(chains, planner, tmp_path, damage):
+    """S1P-A91, the other half. A file that changed during this run, and a plan that is missing, doesn't load (another schema, no pre-images, a link) or holds a
+    pre-image that is null or isn't the file's digest, all take D13's rewrite: the record is skipped (attack-chains.md unexpected), the file is renamed with
+    what it holds, the warning is chain-outcome:rewritten, and check exits 5."""
+    run, (plan_id, _) = reused_directory(chains, planner, tmp_path, zero_chains_run)
+    damage(run, plan_id)
+    held = run.md.read_bytes()
+    result = must(run_check(chains, run, plan_id), 5, "check")
+    assert the_record(run.text())["value"] == "skipped (attack-chains.md unexpected)"
+    assert not run.md.exists() and run.quarantined.read_bytes() == held
+    assert [w["code"] for w in json.loads(result.out)["warnings"]] == ["chain-outcome:rewritten"]
+    assert_handoff(run, "warn", plan_id, outcome="skipped (attack-chains.md unexpected)")
+
+
+def test_check_never_reads_through_a_link_to_show_a_file_to_be_the_earlier_runs(chains, planner, tmp_path):
+    """A chain file that is a link to a copy of the pre-image's bytes would match for a reader that follows links. Check reads none: it takes D13's rewrite, which
+    renames the link itself, and the copy keeps its bytes."""
+    run, (plan_id, _) = reused_directory(chains, planner, tmp_path, zero_chains_run)
+    replace_with_a_link(run.md, run.dir / "earlier-copy.md")
+    result = must(run_check(chains, run, plan_id), 5, "check")
+    assert the_record(run.text())["value"] == "skipped (attack-chains.md unexpected)" and [w["code"] for w in json.loads(result.out)["warnings"]] == [
+        "chain-outcome:rewritten"]
+    assert run.quarantined.is_symlink() and not os.path.lexists(str(run.md)) and (run.dir / "earlier-copy.md").read_bytes() == EARLIER_CHAIN_FILE
+
+
+def test_check_takes_the_rewrite_for_a_chain_file_that_appeared_during_this_run(chains, planner, tmp_path):
+    """The directory held no chain file at Step 1.5, so the plan's pre-image is null (the planner's own). A file under that name now was written during this run,
+    whatever it holds, and D13's rewrite stands: even bytes that equal an earlier run's can't be shown to be one."""
+    run, (plan_id, _) = reused_directory(chains, planner, tmp_path, zero_chains_run, earlier=None)
+    assert json.loads(run.plan_file(plan_id).read_text(encoding="utf-8"))["preimage"]["attack-chains.md"] is None
+    run.md.write_bytes(EARLIER_CHAIN_FILE)
+    result = must(run_check(chains, run, plan_id), 5, "check")
+    assert the_record(run.text())["value"] == "skipped (attack-chains.md unexpected)" and run.quarantined.read_bytes() == EARLIER_CHAIN_FILE
+    assert [w["code"] for w in json.loads(result.out)["warnings"]] == ["chain-outcome:rewritten"]
+
+
+@pytest.mark.parametrize("tamper,reason", [
+    pytest.param(lambda run: run.set_text(without_record(run.text())), "no outcome recorded", id="no-record"),
+    pytest.param(lambda run: set_record(run, "chains written (7); candidates 9; surfaced 2"), "full chains 5 expected 2", id="written-with-other-counts"),
+])
+def test_an_earlier_file_under_any_record_but_zero_or_skipped_takes_the_rewrite(chains, cap, planner, tmp_path, tamper, reason):
+    """Only a record that has no chain file can stand with an earlier run's file beside it. Under a record that is absent, or one that says chains were written and
+    whose file disagrees, the pre-image's bytes change nothing: D13's rewrite renames the file and the record becomes skipped (S1P-A91)."""
+    run = fresh_copy(cap.run, tmp_path)
+    tamper(run)
+    held = run.md.read_bytes()
+    plan_id, _ = level_plan(planner, run)   # the file is there at Step 1.5, so its bytes are the pre-image
+    result = must(run_check(chains, run, plan_id), 5, "check")
+    assert the_record(run.text())["value"] == "skipped (%s)" % reason and not run.md.exists() and run.quarantined.read_bytes() == held
+    assert [w["code"] for w in json.loads(result.out)["warnings"]] == ["chain-outcome:rewritten"]
+
+
+def test_a_chain_file_that_this_run_wrote_stays_even_when_it_equals_the_earlier_runs(chains, cap, planner, tmp_path):
+    """The pre-image tells an earlier file from a stray one only where there should be no file. A run whose own chain file is byte for byte the earlier run's has its
+    record and its file in agreement: check passes, and moves and rewrites nothing."""
+    run = fresh_copy(cap.run, tmp_path)
+    plan_id, _ = level_plan(planner, run)
+    before = run.files()
+    must(run_check(chains, run, plan_id), 0, "check")
+    added, removed, modified = changed(before, run.files())
+    assert added == {".tachi-build/threat-model/%s/checks/attack-chains.json" % plan_id} and not removed and not modified
+    assert run.md.exists() and not run.quarantined.exists()
+    assert_handoff(run, "pass", plan_id)
+
+
+def test_check_moves_nothing_when_its_hand_off_has_no_place(chains, planner, tmp_path):
+    """The hand-off's place is checked before anything changes, the move included: a checks/ that is a file is exit 2, and the earlier run's file is where it was."""
+    run, (plan_id, _) = reused_directory(chains, planner, tmp_path, zero_chains_run)
+    checks = run.handoff(plan_id).parent
+    if checks.is_dir():
+        checks.rmdir()
+    checks.write_text("in the way", encoding="utf-8")
+    before = run.files()
+    result = must(invoke(chains, ["check", "--run-dir", run.dir, "--plan", plan_id]), 2, "check")
+    assert result.err.strip() and run.files() == before and run.md.read_bytes() == EARLIER_CHAIN_FILE and not run.quarantined.exists()
+
+
+def test_check_exits_2_when_it_cannot_rename_an_earlier_runs_file_and_a_later_check_finishes_the_job(chains, planner, tmp_path):
+    """A directory named attack-chains.inconsistent.md can't be replaced by the file. Nothing has changed (the record stands, and the file is where it was), the
+    error says what is left to do, and no hand-off is written. Once the way is clear, a check moves the file and warns."""
+    run, (plan_id, _) = reused_directory(chains, planner, tmp_path, zero_chains_run)
+    run.quarantined.mkdir()
+    threats, before = run.threats.read_bytes(), run.files()
+    result = must(run_check(chains, run, plan_id), 2, "check")
+    assert "the record stands, but attack-chains.md could not be renamed" in result.err and "rename it to attack-chains.inconsistent.md" in result.err
+    assert run.files() == before and run.md.read_bytes() == EARLIER_CHAIN_FILE and run.threats.read_bytes() == threats and not run.handoff(plan_id).exists()
+    run.quarantined.rmdir()
+    must(run_check(chains, run, plan_id), 5, "check once the way is clear")
+    assert run.quarantined.read_bytes() == EARLIER_CHAIN_FILE and not run.md.exists() and run.threats.read_bytes() == threats
+    assert_handoff(run, "warn", plan_id, code=MOVED)
+
+
+@pytest.mark.parametrize("tamper", [
+    pytest.param(lambda md: re.sub(r"(?m)^<!-- tachi-provenance: .*-->\n?", "", md), id="no-stamp"),
+    pytest.param(lambda md: re.sub(r"(?m)^<!-- tachi-provenance: .*-->$", "<!-- tachi-provenance: renderer=another-script.py; version=0.0.1; "
+                                   "input-digest=sha256:%s -->" % ("0" * 64), md), id="a-stamp-of-another-script"),
+    pytest.param(lambda md: set_front(md, "schema_version", '"9.9"'), id="another-schema-version"),
+])
+def test_check_confirms_the_counts_and_does_not_verify_the_stamp_or_the_schema_version(chains, cap, tmp_path, tamper):
+    """S1P-A93. FR-K4.1b asks check for the counts, and like FR-K5.7 it confirms consistency and not provenance: a chain file whose stamp is missing or names another
+    script, or whose schema_version is another, still accounts for its record. A writer that forges counts could forge a stamp too, so the stamp is D4's evidence for
+    a reader and not a check's input."""
+    run = fresh_copy(cap.run, tmp_path)
+    edit_md(run, tamper)
+    held, threats = run.md.read_bytes(), run.threats.read_bytes()
+    assert held != cap.run.md.read_bytes()
+    must(run_check(chains, run), 0, "check")
+    assert run.md.read_bytes() == held and run.threats.read_bytes() == threats and not run.quarantined.exists()
+    assert_handoff(run, "pass")
+
+
+@pytest.mark.parametrize("build,reason,plan_code", [
+    pytest.param(skipped_without_section_7, "Section 7 unreadable", 2, id="section-7-missing"),
+    pytest.param(skipped_without_inventory, "inventory missing", 1, id="inventory-missing"),
+    pytest.param(skipped_with_inventory("this is not json {"), "inventory invalid", 2, id="inventory-not-json"),
+])
+def test_render_exits_0_for_a_skipped_record_whatever_code_plan_gave_the_input(chains, tmp_path, build, reason, plan_code):
+    """S1P-A93. The input problem was plan's to report, with D4's code for it: 1 for an input that is missing, 2 for one that is there but unusable. Render's work is the
+    upsert, which succeeded, so it exits 0 and prints the record. Its own 1 and 2 are for its own inputs."""
+    project = build(tmp_path)
+    must(run_plan(chains, project), plan_code, "plan")
+    rendered = must(run_render(chains, project), 0, "render")
+    assert json.loads(rendered.out)["record"] == "skipped (%s)" % reason and the_record(project.text())["value"] == "skipped (%s)" % reason
+    assert not project.md.exists()
 
 
 # =============================================================================
