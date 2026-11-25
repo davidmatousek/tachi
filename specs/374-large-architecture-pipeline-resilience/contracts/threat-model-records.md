@@ -21,8 +21,8 @@ origin "planned"|"redispatch"|"coverage-gap" | scope {"components": [NAME] 1-500
 brief PATH = {out}/.tachi-build/briefs/{dispatch_id}.json | prompt = "Read and follow the brief at " + brief + "."
 end_marker bool | status "complete"|"superseded"|"unrecovered" (complete <=> end_marker true; "coverage-gap" is never superseded)
 supersedes DSP|null (non-null <=> origin "redispatch") | superseded_by [DSP] (non-empty <=> superseded)
-reason "no_end_marker"|"overflow_error"|null (null <=> complete)
-count int 0-2000 | local_ids [ID|null], length = count
+reason "no_end_marker"|"overflow_error"|"agent_failed"|"timed_out"|null (null <=> complete; T090, "The detector" below)
+count int 0-2000 | local_ids [ID|null], length = count ("agent_failed" or "timed_out" => count 0: no report came)
 ```
 **Brief**: `briefs/{DSP}.json`, at most 32 KiB.
 ```
@@ -149,7 +149,7 @@ A tree batch's part is its manifest: D3's envelope, with one item per finding, `
 
 ## Phase 2 dispatches (item O-α; ADR-050 D6, rev. 3)
 
-Phase 2 has no plan. The orchestrator dispatches by these rules, writing a brief before each dispatch and a record after it, and `check-threat-model.py` enforces them over those files at Step 2.8 (ADR-050 D12). The end-marker predicate, which sets `end_marker` and `reason`, is ruled by T090 from S-9's table (T104).
+Phase 2 has no plan. The orchestrator dispatches by these rules, writing a brief before each dispatch and a record after it, and `check-threat-model.py` enforces them over those files at Step 2.8 (ADR-050 D12). The end-marker predicate, which sets `end_marker` and `reason`, and the watch that bounds a dispatch that never returns were ruled at T090, from S-9's table (T104, `test-results/s9-spike.md`) and the PM's S1P-PM9: "The detector" and "The watch", below.
 
 **The planned set** is a pure function of `phase1/dispatch.json` and the Phase 2 Roster in `agent-roster-shared.md`.
 - An agent's scope is every component whose row carries the agent's dispatch key: its STRIDE letter in `stride`, or `AG` or `LLM` in `ai`.
@@ -168,11 +168,46 @@ Phase 2 has no plan. The orchestrator dispatches by these rules, writing a brief
 
 **Coverage-gap dispatches** (Phase 3b's targeted re-analysis, `coverage-requirements.md` Step 5) belong to no lineage. Each is one dispatch per gap and agent, scoped to the gap's one component. The gate retries nothing, so a truncated one is `unrecovered`: its findings are dropped, and its gap resolves `dispatch_failure`.
 
-**The order of writes,** under ADR-050 D6's completion rule:
-1. The brief, at `briefs/{dispatch_id}.json`, then the dispatch, with the fixed prompt. A replacement's brief targets its own scope, and its `baseline_focus` keeps only those components' entries.
-2. The record, once, after the agent reports completion, and never rewritten. A `superseded` record is written after its replacements' IDs are allocated, so `superseded_by` names them.
-3. The replacements, in the next wave, at most 16 in flight.
-4. After an `unrecovered` record in a lineage, no further brief or dispatch. The orchestrator waits for its agents in flight, records them, and returns ADR-050 D4's error, naming that record, its agent and its components. The command then runs `fail` with `unrecoverable-batch`, and the check doesn't run.
+**The detector** (T090, S1P-A31 and S1P-A32; ADR-050 D6, item O-α). The orchestrator judges each dispatch once, from what reaches its context, and writes the dispatch's record then. On Claude Code 2.1.331 a delivered report reaches it only as a hand-back message, and every other ending only as a notification (S-9 §4).
+- **The report** is the text that the harness frames as the agent's final report: on 2.1.331, the lines between the `[Subagent hand-back]` frame line and the closing `</agent-message>` tag. The frame line, that tag and the fixed paragraph after it are the harness's, not the agent's.
+- **The predicate.** Take the report's last line that isn't blank once leading and trailing whitespace are removed, which also removes the harness's two-space indent. It is the end marker when it is exactly `TACHI-END`, and the overflow line when it is `TACHI-OVERFLOW`, alone or followed by a space.
+- **A notification** decides only when no report came. Its `<status>` alone decides nothing, because `completed` also carries the no-report and interim endings: its summary and result text decide. A `completed` notification whose result says the report was delivered as a message is judged by that message.
+
+| What reaches the orchestrator for the dispatch | `end_marker` | `reason` | `count`, `local_ids` |
+|---|---|---|---|
+| a report whose last line is the end marker | `true` | `null` | the report's findings |
+| a report whose last line is the overflow line | `false` | `"overflow_error"` | the report's findings |
+| a report whose last line is anything else, such as the placeholder an empty hand-back becomes | `false` | `"no_end_marker"` | the report's findings |
+| no report, and a `failed` notification: an output-cap stop, an API error or a refusal | `false` | `"agent_failed"` | `0`, `[]` |
+| no report, and a final `completed` notification that says no report was delivered | `false` | `"no_end_marker"` | `0`, `[]` |
+| an interim `completed` notification: the agent "has not reported yet" | not a return: the dispatch stays pending, and its deadline runs on | | |
+| nothing before its wave's watch exits 3 | `false` | `"timed_out"` | `0`, `[]` |
+
+- A record with `end_marker` `true` is `complete`. Any other is truncated: `superseded` or `unrecovered`, by the lineage rules above.
+- The marker isn't a finding. It is stripped before compiling and never enters `threats.md`. The overflow line carries no object, and nothing reads it past its first word.
+- The agents' text for the two lines is in `finding-format-shared.md`, which every threat agent reads, and this table is in `dispatch-record-brief-shared.md`'s End Marker section. ADR-050 D6 holds the words of both.
+
+**The watch** (T090, S1P-A33 to S1P-A35; the PM's S1P-PM9; ADR-050 D6, "A dispatch that never returns"). It bounds a dispatch that never returns, so that a blocked tool call in a Phase 2 agent can't hang the run.
+```
+python3 scripts/tachi-stage.py watch --out <out> DSP [DSP ...]
+```
+- **Arguments.** `--out` is the run's output directory, checked as the other subcommands check it. Then 1 to 16 `DSP`s, with no repeat. Anything else exits 2.
+- **What it does.** It writes nothing. Every 5 seconds it checks whether each named dispatch's `{out}/.tachi-build/records/{DSP}.json` is a regular file and not a symlink.
+- **Exit 0,** as soon as every named dispatch has one. Stdout is one JSON object, `{"status": "done", "pending": []}`.
+- **Exit 3,** when the deadline passes first, measured on a monotonic clock from the watch's start. Stdout is `{"status": "timed-out", "pending": [DSP]}`, with the IDs that have no record, in argument order.
+- **The deadline** is `WATCH_SECONDS`, 5,400 s (90 minutes), a constant in `tachi-stage.py` and not an adopter setting. Tests set a smaller one only through the function interface. Its floor is the longest working child measured live, 1,356 s, and W5′ confirms or re-amends it (ADR-050 D6).
+- **The orchestrator** starts one with each Phase 2 wave's Agent calls, through the Bash tool's background option, naming exactly that wave's dispatches. This holds for planned, re-dispatch and coverage-gap waves alike, and not for Phase 5's tree and report waves.
+  - On exit 3, each listed dispatch that still has no record gets one with `reason` `"timed_out"`, by the table above, and the lineage rules take over. A listed dispatch that has its record by then is skipped.
+  - Exit 0 needs nothing. Any other exit fails the run (ADR-050 D4).
+- **A late result.** An agent that timed out may still return, because nothing within NG8 stops it. A return or a notice for a dispatch that already has its record changes nothing, and its findings are never compiled. After its reply, the orchestrator makes no tool call, even if a late message resumes it.
+
+**The order of writes,** under ADR-050 D6's completion rule, read with the watch:
+1. The brief, at `briefs/{dispatch_id}.json`, then the dispatch, with the fixed prompt and the dispatch ID as the Agent call's `description`, so that every notification names its dispatch. A replacement's brief targets its own scope, and its `baseline_focus` keeps only those components' entries. With the wave's Agent calls, the orchestrator starts the wave's watch.
+2. The record, once, when the detector judges the dispatch or the watch times it out, and never rewritten. A `superseded` record is written after its replacements' IDs are allocated, so `superseded_by` names them.
+3. The replacements, in the next wave, once every dispatch of the wave has its record. At most 16 are in flight, counting each agent that timed out until its late notice arrives. When those agents leave no room for a pending dispatch, the run fails as in step 4, and the error names the oldest record that timed out.
+4. After an `unrecovered` record in a lineage, no further brief or dispatch. The orchestrator waits for its agents in flight, which the wave's watch bounds, records them, and returns ADR-050 D4's error, naming that record, its agent, its components and its reason. The command then runs `fail` with `unrecoverable-batch`, and the check doesn't run.
+
+A dispatch that timed out counts as returned: it holds neither its wave, nor step 4's wait, nor the orchestrator's reply. The orchestrator never sends its final report while a dispatch is pending, and `/tachi.threat-model` goes on at that report without waiting for the orchestrator's completion notice, which an agent that timed out can hold (ADR-050 D6).
 
 **Live records.** Only a `complete` record is live: its findings form the completeness set, and the ID map's keys are exactly the complete records. A `superseded` or `unrecovered` record's findings leave the set.
 
