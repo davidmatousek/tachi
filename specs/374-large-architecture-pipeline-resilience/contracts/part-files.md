@@ -109,7 +109,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `status` | `fail` when `error` isn't `null`; otherwise `warn` when `warnings` isn't empty; otherwise `pass`. It matches the check's exit code: 4, 5 or 0. `attack-chains` is never `fail` |
 | `counts` | `null` in `attack-chains`. In `provenance`, exactly these keys, each an integer 0–1,000,000: `open` and `resolved`, the reference set's counts; `recorded`, `carried` and `rule`, the findings that each of FR-N4.5's three provenance classes accounts for (a dispatch record, a baseline carry-forward and Phase 3.6's rule); `renumbered`, the kept dispositions whose final ID differs from the provisional ID, folds excluded; `folded`, those that #356's fold table re-prefixed; and `reused-id`, FR-E.19's reissued IDs |
 | `batches` | `null` in `attack-chains`. In `provenance`, Phase 2's six counts, `{planned, dispatched, done, retried, split, exhausted}`, each an integer 0–1,000,000, with the meanings in `threat-model-records.md`, "Phase 2 dispatches": the lineages' records, with coverage-gap records left out (item O-α) |
-| `warnings` | `[{code, detail}]`, at most 1,000, under §5's warning rules. The codes are closed: `chain-outcome:rewritten`, when the check rewrote the record as `skipped (<reason>)`, with the new line and whether `attack-chains.md` was quarantined in the detail (D13); `section6:mismatch`, one per cell, with the cell and both values in the detail (FR-E.10); `id:reissued`, with the first 20 IDs in the detail (FR-E.19); and `coverage-gap:unrecovered:<reason>`, where `<reason>` is `no_end_marker` or `overflow_error`, with the record and its component in the detail (item O-α) |
+| `warnings` | `[{code, detail}]`, at most 1,000, under §5's warning rules. The codes are closed: `chain-outcome:rewritten`, when the check rewrote the record as `skipped (<reason>)`, with the new line and whether `attack-chains.md` was quarantined in the detail (D13); `section6:mismatch`, one per cell, with the cell and both values in the detail (FR-E.10); `id:reissued`, with the first 20 IDs in the detail (FR-E.19); `coverage-gap:unrecovered:<reason>`, where `<reason>` is `no_end_marker` or `overflow_error`, with the record and its component in the detail (item O-α); and, in `provenance`, `correlation-member-repeated`, once, with the count and the first 20 IDs in the detail, for the findings that two or more of Section 4a's groups list (ADR-050 D8, R-F; erratum S1P-A19) |
 | `error` | `null` in `attack-chains`. In `provenance`, `null`, or, when the check fails (exit 4), `{code, message, finding_ids, remedy}`: `code` is the failed rule, one of `no-records`, `envelope`, `lineage`, `provenance` and `completeness`; `message` is at most 2,000 characters and states how many IDs are involved; `finding_ids` holds the first 20, in S-2 order; and `remedy` is D12's |
 
 - **Writing.** A check writes its file once, with `tachi_parts`' atomic write, before it exits 0, 4 or 5. A check that exits 2 writes none. The provenance check counts before it applies any rule, so its `counts` and `batches` are complete in every file it writes.
@@ -317,7 +317,7 @@ So the orchestrator writes each part without reading its batch input. The batch 
 - The budget and the attempt cap are §4's.
 
 **The joiner's layout.**
-- **The frontmatter** comes from the manifest, in the template's YAML shape. `schema_version` is D15's `"1.4"`, as a constant. Strings are written double-quoted, and the manifest has already refused a `"`, a `\` or a control character in any of them.
+- **The frontmatter** comes from the manifest, in the template's YAML shape. `schema_version` is D15's `"1.4"`, as a constant. Strings are written double-quoted, and the manifest has already refused a `"`, a `\` or a character that `tachi_parts.forbidden_character` returns in any of them (`threat-model-records.md`, the manifest's strings; erratum S1P-A18).
 - **The title** is the template's `# Threat Model Report`.
 - **Then each section in order:**
   - its heading;
@@ -326,7 +326,7 @@ So the orchestrator writes each part without reading its batch input. The batch 
   - its rows. A finding section's rows are in S-2 order. Section 7's are sorted by risk level, `Critical` first, then in the order the findings appear in Sections 3 and 4 (the eight tables in order, and S-2 order within each). A row section's rows are in plan order.
 - **Category** in Section 7 is the prefix's table title: `Spoofing`, `Tampering`, `Repudiation`, `Information Disclosure`, `Denial of Service` or `Elevation of Privilege`; `Agentic` for `AG`, `AGP` and `TE`; `LLM` for `LLM`, `OI` and `MI`.
 - **IDs** are written as the manifest spells them, and compared in canonical form (D3).
-- **Each cell** takes D3's cell sink. Every `#` in it is also written `&#35;`, in the same pass, so that a reference the sink writes is never escaped twice. `parse_markdown_table` finds a section by the first line that holds its heading's text, so without this a cell quoting `### Data Flows` would capture that table's reader.
+- **Each cell** takes D3's cell sink. Every `#` in it is also written `&#35;`, in the same pass, so that a reference the sink writes is never escaped twice. `parse_markdown_table` finds a section by the first line that holds its heading's text, so without this a cell quoting `### Data Flows` would capture that table's reader. Each row is written `| <cell> | … | <cell> |`, with a space on each side of every delimiter, so a cell that ends in `\` can't escape the pipe that closes it: Section 7's readers read GitHub's `\|` as a pipe inside its cell (ADR-050 D3, P1-3; erratum S1P-A21).
 - **Notes**, in fixed text, each printed only in its state:
   - Section 2's, when both of its tables are empty;
   - Section 4's, when both AI tables are empty, worded so that it stays true: `No AI threat findings were recorded.`;
@@ -369,7 +369,7 @@ Typed `tachi-threat-report` agents write these parts. The orchestrator plans and
 
 - **Keys.** The category keys are item O-β's: `spoofing`, `tampering`, `repudiation`, `information_disclosure`, `denial_of_service` and `elevation_of_privilege`; `agentic` for `AG`, `AGP` and `TE`; and `llm` for `LLM`, `OI` and `MI`. The pattern values are Section 7's six.
 - **Narrated or summarized.** A finding is summarized when the run has more than 30 open findings and its risk level is Medium, Low or Note. Every other open finding is narrated one by one.
-- **A roadmap row** is an open finding that isn't a correlation group's non-primary member. A group's primary is its first member in Section 4a, read through `parse_correlation_groups`, and its row stands for the group.
+- **A roadmap row** is an open finding that isn't a correlation group's non-primary member. The groups and their primaries are the ones `parse_correlation_groups` returns with the run's open IDs as `member_ids`: a group's primary is its first member left after the claim rule (ADR-050 D8; erratum S1P-A20), and its row stands for the group. So the roadmap and `threats.sarif` name the same primary.
 - **The budget.** Each section's limits sum to at most 16,000 characters, so a section part stays within S-1's 8,000 tokens at W1's r of 2.598.
 
 **The findings items.**
@@ -440,7 +440,8 @@ A field that falls back or is cut is counted in the report stage's record (`narr
   - a plan's digest or pointer differs, a batch isn't `done`, or a part fails re-validation, for the report plan or the trees plan it pins;
   - an input's digest differs, except `threats.md`'s and `attack-chains.md`'s;
   - the reference set's digest differs from `params.reference_digest`;
-  - for `chains written`, `attack-chains.md` doesn't hold exactly the planned surfaced chains.
+  - for `chains written`, `attack-chains.md` doesn't hold exactly the planned surfaced chains;
+  - a value it takes from an input that isn't a part holds a character that `tachi_parts.forbidden_character` returns. It is refused where the value is taken, naming the finding, the field and the regenerate remedy (ADR-050 D3, P0-4; erratum S1P-A18). In `trees`, that covers a carried tree file.
 - **Exit 4:** FR-K5.3, FR-K5.5 or FR-K5.7 fails (ADR-050 D14), or the staged file holds a character in step 10's set (P0-4's backstop, through `tachi_parts.forbidden_character`, as the joiner checks).
 - **Exit 0:** the stamped file, staged under `report/<plan_id>/staged/`, replaces `{out}/threat-report.md` (`os.replace`), overwriting any file an agent wrote, and the report stage's record is written. On any other code the canonical file isn't written.
 

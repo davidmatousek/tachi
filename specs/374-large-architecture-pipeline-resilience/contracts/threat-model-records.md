@@ -169,6 +169,7 @@ The orchestrator writes `{out}/.tachi-build/sections.json` once, in one Write, a
 - **What the planner derives.** Each category table's IDs are the open IDs with its prefixes: `S`, `T`, `R`, `I`, `D` and `E` for 3.1–3.6; `AG`, `AGP` and `TE` for 4.1; `LLM`, `OI` and `MI` for 4.2. Section 7 holds every open ID, and Section 4c every RESOLVED one. So "one Section 7 row per ID" and Section 4c's set hold by construction.
 - **No empty run.** `open` holds at least one ID, because every later reader of the reference set refuses an empty one (KB 22).
 - **Spelling.** IDs compare in canonical form (ADR-050 D3), so two spellings of one ID, within a list or across the two lists, are a duplicate. The joiner writes each ID as the manifest spells it.
+- **Strings** (W2′ entry erratum S1P-A18; ADR-050 D3's P0-4). No string among the frontmatter's values holds a `"`, a `\` or a character that `tachi_parts.forbidden_character` returns, because the joiner writes each one double-quoted and takes it from an input that isn't a part.
 - **Refusal.** `tachi-stage.py plan --stage threats-md` strict-loads the manifest from its fixed path, and exits 2 when any rule above fails. The orchestrator then stops with ADR-050 D4's error, and the command runs `fail`.
 - **One version.** The plan records the manifest's digest in `inputs`. The joiner reads the manifest at the same fixed path, and exits 2 unless its digest matches.
 - **Size.** At fixture scale the manifest is about 7 KB. It stays within S-1's single-write budget up to about 1,400 open findings, at two-space indentation.

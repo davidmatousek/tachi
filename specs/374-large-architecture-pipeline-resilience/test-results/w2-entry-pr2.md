@@ -134,3 +134,95 @@ T084's totals were taken at the cut line (`03a8f0d`), before PR 1's W2–W6 test
 - **The reading rule stands:** a run regresses only if a node id that passes at the baseline fails later, or if a gate total drops. Skips are named, so that a new skip is visible. Only the baseline changes.
 
 Totals: pending, filled by the orchestrator from the entry census
+
+## Rev. 3 cross-read (S1P-A4)
+
+**Date:** 2026-11-24, session S1′, lane ADR (architect).
+
+**What was read, at `a8b0cbe`:**
+- ADR-050's rev. 3 text: D6's O-α, O-β, O-γ and RR3, and rev. 3's pointers in D4 and D11. It was read against PR 1's merged D2–D4, D6–D10, D15, D16 and Known limitations.
+- The contracts `part-files.md`, `threat-model-records.md`, `cli.md` and `module-signatures.md`.
+- T093's held `orchestrator.md` (`8a08fb0`).
+- tasks.md's T093, T094, T100, T106, T108, T109 and T112.
+- The shipped readers in `scripts/`, wherever the text says what one of them does.
+
+**Method:** read-only `git show` and `git diff`. Nothing ran (H1).
+
+**Result: 4 errata, S1P-A18 to S1P-A21, each with a minimal text fix in this lane.**
+- One of them changes a ruling (S1P-A19), and `tw-adr-pr2.md` records it.
+- No contingency fires.
+- With these fixes, the bindings that S1P-A4 named hold.
+
+### Errata
+
+- **S1P-A18: D3's P0-4 and D4's row 2 at PR 2's three writers.** PR 1's text says a renderer refuses, at intake and with exit 2, a value from an input that isn't a part, through one predicate, `tachi_parts.forbidden_character`. That predicate covers step 10's set, the tag block and a lone surrogate. `module-signatures.md` adds that "PR 2's writers call it too". Rev. 3's contracts fall short of this in three places:
+  - **The section manifest.** `part-files.md` had the manifest refuse "a `"`, a `\` or a control character" in a frontmatter string, which misses U+2028, U+2029, the bidi controls, the tag block and a lone surrogate. `threat-model-records.md` stated no string rule at all. **Fix:** `threat-model-records.md` gains the manifest's string rule, with the predicate, and `part-files.md` names the predicate. `plan --stage threats-md` and the joiner's re-validation then refuse such a string with exit 2.
+  - **The assembler.** Its exit 2 list had no intake check, only exit 4's whole-file backstop. **Fix:** `part-files.md`'s exit 2 list gains the intake, which names the finding, the field and the regenerate remedy, and covers a carried tree in `trees`.
+  - **The trees.** D14's tree checks had no character check. So a tree with a bidi control would reach Step 2.9's backstop and fail the whole run after every tree had been written. **Fix:** D14's checks gain the predicate. `reconcile` already holds a generated tree to D14's checks (D6's `trees` row), so a failing generated tree is retried, and `trees` stops with exit 2 only on a carried one.
+  - **Lanes:** T092, T106, T108 and T109.
+- **S1P-A19: D8's R-F in PR 2's run.**
+  - **The contradiction.** PR 1's W4 ruling R-F makes a finding that two of Section 4a's groups list "reported, never silent": each renderer warns `correlation-member-repeated`, and the run exits 5. In PR 2's run, `generate-threats-sarif.py` (D8's Track O renderer) and `assemble-report.py report` both read Section 4a, and `cli.md` gives both of them 0, 1, 2 and 4. So the run that wrote Section 4a would never name the finding.
+  - **Ruling.** The run reports it once, from `check-threat-model.py` at Step 2.8. The check writes one warning, with the count and the first 20 IDs, into its hand-off and exits 5, and `close` folds the warning into the run's stage record. The generator and the assembler apply the claim rule and keep their exit codes.
+  - **Fix:** D8 gains the sentence, `part-files.md` §6's closed warning codes gain `correlation-member-repeated`, and `cli.md`'s check row names it.
+  - **Lanes:** T095 and T096 (OC, W3′).
+- **S1P-A20: the roadmap's primary.**
+  - **The contradiction.** `part-files.md` said that a group's primary is "its first member in Section 4a". D8 and `parse_correlation_groups` take the first member left after the claim rule, filtered to the run's open IDs. The two differ when the first listed member isn't open, or an earlier group has claimed it. In that case the roadmap and `threats.sarif` would name different primaries.
+  - **Fix:** the roadmap takes `parse_correlation_groups`' groups and primaries, with the run's open IDs as `member_ids`.
+  - **Lanes:** T092 and T109.
+- **S1P-A21: D3's P1-3 (W6) and the joiner's rows.**
+  - **The contradiction.** Section 7's readers read GitHub's `\|` as a pipe inside its cell (`escaped_pipes`). A value can end in `\`, because only edge whitespace is stripped at intake. So a row written without spaces around its delimiters would give a `\|` that shifts the row. A legitimate join would then fail its read-back with exit 4, and GitHub would show a broken table.
+  - **Fix:** `part-files.md` has the joiner write each row with a space on each side of every delimiter.
+  - **Lane:** T106.
+
+ADR-050 gains a Revision History row for S1P-A18 and S1P-A19, and the contracts follow.
+
+### The bindings S1P-A4 named
+
+- **D3's plan-level `refs`: holds.**
+  - The `threats-md` and `report` plans hold `refs` `{}`, and `threats-md`'s `architecture_warning` is null.
+  - Every path that the joiner or the assembler reads is in the plan's digest-pinned `inputs`, or is recomputed from `--out` (D3 and D7, as ruled at W2 and W3).
+- **D3's `~` guard and its nine references: hold.**
+  - The joiner writes no prose, and a `~` in a cell stays as written. Its one extra escape, `&#35;` for a `#` in a cell, is one of the nine.
+  - In the report, every fragment takes D3's prose sink and every cell its cell sink.
+  - Rev. 3's reason for the `#` escape still stands. `parse_reference_set` still finds Section 7 by substring (`tachi_parsers._reference_set_start`). D3's exact-heading rule, ruled at W3, names only PR 1's readers, and Known limitations cites O-β's escape as the other half.
+  - One residual: a frontmatter string that holds Section 7's heading text would fail the join's read-back with exit 4. The failure is loud and needs a contrived value, so it gets no fix.
+- **D4's exit 2 for a forbidden character:** fixed by S1P-A18, for the joiner's manifest, the assembler's intake and the trees.
+- **P1-4's from-disk rule: holds for both.**
+  - The joiner compares what `parse_reference_set` reads back from the staged file with its sources, the manifest and the validated items, never with a second read of its own.
+  - The assembler's FR-K5.3, FR-K5.5 and FR-K5.7 compare with the baseline tree files, the reference set and the merge recomputed from the parts.
+- **D6's W4 loop wording:**
+  - **T093's held text** doesn't contradict it. Phase 2 has no `reconcile`. Each wave starts only once every agent of the wave before has completed and has its record. No replacement starts until its wave is over. The completion rule bars compiling, reporting or returning while an agent runs. That is W4's rule, without the `reconcile` sentence, which has no Phase 2 counterpart.
+  - **`threats-md`'s protocol** (`part-files.md`) is consistent. Every listed part is written before `reconcile` runs ("Waves don't apply here").
+  - **T112's Phase 5** isn't written yet. It must copy W4's four command sentences for the `trees` and `report` loops (below).
+- **D7 and D8's URI guard, for T100: holds.**
+  - `sarif_common.self_check` checks every written `artifactLocation.uri`, as written and percent-decoded once, whether or not its caller passes `uri`. So T100 inherits the guard by calling the shared emitter's self-check.
+  - Rev. 3 and the contracts say nothing against it.
+
+### Read and consistent (no erratum)
+
+- **D2.** The `threats-md` rows carry a MAESTRO layer wherever D2's W4 layer chain reads one: Section 7, the per-finding tables, and Section 1's components.
+- **D9 and D10.** Rev. 3 touches no scoring.
+- **D15.**
+  - O-β reads `tachi.sections/1` into D15's PR 2 row.
+  - `threat-report.md` stays at 1.1. O-γ adds no frontmatter key, and its sections are the template's, which T113 aligns.
+  - No reader depends on whether Section 6 is present: the PDF reads its chains from `attack-chains.md`.
+- **D16.** PR 2's five scripts are in the gated set, and the tag block is among the hostile inputs.
+- **Known limitations.**
+  - "Model-authored tables" reads as their cells (O-β).
+  - The entry on the extractors' substring search names O-β's escape.
+  - The SARIF fallback's unreported repeated member is PR 1's entry.
+- **`cli.md` and `part-files.md`.**
+  - On a digest mismatch, PR 1's `fail` still writes its record, with `plan-digest-mismatch`, which RR3's Step F order relies on.
+  - PR 2's stage-record counts and §6's key set agree with D15's row and with D4's table.
+- **`module-signatures.md`.**
+  - Every name that rev. 3 relies on exists: `forbidden_character`, `parse_correlation_groups` with `repeated`, and `EFFORT_LEVELS`.
+  - Rev. 3's constants in `tachi_parts` add no import, so C1 holds.
+
+### For the lanes and tasks.md v1.5 (not errata)
+
+- **T112 (O2, W3′).**
+  - Phase 5's `trees` and `report` loops copy D6's W4 sentences, and `test_contract_text_374.py`'s pin extends to `orchestrator.md`.
+  - RR3's single `TACHI PLAN report` line replaces "each batch stage's `plan_id` and `plan_digest`" in T112's text. The team-lead makes that edit in v1.5.
+- **T100 (R3b).** Keep writing `properties.severity` as Section 7's risk level. D8's fallback reads it, as ruled at W3.
+- **The new readers of `threats.md`** (T096, T100, T109 and T117) read it through `tachi_parsers`' decoding readers. From PR 2 on, `threats.md` is rendered text, so any cell may hold D3's references.
+- **Cost.** About 0.1 d in all, across T092, T095, T096, T106, T108 and T109. The team-lead prices it.

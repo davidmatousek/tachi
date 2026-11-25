@@ -41,3 +41,10 @@ The contingency effort is about 1.40 d, against 0.95 priced. Duration moves only
 - **For the PM's awareness** (T088): the report changes in two ways users see, for release notes item 5. A `multiple`-pattern finding is listed only under Multi-Pattern Findings. A correlation group's roadmap row lists each member's mitigation verbatim, rather than a merged one. Also, NFR-4's reading for the report stage: the report agent runs once per part.
 - **TW-K4** is (c), as recorded at W0's gate, so D13 stands and T115–T118 keep their scope.
 - **T085's merge** of PR 1's W3 tip will meet textual conflicts in ADR-050's Revision History (keep every row, in date order), in `part-files.md` §3 and §4 (keep both sides' rows) and in `cli.md` (keep both "Readings ruled at" sections, W2 first, and the `plan` row's W2 sentence).
+
+## Rulings changed after the gate
+
+- **2026-11-24, S1P-A19, from the W2′ entry cross-read (S1P-A4, `w2-entry-pr2.md`).**
+  - **The change.** D8's R-F now reaches PR 2's run. `check-threat-model.py` reports a finding that two of Section 4a's groups list once, at Step 2.8: one `correlation-member-repeated` warning in its hand-off, with exit 5, so the warning reaches the run's stage record. `generate-threats-sarif.py` and `assemble-report.py report` keep their exit codes.
+  - **The cost.** About 0.03 d in T095 and T096 (OC, W3′). No contingency fires, the gate's result stands, and nothing is re-projected.
+  - **For the PM's awareness.** The threat-model run now names such a finding, where v4.48.x's said nothing. That could be one line in PR 2's notes (T135).
