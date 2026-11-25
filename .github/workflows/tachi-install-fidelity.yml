@@ -185,6 +185,7 @@ on:
       - tests/scripts/test_report_assembly.py         # F-374 (T114) — assemble-report.py's goldens (W2'); test_write_confinement.py imports its run builder
       - docs/architecture/02_ADRs/ADR-050-large-architecture-output-authority.md   # F-374 (T114) — test_contract_text_374.py reads the completion rule and the end marker's words (input)
       - specs/374-large-architecture-pipeline-resilience/contracts/threat-model-records.md   # F-374 (T114) — test_contract_text_374.py reads the recorded frame and the class table (input)
+      - specs/374-large-architecture-pipeline-resilience/contracts/part-files.md   # F-374 (T114, W2′ close) — test_contract_text_374.py reads PR 2's key sets, stages and slots (input)
       - tests/scripts/generate_large_arch_fixture.py  # F-374 (T020) — the fixture generator test_fixture_374.py drives
       - tests/scripts/fixtures/large_arch/**          # F-374 (T019) — the synthetic large-architecture fixture (S-4)
       - tests/scripts/coverage-f374.ini               # F-374 (D16) — the coverage gate's config
