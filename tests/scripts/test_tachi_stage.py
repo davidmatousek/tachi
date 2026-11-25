@@ -40,6 +40,8 @@ import os
 import re
 import subprocess
 import sys
+import threading
+import time
 from collections import namedtuple
 from pathlib import Path
 
@@ -7057,3 +7059,443 @@ def test_the_pr2_invocations_exit_with_their_codes_from_a_real_interpreter(tmp_p
     assert isinstance(json.loads(closed.stdout), dict)
     wrong = _run_script("close", "--stage", THREAT_MODEL, "--out", out, "--plan", printed["plan_id"], "--plan-digest", "0" * 64)
     assert wrong.returncode == 2 and wrong.stderr.strip() and "TACHI THREAT-MODEL FAILED" in wrong.stderr
+
+
+# ---------------------------------------------------------------------------- watch: Phase 2's bound (T156; ADR-050 D6, S1P-PM9; threat-model-records.md, "The watch")
+#
+# ``watch --out DIR DSP [DSP ...]`` waits until each named dispatch has its record, and exits 3 with the IDs that have none if the deadline passes first.
+# It writes nothing. The orchestrator writes each timed-out dispatch's ``timed_out`` record from that exit, so no case here needs a record that validates
+# under that status, and none waits on T091b. The cases run in-process (H15) with ``time.monotonic`` and ``time.sleep`` replaced by a clock that only
+# counts, so none of them sleeps. A smaller deadline reaches the script only through the function interface (D6). A record here is a stand-in: the
+# watch looks at a file's kind and never at its content.
+
+WATCH_BANNER = "THREAT-MODEL"
+
+
+class WatchClock(object):
+    """``time.monotonic`` and ``time.sleep`` for a watch that must not wait: a sleep moves the clock on and does nothing else.
+
+    ``after(n, action)`` runs ``action`` when the n-th sleep ends, so that a record can appear during the wait. A loop that sleeps more than ``RUNAWAY``
+    times is not following its deadline and fails here, so a regression ends its case and never hangs the run.
+    """
+
+    RUNAWAY = 3000
+
+    def __init__(self, start=1000.0):
+        self.start, self.now, self.sleeps, self.actions = start, start, [], {}
+
+    def monotonic(self):
+        return self.now
+
+    def sleep(self, seconds):
+        assert seconds >= 0, "T156, a sleep of %r seconds" % (seconds,)
+        self.sleeps.append(seconds)
+        assert len(self.sleeps) <= self.RUNAWAY, "T156, the watch kept sleeping past any deadline (%d sleeps)" % len(self.sleeps)
+        self.now += seconds
+        for action in self.actions.get(len(self.sleeps), ()):
+            action()
+
+    def after(self, count, action):
+        self.actions.setdefault(count, []).append(action)
+
+    @property
+    def elapsed(self):
+        return self.now - self.start
+
+
+@pytest.fixture
+def clock(monkeypatch):
+    fake = WatchClock()
+    monkeypatch.setattr(time, "monotonic", fake.monotonic)
+    monkeypatch.setattr(time, "sleep", fake.sleep)
+    return fake
+
+
+def watch_out(root):
+    out = Path(root) / "run"
+    out.mkdir()
+    return out
+
+
+def watch_record(out, dispatch_id, content=b"{}\n"):
+    """A dispatch's record, where the orchestrator leaves it. Its content is a stand-in: the watch never reads it."""
+    path = Path(out) / ".tachi-build" / "records" / (dispatch_id + ".json")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content)
+    return path
+
+
+def watch_ids(count, first=1):
+    return ["dsp-%03d" % number for number in range(first, first + count)]
+
+
+def watch_said(res, code, status, pending, behavior):
+    """An exit 0 or an exit 3: the code, one JSON object with its two keys on stdout, and nothing on stderr."""
+    assert res.code == code and res.err == "", "T156, %s: expected exit %d with nothing on stderr\n%s" % (behavior, code, res.describe())
+    assert res.json == {"status": status, "pending": pending}, "T156, %s\n%s" % (behavior, res.describe())
+    return res
+
+
+def watch_refused(res, behavior, code=2):
+    """A refusal is D4's four-line message with its code, never an argparse usage error: ``TACHI THREAT-MODEL FAILED``, a reason and a ``Remedy:`` line,
+    and nothing on stdout."""
+    assert res.code == code and res.out == "" and re.search(r"^TACHI %s FAILED: " % WATCH_BANNER, res.err, re.M) and "Remedy: " in res.err, (
+        "T156, %s: expected a refusal (exit %d, D4's message with its Remedy, nothing on stdout)\n%s" % (behavior, code, res.describe()))
+    return res
+
+
+def watch_tree_state(root):
+    """Every path under ``root`` with its kind, size, modification time and bytes: what a command that writes nothing leaves as it found it."""
+    state = {}
+    for base, dirs, files in os.walk(str(root)):
+        for name in sorted(dirs + files):
+            path = os.path.join(base, name)
+            kind = "link" if os.path.islink(path) else "dir" if os.path.isdir(path) else "file"
+            state[os.path.relpath(path, str(root))] = (kind, os.lstat(path).st_mtime_ns, Path(path).read_bytes() if kind == "file" else None)
+    return state
+
+
+# ---- what it waits for
+
+def test_watch_exits_0_at_once_when_every_record_is_already_there(stage, cli, clock, tmp_path):
+    """The first look comes before the first sleep, so a wave that is already recorded costs nothing (S1P-A38, item 5)."""
+    out = watch_out(tmp_path)
+    ids = watch_ids(4)
+    for dsp in ids:
+        watch_record(out, dsp)
+    watch_said(cli("watch", "--out", out, *ids), 0, "done", [], "every record there at the start")
+    assert clock.sleeps == [] and clock.elapsed == 0
+
+
+def test_watch_exits_0_as_soon_as_the_last_record_appears_during_the_wait(stage, cli, clock, tmp_path):
+    """It looks every 5 seconds, and it ends when the last record is there, not at the deadline."""
+    out = watch_out(tmp_path)
+    ids = watch_ids(3)
+    watch_record(out, ids[0])
+    clock.after(1, lambda: watch_record(out, ids[2]))
+    clock.after(3, lambda: watch_record(out, ids[1]))
+    watch_said(cli("watch", "--out", out, *ids), 0, "done", [], "the last record appears during the third wait")
+    assert clock.sleeps == [5, 5, 5] and clock.elapsed == 15
+
+
+def test_watch_keeps_waiting_while_any_one_record_is_missing(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    ids = watch_ids(3)
+    for dsp in ids[:2]:
+        watch_record(out, dsp)
+    clock.after(7, lambda: watch_record(out, ids[2]))
+    watch_said(cli("watch", "--out", out, *ids), 0, "done", [], "two of three there, the third after seven waits")
+    assert len(clock.sleeps) == 7 and clock.elapsed == 35
+
+
+def test_watch_exits_3_at_the_deadline_and_names_the_dispatches_with_no_record_in_argument_order(stage, cli, clock, tmp_path):
+    """The deadline is the constant, 5,400 seconds from the watch's start, and the poll is 5. ``pending`` follows the arguments, not the sort order."""
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-002")
+    watch_said(cli("watch", "--out", out, "dsp-004", "dsp-002", "dsp-010", "dsp-003"), 3, "timed-out", ["dsp-004", "dsp-010", "dsp-003"],
+               "a deadline with one record of four")
+    assert clock.elapsed == 5400 and len(clock.sleeps) == 1080 and set(clock.sleeps) == {5}
+
+
+def test_watch_exits_3_naming_every_dispatch_when_none_has_a_record(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    ids = ["dsp-016", "dsp-001", "dsp-009"]
+    watch_said(cli("watch", "--out", out, *ids), 3, "timed-out", ids, "no record at all")
+    assert not (out / ".tachi-build").exists()
+
+
+def test_a_record_that_arrives_during_the_wait_leaves_the_pending_list(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-001")
+    clock.after(2, lambda: watch_record(out, "dsp-003"))
+    watch_said(cli("watch", "--out", out, "dsp-003", "dsp-001", "dsp-002"), 3, "timed-out", ["dsp-002"], "dsp-003 recorded during the wait, dsp-002 never")
+    assert clock.elapsed == 5400
+
+
+@pytest.mark.parametrize("start", [0.0, 1000.0, 86400.5])
+def test_the_deadline_runs_from_the_watchs_own_start_on_the_monotonic_clock(stage, cli, clock, tmp_path, start):
+    clock.start = clock.now = start
+    out = watch_out(tmp_path)
+    watch_said(cli("watch", "--out", out, "dsp-001"), 3, "timed-out", ["dsp-001"], "a clock that starts at %r" % start)
+    assert clock.elapsed == 5400
+
+
+def test_the_deadline_and_the_poll_are_the_documented_constants(stage):
+    assert stage.WATCH_SECONDS == 5400 and stage.WATCH_POLL_SECONDS == 5
+
+
+# ---- the function interface: the one way a smaller deadline gets in (D6)
+
+def test_watch_function_takes_the_deadline_and_the_poll_and_its_last_sleep_ends_at_the_deadline(stage, clock, tmp_path):
+    out = watch_out(tmp_path)
+    assert stage.watch(out, ["dsp-001", "dsp-002"], seconds=12, poll=5) == (3, {"status": "timed-out", "pending": ["dsp-001", "dsp-002"]})
+    assert clock.sleeps == [5, 5, 2] and clock.elapsed == 12  # cut to what is left, so it ends at the deadline and not a poll after
+
+
+def test_a_record_that_arrives_during_the_last_sleep_still_counts(stage, clock, tmp_path):
+    out = watch_out(tmp_path)
+    clock.after(3, lambda: watch_record(out, "dsp-001"))
+    assert stage.watch(out, ["dsp-001"], seconds=12, poll=5) == (0, {"status": "done", "pending": []})
+    assert clock.elapsed == 12
+
+
+def test_a_deadline_of_zero_looks_once_and_never_sleeps(stage, clock, tmp_path):
+    out = watch_out(tmp_path)
+    assert stage.watch(out, ["dsp-001"], seconds=0) == (3, {"status": "timed-out", "pending": ["dsp-001"]})
+    watch_record(out, "dsp-001")
+    assert stage.watch(out, ["dsp-001"], seconds=0) == (0, {"status": "done", "pending": []})
+    assert clock.sleeps == []
+
+
+def test_watch_works_on_the_real_clock(stage, tmp_path):
+    """The cases above replace the clock. This one doesn't: a record that another thread writes during the wait ends it, and a deadline that passes
+    first ends it with exit 3. The bounds are loose, so a loaded machine can't fail them, but a loop that ignores its poll or its deadline can."""
+    out = watch_out(tmp_path)
+    started = time.monotonic()
+    writer = threading.Timer(0.15, watch_record, args=(out, "dsp-001"))
+    writer.start()
+    try:
+        assert stage.watch(out, ["dsp-001"], seconds=60, poll=0.05) == (0, {"status": "done", "pending": []})
+    finally:
+        writer.join()
+    assert 0.1 <= time.monotonic() - started < 30
+    started = time.monotonic()
+    assert stage.watch(out, ["dsp-001", "dsp-002"], seconds=0.3, poll=0.05) == (3, {"status": "timed-out", "pending": ["dsp-002"]})
+    assert 0.3 <= time.monotonic() - started < 30
+
+
+# ---- a record counts by its kind and its place, never by its content
+
+def _plant_link_to_a_file(out, root):
+    path = watch_record(out, "dsp-001")
+    path.unlink()
+    elsewhere = Path(root) / "elsewhere.json"
+    elsewhere.write_bytes(b"{}\n")
+    os.symlink(str(elsewhere), str(path))
+
+
+def _plant_dangling_link(out, root):
+    path = watch_record(out, "dsp-001")
+    path.unlink()
+    os.symlink(str(Path(root) / "nowhere.json"), str(path))
+
+
+def _plant_directory(out, root):
+    path = watch_record(out, "dsp-001")
+    path.unlink()
+    path.mkdir()
+
+
+def _plant_linked_records_directory(out, root):
+    elsewhere = Path(root) / "other-records"
+    elsewhere.mkdir()
+    (elsewhere / "dsp-001.json").write_bytes(b"{}\n")
+    (Path(out) / ".tachi-build").mkdir()
+    os.symlink(str(elsewhere), str(Path(out) / ".tachi-build" / "records"))
+
+
+def _plant_linked_build_directory(out, root):
+    elsewhere = Path(root) / "other-build"
+    (elsewhere / "records").mkdir(parents=True)
+    (elsewhere / "records" / "dsp-001.json").write_bytes(b"{}\n")
+    os.symlink(str(elsewhere), str(Path(out) / ".tachi-build"))
+
+
+NOT_A_RECORD = {
+    "a link to a regular file": _plant_link_to_a_file,
+    "a dangling link": _plant_dangling_link,
+    "a directory": _plant_directory,
+    "a link in the place of records/": _plant_linked_records_directory,
+    "a link in the place of .tachi-build/": _plant_linked_build_directory,
+}
+
+
+@pytest.mark.parametrize("kind", sorted(NOT_A_RECORD))
+def test_a_record_counts_only_as_a_regular_file_with_no_link_in_its_path(stage, cli, clock, tmp_path, kind):
+    out = watch_out(tmp_path)
+    NOT_A_RECORD[kind](out, tmp_path)
+    watch_said(cli("watch", "--out", out, "dsp-001"), 3, "timed-out", ["dsp-001"], "a record that is %s" % kind)
+
+
+@pytest.mark.parametrize("content", [b"", b"not json at all", b"\xff\xfe\x00", b"{}\n"], ids=["empty", "text", "bytes", "object"])
+def test_a_record_counts_by_its_kind_and_never_by_its_content(stage, cli, clock, tmp_path, content):
+    """Reading a record is the check's job at Step 2.8. The watch only has to know that the orchestrator has written one."""
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-001", content)
+    watch_said(cli("watch", "--out", out, "dsp-001"), 0, "done", [], "a record holding %r" % content)
+
+
+def test_a_record_of_another_dispatch_counts_for_nothing(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-002")
+    (out / ".tachi-build" / "records" / "dsp-001.json.partial").write_bytes(b"{}\n")
+    (out / ".tachi-build" / "briefs").mkdir()
+    (out / ".tachi-build" / "briefs" / "dsp-001.json").write_bytes(b"{}\n")  # the brief is not the record
+    watch_said(cli("watch", "--out", out, "dsp-001"), 3, "timed-out", ["dsp-001"], "a brief, a partial file and another dispatch's record")
+
+
+def test_watch_takes_an_out_that_is_itself_a_link(stage, cli, clock, tmp_path):
+    """The guard walks down from ``--out``, so a link in ``--out`` itself is fine: only what lies below it may not be one."""
+    real = tmp_path / "real-run"
+    real.mkdir()
+    watch_record(real, "dsp-001")
+    os.symlink(str(real), str(tmp_path / "run-link"))
+    watch_said(cli("watch", "--out", tmp_path / "run-link", "dsp-001"), 0, "done", [], "--out a link to the run directory")
+
+
+# ---- it writes nothing
+
+@pytest.mark.parametrize("deadline", [False, True], ids=["exit-0", "exit-3"])
+def test_watch_writes_nothing_and_least_of_all_a_timed_out_record(stage, cli, clock, tmp_path, deadline):
+    """It exits 3 and names the dispatches. The orchestrator writes each one's ``timed_out`` record (ADR-050 D6), and the watch writes no record, no
+    stage record and no directory, so a dispatch that timed out has the one record the orchestrator wrote and no other."""
+    out = watch_out(tmp_path)
+    ids = watch_ids(3)
+    recorded = ids[:1] if deadline else ids
+    for dsp in recorded:
+        watch_record(out, dsp)
+    (out / "threats.md").write_bytes(b"# a threat model\n")
+    before = watch_tree_state(tmp_path)
+    assert cli("watch", "--out", out, *ids).code == (3 if deadline else 0)
+    assert watch_tree_state(tmp_path) == before
+    assert not (out / ".tachi-build" / THREAT_MODEL).exists()
+    assert sorted(path.name for path in (out / ".tachi-build" / "records").iterdir()) == [dsp + ".json" for dsp in recorded]
+
+
+# ---- what it refuses, before it waits
+
+BAD_DISPATCH_IDS = [
+    "dsp-1", "dsp-12", "dsp-12345", "DSP-001", "dsp-00a", "dsp-001.json", "dsp_001", "dsp-001 ", " dsp-001", "dsp-001\n", "dsp-0 01", "dsp--01", "dsp-+01",
+    "dsp-", "B001", "", "../dsp-001", "dsp-001/..", "/dsp-001", "dsp-\uff10\uff10\uff11",
+]
+
+
+@pytest.mark.parametrize("bad", BAD_DISPATCH_IDS, ids=repr)
+def test_watch_refuses_an_id_that_is_not_a_dispatch_id_before_it_waits(stage, cli, clock, tmp_path, bad):
+    """Each ID fully matches ``tachi_parts``' dispatch pattern, as an ASCII full match, before it becomes part of a path."""
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-001")
+    before = watch_tree_state(tmp_path)
+    watch_refused(cli("watch", "--out", out, "dsp-001", bad), "the argument %r" % bad)
+    assert clock.sleeps == [] and watch_tree_state(tmp_path) == before
+
+
+def test_a_refusal_never_prints_a_control_character_from_an_id(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    res = watch_refused(cli("watch", "--out", out, "dsp-001\x1b[31m\r"), "an ID with an escape sequence")
+    assert "\x1b" not in res.err and "\r" not in res.err
+
+
+def test_watch_refuses_an_id_named_twice(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    for dsp in watch_ids(2):
+        watch_record(out, dsp)
+    res = watch_refused(cli("watch", "--out", out, "dsp-001", "dsp-002", "dsp-001"), "a repeated ID")
+    assert "dsp-001" in res.err and clock.sleeps == []
+
+
+@pytest.mark.parametrize("count", [0, 17, 40])
+def test_watch_refuses_no_id_and_more_than_one_wave_of_16(stage, cli, clock, tmp_path, count):
+    """A wave holds at most 16 dispatches in flight (S-8). Even with a record for each, 17 is refused."""
+    out = watch_out(tmp_path)
+    ids = watch_ids(count)
+    for dsp in ids:
+        watch_record(out, dsp)
+    watch_refused(cli("watch", "--out", out, *ids), "%d IDs" % count)
+    assert clock.sleeps == []
+
+
+@pytest.mark.parametrize("count", [1, 16])
+def test_watch_takes_from_one_to_16_ids(stage, cli, clock, tmp_path, count):
+    out = watch_out(tmp_path)
+    ids = watch_ids(count, first=100)
+    for dsp in ids:
+        watch_record(out, dsp)
+    watch_said(cli("watch", "--out", out, *ids), 0, "done", [], "%d IDs, all recorded" % count)
+
+
+def test_watch_takes_the_four_digit_ids_of_a_long_run(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    ids = ["dsp-999", "dsp-1000", "dsp-9999"]
+    for dsp in ids:
+        watch_record(out, dsp)
+    watch_said(cli("watch", "--out", out, *ids), 0, "done", [], "3- and 4-digit IDs")
+
+
+def test_watch_refuses_an_out_that_is_not_a_directory(stage, cli, clock, tmp_path):
+    """``watch`` has no exit 1 (``cli.md``: 0, 2 and 3), so a missing directory is exit 2, as for ``fail``. Nothing is created, and it never waits."""
+    missing = tmp_path / "nothing"
+    watch_refused(cli("watch", "--out", missing, "dsp-001"), "a missing --out")
+    assert not missing.exists()
+    a_file = tmp_path / "a-file"
+    a_file.write_bytes(b"x")
+    res = watch_refused(cli("watch", "--out", a_file, "dsp-001"), "--out a file")
+    assert "--out" in res.err and clock.sleeps == []
+
+
+def test_watch_refuses_an_out_whose_path_a_document_cannot_carry(stage, cli, clock, tmp_path):
+    """``--out`` is checked as the other subcommands check it, with D7's rule for the path first."""
+    odd = tmp_path / "back`tick"
+    odd.mkdir()
+    watch_record(odd, "dsp-001")
+    res = watch_refused(cli("watch", "--out", odd, "dsp-001"), "an --out with a backtick")
+    assert "--out" in res.err and clock.sleeps == []
+
+
+def test_watch_checks_out_before_it_checks_the_ids(stage, cli, clock, tmp_path):
+    """The contract's order: ``--out`` first, then the IDs, so the first check that fails is the one reported."""
+    res = watch_refused(cli("watch", "--out", tmp_path / "nothing", "dsp-1", "dsp-1"), "a missing --out with two bad IDs")
+    assert "--out" in res.err and "dsp-1" not in res.err and clock.sleeps == []
+
+
+def test_watch_needs_an_out(stage, cli, clock, tmp_path):
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-001")
+    watch_said(cli("watch", "--out", out, "dsp-001"), 0, "done", [], "the command with its --out")  # the command is there, so the refusal below is the missing option's
+    res = cli("watch", "dsp-001")
+    assert res.code == 2 and res.out == "" and "required" in res.err and "--out" in res.err  # argparse's usage error
+    assert clock.sleeps == []
+
+
+# ---- the deadline is not a setting
+
+@pytest.mark.parametrize("flag", [["--seconds", "1"], ["--deadline", "1"], ["--poll", "1"], ["--timeout", "1"]], ids=lambda flag: flag[0])
+def test_the_deadline_is_not_a_command_line_setting(stage, cli, clock, tmp_path, flag):
+    out = watch_out(tmp_path)
+    watch_record(out, "dsp-001")
+    watch_said(cli("watch", "--out", out, "dsp-001"), 0, "done", [], "the command without the flag")  # the command is there, so the refusal below is the flag's
+    res = cli("watch", "--out", out, *flag, "dsp-001")
+    assert res.code == 2 and res.out == "" and "unrecognized arguments" in res.err and clock.sleeps == []
+
+
+@pytest.mark.parametrize("variable", ["WATCH_SECONDS", "WATCH_POLL_SECONDS", "TACHI_WATCH_SECONDS", "TACHI_WATCH_DEADLINE"])
+def test_the_deadline_is_not_an_environment_setting(stage, cli, clock, tmp_path, monkeypatch, variable):
+    monkeypatch.setenv(variable, "1")
+    out = watch_out(tmp_path)
+    watch_said(cli("watch", "--out", out, "dsp-001"), 3, "timed-out", ["dsp-001"], "%s set to 1" % variable)
+    assert clock.elapsed == 5400 and set(clock.sleeps) == {5}
+
+
+# ---- --help, and a real interpreter
+
+def test_help_names_watch_and_its_arguments(stage, cli):
+    top = cli("--help")
+    assert top.code == 0 and "watch" in top.out
+    text = cli("watch", "--help")
+    assert text.code == 0 and "--out" in text.out and "DSP" in text.out
+    assert "--seconds" not in text.out and "--deadline" not in text.out
+
+
+def test_watch_exits_from_a_real_interpreter(tmp_path):
+    """What a process alone shows (H15): the ``__main__`` guard turns ``main``'s result into the exit status, one JSON object reaches stdout, and a refusal
+    reaches stderr alone. The deadline can't be shown this way: it is 90 minutes of a real clock, and ``test_watch_works_on_the_real_clock`` covers the loop."""
+    out = watch_out(tmp_path)
+    for dsp in watch_ids(2):
+        watch_record(out, dsp)
+    done = _run_script("watch", "--out", out, "dsp-001", "dsp-002")
+    assert done.returncode == 0 and done.stderr == "", done.stderr
+    assert json.loads(done.stdout) == {"status": "done", "pending": []}
+    bad = _run_script("watch", "--out", out, "dsp-001", "dsp-1")
+    assert bad.returncode == 2 and bad.stdout == "" and "TACHI THREAT-MODEL FAILED" in bad.stderr and "Remedy: " in bad.stderr
+    absent = _run_script("watch", "--out", tmp_path / "nothing", "dsp-001")
+    assert absent.returncode == 2 and absent.stdout == "" and "TACHI THREAT-MODEL FAILED" in absent.stderr

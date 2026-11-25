@@ -12,13 +12,14 @@ isn't, never from an agent's reply (ADR-050 D3, D4, D6; ``contracts/cli.md``).
     python3 scripts/tachi-stage.py reconcile --stage S --out DIR --plan ID --plan-digest HEX
     python3 scripts/tachi-stage.py fail      --stage S --out DIR --plan ID --plan-digest HEX --reason R [--detail TEXT]
     python3 scripts/tachi-stage.py architecture-source --threats FILE --architecture PATH
+    python3 scripts/tachi-stage.py watch     --out DIR DSP [DSP ...]
 
 Each command prints one JSON object on stdout and errors on stderr, in D4's four-line form (``TACHI <STAGE>
 FAILED``, the batch or agent, ``Remedy:``, ``Kept for diagnosis:``). The exit codes are D4's:
 
     0 done           1 an input is missing or unreadable      2 a validation, usage or guard failure
-    3 batches pending (``reconcile`` only)                    4 a cap or the retry budget is exhausted
-    5 done, with a warning (``architecture-source`` only, here)
+    3 batches pending (``reconcile``), or a wave's deadline passed (``watch``)
+    4 a cap or the retry budget is exhausted                  5 done, with a warning (``architecture-source`` only, here)
 
 The scorer's plan sends the agent only the findings that need judgment (ADR-050 D2): the non-peers that are NEW or
 UPDATED, or have no usable row in the baseline. The renderer inherits the rest, through the same
@@ -52,6 +53,13 @@ out of ``refs`` and recorded as the plan's ``architecture_warning``, which the r
 The planner is also a function, :func:`plan_stage`. Batch sizes are constants in ``BATCH_SIZES``, not adopter
 settings, so ``plan_stage``'s ``batch_size`` argument is the one way a test sets a smaller one (D6).
 
+``watch`` is Phase 2's bound (ADR-050 D6; ``contracts/threat-model-records.md``, "The watch"). The orchestrator starts one in the
+background with each wave of threat-agent dispatches, naming the wave's dispatch IDs. It looks every ``WATCH_POLL_SECONDS`` for each
+dispatch's record under ``--out``, and exits 0 once every one has it, or exits 3 when ``WATCH_SECONDS`` have passed on the monotonic clock,
+printing the IDs that have none, so a dispatch whose agent never returns can't hold the run for good. It writes nothing, not even a stage
+record: the orchestrator writes each timed-out dispatch's record from that exit. The deadline is a constant and not an adopter setting, and
+:func:`watch`'s ``seconds`` and ``poll`` arguments are the one way a test sets a smaller one.
+
 Everything the batch commands write sits under ``--out``, and every path under it is recomputed from ``--out``, the
 stage and allow-listed IDs by ``tachi_parts``' layout builders, never read from a file, except the plan's
 digest-checked ``inputs``. ``architecture-source`` is the one other writer: it edits the one ``--threats`` file in
@@ -71,6 +79,7 @@ import os
 import platform
 import re
 import stat
+import time
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -1221,6 +1230,69 @@ def architecture_source(threats: Any, candidate: str) -> tuple:
 
 
 # =============================================================================
+# watch (Phase 2's bound; ADR-050 D6, S1P-PM9; contracts/threat-model-records.md, "The watch")
+# =============================================================================
+
+# The deadline is 90 minutes, about four times the longest working child that a live run measured (ADR-050 D6). It is a constant and not an adopter
+# setting: a test sets a smaller one only through ``watch``'s arguments, and the live demonstration (T160) changes this one line in an installed copy.
+WATCH_SECONDS = 5400
+WATCH_POLL_SECONDS = 5
+WATCH_STAGE = "threat-model"  # the banner of its refusals: Phase 2 belongs to the run-level stage
+
+
+def _watch_ids(dispatch_ids: Any) -> List[str]:
+    """The wave's dispatch IDs, checked before anything waits: 1 to ``WAVE_SIZE`` of them, each a full match of the dispatch allow-list, none twice.
+
+    Anything else is exit 2, in D4's form. A bad ID is named as ``repr`` writes it, cut at 60 characters, so a control character in it is shown escaped
+    and never printed.
+    """
+    ids = list(dispatch_ids)
+    if not 1 <= len(ids) <= WAVE_SIZE:
+        raise StageError(2, WATCH_STAGE, "watch takes 1 to %d dispatch IDs, not %d" % (WAVE_SIZE, len(ids)),
+                         "name the dispatches of one wave, at most %d" % WAVE_SIZE)
+    for position, value in enumerate(ids):
+        if not tp.id_matches("dispatch", value):
+            raise StageError(2, WATCH_STAGE, "%s is not a dispatch ID" % repr(value)[:60], "pass dispatch IDs such as dsp-001")
+        if value in ids[:position]:
+            raise StageError(2, WATCH_STAGE, "%s is named twice" % value, "name each dispatch of the wave once")
+    return ids
+
+
+def _recorded(out: str, dispatch_id: str) -> bool:
+    """Whether the dispatch has its record: ``<out>/.tachi-build/records/<dispatch_id>.json`` as a regular file, with no link on the way down from ``out``.
+
+    That is D3's path guard, so a link in the file's place, or in ``records/``'s or ``.tachi-build/``'s, counts for nothing. The file is never opened: the
+    orchestrator has written it when it is there, and what it holds is Step 2.8's to read.
+    """
+    return tp.path_guard_problem(os.path.join(out, tp.BUILD_DIR, "records", dispatch_id + ".json"), out) is None
+
+
+def watch(out: Any, dispatch_ids: Any, seconds: float = WATCH_SECONDS, poll: float = WATCH_POLL_SECONDS) -> tuple:
+    """Wait until every named dispatch has its record, or ``seconds`` have passed, and return ``(code, printed)``. It writes nothing.
+
+    Code 0 with ``{"status": "done", "pending": []}`` once every record is there, and code 3 with ``{"status": "timed-out", "pending": [...]}``, the IDs
+    that have none in the order they were given, when the deadline passes first. The records are looked at before the first sleep, so a wave that is
+    already recorded returns at once, and once more after each sleep, so a record that landed during the last one still counts. The deadline is
+    ``seconds`` on ``time.monotonic()`` from the point where the arguments have passed, and the last sleep is cut to what is left, so the exit comes
+    at the deadline and not a poll after it. ``seconds`` and ``poll`` are the function interface (ADR-050 D6): the command line takes neither.
+
+    ``--out`` is checked as the other commands check it, so a path that a document can't carry is exit 2, and so is a directory that isn't there:
+    ``watch`` has no exit 1.
+    """
+    out = _out_dir(WATCH_STAGE, out, missing_code=2)
+    ids = _watch_ids(dispatch_ids)
+    deadline = time.monotonic() + seconds
+    while True:
+        pending = [dispatch_id for dispatch_id in ids if not _recorded(out, dispatch_id)]
+        if not pending:
+            return 0, {"status": "done", "pending": []}
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return 3, {"status": "timed-out", "pending": pending}
+        time.sleep(min(poll, remaining))
+
+
+# =============================================================================
 # The command line
 # =============================================================================
 
@@ -1262,6 +1334,12 @@ def _run_architecture_source(args: argparse.Namespace) -> int:
     return code
 
 
+def _run_watch(args: argparse.Namespace) -> int:
+    code, printed = watch(args.out, args.dispatch_ids)
+    _emit(printed)
+    return code
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="tachi-stage.py", description="Plan, reconcile and fail a batched tachi stage (F-374).")
     parser.add_argument("--version", action="version",
@@ -1298,6 +1376,11 @@ def _build_parser() -> argparse.ArgumentParser:
     source.add_argument("--threats", required=True, help="the threats.md to edit in place")
     source.add_argument("--architecture", required=True, help="the command's own path to the architecture file; the shared resolver checks it")
     source.set_defaults(run=_run_architecture_source)
+
+    waiting = commands.add_parser("watch", help="wait until every dispatch of a Phase 2 wave has its record, or the deadline passes")
+    waiting.add_argument("--out", required=True, help="the run's output directory; the records are looked for under it, and nothing is written")
+    waiting.add_argument("dispatch_ids", nargs="*", metavar="DSP", help="the wave's dispatch IDs, 1 to 16 of them, such as dsp-001")
+    waiting.set_defaults(run=_run_watch)
     return parser
 
 
