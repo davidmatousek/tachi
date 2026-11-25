@@ -30,6 +30,7 @@ This skill contains four shared reference files:
 | `references/sarif-identity-shared.md` | risk-scorer, control-analyzer | When a SARIF result's identity or membership matters: the `ruleId` map, the `primaryLocationLineHash` recipe, the location and fingerprint rules, and the one-result-per-open-finding count |
 | `references/part-file-contract-shared.md` | risk-scorer, control-analyzer | When writing, reading or checking a part file: the envelope, the string classes, the narrative slot grammar, and the overflow and batch-plan contract |
 | `references/agent-roster-shared.md` | orchestrator | When dispatching any tachi agent: the exact typed `subagent_type` for each agent, the no-substitute rule, and the stop when an agent can't be spawned |
+| `references/dispatch-record-brief-shared.md` | orchestrator | When writing a Phase 1 or Phase 2 working file: the template, keys and limits of the inventory, the dispatch table, each brief, each dispatch record and the ID map, the fixed prompt, and the end-marker rule for returns |
 
 ## Loading Mechanism
 

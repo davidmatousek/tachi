@@ -1,4 +1,4 @@
-"""Contract-text tests for F-374, W1 to W3 and W5's fixes (T010, T029 to T031, T037, T038, T051, T147; ADR-050 D16;
+"""Contract-text tests for F-374, W1 to W3 and W5's fixes (T010, T029 to T031, T037, T038, T051, T147, T094; ADR-050 D16;
 spec US-4 #5, FR-N4.1, FR-N4.4, FR-E.1, FR-E.3, FR-K6.3, FR-K7.4, FR-K8.3, FR-N14.1).
 
 The agent specs, the shared references and the shipped helpers state one contract in three places.
@@ -18,8 +18,9 @@ Inputs (read-only; repository-relative; every one matches an existing ``paths:``
 - ``.claude/skills/tachi-shared/SKILL.md`` and its references ``agent-roster-shared.md``,
   ``sarif-identity-shared.md``, ``part-file-contract-shared.md``, ``finding-format-shared.md``,
   ``stride-categories-shared.md`` and ``dispatch-record-brief-shared.md``.
-- ``.claude/skills/tachi-orchestration/SKILL.md`` and ``references/coverage-requirements.md``, and every
-  other ``.claude/skills/**`` Markdown file (section 7 scans them for a load of the staged reference).
+- ``.claude/skills/tachi-orchestration/SKILL.md`` and ``references/coverage-requirements.md`` and
+  ``references/dispatch-rules.md``, and every other ``.claude/skills/**`` Markdown file (section 7 scans them
+  for a load of the record and brief reference).
 - ``schemas/coverage-checklists.yaml`` (its comment table; read as text, never parsed as YAML),
   ``INSTALL_MANIFEST.md``, ``adapters/claude-code/README.md`` and ``adapters/claude-code/agents/*.md``.
 - ``scripts/tachi_parts.py``, ``scripts/tachi_scoring.py`` and ``scripts/sarif_common.py``, imported, and
@@ -37,10 +38,15 @@ What each section proves:
    be spawned (T008, T009; US-4 #5). The scanner is shown red on sample sentences.
 4. The adapter copies carry R-17's superseded-by header, and the adapter README warns first (FR-C.1).
 5. One roster: ``agent-roster-shared.md`` equals the agent files, and every other list of agents is a
-   projection of it (FR-N4.1; the architect's ruling E). The three new PR 1 references are in the
-   shared skill's Loading Table with the consumers they declare.
+   projection of it (FR-N4.1; the architect's ruling E). The three new PR 1 references, and PR 2's
+   record and brief reference (T094), are in the shared skill's Loading Table with the consumers they
+   declare.
 6. The orchestrator's shell fences are single ``python3`` calls of shipped scripts (FR-N4.4; guard C6).
-7. PR 1's Track O text is inert (ADR-050 D11, spec S-5). **PR 2 flips this section** (T094).
+7. PR 2's Track O text is live (ADR-050 D11; T093, T094). PR 1 pinned it inert, and T094 inverted the
+   pin: the orchestrator's Phases 1 to 3 load the record and brief reference and agree with its five
+   templates, the old inline protocol is gone, and the dispatch rules' table rows follow the persisted
+   file's order. The end marker is still in no agent spec, no command and not in
+   ``finding-format-shared.md``: those pins stay until T097 and T111 flip them (AR-T7).
 8. ``sarif-identity-shared.md`` equals ``sarif_common`` (T005): tools, categories, rule IDs, the
    three ``tachi-plh/1`` vectors, ruling C's sentences, the resolver's and the result's names, the
    result shape and key order, and the 14 emitter constants. The ``dormant`` status of
@@ -126,6 +132,7 @@ SHARED_SKILL = SHARED + "/SKILL.md"
 ORCHESTRATION = SKILLS_DIR + "/tachi-orchestration"
 ORCHESTRATION_SKILL = ORCHESTRATION + "/SKILL.md"
 COVERAGE_REQUIREMENTS = ORCHESTRATION + "/references/coverage-requirements.md"
+DISPATCH_RULES = ORCHESTRATION + "/references/dispatch-rules.md"
 COVERAGE_CHECKLISTS = "schemas/coverage-checklists.yaml"
 INSTALL_MANIFEST = "INSTALL_MANIFEST.md"
 ADAPTER_README = "adapters/claude-code/README.md"
@@ -745,14 +752,17 @@ NEW_PR1_REFERENCES = {
     "part-file-contract-shared.md": PART_CONTRACT,
     "agent-roster-shared.md": ROSTER,
 }
+# PR 2's reference joined the table in the commit that made it live (T094; the PM's re-sign at v1.4).
+NEW_PR2_REFERENCES = {"dispatch-record-brief-shared.md": DISPATCH_RECORD_BRIEF}
+NEW_REFERENCES = {**NEW_PR1_REFERENCES, **NEW_PR2_REFERENCES}
 
 
-@pytest.mark.parametrize("name", sorted(NEW_PR1_REFERENCES))
-def test_each_new_pr_1_reference_is_in_the_loading_table_with_the_consumers_it_declares(name):
+@pytest.mark.parametrize("name", sorted(NEW_REFERENCES))
+def test_each_new_reference_is_in_the_loading_table_with_the_consumers_it_declares(name):
     rows = [r for r in table_after(text_of(SHARED_SKILL), "## Loading Table", where=SHARED_SKILL).rows
             if strip_ticks(r[0]) == "references/" + name]
     assert len(rows) == 1, "the shared skill's Loading Table has no single row for %s" % name
-    assert {c.strip() for c in rows[0][1].split(",")} == set(frontmatter_list(text_of(NEW_PR1_REFERENCES[name]), "consumers"))
+    assert {c.strip() for c in rows[0][1].split(",")} == set(frontmatter_list(text_of(NEW_REFERENCES[name]), "consumers"))
 
 
 @pytest.mark.parametrize("path, code", [(SARIF_IDENTITY, "scripts/sarif_common.py"), (PART_CONTRACT, "scripts/tachi_parts.py")])
@@ -889,21 +899,25 @@ def test_the_command_scanner_flags_what_c6_forbids(body):
 
 
 # =============================================================================
-# 7. PR 1's Track O text is inert (ADR-050 D11, spec S-5). PR 2's T094 flips this group.
+# 7. PR 2's Track O text is live (ADR-050 D11; T093, T094). PR 1 pinned it inert (T010), and T094 inverted the
+#    pin: the orchestrator's Phases 1 to 3 load the record and brief reference and agree with its templates. The
+#    end marker is not live yet, so its pins below stay as PR 1 left them, until T097 and T111 flip them (AR-T7).
 # =============================================================================
+
+ORCHESTRATOR_SPEC = "%s/orchestrator.md" % AGENTS_DIR
 
 
 def end_marker_tokens() -> Set[str]:
-    """The end marker's provisional text, read from the staged reference: ``TACHI-END`` and ``TACHI-OVERFLOW``."""
+    """The end marker's provisional text, read from the record and brief reference: ``TACHI-END`` and ``TACHI-OVERFLOW``."""
     section = section_text(text_of(DISPATCH_RECORD_BRIEF), "## End Marker (provisional)", DISPATCH_RECORD_BRIEF)
     tokens = set(re.findall(r"TACHI-[A-Z]+", section))
     if tokens != {"TACHI-END", "TACHI-OVERFLOW"}:
-        raise ReferenceDrift("the staged end marker's text moved: %s" % sorted(tokens))
+        raise ReferenceDrift("the end marker's provisional text moved: %s" % sorted(tokens))
     return tokens
 
 
-def loaders_of_the_staged_reference() -> List[str]:
-    """Every tachi agent, tachi command and skill file, other than the staged reference itself, that names it."""
+def loaders_of_the_reference() -> List[str]:
+    """Every tachi agent, tachi command and skill file, other than the record and brief reference itself, that names it."""
     own = REPO_ROOT / DISPATCH_RECORD_BRIEF
     candidates = sorted((REPO_ROOT / AGENTS_DIR).rglob("*.md"))
     candidates += sorted((REPO_ROOT / COMMANDS_DIR).glob("tachi.*.md"))
@@ -912,16 +926,28 @@ def loaders_of_the_staged_reference() -> List[str]:
             if path != own and "dispatch-record-brief" in path.read_text(encoding="utf-8")]
 
 
-def test_no_pr_1_agent_command_or_skill_loads_the_record_and_brief_reference():
-    assert loaders_of_the_staged_reference() == []
+def test_the_orchestrator_loads_the_record_and_brief_reference_before_it_writes_the_inventory():
+    text = spec_text("orchestrator")
+    load = "**MANDATORY**: Read `%s`" % DISPATCH_RECORD_BRIEF
+    persist = "**Persist the inventory.**"
+    assert (REPO_ROOT / DISPATCH_RECORD_BRIEF).is_file()
+    assert load in text, "the orchestrator has no MANDATORY read of the record and brief reference"
+    assert text.count(persist) == 1, "the orchestrator's inventory step moved"
+    assert text.index(load) < text.index(persist), "the orchestrator writes the inventory before it reads the templates"
 
 
-def test_the_staged_reference_says_nothing_loads_it_yet():
+def test_only_the_orchestrator_names_the_record_and_brief_reference_among_the_agents():
+    agents = [path for path in loaders_of_the_reference() if path.startswith(AGENTS_DIR + "/")]
+    assert agents == [ORCHESTRATOR_SPEC], "the agents that name the reference: %s" % agents
+    assert set(frontmatter_list(text_of(DISPATCH_RECORD_BRIEF), "consumers")) == {"orchestrator"}
+
+
+def test_the_record_and_brief_reference_is_final_except_for_its_end_marker():
     text = text_of(DISPATCH_RECORD_BRIEF)
-    assert frontmatter_scalar(text, "status") == "staged"
-    assert frontmatter_scalar(text, "consumers") == "[]"
-    assert "Staged: nothing loads this file yet." in text
-    assert "dispatch-record-brief" not in text_of(SHARED_SKILL)
+    assert frontmatter_scalar(text, "status") is None, "the reference still says it is staged"
+    assert "Staged: nothing loads this file yet" not in text
+    assert "**Only the end marker is provisional.**" in text
+    assert "## End Marker (provisional)" in text
 
 
 def test_finding_format_has_neither_the_end_marker_nor_the_brief_rename():
@@ -932,21 +958,251 @@ def test_finding_format_has_neither_the_end_marker_nor_the_brief_rename():
     assert text.count("dispatch record") >= 3, "the three 'dispatch record' places D11 renames in PR 2 are gone"
 
 
-def test_no_agent_spec_or_command_carries_the_end_marker_or_the_record_and_brief_files():
+def test_no_agent_spec_or_command_carries_the_end_marker_yet():
     markers = sorted(end_marker_tokens())
-    staged_paths = ["/briefs/", "/records/", "phase1/", "idmap.json"]
     files = [(AGENTS_DIR + "/%s.md" % stem) for stem in AGENT_STEMS]
     files += [p.relative_to(REPO_ROOT).as_posix() for p in sorted((REPO_ROOT / COMMANDS_DIR).glob("tachi.*.md"))]
     for path in files:
         text = text_of(path)
-        for token in markers + staged_paths:
-            assert token not in text, "%s already mentions %s, which is PR 2's" % (path, token)
+        for token in markers:
+            assert token not in text, "%s already mentions %s, which T097 and T111 add" % (path, token)
 
 
-def test_the_orchestrator_has_no_dispatch_record_mechanics_yet():
+# The orchestrator writes the working files, and no other agent names one: the threat agents are read-only.
+WORKING_FILE_MARKS = ("/briefs/", "/records/", "phase1/", "idmap.json")
+# The headings of the orchestrator's Phase 2 and Phase 3 protocol (T093).
+PROTOCOL_HEADINGS = ("#### Persist the Dispatch Table", "#### Plan the Dispatches", "#### Write a Brief", "#### Dispatch",
+                     "#### Record Each Return", "#### Re-Dispatch a Truncated Return", "#### When a Lineage Is Exhausted",
+                     "### The ID Map")
+# What the inline-payload protocol said before T093 replaced it (ADR-050 D11). The orchestrator says none of it now.
+INLINE_PROTOCOL = (
+    "produce a visible intermediate artifact labeled",
+    "Produce a visible intermediate component inventory",
+    "Produce a visible dispatch table as an intermediate artifact",
+    "dispatch table intermediate artifact has been produced and validated",
+    "list target components with names and DFD types; and provide the full architecture context",
+    "The context payload includes target components, full architecture context, analysis scope",
+)
+
+
+def test_no_other_agent_spec_names_a_working_file_of_the_orchestrator():
+    for stem in AGENT_STEMS:
+        if stem != "orchestrator":
+            for mark in WORKING_FILE_MARKS:
+                assert mark not in spec_text(stem), "%s.md names %s, a working file of the orchestrator" % (stem, mark)
+
+
+def test_the_orchestrator_has_the_dispatch_protocol_and_not_the_inline_payload_one():
     text = spec_text("orchestrator")
-    assert "dispatch record" not in text.lower()
-    assert ".tachi-build" not in text
+    headings = [line for line in text.splitlines() if line.startswith("#")]
+    for heading in PROTOCOL_HEADINGS:
+        assert headings.count(heading) == 1, "the orchestrator has no single heading %r" % heading
+    for old in INLINE_PROTOCOL:
+        assert old not in text, "the orchestrator still says %r, which ADR-050 D11 replaced" % old
+    assert ".tachi-build" in text and "dispatch record" in text.lower()
+    assert text.count("print no copy of it") >= 2, "the inventory and the dispatch table are each persisted, with no printed copy"
+
+
+def test_the_orchestrator_names_each_working_file_at_the_path_the_reference_gives():
+    reference = text_of(DISPATCH_RECORD_BRIEF)
+    rows = table_after(reference, "## Where the Files Live", where=DISPATCH_RECORD_BRIEF).rows
+    assert [row[0] for row in rows] == ["Phase 1 inventory", "Phase 1 dispatch table", "Brief", "Dispatch record", "ID map"]
+    text = spec_text("orchestrator")
+    for name, path, _written, _cap in rows:
+        assert strip_ticks(path) in text, "the orchestrator never names the %s at %s" % (name.lower(), strip_ticks(path))
+    # Every path it names for one of these files, by folder or by file name, is one of the five. So a path changed in one
+    # place is caught, and a path for a later phase (the section manifest, the chain files) is not a working file here.
+    named = {path.rstrip(".,;:") for path in re.findall(r"\{out\}/\.tachi-build/[^\s`)]+", text)}
+    working = {path for path in named
+               if re.match(r"\{out\}/\.tachi-build/(phase1|briefs|records)/", path) or "{dispatch_id}" in path
+               or path.rsplit("/", 1)[-1] in ("inventory.json", "dispatch.json", "idmap.json")}
+    assert working == {strip_ticks(path) for _name, path, _written, _cap in rows}
+    assert "each in one Write call, and never rewrites one or reads one back" in reference
+    assert "Write each file once, in one Write call, and never edit or rewrite it. Never read one back" in text
+
+
+# The five templates of the record and brief reference: a label, the reference's heading and the schema the file names.
+TEMPLATES = (
+    ("inventory", "## Phase 1 Inventory", "tachi.phase1-inventory/1"),
+    ("dispatch table", "## Dispatch Table", "tachi.phase1-dispatch/1"),
+    ("brief", "## Brief", "tachi.brief/1"),
+    ("dispatch record", "## Dispatch Record", "tachi.dispatch-record/1"),
+    ("ID map", "## ID Map", "tachi.idmap/1"),
+)
+TEMPLATE_IDS = [row[0] for row in TEMPLATES]
+_DISPATCH_ID = re.compile(r"dsp-[0-9]{3,4}")
+# The record's closed values (ADR-050 D6 and D11). The end marker's table sets ``reason``, so T090 may change it.
+RECORD_VALUES = {
+    "origin": ("planned", "redispatch", "coverage-gap"),
+    "status": ("complete", "superseded", "unrecovered"),
+    "reason": ("no_end_marker", "overflow_error"),
+}
+
+
+def template_of(anchor: str) -> Tuple[Any, Table]:
+    """A template's example object and its key table, both read from the record and brief reference."""
+    text = text_of(DISPATCH_RECORD_BRIEF)
+    section = section_text(text, anchor, DISPATCH_RECORD_BRIEF, keep_fences=True)
+    blocks = [fence.body for fence in fences(section) if fence.label == "json"]
+    if len(blocks) != 1:
+        raise ReferenceDrift("%s: %r holds %d json examples, not one" % (DISPATCH_RECORD_BRIEF, anchor, len(blocks)))
+    return json.loads(blocks[0]), table_after(text, anchor, where=DISPATCH_RECORD_BRIEF)
+
+
+def nested_keys(example: Any) -> Set[str]:
+    """The keys of the objects inside a template's example, at any depth. A dispatch ID that keys the ID map is data."""
+    if isinstance(example, dict):
+        children = list(example.values())
+    elif isinstance(example, list):
+        children = list(example)
+    else:
+        children = []
+    found: Set[str] = set()
+    for child in children:
+        if isinstance(child, dict):
+            found |= {key for key in child if not _DISPATCH_ID.fullmatch(key)}
+        found |= nested_keys(child)
+    return found
+
+
+def fixed_prompt() -> str:
+    """The one line that points an agent at its brief, as the reference gives it, with ``{brief_path}`` unfilled."""
+    section = section_text(text_of(DISPATCH_RECORD_BRIEF), "## Fixed Prompt", DISPATCH_RECORD_BRIEF, keep_fences=True)
+    blocks = [fence.body.strip() for fence in fences(section)]
+    if len(blocks) != 1 or "\n" in blocks[0]:
+        raise ReferenceDrift("%s: the fixed prompt is not one line in one block" % DISPATCH_RECORD_BRIEF)
+    return blocks[0]
+
+
+def orchestrator_slice(label: str) -> str:
+    """The orchestrator's own words for one working file: the inventory's key list, or the section that gives the file."""
+    text = spec_text("orchestrator")
+    if label == "inventory":
+        marker = "The inventory is a JSON object with exactly these keys:"
+        if text.count(marker) != 1:
+            raise ReferenceDrift("%s: the inventory's key list moved" % ORCHESTRATOR_SPEC)
+        return text.split(marker, 1)[1].split("\n---", 1)[0]
+    anchors = {"dispatch table": "#### Persist the Dispatch Table", "brief": "#### Write a Brief",
+               "dispatch record": "#### Record Each Return", "ID map": "### The ID Map"}
+    return section_text(text, anchors[label], ORCHESTRATOR_SPEC)
+
+
+@pytest.mark.parametrize("label, anchor, schema", TEMPLATES, ids=TEMPLATE_IDS)
+def test_each_template_example_holds_the_keys_its_table_names_and_the_schema_it_says(label, anchor, schema):
+    example, table = template_of(anchor)
+    named = {token for row in table.rows for token in ticks(row[0])}
+    assert set(example) == named, "%s: the example holds %s and the table names %s" % (label, sorted(example), sorted(named))
+    assert example["schema"] == schema
+    assert [row[1] for row in table.rows if row[0] == "`schema`"] == ['`"%s"`' % schema]
+    words = " ".join(" ".join(row) for row in table.rows)
+    for key in sorted(nested_keys(example)):
+        assert re.search(r"\b%s\b" % re.escape(key), words), "%s: the table never names the nested key %r" % (label, key)
+
+
+@pytest.mark.parametrize("label, anchor, schema", TEMPLATES, ids=TEMPLATE_IDS)
+def test_the_orchestrator_names_the_schema_and_the_keys_of_each_template(label, anchor, schema):
+    example, _ = template_of(anchor)
+    words = orchestrator_slice(label)
+    assert "`%s`" % schema in words, "%s: the orchestrator never names the schema %s" % (label, schema)
+    for key in sorted(example):
+        assert "`%s`" % key in words, "%s: the orchestrator never names the key %r" % (label, key)
+    for key in sorted(nested_keys(example)):
+        assert re.search(r"\b%s\b" % re.escape(key), words), "%s: the orchestrator never names the nested key %r" % (label, key)
+    listed = set(re.findall(r"^- `([^`]+)`", words, re.MULTILINE))
+    assert listed <= set(example) | nested_keys(example), "%s: keys the template lacks: %s" % (
+        label, sorted(listed - set(example) - nested_keys(example)))
+
+
+def test_the_inventory_s_character_limits_are_the_same_in_the_orchestrator_and_the_reference():
+    reference = " ".join(" ".join(row) for row in template_of("## Phase 1 Inventory")[1].rows)
+    limits = re.findall(r"at most ([0-9]+) characters", reference)
+    assert len(limits) == 3, "the inventory's description, data and protocol each have a character limit: %s" % limits
+    assert re.findall(r"at most ([0-9]+) characters", orchestrator_slice("inventory")) == limits
+
+
+def test_the_examples_describe_one_dispatch_and_agree_with_each_other():
+    inventory, _ = template_of("## Phase 1 Inventory")
+    dispatch, _ = template_of("## Dispatch Table")
+    record, _ = template_of("## Dispatch Record")
+    brief, _ = template_of("## Brief")
+    idmap, _ = template_of("## ID Map")
+    names = [component["name"] for component in inventory["components"]]
+    assert len({name.casefold() for name in names}) == len(names)
+    assert all(flow[end] in names for flow in inventory["data_flows"] for end in ("source", "destination"))
+    assert all(name in names for zone in inventory["trust_zones"] for name in zone["components"])
+    assert [row["component"] for row in dispatch["rows"]] == names, "one row for each component, in the inventory's order"
+    for row in dispatch["rows"]:
+        assert row["stride"] == [letter for letter in "STRIDE" if letter in row["stride"]], row
+        assert row["ai"] == [key for key in ("AG", "LLM") if key in row["ai"]], row
+    key_of = {agent: key for agent, key, *_ in roster_rows(text_of(ROSTER))[0]}
+    scope = [row["component"] for row in dispatch["rows"] if key_of[record["agent_type"]] in row["stride"] + row["ai"]]
+    assert record["scope"]["components"] == brief["targets"] == scope, "a scope is the rows that carry the agent's key"
+    for key in ("dispatch_id", "agent_type"):
+        assert record[key] == brief[key]
+    assert record["brief"].endswith("/briefs/%s.json" % record["dispatch_id"])
+    assert record["prompt"] == fixed_prompt().replace("{brief_path}", record["brief"])
+    assert brief["inputs"]["inventory"].endswith("/phase1/inventory.json")
+    assert brief["inputs"]["dispatch_table"].endswith("/phase1/dispatch.json")
+    assert (record["status"] == "complete") is record["end_marker"] and record["reason"] is None
+    assert record["count"] == len(record["local_ids"]) == len(idmap["records"][record["dispatch_id"]])
+
+
+def test_the_records_closed_values_agree_in_the_reference_the_orchestrator_and_the_end_marker_rule():
+    reference = text_of(DISPATCH_RECORD_BRIEF)
+    cells = {strip_ticks(row[0]): row[1] for row in template_of("## Dispatch Record")[1].rows}
+    orchestrator = orchestrator_slice("dispatch record")
+    for key, values in RECORD_VALUES.items():
+        for value in values:
+            assert '`"%s"`' % value in cells[key], "the reference's %s row lacks %s" % (key, value)
+            assert "`%s`" % value in orchestrator, "the orchestrator never writes %s for %s" % (value, key)
+    table = table_after(spec_text("orchestrator"), "#### Record Each Return", where=ORCHESTRATOR_SPEC)
+    assert [strip_ticks(row[2]) for row in table.rows] == list(RECORD_VALUES["status"])
+    rule = table_after(reference, "**Rule for the dispatcher**", where=DISPATCH_RECORD_BRIEF)
+    assert {strip_ticks(row[2]).strip('"') for row in rule.rows} == set(RECORD_VALUES["reason"]) | {"null"}
+
+
+def test_the_orchestrator_sends_the_fixed_prompt_and_classifies_returns_by_the_reference_s_end_marker_rule():
+    text = spec_text("orchestrator")
+    assert fixed_prompt() == "Read and follow the brief at {brief_path}."
+    assert fixed_prompt().replace("{brief_path}", "<brief path>") in text
+    assert "by the end-marker rule in the End Marker section of the dispatch record and brief reference" in text
+    assert "This file adds no rule of its own, so the predicate has one home." in text
+
+
+def agents_per_dispatch_key() -> Dict[str, int]:
+    """How many Phase 2 agents carry each dispatch key in the roster: one for each STRIDE letter, three for AG, five for LLM."""
+    counts: Dict[str, int] = {}
+    for _agent, key, *_rest in roster_rows(text_of(ROSTER))[0]:
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def test_the_dispatch_rules_persist_the_table_and_print_no_copy_of_it():
+    text = text_of(DISPATCH_RULES)
+    persisted = "{out}/.tachi-build/phase1/dispatch.json"
+    for gone in ("visible dispatch table", "### Dispatch Table (Intermediate)", "(Intermediate Output)", "before invoking agents"):
+        assert gone not in text, "the dispatch rules still say %r" % gone
+    assert persisted in text and persisted in text_of(DISPATCH_RECORD_BRIEF) and persisted in spec_text("orchestrator")
+    assert DISPATCH_RECORD_BRIEF in text, "the dispatch rules never point at the table's template"
+    assert "Print no copy of the table or the file." in text
+    assert "no field for the note" in section_text(text, "### Ambiguity Note", DISPATCH_RULES)
+
+
+def test_the_dispatch_rules_example_rows_follow_the_normalization_the_roster_and_the_persisted_order():
+    rules = text_of(DISPATCH_RULES)
+    quick = table_after(rules, "### Quick Reference", where=DISPATCH_RULES)
+    letters = [plain(cell) for cell in quick.header[1:]]
+    assert letters == list("STRIDE"), "the persisted file lists STRIDE letters in the Quick Reference's order"
+    stride_of = {plain(row[0]): [letter for letter, mark in zip(letters, row[1:]) if mark.strip() == "x"] for row in quick.rows}
+    counts = agents_per_dispatch_key()
+    rows = table_after(rules, "### Example Rows", where=DISPATCH_RULES).rows
+    assert len(rows) == 5, "the example rows moved"
+    for component, dfd_type, _layer, stride, ai, total in rows:
+        stride_list = [cell.strip() for cell in stride.split(",")]
+        ai_list = [] if ai.strip() == chr(0x2014) else [cell.strip() for cell in ai.split(",")]  # the rules write "none" as an em dash
+        assert stride_list == stride_of[dfd_type], component
+        assert ai_list == [key for key in ("AG", "LLM") if key in ai_list], "%s: AI categories go in the persisted order" % component
+        assert int(total) == len(stride_list) + sum(counts[key] for key in ai_list), component
 
 
 # =============================================================================

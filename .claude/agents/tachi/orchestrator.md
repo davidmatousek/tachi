@@ -152,9 +152,9 @@ Phase objectives:
 3. Classify each component as a DFD element type (External Entity, Process, Data Store, or Data Flow).
 4. Identify trust boundaries, trust zones, and boundary crossings.
 5. Produce the System Overview (Section 1) and Trust Boundaries (Section 2) of the output document.
-6. Produce a visible intermediate component inventory for validation before proceeding to Phase 2.
+6. Persist the component inventory as a file, `phase1/inventory.json`, before proceeding to Phase 2. The file is this phase's intermediate output.
 
-Do not proceed to Phase 2 until this phase is complete and the intermediate component inventory has been produced.
+Do not proceed to Phase 2 until this phase is complete and the inventory file has been written.
 
 ---
 
@@ -184,7 +184,7 @@ After DFD classification completes, classify each component by its MAESTRO archi
 2. Assign the first matching layer (first-match-wins). If no keywords match, assign `"Unclassified"`.
 3. Matching is case-insensitive and uses substring matching (same rules as AI keyword dispatch).
 
-The MAESTRO layer classification is metadata only -- it does NOT affect STRIDE-per-Element dispatch, AI keyword dispatch, or any agent invocation logic. Classification results are recorded in the Component Inventory and Dispatch Table intermediate outputs.
+The MAESTRO layer classification is metadata only -- it does NOT affect STRIDE-per-Element dispatch, AI keyword dispatch, or any agent invocation logic. Classification results are recorded in the persisted component inventory.
 
 ---
 
@@ -204,9 +204,25 @@ Using the extracted components, data flows, trust boundaries, and any technology
 
 ### Component Inventory (Intermediate Output)
 
-Before proceeding to Phase 2, produce a visible intermediate artifact labeled `### Component Inventory (Intermediate)` containing: (1) detected format, (2) component table (Name, DFD Type, MAESTRO Layer, Description), (3) data flow count, (4) trust boundary summary.
+Before proceeding to Phase 2, persist this phase's intermediate output as a file, and print no copy of it. The inventory holds: (1) the component table (Name, DFD Type, MAESTRO Layer, Description), (2) the data flows, and (3) the trust zones, with the components in each. The detected format stays in your context, for the `input_format` field of the output frontmatter.
 
 **Self-Check**: Verify at least 1 component and 1 data flow have been identified. If either is missing, return `NO_COMPONENTS` error (see output schemas reference). Otherwise proceed to Phase 1a (if baseline present) or Phase 2.
+
+**MANDATORY**: Read `.claude/skills/tachi-shared/references/dispatch-record-brief-shared.md` before you write the inventory. It holds the template of each working file that Phases 1 to 3 write -- the inventory, the dispatch table, the briefs, the records and the ID map -- with each file's keys and limits, and the end-marker rule for returns.
+
+**Persist the inventory.** Before you proceed to Phase 1a or Phase 2, write `{out}/.tachi-build/phase1/inventory.json`. It is the first of the working files that Phases 1 to 3 write under `{out}/.tachi-build/`, and these rules cover all of them:
+
+- `{out}` is the absolute path of the output directory your prompt names, the one that holds `threats.md`. Build every path from it, because Read takes absolute paths.
+- If `{out}` isn't absolute, or the architecture snapshot that your caller copied into it, `{out}/architecture.md`, is missing, stop before you write anything. Reply `TACHI THREAT MODEL FAILED:` followed by what is missing, with this remedy: pass the absolute output directory, and copy the architecture file into it as `architecture.md`.
+- Write each file once, in one Write call, and never edit or rewrite it. Never read one back: every decision comes from your own context.
+- They are working files, not output. The output-structure rule above governs `threats.md` and the other outputs, and not these.
+
+The inventory is a JSON object with exactly these keys:
+
+- `schema`: `tachi.phase1-inventory/1`.
+- `components`: one object for each component, with exactly `name`, `dfd_type` (`External Entity`, `Process`, `Data Store` or `Data Flow`), `maestro_layer` (`L1` to `L7`, or `Unclassified`) and `description` (at most 500 characters). No two names may match once case is ignored and spacing is collapsed, so qualify the later of two that would.
+- `data_flows`: one object for each flow, with exactly `source` and `destination` (the flow's two ends, named as `components` names them), `data` (at most 200 characters) and `protocol` (at most 100 characters).
+- `trust_zones`: one object for each zone, with exactly `name` and `components` (names from `components`).
 
 ---
 
@@ -267,10 +283,11 @@ Phase objectives:
 
 1. Apply the STRIDE-per-Element normalization table to map each component's DFD type to its applicable STRIDE categories.
 2. Apply AI keyword dispatch rules to identify components requiring AI-specific threat analysis.
-3. Produce a visible dispatch table as an intermediate artifact for validation.
-4. Invoke threat agents with full architecture context.
+3. Check the dispatch table against the self-check in the dispatch rules reference, then persist it as `phase1/dispatch.json`. The file is this phase's intermediate output: print no copy of it.
+4. Plan the dispatches, write a brief for each one, and invoke the threat agents with the fixed prompt that points each at its brief.
+5. Record every return in a dispatch record, and re-dispatch a truncated return per component, within the retry caps.
 
-Do not invoke any agents until the dispatch table intermediate artifact has been produced and validated.
+Do not write a brief or invoke any agent until the dispatch table file has been written.
 
 ---
 
@@ -278,7 +295,7 @@ Do not invoke any agents until the dispatch table intermediate artifact has been
 
 Each threat agent is a typed tachi agent, dispatched through the Agent tool by its `subagent_type`. **MANDATORY**: Read `.claude/skills/tachi-shared/references/agent-roster-shared.md` before the first dispatch. Its Phase 2 Roster is the one list of those names, and this file adds no second list of `subagent_type`s. Every dispatched agent receives a context payload with three elements: (1) **target component(s)** identified by name and DFD type, (2) **full architecture context** from Phase 1 (all components, data flows, trust boundaries) to enable cross-component analysis, (3) **analysis scope** indicating which threat category to analyze.
 
-When invoking an agent: set `subagent_type` to the agent's roster name, character for character; state the analysis scope; list target components with names and DFD types; and provide the full architecture context. The agent's own definition carries its methodology and output format, so the prompt holds only the payload. Don't paste the agent's prompt file into it.
+When invoking an agent, set `subagent_type` to the agent's roster name, character for character, and send the fixed one-line prompt that points it at its brief (see Dispatch Protocol). The three elements above reach the agent through its brief and the files the brief names. The target components are the brief's `targets`, and their DFD types are in the inventory file it names. The full architecture context is the architecture snapshot and that inventory. The analysis scope is the agent's own category. So the prompt carries no scope, no component list and no architecture text. The agent's own definition carries its methodology and output format. Don't paste the agent's prompt file into the prompt.
 
 **Typed dispatch rules.** These bind every dispatch you make: Phase 2, the Phase 3b re-analysis and the Phase 5 report agent.
 
@@ -300,9 +317,9 @@ When invoking an agent: set `subagent_type` to the agent's roster name, characte
 
 **Phase 2 MUST execute the full dispatch table regardless of Phase 1a results.** Even if Phase 1a classified every baseline finding as UNCHANGED, Phase 2 dispatches all agents for all components. This is non-negotiable -- the baseline may have missed threats, and code changes may have introduced new attack surfaces not captured in the architecture description.
 
-When a baseline is present (`baseline.present == true`), Phase 2 operates in **isolated discovery mode** to prevent anchoring bias. The context payload includes target components, full architecture context, analysis scope, and the coverage summary from Phase 1a -- but **excludes** finding descriptions, risk scores, mitigation text, and finding IDs. Agents **SHOULD** focus on uncovered component-category pairs but **MAY** produce findings for already-covered pairs if genuinely different.
+When a baseline is present (`baseline.present == true`), Phase 2 operates in **isolated discovery mode** to prevent anchoring bias. Each brief carries the coverage summary from Phase 1a as its `baseline_focus` -- component names and covered categories only -- and **excludes** finding descriptions, risk scores, mitigation text, and finding IDs. Agents **SHOULD** focus on uncovered component-category pairs but **MAY** produce findings for already-covered pairs if genuinely different.
 
-When `baseline.present == false`, Phase 2 operates in standard stateless mode with no coverage summary. All findings are annotated `[NEW]` in downstream phases.
+When `baseline.present == false`, Phase 2 operates in standard stateless mode with no coverage summary: `baseline_focus` is `null` in every brief. All findings are annotated `[NEW]` in downstream phases.
 
 ---
 
@@ -310,11 +327,92 @@ When `baseline.present == false`, Phase 2 operates in standard stateless mode wi
 
 The orchestrator supports two dispatch modes. Both produce identical output -- the dispatch mode affects execution order only, not results.
 
-**Parallel Mode**: Determine all dispatch targets, produce the dispatch table, invoke all applicable agents concurrently, collect all results before proceeding to Phase 3.
+**Parallel Mode**: Plan the dispatches, write the briefs, invoke the whole planned set concurrently as one wave, and record each return as its agent reports completion. Go on to Phase 3 only when no dispatch is pending.
 
 **Sequential Mode**: Same preparation, but invoke agents one at a time in category order: S, T, R, I, D, E, AG (agent-autonomy then tool-abuse then human-trust-exploitation), LLM (prompt-injection then data-poisoning then model-theft then output-integrity then misinformation). Collect findings from each agent before invoking the next.
 
-Both modes dispatch through the Agent tool, one call per agent, and every call names a roster agent by `subagent_type` under the typed dispatch rules above.
+Both modes dispatch through the Agent tool, one call per dispatch, and every call names a roster agent by `subagent_type` under the typed dispatch rules above. In either mode, a re-dispatch or a coverage-gap dispatch comes after the planned set, as a wave of its own.
+
+Phase 2 has no plan file, no planner and no stage record of its own. You plan the dispatches yourself, by the rules below, and each dispatch leaves a brief and a record.
+
+#### Persist the Dispatch Table
+
+Build the dispatch table from the two rule sets, and check it against the self-check in the dispatch rules reference. Then write `{out}/.tachi-build/phase1/dispatch.json`, under the working-file rules in Phase 1. It is a JSON object with exactly the keys `schema` (`tachi.phase1-dispatch/1`) and `rows`. `rows` holds one row for each component in the inventory, in the inventory's order, named exactly as the inventory names it. A row has exactly three keys: `component`; `stride`, the STRIDE letters that apply to it, each at most once, in the order S, T, R, I, D, E; and `ai`, the AI categories that its keywords matched, each at most once, in the order AG, LLM, or `[]` when none matched.
+
+#### Plan the Dispatches
+
+Plan from `dispatch.json` and the Phase 2 Roster in the roster reference, which lists the 14 threat agents in dispatch order. An agent's scope is every component whose row carries the agent's dispatch key, in the table's row order: the agent's letter in `stride`, or `AG` or `LLM` in `ai`. A STRIDE letter selects one agent. `AG` and `LLM` each select every agent that carries the key, on top of the component's STRIDE agents.
+
+An agent with a non-empty scope gets exactly one planned dispatch, covering all of that scope. An agent with an empty scope gets none. So a run plans at most 14 dispatches, and they are one wave.
+
+You allocate every dispatch ID. The planned dispatches are `dsp-001`, `dsp-002` and so on, in the roster's order. Every later dispatch takes the next unused number at the moment you decide to make it, before you write its brief. Never reuse a number. A number has at least three digits, and `dsp-9999` is the last: a record that would need a replacement past it is `unrecovered`.
+
+Keep a ledger in your working notes, with one line for each dispatch: its ID, agent, scope, attempt (1 for a planned dispatch), origin, parent, and its status once it has a record. The ledger is the source for every decision below.
+
+#### Write a Brief
+
+Before you dispatch, write the brief to `{out}/.tachi-build/briefs/{dispatch_id}.json`. It is a JSON object with exactly these keys:
+
+- `schema`: `tachi.brief/1`.
+- `dispatch_id` and `agent_type`: the dispatch's ID, and the agent's roster name.
+- `targets`: the dispatch's scope, as component names exactly as the inventory writes them.
+- `inputs`: exactly `architecture`, `inventory` and `dispatch_table`: the absolute paths of the architecture snapshot, `{out}/.tachi-build/phase1/inventory.json` and `{out}/.tachi-build/phase1/dispatch.json`, with `{out}` filled in. They are the same in every brief. A brief points at its inputs and never copies them.
+- `baseline_focus`: `null` when the run is stateless. In a baseline run, one object for each target, `{"component": <name>, "covered": [<categories>]}`. `covered` lists the categories, from `S`, `T`, `R`, `I`, `D`, `E`, `AG` and `LLM`, that Phase 1a's coverage summary gives for that component, or `[]` when it gives none. The object holds no finding text, scores, mitigations or finding IDs, so discovery stays isolated.
+
+#### Dispatch
+
+Dispatch with the Agent tool. Set `subagent_type` to the agent's roster name, and send this prompt and nothing else, with the brief's absolute path filled in: `Read and follow the brief at <brief path>.`
+
+Start at most 16 dispatches at once, which leaves margin under the platform's limit of 20. The planned set is one wave. When more are pending, start the lowest-numbered 16, and start each further wave only after every agent of the wave before it has reported completion and has its record.
+
+**Completion rule.** Use a return only after its agent has reported completion. While an agent you dispatched is still running, don't compile Phase 3, report a result or return to your caller, so that no agent outlives you. The same holds when you stop for an error: wait for the agents still running, then reply. An agent that starts and then fails has returned nothing usable, which counts as a return with no end marker.
+
+#### Record Each Return
+
+When an agent reports completion, write its record once, to `{out}/.tachi-build/records/{dispatch_id}.json`. A record is a manifest, not a copy of the return: it holds no finding text, scores or mitigations. It is a JSON object with exactly these keys:
+
+- `schema`: `tachi.dispatch-record/1`.
+- `dispatch_id` and `agent_type`, as in the brief, and `scope`, which is `{"components": [<names>]}`.
+- `origin`: `planned`, `redispatch` or `coverage-gap`.
+- `brief`: the brief's absolute path. `prompt`: the fixed prompt, with that path filled in, word for word.
+- `end_marker`, `status`, `reason`, `supersedes` and `superseded_by`, set as below.
+- `count`: the number of findings the return holds. `local_ids`: the ID each finding carries, in the order the return lists them, or `null` for a finding with no usable ID. Both describe what the return held, even when it was cut off.
+
+Classify each return by the end-marker rule in the End Marker section of the dispatch record and brief reference. The rule decides `end_marker`, and `reason` for a truncated return. This file adds no rule of its own, so the predicate has one home.
+
+| The return | `end_marker` | `status` | `reason` | `superseded_by` |
+|------------|--------------|----------|----------|-----------------|
+| closes with the end marker | `true` | `complete` | `null` | `[]` |
+| is truncated, and a retry is left | `false` | `superseded` | `no_end_marker` or `overflow_error` | the IDs of its replacements |
+| is truncated, and no retry is left | `false` | `unrecovered` | `no_end_marker` or `overflow_error` | `[]` |
+
+`supersedes` is `null` for a planned or coverage-gap dispatch, and for a re-dispatch it is the truncated parent's ID. Only a `complete` record is live. The findings of a `superseded` or `unrecovered` record leave the set: don't compile them, even though you hold them.
+
+#### Re-Dispatch a Truncated Return
+
+Each planned dispatch starts a lineage, at attempt 1. A replacement joins its parent's lineage at its parent's attempt plus one, with its parent's agent. So each pair of an agent and one component gets at most three attempts in all.
+
+- **Split.** A truncated attempt-1 dispatch with two or more components is `superseded` by one replacement for each component, each scoped to that one component.
+- **Repeat.** Any other truncated dispatch of attempt 1 or 2 is `superseded` by one replacement with the same scope.
+- **End.** A truncated dispatch of attempt 3 is `unrecovered`, and its lineage is exhausted.
+
+For a `superseded` record, allocate the replacements' IDs first: the next unused numbers, consecutive, in the order of the scope. Then write the truncated record, with its `reason` and `superseded_by`. A replacement's own record, when it is written, has `origin` `redispatch`, `supersedes` naming the truncated record, its own scope and the same agent. Write a replacement's brief only when you start its wave, and keep in its `baseline_focus` only the entries of its own targets.
+
+Start no replacement until the wave is over. When every agent of the wave has reported completion and has its record, write the pending briefs and start them as the next wave. Repeat until no dispatch is pending. Then every planned pair is in exactly one `complete` record of its lineage, and you proceed to Phase 3.
+
+#### When a Lineage Is Exhausted
+
+When a planned dispatch's lineage ends `unrecovered`, the run fails. Write no further brief, and start no dispatch. Wait for the agents still running, and write each one's record when it reports completion. A truncated return among them is `unrecovered` too, because nothing will replace it. Then make this error your reply, naming the first record that ended `unrecovered`, and write nothing more:
+
+```text
+TACHI THREAT MODEL FAILED: a Phase 2 dispatch could not be completed within the retry caps
+Record: <dispatch_id>
+Agent: <subagent_type>
+Components: <the record's components, separated by commas>
+Remedy: re-run the command, and report the record if the same dispatch fails again
+```
+
+A coverage-gap dispatch belongs to no lineage and never fails the run (see Phase 3b).
 
 ---
 
@@ -328,14 +426,15 @@ Phase 3 REQUIRES the dispatch results from Phase 2 as input. Every dispatched ag
 
 Phase objectives:
 
-1. Collect findings from all dispatched agents (STRIDE and AI).
+1. Collect the findings of the `complete` dispatch records (STRIDE and AI), from the returns already in your context. Leave out the findings of a `superseded` or `unrecovered` record, and never read a record or a brief back.
 2. **Merge and deduplicate** Phase 2 discoveries against Phase 1a carry-forward findings (baseline mode only).
 3. **Coverage gate** -- verify required threat categories are evaluated per component type; dispatch targeted re-analysis for gaps.
 4. Validate the `risk_level` of every finding against the OWASP 3x3 matrix, correcting any mismatches.
 5. Assemble findings into the 6 STRIDE tables (Section 3 of the output).
 6. Assemble findings into the 2 AI threat tables (Section 4 of the output).
+7. Write the ID map, which records what became of every finding the dispatches returned.
 
-Do not proceed to Phase 4 until all agent findings have been collected, merged, deduplicated, coverage-verified, and all tables have been assembled.
+Do not proceed to Phase 4 until all agent findings have been collected, merged, deduplicated, coverage-verified, all tables have been assembled, and the ID map has been written.
 
 ---
 
@@ -356,6 +455,8 @@ When a baseline is present, merge the carry-forward set (Phase 1a) with the disc
 Also **load `schemas/coverage-checklists.yaml`** using the Read tool before executing this phase.
 
 The coverage gate verifies that all required threat categories have been evaluated for each component type. It runs in both baseline and stateless modes. After evaluation, if gaps are detected, dispatch targeted re-analysis for each missing component-category pair following the protocol in the reference. The coverage gate produces warnings, not errors -- the pipeline always continues to Risk Level Validation regardless of gap resolution outcomes.
+
+**Coverage-gap dispatches.** Make each targeted re-analysis a dispatch of its own, under the Dispatch Protocol: one for each gap and agent, with the next unused ID, a brief whose one target is the gap's component, the fixed prompt, and a record with `origin` `coverage-gap` and `supersedes` `null`. The brief and the fixed prompt replace the re-analysis payload that the coverage requirements reference describes, and in a baseline run the brief's `baseline_focus` keeps the isolation rule. Start them in waves of at most 16. The gate retries nothing, so a coverage-gap dispatch belongs to no lineage, is never `superseded`, and never fails the run. Its record is `complete`, or `unrecovered` when the return is truncated. The findings of an `unrecovered` record are dropped, and its gap resolves `dispatch_failure`, the gate's warning.
 
 ---
 
@@ -403,7 +504,22 @@ Assemble Section 4a using correlation groups:
 
 When zero correlation groups exist, output: "No cross-agent correlations detected." followed by the empty table header with no data rows. Section 4a is always present.
 
-After Section 4a is assembled, proceed to Phase 3.5: Cross-Layer Attack Chain Correlation.
+After Section 4a is assembled, write the ID map, then proceed to Phase 3.5: Cross-Layer Attack Chain Correlation.
+
+---
+
+### The ID Map
+
+After Section 4a is assembled, and before Phase 3.6, write `{out}/.tachi-build/idmap.json`, under the working-file rules in Phase 1. It is the audit copy of what became of each finding that a dispatch returned, and you write it from the findings you hold. It is a JSON object with exactly the keys `schema` (`tachi.idmap/1`) and `records`. `records` has one key for each `complete` record, of any origin, and no other key. Each value is a list with one entry for each finding that the return held, in the order the return listed them, so the list is as long as the record's `count`. An entry is one of:
+
+| Entry | Meaning |
+|-------|---------|
+| `S-7` | kept, as the final `S-7` |
+| `=S-2` | matched exactly to carried `S-2` in Phase 3a |
+| `~S-2` | matched by similarity to carried `S-2` in Phase 3a |
+| `>T-4` | merged into the surviving `T-4` |
+
+A kept finding appears under the ID it has in the tables, and so in `threats.md`. When that ID differs from the one the agent gave it, the entry records the renumbering. This includes today's folds, where Phase 3 gives an `OI-`, `MI-` or `TE-` finding an `LLM-` or `AG-` ID. Carried-forward findings, `AGP-` findings and the findings of a `superseded` or `unrecovered` record have no entry. Before you write the file, check that each list is as long as its record's `count`, and that no kept ID appears twice.
 
 ---
 

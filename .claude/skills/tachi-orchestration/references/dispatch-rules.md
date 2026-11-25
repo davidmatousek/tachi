@@ -114,7 +114,7 @@ The component receives its STRIDE categories (based on DFD type) plus all 8 AI a
 
 ### Ambiguity Note
 
-The keyword `"model"` is ambiguous — it could refer to a data model, a domain model, or an LLM. When `"model"` is matched, dispatch the LLM agents and include a note in the dispatch table: `"Keyword 'model' matched — may refer to data model rather than LLM. AI agents dispatched for coverage; review findings for relevance."` This ensures no AI-relevant component is missed while flagging potential false positives.
+The keyword `"model"` is ambiguous — it could refer to a data model, a domain model, or an LLM. When `"model"` is matched, dispatch the LLM agents and include a note in your working table: `"Keyword 'model' matched — may refer to data model rather than LLM. AI agents dispatched for coverage; review findings for relevance."` The persisted dispatch table has no field for the note, so keep it in your working notes. This ensures no AI-relevant component is missed while flagging potential false positives.
 
 ### `human-trust-exploitation` Trigger-Keyword Activation Rules (FR-005 / T004a)
 
@@ -158,15 +158,9 @@ AI findings produced by the dispatched agents are grouped into 2 output tables:
 
 ---
 
-## Dispatch Table Format (Intermediate Output)
+## Dispatch Table Format (Working Table and Persisted File)
 
-Before invoking any agents, produce a visible dispatch table as an intermediate artifact. This table shows every component, its STRIDE categories, its AI categories (if any), and the total number of agents that will be dispatched. The dispatch table enables validation that the normalization and keyword matching rules were applied correctly before agent execution begins.
-
-Label this section clearly:
-
-```
-### Dispatch Table (Intermediate)
-```
+Before you plan any dispatch, build a dispatch table in your working notes. It shows every component, its STRIDE categories, its AI categories (if any), and the number of agents that will analyze it. Building it lets you check that the normalization and keyword matching rules were applied correctly before any agent is dispatched. Then persist it as `{out}/.tachi-build/phase1/dispatch.json`, the file that the planned dispatches are made from. Print no copy of the table or the file. The file's template, keys and limits are in `.claude/skills/tachi-shared/references/dispatch-record-brief-shared.md`.
 
 ### Table Format
 
@@ -177,14 +171,14 @@ Label this section clearly:
 - **DFD Type**: The DFD element type (External Entity, Process, Data Store, or Data Flow).
 - **MAESTRO Layer**: The CSA MAESTRO architectural layer classification assigned during Phase 1 (e.g., "L3 — Agent Framework"). Set to "Unclassified" if no layer keywords matched. See `.claude/skills/tachi-shared/references/maestro-layers-shared.md` for the layer taxonomy and classification algorithm.
 - **STRIDE Categories**: Comma-separated list of applicable STRIDE categories based on DFD type (e.g., "S, R" for External Entity).
-- **AI Categories**: Comma-separated list of applicable AI categories based on keyword matching (e.g., "LLM, AG" for dual-dispatch). Use "—" if no AI keywords matched.
-- **Total Agents**: The total count of individual agents to be dispatched for this component. Count each STRIDE category as 1 agent and each AI agent individually (AG = 3 agents: agent-autonomy + tool-abuse + human-trust-exploitation; LLM = 5 agents: prompt-injection + data-poisoning + model-theft + output-integrity + misinformation). Note that `output-integrity`, `misinformation`, and `human-trust-exploitation` self-gate emission per their respective two-part rules — they are dispatched but may emit zero findings if the structural gate fails.
+- **AI Categories**: Comma-separated list of applicable AI categories based on keyword matching, in the order AG, LLM (e.g., "AG, LLM" for dual-dispatch). Use "—" if no AI keywords matched.
+- **Total Agents**: The number of individual agents that analyze this component. Count each STRIDE category as 1 agent and each AI agent individually (AG = 3 agents: agent-autonomy + tool-abuse + human-trust-exploitation; LLM = 5 agents: prompt-injection + data-poisoning + model-theft + output-integrity + misinformation). Each agent is dispatched once, for every component in its scope, so this count is a component-agent pair count and not a dispatch count. Note that `output-integrity`, `misinformation`, and `human-trust-exploitation` self-gate emission per their respective two-part rules — they are dispatched but may emit zero findings if the structural gate fails.
 
 ### Example Rows
 
 | Component | DFD Type | MAESTRO Layer | STRIDE Categories | AI Categories | Total Agents |
 |-----------|----------|---------------|-------------------|---------------|--------------|
-| LLM Agent Orchestrator | Process | L3 — Agent Framework | S, T, R, I, D, E | LLM, AG | 14 |
+| LLM Agent Orchestrator | Process | L3 — Agent Framework | S, T, R, I, D, E | AG, LLM | 14 |
 | MCP Tool Server | Process | L3 — Agent Framework | S, T, R, I, D, E | AG | 9 |
 | User | External Entity | L7 — Agent Ecosystem | S, R | — | 2 |
 | Knowledge Base | Data Store | L2 — Data Operations | T, I, D | — | 3 |
@@ -199,25 +193,36 @@ In this example:
 
 ### Summary
 
-After the dispatch table, include a summary with:
+After the dispatch table, keep a summary in your working notes:
 
-1. **Total unique agent invocations**: The sum of all Total Agents values across all components. Note that the same agent type may be invoked for multiple components — each component-agent pair counts as one invocation.
+1. **Component-agent pairs**: The sum of all Total Agents values across all components. An agent that applies to several components is one dispatch with all of them in its scope, and each component-agent pair counts once. This is the count of planned pairs, and not the number of dispatches, which is at most 14.
 2. **Components with AI dispatch**: The count of components that have at least one AI category (LLM and/or AG).
 3. **Components with dual-dispatch**: The count of components dispatched to both LLM and AG categories.
 
 ### Self-Check
 
-After producing the dispatch table, verify:
+After building the dispatch table, verify:
 
-- Every component from the Phase 1 inventory appears in the dispatch table.
+- Every component from the Phase 1 inventory appears in the dispatch table exactly once, in the inventory's order, under the inventory's name for it.
 - Every component has a MAESTRO Layer value (one of L1-L7 or "Unclassified"). No empty cells in the MAESTRO Layer column.
 - Every component has at least 2 STRIDE categories (the minimum for any DFD element type — External Entity and Data Flow/Data Store each have at least 2-3 applicable categories).
 - AI categories are present only for components whose names or descriptions matched the keyword rules.
 - Total Agents count is arithmetically correct for each row.
+- Each STRIDE list is in the order S, T, R, I, D, E and each AI list in the order AG, LLM, with no category twice in a list.
 
-If any self-check fails, correct the dispatch table before invoking agents. Do not proceed to agent invocation with an invalid dispatch table.
+If any self-check fails, correct the dispatch table before you persist it. Do not plan a dispatch, write a brief or invoke an agent from an invalid table.
 
-After the dispatch table is validated, invoke agents according to the selected dispatch mode (parallel or sequential) and proceed to Phase 3: Determine Countermeasures.
+### Persisted File
+
+Once the self-check passes, write the table as `{out}/.tachi-build/phase1/dispatch.json`. Each row becomes one object with exactly three keys:
+
+- `component`: the component's name, character for character as the inventory file writes it.
+- `stride`: the STRIDE letters that the Quick Reference marks for the component's DFD type, in the order S, T, R, I, D, E.
+- `ai`: the AI categories that the keyword rules matched, in the order AG, LLM, or `[]` when none matched.
+
+The file holds no DFD type, MAESTRO layer, agent count, note or other key. The inventory file holds the DFD type and the layer, which it writes as `L1` to `L7` or `Unclassified`, without the layer's name. The planned dispatches are made from this file: an agent's scope is every row that carries its dispatch key, as the Phase 2 Roster in `.claude/skills/tachi-shared/references/agent-roster-shared.md` defines it.
+
+After the file is written, plan the dispatches, write the briefs and invoke the agents under the orchestrator's Dispatch Protocol, and proceed to Phase 3: Determine Countermeasures once no dispatch is pending.
 
 ---
 
