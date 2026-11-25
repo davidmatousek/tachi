@@ -109,7 +109,7 @@ Scripts recompute every path from `--out` and these IDs, never from a path store
 | `status` | `fail` when `error` isn't `null`; otherwise `warn` when `warnings` isn't empty; otherwise `pass`. It matches the check's exit code: 4, 5 or 0. `attack-chains` is never `fail` |
 | `counts` | `null` in `attack-chains`. In `provenance`, exactly these keys, each an integer 0–1,000,000: `open` and `resolved`, the reference set's counts; `recorded`, `carried` and `rule`, the findings that each of FR-N4.5's three provenance classes accounts for (a dispatch record, a baseline carry-forward and Phase 3.6's rule); `renumbered`, the kept dispositions whose final ID differs from the provisional ID, folds excluded; `folded`, those that #356's fold table re-prefixed; and `reused-id`, FR-E.19's reissued IDs |
 | `batches` | `null` in `attack-chains`. In `provenance`, Phase 2's six counts, `{planned, dispatched, done, retried, split, exhausted}`, each an integer 0–1,000,000, with the meanings in `threat-model-records.md`, "Phase 2 dispatches": the lineages' records, with coverage-gap records left out (item O-α) |
-| `warnings` | `[{code, detail}]`, at most 1,000, under §5's warning rules. The codes are closed: `chain-outcome:rewritten`, when the check rewrote the record as `skipped (<reason>)`, with the new line and whether `attack-chains.md` was quarantined in the detail (D13); `section6:mismatch`, one per cell, with the cell and both values in the detail (FR-E.10); `id:reissued`, with the first 20 IDs in the detail (FR-E.19); `coverage-gap:unrecovered:<reason>`, where `<reason>` is `no_end_marker` or `overflow_error`, with the record and its component in the detail (item O-α); and, in `provenance`, `correlation-member-repeated`, once, with the count and the first 20 IDs in the detail, for the findings that two or more of Section 4a's groups list (ADR-050 D8, R-F; erratum S1P-A19) |
+| `warnings` | `[{code, detail}]`, at most 1,000, under §5's warning rules. The codes are closed: `chain-outcome:rewritten`, when the check rewrote the record as `skipped (<reason>)`, with the new line and whether `attack-chains.md` was quarantined in the detail (D13); `section6:mismatch`, one per cell, with the cell and both values in the detail (FR-E.10); `id:reissued`, with the first 20 IDs in the detail (FR-E.19); `coverage-gap:unrecovered:<reason>`, where `<reason>` is the record's: `no_end_marker`, `overflow_error`, `agent_failed` or `timed_out` (T090, S1P-A31; erratum S1P-A103), with the record and its component in the detail (item O-α); and, in `provenance`, `correlation-member-repeated`, once, with the count and the first 20 IDs in the detail, for the findings that two or more of Section 4a's groups list (ADR-050 D8, R-F; erratum S1P-A19) |
 | `error` | `null` in `attack-chains`. In `provenance`, `null`, or, when the check fails (exit 4), `{code, message, finding_ids, remedy}`: `code` is the failed rule, one of `no-records`, `envelope`, `lineage`, `provenance` and `completeness`; `message` is at most 2,000 characters and states how many IDs are involved; `finding_ids` holds the first 20, in S-2 order; and `remedy` is D12's |
 
 - **Writing.** A check writes its file once, with `tachi_parts`' atomic write, before it exits 0, 4 or 5. A check that exits 2 writes none. The provenance check counts before it applies any rule, so its `counts` and `batches` are complete in every file it writes.
@@ -414,7 +414,11 @@ A field that falls back or is cut is counted in the report stage's record (`narr
 
 **Batch inputs, units, halving and retries.**
 - **A section's batch input** has one unit per planned key, `{section, key, …}`, holding the rows that key is about. `exec_summary`, `threat_categories`, `cross_cutting_themes` and `agentic_patterns` get the Section 7 rows of their findings, and the themes also get Section 4a's groups. `architecture_overview` gets Sections 1 and 2's tables, `attack_chains` the surfaced chains' rows, and `delta_summary` Section 4c's rows and the lifecycle counts. A category's unit lists its narrated and summarized IDs. `themes` is the one unit of `cross_cutting_themes`.
-- **A findings batch input** has one unit per finding, in S-2 order: `{section, finding_id, …}`, holding the finding's Section 7 row and its category-table row, decoded. In `threat_analysis` it adds `tree`, whether the finding is Critical or High. In `remediation_roadmap`, a group primary's unit adds its group's ID and its members' Section 7 rows.
+- **A findings batch input** has one unit per finding, in S-2 order: `{section, finding_id, …}`, holding the finding's Section 7 row and its category-table row, decoded. In `threat_analysis` it adds `tree`, whether the finding is Critical or High. In `remediation_roadmap`, a group primary's unit adds its group's ID and its members' Section 7 rows. The keys are the planner's (named at W2′'s close, S1P-A100, below):
+  - **The Section 7 row** is the unit's top level, as PR 1's unit rows hold it: `finding_id`, canonical, then each of `component`, `threat`, `risk_level`, `mitigation`, `agentic_pattern` and `delta_status` that Section 7 gives.
+  - **`category_row`** holds the cells of the finding's row in its category table, Section 3 or 4, under that table's item keys ("Stage payload: `threats-md`") without `finding_id`: `status`, `component`, `maestro_layer`, `threat`, `likelihood`, `impact`, `risk_level` and `mitigation`, with `owasp_reference` after `threat` in the two AI tables. A column that the file's table lacks is `""`, and a finding that no category table holds has `{}`. When two rows name one ID, the first wins, with the eight tables in template order.
+  - **`tree`,** in `threat_analysis` only, is a boolean.
+  - **`group_id` and `members`,** in `remediation_roadmap` only, are on a correlation group's primary and on no other unit. `group_id` is the group's ID as Section 4a writes it. `members` holds the Section 7 rows of the group's members, in the top-level form above, in member order with the primary first, as `parse_correlation_groups` returns them over the open IDs (D8).
 - **`refs` is `{}`.** No report agent reads `threats.md` (ADR-050 D6), and each batch input stays within its 4 MiB cap.
 - **§4's readings apply,** with a batch's units in place of its IDs, as for `threats-md`. A batch of two or more units that is `missing` or `unparseable` is halved, and an `invalid` or one-unit batch is retried with the same units.
 
@@ -441,8 +445,9 @@ A field that falls back or is cut is counted in the report stage's record (`narr
   - an input's digest differs, except `threats.md`'s and `attack-chains.md`'s;
   - the reference set's digest differs from `params.reference_digest`;
   - for `chains written`, `attack-chains.md` doesn't hold exactly the planned surfaced chains;
-  - a value it takes from an input that isn't a part holds a character that `tachi_parts.forbidden_character` returns. It is refused where the value is taken, naming the finding, the field and the regenerate remedy (ADR-050 D3, P0-4; erratum S1P-A18). In `trees`, that covers a carried tree file.
-- **Exit 4:** FR-K5.3, FR-K5.5 or FR-K5.7 fails (ADR-050 D14), or the staged file holds a character in step 10's set (P0-4's backstop, through `tachi_parts.forbidden_character`, as the joiner checks). Since `trees` applies FR-K5.7's listing rule first (S1P-A91, below), a `.md` file that `report` finds unlisted appeared after `trees`, and its remedy is `move the file out of attack-trees/ and re-run the command`, never "run trees again".
+  - a value it takes from an input that isn't a part holds a character that `tachi_parts.forbidden_character` returns. It is refused where the value is taken, naming the finding, the field and the regenerate remedy (ADR-050 D3, P0-4; erratum S1P-A18). In `trees`, that covers a carried tree file;
+  - the plan's units aren't the ones that `threats.md` implies: the narrated findings, the category summaries, the pattern units or the delta part (S1P-A101), or the four section parts planned on every run, the analysis items' findings and tree summaries, or the roadmap rows (S1P-A102). "`report` checks the plan's units", below, has the rules.
+- **Exit 4:** FR-K5.3, FR-K5.5 or FR-K5.7 fails (ADR-050 D14), or the staged file, read back from disk, fails a check: it holds a character in step 10's set (P0-4's backstop, through `tachi_parts.forbidden_character`, as the joiner checks), its stamp isn't this run's, a tree's source isn't in it as its standalone file holds it (FR-K5.2), or its sections aren't numbered 1 to n in order (S1P-A102). Since `trees` applies FR-K5.7's listing rule first (S1P-A91, below), a `.md` file that `report` finds unlisted appeared after `trees`, and its remedy is `move the file out of attack-trees/ and re-run the command`, never "run trees again".
 - **Exit 0:** the stamped file, staged under `report/<plan_id>/staged/`, replaces `{out}/threat-report.md` (`os.replace`), overwriting any file an agent wrote, and the report stage's record is written. On any other code the canonical file isn't written.
 
 **Sizes (ADR-050 D6).** Each size is ⌊8,000 × 2.598 ÷ p90⌋ items: 22 for `threat_analysis` (p90 931 bytes) and 144 for `remediation_roadmap` (p90 144 bytes). The p90 is an item's bytes at two-space indentation, measured on the seven shipped example reports (115 analysis items and 160 roadmap rows), with each digit-bearing word written as a slot. The analysis items still held today's risk wording, which moves to the lead, so the size is conservative. A section part is one batch at planning. T130's fixture run confirms the sizes from the live parts.
@@ -505,7 +510,7 @@ Rule 3 is the agent's judgment: D14's Rule 2 regenerates every tree, "with Rule 
 
 - **Validity (R3).** §6's `status` rule is part of a file's validity, as the rules for `check` and `plan_id` are: a `status` other than the one that `error` and `warnings` give fails the load. The warning codes are closed per check:
   - `attack-chains`: `chain-outcome:rewritten`, and `chain-outcome:earlier-file-moved` (added at W2′'s batch, S1P-A91);
-  - `provenance`: `section6:mismatch`, `id:reissued`, `coverage-gap:unrecovered:no_end_marker`, `coverage-gap:unrecovered:overflow_error` and `correlation-member-repeated`.
+  - `provenance`: `section6:mismatch`, `id:reissued`, `coverage-gap:unrecovered:no_end_marker`, `coverage-gap:unrecovered:overflow_error`, `coverage-gap:unrecovered:agent_failed`, `coverage-gap:unrecovered:timed_out` and `correlation-member-repeated`. The two coverage-gap codes for T090's reasons were added at W2′'s close (erratum S1P-A103).
 
   Any other code fails the load, the other check's codes included. The validator is T091's, and each check validates its own file before it writes it.
 - **`fail`'s fold (R4).** `fail` folds each file that exists and loads, in §6's order. A file that exists but doesn't load, one of another plan included, is left out, and the run still fails. In that file's place, `fail` records the warning `handoff-invalid:<check>`, with the loader's reason as the detail and never the file's text, so the record shows why its counts are missing. A missing file still raises no warning (§6). `close` keeps its exit 2 for both cases.
@@ -589,3 +594,51 @@ Confirmed as T built it. When the final record says `chains written`, a missing 
 ### Which plan a refusal keeps (S1P-A89, S1P-A47)
 
 T's application is confirmed. A refusal names the directory of the plan whose own file or value fails. That is the trees plan's for its plan file and pointer, its `params` (`rule_applied`, `reference_digest`), its `refs.baseline_dir`, and its batch inputs and parts, an item in two batches included. It is the report plan's for everything else, FR-K5.3, FR-K5.5 and FR-K5.7 included: they check `attack-trees/` and the merged manifest, which no plan directory holds, and they are the report stage's own checks (D14).
+
+## Readings ruled at W2′'s close (S1′, 2026-11-25)
+
+These come from lane T's T110 (`test_report_assembly.py`, readings RD-22 and RD-25) and from lane O2's check of §6 against `tachi_parts`. The rulings are S1P-A100 onward. In each, the code is right and this contract was silent or short, so no code changes. `cli.md` holds the command-line reading.
+
+### The findings units' keys (S1P-A100, RD-22)
+
+T092's planner uses three keys that this contract didn't name: `category_row`, for a findings unit's category-table row, and `group_id` and `members`, for a group primary's roadmap unit. "Batch inputs, units, halving and retries", above, now names them, with the top-level keys of the Section 7 row.
+- **`assemble-report.py` reads `category_row`'s `maestro_layer`, `likelihood` and `impact`** for a narrated finding's lead, and its `owasp_reference` and `maestro_layer` for the taxonomy IDs that the finding's `ref` slots may name. It reads no other cell.
+- **It reads neither `group_id` nor `members`.** It takes the groups from `threats.md` through `parse_correlation_groups`, as the planner does, so the roadmap and the units agree by construction (D8). The two keys are for the report agent, which judges one roadmap row for the whole group (T113).
+- **The P0-4 walk** covers every value of a unit, these three keys' values included.
+
+### `report` checks the plan's units (S1P-A101 and S1P-A102; RD-25)
+
+A report plan's units are a function of `threats.md` (item O-γ): Section 7's open findings, with their risk levels and patterns, Section 4a's groups, and the frontmatter's baseline. `report` reads the file again at Step 2.9, and RR3's digest pins only Sections 7 and 4c. So, before it writes anything, `report` refuses with exit 2 a plan whose units aren't the ones the file implies.
+- Over Section 7, a mismatch is a planner's defect.
+- Over Section 4a or the frontmatter, it can also be a file that changed after the plan.
+- Either way, the report would drop a finding's text, print a section that has none, or number its sections wrongly.
+
+**S1P-A101: confirmed as T built it (`_check_plan`).**
+1. **Narrated findings.** The `threat_analysis` items are exactly the findings that "Narrated or summarized" narrates.
+2. **Category summaries.** `threat_categories` plans `summary.<key>` exactly for the categories that hold a summarized finding.
+3. **Pattern units.** `agentic_patterns` holds `pattern.<value>` exactly for the six values that Section 7 holds, and `multi` exactly when Section 7 holds `multiple`. So the part is planned exactly when one of them is, and Agentic Pattern Analysis, which takes number 7 (S1P-A45), follows the file.
+4. **The delta part.** `delta_summary` is planned exactly when the frontmatter records a baseline, so Section 9 follows the file. The reference digest doesn't cover the frontmatter, so this rule also catches a baseline block that changed after the plan.
+
+Each message names what the plan holds and what the file gives: the first five of each, then a count. The remedy is to re-run Phase 5 over this `threats.md`, and the refusal keeps the report plan's directory (S1P-A89).
+
+**S1P-A102: the rest of the code's list, confirmed and added.** The same code path also refuses these, with exit 2:
+- a plan without one of the four section parts that are planned on every run: `exec_summary`, `architecture_overview`, `threat_categories` and `cross_cutting_themes`;
+- an analysis item for a finding that isn't open. This is checked before rule 1, with its own message;
+- a tree in the merged manifest whose finding has no analysis item, or an item with no `tree_summary`;
+- roadmap items that aren't exactly the roadmap rows ("A roadmap row", above). `report` takes the rows from Section 7 and Section 4a as it lays out the roadmap.
+
+Exit 4 covers each from-disk check of the staged report, not only the character backstop. The report's stamp must be this run's, each tree's Mermaid source must be in it as its standalone file holds it (FR-K5.2), and its sections must be numbered 1 to n in order.
+
+**What changes.** Only this contract and `cli.md`, which now state the rules.
+- Each refusal returns a code that ADR-050 D4's table already has, and Step 2.9 sends every code but 0 to Step F. So neither the command nor the exit table changes.
+- D4 lists the assembler's FR-K5 checks and none of its row 2 refusals, so its text doesn't change. D6's RR3 leaves the rules in full to the contracts. ADR-050's Revision History records these rulings.
+
+**Not checked, by design.** The planner plans `category.<key>` for each category with an open finding, and `report` doesn't compare those units with the file.
+- A missing one leaves a subsection without its opening paragraph, and an extra one is never printed. Neither drops a finding's text or moves a section, which are what the four rules guard.
+- `overview` and `compliance` are optional, and `attack_chains` has its own check, above.
+
+### The hand-off's coverage-gap codes (S1P-A103)
+
+`tachi_parts` builds one `coverage-gap:unrecovered:<reason>` code for each of a record's four reasons: `no_end_marker`, `overflow_error`, `agent_failed` and `timed_out`, from `DISPATCH_REASONS`. ADR-050 D6 already gave the code the four reasons at T090 (S1P-A31: "`contracts/part-files.md` §6, whose `coverage-gap:unrecovered:<reason>` takes any of the four"), and `threat-model-records.md` lists them in the record schema. §6's `warnings` row and S1P-A52's closed list named only the first two, and both now name the four.
+- **Why each reason can arise.** The coverage gate never retries a coverage-gap re-analysis, so a truncated coverage-gap record is `unrecovered` whatever its reason, and its gap resolves `dispatch_failure` (D6, item O-α). D6 states it for `timed_out` too. Each such record is a warning with exit 5 (`threat-model-records.md`).
+- **What follows.** T095's tests and T096's check use all four codes. A fifth reason, or any other spelling, fails the load, as S1P-A52 rules for any code that isn't on the list.

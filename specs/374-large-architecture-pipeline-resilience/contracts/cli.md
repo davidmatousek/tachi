@@ -151,3 +151,13 @@ From lanes OC (T116, T117), T (T108, T109) and R3b (T100). `part-files.md`, `thr
 - **`check` and an earlier run's chain file (S1P-A91).** With a `0 chains` or `skipped` record, `check` reads the run-level plan that `--plan` names and compares the file with its pre-image. The earlier run's file is renamed and the record stands, with `chain-outcome:earlier-file-moved` and exit 5. Any other file takes D13's rewrite (`threat-model-records.md`).
 - **`assemble-report.py report` (S1P-A88).** A missing `attack-chains.md` under a `chains written` record is exit 1, and a link or a file that isn't regular is exit 2 (`part-files.md`).
 - **`assemble-report.py trees` (S1P-A91).** A `.md` file in `attack-trees/` that the run doesn't write is exit 4 before anything is written, FR-K5.7 applied early, beside S1P-A44's FR-K5.5 (`part-files.md`, "An earlier run's outputs").
+
+### Readings ruled at W2′'s close (S1′, 2026-11-25)
+
+From lane T's T110 (RD-25). `part-files.md`, "Readings ruled at W2′'s close", holds the rules in full, with S1P-A100's unit keys and S1P-A103's hand-off codes.
+
+- **`assemble-report.py report` checks its plan's units against `threats.md` (S1P-A101, S1P-A102).** It refuses a plan whose units aren't the ones that the file implies with exit 2, before anything is written.
+  - S1P-A101, `_check_plan`'s four rules: the narrated findings, the category summaries, the pattern units and the delta part.
+  - S1P-A102, the rest of the list: the four section parts that are planned on every run, an analysis item for a finding that isn't open, a tree with no summary, and the roadmap rows.
+  - Each from-disk check of the staged report is exit 4: the character backstop, the stamp, the tree sources (FR-K5.2) and the section numbering.
+- **The codes don't change.** The entry's codes stay 0, 1, 2 and 4, and Step 2.9 sends every code but 0 to Step F. D4's table already routes both classes (row 2, a validation failure; row 4, a completeness check).
