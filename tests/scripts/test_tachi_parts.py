@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import inspect
 import json
 import os
@@ -2261,6 +2262,14 @@ EXPECTED_KEY_SETS = {
     "fragment": (["slot_key", "text"], []),
     "analysis-item": (["finding_id", "narrative", "tree_summary"], []),
     "roadmap-item": (["finding_id", "effort", "dependencies"], []),
+    # T091's second slice: the section manifest (contracts/threat-model-records.md, "The section manifest").
+    "sections": (["schema", "frontmatter", "open", "resolved", "rows"], []),
+    "sections-frontmatter": (["date", "input_format", "classification", "run_id", "baseline", "coverage_gate"], []),
+    "sections-baseline": (["source", "date", "finding_count", "run_id"], []),
+    "sections-gate": (["status", "gaps"], []),
+    "sections-gap": (["component", "missing_category", "resolution"], []),
+    "sections-rows": (["components", "data_flows", "technologies", "trust_zones", "boundary_crossings", "correlated", "patterns", "coverage",
+                       "gate_requirements", "gate_gaps", "risk_by_layer", "risk_levels", "lifecycle", "baseline_reference"], []),
 }
 
 
@@ -4085,7 +4094,9 @@ ENTRY_PATH_NAMES = (
     "StageFailure", "run_entry", "entry_defect", "build_parser", "entry_arguments", "plan_arguments", "trusted_plan", "entry_document", "plan_input_bytes",
     "digest_or_none", "read_parts", "RunCore", "read_capped", "RENDERER_READ_REASONS", "first_forbidden", "forbidden_problem", "stage_and_move",
     "stage_record", "write_stage_record", "output_entries", "walk_out", "undeclared_paths", "utc_now", "dump_json", "record_warning", "shorten",
-    "relative_path", "yaml_quoted", "RETRY_REMEDY")
+    "relative_path", "yaml_quoted", "RETRY_REMEDY",
+    # ruled to follow (S1P-A42, S1P-A57) and the shared digest (cli.md): added by T091's second slice
+    "directory_argument", "plan_id_argument", "STAGED_OUTPUTS", "reference_digest")
 
 
 @pytest.mark.parametrize("name", ENTRY_PATH_NAMES)
@@ -5118,9 +5129,11 @@ def test_the_layout_builders_serve_each_pr2_stage(tmp_path, stage):
     assert _api("stage_record_path")(out, stage, PLAN) == os.path.join(base, PLAN, "stage-record.json")
 
 
-def test_only_the_run_level_stage_has_pre_image_staged_and_failed_files(tmp_path):
+def test_only_the_run_level_stage_has_pre_image_and_failed_files(tmp_path):
+    """The pre-image and failed names are ``CANONICAL_OUTPUTS``': D4's four for the run-level plan, none for a batch stage. ``staged_path`` is ruled apart
+    (S1P-A57): it checks ``STAGED_OUTPUTS``, which section 32 pins."""
     out = str(tmp_path / "out")
-    for builder in ("preimage_path", "staged_path", "failed_path"):
+    for builder in ("preimage_path", "failed_path"):
         for name in ("threats.md", "threats.sarif", "threat-report.md", "attack-chains.md"):
             assert os.path.basename(_api(builder)(out, "threat-model", PLAN, name)) == name
         for bad in ("risk-scores.md", "attack-chains.inconsistent.md", "architecture.md", "../threats.md", None):
@@ -5410,6 +5423,16 @@ RECORD_VARIANTS = {
                                               reason="overflow_error"),
     "an unrecovered coverage-gap record": valid_record("dsp-006", origin="coverage-gap", scope={"components": ["Gateway"]}, end_marker=False,
                                                        status="unrecovered", reason="overflow_error"),
+    # T090 (S1P-A31): no report came, so the record counts nothing, whichever way it ended.
+    "a superseded record of an agent that failed": valid_record(end_marker=False, status="superseded", superseded_by=["dsp-005", "dsp-006"],
+                                                                reason="agent_failed", count=0, local_ids=[]),
+    "a superseded record of an agent that timed out": valid_record(end_marker=False, status="superseded", superseded_by=["dsp-005"], reason="timed_out",
+                                                                   count=0, local_ids=[]),
+    "an unrecovered record of an agent that failed": valid_record(end_marker=False, status="unrecovered", reason="agent_failed", count=0, local_ids=[]),
+    "an unrecovered redispatch that timed out": valid_record("dsp-005", origin="redispatch", supersedes="dsp-001", end_marker=False,
+                                                             status="unrecovered", reason="timed_out", count=0, local_ids=[]),
+    "an unrecovered coverage-gap record that timed out": valid_record("dsp-006", origin="coverage-gap", scope={"components": ["Gateway"]}, end_marker=False,
+                                                                      status="unrecovered", reason="timed_out", count=0, local_ids=[]),
     "a record of an agent that found nothing": valid_record(count=0, local_ids=[]),
     "a finding with no usable ID": valid_record(local_ids=["S-1", None]),
     "a four-digit dispatch ID": valid_record("dsp-1234"),
@@ -5492,6 +5515,18 @@ RECORD_VIOLATIONS = {
     "reason on a complete record": setter(("reason",), "no_end_marker"),
     "no reason on a truncated record": update(end_marker=False, status="unrecovered"),
     "reason unknown": update(end_marker=False, status="unrecovered", reason="timeout"),
+    "reason a near miss of timed_out": update(end_marker=False, status="unrecovered", reason="timed-out", count=0, local_ids=[]),
+    "reason a near miss of agent_failed": update(end_marker=False, status="unrecovered", reason="agent failed", count=0, local_ids=[]),
+    "reason in capitals": update(end_marker=False, status="unrecovered", reason="TIMED_OUT", count=0, local_ids=[]),
+    "reason not text": update(end_marker=False, status="unrecovered", reason=["timed_out"], count=0, local_ids=[]),
+    # No report came: the count is 0, and so no local ID (S1P-A31; T090's note for the check's record loader).
+    "agent_failed with a count": update(end_marker=False, status="unrecovered", reason="agent_failed"),
+    "agent_failed with one finding": update(end_marker=False, status="unrecovered", reason="agent_failed", count=1, local_ids=["S-1"]),
+    "timed_out with a count": update(end_marker=False, status="unrecovered", reason="timed_out"),
+    "timed_out with a count and no ID": update(end_marker=False, status="superseded", superseded_by=["dsp-005"], reason="timed_out", count=1,
+                                               local_ids=[None]),
+    "timed_out with local ids and a zero count": update(end_marker=False, status="unrecovered", reason="timed_out", count=0, local_ids=["S-1"]),
+    "agent_failed with its end marker": update(reason="agent_failed", count=0, local_ids=[]),
     "count negative": setter(("count",), -1),
     "count over 2000": update(count=2001, local_ids=[None] * 2001),
     "count a boolean": update(count=True, local_ids=[None]),
@@ -5788,7 +5823,8 @@ def test_the_closed_values_of_the_records_are_the_contracts():
     assert tuple(_api("DFD_TYPES")) == ("External Entity", "Process", "Data Store", "Data Flow")
     assert tuple(_api("DISPATCH_ORIGINS")) == ("planned", "redispatch", "coverage-gap")
     assert tuple(_api("DISPATCH_STATUSES")) == ("complete", "superseded", "unrecovered")
-    assert tuple(_api("DISPATCH_REASONS")) == ("no_end_marker", "overflow_error")
+    assert tuple(_api("DISPATCH_REASONS")) == ("no_end_marker", "overflow_error", "agent_failed", "timed_out"), "T090 adds the last two (S1P-A31)"
+    assert tuple(_api("NO_REPORT_REASONS")) == ("agent_failed", "timed_out")
 
 
 # =============================================================================
@@ -6102,9 +6138,12 @@ HANDOFF_VARIANTS = {
     "provenance, a reissued ID": warned("id:reissued"),
     "provenance, a coverage gap with no end marker": warned("coverage-gap:unrecovered:no_end_marker"),
     "provenance, a coverage gap that overflowed": warned("coverage-gap:unrecovered:overflow_error"),
+    "provenance, a coverage gap whose agent failed": warned("coverage-gap:unrecovered:agent_failed"),
+    "provenance, a coverage gap that timed out": warned("coverage-gap:unrecovered:timed_out"),
     "provenance, a repeated correlation member": warned("correlation-member-repeated"),
-    "provenance, every warning": warned("chain-outcome:rewritten", "section6:mismatch", "id:reissued", "coverage-gap:unrecovered:no_end_marker",
-                                        "coverage-gap:unrecovered:overflow_error", "correlation-member-repeated"),
+    "provenance, every warning": warned("section6:mismatch", "id:reissued", "coverage-gap:unrecovered:no_end_marker",
+                                        "coverage-gap:unrecovered:overflow_error", "coverage-gap:unrecovered:agent_failed",
+                                        "coverage-gap:unrecovered:timed_out", "correlation-member-repeated"),
     "provenance, 1,000 warnings": warned(*["section6:mismatch"] * 1000),
     "provenance, counts at the limit": valid_handoff(counts={key: 1000000 for key in EXPECTED_KEY_SETS["handoff-counts"][0]},
                                                      batches={key: 1000000 for key in ("planned", "dispatched", "done", "retried", "split", "exhausted")}),
@@ -6146,7 +6185,20 @@ HANDOFF_VIOLATIONS = [
     ("provenance", "a detail with a control character", lambda doc: doc.update(status="warn", warnings=[{"code": "id:reissued", "detail": "a\x00b"}])),
     ("provenance", "warnings over 1,000", lambda doc: doc.update(status="warn", warnings=[{"code": "id:reissued", "detail": "d"}] * 1001)),
     ("provenance", "warnings an object", setter(("warnings",), {})),
+    # The codes are closed for each check (S1P-A52): a code of the other check, or of no list, fails the load, whichever way round.
     ("attack-chains", "the provenance check's warning", lambda doc: doc.update(status="warn", warnings=[{"code": "correlation-member-repeated", "detail": "d"}])),
+    *[("attack-chains", "the provenance check's code %s" % code, lambda doc, code=code: doc.update(status="warn", warnings=[{"code": code, "detail": "d"}]))
+      for code in ("section6:mismatch", "id:reissued", "coverage-gap:unrecovered:no_end_marker", "coverage-gap:unrecovered:overflow_error",
+                   "coverage-gap:unrecovered:agent_failed", "coverage-gap:unrecovered:timed_out")],
+    ("attack-chains", "an unknown warning code", lambda doc: doc.update(status="warn", warnings=[{"code": "made-up:code", "detail": "d"}])),
+    ("attack-chains", "a warning that is good and one that isn't", lambda doc: doc.update(
+        status="warn", warnings=[{"code": "chain-outcome:rewritten", "detail": "d"}, {"code": "id:reissued", "detail": "d"}])),
+    ("provenance", "the chain check's warning", lambda doc: doc.update(status="warn", warnings=[{"code": "chain-outcome:rewritten", "detail": "d"}])),
+    ("provenance", "the chain check's warning after a good one", lambda doc: doc.update(
+        status="warn", warnings=[{"code": "id:reissued", "detail": "d"}, {"code": "chain-outcome:rewritten", "detail": "d"}])),
+    ("provenance", "an unrecovered reason in capitals", lambda doc: doc.update(status="warn", warnings=[{"code": "coverage-gap:unrecovered:TIMED_OUT", "detail": "d"}])),
+    ("provenance", "an unrecovered reason that is a near miss", lambda doc: doc.update(
+        status="warn", warnings=[{"code": "coverage-gap:unrecovered:timed-out", "detail": "d"}])),
     # The provenance check's counts and batches.
     ("provenance", "no counts", setter(("counts",), None)),
     ("provenance", "a count missing", drop(("counts", "folded"))),
@@ -6208,15 +6260,36 @@ def test_the_hand_offs_closed_values_are_the_contracts():
     assert tuple(_api("HANDOFF_CHECKS")) == ("attack-chains", "provenance")
     assert tuple(_api("HANDOFF_STATUSES")) == ("pass", "warn", "fail")
     assert tuple(_api("HANDOFF_ERROR_CODES")) == ("no-records", "envelope", "lineage", "provenance", "completeness")
+    assert dict(_api("HANDOFF_WARNING_CODES_BY_CHECK")) == {
+        "attack-chains": ("chain-outcome:rewritten",),
+        "provenance": ("section6:mismatch", "id:reissued", "coverage-gap:unrecovered:no_end_marker", "coverage-gap:unrecovered:overflow_error",
+                       "coverage-gap:unrecovered:agent_failed", "coverage-gap:unrecovered:timed_out", "correlation-member-repeated")}, \
+        "closed for each check (S1P-A52), with one coverage-gap code for each of the record's four reasons (T090)"
     assert tuple(_api("HANDOFF_WARNING_CODES")) == (
         "chain-outcome:rewritten", "section6:mismatch", "id:reissued", "coverage-gap:unrecovered:no_end_marker",
-        "coverage-gap:unrecovered:overflow_error", "correlation-member-repeated")
+        "coverage-gap:unrecovered:overflow_error", "coverage-gap:unrecovered:agent_failed", "coverage-gap:unrecovered:timed_out",
+        "correlation-member-repeated"), "the union, in the contract's order"
+    assert ["coverage-gap:unrecovered:" + reason for reason in _api("DISPATCH_REASONS")] == [
+        code for code in _api("HANDOFF_WARNING_CODES") if code.startswith("coverage-gap:")], "the codes follow the record's reasons"
 
 
 def test_the_hand_offs_check_is_its_files_stem_and_its_plan_is_the_runs_and_those_are_the_readers_to_compare():
     """A hand-off that names the other check, or another run's plan, is valid in itself: `close` compares both with the file and the run (OS's R3)."""
     for doc in (valid_handoff("provenance", plan_id=OTHER_PLAN), valid_handoff("attack-chains", plan_id=OTHER_PLAN)):
         assert _api("validate_check_handoff")(doc) is doc
+
+
+def valid_sections(**override):
+    """A ``tachi.sections/1`` manifest for a run with a baseline (``threat-model-records.md``, "The section manifest")."""
+    doc = {"schema": "tachi.sections/1",
+           "frontmatter": {"date": "2026-11-22", "input_format": "mermaid", "classification": "confidential", "run_id": "2026-11-22T10-00-00",
+                           "baseline": {"source": "reports/earlier/threats.md", "date": "2026-11-01", "finding_count": 5, "run_id": "2026-11-01T10-00-00"},
+                           "coverage_gate": {"status": "warn", "gaps": [{"component": "Gateway", "missing_category": "model-theft",
+                                                                         "resolution": "analyzed_clean"}]}},
+           "open": ["S-1", "T-2", "AGP-01", "LLM-3"], "resolved": ["I-4", "E-5"],
+           "rows": {name: 3 for name in EXPECTED_KEY_SETS["sections-rows"][0]}}
+    doc.update(override)
+    return doc
 
 
 # --- reading a PR 2 document from disk: the same loader as a part, then the schema's own key set, under the contract's size cap ---
@@ -6230,6 +6303,7 @@ PR2_DOCUMENTS = [
     ("tachi.chains/1", "validate_chains", valid_chains, 512 * 1024),
     ("tachi.chain-narratives/1", "validate_chain_narratives", valid_narratives, 512 * 1024),
     ("tachi.check-handoff/1", "validate_check_handoff", valid_handoff, 1024 * 1024),
+    ("tachi.sections/1", "validate_sections", valid_sections, 256 * 1024),
 ]
 
 
@@ -6289,7 +6363,7 @@ def test_a_pr2_document_has_the_size_cap_the_contract_gives_it(tmp_path, schema,
 
 
 # =============================================================================
-# 28. The `trees` and `report` part payloads (T091's first slice)
+# 28. The `trees` and `report` part payloads (T091's first slice; the `trees` per-unit rule is S1P-A43's, T091's second slice)
 #
 # ADR-050 D6's batch-stage table (`trees`), item O-gamma and part-files.md, "Stage payload: report". `classify_part` takes the batch input's `units`
 # for the stages whose parts depend on them. Each case changes one thing in a part that passes.
@@ -6299,6 +6373,15 @@ def tree_item(fid, status="NEW", action="generated_fresh", **extra):
     return dict({"finding_id": fid, "delta_status": status, "action": action}, **extra)
 
 
+def tree_unit(fid, status="NEW", action="generated_fresh"):
+    """A ``trees`` batch input's unit: ``{finding_id, delta_status, action}``, the ``action`` as the planner wrote it."""
+    return {"finding_id": fid, "delta_status": status, "action": action}
+
+
+TREE_UNITS = [tree_unit("S-1"), tree_unit("T-2")]
+RULE_3_UNITS = [tree_unit("S-1", "UNCHANGED", "regenerated"), tree_unit("T-2")]  # S-1 is a Rule 3 unit: UNCHANGED, regenerated by Rule 2, with a baseline tree
+
+
 def trees_part(ids=("S-1", "T-2"), items=None, **override):
     part = {"schema": "tachi.part/1", "plan_id": PLAN, "batch_id": "B001", "stage": "trees", "agent_type": "tachi-attack-tree-delta",
             "finding_ids": list(ids), "items": items if items is not None else [tree_item(i) for i in ids], "fragments": []}
@@ -6306,17 +6389,22 @@ def trees_part(ids=("S-1", "T-2"), items=None, **override):
     return part
 
 
-def test_a_trees_part_is_done_and_needs_no_units():
-    result = classify(trees_part(), kind=TREES)
+def classify_trees(part, ids=("S-1", "T-2"), units=TREE_UNITS):
+    return classify(part, ids=ids, kind=TREES, units=units)
+
+
+def test_a_trees_part_is_done_against_its_units():
+    result = classify_trees(trees_part())
     assert result.state == "done", result.detail
     assert result.part["items"] == [tree_item("S-1"), tree_item("T-2")] and result.flags == {}
     assert result.counts == {"narrative_fallbacks": 0, "truncations": 0}
 
 
 def test_a_trees_part_comes_back_in_the_planned_order_with_canonical_ids_and_never_changes_its_input():
+    units = [tree_unit("S-1"), tree_unit("T-02", "UNCHANGED", "regenerated")]
     part = trees_part(ids=("T-02", "S-1"), items=[tree_item("T-02", "UNCHANGED", "carried_forward", similarity_score=0.91), tree_item("S-1")])
     before = json.dumps(part, sort_keys=True)
-    result = classify(part, ids=("S-1", "T-2"), kind=TREES)
+    result = classify_trees(part, ids=("S-1", "T-2"), units=units)
     assert result.state == "done", result.detail
     assert result.part["finding_ids"] == ["S-1", "T-2"] and [i["finding_id"] for i in result.part["items"]] == ["S-1", "T-2"]
     assert json.dumps(part, sort_keys=True) == before
@@ -6325,12 +6413,17 @@ def test_a_trees_part_comes_back_in_the_planned_order_with_canonical_ids_and_nev
 @pytest.mark.parametrize("status", ["NEW", "UNCHANGED", "UPDATED"])
 @pytest.mark.parametrize("action", ["carried_forward", "generated_fresh", "regenerated"])
 def test_every_delta_status_and_action_of_the_manifest_is_accepted(status, action):
-    assert classify(trees_part(items=[tree_item("S-1", status, action), tree_item("T-2")]), kind=TREES).state == "done"
+    """A Rule 3 unit (planned ``regenerated``) answers ``regenerated`` or ``carried_forward``, with its score; any other unit answers what was planned."""
+    rule_3 = action != "generated_fresh"
+    unit = tree_unit("S-1", status, "regenerated" if rule_3 else "generated_fresh")
+    item = tree_item("S-1", status, action, **({"similarity_score": 0.5} if rule_3 else {}))
+    assert classify_trees(trees_part(items=[item, tree_item("T-2")]), units=[unit, tree_unit("T-2")]).state == "done"
 
 
 @pytest.mark.parametrize("score,kept", [(0, 0.0), (1, 1.0), (0.5, 0.5), (0.85, 0.85), (Decimal("0.85"), 0.85), (Decimal("1"), 1.0), (0.0, 0.0), (1e-300, 1e-300)])
 def test_a_rule_3_similarity_score_from_0_to_1_is_kept_as_a_float(score, kept):
-    result = classify(trees_part(items=[tree_item("S-1", "UNCHANGED", "carried_forward", similarity_score=score), tree_item("T-2")]), kind=TREES)
+    part = trees_part(items=[tree_item("S-1", "UNCHANGED", "carried_forward", similarity_score=score), tree_item("T-2")])
+    result = classify_trees(part, units=RULE_3_UNITS)
     assert result.state == "done", result.detail
     assert result.part["items"][0]["similarity_score"] == kept and type(result.part["items"][0]["similarity_score"]) is float
 
@@ -6338,15 +6431,20 @@ def test_a_rule_3_similarity_score_from_0_to_1_is_kept_as_a_float(score, kept):
 @pytest.mark.parametrize("score", [-0.1, 1.01, 2, -1, Decimal("1.0000001"), Decimal("-0.0000001"), float("nan"), float("inf"), True, False, "0.9", None, [0.9], {}])
 def test_a_similarity_score_outside_0_to_1_or_not_a_number_is_invalid(score):
     part = trees_part(items=[tree_item("S-1", "UNCHANGED", "carried_forward", similarity_score=score), tree_item("T-2")])
-    assert classify(part, kind=TREES).state == "invalid"
+    assert classify_trees(part, units=RULE_3_UNITS).state == "invalid"
+
+
+def read_trees(tmp_path, text, units=RULE_3_UNITS):
+    out, path = write_part(tmp_path, text, TREES)
+    return _api("read_part")(path, out=out, **dict(expect(("S-1", "T-2"), TREES), units=units))
 
 
 def test_a_similarity_score_read_from_disk_arrives_as_a_float(tmp_path):
     text = json.dumps(trees_part(items=[tree_item("S-1", "UNCHANGED", "carried_forward", similarity_score=0.25), tree_item("T-2")]))
-    result = read(tmp_path, text, kind=TREES)
+    result = read_trees(tmp_path, text)
     assert result.state == "done", result.detail
     assert result.part["items"][0]["similarity_score"] == 0.25 and type(result.part["items"][0]["similarity_score"]) is float
-    assert read(tmp_path, text.replace("0.25", "1e999"), kind=TREES).state == "invalid", "an exponent that overflows is out of range, never inf"
+    assert read_trees(tmp_path, text.replace("0.25", "1e999")).state == "invalid", "an exponent that overflows is out of range, never inf"
 
 
 @pytest.mark.parametrize("label,mutate", [
@@ -6365,23 +6463,122 @@ def test_a_similarity_score_read_from_disk_arrives_as_a_float(tmp_path):
 def test_a_trees_item_that_breaks_the_manifests_closed_keys_or_values_is_invalid(label, mutate):
     part = trees_part()
     mutate(part)
-    assert classify(part, kind=TREES).state == "invalid"
+    assert classify_trees(part).state == "invalid"
 
 
 def test_a_trees_part_that_is_not_the_planned_batch_is_invalid():
-    assert classify(trees_part(ids=("S-1",)), ids=("S-1", "T-2"), kind=TREES).state == "invalid"
-    assert classify(trees_part(), ids=("S-1", "T-2"), kind=SCORER).state == "invalid", "a trees part under the scorer's plan"
-    assert classify(make_part(), kind=TREES).state == "invalid", "a scorer's part under the trees plan"
-    assert classify(trees_part(), ids=(), kind=TREES).state == "invalid", "a trees batch names a finding"
+    assert classify_trees(trees_part(ids=("S-1",)), ids=("S-1", "T-2")).state == "invalid"
+    assert classify(trees_part(), ids=("S-1", "T-2"), kind=SCORER, units=TREE_UNITS).state == "invalid", "a trees part under the scorer's plan"
+    assert classify(make_part(), kind=TREES, units=TREE_UNITS).state == "invalid", "a scorer's part under the trees plan"
+    assert classify_trees(trees_part(), ids=(), units=TREE_UNITS).state == "invalid", "a trees batch names a finding"
 
 
-def test_what_the_units_say_of_a_trees_item_is_the_reconcilers_and_the_assemblers_to_compare():
-    """D6: `delta_status` and `action` equal the batch input's. This check holds no unit, so it takes any pair of closed values, and a Rule 3
-    entry, whose `action` may differ from the plan's, is not refused here (T's RD-6 asks the Architect; the results record has it)."""
-    units = [{"finding_id": "S-1", "delta_status": "UNCHANGED", "action": "regenerated"}, {"finding_id": "T-2", "delta_status": "NEW", "action": "generated_fresh"}]
-    part = trees_part(items=[tree_item("S-1", "UNCHANGED", "carried_forward", similarity_score=0.9), tree_item("T-2")])
-    assert classify(part, kind=TREES, units=units).state == "done"
-    assert classify(part, kind=TREES, units=None).state == "done"
+# --- S1P-A43 (erratum on RD-6): the part's items against the batch input's units, and the Rule 3 unit's own decision ---
+
+def rule_3_item(action, score=0.9, fid="S-1"):
+    return tree_item(fid, "UNCHANGED", action, similarity_score=score)
+
+
+@pytest.mark.parametrize("action", ["regenerated", "carried_forward"])
+def test_a_rule_3_unit_answers_regenerated_or_carried_forward_and_carries_its_score(action):
+    result = classify_trees(trees_part(items=[rule_3_item(action), tree_item("T-2")]), units=RULE_3_UNITS)
+    assert result.state == "done", result.detail
+    assert result.part["items"][0] == rule_3_item(action)
+    assert "similarity_score" not in result.part["items"][1], "no other unit's item has a score"
+
+
+def without_score(action):
+    def mutate(part):
+        part["items"][0]["action"] = action
+        del part["items"][0]["similarity_score"]
+    return mutate
+
+
+RULE_3_VIOLATIONS = {
+    "generated_fresh for a Rule 3 unit": lambda p: p["items"][0].update(action="generated_fresh"),
+    "no score for a Rule 3 unit that regenerated": without_score("regenerated"),
+    "no score for a Rule 3 unit that carried": without_score("carried_forward"),
+    "a status that isn't the unit's": lambda p: p["items"][0].update(delta_status="UPDATED"),
+    "a status the unit's neighbour has": lambda p: p["items"][0].update(delta_status="NEW"),
+    "a score on a unit that isn't Rule 3's": lambda p: p["items"][1].update(similarity_score=0.5),
+    "a score of zero on a unit that isn't Rule 3's": lambda p: p["items"][1].update(similarity_score=0),
+    "a carried tree for a unit that isn't Rule 3's": lambda p: p["items"][1].update(action="carried_forward"),
+    "a regenerated tree for a unit that isn't Rule 3's": lambda p: p["items"][1].update(action="regenerated", similarity_score=0.5),
+    "a status that isn't the plain unit's": lambda p: p["items"][1].update(delta_status="UNCHANGED"),
+}
+
+
+@pytest.mark.parametrize("label", sorted(RULE_3_VIOLATIONS))
+def test_an_item_that_disagrees_with_its_unit_is_invalid(label):
+    part = trees_part(items=[rule_3_item("regenerated"), tree_item("T-2")])
+    RULE_3_VIOLATIONS[label](part)
+    result = classify_trees(part, units=RULE_3_UNITS)
+    assert result.state == "invalid" and result.part is None, label
+
+
+def test_a_part_that_was_valid_against_one_set_of_units_is_not_against_another():
+    part = trees_part(items=[rule_3_item("carried_forward"), tree_item("T-2")])
+    assert classify_trees(part, units=RULE_3_UNITS).state == "done"
+    assert classify_trees(part, units=TREE_UNITS).state == "invalid", "S-1 isn't a Rule 3 unit here: nothing may carry its baseline's tree"
+    assert classify_trees(trees_part(), units=RULE_3_UNITS).state == "invalid", "S-1 is a Rule 3 unit: its item needs a score"
+
+
+def test_the_unit_that_names_the_item_is_the_one_of_its_finding_whatever_the_order():
+    units = [tree_unit("T-2"), tree_unit("S-1", "UNCHANGED", "regenerated")]
+    part = trees_part(items=[tree_item("T-2"), rule_3_item("carried_forward")])
+    result = classify_trees(part, ids=("S-1", "T-2"), units=units)
+    assert result.state == "done", result.detail
+    assert [i["finding_id"] for i in result.part["items"]] == ["S-1", "T-2"]
+
+
+def test_the_units_spelling_of_an_id_is_compared_in_canonical_form():
+    units = [tree_unit("S-01", "UNCHANGED", "regenerated"), tree_unit("T-2")]
+    assert classify_trees(trees_part(items=[rule_3_item("regenerated"), tree_item("T-2")]), units=units).state == "done"
+
+
+@pytest.mark.parametrize("units", [None, [], {}, "units", 7, True, [None], [[]], [{}], [tree_unit("S-1")], [tree_unit("S-1"), tree_unit("T-2"), tree_unit("R-3")],
+                                   [tree_unit("S-1"), tree_unit("S-1")], [tree_unit("S-1"), tree_unit("S-01")], [tree_unit("S-1"), tree_unit("R-3")]],
+                         ids=["none", "an empty list", "an object", "text", "a number", "true", "a null unit", "a list unit", "an empty unit", "too few units",
+                              "too many units", "a unit twice", "a unit in two spellings", "a unit for a finding that isn't planned"])
+def test_a_trees_part_with_no_usable_units_is_invalid_and_never_a_crash(units):
+    assert classify_trees(trees_part(), units=units).state == "invalid"
+
+
+@pytest.mark.parametrize("label,mutate", [
+    ("no finding", lambda u: u.pop("finding_id")),
+    ("a finding off the allow-list", lambda u: u.update(finding_id="S-\u0661")),
+    ("a finding that isn't text", lambda u: u.update(finding_id=1)),
+    ("no status", lambda u: u.pop("delta_status")),
+    ("a status the manifest hasn't", lambda u: u.update(delta_status="RESOLVED")),
+    ("a status that isn't text", lambda u: u.update(delta_status=["NEW"])),
+    ("no action", lambda u: u.pop("action")),
+    ("an action the manifest hasn't", lambda u: u.update(action="copied")),
+    ("carried_forward, which only a part says", lambda u: u.update(action="carried_forward")),
+    ("an action that isn't text", lambda u: u.update(action=["generated_fresh"])),
+])
+def test_a_unit_that_is_not_one_the_planner_writes_is_invalid(label, mutate):
+    units = [dict(unit) for unit in TREE_UNITS]
+    mutate(units[1])
+    assert classify_trees(trees_part(), units=units).state == "invalid", label
+
+
+def test_a_unit_whose_action_only_a_part_may_say_is_refused_even_when_its_item_echoes_it():
+    """`carried_forward` is a Rule 3 answer, never a plan: a unit that says it is a malformed plan, whatever the part says back."""
+    units = [tree_unit("S-1"), tree_unit("T-2", "NEW", "carried_forward")]
+    assert classify_trees(trees_part(items=[tree_item("S-1"), tree_item("T-2", "NEW", "carried_forward")]), units=units).state == "invalid"
+    units = [tree_unit("S-1", "UNCHANGED", "carried_forward"), tree_unit("T-2")]
+    assert classify_trees(trees_part(items=[rule_3_item("carried_forward"), tree_item("T-2")]), units=units).state == "invalid"
+
+
+def test_the_units_of_a_stage_that_does_not_read_them_mean_nothing():
+    assert classify(make_part(), ids=("S-1", "T-2"), kind=SCORER, units=TREE_UNITS).state == "done"
+    assert classify(make_part(), ids=("S-1", "T-2"), kind=SCORER, units=None).state == "done"
+
+
+def test_the_action_is_closed_before_the_units_are_read():
+    """An item whose action isn't one of the three is invalid whatever the unit says, and so is a score that isn't a number: the closed values come first."""
+    part = trees_part(items=[tree_item("S-1", "NEW", "copied"), tree_item("T-2")])
+    assert classify_trees(part).state == "invalid"
 
 
 def section_part(fragments, batch="B001", **override):
@@ -6850,11 +7047,1259 @@ def test_an_item_of_one_section_is_invalid_under_the_units_of_the_other():
     assert classify(findings_part([roadmap_item("S-1"), roadmap_item("T-2")]), kind=REPORT, units=ANALYSIS_UNITS).state == "invalid"
 
 
-def test_the_stages_with_no_payload_yet_are_never_a_crash():
-    """`threats-md`'s payload is T091b's, and a `threat-model` plan has no part: until then, a part of either is not done, and never a traceback."""
+def test_a_threat_model_plan_has_no_part_payload_and_a_threats_md_part_with_no_units_is_not_done_and_never_a_crash():
+    """A `threat-model` plan has no part (it plans no unit), and a `threats-md` part is read against its batch input's units (T091's second slice): with none,
+    or for a part of nothing, it is `invalid`, never a traceback."""
     for stage in ("threats-md", "threat-model"):
         kind = {"stage": stage, "agent_type": PR2_STAGES[stage]}
         part = {"schema": "tachi.part/1", "plan_id": PLAN, "batch_id": "B001", "stage": stage, "agent_type": PR2_STAGES[stage],
                 "finding_ids": ["S-1"], "items": [{"finding_id": "S-1"}], "fragments": []}
-        assert classify(part, ids=("S-1",), kind=kind).state in STATES
-        assert classify(dict(part, finding_ids=[], items=[]), ids=(), kind=kind).state in STATES
+        assert classify(part, ids=("S-1",), kind=kind).state == "invalid"
+        assert classify(dict(part, finding_ids=[], items=[]), ids=(), kind=kind).state == "invalid"
+
+
+# =============================================================================
+# 29. The `threats-md` payload (T091's second slice; item O-beta, ruled at T087): the 24 tables and a part of their rows
+#
+# contracts/part-files.md, "Stage payload: threats-md". A part holds the rows of one table, under the table's closed item keys, and nothing in it is markdown.
+# Its batch input's units name the table and its rows. Every case changes one thing in a part that passes.
+# =============================================================================
+
+THREATS_MD = {"stage": "threats-md", "agent_type": "tachi-orchestrator"}
+EM_DASH = "\u2014"
+STRIDE_KEYS = ("finding_id", "status", "component", "maestro_layer", "threat", "likelihood", "impact", "risk_level", "mitigation")
+AI_KEYS = ("finding_id", "status", "component", "maestro_layer", "threat", "owasp_reference", "likelihood", "impact", "risk_level", "mitigation")
+# The contract's table, transcribed apart from the code: a section's key, what keys its units, its finding prefixes, its item keys and its size.
+CONTRACT_SECTIONS = [
+    ("components", "row", (), ("component", "type", "maestro_layer", "description"), 59),
+    ("data_flows", "row", (), ("source", "destination", "data", "protocol"), 59),
+    ("technologies", "row", (), ("category", "technology", "version"), 59),
+    ("trust_zones", "row", (), ("zone", "trust_level", "components"), 59),
+    ("boundary_crossings", "row", (), ("crossing", "from_zone", "to_zone", "components", "controls"), 59),
+    ("spoofing", "prefixes", ("S",), STRIDE_KEYS, 16),
+    ("tampering", "prefixes", ("T",), STRIDE_KEYS, 16),
+    ("repudiation", "prefixes", ("R",), STRIDE_KEYS, 16),
+    ("information_disclosure", "prefixes", ("I",), STRIDE_KEYS, 16),
+    ("denial_of_service", "prefixes", ("D",), STRIDE_KEYS, 16),
+    ("elevation_of_privilege", "prefixes", ("E",), STRIDE_KEYS, 16),
+    ("agentic", "prefixes", ("AG", "AGP", "TE"), AI_KEYS, 16),
+    ("llm", "prefixes", ("LLM", "OI", "MI"), AI_KEYS, 16),
+    ("correlated", "row", (), ("group", "findings", "component", "threat_summary", "risk_level"), 27),
+    ("patterns", "row", (), ("pattern", "count", "findings"), 59),
+    ("resolved", "resolved", (), ("finding_id", "component", "threat", "last_risk_level", "resolution_reason"), 59),
+    ("coverage", "row", (), ("component", "s", "t", "r", "i", "d", "e", "ag", "llm", "total"), 59),
+    ("gate_requirements", "row", (), ("component", "determined_type", "required_categories", "evaluated", "gaps"), 59),
+    ("gate_gaps", "row", (), ("component", "missing_category", "agents_dispatched", "resolution", "findings_added"), 59),
+    ("risk_by_layer", "row", (), ("maestro_layer", "finding_count", "highest_severity"), 59),
+    ("risk_levels", "row", (), ("risk_level", "count", "percentage"), 59),
+    ("actions", "open", (), ("finding_id", "status", "pattern", "component", "maestro_layer", "threat", "risk_level", "mitigation"), 41),
+    ("lifecycle", "row", (), ("status", "count", "description"), 59),
+    ("baseline_reference", "row", (), ("field", "value"), 59),
+]
+SECTION_KEYS = [row[0] for row in CONTRACT_SECTIONS]
+KEYS_OF = {row[0]: row[3] for row in CONTRACT_SECTIONS}
+FINDING_TABLES = {"spoofing": ["S-1", "S-2"], "tampering": ["T-1", "T-2"], "repudiation": ["R-1", "R-2"], "information_disclosure": ["I-1", "I-2"],
+                  "denial_of_service": ["D-1", "D-2"], "elevation_of_privilege": ["E-1", "E-2"], "agentic": ["AG-1", "TE-2"], "llm": ["LLM-1", "MI-2"],
+                  "resolved": ["T-9", "I-10"], "actions": ["S-1", "LLM-3"]}
+ROW_TABLES = [key for key in SECTION_KEYS if key not in FINDING_TABLES]
+UNSET = object()
+
+
+def test_the_table_of_24_sections_is_the_contracts_in_its_order_with_its_sizes():
+    sections = _api("THREATS_MD_SECTIONS")
+    assert len(sections) == 24
+    assert [(s.key, s.keyed, tuple(s.prefixes), tuple(s.keys), s.size) for s in sections] == CONTRACT_SECTIONS
+    assert dict(_api("THREATS_MD_BY_KEY")) == {s.key: s for s in sections} and list(_api("THREATS_MD_BY_KEY")) == SECTION_KEYS
+    assert len(ROW_TABLES) == 14 and list(_api("KEY_SETS")["sections-rows"][0]) == ROW_TABLES, "the manifest counts the 14 tables that no finding keys"
+
+
+def test_every_section_has_headings_a_header_and_a_size_that_a_part_can_hold():
+    for section in _api("THREATS_MD_SECTIONS"):
+        assert all(isinstance(h, str) and re.fullmatch(r"#{2,4} \S.*", h) for h in section.headings), section.key
+        assert all(isinstance(cell, str) and cell and cell == cell.strip() for cell in section.header), section.key
+        assert len(set(section.keys)) == len(section.keys) and len(set(section.header)) == len(section.header), section.key
+        assert len(section.header) == len(section.keys) + (1 if section.key == "actions" else 0), "Section 7's Category cell is the joiner's, not an item key"
+        assert (section.keys[0] == "finding_id") == (section.keyed != "row") and 1 <= section.size <= _api("MAX_IDS"), section.key
+    assert [h for s in _api("THREATS_MD_SECTIONS") for h in s.headings if h.startswith("## ")] == [
+        "## 1. System Overview", "## 2. Trust Boundaries", "## 3. STRIDE Tables", "## 4. AI Threat Tables", "## 4a. Correlated Findings",
+        "## 4b. Findings by Agentic Pattern", "## 4c. Resolved Findings", "## 5. Coverage Matrix", "## 5a. Coverage Gate Results", "## 6. Risk Summary",
+        "## 7. Recommended Actions", "## 8. Delta Summary"], "each `##` heading sits on the first table beneath it, once"
+
+
+THREATS_TEMPLATE = REPO_ROOT / "templates" / "tachi" / "output-schemas" / "threats.md"
+OUTPUT_SCHEMAS = REPO_ROOT / ".claude" / "skills" / "tachi-orchestration" / "references" / "output-schemas.md"
+
+
+def header_rows(lines):
+    """``(line index, cells)`` of each table header in ``lines``: a ``|`` line that a separator row follows."""
+    found = []
+    for index, line in enumerate(lines[:-1]):
+        if line.startswith("|") and re.fullmatch(r"\|[\s\-:|]+\|", lines[index + 1]):
+            found.append((index, tuple(cell.strip() for cell in line.strip().strip("|").split("|"))))
+    return found
+
+
+def test_the_headings_and_headers_are_the_templates_and_section_4bs_is_output_schemas_single_table():
+    """The contract: a drift test pins the table's headings and headers against `templates/tachi/output-schemas/threats.md`, except Section 4b, which takes
+    `output-schemas.md`'s single table. A heading is an exact line of the template, and the headings come in the template's order."""
+    template = THREATS_TEMPLATE.read_text(encoding="utf-8").split("\n")
+    tables = header_rows(template)
+    at, previous = 0, None
+    for section in _api("THREATS_MD_SECTIONS"):
+        for heading in section.headings:
+            assert heading in template[at:], "%s: %s" % (section.key, heading)
+            at += template[at:].index(heading)
+        if section.key == "patterns":
+            schema = OUTPUT_SCHEMAS.read_text(encoding="utf-8").split("\n")
+            start = next(i for i, line in enumerate(schema) if line.startswith("### Section 4b: Findings by Agentic Pattern"))
+            cells = next(cells for i, cells in header_rows(schema) if i > start)
+        elif section.headings:
+            cells = next(cells for i, cells in tables if i > at)
+        else:  # Section 6's second table sits under the layer table's heading, after the layer table and its example
+            cells = next(cells for i, cells in tables if i > at and cells != previous)
+        assert tuple(section.header) == cells, section.key
+        previous = cells
+
+
+def md_units(section, count=2, first=1):
+    if section in FINDING_TABLES:
+        return [{"section": section, "finding_id": fid} for fid in FINDING_TABLES[section]]
+    return [{"section": section, "row": first + n} for n in range(count)]
+
+
+def md_item(section, fid=None, **override):
+    values = {"status": "NEW", "likelihood": "HIGH", "impact": "LOW", "risk_level": "High", "last_risk_level": "Medium", "pattern": EM_DASH,
+              "maestro_layer": "L4 " + EM_DASH + " Deployment Infrastructure"}
+    item = {key: values[key] if section in FINDING_TABLES and key in values else "the %s" % key for key in KEYS_OF[section]}
+    if section in FINDING_TABLES:
+        item["finding_id"] = fid
+    item.update(override)
+    return item
+
+
+def md_part(section, items=UNSET, ids=UNSET, batch="B001", **override):
+    ids = list(FINDING_TABLES.get(section, [])) if ids is UNSET else list(ids)
+    if items is UNSET:
+        items = [md_item(section, fid) for fid in ids] if ids else [md_item(section), md_item(section)]
+    part = {"schema": "tachi.part/1", "plan_id": PLAN, "batch_id": batch, "stage": "threats-md", "agent_type": "tachi-orchestrator",
+            "finding_ids": ids, "items": items, "fragments": []}
+    part.update(override)
+    return part
+
+
+def classify_md(part, section, ids=UNSET, units=UNSET):
+    ids = list(FINDING_TABLES.get(section, [])) if ids is UNSET else list(ids)
+    return classify(part, ids=ids, kind=THREATS_MD, units=md_units(section) if units is UNSET else units)
+
+
+@pytest.mark.parametrize("section", SECTION_KEYS)
+def test_a_part_of_each_of_the_24_tables_is_done_with_no_flag_and_no_cut(section):
+    part = md_part(section)
+    before = json.dumps(part, sort_keys=True)
+    result = classify_md(part, section)
+    assert result.state == "done", result.detail
+    assert result.part["items"] == part["items"] and result.part["finding_ids"] == part["finding_ids"] and result.part["fragments"] == []
+    assert result.flags == {} and result.counts == {"narrative_fallbacks": 0, "truncations": 0}
+    assert json.dumps(part, sort_keys=True) == before, "the object it was given is left alone"
+
+
+@pytest.mark.parametrize("section", ROW_TABLES)
+def test_a_row_tables_part_names_no_finding_and_its_items_have_no_finding_id(section):
+    assert md_part(section)["finding_ids"] == [] and all("finding_id" not in item for item in md_part(section)["items"])
+    for part in (md_part(section, items=[dict(md_item(section), finding_id="S-1"), md_item(section)]), md_part(section, ids=["S-1"])):
+        assert classify_md(part, section).state == "invalid"
+
+
+@pytest.mark.parametrize("section", sorted(FINDING_TABLES))
+def test_a_finding_tables_part_names_its_findings_and_has_one_item_for_each(section):
+    ids = FINDING_TABLES[section]
+    assert classify_md(md_part(section, ids=[]), section).state == "invalid"
+    assert classify_md(md_part(section, items=[md_item(section, ids[0])]), section).state == "invalid", "an item short"
+    assert classify_md(md_part(section, items=[md_item(section, ids[0]), md_item(section, ids[1]), md_item(section, ids[1])]), section).state == "invalid"
+    assert classify_md(md_part(section, items=[md_item(section, ids[0]), md_item(section, ids[0])]), section).state == "invalid", "one finding twice"
+    assert classify_md(md_part(section, items=[md_item(section, ids[0]), md_item(section, "R-77")]), section).state == "invalid", "a finding off the batch"
+    assert classify_md(md_part(section, ids=[ids[0], "R-77"]), section).state == "invalid", "the part's own IDs differ from the batch's"
+
+
+@pytest.mark.parametrize("bad", [None, 3, ["T-1"], "", "T-", "T-1\n", "T-1 ", "t-1", "X-1", "T-" + chr(0x662), "T-1234567"], ids=repr)
+def test_a_finding_tables_item_whose_id_is_off_the_allow_list_is_invalid_and_never_a_crash(bad):
+    items = [md_item("tampering", "T-1"), md_item("tampering", "T-2")]
+    items[1]["finding_id"] = bad
+    result = classify_md(md_part("tampering", items=items), "tampering")
+    assert (result.state, result.detail) == ("invalid", "an item's finding_id is not an allow-listed ID")
+    del items[1]["finding_id"]
+    assert classify_md(md_part("tampering", items=items), "tampering").detail == "an item's finding_id is not an allow-listed ID"
+
+
+def test_two_items_for_one_finding_are_said_so_in_either_spelling_and_a_part_that_misses_a_finding_is_said_to_differ():
+    twice = classify_md(md_part("tampering", items=[md_item("tampering", "T-1"), md_item("tampering", "T-01")]), "tampering")
+    assert (twice.state, twice.detail) == ("invalid", "two items for one finding ID")
+    other = classify_md(md_part("tampering", items=[md_item("tampering", "T-1"), md_item("tampering", "T-3")]), "tampering")
+    assert (other.state, other.detail) == ("invalid", "the items differ from the planned set")
+
+
+def test_a_finding_tables_items_come_back_in_the_planned_order_with_canonical_ids():
+    units = [{"section": "tampering", "finding_id": "T-1"}, {"section": "tampering", "finding_id": "T-2"}, {"section": "tampering", "finding_id": "T-30"}]
+    part = md_part("tampering", ids=["T-30", "T-01", "T-2"], items=[md_item("tampering", "T-30"), md_item("tampering", "T-01"), md_item("tampering", "T-2")])
+    result = classify(part, ids=["T-1", "T-2", "T-30"], kind=THREATS_MD, units=units)
+    assert result.state == "done", result.detail
+    assert result.part["finding_ids"] == ["T-1", "T-2", "T-30"] and [i["finding_id"] for i in result.part["items"]] == ["T-1", "T-2", "T-30"]
+
+
+def test_a_row_tables_items_stay_in_the_order_the_agent_wrote_them_which_is_the_rows_order():
+    items = [md_item("components", description="row %d" % n) for n in (3, 4, 5)]
+    result = classify(md_part("components", items=items), ids=[], kind=THREATS_MD, units=md_units("components", 3, 3))
+    assert result.state == "done" and [i["description"] for i in result.part["items"]] == ["row 3", "row 4", "row 5"]
+
+
+@pytest.mark.parametrize("count", [0, 1, 3])
+def test_a_row_tables_part_holds_exactly_the_rows_its_units_name(count):
+    part = md_part("components")
+    result = classify_md(part, "components", units=md_units("components", count))
+    assert result.state == ("done" if count == 2 else "invalid"), count
+    assert classify_md(md_part("components", items=[md_item("components")] * 59), "components", units=md_units("components", 59)).state == "done"
+
+
+def test_a_part_can_be_read_from_disk_against_its_units(tmp_path):
+    out, path = write_part(tmp_path, json.dumps(md_part("tampering")), THREATS_MD)
+    given = dict(expect(FINDING_TABLES["tampering"], THREATS_MD), units=md_units("tampering"))
+    assert _api("read_part")(path, out=out, **given).state == "done"
+    assert _api("read_part")(path, out=out, **dict(given, units=None)).state == "invalid"
+    assert _api("read_part")(path, out=out, **dict(given, units=md_units("spoofing"))).state == "invalid", "the units name another table"
+
+
+# --- the values: closed for a finding table, evidence for the rest ---
+
+def with_item(item_index, **fields):
+    def mutate(part):
+        part["items"][item_index].update(fields)
+    return mutate
+
+
+def without_key(item_index, key):
+    def mutate(part):
+        del part["items"][item_index][key]
+    return mutate
+
+
+# (section, a change to the part that passes, the key that the detail names, the text that the detail must not give)
+MD_VALUE_BREAKS = {
+    "a status the manifest hasn't": ("tampering", with_item(0, status="RESOLVED"), "status", "RESOLVED"),
+    "a status in lower case": ("tampering", with_item(0, status="new"), "status", "new"),
+    "a likelihood off the list": ("tampering", with_item(0, likelihood="SEVERE"), "likelihood", "SEVERE"),
+    "a likelihood in lower case": ("tampering", with_item(0, likelihood="high"), "likelihood", "high"),
+    "an impact off the list": ("agentic", with_item(1, impact="CRITICAL"), "impact", "CRITICAL"),
+    "a risk level off the list": ("llm", with_item(0, risk_level="SEVERE-9731"), "risk_level", "SEVERE-9731"),
+    "a risk level in capitals": ("spoofing", with_item(0, risk_level="CRITICAL"), "risk_level", "CRITICAL"),
+    "a last risk level off the list": ("resolved", with_item(1, last_risk_level="Severe"), "last_risk_level", "Severe"),
+    "a section 7 risk level off the list": ("actions", with_item(0, risk_level="Urgent"), "risk_level", "Urgent"),
+    "a section 7 status off the list": ("actions", with_item(1, status="RESOLVED"), "status", "RESOLVED"),
+    "a pattern off the list": ("actions", with_item(0, pattern="none"), "pattern", "none"),
+    "a pattern in capitals": ("actions", with_item(0, pattern="Agent_Collusion"), "pattern", "Agent_Collusion"),
+    "a pattern with a hyphen for the dash": ("actions", with_item(0, pattern="-"), "pattern", None),
+    "a layer off the list": ("tampering", with_item(0, maestro_layer="L8"), "maestro_layer", "L8"),
+    "a layer zero": ("tampering", with_item(0, maestro_layer="L0"), "maestro_layer", "L0"),
+    "a layer in lower case": ("spoofing", with_item(0, maestro_layer="l4"), "maestro_layer", "l4"),
+    "a layer with a hyphen for the dash": ("spoofing", with_item(0, maestro_layer="L4 - Deployment"), "maestro_layer", None),
+    "a layer with a dash and no name": ("spoofing", with_item(0, maestro_layer="L4 " + EM_DASH), "maestro_layer", None),
+    "a layer with a name over 60": ("spoofing", with_item(0, maestro_layer="L4 " + EM_DASH + " " + "n" * 61), "maestro_layer", None),
+    "a layer with two codes": ("spoofing", with_item(0, maestro_layer="L1, L2"), "maestro_layer", None),
+    "a layer that is a word": ("agentic", with_item(0, maestro_layer="Deployment"), "maestro_layer", "Deployment"),
+    "an unclassified layer in lower case": ("llm", with_item(1, maestro_layer="unclassified"), "maestro_layer", "unclassified"),
+    # a closed value is checked as written and never stripped, so a padded one is not in its set
+    "a status with a trailing space": ("tampering", with_item(0, status="NEW "), "status", None),
+    "a likelihood with a trailing newline": ("tampering", with_item(1, likelihood="HIGH\n"), "likelihood", None),
+    "an impact with a leading tab": ("agentic", with_item(0, impact="\tLOW"), "impact", None),
+    "a risk level with a leading space": ("llm", with_item(1, risk_level=" High"), "risk_level", None),
+    "a last risk level with a trailing space": ("resolved", with_item(0, last_risk_level="Medium "), "last_risk_level", None),
+    "a pattern with a trailing space": ("actions", with_item(1, pattern="multiple "), "pattern", None),
+    "a layer with edge spaces": ("tampering", with_item(0, maestro_layer=" L4 "), "maestro_layer", None),
+    "a layer of nothing but spaces": ("tampering", with_item(0, maestro_layer="   "), "maestro_layer", None),
+    "an empty status": ("tampering", with_item(0, status=""), "status", None),
+    "an empty layer": ("spoofing", with_item(1, maestro_layer=""), "maestro_layer", None),
+    "a layer with a trailing text": ("llm", with_item(0, maestro_layer="Unclassified (new)"), "maestro_layer", None),
+    "a layer with a line break in its name": ("tampering", with_item(0, maestro_layer="L4 " + EM_DASH + " Deploy\nment"), "maestro_layer", None),
+    # evidence: a number is no text, and an empty value rejects the part
+    "a number for text": ("components", with_item(0, description=3), "description", None),
+    "a null for text": ("tampering", with_item(1, mitigation=None), "mitigation", None),
+    "a list for text": ("data_flows", with_item(0, data=["a"]), "data", None),
+    "a boolean for text": ("technologies", with_item(1, version=True), "version", None),
+    "a number for a closed value": ("tampering", with_item(0, risk_level=3), "risk_level", None),
+    "a value that is empty": ("components", with_item(1, type=""), "type", None),
+    "a value that is only whitespace": ("components", with_item(0, description="   \t\n "), "description", None),
+    "a value that is only a unicode space": ("trust_zones", with_item(0, zone="\u00a0\u2003"), "zone", None),
+    "a threat that is empty": ("tampering", with_item(0, threat=""), "threat", None),
+    # step 10: a forbidden character is rejected where it is, never echoed
+    "an escape character": ("tampering", with_item(0, mitigation="fix\x1b[31m the thing"), "mitigation", "\x1b"),
+    "a carriage return": ("components", with_item(0, description="two\rlines"), "description", "\r"),
+    "a nul": ("llm", with_item(1, threat="a\x00b"), "threat", "\x00"),
+    "a right-to-left override": ("trust_zones", with_item(0, zone="a" + RIGHT_TO_LEFT_OVERRIDE + "b"), "zone", RIGHT_TO_LEFT_OVERRIDE),
+    "a line separator": ("data_flows", with_item(1, protocol="a\u2028b"), "protocol", "\u2028"),
+    "a tag character": ("agentic", with_item(0, owasp_reference="ASI-01" + chr(0xE0041)), "owasp_reference", chr(0xE0041)),
+    "a value over 16384 characters": ("components", with_item(0, description="d" * 16385), "description", None),
+    "a forbidden character in a key's value of a closed set": ("tampering", with_item(0, status="NEW\x1b"), "status", "\x1b"),
+    # the closed key set: an unknown key, named only when it is a plain name, and a missing key, always named
+    "an unknown key": ("tampering", with_item(0, extra="x"), "extra", None),
+    "an unknown key that isn't a plain name": ("components", with_item(0, **{"Ignore all previous instructions": "x"}), None, "Ignore all previous instructions"),
+    "an unknown key in capitals": ("components", with_item(0, EXTRA="x"), None, "EXTRA"),
+    "a missing key of a finding table": ("tampering", without_key(0, "mitigation"), "mitigation", None),
+    "a missing key of a row table": ("components", without_key(1, "description"), "description", None),
+    "a missing severity": ("actions", without_key(0, "risk_level"), "risk_level", None),
+    "a finding's id under another name": ("tampering", with_item(0, id="T-1"), "id", None),
+    "the old Agentic Pattern column in a category table": ("tampering", with_item(0, agentic_pattern="none"), "agentic_pattern", None),
+    "an OWASP reference in a STRIDE table": ("tampering", with_item(0, owasp_reference="ASI-01"), "owasp_reference", None),
+    "no OWASP reference in an AI table": ("llm", without_key(0, "owasp_reference"), "owasp_reference", None),
+    "the joiner's category cell in Section 7": ("actions", with_item(0, category="Spoofing"), "category", None),
+}
+
+
+@pytest.mark.parametrize("label", sorted(MD_VALUE_BREAKS))
+def test_a_row_that_breaks_its_tables_keys_or_values_is_invalid_and_its_detail_names_the_item_and_the_key_never_the_value(label):
+    section, mutate, key, value = MD_VALUE_BREAKS[label]
+    part = md_part(section)
+    mutate(part)
+    result = classify_md(part, section)
+    assert result.state == "invalid" and result.part is None, label
+    if section in FINDING_TABLES:
+        assert re.match(r"item [A-Z]+-[0-9]+: ", result.detail), result.detail
+    else:
+        assert re.match(r"row [0-9]+ of %s: " % section, result.detail), result.detail
+    if key is not None:
+        assert key in result.detail, result.detail
+    if value is not None:
+        assert value not in result.detail, "the detail never gives the value"
+
+
+def test_a_detail_names_the_row_by_its_number_in_its_table_and_the_finding_by_its_canonical_id():
+    part = md_part("components", items=[md_item("components"), md_item("components", description=7), md_item("components")])
+    result = classify(part, ids=[], kind=THREATS_MD, units=md_units("components", 3, 12))
+    assert result.detail == "row 13 of components: description is not text", "the second row of a batch that starts at row 12"
+    part = md_part("tampering", ids=["T-02", "T-1"], items=[md_item("tampering", "T-02", mitigation=""), md_item("tampering", "T-1")])
+    result = classify(part, ids=["T-1", "T-2"], kind=THREATS_MD, units=[{"section": "tampering", "finding_id": "T-1"}, {"section": "tampering", "finding_id": "T-2"}])
+    assert result.detail == "item T-2: mitigation is empty"
+
+
+def test_the_first_failure_in_planned_order_is_the_one_reported_and_a_missing_key_comes_before_a_bad_value():
+    part = md_part("components", items=[md_item("components", type=""), md_item("components", description=4)])
+    assert classify_md(part, "components").detail == "row 1 of components: type is empty"
+    part = md_part("tampering", items=[md_item("tampering", "T-1", status="bad"), md_item("tampering", "T-2")])
+    del part["items"][0]["mitigation"]
+    assert classify_md(part, "tampering").detail == "item T-1: lacks the key mitigation"
+
+
+@pytest.mark.parametrize("risk", ["Critical", "High", "Medium", "Low", "Note"])
+def test_every_risk_level_is_a_closed_value(risk):
+    for section, key in (("tampering", "risk_level"), ("resolved", "last_risk_level"), ("actions", "risk_level")):
+        assert classify_md(md_part(section, items=[md_item(section, fid, **{key: risk}) for fid in FINDING_TABLES[section]]), section).state == "done"
+
+
+@pytest.mark.parametrize("level", ["LOW", "MEDIUM", "HIGH"])
+def test_every_likelihood_and_impact_is_a_closed_value(level):
+    assert classify_md(md_part("llm", items=[md_item("llm", fid, likelihood=level, impact=level) for fid in FINDING_TABLES["llm"]]), "llm").state == "done"
+
+
+@pytest.mark.parametrize("layer", ["L1", "L4", "L7", "Unclassified", "L4 " + EM_DASH + " Deployment Infrastructure", "L1 " + EM_DASH + " x", "L2 " + EM_DASH + " " + "n" * 60,
+                                   "L3 " + EM_DASH + " Name with 1 digit, a pipe | and `code`"])
+def test_a_layer_is_a_code_with_an_optional_dash_and_name_or_unclassified(layer):
+    result = classify_md(md_part("tampering", items=[md_item("tampering", "T-1", maestro_layer=layer), md_item("tampering", "T-2")]), "tampering")
+    assert result.state == "done" and result.part["items"][0]["maestro_layer"] == layer, result.detail
+
+
+@pytest.mark.parametrize("pattern", ["agent_collusion", "emergent_behavior", "temporal_attack", "trust_exploitation", "communication_vulnerability",
+                                     "resource_competition", "multiple", EM_DASH])
+def test_a_section_7_pattern_is_one_of_the_six_multiple_or_a_dash(pattern):
+    items = [md_item("actions", fid, pattern=pattern) for fid in FINDING_TABLES["actions"]]
+    assert classify_md(md_part("actions", items=items), "actions").state == "done"
+
+
+def test_the_closed_values_belong_to_the_finding_tables_alone_so_a_row_tables_look_alike_is_evidence():
+    """Part-files.md: closed values are checked "in a finding section, where it has them". `correlated` and `risk_levels` have a `risk_level`, `components` and
+    `risk_by_layer` a `maestro_layer`, `lifecycle` a `status` and `patterns` a `pattern`, and each is evidence: a row table has no list to hold them to."""
+    odd = {"correlated": {"risk_level": "Severe"}, "risk_levels": {"risk_level": "Total"}, "components": {"maestro_layer": "the foundation"},
+           "risk_by_layer": {"maestro_layer": "L9"}, "lifecycle": {"status": "RESOLVED"}, "patterns": {"pattern": "none"}, "coverage": {"s": "n/a"}}
+    for section, fields in odd.items():
+        part = md_part(section, items=[md_item(section, **fields), md_item(section)])
+        assert classify_md(part, section).state == "done", section
+
+
+def test_an_evidence_value_may_hold_digits_markup_pipes_and_slots_for_the_joiner_escapes_it_and_nothing_here_is_narrative():
+    text = "  Port 8443 | <b>bold</b> `code` {{7*7}} {{count:open}} &amp; ### a heading-shaped word, two-factor 3 times  "
+    result = classify_md(md_part("components", items=[md_item("components", description=text), md_item("components")]), "components")
+    assert result.state == "done", result.detail
+    assert result.part["items"][0]["description"] == text.strip(), "its edge whitespace is removed, its inside is kept"
+    assert result.counts == {"narrative_fallbacks": 0, "truncations": 0} and result.flags == {}
+
+
+def test_a_value_of_exactly_16384_characters_is_kept_whole_and_one_more_rejects_the_part():
+    whole = classify_md(md_part("components", items=[md_item("components", description="d" * 16384), md_item("components")]), "components")
+    assert whole.state == "done" and len(whole.part["items"][0]["description"]) == 16384, "no limit is below step 10's, so nothing is cut"
+    assert classify_md(md_part("components", items=[md_item("components", description="d" * 16385), md_item("components")]), "components").state == "invalid"
+    padded = classify_md(md_part("components", items=[md_item("components", description=" " * 20 + "d" * 16384 + " " * 20), md_item("components")]), "components")
+    assert padded.state == "done" and len(padded.part["items"][0]["description"]) == 16384, "the edge whitespace goes before the length is checked"
+
+
+@pytest.mark.parametrize("fragments", [[{"slot_key": "x", "text": "y"}], [None], "fragments", {}])
+def test_a_threats_md_part_has_no_fragments(fragments):
+    assert classify_md(md_part("components", fragments=fragments), "components").state == "invalid"
+
+
+@pytest.mark.parametrize("override", [{"agent_type": "tachi-threat-report"}, {"stage": "report"}, {"stage": "trees"}, {"plan_id": OTHER_PLAN}, {"batch_id": "B002"}])
+def test_a_threats_md_part_for_another_stage_agent_plan_or_batch_is_invalid(override):
+    assert classify_md(md_part("components", **override), "components").state == "invalid"
+
+
+@pytest.mark.parametrize("items", [None, {}, "rows", [None, None], [[], []], ["a", "b"], [1, 2]], ids=["none", "an object", "text", "nulls", "lists", "texts", "numbers"])
+def test_items_that_are_not_a_list_of_objects_are_invalid_and_never_a_crash(items):
+    assert classify_md(md_part("components", items=items), "components").state == "invalid"
+    assert classify_md(md_part("tampering", items=items), "tampering").state == "invalid"
+
+
+# --- the units that name the table: a malformed plan is invalid, never a crash ---
+
+def bad_units_of(section):
+    """Units that the planner would never write, for ``section``: each makes a part of the table ``invalid``."""
+    good = md_units(section)
+    cases = {"none": None, "an empty list": [], "an object": {}, "text": "units", "a number": 7, "true": True, "a null unit": [None, good[1]], "a list unit": [good[0], []],
+             "an empty unit": [{}, {}], "no section": [{k: v for k, v in unit.items() if k != "section"} for unit in good],
+             "a section that isn't text": [dict(unit, section=3) for unit in good], "an unknown section": [dict(unit, section="summary") for unit in good],
+             "a section in capitals": [dict(unit, section=section.upper()) for unit in good],
+             "two sections": [good[0], dict(good[1], section="data_flows" if section != "data_flows" else "components")]}
+    return cases
+
+
+@pytest.mark.parametrize("section", ["components", "tampering"])
+@pytest.mark.parametrize("label", sorted(bad_units_of("components")))
+def test_units_that_name_no_table_or_two_or_none_make_a_part_invalid(section, label):
+    result = classify_md(md_part(section), section, units=bad_units_of(section)[label])
+    assert result.state == "invalid" and result.part is None
+
+
+@pytest.mark.parametrize("label,units", [
+    ("no row number", [{"section": "components"}, {"section": "components"}]),
+    ("a row number of zero", [{"section": "components", "row": 0}, {"section": "components", "row": 1}]),
+    ("a negative row number", [{"section": "components", "row": -1}, {"section": "components", "row": 0}]),
+    ("a row number that is a boolean", [{"section": "components", "row": True}, {"section": "components", "row": 2}]),
+    ("a row number that is a float", [{"section": "components", "row": 1.0}, {"section": "components", "row": 2}]),
+    ("a row number that is text", [{"section": "components", "row": "1"}, {"section": "components", "row": "2"}]),
+    ("a finding where a row belongs", [{"section": "components", "finding_id": "S-1"}, {"section": "components", "finding_id": "S-2"}]),
+])
+def test_a_row_tables_units_are_numbered_rows(label, units):
+    assert classify_md(md_part("components"), "components", units=units).state == "invalid", label
+
+
+def test_a_row_table_whose_batch_names_a_finding_is_invalid_though_its_part_agrees():
+    assert classify(md_part("components", ids=["S-1"], items=[md_item("components"), md_item("components")]), ids=["S-1"], kind=THREATS_MD,
+                    units=md_units("components")).state == "invalid"
+
+
+@pytest.mark.parametrize("label,units", [
+    ("no finding", [{"section": "tampering"}, {"section": "tampering"}]),
+    ("a finding off the allow-list", [{"section": "tampering", "finding_id": "T-1"}, {"section": "tampering", "finding_id": "T-\u0662"}]),
+    ("a finding that isn't text", [{"section": "tampering", "finding_id": "T-1"}, {"section": "tampering", "finding_id": 2}]),
+    ("a finding the batch doesn't name", [{"section": "tampering", "finding_id": "T-1"}, {"section": "tampering", "finding_id": "T-3"}]),
+    ("one finding short", [{"section": "tampering", "finding_id": "T-1"}]),
+    ("one finding too many", [{"section": "tampering", "finding_id": fid} for fid in ("T-1", "T-2", "T-3")]),
+    ("a finding twice", [{"section": "tampering", "finding_id": "T-1"}, {"section": "tampering", "finding_id": "T-01"}]),
+    ("a row where a finding belongs", [{"section": "tampering", "row": 1}, {"section": "tampering", "row": 2}]),
+])
+def test_a_finding_tables_units_name_exactly_the_planned_findings(label, units):
+    assert classify_md(md_part("tampering"), "tampering", units=units).state == "invalid", label
+
+
+def test_a_finding_tables_units_may_come_in_any_order_and_spelling_for_the_part_is_the_one_in_the_planned_order():
+    units = [{"section": "tampering", "finding_id": "T-02"}, {"section": "tampering", "finding_id": "T-1"}]
+    assert classify_md(md_part("tampering"), "tampering", units=units).state == "done"
+
+
+def test_no_other_stage_reads_a_threats_md_section_and_threats_md_reads_nothing_else():
+    """The report's section part has a `key` where a threats-md row has a `row`, and the stage decides which reading a part gets."""
+    assert classify(md_part("components"), ids=[], kind=THREATS_MD, units=section_units("exec_summary", "risk_posture")).state == "invalid"
+    part = md_part("components", stage="report", agent_type="tachi-threat-report")
+    assert classify(part, ids=[], kind=REPORT, units=md_units("components")).state == "invalid"
+
+
+# =============================================================================
+# 30. The section manifest, tachi.sections/1 (T091's second slice; item O-beta): contracts/threat-model-records.md, "The section manifest"
+#
+# One builder (`valid_sections`, in section 27) and one table of single-change violations. What the planner and the joiner compare with the files that the run
+# holds is theirs: this check is what the manifest itself shows.
+# =============================================================================
+
+NO_BASELINE = {"source": None, "date": None, "finding_count": None, "run_id": None}
+
+
+def sections_with(**fields):
+    def mutate(doc):
+        doc.update(fields)
+    return mutate
+
+
+def frontmatter(**fields):
+    def mutate(doc):
+        doc["frontmatter"].update(fields)
+    return mutate
+
+
+def baseline_of(**fields):
+    def mutate(doc):
+        doc["frontmatter"]["baseline"].update(fields)
+    return mutate
+
+
+def gap_of(**fields):
+    def mutate(doc):
+        doc["frontmatter"]["coverage_gate"]["gaps"][0].update(fields)
+    return mutate
+
+
+def rows_of(**fields):
+    def mutate(doc):
+        doc["rows"].update(fields)
+    return mutate
+
+
+def first_run(doc):
+    doc["frontmatter"]["baseline"] = dict(NO_BASELINE)
+    doc["resolved"] = None
+
+
+SECTIONS_VARIANTS = {
+    "a run with a baseline": valid_sections(),
+    "a first run": dict(valid_sections(), resolved=None, frontmatter=dict(valid_sections()["frontmatter"], baseline=dict(NO_BASELINE))),
+    "a baseline run with nothing resolved": valid_sections(resolved=[]),
+    "a baseline that names only its source": dict(valid_sections(), frontmatter=dict(
+        valid_sections()["frontmatter"], baseline={"source": "a.md", "date": None, "finding_count": None, "run_id": None})),
+    "a baseline with no findings": dict(valid_sections(), frontmatter=dict(
+        valid_sections()["frontmatter"], baseline=dict(valid_sections()["frontmatter"]["baseline"], finding_count=0))),
+    "a gate that passed with no gap": dict(valid_sections(), frontmatter=dict(valid_sections()["frontmatter"], coverage_gate={"status": "pass", "gaps": []})),
+    "every resolution": dict(valid_sections(), frontmatter=dict(valid_sections()["frontmatter"], coverage_gate={"status": "warn", "gaps": [
+        {"component": "A", "missing_category": "spoofing", "resolution": resolution}
+        for resolution in ("findings_produced", "analyzed_clean", "dispatch_failure")]})),
+    "one open finding": valid_sections(open=["S-1"]),
+    "the IDs in either spelling": valid_sections(open=["AGP-01", "S-0001"], resolved=["T-7"]),
+    "about 1,400 open findings": valid_sections(open=["S-%d" % n for n in range(1, 1401)]),
+    "no rows at all": valid_sections(rows={name: 0 for name in EXPECTED_KEY_SETS["sections-rows"][0]}),
+    "5,000 rows in every table": valid_sections(rows={name: 5000 for name in EXPECTED_KEY_SETS["sections-rows"][0]}),
+    "a 1,000-character text": dict(valid_sections(), frontmatter=dict(
+        valid_sections()["frontmatter"], baseline=dict(valid_sections()["frontmatter"]["baseline"], source="s" * 1000))),
+    "a leap day": dict(valid_sections(), frontmatter=dict(valid_sections()["frontmatter"], run_id="2024-02-29T23-59-59")),
+    "a leap day of a year divisible by 400": dict(valid_sections(), frontmatter=dict(valid_sections()["frontmatter"], run_id="2000-02-29T00-00-00")),
+    "the last second of a year": dict(valid_sections(), frontmatter=dict(valid_sections()["frontmatter"], run_id="2026-12-31T23-59-59")),
+    "a 40-character token": dict(valid_sections(), frontmatter=dict(valid_sections()["frontmatter"], classification="c" * 40)),
+    "a token with digits and hyphens": dict(valid_sections(), frontmatter=dict(valid_sections()["frontmatter"], classification="top-secret-2")),
+}
+
+
+@pytest.mark.parametrize("label", sorted(SECTIONS_VARIANTS))
+def test_a_section_manifest_that_follows_the_contract_validates(label):
+    doc = SECTIONS_VARIANTS[label]
+    assert _api("validate_sections")(doc) is doc
+
+
+@pytest.mark.parametrize("input_format", ["ascii", "free-text", "mermaid", "plantuml", "c4"])
+def test_each_input_format_of_the_template_is_accepted(input_format):
+    doc = valid_sections()
+    doc["frontmatter"]["input_format"] = input_format
+    assert _api("validate_sections")(doc) is doc
+
+
+SECTIONS_VIOLATIONS = {
+    "an unknown key": setter(("extra",), 1),
+    **{"missing %s" % key: drop((key,)) for key in EXPECTED_KEY_SETS["sections"][0]},
+    "schema version": sections_with(schema="tachi.sections/2"),
+    "schema name": sections_with(schema="tachi.section/1"),
+    "frontmatter with another key": setter(("frontmatter", "title"), "x"),
+    **{"frontmatter missing %s" % key: drop(("frontmatter", key)) for key in EXPECTED_KEY_SETS["sections-frontmatter"][0]},
+    "frontmatter not an object": sections_with(frontmatter=[]),
+    # DATE, RUN and TOKEN
+    "a date that isn't a day": frontmatter(date="2026-02-30"),
+    "a date with a newline": frontmatter(date="2026-11-22\n"),
+    "a date in another form": frontmatter(date="22/11/2026"),
+    "a date with unicode digits": frontmatter(date="2026-11-\u0662\u0662"),
+    "a date that isn't text": frontmatter(date=20261122),
+    "an input format unknown": frontmatter(input_format="markdown"),
+    "an input format in capitals": frontmatter(input_format="Mermaid"),
+    "a classification in capitals": frontmatter(classification="Confidential"),
+    "a classification that starts with a digit": frontmatter(classification="1confidential"),
+    "a classification with an underscore": frontmatter(classification="top_secret"),
+    "a classification over 40": frontmatter(classification="c" * 41),
+    "a classification that is empty": frontmatter(classification=""),
+    "a classification with a newline": frontmatter(classification="confidential\n"),
+    "a run id with colons": frontmatter(run_id="2026-11-22T10:00:00"),
+    "a run id with a space": frontmatter(run_id="2026-11-22 10-00-00"),
+    "a run id in the timestamp form": frontmatter(run_id="20261122T100000Z-0123456789ab"),
+    "a run id with month 13": frontmatter(run_id="2026-13-22T10-00-00"),
+    "a run id with hour 24": frontmatter(run_id="2026-11-22T24-00-00"),
+    "a run id with minute 60": frontmatter(run_id="2026-11-22T10-60-00"),
+    "a run id of a day that isn't": frontmatter(run_id="2026-02-30T10-00-00"),
+    "a run id that isn't text": frontmatter(run_id=None),
+    "a run id of a leap day in a year that isn't": frontmatter(run_id="2026-02-29T10-00-00"),
+    "a run id of a century that isn't a leap year": frontmatter(run_id="2100-02-29T10-00-00"),
+    "a run id of the 31st of a month of 30 days": frontmatter(run_id="2026-11-31T10-00-00"),
+    "a run id of day 0": frontmatter(run_id="2026-11-00T10-00-00"),
+    "a run id of month 0": frontmatter(run_id="2026-00-10T10-00-00"),
+    "a run id of year 0": frontmatter(run_id="0000-01-01T00-00-00"),
+    "a run id with 60 seconds": frontmatter(run_id="2026-11-22T10-00-60"),
+    "a run id with 99 seconds": frontmatter(run_id="2026-11-22T10-00-99"),
+    "a run id with hour 99": frontmatter(run_id="2026-11-22T99-00-00"),
+    # the baseline: TEXT or null, a count or null
+    "baseline with another key": baseline_of(branch="main"),
+    **{"baseline missing %s" % key: drop(("frontmatter", "baseline", key)) for key in EXPECTED_KEY_SETS["sections-baseline"][0]},
+    "baseline not an object": frontmatter(baseline=None),
+    "a baseline source with a quote": baseline_of(source='reports/"a".md'),
+    "a baseline source with a backslash": baseline_of(source="reports\\a.md"),
+    "a baseline source with a newline": baseline_of(source="reports\nA.md"),
+    "a baseline source with a tab": baseline_of(source="reports\tA.md"),
+    "a baseline source with a control character": baseline_of(source="reports\x00A.md"),
+    "a baseline source with a bidi control": baseline_of(source="reports" + RIGHT_TO_LEFT_OVERRIDE + "A.md"),
+    "a baseline source that is empty": baseline_of(source=""),
+    "a baseline source over 1000": baseline_of(source="s" * 1001),
+    "a baseline source that isn't text": baseline_of(source=7),
+    "a baseline date with a quote": baseline_of(date='2026"'),
+    "a baseline date that is empty": baseline_of(date=""),
+    "a baseline run id with a backslash": baseline_of(run_id="2026\\11"),
+    "a baseline run id over 1000": baseline_of(run_id="r" * 1001),
+    "a baseline count below zero": baseline_of(finding_count=-1),
+    "a baseline count that is a boolean": baseline_of(finding_count=True),
+    "a baseline count that is a float": baseline_of(finding_count=5.0),
+    "a baseline count that is text": baseline_of(finding_count="5"),
+    # the coverage gate
+    "a gate with another key": setter(("frontmatter", "coverage_gate", "extra"), 1),
+    "a gate missing its gaps": drop(("frontmatter", "coverage_gate", "gaps")),
+    "a gate missing its status": drop(("frontmatter", "coverage_gate", "status")),
+    "a gate status unknown": setter(("frontmatter", "coverage_gate", "status"), "fail"),
+    "a gate status in capitals": setter(("frontmatter", "coverage_gate", "status"), "PASS"),
+    "gaps that are an object": setter(("frontmatter", "coverage_gate", "gaps"), {}),
+    "a gap that is text": setter(("frontmatter", "coverage_gate", "gaps"), ["Gateway"]),
+    "a gap with another key": gap_of(extra="x"),
+    **{"a gap missing %s" % key: drop(("frontmatter", "coverage_gate", "gaps", 0, key)) for key in EXPECTED_KEY_SETS["sections-gap"][0]},
+    "a gap component with a quote": gap_of(component='Gate"way'),
+    "a gap component with a backslash": gap_of(component="Gate\\way"),
+    "a gap component with a newline": gap_of(component="Gate\nway"),
+    "a gap component that is empty": gap_of(component=""),
+    "a gap component over 1000": gap_of(component="g" * 1001),
+    "a gap category in capitals": gap_of(missing_category="Model-Theft"),
+    "a gap category with an underscore": gap_of(missing_category="model_theft"),
+    "a gap category over 40": gap_of(missing_category="c" * 41),
+    "a gap category with a trailing newline": gap_of(missing_category="model-theft\n"),
+    "a gap resolution unknown": gap_of(resolution="skipped"),
+    "a gap resolution in capitals": gap_of(resolution="Analyzed_Clean"),
+    # the open and resolved IDs
+    "open that is empty": sections_with(open=[]),
+    "open that is null": sections_with(open=None),
+    "open that is text": sections_with(open="S-1"),
+    "open with an ID off the allow-list": sections_with(open=["S-1", "X-2"]),
+    "open with a unicode digit": sections_with(open=["S-1", "T-\u0662"]),
+    "open with a trailing newline": sections_with(open=["S-1\n"]),
+    "open with an ID that isn't text": sections_with(open=["S-1", 2]),
+    "open with an ID twice": sections_with(open=["S-1", "S-1"]),
+    "open with an ID in two spellings": sections_with(open=["S-1", "S-01"]),
+    "resolved with an ID off the allow-list": sections_with(resolved=["I-4", "bad"]),
+    "resolved with an ID twice": sections_with(resolved=["I-4", "I-4"]),
+    "resolved with an ID in two spellings": sections_with(resolved=["I-4", "I-04"]),
+    "resolved that is text": sections_with(resolved="I-4"),
+    "resolved that shares an ID with open": sections_with(resolved=["I-4", "S-1"]),
+    "resolved that shares an ID in another spelling": sections_with(resolved=["I-4", "AGP-1"]),
+    "no resolved list in a run with a baseline": sections_with(resolved=None),
+    "a resolved list in a run with no baseline": lambda doc: doc["frontmatter"].update(baseline=dict(NO_BASELINE)),
+    "an empty resolved list in a run with no baseline": lambda doc: (doc["frontmatter"].update(baseline=dict(NO_BASELINE)), doc.update(resolved=[])),
+    # the rows: 14 counts of 0 to 5,000
+    "rows with another key": rows_of(summary=1),
+    "rows that are a list": sections_with(rows=[]),
+    **{"rows missing %s" % key: drop(("rows", key)) for key in EXPECTED_KEY_SETS["sections-rows"][0]},
+    "rows for a table that finding IDs key": rows_of(actions=3),
+    "a negative row count": rows_of(components=-1),
+    "a row count over 5000": rows_of(components=5001),
+    "a row count that is a boolean": rows_of(coverage=True),
+    "a row count that is a float": rows_of(coverage=3.0),
+    "a row count that is text": rows_of(patterns="3"),
+    "a row count that is null": rows_of(lifecycle=None),
+}
+
+
+@pytest.mark.parametrize("label", sorted(SECTIONS_VIOLATIONS))
+def test_a_section_manifest_that_breaks_the_closed_schema_or_its_couplings_is_invalid(label):
+    doc = valid_sections()
+    SECTIONS_VIOLATIONS[label](doc)
+    raises_invalid(_api("validate_sections"), doc)
+
+
+def test_resolved_is_null_exactly_for_a_first_run():
+    doc = valid_sections(open=["S-1"], resolved=["T-1"])
+    doc["frontmatter"]["baseline"] = dict(NO_BASELINE)
+    raises_invalid(_api("validate_sections"), doc)  # a resolved list, and no baseline
+    doc["resolved"] = None
+    assert _api("validate_sections")(doc) is doc  # a first run
+    doc["frontmatter"]["baseline"] = dict(valid_sections()["frontmatter"]["baseline"])
+    raises_invalid(_api("validate_sections"), doc)  # a baseline, and no resolved list
+
+
+def test_a_finding_in_two_spellings_across_the_two_lists_is_one_finding_in_both():
+    for spelling in ("S-1", "S-01", "S-0001"):
+        raises_invalid(_api("validate_sections"), valid_sections(open=["S-01"], resolved=[spelling]))
+    assert _api("validate_sections")(valid_sections(open=["S-01"], resolved=["S-2"]))["open"] == ["S-01"], "the manifest keeps each ID as it is spelled"
+
+
+def test_no_string_of_the_frontmatter_can_break_the_joiners_double_quoted_scalar():
+    """S1P-A18: the joiner writes each frontmatter value double-quoted, so a quote, a backslash or a control character can't be in one."""
+    for field in ("source", "date", "run_id"):
+        for bad in ('a"b', "a\\b", "a\nb", "a\rb", "a\tb", "a\x1bb", "a\u2028b", chr(0xE0041)):
+            doc = valid_sections()
+            doc["frontmatter"]["baseline"][field] = bad
+            raises_invalid(_api("validate_sections"), doc)
+    for bad in ('a"b', "a\\b", "a\nb"):
+        doc = valid_sections()
+        doc["frontmatter"]["coverage_gate"]["gaps"][0]["component"] = bad
+        raises_invalid(_api("validate_sections"), doc)
+
+
+def test_a_manifest_from_disk_is_read_through_the_strict_loader_under_its_cap(tmp_path):
+    out, path = document_path(tmp_path)
+    path.write_text(json.dumps(valid_sections(), indent=2), encoding="utf-8")
+    assert _api("read_document")(path, out, _api("SECTIONS_SCHEMA")) == valid_sections()
+    big = valid_sections(open=["S-%d" % n for n in range(1, 20001)])
+    text = json.dumps(big, indent=2)
+    assert len(text) > 256 * 1024, "premise: about 20,000 IDs at two-space indentation pass the cap"
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(_api("PartError")) as excinfo:
+        _api("read_document")(path, out, _api("SECTIONS_SCHEMA"))
+    assert excinfo.value.kind == "unparseable"
+    assert len(json.dumps(valid_sections(open=["S-%d" % n for n in range(1, 1401)]), indent=2)) < 256 * 1024, "about 1,400 open findings fit (the manifest's note)"
+
+
+# =============================================================================
+# 31. STAGED_OUTPUTS and the run's declared-paths grammar (T091's second slice; S1P-A57 and S1P-A62, OS's R8 and R13)
+#
+# A batch stage owns no canonical file, so its plan's pre-image is `{}` and its `fail` moves nothing, yet the joiner and the assembler stage a file: the
+# names are `STAGED_OUTPUTS`, and `staged_path` checks them. `close` checks the whole run once, so `is_declared_path(.., "threat-model", P)` has the grammar of
+# part-files.md, "The run's declared-paths grammar", clause by clause.
+# =============================================================================
+
+def test_staged_outputs_are_the_names_that_a_stages_writer_stages_and_pr_1s_are_its_canonical_files():
+    staged = dict(_api("STAGED_OUTPUTS"))
+    assert staged == {"risk-score": ("risk-scores.md", "risk-scores.sarif"), "compensating-controls": ("compensating-controls.md", "compensating-controls.sarif"),
+                      "threat-model": (), "threats-md": ("threats.md",), "trees": (), "report": ("threat-report.md",)}
+    assert set(staged) == set(_api("STAGE_AGENTS")) == set(_api("CANONICAL_OUTPUTS"))
+    for stage in ("risk-score", "compensating-controls"):
+        assert staged[stage] == _api("CANONICAL_OUTPUTS")[stage], "no PR 1 path changes"
+    assert all(_api("CANONICAL_OUTPUTS")[stage] == () for stage in BATCH_STAGES), "a batch stage owns no canonical file, so its pre-image is {}"
+
+
+@pytest.mark.parametrize("stage,names", [("threats-md", ["threats.md"]), ("report", ["threat-report.md"]),
+                                         ("risk-score", ["risk-scores.md", "risk-scores.sarif"]), ("compensating-controls", ["compensating-controls.md"])])
+def test_staged_path_takes_a_name_of_staged_outputs(tmp_path, stage, names):
+    out = str(tmp_path / "out")
+    for name in names:
+        assert _api("staged_path")(out, stage, PLAN, name) == os.path.join(out, ".tachi-build", stage, PLAN, "staged", name)
+
+
+@pytest.mark.parametrize("stage,bad", [
+    ("threats-md", "threat-report.md"), ("threats-md", "attack-chains.md"), ("threats-md", "risk-scores.md"), ("threats-md", "threats.md/x"),
+    ("threats-md", "../threats.md"), ("threats-md", "Threats.md"), ("threats-md", ""), ("threats-md", None), ("threats-md", 3),
+    ("report", "threats.md"), ("report", "threat-report.md "), ("trees", "threats.md"), ("trees", "threat-report.md"), ("trees", ".manifest.json"),
+    ("threat-model", "threats.md"), ("threat-model", "threats.sarif"), ("threat-model", "threat-report.md"), ("threat-model", "attack-chains.md"),
+    ("risk-score", "compensating-controls.md"), ("risk-score", "threats.md"), ("compensating-controls", "risk-scores.md")])
+def test_staged_path_refuses_any_other_name(tmp_path, stage, bad):
+    with pytest.raises(ValueError):
+        _api("staged_path")(str(tmp_path / "out"), stage, PLAN, bad)
+
+
+def test_the_joiner_and_the_assembler_stage_through_stage_and_move_though_their_stage_owns_no_canonical_file(tmp_path):
+    """The gap that S1P-A57 closed: before it, `staged_path` crashed for these two with a ValueError, and the pre-image gave no way to restore."""
+    out = tmp_path / "out"
+    out.mkdir()
+    for stage, name in (("threats-md", "threats.md"), ("report", "threat-report.md")):
+        seen = []
+        _api("stage_and_move")(stage, str(out), PLAN, {name: "# the file\n"}, lambda texts: seen.append(dict(texts)) or [], "/kept")
+        assert seen == [{name: "# the file\n"}] and (out / name).read_text(encoding="utf-8") == "# the file\n"
+        assert not os.path.exists(_api("staged_path")(str(out), stage, PLAN, name)), "the staged copy was moved onto its name"
+    with pytest.raises(ValueError):
+        _api("stage_and_move")("trees", str(out), PLAN, {"threats.md": "x"}, lambda texts: [], "/kept")  # `trees` stages nothing
+
+
+RUN_PLAN = PLAN          # the run-level plan's ID
+BATCH_PLAN = OTHER_PLAN  # a batch stage's plan
+THIRD_PLAN = "20000101T000000Z-ffffffffffff"
+BUILD = ".tachi-build"
+RUN_DIR = "%s/threat-model/%s" % (BUILD, RUN_PLAN)
+
+
+def batch_dir(stage, plan_id=BATCH_PLAN):
+    return "%s/%s/%s" % (BUILD, stage, plan_id)
+
+
+RUN_DECLARED = [
+    # 1. D4's four files, the run's architecture snapshot and D13's quarantine name
+    "threats.md", "threats.sarif", "threat-report.md", "attack-chains.md", "architecture.md", "attack-chains.inconsistent.md",
+    # 2. the tree files and the merged manifest
+    "attack-trees/.manifest.json", "attack-trees/s-1-attack-tree.md", "attack-trees/llm-12-attack-tree.md", "attack-trees/agp-01-attack-tree.md",
+    "attack-trees/te-999999-attack-tree.md", "attack-trees/oi-3-attack-tree.md", "attack-trees/mi-9-attack-tree.md", "attack-trees/ag-1-attack-tree.md",
+    "attack-trees/e-0-attack-tree.md",
+    # 3. D3's Track O run files, flat under `.tachi-build/`
+    BUILD + "/sections.json", BUILD + "/idmap.json", BUILD + "/phase1/inventory.json", BUILD + "/phase1/dispatch.json",
+    BUILD + "/briefs/dsp-001.json", BUILD + "/briefs/dsp-9999.json", BUILD + "/records/dsp-001.json", BUILD + "/records/dsp-1234.json",
+    BUILD + "/chains/chains.json", BUILD + "/chains/narratives.json",
+    # 4. the run-level plan's own files
+    BUILD + "/threat-model/current.json", RUN_DIR + "/plan.json", RUN_DIR + "/stage-record.json", RUN_DIR + "/checks/attack-chains.json",
+    RUN_DIR + "/checks/provenance.json",
+    *[RUN_DIR + "/%s/%s" % (where, name) for where in ("preimage", "failed") for name in ("threats.md", "threats.sarif", "threat-report.md", "attack-chains.md")],
+    # 5. each batch stage's layout, for any plan ID
+    *[batch_dir(stage, plan) + "/" + tail for stage in ("threats-md", "trees", "report") for plan in (BATCH_PLAN, THIRD_PLAN, RUN_PLAN)
+      for tail in ("plan.json", "stage-record.json", "inputs/B001.json", "inputs/B003-1-2.json", "parts/B001.a1.json", "parts/B003-2.a3.json")],
+    *["%s/%s/current.json" % (BUILD, stage) for stage in ("threats-md", "trees", "report")],
+    batch_dir("threats-md") + "/staged/threats.md", batch_dir("report") + "/staged/threat-report.md",
+    batch_dir("trees") + "/trees/s-1-attack-tree.md", batch_dir("trees") + "/trees/agp-01-attack-tree.md", batch_dir("trees") + "/trees/llm-999999-attack-tree.md",
+]
+
+RUN_UNDECLARED = [
+    # what no clause names
+    "gen.py", "scratch/x.txt", "notes.md", "", "docs/threats.md", "threats.md.bak", "threats.md/x", "Threats.md", "architecture.md/x", "risk-scores.md",
+    "risk-scores.sarif", "compensating-controls.md", "attack-chains.inconsistent.md.bak", "threats.sarif ", "architecture.md\n",
+    BUILD, BUILD + "/", BUILD + "/gen.py", BUILD + "/sections.json.bak", BUILD + "/sections.json/x", BUILD + "/idmap.json.bak", BUILD + "/Idmap.json",
+    # 2. a file in attack-trees/ that `trees` doesn't write: a picture rendered by another command, a note, an ID spelled another way
+    "attack-trees", "attack-trees/", "attack-trees/notes.txt", "attack-trees/s-1-attack-tree.md.bak", "attack-trees/s-1-attack-tree.png",
+    "attack-trees/S-1-attack-tree.md", "attack-trees/LLM-12-attack-tree.md", "attack-trees/\u017f-1-attack-tree.md", "attack-trees/s-1234567-attack-tree.md",
+    "attack-trees/s--attack-tree.md", "attack-trees/s-attack-tree.md", "attack-trees/x-1-attack-tree.md", "attack-trees/s-1-attack-tree.md\n",
+    "attack-trees/ s-1-attack-tree.md", "attack-trees/sub/s-1-attack-tree.md", "attack-trees/.manifest.json.bak", "attack-trees/.Manifest.json",
+    "attack-trees/s-\u0661-attack-tree.md", "attack-trees/-attack-tree.md", "attack-trees/s-1-attack-tree.mdx", "attack-trees/s-1-Attack-Tree.md",
+    # 3. flat run files: a name no clause lists, and a path that only looks like one
+    BUILD + "/records/gen.py", BUILD + "/chains/notes.md", BUILD + "/briefs/notes.txt", BUILD + "/records/dsp-01.json", BUILD + "/records/dsp-12345.json",
+    BUILD + "/records/dsp-001.json.bak", BUILD + "/records/sub/dsp-001.json", BUILD + "/records/DSP-001.json", BUILD + "/records/dsp-001.JSON",
+    BUILD + "/briefs/dsp-001", BUILD + "/briefs/.json", BUILD + "/records", BUILD + "/records/", BUILD + "/phase1/notes.json", BUILD + "/phase1/inventory.json.bak",
+    BUILD + "/phase1/sub/inventory.json", BUILD + "/phase1", BUILD + "/chains/chains.json.bak", BUILD + "/chains/chains.md", BUILD + "/inventory.json",
+    BUILD + "/dispatch.json", BUILD + "/chains.json", BUILD + "/narratives.json",
+    # the names of the run's files, anywhere but directly under `.tachi-build/` of the run
+    "other/sections.json", "other/records/dsp-001.json", "other/briefs/dsp-001.json", "other/phase1/inventory.json", "other/chains/chains.json",
+    "other/threat-model/current.json", "other/trees/current.json", "other/threats-md/%s/plan.json" % BATCH_PLAN, "other/threat-model/%s/plan.json" % RUN_PLAN,
+    "sub/.tachi-build/sections.json", "sub/.tachi-build/records/dsp-001.json", ".tachi-builds/sections.json", ".Tachi-Build/sections.json",
+    # anything under `phase2/`, which has no plan (item O-alpha)
+    BUILD + "/phase2/dsp-001.json", BUILD + "/phase2/anything", BUILD + "/phase2/" + RUN_PLAN + "/plan.json", BUILD + "/phase2/current.json",
+    # 4. the run-level plan: another plan's directory, a name that isn't its own, a file in checks/ with any other name
+    RUN_DIR, RUN_DIR + "/", BUILD + "/threat-model", BUILD + "/threat-model/current.json/x", BUILD + "/threat-model/gen.py",
+    BUILD + "/threat-model/%s/plan.json" % BATCH_PLAN, BUILD + "/threat-model/%s/stage-record.json" % THIRD_PLAN, BUILD + "/threat-model/%s/checks/provenance.json" % BATCH_PLAN,
+    RUN_DIR + "/gen.py", RUN_DIR + "/plan.json.bak", RUN_DIR + "/plan.json/x", RUN_DIR + "/stage-record.json.bak",
+    RUN_DIR + "/checks", RUN_DIR + "/checks/", RUN_DIR + "/checks/gen.py", RUN_DIR + "/checks/attack-chains.json.bak", RUN_DIR + "/checks/provenance.json.tmp",
+    RUN_DIR + "/checks/Provenance.json", RUN_DIR + "/checks/other.json", RUN_DIR + "/checks/sub/provenance.json",
+    RUN_DIR + "/inputs/B001.json", RUN_DIR + "/parts/B001.a1.json", RUN_DIR + "/staged/threats.md", RUN_DIR + "/staged/threat-report.md",
+    RUN_DIR + "/preimage/architecture.md", RUN_DIR + "/preimage/attack-chains.inconsistent.md", RUN_DIR + "/failed/risk-scores.md",
+    RUN_DIR + "/preimage/threats.md/x", RUN_DIR + "/preimage/Threats.md", RUN_DIR + "/preimage", RUN_DIR + "/failed/", RUN_DIR + "/trees/s-1-attack-tree.md",
+    RUN_DIR + "/current.json",
+    # a PR 1 stage's directory
+    BUILD + "/risk-score/current.json", BUILD + "/risk-score/%s/plan.json" % RUN_PLAN, BUILD + "/compensating-controls/x.json",
+    BUILD + "/compensating-controls/%s/staged/compensating-controls.md" % RUN_PLAN, BUILD + "/risk-score/%s/parts/B001.a1.json" % BATCH_PLAN,
+    # 5. a batch stage: a name that isn't in its layout, a directory that isn't a plan, a staged name of another stage
+    batch_dir("trees") + "/staged/threats.md", batch_dir("trees") + "/staged/threat-report.md", batch_dir("trees") + "/preimage/threats.md",
+    batch_dir("threats-md") + "/staged/threat-report.md", batch_dir("report") + "/staged/threats.md", batch_dir("threats-md") + "/failed/threats.md",
+    batch_dir("threats-md") + "/preimage/threats.md", batch_dir("report") + "/failed/threat-report.md", batch_dir("report") + "/staged/threat-report.md.bak",
+    batch_dir("threats-md") + "/staged/threats.md/x", batch_dir("threats-md") + "/staged/Threats.md",
+    batch_dir("threats-md") + "/trees/s-1-attack-tree.md", batch_dir("report") + "/trees/s-1-attack-tree.md",
+    batch_dir("trees") + "/trees/notes.md", batch_dir("trees") + "/trees/S-1-attack-tree.md", batch_dir("trees") + "/trees/s-1-attack-tree.png",
+    batch_dir("trees") + "/trees/\u017f-1-attack-tree.md", batch_dir("trees") + "/trees/sub/s-1-attack-tree.md", batch_dir("trees") + "/trees",
+    batch_dir("trees") + "/trees/s-1-attack-tree.md\n", batch_dir("trees") + "/parts/s-1-attack-tree.md",
+    BUILD + "/trees/notaplan/plan.json", BUILD + "/trees/20261122T101500Z-0123456789AB/plan.json", BUILD + "/trees/20261122T101500Z-0123456789a/plan.json",
+    BUILD + "/trees/20261122T101500Z-0123456789abc/plan.json", BUILD + "/trees/" + BATCH_PLAN, BUILD + "/trees/" + BATCH_PLAN + "/", BUILD + "/trees/current.json/x",
+    BUILD + "/trees/gen.py", BUILD + "/report/current.json.bak", BUILD + "/threats-md/%s" % BATCH_PLAN,
+    batch_dir("trees") + "/inputs/B1.json", batch_dir("trees") + "/inputs/B001.txt", batch_dir("trees") + "/inputs/b001.json", batch_dir("trees") + "/inputs/B001-3.json",
+    batch_dir("trees") + "/parts/B001.a4.json", batch_dir("trees") + "/parts/B001.a0.json", batch_dir("report") + "/parts/B001.json",
+    batch_dir("report") + "/parts/sub/B001.a1.json", batch_dir("threats-md") + "/plan.json.bak", batch_dir("threats-md") + "/gen.py",
+    batch_dir("threats-md") + "/checks/provenance.json", batch_dir("report") + "/checks/attack-chains.json",
+]
+
+
+@pytest.mark.parametrize("relpath", RUN_DECLARED)
+def test_the_run_level_grammar_declares_each_file_that_a_run_writes(relpath):
+    assert _api("is_declared_path")(relpath, "threat-model", RUN_PLAN) is True
+
+
+@pytest.mark.parametrize("relpath", RUN_UNDECLARED)
+def test_the_run_level_grammar_leaves_everything_else_undeclared(relpath):
+    assert _api("is_declared_path")(relpath, "threat-model", RUN_PLAN) is False
+
+
+def test_the_two_lists_are_disjoint_and_hold_no_path_twice():
+    assert not set(RUN_DECLARED) & set(RUN_UNDECLARED)
+    assert len(set(RUN_DECLARED)) == len(RUN_DECLARED) and len(set(RUN_UNDECLARED)) == len(RUN_UNDECLARED)
+
+
+def test_a_tree_file_is_a_lower_case_ascii_finding_id_and_nothing_but_the_run_levels_branch_knows_attack_trees():
+    declared = _api("is_declared_path")
+    for prefix in ("s", "t", "r", "i", "d", "e", "ag", "agp", "llm", "oi", "mi", "te"):
+        assert declared("attack-trees/%s-7-attack-tree.md" % prefix, "threat-model", RUN_PLAN) is True, prefix
+        assert declared("attack-trees/%s-7-attack-tree.md" % prefix.upper(), "threat-model", RUN_PLAN) is False, prefix
+    for digits in ("1", "12", "123456"):
+        assert declared("attack-trees/s-%s-attack-tree.md" % digits, "threat-model", RUN_PLAN) is True
+    assert declared("attack-trees/s-1234567-attack-tree.md", "threat-model", RUN_PLAN) is False
+    for stage in ("risk-score", "compensating-controls"):
+        assert declared("attack-trees/.manifest.json", stage, RUN_PLAN) is False and declared("architecture.md", stage, RUN_PLAN) is False
+
+
+def test_the_run_level_plans_own_directory_is_the_one_plan_that_it_names():
+    declared = _api("is_declared_path")
+    assert declared(RUN_DIR + "/plan.json", "threat-model", RUN_PLAN) is True
+    assert declared(RUN_DIR + "/plan.json", "threat-model", BATCH_PLAN) is False, "another run-level plan's directory is undeclared"
+    assert declared(BUILD + "/threat-model/%s/plan.json" % BATCH_PLAN, "threat-model", BATCH_PLAN) is True
+
+
+def test_a_batch_stages_plan_directory_is_declared_for_any_plan_that_passes_the_plan_pattern():
+    declared = _api("is_declared_path")
+    for plan in (RUN_PLAN, BATCH_PLAN, THIRD_PLAN):
+        assert declared(batch_dir("report", plan) + "/inputs/B001.json", "threat-model", RUN_PLAN) is True
+        assert declared(batch_dir("report", plan) + "/inputs/B001.json", "threat-model", "any-other-plan-of-the-run-level-stage") is True
+    assert declared(batch_dir("report", "not-a-plan") + "/inputs/B001.json", "threat-model", RUN_PLAN) is False
+    assert declared(batch_dir("report", RUN_PLAN.upper()) + "/inputs/B001.json", "threat-model", RUN_PLAN) is False
+
+
+def test_a_batch_stage_declares_its_own_staged_file_under_its_own_plan_alone():
+    """Section 31's `is_declared_path(.., "threats-md", P)` is the generic branch, with `STAGED_OUTPUTS`: the stage's plan directory and nothing of the run."""
+    declared = _api("is_declared_path")
+    assert declared(batch_dir("threats-md") + "/staged/threats.md", "threats-md", BATCH_PLAN) is True
+    assert declared(batch_dir("threats-md") + "/staged/threats.md", "threats-md", RUN_PLAN) is False
+    assert declared(batch_dir("threats-md") + "/preimage/threats.md", "threats-md", BATCH_PLAN) is False
+    assert declared(batch_dir("report") + "/staged/threat-report.md", "report", BATCH_PLAN) is True
+    assert declared(batch_dir("report") + "/staged/threats.md", "report", BATCH_PLAN) is False
+    assert declared("threats.md", "threats-md", BATCH_PLAN) is False, "a batch stage owns no canonical file"
+    assert declared(BUILD + "/threats-md/current.json", "threats-md", BATCH_PLAN) is True
+
+
+def test_pr_1s_grammar_is_unchanged_by_the_run_level_branch():
+    declared = _api("is_declared_path")
+    base = "%s/risk-score/%s" % (BUILD, PLAN)
+    for relpath in ("risk-scores.md", base + "/plan.json", base + "/staged/risk-scores.sarif", base + "/preimage/risk-scores.md", base + "/failed/risk-scores.md"):
+        assert declared(relpath, "risk-score", PLAN) is True, relpath
+    for relpath in ("threats.md", "architecture.md", "attack-trees/.manifest.json", BUILD + "/sections.json", base + "/checks/provenance.json",
+                    base + "/trees/s-1-attack-tree.md", BUILD + "/threat-model/current.json"):
+        assert declared(relpath, "risk-score", PLAN) is False, relpath
+    with pytest.raises(KeyError):
+        declared("threats.md", "no-such-stage", PLAN)
+
+
+def test_every_path_the_layout_builders_make_is_declared_by_the_run_level_grammar(tmp_path):
+    out = str(tmp_path / "out")
+    built = [_api("pointer_path")(out, "threat-model"), _api("plan_path")(out, "threat-model", RUN_PLAN), _api("stage_record_path")(out, "threat-model", RUN_PLAN),
+             os.path.join(_api("plan_dir")(out, "threat-model", RUN_PLAN), "checks", "provenance.json"),
+             os.path.join(_api("plan_dir")(out, "threat-model", RUN_PLAN), "checks", "attack-chains.json")]
+    for name in _api("CANONICAL_OUTPUTS")["threat-model"]:
+        built += [_api(builder)(out, "threat-model", RUN_PLAN, name) for builder in ("preimage_path", "failed_path")]
+    for stage in BATCH_STAGES:
+        built += [_api("pointer_path")(out, stage), _api("plan_path")(out, stage, BATCH_PLAN), _api("stage_record_path")(out, stage, BATCH_PLAN)]
+        for batch in ("B001", "B012", "B003-1", "B003-2-1"):
+            built.append(_api("input_path")(out, stage, BATCH_PLAN, batch))
+            built += [_api("part_path")(out, stage, BATCH_PLAN, batch, attempt) for attempt in (1, 2, 3)]
+        built += [_api("staged_path")(out, stage, BATCH_PLAN, name) for name in _api("STAGED_OUTPUTS")[stage]]
+    for path in built:
+        assert _api("is_declared_path")(os.path.relpath(path, out).replace(os.sep, "/"), "threat-model", RUN_PLAN) is True, path
+
+
+# =============================================================================
+# 32. The entries' argument checks for a `--run-dir` entry (T091's second slice; S1P-A42)
+#
+# `assemble-report.py trees|report` and `attack-chains.py` take `--run-dir`, and the two main-session checks take it with exit 2. Each is `entry_arguments`'
+# three checks under another spelling, so the helper takes the option's spelling, and its first check alone is `directory_argument`. Every default keeps what
+# a caller had (section 24 pins that).
+# =============================================================================
+
+RUN_DIR_REFUSAL = ("--run-dir is not a directory", "create it or correct --run-dir")
+
+
+@pytest.mark.parametrize("stage", ["trees", "report", "attack-chains", None, "STAGE", "any banner"])
+def test_directory_argument_returns_an_existing_directory_as_an_absolute_path_whatever_stage_name_the_entry_uses(tmp_path, monkeypatch, stage):
+    (tmp_path / "run").mkdir()
+    monkeypatch.chdir(tmp_path)
+    expected = os.path.join(os.getcwd(), "run")
+    for given in ("run", "./run", "run/../run", "run/", str(tmp_path / "run"), tmp_path / "run"):
+        assert _api("directory_argument")(stage, given) == expected, repr(given)
+        assert _api("directory_argument")(stage, given, option="--run-dir", code=2) == expected
+    assert sorted(os.listdir(tmp_path)) == ["run"] and os.listdir(tmp_path / "run") == []
+
+
+@pytest.mark.parametrize("make", ["missing", "a file", "a dangling link", "a nul in the name"])
+@pytest.mark.parametrize("code", [1, 2])
+@pytest.mark.parametrize("option", ["--out", "--run-dir", "--target"])
+def test_directory_argument_refuses_a_path_that_is_not_a_directory_with_the_entrys_option_and_code_and_creates_nothing(tmp_path, make, code, option):
+    target = tmp_path / "run"
+    value = target
+    if make == "a file":
+        target.write_text("not a directory", encoding="utf-8")
+    elif make == "a dangling link":
+        target.symlink_to(tmp_path / "nowhere")
+    elif make == "a nul in the name":
+        value = str(tmp_path) + "\x00/run"
+    before = sorted(os.listdir(tmp_path))
+    error = refused(_api("directory_argument"), "attack-chains", value, option, code)
+    assert error.code == code and stop_lines(error) == ["TACHI ATTACK-CHAINS FAILED: %s is not a directory" % option, "Remedy: create it or correct %s" % option]
+    assert (error.batch, error.agent, error.kept) == (None, None, None) and sorted(os.listdir(tmp_path)) == before
+
+
+def test_directory_argument_defaults_are_the_renderers_out_and_exit_1_and_a_stage_of_none_reads_stage(tmp_path):
+    error = refused(_api("directory_argument"), "risk-score", tmp_path / "absent")
+    assert error.code == 1 and stop_lines(error) == refusal_lines("risk-score", OUT_REFUSAL)
+    assert stop_lines(refused(_api("directory_argument"), None, tmp_path / "absent", "--run-dir", 2))[0] == "TACHI STAGE FAILED: --run-dir is not a directory"
+
+
+def test_directory_argument_accepts_a_link_to_a_directory_and_returns_it_as_spelled(tmp_path):
+    (tmp_path / "real").mkdir()
+    (tmp_path / "alias").symlink_to(tmp_path / "real")
+    assert _api("directory_argument")("trees", tmp_path / "alias") == str(tmp_path / "alias")
+
+
+@pytest.mark.parametrize("value", [None, 3, b"bytes-are-a-path-too-but-not-text", ["a"]], ids=repr)
+def test_directory_argument_is_the_first_check_alone_and_a_value_that_is_no_path_is_the_callers_type_error(value):
+    """Like `entry_arguments` always was: the option comes from argparse, always text. Only the plan's two values are checked as text (`plan_arguments`)."""
+    if isinstance(value, bytes):
+        assert refused(_api("directory_argument"), "trees", value).code == 1
+    else:
+        with pytest.raises(TypeError):
+            _api("directory_argument")("trees", value)
+
+
+@pytest.mark.parametrize("stage", ["trees", "report", "attack-chains", "provenance"])
+def test_entry_arguments_takes_the_directory_options_spelling_for_its_message_and_remedy(tmp_path, stage):
+    error = refused(_api("entry_arguments"), stage, tmp_path / "absent", PLAN, HEX, "--run-dir")
+    assert error.code == 1 and stop_lines(error) == refusal_lines(stage, RUN_DIR_REFUSAL)
+    assert _api("entry_arguments")(stage, tmp_path, PLAN, HEX, option="--run-dir") == str(tmp_path)
+    assert _api("entry_arguments")(stage, tmp_path, PLAN, HEX) == str(tmp_path), "the default is still --out"
+
+
+def test_entry_arguments_with_a_run_dir_still_reports_the_first_failing_check_in_the_order_directory_plan_digest(tmp_path):
+    check = _api("entry_arguments")
+    assert stop_lines(refused(check, "trees", tmp_path / "absent", "plan", "digest", "--run-dir")) == refusal_lines("trees", RUN_DIR_REFUSAL)
+    assert stop_lines(refused(check, "trees", tmp_path, "plan", "digest", "--run-dir")) == refusal_lines("trees", PLAN_REFUSAL)
+    assert stop_lines(refused(check, "trees", tmp_path, PLAN, "digest", "--run-dir")) == refusal_lines("trees", DIGEST_REFUSAL)
+
+
+@pytest.mark.parametrize("plan_id", [PLAN, "20000101T000000Z-ffffffffffff", "99991231T235959Z-0123456789ab"])
+def test_plan_id_argument_passes_a_plan_id_and_checks_nothing_else(plan_id):
+    assert _api("plan_id_argument")("provenance", plan_id) is None
+
+
+@pytest.mark.parametrize("plan_id", INVALID_IDS["plan"] + NON_STRINGS, ids=repr)
+@pytest.mark.parametrize("stage", ["provenance", "attack-chains", None])
+def test_plan_id_argument_refuses_a_plan_id_outside_the_allow_list_with_exit_2_and_the_plan_message(stage, plan_id):
+    error = refused(_api("plan_id_argument"), stage, plan_id)
+    assert error.code == 2 and stop_lines(error) == refusal_lines(stage or "STAGE", PLAN_REFUSAL)
+    assert (error.batch, error.agent, error.kept) == (None, None, None)
+
+
+def test_plan_arguments_is_plan_id_argument_and_then_the_digest_check():
+    """The same refusals in the same order as before: `plan_arguments` calls the new name for its first check."""
+    assert stop_lines(refused(_api("plan_arguments"), "risk-score", "bad", "bad")) == refusal_lines("risk-score", PLAN_REFUSAL)
+    assert stop_lines(refused(_api("plan_arguments"), "risk-score", PLAN, "bad")) == refusal_lines("risk-score", DIGEST_REFUSAL)
+    source = inspect.getsource(_api("plan_arguments"))
+    assert "plan_id_argument(" in source, "one definition of the plan check"
+
+
+def run_dir_args(tmp_path, **fields):
+    return argparse.Namespace(**dict(dict(run_dir=str(tmp_path), plan=PLAN), **fields))
+
+
+def test_run_entry_reads_the_kept_directory_from_the_attribute_the_option_names(tmp_path, capsys):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    code = _api("run_entry")("report", "assemble-report.py", run_dir_args(run_dir), raise_value_error("boom"), option="--run-dir")
+    assert code == 4
+    lines = capsys.readouterr().err.split("\n")
+    assert lines[0].startswith("TACHI REPORT FAILED: an unexpected error stopped the render (ValueError: boom, at test_tachi_parts.py:")
+    assert lines[2] == "Kept for diagnosis: " + _api("plan_dir")(str(run_dir), "report", PLAN)
+    assert _api("run_entry")("report", "assemble-report.py", argparse.Namespace(out=str(run_dir), plan=PLAN), raise_value_error("boom")) == 4
+    assert "Kept for diagnosis: " + _api("plan_dir")(str(run_dir), "report", PLAN) in capsys.readouterr().err, "the default option is --out"
+
+
+def test_a_run_dir_entry_that_names_no_run_dir_has_no_kept_directory_and_a_dashed_option_is_an_underscored_attribute(tmp_path, capsys):
+    args = argparse.Namespace(out=str(tmp_path), plan=PLAN, **{"run_dir": None})
+    assert _api("run_entry")("trees", "assemble-report.py", args, raise_value_error("boom"), option="--run-dir") == 4
+    assert "Kept for diagnosis" not in capsys.readouterr().err, "--out is not what this entry's option names"
+    assert _api("run_entry")("trees", "assemble-report.py", argparse.Namespace(plan=PLAN), raise_value_error("boom"), option="--run-dir") == 4
+    assert "Kept for diagnosis" not in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("stage", ["attack-chains", "provenance", "STAGE", "Report", "phase2", "", None], ids=repr)
+def test_run_entry_never_raises_on_the_defect_path_whatever_stage_name_the_entry_uses(tmp_path, capsys, stage):
+    """The latent defect of the hoist (S1P-A42): `plan_dir(.., stage, plan_id)` raised `ValueError` inside the handler for a banner name that isn't a stage,
+    so the entry died with a traceback and the wrong exit code instead of D4's exit 4. The plan directory is named only for a stage that is one."""
+    code = _api("run_entry")(stage, "attack-chains.py", run_dir_args(tmp_path), raise_value_error("boom"), option="--run-dir")
+    assert code == 4
+    err = capsys.readouterr().err
+    assert err.startswith("TACHI %s FAILED: an unexpected error stopped the render (ValueError: boom, at " % (stage.upper() if isinstance(stage, str) and stage else "STAGE"))
+    assert "Remedy: report this as a bug in attack-chains.py; the earlier outputs were left or put back as they were" in err and "Kept for diagnosis" not in err
+
+
+@pytest.mark.parametrize("fields", [dict(run_dir=5), dict(run_dir=["x"]), dict(run_dir=b"/x"), dict(run_dir="a\x00b"), dict(run_dir=object())], ids=repr)
+def test_run_entry_never_raises_on_the_defect_path_for_a_directory_that_is_no_path(capsys, fields):
+    args = argparse.Namespace(plan=PLAN, **fields)
+    assert _api("run_entry")("report", "assemble-report.py", args, raise_value_error("boom"), option="--run-dir") == 4
+    assert "Kept for diagnosis" not in capsys.readouterr().err
+
+
+def test_run_entry_names_the_plan_directory_for_every_stage_of_this_version(tmp_path, capsys):
+    for stage in _api("STAGE_AGENTS"):
+        assert _api("run_entry")(stage, "x.py", run_dir_args(tmp_path), raise_value_error("boom"), option="--run-dir") == 4
+        assert "Kept for diagnosis: " + _api("plan_dir")(str(tmp_path), stage, PLAN) in capsys.readouterr().err, stage
+
+
+def test_run_entry_still_raises_without_the_defect_wrapper_for_any_option():
+    with pytest.raises(ValueError, match="boom"):
+        _api("run_entry")("trees", "tachi-stage.py", argparse.Namespace(), raise_value_error("boom"), defect=False, option="--run-dir")
+
+
+# =============================================================================
+# 33. reference_digest (T091's second slice; contracts/cli.md, "one shared helper"; RD-9, S1P-A30)
+#
+# `params.reference_digest` of the `trees` and `report` plans, and `chains.json`'s `reference_digest`, are one value: the SHA-256 of the reference set's
+# canonical JSON. The planner, the assembler and the chain script each call this, so no one of them can spell it differently. It takes the parsed set as an
+# argument, because this module imports no `tachi_parsers` (C1).
+# =============================================================================
+
+REFERENCE_SET = {
+    "open": [{"id": "S-1", "component": "Gateway", "threat": "Forged tokens", "risk_level": "High", "mitigation": "Sign them", "agentic_pattern": "none",
+              "delta_status": "NEW"},
+             {"id": "T-2", "component": "Dat\u00e4base", "threat": "Injection", "risk_level": "Medium", "mitigation": "Parameterize", "agentic_pattern": "none",
+              "delta_status": "UNCHANGED"}],
+    "resolved": [{"id": "I-4", "component": "Legacy API", "threat": "Leak", "risk_level": "High", "resolution_reason": "Component removed"}],
+    "duplicates": [], "form": "table", "lacking": {}, "flags": {},
+}
+
+
+def t_digest(reference_set):
+    """Lane T's RD-9, as the assembler's tests compute it: the canonical JSON (sorted keys, no spaces, ASCII) of the two lists."""
+    body = json.dumps({"open": reference_set["open"], "resolved": reference_set["resolved"]}, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def test_the_reference_digest_is_the_sha_256_of_the_open_and_resolved_lists_canonical_json_in_64_lower_case_hex_digits():
+    digest = _api("reference_digest")(REFERENCE_SET)
+    assert digest == t_digest(REFERENCE_SET) and re.fullmatch(r"[0-9a-f]{64}", digest)
+    assert _api("input_digest")({"open": REFERENCE_SET["open"], "resolved": REFERENCE_SET["resolved"]}) == "sha256:" + digest, "the stamp's canonical form, with no prefix"
+
+
+def test_the_reference_digest_is_a_function_of_the_two_lists_alone():
+    base = _api("reference_digest")(REFERENCE_SET)
+    for extra in ({"duplicates": ["S-1"]}, {"form": "list"}, {"lacking": {"S-1": ["component"]}}, {"flags": {"S-1": ["input:component:not-in-form"]}}, {"extra": 1}):
+        assert _api("reference_digest")(dict(REFERENCE_SET, **extra)) == base, extra
+    assert _api("reference_digest")({"open": REFERENCE_SET["open"], "resolved": REFERENCE_SET["resolved"]}) == base
+    reordered = {"resolved": REFERENCE_SET["resolved"], "open": [{key: row[key] for key in sorted(row, reverse=True)} for row in REFERENCE_SET["open"]]}
+    assert _api("reference_digest")(reordered) == base, "a mapping's key order is not part of it"
+
+
+@pytest.mark.parametrize("label,change", [
+    ("a changed risk level", lambda s: s["open"][0].update(risk_level="Critical")),
+    ("a changed mitigation", lambda s: s["open"][1].update(mitigation="Parameterise")),
+    ("a changed status", lambda s: s["open"][1].update(delta_status="UPDATED")),
+    ("a changed ID spelling", lambda s: s["open"][0].update(id="S-01")),
+    ("a dropped finding", lambda s: s["open"].pop()),
+    ("two findings in the other order", lambda s: s["open"].reverse()),
+    ("a finding moved to resolved", lambda s: s["resolved"].append(s["open"].pop())),
+    ("a changed resolved row", lambda s: s["resolved"][0].update(resolution_reason="Component renamed")),
+    ("no resolved row", lambda s: s["resolved"].clear()),
+])
+def test_a_change_to_a_finding_moves_the_reference_digest(label, change):
+    other = json.loads(json.dumps(REFERENCE_SET))
+    change(other)
+    assert _api("reference_digest")(other) != _api("reference_digest")(REFERENCE_SET), label
+
+
+def test_the_reference_digest_escapes_non_ascii_text_so_it_never_depends_on_the_encoding_of_a_file():
+    sample = {"open": [{"id": "S-1", "component": "Gateway \u2014 \u00e9 \U0001f600"}], "resolved": []}
+    assert _api("reference_digest")(sample) == t_digest(sample)
+    assert json.dumps(sample, ensure_ascii=True).isascii()
+
+
+@pytest.mark.parametrize("bad", [None, [], "set", 3, {}, {"open": []}, {"resolved": []}, {"open": None, "resolved": []}, {"open": [], "resolved": None},
+                                 {"open": {}, "resolved": []}, {"open": [], "resolved": "none"}, {"open": (), "resolved": []}], ids=repr)
+def test_something_that_is_not_a_reference_set_is_a_value_error_never_a_digest_of_nothing(bad):
+    with pytest.raises(ValueError):
+        _api("reference_digest")(bad)
+
+
+def test_a_set_that_holds_a_value_json_cannot_write_is_a_type_error_as_input_digest_is():
+    with pytest.raises(TypeError):
+        _api("reference_digest")({"open": [{"id": "S-1", "score": Decimal("1.5")}], "resolved": []})
+
+
+def test_two_empty_lists_have_a_digest_so_the_digest_of_a_set_never_means_no_set():
+    assert _api("reference_digest")({"open": [], "resolved": []}) == hashlib.sha256(b'{"open":[],"resolved":[]}').hexdigest()
+
+
+THREATS_TEXT = (
+    "# Threat Model Report\n\n## 7. Recommended Actions\n\n"
+    "| Finding ID | Status | Category | Pattern | Component | MAESTRO Layer | Threat | Risk Level | Mitigation |\n"
+    "|---|---|---|---|---|---|---|---|---|\n"
+    "| S-1 | NEW | Spoofing | \u2014 | Gateway | L4 \u2014 Deployment | Forged tokens | High | Sign them |\n"
+    "| T-2 | UNCHANGED | Tampering | \u2014 | Database | L2 \u2014 Data | Injection | Medium | Parameterize |\n")
+
+
+def test_the_digest_of_what_the_parser_reads_survives_what_steps_2_5_to_2_8_add_and_follows_a_changed_finding():
+    """Against the real reader: the populator's block and the outcome record leave Sections 7 and 4c alone, and a finding's change is a different run."""
+    import tachi_parsers
+    digest = _api("reference_digest")(tachi_parsers.parse_reference_set(THREATS_TEXT))
+    assert digest == t_digest(tachi_parsers.parse_reference_set(THREATS_TEXT)) and re.fullmatch(r"[0-9a-f]{64}", digest)
+    added = THREATS_TEXT + "\n## Affected Assets\n\n| Finding ID | Affected Assets |\n|---|---|\n| S-1 | [auth] |\n"
+    added = added.replace("# Threat Model Report\n", "# Threat Model Report\n\n**Attack chain outcome**: skipped (inventory missing)\n", 1)
+    assert _api("reference_digest")(tachi_parsers.parse_reference_set(added)) == digest
+    changed = THREATS_TEXT.replace("| High | Sign them |", "| Critical | Sign them |")
+    assert _api("reference_digest")(tachi_parsers.parse_reference_set(changed)) != digest
+
+
+# --- the history of a batch stage: a part is read against its batch input's units (retry_history; T091's second slice) ---
+
+def batch_stage_history(tmp_path, stage, ids, part, units, write_input=True):
+    """The history of one batch (B001, retried once) of ``stage``, with attempt 1's ``part`` on disk and, when ``write_input``, its batch input."""
+    out = tmp_path / "out"
+    plan = valid_pr2_plan(stage)
+    plan.update(batches=[history_entry("B001", 2, "pending", ids=ids)])
+    path = _api("part_path")(out, stage, PLAN, "B001", 1)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    _api("atomic_write")(path, json.dumps(part))
+    if write_input:
+        batch_input = valid_pr2_batch_input(stage, ids=ids)
+        batch_input["units"] = units
+        input_path = _api("input_path")(out, stage, PLAN, "B001")
+        os.makedirs(os.path.dirname(input_path), exist_ok=True)
+        _api("atomic_write")(input_path, json.dumps(batch_input))
+    return _api("retry_history")(stage, out, plan)
+
+
+def test_a_trees_batch_whose_part_was_valid_but_whose_tree_was_missing_is_a_missing_attempt_not_an_invalid_one(tmp_path):
+    """R11: a part can validate while a named tree file is missing, and `reconcile` then halves the batch as `missing`. The history reads the part against
+    the batch input's units, so that valid part is the `missing` of the contract (a part that has turned valid since) and not an `invalid` one."""
+    part = trees_part(items=[rule_3_item("carried_forward"), tree_item("T-2")])
+    events, retries = batch_stage_history(tmp_path, "trees", ("S-1", "T-2"), part, RULE_3_UNITS)
+    assert events == [{"batch_id": "B001", "attempt": 1, "kind": "missing"}] and retries[0]["cause"] == "missing"
+
+
+def test_a_trees_part_that_disagrees_with_its_batch_inputs_units_is_an_invalid_attempt(tmp_path):
+    part = trees_part(items=[tree_item("S-1", "UNCHANGED", "carried_forward"), tree_item("T-2")])  # a carried tree with no score
+    events, retries = batch_stage_history(tmp_path, "trees", ("S-1", "T-2"), part, RULE_3_UNITS)
+    assert events == [{"batch_id": "B001", "attempt": 1, "kind": "invalid"}] and retries[0]["cause"] == "invalid"
+
+
+def test_a_batch_stage_part_whose_batch_input_is_gone_reads_as_invalid_never_a_crash(tmp_path):
+    part = trees_part(items=[rule_3_item("carried_forward"), tree_item("T-2")])
+    events, retries = batch_stage_history(tmp_path, "trees", ("S-1", "T-2"), part, RULE_3_UNITS, write_input=False)
+    assert events == [{"batch_id": "B001", "attempt": 1, "kind": "invalid"}] and retries[0]["cause"] == "invalid"
+
+
+def test_a_threats_md_row_batchs_valid_part_is_read_through_its_units_in_the_history(tmp_path):
+    part = md_part("components")
+    events, _ = batch_stage_history(tmp_path, "threats-md", (), part, md_units("components"))
+    assert events == [{"batch_id": "B001", "attempt": 1, "kind": "missing"}]
+    events, _ = batch_stage_history(tmp_path / "other", "threats-md", (), md_part("components", items=[md_item("components")]), md_units("components"))
+    assert events == [{"batch_id": "B001", "attempt": 1, "kind": "invalid"}], "one row short"
+
+
+def test_a_pr_1_stage_reads_no_batch_input_for_its_history_and_a_batch_stage_reads_one_for_each_failed_attempt(tmp_path, monkeypatch):
+    """The scorer's and the controls' parts don't depend on units, so their history reads nothing but the part. A batch stage's reads its batch input once
+    for each failed attempt, by the document loader, which is the one reader of a batch input."""
+    calls = []
+    real = tachi_parts.read_document
+
+    def spy(path, out, schema):
+        calls.append((os.path.basename(str(path)), schema))
+        return real(path, out, schema)
+
+    monkeypatch.setattr(tachi_parts, "read_document", spy)
+    for stage in ("risk-score", "compensating-controls"):
+        events, _ = history_of(tmp_path / stage, [history_entry("B001", 2, "pending")], {("B001", 1): "done"}, stage=stage)
+        assert events == [{"batch_id": "B001", "attempt": 1, "kind": "missing"}]
+    assert calls == []
+    batch_stage_history(tmp_path / "trees", "trees", ("S-1", "T-2"), trees_part(items=[rule_3_item("carried_forward"), tree_item("T-2")]), RULE_3_UNITS)
+    assert calls == [("B001.json", "tachi.batch-input/1")]

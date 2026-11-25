@@ -57,7 +57,7 @@ Written in two slices (T012, T013). **Slice 1, below, is the identifier module:*
 * The layout builders, ADR-050 D3 (P-6). Each returns an absolute path as ``str`` and raises ``ValueError`` for a
   stage, ID, attempt or file name that is not allow-listed, so a hostile value never becomes part of a path.
   ``out`` is ``--out``; ``BUILD_DIR`` is ``.tachi-build``; ``PLAN_SUBDIRS`` is ``inputs``, ``parts``,
-  ``preimage``, ``staged`` and ``failed``; a file ``name`` is one of ``CANONICAL_OUTPUTS[stage]``::
+  ``preimage``, ``staged`` and ``failed``; a file ``name`` is one of ``CANONICAL_OUTPUTS[stage]``, and a staged one of ``STAGED_OUTPUTS[stage]``::
 
       stage_dir(out, stage)                            <out>/.tachi-build/<stage>
       pointer_path(out, stage)                         <stage dir>/current.json
@@ -100,11 +100,13 @@ message, exit code, reason string and cap it had (S1P-A11):
 
 * ``StageFailure(code, stage, reason, remedy="", batch=None, agent=None, kept=None)``: a stop with D4's exit code and four-line message, ``text()``.
   ``tachi-stage.py``'s ``StageError`` is this class, and a renderer's ``RenderError`` is a subclass that fixes the stage.
-  ``run_entry(stage, renderer, args, run, defect=True)`` is an entry's ``main``: it prints the message and returns the code, and turns an unexpected
-  exception into ``entry_defect(stage, renderer, exc, kept)``'s exit 4. ``build_parser(renderer, description, out=True, plan=True)`` is the arguments
-  entries share (``--version``, ``--out``, ``--plan`` and ``--plan-digest``), and ``entry_arguments(stage, out, plan_id, digest)`` is the first thing an
-  entry does with them: ``--out`` is a directory (exit 1), then ``--plan`` and ``--plan-digest`` pass their allow-lists (exit 2), and it returns ``--out``
-  as an absolute path. ``plan_arguments(stage, plan_id, digest)`` is its last two checks, for an entry that checks ``--out`` in its own way.
+  ``run_entry(stage, renderer, args, run, defect=True, option="--out")`` is an entry's ``main``: it prints the message and returns the code, and turns an
+  unexpected exception into ``entry_defect(stage, renderer, exc, kept)``'s exit 4. ``build_parser(renderer, description, out=True, plan=True)`` is the
+  arguments entries share (``--version``, ``--out``, ``--plan`` and ``--plan-digest``), and ``entry_arguments(stage, out, plan_id, digest, option="--out")``
+  is the first thing an entry does with them: ``--out`` is a directory (exit 1), then ``--plan`` and ``--plan-digest`` pass their allow-lists (exit 2), and
+  it returns ``--out`` as an absolute path. ``plan_arguments(stage, plan_id, digest)`` is its last two checks, for an entry that checks ``--out`` in its own
+  way. ``directory_argument(stage, value, option="--out", code=1)`` is the first check alone, for an entry whose directory option is spelled another way or
+  has another exit code (``--run-dir``), and ``plan_id_argument(stage, plan_id)`` is ``plan_arguments``' first check alone (S1P-A42).
 * D3's guard: ``trusted_plan(stage, out, plan_id, digest, complete=False, read_inputs=False, kept=False)`` returns ``(plan, inputs)`` once the pointer,
   the digest, the inputs and the batch inputs check out, with ``entry_document(stage, path, out, schema, what, kept=None)`` (``read_document`` with D4's
   exit codes), ``plan_input_bytes(stage, entry, name, kept=None)`` and ``digest_or_none(path, out=None)``. ``read_parts(stage, out, plan)`` returns
@@ -154,6 +156,23 @@ message, exit code, reason string and cap it had (S1P-A11):
   them. A ``trees`` item is ``{finding_id, delta_status, action, similarity_score?}``. A ``report`` part is a section part (``fragments`` under ``REPORT_PARTS``'
   closed keys and ``report_fragment_limit``'s limits) or a findings part (``threat_analysis`` and ``remediation_roadmap`` items). ``report_fallback(field)`` is
   the fixed sentence for a report field, and ``SLOT_TABLE`` gains the ``report`` and ``chain-narratives`` stages, whose slots may name a finding.
+
+**Added at W2' (T091's second slice, ruled at S1P-A31 to S1P-A63):**
+
+* ``DISPATCH_REASONS`` gains ``agent_failed`` and ``timed_out`` (T090): a record with either has ``count`` 0, because no report came. ``HANDOFF_WARNING_CODES_BY_CHECK``
+  gives each check its own list of warning codes, and no other code loads (S1P-A52). ``HANDOFF_WARNING_CODES`` is their union.
+* The ``threats-md`` payload (item O-beta). ``THREATS_MD_SECTIONS`` is the template's 24 tables in their order (``ThreatsMdSection``: key, headings, what keys its
+  units, item keys, header cells and rows per part), and ``THREATS_MD_BY_KEY`` indexes it. ``classify_part`` and ``read_part`` take the batch input's ``units`` for
+  it: a part holds the rows of one table, under the table's closed item keys, and nothing in it is markdown. ``tachi.sections/1``, the manifest that the planner
+  reads, is ``SECTIONS_SCHEMA`` with ``validate_sections``.
+* The ``trees`` per-unit rule (S1P-A43). A ``trees`` part needs the batch input's ``units``: each item's ``delta_status`` is its unit's, and so is its ``action``,
+  except that a Rule 3 unit (planned ``regenerated``) says ``regenerated`` or ``carried_forward`` and alone carries ``similarity_score``.
+* ``STAGED_OUTPUTS`` (S1P-A57): the names that a stage's writer stages under ``<plan_id>/staged/``, which ``staged_path`` checks in place of ``CANONICAL_OUTPUTS``.
+* ``is_declared_path`` gains the run-level ``threat-model`` branch (S1P-A62): D4's four files, ``architecture.md``, the tree files, D11 to D14's flat run files,
+  the run-level plan's own files and each batch stage's layout.
+* ``reference_digest(reference_set)``: the SHA-256 of a reference set's canonical JSON, the one value of ``params.reference_digest`` and ``chains.json``.
+* The closed values beside them: ``NO_REPORT_REASONS`` (the two reasons that mean no report came), ``PLANNED_TREE_ACTIONS``, ``THREATS_MD_LEVELS``,
+  ``ACTION_PATTERNS``, ``INPUT_FORMATS``, ``GATE_STATUSES`` and ``GAP_RESOLUTIONS``.
 """
 from __future__ import annotations
 
@@ -172,7 +191,7 @@ import tempfile
 import textwrap
 import unicodedata
 from decimal import Decimal
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tuple
 
 # Turn bytecode writing off before anything else loads (feature 391, FR-007; ADR-049 D8).
 # This helper is already compiled when this line runs and imports no local module itself,
@@ -318,6 +337,7 @@ DISPATCH_TABLE_SCHEMA = "tachi.phase1-dispatch/1"
 CHAINS_SCHEMA = "tachi.chains/1"
 CHAIN_NARRATIVES_SCHEMA = "tachi.chain-narratives/1"
 HANDOFF_SCHEMA = "tachi.check-handoff/1"
+SECTIONS_SCHEMA = "tachi.sections/1"
 
 # The stages this version knows, each with its agent. `threat-model` is PR 2's run-level plan (it plans no units, and it owns D4's four canonical
 # files); `threats-md`, `trees` and `report` are its batch stages (part-files.md section 5). Phase 2 has no stage: it writes records, not parts, and it
@@ -366,7 +386,10 @@ RISK_LEVELS = ("Critical", "High", "Medium", "Low", "Note")
 DFD_TYPES = ("External Entity", "Process", "Data Store", "Data Flow")
 DISPATCH_ORIGINS = ("planned", "redispatch", "coverage-gap")
 DISPATCH_STATUSES = ("complete", "superseded", "unrecovered")  # `complete` is the only live record (item O-alpha)
-DISPATCH_REASONS = ("no_end_marker", "overflow_error")  # why a record was truncated; null exactly for a complete one
+# Why a record was truncated; null exactly for a complete one. `agent_failed` (the platform's failed notification: an output-cap stop, an API error or a
+# refusal) and `timed_out` (the wave's watch ran out) are T090's (S1P-A31): no report came, so such a record has `count` 0 and no local ID.
+DISPATCH_REASONS = ("no_end_marker", "overflow_error", "agent_failed", "timed_out")
+NO_REPORT_REASONS = DISPATCH_REASONS[2:]
 CHAIN_OUTCOMES = ("written", "zero", "skipped")  # `tachi_parsers.parse_chain_outcome`'s forms
 CHAIN_ZERO_REASONS = ("no STRIDE findings", "fewer than two layers with STRIDE findings", "no candidate links",
                       "no chain with a Critical or High finding")
@@ -375,10 +398,14 @@ CHAIN_ROLES = ("initial_exploit", "intermediate_cascade", "terminal_impact")
 HANDOFF_CHECKS = ("attack-chains", "provenance")  # a hand-off's `check` is its file's stem
 HANDOFF_STATUSES = ("pass", "warn", "fail")
 HANDOFF_ERROR_CODES = ("no-records", "envelope", "lineage", "provenance", "completeness")  # the failed rule of FR-N4.5 and FR-N4.6
-# The check hand-off's closed warning codes (part-files.md section 6). `coverage-gap:unrecovered:<reason>` takes the record's reasons.
-HANDOFF_WARNING_CODES = (("chain-outcome:rewritten", "section6:mismatch", "id:reissued")
-                         + tuple("coverage-gap:unrecovered:" + reason for reason in DISPATCH_REASONS)
-                         + ("correlation-member-repeated",))
+# The check hand-off's closed warning codes, per check (part-files.md section 6; S1P-A52): a code of the other check, or of no list, fails the load.
+# `coverage-gap:unrecovered:<reason>` takes the record's reasons.
+HANDOFF_WARNING_CODES_BY_CHECK: Dict[str, Tuple[str, ...]] = {
+    "attack-chains": ("chain-outcome:rewritten",),
+    "provenance": (("section6:mismatch", "id:reissued") + tuple("coverage-gap:unrecovered:" + reason for reason in DISPATCH_REASONS)
+                   + ("correlation-member-repeated",)),
+}
+HANDOFF_WARNING_CODES = HANDOFF_WARNING_CODES_BY_CHECK["attack-chains"] + HANDOFF_WARNING_CODES_BY_CHECK["provenance"]
 DELTA_STATUSES = ("NEW", "UNCHANGED", "UPDATED")
 TREE_ACTIONS = ("carried_forward", "generated_fresh", "regenerated")
 # The `report` payload's closed names (part-files.md, "Stage payload: report"). A band is a risk level in lower case, as a `count` or `pct` slot spells it.
@@ -389,6 +416,85 @@ REPORT_CATEGORY_KEYS = ("spoofing", "tampering", "repudiation", "information_dis
 # The six patterns of Section 7's Pattern column (`schemas/finding.yaml`'s `agentic_pattern`), in the canonical order.
 REPORT_PATTERNS = ("agent_collusion", "emergent_behavior", "temporal_attack", "trust_exploitation", "communication_vulnerability",
                    "resource_competition")
+
+# The `threats-md` payload's closed values (part-files.md, "String classes"), which only a finding table has: `likelihood` and `impact`, and `pattern` in
+# Section 7 (one of the six patterns, `multiple`, or an em dash for none). The rest of a part's values are evidence.
+THREATS_MD_LEVELS = ("LOW", "MEDIUM", "HIGH")
+ACTION_PATTERNS = REPORT_PATTERNS + ("multiple", "\u2014")
+INPUT_FORMATS = ("ascii", "free-text", "mermaid", "plantuml", "c4")  # the section manifest's `input_format`
+GATE_STATUSES = ("pass", "warn")
+GAP_RESOLUTIONS = ("findings_produced", "analyzed_clean", "dispatch_failure")
+
+
+class ThreatsMdSection(NamedTuple):
+    """One of the 24 tables of ``threats.md`` as the ``threats-md`` stage reads it: the planner makes its units, the validator checks its rows and the joiner
+    writes it (item O-beta)."""
+
+    key: str                    # the name a part's units give, and a row table's key in the manifest's ``rows``
+    headings: Tuple[str, ...]   # the heading lines that the table sits under, outermost first; a section's ``##`` line is on the first table beneath it only
+    keyed: str                  # what gives the table its units: ``row`` (the manifest's row count), ``prefixes`` (the open IDs with ``prefixes``), ``open`` or ``resolved``
+    prefixes: Tuple[str, ...]   # the finding prefixes of a ``prefixes`` table, and ``()`` for any other
+    keys: Tuple[str, ...]       # an item's keys, in header order; a finding table's first is ``finding_id``
+    header: Tuple[str, ...]     # the header cells in the template's words (the single 4b table is ``output-schemas.md``'s); ``actions`` has the joiner's ``Category`` cell too
+    size: int                   # rows per part, ADR-050 D6's W0 method
+
+
+_STRIDE_KEYS = ("finding_id", "status", "component", "maestro_layer", "threat", "likelihood", "impact", "risk_level", "mitigation")
+_STRIDE_HEADER = ("ID", "Status", "Component", "MAESTRO Layer", "Threat", "Likelihood", "Impact", "Risk Level", "Mitigation")
+_AI_KEYS = tuple(_STRIDE_KEYS[:5]) + ("owasp_reference",) + tuple(_STRIDE_KEYS[5:])
+_AI_HEADER = tuple(_STRIDE_HEADER[:5]) + ("OWASP Reference",) + tuple(_STRIDE_HEADER[5:])
+
+# The template's 24 tables, in their order (contracts/part-files.md, "Stage payload: threats-md"). A drift test pins the headings and headers against
+# templates/tachi/output-schemas/threats.md, and Section 4b's against output-schemas.md.
+THREATS_MD_SECTIONS: Tuple[ThreatsMdSection, ...] = (
+    ThreatsMdSection("components", ("## 1. System Overview", "### Components"), "row", (),
+                     ("component", "type", "maestro_layer", "description"), ("Component", "Type", "MAESTRO Layer", "Description"), 59),
+    ThreatsMdSection("data_flows", ("### Data Flows",), "row", (),
+                     ("source", "destination", "data", "protocol"), ("Source", "Destination", "Data", "Protocol"), 59),
+    ThreatsMdSection("technologies", ("### Technologies",), "row", (),
+                     ("category", "technology", "version"), ("Category", "Technology", "Version (if known)"), 59),
+    ThreatsMdSection("trust_zones", ("## 2. Trust Boundaries", "### Trust Zones"), "row", (),
+                     ("zone", "trust_level", "components"), ("Zone", "Trust Level", "Components"), 59),
+    ThreatsMdSection("boundary_crossings", ("### Boundary Crossings",), "row", (),
+                     ("crossing", "from_zone", "to_zone", "components", "controls"),
+                     ("Crossing", "From Zone", "To Zone", "Components", "Controls"), 59),
+    ThreatsMdSection("spoofing", ("## 3. STRIDE Tables", "### 3.1 Spoofing (S)"), "prefixes", ("S",), _STRIDE_KEYS, _STRIDE_HEADER, 16),
+    ThreatsMdSection("tampering", ("### 3.2 Tampering (T)",), "prefixes", ("T",), _STRIDE_KEYS, _STRIDE_HEADER, 16),
+    ThreatsMdSection("repudiation", ("### 3.3 Repudiation (R)",), "prefixes", ("R",), _STRIDE_KEYS, _STRIDE_HEADER, 16),
+    ThreatsMdSection("information_disclosure", ("### 3.4 Information Disclosure (I)",), "prefixes", ("I",), _STRIDE_KEYS, _STRIDE_HEADER, 16),
+    ThreatsMdSection("denial_of_service", ("### 3.5 Denial of Service (D)",), "prefixes", ("D",), _STRIDE_KEYS, _STRIDE_HEADER, 16),
+    ThreatsMdSection("elevation_of_privilege", ("### 3.6 Elevation of Privilege (E)",), "prefixes", ("E",), _STRIDE_KEYS, _STRIDE_HEADER, 16),
+    ThreatsMdSection("agentic", ("## 4. AI Threat Tables", "### 4.1 Agentic Threats (AG)"), "prefixes", ("AG", "AGP", "TE"), _AI_KEYS, _AI_HEADER, 16),
+    ThreatsMdSection("llm", ("### 4.2 LLM Threats (LLM)",), "prefixes", ("LLM", "OI", "MI"), _AI_KEYS, _AI_HEADER, 16),
+    ThreatsMdSection("correlated", ("## 4a. Correlated Findings",), "row", (),
+                     ("group", "findings", "component", "threat_summary", "risk_level"),
+                     ("Group", "Findings", "Component", "Threat Summary", "Risk Level"), 27),
+    ThreatsMdSection("patterns", ("## 4b. Findings by Agentic Pattern",), "row", (),
+                     ("pattern", "count", "findings"), ("Pattern", "Count", "Findings"), 59),
+    ThreatsMdSection("resolved", ("## 4c. Resolved Findings",), "resolved", (),
+                     ("finding_id", "component", "threat", "last_risk_level", "resolution_reason"),
+                     ("ID", "Component", "Threat", "Last Risk Level", "Resolution Reason"), 59),
+    ThreatsMdSection("coverage", ("## 5. Coverage Matrix",), "row", (),
+                     ("component", "s", "t", "r", "i", "d", "e", "ag", "llm", "total"),
+                     ("Component", "S", "T", "R", "I", "D", "E", "AG", "LLM", "Total"), 59),
+    ThreatsMdSection("gate_requirements", ("## 5a. Coverage Gate Results", "### Coverage Requirements Matrix"), "row", (),
+                     ("component", "determined_type", "required_categories", "evaluated", "gaps"),
+                     ("Component", "Determined Type", "Required Categories", "Evaluated", "Gaps"), 59),
+    ThreatsMdSection("gate_gaps", ("### Gap Resolution Details",), "row", (),
+                     ("component", "missing_category", "agents_dispatched", "resolution", "findings_added"),
+                     ("Component", "Missing Category", "Agent(s) Dispatched", "Resolution", "Findings Added"), 59),
+    ThreatsMdSection("risk_by_layer", ("## 6. Risk Summary", "#### Risk by MAESTRO Layer"), "row", (),
+                     ("maestro_layer", "finding_count", "highest_severity"), ("MAESTRO Layer", "Finding Count", "Highest Severity"), 59),
+    ThreatsMdSection("risk_levels", (), "row", (),
+                     ("risk_level", "count", "percentage"), ("Risk Level", "Count", "Percentage"), 59),
+    ThreatsMdSection("actions", ("## 7. Recommended Actions",), "open", (),
+                     ("finding_id", "status", "pattern", "component", "maestro_layer", "threat", "risk_level", "mitigation"),
+                     ("Finding ID", "Status", "Category", "Pattern", "Component", "MAESTRO Layer", "Threat", "Risk Level", "Mitigation"), 41),
+    ThreatsMdSection("lifecycle", ("## 8. Delta Summary", "### Finding Lifecycle"), "row", (),
+                     ("status", "count", "description"), ("Status", "Count", "Description"), 59),
+    ThreatsMdSection("baseline_reference", ("### Baseline Reference",), "row", (), ("field", "value"), ("Field", "Value"), 59),
+)
+THREATS_MD_BY_KEY: Dict[str, ThreatsMdSection] = {section.key: section for section in THREATS_MD_SECTIONS}
 
 # The run-level `threat-model` stage record's counts, and the provenance hand-off's: FR-N4.5's three provenance classes, the renumbered and folded
 # kept dispositions, and FR-E.19's reissued IDs, beside the reference set's two counts (part-files.md sections 5 and 6).
@@ -471,6 +577,14 @@ KEY_SETS: Dict[str, Tuple[Tuple[str, ...], Tuple[str, ...]]] = {
     "fragment": (("slot_key", "text"), ()),
     "analysis-item": (("finding_id", "narrative", "tree_summary"), ()),
     "roadmap-item": (("finding_id", "effort", "dependencies"), ()),
+    # T091's second slice: the section manifest of item O-beta (contracts/threat-model-records.md, "The section manifest"). The `threats-md` items' own keys are
+    # `THREATS_MD_SECTIONS`', one set for each of its 24 tables.
+    "sections": (("schema", "frontmatter", "open", "resolved", "rows"), ()),
+    "sections-frontmatter": (("date", "input_format", "classification", "run_id", "baseline", "coverage_gate"), ()),
+    "sections-baseline": (("source", "date", "finding_count", "run_id"), ()),
+    "sections-gate": (("status", "gaps"), ()),
+    "sections-gap": (("component", "missing_category", "resolution"), ()),
+    "sections-rows": (tuple(section.key for section in THREATS_MD_SECTIONS if section.keyed == "row"), ()),
 }
 
 # The 24 flag fields: the `<field>` of `input:<field>:narrative-fallback` and `input:<field>:truncated`,
@@ -490,8 +604,8 @@ MAX_DOCUMENT_BYTES: Dict[str, int] = {
     BATCH_INPUT_SCHEMA: 4 * 1024 * 1024,
     POINTER_SCHEMA: 4096,
     STAGE_RECORD_SCHEMA: 1024 * 1024,
-    # PR 2's files. The first five caps and the hand-off's are the contracts' (threat-model-records.md; part-files.md section 6). The two chain files
-    # have none in the contracts, so they take the part cap: `chains.json` holds at most 105 chains of at most seven members, and `narratives.json`
+    # PR 2's files. The first five caps, the section manifest's and the hand-off's are the contracts' (threat-model-records.md; part-files.md section 6).
+    # The two chain files have none in the contracts, so they take the part cap: `chains.json` holds at most 105 chains of at most seven members, and `narratives.json`
     # at most five titles and narratives, both far below it.
     DISPATCH_RECORD_SCHEMA: 64 * 1024,
     BRIEF_SCHEMA: 32 * 1024,
@@ -501,6 +615,7 @@ MAX_DOCUMENT_BYTES: Dict[str, int] = {
     CHAINS_SCHEMA: MAX_PART_BYTES,
     CHAIN_NARRATIVES_SCHEMA: MAX_PART_BYTES,
     HANDOFF_SCHEMA: 1024 * 1024,
+    SECTIONS_SCHEMA: 256 * 1024,
 }
 MAX_NESTING = 8
 MAX_INT_DIGITS = 20
@@ -1344,24 +1459,57 @@ def _controls_item(item: Dict[str, Any], state: _ItemState) -> None:
         _check_recommendation_body(item["recommendation_body"], item["finding_id"])  # after the cut, as the row's check is
 
 
-# Stage -> its payload validator. PR 2's stages join this table with their payloads.
-# --- PR 2's payloads (T091): the `trees` items and the `report` parts (contracts/part-files.md, "Stage payload: report"; ADR-050 D6 items O-gamma and RR3) ---
+# --- PR 2's payloads (T091): the `trees` items, the `report` parts (contracts/part-files.md, "Stage payload: report"; ADR-050 D6 items O-gamma and RR3)
+# and the `threats-md` parts (item O-beta) ---
 
-def _trees_item(item: Dict[str, Any], state: _ItemState) -> None:
-    """A ``trees`` item (D6): one tree's entry in its batch's manifest. ``delta_status`` and ``action`` are closed values, and ``similarity_score``, which
-    only a Rule 3 entry has, is a number from 0 to 1, kept as a ``float`` (a part's JSON numbers arrive as ``Decimal``, which a writer can't dump).
+# A `trees` unit's planned `action`: the planner writes `generated_fresh`, or `regenerated` for a Rule 3 unit (an UNCHANGED finding that Rule 2
+# regenerates and whose baseline has a tree). `carried_forward` is only ever a part's answer to a Rule 3 unit.
+PLANNED_TREE_ACTIONS = ("generated_fresh", "regenerated")
 
-    Whether ``delta_status`` and ``action`` equal the batch input's is not decided here, because this check doesn't hold the units: the reconciler and
-    ``assemble-report.py trees`` do (see the results record, "Rule 3").
+
+def _trees_item(item: Dict[str, Any], state: _ItemState, unit: Dict[str, Any]) -> None:
+    """A ``trees`` item (D6) against its batch input's ``unit``: one tree's entry in its batch's manifest (S1P-A43, erratum on RD-6).
+
+    ``delta_status`` equals the unit's. So does ``action``, except for a Rule 3 unit, one planned ``regenerated``: its item says ``regenerated`` or
+    ``carried_forward``, the agent's own decision from Rule 3's three tests, and it alone carries ``similarity_score``, a number from 0 to 1 that is kept as
+    a ``float`` (a part's JSON numbers arrive as ``Decimal``, which ``input_digest`` and a writer can't dump). Code checks no threshold for the score.
     """
     _check_keys(item, "trees-item")
     _enum(item["delta_status"], DELTA_STATUSES, "delta_status")
     _enum(item["action"], TREE_ACTIONS, "action")
+    if item["delta_status"] != unit["delta_status"]:
+        _fail("delta_status differs from the batch input's")
+    if unit["action"] == "regenerated":
+        if item["action"] not in ("regenerated", "carried_forward"):
+            _fail("action is not regenerated or carried_forward, which a Rule 3 unit allows")
+        if "similarity_score" not in item:
+            _fail("similarity_score is missing on a Rule 3 unit")
+    elif item["action"] != unit["action"]:
+        _fail("action differs from the batch input's")
+    elif "similarity_score" in item:
+        _fail("similarity_score is on a unit that isn't Rule 3's")
     if "similarity_score" in item:
         score = item["similarity_score"]
         if type(score) is bool or not isinstance(score, (int, float, Decimal)) or not 0 <= score <= 1:
             _fail("similarity_score is not a number from 0 to 1")
         item["similarity_score"] = float(score)
+
+
+def _trees_units(units: Any, planned: List[str]) -> Callable[[str, Dict[str, Any], _ItemState], None]:
+    """The item check for a ``trees`` batch: its units hold one ``{finding_id, delta_status, action}`` for each planned finding, with the values that the
+    planner writes. A malformed plan is ``invalid``, never a crash."""
+    if not isinstance(units, list) or not units or not all(isinstance(unit, dict) for unit in units):
+        _fail("the planned units are missing or malformed")
+    by_id: Dict[str, Dict[str, Any]] = {}
+    for unit in units:
+        if not id_matches("finding", unit.get("finding_id")):
+            _fail("a planned unit has no allow-listed finding_id")
+        if unit.get("delta_status") not in DELTA_STATUSES or unit.get("action") not in PLANNED_TREE_ACTIONS:
+            _fail("a planned unit's delta_status or action is not one that the planner writes")
+        by_id[canonical_finding_id(unit["finding_id"])] = unit
+    if len(by_id) != len(units) or set(by_id) != set(planned):
+        _fail("the planned units differ from the planned finding IDs")
+    return lambda key, item, state: _trees_item(item, state, by_id[key])
 
 
 # The report's parts, in the template's order: a section part holds paragraphs (``fragments``), a findings part one item per finding. The planner, the
@@ -1539,7 +1687,114 @@ def _report_findings(units: Any, planned: List[str]) -> Callable[[str, Dict[str,
     return lambda key, item, state: _analysis_item(item, state, by_id[key]["tree"])
 
 
-_PAYLOADS = {"risk-score": _scorer_item, "compensating-controls": _controls_item, "trees": _trees_item}
+# The `threats-md` payload (item O-beta; part-files.md, "Stage payload: threats-md"). A part holds the rows of one of the 24 tables, under the table's closed
+# item keys, and nothing in it is markdown. Its batch input's units name the table and its rows. Every value is text. The closed values of a finding table
+# are checked and never cut, and every other value is evidence: its edge whitespace goes, it may not be empty, and it is never cut, because no limit is below
+# step 10's 16,384 characters, so one that is over it, or that holds a forbidden character, rejects the part. No value is narrative, so step 11 doesn't run.
+_THREATS_MD_CLOSED = {"status": DELTA_STATUSES, "likelihood": THREATS_MD_LEVELS, "impact": THREATS_MD_LEVELS, "risk_level": RISK_LEVELS,
+                      "last_risk_level": RISK_LEVELS, "pattern": ACTION_PATTERNS}
+_MAESTRO_LAYER = re.compile(r"L[1-7]( \u2014 .{1,60})?|Unclassified")  # a layer code, optionally with an em dash and its name; or `Unclassified`
+
+
+def _threats_md_units(units: Any, planned: List[str]) -> Tuple[ThreatsMdSection, List[Dict[str, Any]]]:
+    """The one table that a ``threats-md`` batch's units name, and the units. A malformed plan is ``invalid``, never a crash.
+
+    A row table's batch names no finding and its units are ``{section, row}``, row numbers from 1. A finding table's units are ``{section, finding_id}``,
+    one for each planned finding.
+    """
+    if not isinstance(units, list) or not units or not all(isinstance(unit, dict) for unit in units):
+        _fail("the planned units are missing or malformed")
+    names = [unit.get("section") for unit in units]
+    if not all(isinstance(name, str) for name in names) or len(set(names)) != 1 or names[0] not in THREATS_MD_BY_KEY:
+        _fail("the planned units don't name one table of threats.md")
+    section = THREATS_MD_BY_KEY[names[0]]
+    if section.keyed == "row":
+        if planned or not all(type(unit.get("row")) is int and unit["row"] >= 1 for unit in units):
+            _fail("a row table's units are numbered rows, and its batch names no finding")
+    else:
+        if not all(id_matches("finding", unit.get("finding_id")) for unit in units):
+            _fail("a planned unit has no allow-listed finding_id")
+        canonical = [canonical_finding_id(unit["finding_id"]) for unit in units]
+        if len(set(canonical)) != len(canonical) or set(canonical) != set(planned):
+            _fail("the planned units differ from the planned finding IDs")
+    return section, units
+
+
+def _threats_md_item(item: Dict[str, Any], section: ThreatsMdSection, finding_id: Optional[str]) -> Dict[str, Any]:
+    """One row of a ``threats-md`` part, against its table's keys: the closed key set, every value text, the closed values of a finding table in their sets
+    and every other value as evidence. Returns the row with its evidence stripped, and ``finding_id`` (a canonical ID) in place of the part's spelling.
+
+    A closed value is checked as written and never cut or stripped, so a padded ``NEW`` is not one. Evidence loses its edge whitespace, may not be empty
+    after that, and is checked for step 10's characters and length. A detail names the key and never gives the value. An unknown key is named only when its
+    spelling is a plain name, because the agent chose it.
+    """
+    missing = [key for key in section.keys if key not in item]
+    if missing:
+        _fail("lacks the key %s" % missing[0])
+    extra = [key for key in item if key not in section.keys]
+    if extra:
+        _fail("has the unknown key %s" % extra[0] if isinstance(extra[0], str) and _NAME.fullmatch(extra[0]) else "has an unknown key")
+    clean: Dict[str, Any] = {}
+    for key in section.keys:
+        value = item[key]
+        if not isinstance(value, str):
+            _fail("%s is not text" % key)
+        if key == "finding_id":
+            clean[key] = finding_id
+            continue
+        if section.keyed != "row" and (key == "maestro_layer" or key in _THREATS_MD_CLOSED):  # a closed value: as written, in its set
+            _check_characters(value, key)
+            if key == "maestro_layer":
+                if _MAESTRO_LAYER.fullmatch(value) is None:
+                    _fail("%s is not a layer in the contract's form" % key)
+            elif value not in _THREATS_MD_CLOSED[key]:
+                _fail("%s is not one of the allowed values" % key)
+        else:  # evidence
+            value = value.strip()
+            if value == "":
+                _fail("%s is empty" % key)
+            _check_characters(value, key)
+        clean[key] = value
+    return clean
+
+
+def _classify_threats_md(obj: Dict[str, Any], planned: List[str], units: Any) -> PartResult:
+    """A ``threats-md`` part: ``items`` holds exactly the rows that the batch input's units name, in their order, and ``fragments`` is empty.
+
+    A finding table's part has ``finding_ids`` equal to the planned set and one item for each, which comes back in the planned order with canonical IDs. A row
+    table's has ``finding_ids`` empty and items with no ``finding_id``. A detail names the item (a finding, or a row of its table) and the key.
+    """
+    section, rows = _threats_md_units(units, planned)
+    items = obj["items"]
+    if obj["fragments"] != []:
+        _fail("fragments must be empty for this stage")
+    if not isinstance(items, list) or len(items) != len(rows) or not all(isinstance(item, dict) for item in items):
+        _fail("items is not one object for each planned unit")
+    if section.keyed == "row":
+        labelled = [("row %d of %s" % (unit["row"], section.key), None, item) for unit, item in zip(rows, items)]
+    else:
+        by_id: Dict[str, Dict[str, Any]] = {}
+        for item in items:
+            if not id_matches("finding", item.get("finding_id")):
+                _fail("an item's finding_id is not an allow-listed ID")
+            key = canonical_finding_id(item["finding_id"])
+            if key in by_id:
+                _fail("two items for one finding ID")
+            by_id[key] = item
+        if set(by_id) != set(planned):
+            _fail("the items differ from the planned set")
+        labelled = [("item %s" % key, key, by_id[key]) for key in planned]
+    checked = []
+    for label, finding_id, item in labelled:
+        try:
+            checked.append(_threats_md_item(item, section, finding_id))
+        except PartError as exc:
+            _fail("%s: %s" % (label, exc.detail))
+    part = dict(obj, finding_ids=list(planned), items=checked, fragments=[])
+    return PartResult("done", "", part, {}, {"narrative_fallbacks": 0, "truncations": 0})
+
+
+_PAYLOADS = {"risk-score": _scorer_item, "compensating-controls": _controls_item}
 
 
 def _planned_ids(plan_id: Any, batch_id: Any, stage: Any, agent_type: Any, finding_ids: Any) -> List[str]:
@@ -1580,11 +1835,11 @@ def _classify(obj: Any, plan_id: Any, batch_id: Any, stage: Any, agent_type: Any
     canonical = [canonical_finding_id(v) for v in ids]
     if len(set(canonical)) != len(canonical) or set(canonical) != set(planned):
         _fail("finding_ids differ from the planned set")
-    if not planned:  # a section batch: the units name what the part holds, and `finding_ids` and `items` are empty
-        if stage != "report":
-            _fail("the stage has no section part payload in this version")
+    if stage == "threats-md":  # the units name the table and its rows, for a row table (no finding) and a finding table alike
+        return _classify_threats_md(obj, planned, units)
+    if not planned:  # a `report` section batch (`threats-md`'s went above, and no other stage plans none): the units name what the part holds
         return _classify_report_section(obj, units)
-    check = _report_findings(units, planned) if stage == "report" else None
+    check = _report_findings(units, planned) if stage == "report" else _trees_units(units, planned) if stage == "trees" else None
     if check is None and stage not in _PAYLOADS:
         _fail("the stage has no part payload in this version")
     items = obj["items"]
@@ -1626,9 +1881,10 @@ def _classify(obj: Any, plan_id: Any, batch_id: Any, stage: Any, agent_type: Any
 def classify_part(obj: Any, plan_id: str, batch_id: str, stage: str, agent_type: str, finding_ids: Any, units: Any = None) -> PartResult:
     """Steps 5 to 10 on a parsed object, against the planned batch. Never raises; see ``PartResult``.
 
-    ``units`` is the batch input's ``units``. A ``report`` part needs it: a section part's fragments are the batch's planned keys, and a findings part's
-    ``tree_summary`` is ``null`` exactly when the finding has no tree. A batch without it, or with units that don't fit the plan, is ``invalid``. The other
-    stages ignore it.
+    ``units`` is the batch input's ``units``. Three stages need it: a ``report`` part (a section part's fragments are the batch's planned keys, and a findings
+    part's ``tree_summary`` is ``null`` exactly when the finding has no tree), a ``threats-md`` part (the table and the rows it holds) and a ``trees`` part
+    (each item's ``delta_status`` and ``action`` against its unit, S1P-A43). A batch without it, or with units that don't fit the plan, is ``invalid``. The
+    scorer and the controls stage ignore it.
     """
     try:
         return _classify(obj, plan_id, batch_id, stage, agent_type, finding_ids, units)
@@ -1660,6 +1916,19 @@ CANONICAL_OUTPUTS: Dict[str, Tuple[str, ...]] = {
     "threats-md": (),
     "trees": (),
     "report": (),
+}
+
+# The names that a stage's writer stages under `<plan_id>/staged/` before it replaces the file in `{out}` (S1P-A57). PR 1's two stages stage their canonical
+# files. The joiner and the report assembler stage a file that no plan pre-images, because a batch stage owns no canonical output and its `fail` moves nothing,
+# and `threat-model` and `trees` stage nothing: the run-level plan owns files that other stages write, and `trees` writes `attack-trees/` directly, with the
+# atomic write, once every check has passed. `staged_path` checks a name against this table; `preimage_path` and `failed_path` keep `CANONICAL_OUTPUTS`.
+STAGED_OUTPUTS: Dict[str, Tuple[str, ...]] = {
+    "risk-score": CANONICAL_OUTPUTS["risk-score"],
+    "compensating-controls": CANONICAL_OUTPUTS["compensating-controls"],
+    "threat-model": (),
+    "threats-md": ("threats.md",),
+    "trees": (),
+    "report": ("threat-report.md",),
 }
 
 _UTC = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?Z", re.ASCII)
@@ -2015,8 +2284,9 @@ def validate_dispatch_record(obj: Any) -> Dict[str, Any]:
 
     ``complete`` holds exactly when ``end_marker`` does, a ``reason`` is set exactly when the record isn't complete, ``supersedes`` exactly for a
     ``redispatch`` and ``superseded_by`` exactly for a ``superseded`` record, and a ``coverage-gap`` record has one component and is never superseded.
-    The prompt is the fixed line, with the brief's path in it, and ``local_ids`` has ``count`` entries. Whether the scope is in the inventory, and the lineage
-    of the records, are the provenance check's.
+    The prompt is the fixed line, with the brief's path in it, and ``local_ids`` has ``count`` entries. A ``reason`` of ``agent_failed`` or ``timed_out``
+    (T090) means that no report came, so ``count`` is 0 and ``local_ids`` is empty. Whether the scope is in the inventory, and the lineage of the records,
+    are the provenance check's.
     """
     _check_keys(obj, "dispatch-record")
     _schema(obj, DISPATCH_RECORD_SCHEMA)
@@ -2054,6 +2324,8 @@ def validate_dispatch_record(obj: Any) -> Dict[str, Any]:
     if reason is not None:
         _enum(reason, DISPATCH_REASONS, "reason")
     count = _int(obj["count"], 0, 2000, "count")
+    if reason in NO_REPORT_REASONS and count != 0:
+        _fail("a record with no report (agent_failed or timed_out) has a count of 0")
     local_ids = obj["local_ids"]
     if not isinstance(local_ids, list) or len(local_ids) != count or not all(v is None or id_matches("finding", v) for v in local_ids):
         _fail("local_ids is not one finding ID or null for each of count")
@@ -2281,8 +2553,9 @@ def validate_check_handoff(obj: Any) -> Dict[str, Any]:
 
     ``attack-chains`` has no counts, batches or error. ``provenance`` has the eight counts and Phase 2's six batch counts, each 0 to 1,000,000, and an
     ``error`` that is null or names the failed rule, how many IDs are involved and the first 20 of them in S-2 order. ``status`` is ``fail`` when there is an
-    error, otherwise ``warn`` when there are warnings, otherwise ``pass``. The warning codes are closed, and ``correlation-member-repeated`` is the
-    provenance check's. That ``check`` is the file's stem and ``plan_id`` the run's is the reader's.
+    error, otherwise ``warn`` when there are warnings, otherwise ``pass``. The warning codes are closed for each check (``HANDOFF_WARNING_CODES_BY_CHECK``,
+    S1P-A52): a code that belongs to the other check, or to neither, fails the load. That ``check`` is the file's stem and ``plan_id`` the run's is the
+    reader's.
     """
     _check_keys(obj, "check-handoff")
     _schema(obj, HANDOFF_SCHEMA)
@@ -2294,7 +2567,7 @@ def validate_check_handoff(obj: Any) -> Dict[str, Any]:
         _fail("warnings is not a list of at most 1,000")
     for warning in warnings:
         _warning_entry(warning, "warnings")
-        if warning["code"] not in HANDOFF_WARNING_CODES or (warning["code"] == "correlation-member-repeated" and check != "provenance"):
+        if warning["code"] not in HANDOFF_WARNING_CODES_BY_CHECK[check]:
             _fail("a warning code that this check doesn't have")
     error = obj["error"]
     if check == "attack-chains":
@@ -2320,11 +2593,90 @@ def validate_check_handoff(obj: Any) -> Dict[str, Any]:
     return obj
 
 
+_SLUG = re.compile(r"[a-z][a-z0-9-]{0,39}", re.ASCII)  # the manifest's `classification` and a gap's `missing_category` (the contract's TOKEN)
+_RUN_ID = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}", re.ASCII)
+
+
+def _text(value: Any, what: str) -> str:
+    """The section manifest's ``TEXT``: 1 to 1,000 characters with no ``"``, ``\\`` or control character, because the joiner writes it double-quoted."""
+    closed_string(value, what, 1, 1000)
+    if '"' in value or "\\" in value or "\t" in value or "\n" in value:
+        _fail("%s holds a quote, a backslash or a control character" % what)
+    return value
+
+
+def _run_id(value: Any, what: str) -> str:
+    """``YYYY-MM-DDTHH-MM-SS`` (the manifest's RUN): a real calendar time."""
+    _stamp(value, _RUN_ID, what)
+    try:
+        datetime.datetime(int(value[0:4]), int(value[5:7]), int(value[8:10]), int(value[11:13]), int(value[14:16]), int(value[17:]))
+    except ValueError:
+        _fail("%s is not a real calendar time" % what)
+    return value
+
+
+def _manifest_ids(value: Any, what: str, minimum: int) -> List[str]:
+    """A list of at least ``minimum`` allow-listed finding IDs, no two spellings of one canonical ID. It has no count limit of its own: the manifest's size
+    cap bounds it, and a run of about 1,400 open findings fits (the manifest names every open ID once, and a batch's own limit is ``MAX_IDS``)."""
+    if not isinstance(value, list) or len(value) < minimum or not all(id_matches("finding", v) for v in value):
+        _fail("%s is not a list of at least %d allow-listed finding IDs" % (what, minimum))
+    if len({canonical_finding_id(v) for v in value}) != len(value):
+        _fail("%s names one finding twice" % what)
+    return value
+
+
+def validate_sections(obj: Any) -> Dict[str, Any]:
+    """``tachi.sections/1``: the section manifest, written once after Phase 4 (item O-beta; threat-model-records.md, "The section manifest").
+
+    The frontmatter's values are what the joiner writes, double-quoted, so no string among them holds a quote, a backslash or a control character (``_text``),
+    and the date, the run ID and the two tokens are in their exact forms. ``open`` is Section 7's set, at least one ID, and ``resolved`` is Section 4c's, null
+    exactly when the baseline has no source. The two lists share no finding, and no list names a finding twice, in either spelling. ``rows`` counts the 14
+    tables that no finding keys, 0 to 5,000 each. Whether the counts fit the files that the run holds is the planner's, and the joiner's from-disk check.
+    """
+    _check_keys(obj, "sections")
+    _schema(obj, SECTIONS_SCHEMA)
+    front = obj["frontmatter"]
+    _check_keys(front, "sections-frontmatter")
+    _calendar_date(front["date"], "frontmatter.date")
+    _enum(front["input_format"], INPUT_FORMATS, "frontmatter.input_format")
+    _stamp(front["classification"], _SLUG, "frontmatter.classification")
+    _run_id(front["run_id"], "frontmatter.run_id")
+    baseline = front["baseline"]
+    _check_keys(baseline, "sections-baseline")
+    for name in ("source", "date", "run_id"):
+        if baseline[name] is not None:
+            _text(baseline[name], "baseline." + name)
+    if baseline["finding_count"] is not None:
+        _int(baseline["finding_count"], 0, None, "baseline.finding_count")
+    gate = front["coverage_gate"]
+    _check_keys(gate, "sections-gate")
+    _enum(gate["status"], GATE_STATUSES, "coverage_gate.status")
+    if not isinstance(gate["gaps"], list):
+        _fail("coverage_gate.gaps is not a list")
+    for gap in gate["gaps"]:
+        _check_keys(gap, "sections-gap")
+        _text(gap["component"], "gaps.component")
+        _stamp(gap["missing_category"], _SLUG, "gaps.missing_category")
+        _enum(gap["resolution"], GAP_RESOLUTIONS, "gaps.resolution")
+    opened = _manifest_ids(obj["open"], "open", 1)
+    if (obj["resolved"] is None) != (baseline["source"] is None):
+        _fail("resolved is null exactly when the baseline has no source")
+    if obj["resolved"] is not None:
+        resolved = _manifest_ids(obj["resolved"], "resolved", 0)
+        if {canonical_finding_id(v) for v in resolved} & {canonical_finding_id(v) for v in opened}:
+            _fail("a finding is both open and resolved")
+    _check_keys(obj["rows"], "sections-rows")
+    for name in KEY_SETS["sections-rows"][0]:
+        _int(obj["rows"][name], 0, 5000, "rows.%s" % name)
+    return obj
+
+
 _DOCUMENTS = {PLAN_SCHEMA: validate_plan, POINTER_SCHEMA: validate_pointer,
               BATCH_INPUT_SCHEMA: validate_batch_input, STAGE_RECORD_SCHEMA: validate_stage_record,
               DISPATCH_RECORD_SCHEMA: validate_dispatch_record, BRIEF_SCHEMA: validate_brief, IDMAP_SCHEMA: validate_idmap,
               INVENTORY_SCHEMA: validate_phase1_inventory, DISPATCH_TABLE_SCHEMA: validate_phase1_dispatch,
-              CHAINS_SCHEMA: validate_chains, CHAIN_NARRATIVES_SCHEMA: validate_chain_narratives, HANDOFF_SCHEMA: validate_check_handoff}
+              CHAINS_SCHEMA: validate_chains, CHAIN_NARRATIVES_SCHEMA: validate_chain_narratives, HANDOFF_SCHEMA: validate_check_handoff,
+              SECTIONS_SCHEMA: validate_sections}
 
 
 def read_document(path: object, out: object, schema: str) -> Dict[str, Any]:
@@ -2332,7 +2684,7 @@ def read_document(path: object, out: object, schema: str) -> Dict[str, Any]:
 
     ``schema`` is the document the caller expects, so a file that names another schema is ``invalid``: the
     key set is chosen by the caller's expectation and the file's own ``schema`` must agree (F5). Raises
-    ``ValueError`` for a ``schema`` that isn't one of the documents (``_DOCUMENTS``: the four of the batch plan, and PR 2's eight records), and
+    ``ValueError`` for a ``schema`` that isn't one of the documents (``_DOCUMENTS``: the four of the batch plan, and PR 2's eight records and section manifest), and
     ``PartError`` for anything wrong with the file.
     """
     if schema not in _DOCUMENTS:
@@ -2369,6 +2721,21 @@ def input_digest(obj: Any) -> str:
     """
     text = json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return "sha256:" + sha256_hex(text.encode("utf-8"))
+
+
+def reference_digest(reference_set: Mapping[str, Any]) -> str:
+    """The SHA-256, as 64 lowercase hex digits (no prefix), of a reference set's canonical JSON: the one value of ``params.reference_digest`` in the ``trees``
+    and ``report`` plans and of ``chains.json``'s ``reference_digest`` (``contracts/cli.md``; RD-9, S1P-A30).
+
+    ``reference_set`` is what ``tachi_parsers.parse_reference_set`` returns, which comes in as an argument because this module imports no tachi module (C1).
+    Only its ``open`` and ``resolved`` lists are digested, so the keys that the reader adds beside them, and every part of ``threats.md`` outside Sections 7
+    and 4c (the populator's block, the outcome record and the body lines that Steps 2.5 to 2.8 add), leave the digest alone, and a changed finding moves it.
+    The JSON is ``input_digest``'s: sorted keys, no spaces, ASCII. A set that holds anything but text, numbers, lists and mappings is a ``TypeError``, and one
+    without the two lists a ``ValueError``: both are a caller's defect, never agent input.
+    """
+    if not isinstance(reference_set, Mapping) or not all(isinstance(reference_set.get(name), list) for name in ("open", "resolved")):
+        raise ValueError("not a reference set: it has no open and resolved lists")
+    return input_digest({"open": reference_set["open"], "resolved": reference_set["resolved"]})[len("sha256:"):]
 
 
 def _read_umask() -> int:
@@ -2556,8 +2923,9 @@ def stage_record_path(out: object, stage: str, plan_id: str) -> str:
     return os.path.join(plan_dir(out, stage, plan_id), "stage-record.json")
 
 
-def _canonical_file(out: object, stage: str, plan_id: str, subdir: str, name: str) -> str:
-    if not isinstance(name, str) or name not in CANONICAL_OUTPUTS[_known_stage(stage)]:
+def _canonical_file(out: object, stage: str, plan_id: str, subdir: str, name: str,
+                    owned: Optional[Mapping[str, Tuple[str, ...]]] = None) -> str:
+    if not isinstance(name, str) or name not in (CANONICAL_OUTPUTS if owned is None else owned)[_known_stage(stage)]:
         raise ValueError("name is not one of the stage's canonical outputs")
     return os.path.join(plan_subdir(out, stage, plan_id, subdir), name)
 
@@ -2568,8 +2936,9 @@ def preimage_path(out: object, stage: str, plan_id: str, name: str) -> str:
 
 
 def staged_path(out: object, stage: str, plan_id: str, name: str) -> str:
-    """A rendered output, checked before it replaces the canonical file, ``<plan dir>/staged/<name>``."""
-    return _canonical_file(out, stage, plan_id, "staged", name)
+    """A rendered output, checked before it replaces the file in ``{out}``, ``<plan dir>/staged/<name>``. ``name`` is one of ``STAGED_OUTPUTS[stage]``
+    (S1P-A57), which for PR 1's two stages is their canonical files, as it always was."""
+    return _canonical_file(out, stage, plan_id, "staged", name, STAGED_OUTPUTS)
 
 
 def failed_path(out: object, stage: str, plan_id: str, name: str) -> str:
@@ -2599,26 +2968,18 @@ def snapshot_key(relpath: str) -> str:
     return "./unrecordable:" + sha256_hex(os.fsencode(relpath))
 
 
-def is_declared_path(relpath: str, stage: str, plan_id: str) -> bool:
-    """D4's declared-paths grammar for a stage: its canonical files and D3's exact layout, nothing else.
+# The run-level `threat-model` grammar's names (S1P-A62, R13; part-files.md, "The run's declared-paths grammar"). `_RUN_TOP_FILES` are D4's four files, the
+# run's architecture snapshot and D13's quarantine name, directly in `{out}`; `_RUN_FILES` are D11 and D13's flat files under `.tachi-build/`; `_TREE_FILE` is
+# a tree's name, its finding ID in lower case as an ASCII full match, so `agp-01`, which the shipped examples spell so, is one and `\u017f-1` is not.
+_RUN_TOP_FILES = frozenset(CANONICAL_OUTPUTS["threat-model"] + ("architecture.md", "attack-chains.inconsistent.md"))
+_RUN_FILES = frozenset(("sections.json", "idmap.json", "phase1/inventory.json", "phase1/dispatch.json", "chains/chains.json", "chains/narratives.json"))
+_RUN_CHECKS = tuple(check + ".json" for check in HANDOFF_CHECKS)
+_TREE_FILE = re.compile(ID_PATTERNS["finding"].lower() + r"-attack-tree\.md", re.ASCII)
 
-    ``relpath`` is a path under ``--out`` written with ``/``. ``True`` for the stage's canonical outputs, for
-    ``.tachi-build/<stage>/current.json``, and, under ``.tachi-build/<stage>/<plan_id>/``, for ``plan.json``,
-    ``stage-record.json``, ``inputs/<batch_id>.json``, ``parts/<batch_id>.a<1 to 3>.json`` and a canonical output
-    in ``preimage/``, ``staged/`` or ``failed/``. Anything else, such as a script an agent wrote, is undeclared.
-    Every path that the layout builders make is declared. ``KeyError`` for a stage with no canonical outputs.
-    """
-    parts = relpath.split("/")
-    if len(parts) == 1:
-        return parts[0] in CANONICAL_OUTPUTS[stage]
-    if parts[:2] != [BUILD_DIR, stage]:
-        return False
-    rest = parts[2:]
-    if rest == ["current.json"]:
-        return True
-    if len(rest) < 2 or rest[0] != plan_id:
-        return False
-    rest = rest[1:]
+
+def _layout_declared(stage: str, rest: List[str]) -> bool:
+    """D3's exact layout of one plan, for ``rest``, the path below the plan's directory: ``plan.json``, ``stage-record.json``, ``inputs/<batch_id>.json``,
+    ``parts/<batch_id>.a<1 to 3>.json``, a canonical output in ``preimage/`` or ``failed/`` and a name of ``STAGED_OUTPUTS`` in ``staged/``."""
     if rest in (["plan.json"], ["stage-record.json"]):
         return True
     if len(rest) != 2:
@@ -2629,7 +2990,85 @@ def is_declared_path(relpath: str, stage: str, plan_id: str) -> bool:
     if subdirectory == "parts":
         batch_id, _, tail = name.partition(".a")
         return tail in ("1.json", "2.json", "3.json") and id_matches("batch", batch_id)
-    return subdirectory in ("preimage", "staged", "failed") and name in CANONICAL_OUTPUTS[stage]
+    if subdirectory == "staged":
+        return name in STAGED_OUTPUTS[stage]
+    return subdirectory in ("preimage", "failed") and name in CANONICAL_OUTPUTS[stage]
+
+
+def _threat_model_declared(relpath: str, plan_id: str) -> bool:
+    """The run's grammar, which ``close`` checks once for the whole run (RR3; S1P-A62). ``plan_id`` is the run-level plan's. Declared are:
+
+    1. D4's four files, ``architecture.md`` and ``attack-chains.inconsistent.md``;
+    2. ``attack-trees/.manifest.json`` and ``attack-trees/<t>-attack-tree.md`` (D4's ``attack-trees/*``, narrowed to what ``trees`` writes);
+    3. under ``.tachi-build/``, flat: ``sections.json``, ``idmap.json``, ``phase1/inventory.json``, ``phase1/dispatch.json``, ``briefs/<dispatch ID>.json``,
+       ``records/<dispatch ID>.json``, ``chains/chains.json`` and ``chains/narratives.json``;
+    4. ``.tachi-build/threat-model/current.json`` and, under ``.tachi-build/threat-model/<plan_id>/``, ``plan.json``, ``stage-record.json``, the two hand-off
+       files in ``checks/`` and a canonical file in ``preimage/`` or ``failed/``;
+    5. for each batch stage, ``.tachi-build/<stage>/current.json`` and, for any plan ID, D3's layout (``_layout_declared``), plus ``trees/<t>-attack-tree.md`` in
+       ``trees``.
+
+    Anything else is undeclared: a script, another run-level plan, a PR 1 stage's directory, ``phase2/`` and any other file in ``records/`` or ``checks/``.
+    """
+    parts = relpath.split("/")
+    if len(parts) == 1:
+        return parts[0] in _RUN_TOP_FILES
+    if parts[0] == "attack-trees":
+        return len(parts) == 2 and (parts[1] == ".manifest.json" or _TREE_FILE.fullmatch(parts[1]) is not None)
+    if parts[0] != BUILD_DIR:
+        return False
+    rest = parts[1:]
+    if "/".join(rest) in _RUN_FILES:
+        return True
+    if len(rest) == 2 and rest[0] in ("briefs", "records"):
+        return rest[1].endswith(".json") and id_matches("dispatch", rest[1][:-5])
+    if rest[0] == "threat-model":
+        tail = rest[1:]
+        if tail == ["current.json"]:
+            return True
+        if not tail or tail[0] != plan_id:
+            return False
+        tail = tail[1:]
+        if tail in (["plan.json"], ["stage-record.json"]):
+            return True
+        return len(tail) == 2 and ((tail[0] == "checks" and tail[1] in _RUN_CHECKS)
+                                   or (tail[0] in ("preimage", "failed") and tail[1] in CANONICAL_OUTPUTS["threat-model"]))
+    if rest[0] in BATCH_STAGES:
+        tail = rest[1:]
+        if tail == ["current.json"]:
+            return True
+        if not tail or not id_matches("plan", tail[0]):
+            return False
+        tail = tail[1:]
+        return _layout_declared(rest[0], tail) or (rest[0] == "trees" and len(tail) == 2 and tail[0] == "trees"
+                                                   and _TREE_FILE.fullmatch(tail[1]) is not None)
+    return False
+
+
+def is_declared_path(relpath: str, stage: str, plan_id: str) -> bool:
+    """D4's declared-paths grammar for a stage: its canonical files and D3's exact layout, nothing else.
+
+    ``relpath`` is a path under ``--out`` written with ``/``. ``True`` for the stage's canonical outputs, for
+    ``.tachi-build/<stage>/current.json``, and, under ``.tachi-build/<stage>/<plan_id>/``, for ``plan.json``,
+    ``stage-record.json``, ``inputs/<batch_id>.json``, ``parts/<batch_id>.a<1 to 3>.json``, a canonical output
+    in ``preimage/`` or ``failed/`` and a ``STAGED_OUTPUTS`` name in ``staged/``. Anything else, such as a script an agent wrote, is undeclared.
+    Every path that the layout builders make is declared. ``KeyError`` for a stage with no canonical outputs.
+
+    The run-level ``threat-model`` stage has the wider grammar of ``close``'s check, which covers every file the run writes (S1P-A62); see
+    ``_threat_model_declared``.
+    """
+    if stage == "threat-model":
+        return _threat_model_declared(relpath, plan_id)
+    parts = relpath.split("/")
+    if len(parts) == 1:
+        return parts[0] in CANONICAL_OUTPUTS[stage]
+    if parts[:2] != [BUILD_DIR, stage]:
+        return False
+    rest = parts[2:]
+    if rest == ["current.json"]:
+        return True
+    if len(rest) < 2 or rest[0] != plan_id:
+        return False
+    return _layout_declared(stage, rest[1:])
 
 
 def retry_history(stage: str, out: object, plan: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
@@ -2639,7 +3078,9 @@ def retry_history(stage: str, out: object, plan: Dict[str, Any]) -> Tuple[List[D
     it was, a batch that was halved, and a batch that ran out of retries each leave one event, and every attempt
     but a failed batch's last also leaves one retry. A halved batch's retry names its children, sorted. ``kind`` is
     the part's state, with an overflow object reported as ``overflow-reported``; a part that has turned valid since
-    its attempt was given up was still not counted, so it reads as ``missing``. ``plan`` is a validated plan.
+    its attempt was given up was still not counted, so it reads as ``missing``. ``plan`` is a validated plan. A part of a batch stage is read against its batch
+    input's ``units`` (the input as it stands, whose units no attempt changes), because a ``trees``, ``threats-md`` or ``report`` part is valid only against
+    them: a part that was valid, but whose batch was retried for a missing tree, is that same ``missing``, never ``invalid``.
     """
     by_id = {entry["batch_id"]: entry for entry in plan["batches"]}
     children: Dict[str, List[str]] = {}
@@ -2647,9 +3088,18 @@ def retry_history(stage: str, out: object, plan: Dict[str, Any]) -> Tuple[List[D
         if entry["parent"] is not None:
             children.setdefault(entry["parent"], []).append(entry["batch_id"])
 
+    def units_of(entry: Dict[str, Any]) -> Any:
+        """The batch input's ``units``, for a stage whose part depends on them (the three batch stages), or ``None`` when its input can't be read."""
+        if stage not in BATCH_STAGES:
+            return None
+        try:
+            return read_document(input_path(out, stage, plan["plan_id"], entry["batch_id"]), out, BATCH_INPUT_SCHEMA)["units"]
+        except PartError:
+            return None
+
     def cause(entry: Dict[str, Any], attempt: int) -> str:
         result = read_part(part_path(out, stage, plan["plan_id"], entry["batch_id"], attempt), out, plan["plan_id"],
-                           entry["batch_id"], stage, plan["agent_type"], entry["finding_ids"])
+                           entry["batch_id"], stage, plan["agent_type"], entry["finding_ids"], units_of(entry))
         return "missing" if result.state == "done" else result.state
 
     events: List[Dict[str, Any]] = []
@@ -3142,27 +3592,50 @@ def build_parser(renderer: str, description: str, out: bool = True, plan: bool =
     return parser
 
 
-def plan_arguments(stage: str, plan_id: object, digest: object) -> None:
-    """D3's allow-lists for ``--plan`` and ``--plan-digest``, as ASCII full matches, before either becomes a path or is compared: exit 2, ``--plan`` first.
+def plan_id_argument(stage: Optional[str], plan_id: object) -> None:
+    """D3's allow-list for ``--plan``, as an ASCII full match, before it becomes a path: exit 2. It is ``plan_arguments``' first check alone, for an entry that
+    takes ``--plan`` with no digest, only to build a hand-off path (the two main-session checks; S1P-A42).
 
     A value that isn't a ``str`` is refused the same way, so a library caller that passes the wrong type gets D4's message and never a ``TypeError``.
     """
     if not id_matches("plan", plan_id):
         raise StageFailure(2, stage, "--plan is not a plan ID", "pass the plan ID that plan printed")
+
+
+def plan_arguments(stage: str, plan_id: object, digest: object) -> None:
+    """D3's allow-lists for ``--plan`` and ``--plan-digest``, as ASCII full matches, before either becomes a path or is compared: exit 2, ``--plan`` first.
+
+    A value that isn't a ``str`` is refused the same way, so a library caller that passes the wrong type gets D4's message and never a ``TypeError``.
+    """
+    plan_id_argument(stage, plan_id)
     if not isinstance(digest, str) or _HEX64.fullmatch(digest) is None:
         raise StageFailure(2, stage, "--plan-digest is not a SHA-256 in lowercase hex", "pass the digest that the last plan or reconcile printed")
 
 
-def entry_arguments(stage: str, out: object, plan_id: object, digest: object) -> str:
-    """The checks that an entry with ``--out``, ``--plan`` and ``--plan-digest`` runs before it reads anything, in this order, so the first to fail is the one
-    reported: ``--out`` is a directory (exit 1, D4's "an input is missing"), then ``plan_arguments``'s two (exit 2). Returns ``--out`` as an absolute path.
+def directory_argument(stage: Optional[str], value: object, option: str = "--out", code: int = 1) -> str:
+    """An entry's directory option is a directory: ``os.path.abspath(os.fspath(value))`` must be one, or it is exit ``code`` with ``<option> is not a
+    directory`` and the remedy ``create it or correct <option>``. Returns it as an absolute path (S1P-A42).
 
-    This is both renderers' form, and the form for a new entry. An entry whose ``--out`` has a check of its own calls ``plan_arguments`` after it
-    (``tachi-stage.py`` vets the path, and names it in its message, before it checks a plan).
+    ``option`` is the spelling in the message, and ``code`` is D4's: 1 ("an input is missing") for an entry that has the exit, and 2 for the two main-session
+    checks, whose command-line contract gives them none. ``entry_arguments`` is this, then ``plan_arguments``. A link to a directory is a directory, and the
+    path is not resolved: the guard that comes later decides what a link means. A value that isn't text or a path is a ``TypeError``, as for ``os.fspath``.
     """
-    text = os.path.abspath(os.fspath(out))
+    text = os.path.abspath(os.fspath(value))
     if not os.path.isdir(text):
-        raise StageFailure(1, stage, "--out is not a directory", "create it or correct --out")
+        raise StageFailure(code, stage, "%s is not a directory" % option, "create it or correct %s" % option)
+    return text
+
+
+def entry_arguments(stage: str, out: object, plan_id: object, digest: object, option: str = "--out") -> str:
+    """The checks that an entry with ``--out``, ``--plan`` and ``--plan-digest`` runs before it reads anything, in this order, so the first to fail is the one
+    reported: the directory option is a directory (``directory_argument``: exit 1, D4's "an input is missing"), then ``plan_arguments``'s two (exit 2). Returns
+    the directory as an absolute path.
+
+    This is both renderers' form, and the form for a new entry. ``option`` is the directory option's spelling in the message and the remedy: ``--run-dir`` for the
+    two assembler modes (S1P-A42). An entry whose ``--out`` has a check of its own calls ``plan_arguments`` after it (``tachi-stage.py`` vets the path, and
+    names it in its message, before it checks a plan).
+    """
+    text = directory_argument(stage, out, option)
     plan_arguments(stage, plan_id, digest)
     return text
 
@@ -3178,12 +3651,17 @@ def entry_defect(stage: str, renderer: str, exc: Exception, kept: Optional[str])
                         "report this as a bug in %s; the earlier outputs were left or put back as they were" % renderer, kept=kept)
 
 
-def run_entry(stage: Optional[str], renderer: str, args: argparse.Namespace, run: Callable[[argparse.Namespace], int], defect: bool = True) -> int:
+def run_entry(stage: Optional[str], renderer: str, args: argparse.Namespace, run: Callable[[argparse.Namespace], int], defect: bool = True,
+              option: str = "--out") -> int:
     """``run(args)`` with D4's failure handling, for an entry's ``main``: its exit code, or the code of the ``StageFailure`` that stopped it.
 
     A ``StageFailure`` prints its four-line message on stderr and returns its code. With ``defect`` (the default), any other exception prints the same
     message as an unexpected error (``entry_defect``) with exit 4, so the command's Step F runs on a defect too, and the plan directory is kept when
     ``args`` names a plan. Without it, such an exception is raised again, as in ``tachi-stage.py``.
+
+    ``option`` is the entry's directory option, whose attribute the kept directory is read from (``--run-dir`` is ``args.run_dir``; S1P-A42). The defect path
+    never raises: the kept directory is named only for a ``stage`` that ``STAGE_AGENTS`` knows and a ``--plan`` that passes the allow-list, so whatever stage
+    name an entry's banner uses, a defect ends as D4's exit 4.
     """
     try:
         return run(args)
@@ -3193,8 +3671,11 @@ def run_entry(stage: Optional[str], renderer: str, args: argparse.Namespace, run
     except Exception as exc:
         if not defect:
             raise
-        out, plan_id = getattr(args, "out", None), getattr(args, "plan", None)
-        kept = plan_dir(os.path.abspath(out), stage, plan_id) if out is not None and id_matches("plan", plan_id) else None
+        out, plan_id = getattr(args, option.lstrip("-").replace("-", "_"), None), getattr(args, "plan", None)
+        try:
+            kept = plan_dir(os.path.abspath(out), stage, plan_id)
+        except (TypeError, ValueError):  # no directory, one that isn't a path, a stage that isn't one or a plan ID off the allow-list: nothing is kept, and nothing raises
+            kept = None
         failure = entry_defect(stage, renderer, exc, kept)
         sys.stderr.write(failure.text() + "\n")
         return failure.code
