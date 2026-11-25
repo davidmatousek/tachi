@@ -278,5 +278,5 @@ These are contract readings only. None changes a decision of ADR-050, and the de
 | E5b, what no test pins (S1P-PM2) | Messages, reasons, Input Issues, caps, link handling and write sets are unchanged for every caller. Read flags are equal on 1,814 nodes, and 3,279 probe records match. The one difference, the internal base class that moved code raises, isn't user-visible (S1P-A41) |
 
 - **TW-HL didn't fire.** T151 committed about 0.36 plan-days after its dispatch, at the measured ratio, against the trip-wire's 0.70.
-- **The entry push (T114 step 2)** carries this evidence. It is #443's own F-374 CI cycle, and the first gate read against the pre-state.
+- **The entry push (T114 step 2)** carries this evidence. It is #443's own F-374 CI cycle, and the first gate read against the pre-state. **It ran green, 10 of 10, at `28531ae`:** both gitleaks checks; tachi install fidelity's extraction-fidelity, f374-macos, f374-offline, f374-py39-floor, manifest-completeness and report-posture; and tachi pytest's init.sh suite on macOS and on Ubuntu. TW-CI didn't fire.
 
