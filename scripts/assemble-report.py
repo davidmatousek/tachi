@@ -26,9 +26,11 @@ script never returns 3 or 5. A failure prints D4's four-line message on stderr, 
 
 **The layout of the report** is ``contracts/part-files.md``'s, "The assembler's layout". Sections are numbered by position, as
 ``## <n>. <title>`` (S1P-A45): 1 to 6 are on every run, so their numbers never move, and Agentic Pattern Analysis, when it is planned,
-takes 7. Every cell takes D3's cell sink, every fragment its prose sink, and each slot resolves against the reference set. A value that this
-script takes from an input that isn't a part, a ``threats.md`` value, a tree file, a chain title, is refused where it is taken when it holds
-a character in D3's step 10 set (P0-4, S1P-A18).
+takes 7. Every cell takes D3's cell sink, every fragment its prose sink, and each slot resolves against the reference set: a ``ref`` slot against the
+taxonomy IDs that the item's own finding carries in its unit row (an OWASP Reference cell's IDs and its MAESTRO layer), or, in a section fragment, any
+finding's that has one. A value that this script takes from an input that isn't a part, a ``threats.md`` value, a tree file, a chain title, a unit row,
+is refused where it is taken when it holds a character in D3's step 10 set (P0-4, S1P-A18). The report plan must hold the units that the reference
+set implies, which ``_check_plan`` states: the findings that are narrated one by one, the category summaries, the pattern units and the delta part.
 
 Standard library plus the shared helpers, and Python 3.9 syntax.
 """
@@ -72,6 +74,9 @@ WRITE_REMEDY = "fix the cause that the message gives, then run assemble-report.p
 # The reference set's digest and the final outcome record stand in for them.
 UNPINNED_REPORT = ("threats", "attack_chains")
 UNPINNED_TREES_IN_REPORT = ("threats",)
+# A run with more open findings than this summarizes its Medium, Low and Note findings by category, and narrates the rest one by one (the template's guidance,
+# part-files.md "Narrated or summarized").
+NARRATE_LIMIT = 30
 
 # The template's nine sections, by their number in the template (output-schemas/threat-report.md). A report numbers the sections it holds by position.
 TITLES = {1: "Executive Summary", 2: "Architecture Overview", 3: "Threat Analysis", 4: "Cross-Cutting Themes", 5: "Attack Trees",
@@ -508,18 +513,51 @@ def _trees(run: Run, args: argparse.Namespace) -> int:
 # report: the narrative, the parts and the checks
 # =============================================================================
 
+_TAXON = re.compile(r"[A-Za-z][A-Za-z0-9_.:-]{0,63}")   # the slot grammar's argument alphabet and length, from a letter on
+_LAYER = re.compile(r"L[1-7](?![0-9A-Za-z])")             # a MAESTRO layer's code at the start of its cell: ``L3``, or ``L3 -- Agent Frameworks``
+
+
+def _category_cells(unit: Mapping[str, Any]) -> Mapping[str, Any]:
+    """The cells of a finding's row in its category table (Section 3 or 4) that a findings unit holds under ``category_row``, as ``tachi-stage.py plan --stage
+    report`` writes them (T092): decoded, under ``tachi_parts``' item keys, so ``maestro_layer``, ``likelihood``, ``impact`` and, in the two AI tables,
+    ``owasp_reference``. A table that lacks a column gives ``""`` there, and a finding with no row in any table gives ``{}``: both read as a value that its table
+    lacks. ``part-files.md`` says only that a unit holds "its category-table row", so the outer key is the planner's reading and the inner keys the contract's."""
+    cells = unit.get("category_row")
+    return cells if isinstance(cells, dict) else {}
+
+
+def _taxonomy_ids(unit: Mapping[str, Any]) -> frozenset:
+    """The taxonomy IDs that a finding carries, as its unit holds them (ADR-050 D3's ``ref`` row): each token of its OWASP Reference cell, and its MAESTRO
+    layer's code. A token starts with a letter and holds a digit (``LLM01:2026``, ``CWE-89``, ``T1190``), so the cell's words (``OWASP``) are none. A STRIDE
+    table has no reference cell, so its findings carry the layer alone, and a value that its table lacks gives nothing."""
+    cells, found = _category_cells(unit), set()
+    for token in _TAXON.findall(str(cells.get("owasp_reference") or "")):
+        token = token.rstrip(".:-_")
+        if any(char.isdigit() for char in token):
+            found.add(token)
+    layer = _LAYER.match(str(cells.get("maestro_layer") or "").strip())
+    if layer is not None:
+        found.add(layer.group(0))
+    return frozenset(found)
+
+
 class Narrator(object):
     """Fills a fragment's slots against the reference set, and counts the fields that fall back at assembly (D3's per-field fallback).
 
     A text that broke the slot grammar or the numeral ban already took its fixed sentence when the part was read. What can still fail here is a
-    slot that doesn't resolve, such as a finding that is not in the reference set.
+    slot that doesn't resolve: a finding that is not in the reference set, or a ``ref`` that the finding doesn't carry. ``taxa`` maps a finding to its
+    taxonomy IDs (``_taxonomy_ids``). In a findings part the text is one finding's, and its ``ref`` must be one of that finding's own; in a section
+    fragment, which has no finding, it may be one of any finding that has a unit row (part-files.md, "Stage payload: report").
     """
 
-    def __init__(self, reference: Reference) -> None:
+    def __init__(self, reference: Reference, taxa: Optional[Mapping[str, frozenset]] = None) -> None:
         self.ref, self.fallbacks = reference, 0
+        self.taxa: Mapping[str, frozenset] = taxa or {}
+        self.any_refs: frozenset = frozenset().union(*self.taxa.values()) if self.taxa else frozenset()
 
-    def lookup(self, kind: str, name: str) -> Optional[str]:
-        """The ``report`` slot table's resolutions (part-files.md, "Stage payload: report"). ``None`` when a slot doesn't resolve."""
+    def lookup(self, kind: str, name: str, finding: Optional[str] = None) -> Optional[str]:
+        """The ``report`` slot table's resolutions (part-files.md, "Stage payload: report"). ``None`` when a slot doesn't resolve. ``finding`` is the
+        canonical ID of the findings-part item that holds the text, and ``None`` for a section fragment."""
         ref = self.ref
         if kind == "finding":
             return name if name in ref.by_id else None   # the grammar canonicalized it, and it must be in the reference set
@@ -534,7 +572,9 @@ class Narrator(object):
         if kind == "pct" and name in tp.REPORT_BANDS:
             shares = ts.largest_remainder({band: ref.count(level=band) for band in tp.REPORT_BANDS})
             return str(shares[name])
-        return None   # `ref` needs each finding's taxonomy cells, which T110 adds with its payload cases
+        if kind == "ref":
+            return name if name in (self.any_refs if finding is None else self.taxa.get(finding, frozenset())) else None
+        return None   # pragma: no cover  (a part's grammar admits no other kind here, so only a slot table that grew without this lookup could reach it)
 
     def _count(self, name: str) -> Optional[str]:
         ref = self.ref
@@ -549,11 +589,12 @@ class Narrator(object):
             return str(ref.count(level=name))
         if category in tp.REPORT_CATEGORY_KEYS and (not band or band in tp.REPORT_BANDS):
             return str(ref.count(level=band or None, category=category))
-        return None
+        return None   # pragma: no cover  (the part's grammar admits only the arguments above)
 
-    def text(self, value: str, field: str, sink: str = "prose") -> str:
-        """``value`` with its slots filled and escaped for ``sink``, or the field's fixed sentence (counted) when a slot doesn't resolve."""
-        resolved = tp.resolve_narrative(value, "report", self.lookup, sink)
+    def text(self, value: str, field: str, sink: str = "prose", finding: Optional[str] = None) -> str:
+        """``value`` with its slots filled and escaped for ``sink``, or the field's fixed sentence (counted) when a slot doesn't resolve. ``finding`` is
+        the canonical ID of the findings-part item that holds ``value``, which scopes its ``ref`` slots; a section fragment passes none."""
+        resolved = tp.resolve_narrative(value, "report", lambda kind, name: self.lookup(kind, name, finding), sink)
         if resolved is None:
             self.fallbacks += 1
             sentence = tp.report_fallback(field)
@@ -569,6 +610,8 @@ class Parts(object):
         self.fragments: Dict[str, Dict[str, str]] = {}   # section -> fragment key -> text
         self.analysis: Dict[str, Dict[str, Any]] = {}    # canonical ID -> threat_analysis item
         self.rows: Dict[str, Dict[str, Any]] = {}        # canonical ID -> its threat_analysis unit row (the lead's category-table values)
+        self.roadmap_rows: Dict[str, Dict[str, Any]] = {}  # canonical ID -> its remediation_roadmap unit row
+        self.taxa: Dict[str, frozenset] = {}             # canonical ID -> the taxonomy IDs its unit rows carry (a `ref` slot's allowed set)
         self.roadmap: Dict[str, Dict[str, Any]] = {}     # canonical ID -> remediation_roadmap item
         self.fallbacks = self.truncations = 0
         self.items: List[Dict[str, Any]] = []
@@ -581,9 +624,10 @@ class Parts(object):
                 for item in result.part["items"]:
                     (self.analysis if section == "threat_analysis" else self.roadmap)[item["finding_id"]] = item
                     self.items.append(item)
-                if section == "threat_analysis":
-                    for unit in document["units"]:
-                        self.rows[tp.canonical_finding_id(unit["finding_id"])] = unit
+                for unit in document["units"]:
+                    fid = tp.canonical_finding_id(unit["finding_id"])
+                    (self.rows if section == "threat_analysis" else self.roadmap_rows)[fid] = unit
+                    self.taxa[fid] = self.taxa.get(fid, frozenset()) | _taxonomy_ids(unit)
             else:
                 self.units.setdefault(section, []).extend(unit["key"] for unit in document["units"])
                 for fragment in result.part["fragments"]:
@@ -733,7 +777,7 @@ class Doc(object):
     def __init__(self, run: Run, reference: Reference, parts: Parts, manifest: Mapping[str, Any], trees: Mapping[str, Tuple[bytes, str]],
                  outcome: Mapping[str, Any], chains: Sequence[Mapping[str, Any]]) -> None:
         self.run, self.ref, self.parts, self.manifest, self.trees, self.outcome, self.chains = run, reference, parts, manifest, trees, outcome, chains
-        self.narr = Narrator(reference)
+        self.narr = Narrator(reference, parts.taxa)
         groups = tachi_parsers.parse_correlation_groups(reference.text, reference.ids)["groups"]
         self.group_of = {member: group for group in groups for member in group["members"]}   # the first group that lists an ID claims it
         self.used: set = set()                                                                 # the units whose content the file holds
@@ -789,8 +833,8 @@ def _section_architecture(doc: Doc) -> List[str]:
 
 def _lead(doc: Doc, finding_id: str) -> str:
     """A narrated finding's lead: its ID, component, MAESTRO layer, likelihood, impact and risk level, and its status in a baseline run, with a dash
-    for a value that its category table lacks (the batch input's row holds the category-table values; Section 7's row the rest)."""
-    row = doc.parts.rows.get(finding_id, {})
+    for a value that its category table lacks (the batch input's ``category_row`` holds the category-table values; Section 7's row the rest)."""
+    row = _category_cells(doc.parts.rows.get(finding_id, {}))
 
     def cell(name: str) -> str:
         return tp.escape_cell(str(row.get(name) or DASH))
@@ -824,7 +868,7 @@ def _section_threats(doc: Doc) -> List[str]:
             item = doc.parts.analysis.get(fid)
             if item is not None:   # a summarized finding has no item of its own: its category's summary covers it
                 doc.used.add(("threat_analysis", fid))
-                lines += [_lead(doc, fid), "", doc.narr.text(item["narrative"], "narrative"), ""]
+                lines += [_lead(doc, fid), "", doc.narr.text(item["narrative"], "narrative", finding=fid), ""]
         summary = doc.fragment("threat_categories", "summary." + key)
         if summary is not None:
             lines += [summary, ""]
@@ -832,13 +876,18 @@ def _section_threats(doc: Doc) -> List[str]:
 
 
 def _themes(doc: Doc) -> List[Tuple[int, str, str, Optional[str]]]:
-    """``[(n, title, body, raw body)]`` for each theme that the part holds, in order. The title takes the cell sink, a heading being one line."""
+    """``[(n, title, body, raw body)]`` for each theme that the part holds, in order. The title takes the cell sink, a heading being one line.
+
+    ``raw body`` is the text whose ``finding`` slots the appendix reads, and it is ``None`` when the body fell back at assembly: a body that shows the fixed
+    sentence discusses no finding, so it places none."""
     found = []
     number = 1
     while doc.parts.fragment("cross_cutting_themes", "theme.%d.title" % number) is not None:
         title = doc.narr.text(doc.parts.fragment("cross_cutting_themes", "theme.%d.title" % number), "theme.%d.title" % number, "cell")
         raw = doc.parts.fragment("cross_cutting_themes", "theme.%d.body" % number)
-        found.append((number, title, doc.narr.text(raw, "theme.%d.body" % number), raw))
+        before = doc.narr.fallbacks
+        body = doc.narr.text(raw, "theme.%d.body" % number)
+        found.append((number, title, body, raw if doc.narr.fallbacks == before else None))
         number += 1
     return found
 
@@ -878,7 +927,7 @@ def _section_trees(doc: Doc) -> List[str]:
         fence = tp.fence_for(source)
         lines += ["### " + heading, "", " | ".join(meta), ""]
         if summary is not None:
-            lines += [doc.narr.text(summary, "tree_summary"), ""]
+            lines += [doc.narr.text(summary, "tree_summary", finding=fid), ""]
         lines += [fence + "mermaid", source, fence, ""]
         if baseline["has_baseline"]:
             if entry["action"] == "carried_forward":
@@ -986,11 +1035,11 @@ def _section_roadmap(doc: Doc) -> List[str]:
         fid, item = row["id"], items[row["id"]]
         if row["group"] is None:
             mitigation = str(ref.by_id[fid]["mitigation"])
-            dependencies = None if item["dependencies"] is None else doc.narr.text(item["dependencies"], "dependencies", "cell")
+            dependencies = None if item["dependencies"] is None else doc.narr.text(item["dependencies"], "dependencies", "cell", finding=fid)
         else:
             mitigation = "; ".join("%s: %s" % (ref.shown(member), ref.by_id[member]["mitigation"]) for member in row["members"])
             note = "Correlated: %s (%s)." % (", ".join(ref.shown(member) for member in row["members"]), row["group"])
-            dependencies = note if item["dependencies"] is None else note + " " + doc.narr.text(item["dependencies"], "dependencies", "cell")
+            dependencies = note if item["dependencies"] is None else note + " " + doc.narr.text(item["dependencies"], "dependencies", "cell", finding=fid)
         lines.append("| %s | %s | %s | %s | %s |" % (tp.escape_cell(ref.shown(fid)), tp.escape_cell(row["component"]), tp.escape_cell(mitigation),
                                                     item["effort"], "None" if dependencies is None else dependencies))
         doc.used.add(("remediation_roadmap", fid))
@@ -1080,6 +1129,46 @@ def _check_staged(doc: Doc, digest: str) -> Any:
     return check
 
 
+def _check_plan(run: Run, reference: Reference, parts: Parts) -> None:
+    """The report plan against the reference set that it was planned over (part-files.md, "Stage payload: report"; exit 2).
+
+    The reference digest says that Section 7 hasn't changed since the plan, so what the plan holds must be what that reference set implies. A plan that
+    differs is a planner's defect, and the report would lose a finding's text or print a section that has none, silently: the appendix is built from where
+    the file puts a finding, so it can't show a narrative that was never written. Four rules:
+
+    * **Narrated or summarized.** With more than ``NARRATE_LIMIT`` open findings, a Medium, Low or Note finding is summarized, and every other open
+      finding is narrated one by one (the contract's words, so a finding with another risk level is narrated). The analysis parts hold an item for each
+      narrated finding and for no other.
+    * **Summaries.** ``threat_categories`` plans ``summary.<category>`` for each category that has a summarized finding, and for no other.
+    * **Patterns.** ``agentic_patterns`` is planned when an open finding has a pattern. Its units are ``pattern.<value>`` for each of the six values that
+      Section 7 holds, and ``multi`` when it holds ``multiple``.
+    * **Delta.** ``delta_summary`` is planned when the run has a baseline.
+    """
+    ids = reference.ids
+    narrated = [fid for fid in ids if len(ids) <= NARRATE_LIMIT or reference.level(fid) not in ("Medium", "Low", "Note")]
+    held = {tp.canonical_finding_id(fid) for fid in parts.analysis}
+    if held != set(narrated):
+        raise run.stop(2, "the analysis parts hold items for %s, and Section 7's narration rule gives %s" % (
+            _named(sorted(held, key=tp.finding_sort_key)) or "none", _named(sorted(narrated, key=tp.finding_sort_key)) or "none"),
+            "re-run Phase 5, so that the report plan is made over this threats.md")
+    summarized = sorted({reference.category(fid) for fid in ids if fid not in set(narrated)}, key=CATEGORY_INDEX.get)
+    units = parts.units.get("threat_categories", [])
+    planned = sorted({key[len("summary."):] for key in units if key.startswith("summary.")}, key=lambda name: CATEGORY_INDEX.get(name, len(CATEGORY_INDEX)))
+    if planned != summarized:
+        raise run.stop(2, "the report plan holds category summaries for %s, and Section 7 has summarized findings in %s" % (
+            _named(planned) or "no category", _named(summarized) or "no category"), "re-run Phase 5, so that the report plan is made over this threats.md")
+    values = {str(reference.by_id[fid].get("agentic_pattern")) for fid in ids}
+    wanted = (["pattern." + value for value in tp.REPORT_PATTERNS if value in values] + (["multi"] if "multiple" in values else []))
+    if sorted(parts.units.get("agentic_patterns", [])) != sorted(wanted):
+        raise run.stop(2, "the report plan holds pattern units %s, and Section 7 gives %s" % (
+            _named(parts.units.get("agentic_patterns", [])) or "none", _named(wanted) or "none"),
+            "re-run Phase 5, so that the report plan is made over this threats.md")
+    if ("delta_summary" in parts.units) != bool(reference.baseline["has_baseline"]):
+        raise run.stop(2, "the report plan holds %s delta summary, and the run has %s baseline" % (
+            "a" if "delta_summary" in parts.units else "no", "a" if reference.baseline["has_baseline"] else "no"),
+            "re-run Phase 5, so that the report plan is made over this threats.md")
+
+
 def _report(run: Run, args: argparse.Namespace) -> int:
     plan, inputs = _guard(run, "report", args.plan, args.plan_digest, UNPINNED_REPORT)
     params = plan["params"]
@@ -1105,7 +1194,7 @@ def _report(run: Run, args: argparse.Namespace) -> int:
     for section in ("exec_summary", "architecture_overview", "threat_categories", "cross_cutting_themes"):
         if section not in parts.units:
             raise run.stop(2, "the report plan holds no %s part" % section, "re-run the plan step")
-    for row in parts.rows.values():
+    for row in list(parts.rows.values()) + list(parts.roadmap_rows.values()):
         problem = tp.forbidden_problem("a batch input", row.get("finding_id"), row, json_only=True)
         if problem is not None:
             raise run.stop(2, problem, "re-run the plan step over a regenerated threats.md")
@@ -1118,6 +1207,7 @@ def _report(run: Run, args: argparse.Namespace) -> int:
         item = parts.analysis.get(entry["finding_id"])
         if item is None or item["tree_summary"] is None:
             raise run.stop(2, "the analysis parts hold no tree summary for %s" % entry["finding_id"], "re-run Phase 5")
+    _check_plan(run, reference, parts)
 
     doc = Doc(run, reference, parts, manifest, trees, outcome, chains)
     sources = {"tree_manifest": tp.sha256_hex(inputs["tree_manifest"]), "reference": params["reference_digest"], "outcome": outcome["text"],

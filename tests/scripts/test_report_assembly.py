@@ -7,10 +7,12 @@ They target ``contracts/cli.md`` (the CLI and the exit table; both modes take PL
 S1P-A18 (the forbidden-character predicate at the assembler's intake and in the tree checks) and S1P-A20 (a group's
 roadmap primary follows D8), never an implementation. T108 writes ``assemble-report.py trees`` and T109 writes
 ``assemble-report.py report`` to them, once the hoist's E1-E5 are green and T091's first slice has landed. Until then
-they fail: the script does not exist. T110's richer-payload cases come later and are not here: Section 1's Remediation Timeline, Section
-3's leads and subsections, the appendix, the pattern subsections, Section 9's tables, and the other slot kinds. What is here of the code-built
-layout is what T109 lists or the errata name: the numbering, Section 5, Section 6, the roadmap's rows and their groups, the frontmatter,
-and the prose and cell sinks, with the slots ``count``, ``finding`` and ``name``, the fixed sentence and the cut, only to show the sinks and the counts.
+they fail: the script does not exist. What is in sections 1 to 4 of this module of the code-built layout is what T109 lists or the errata name: the
+numbering, Section 5, Section 6, the roadmap's rows and their groups, the frontmatter, and the prose and cell sinks, with the slots ``count``,
+``finding`` and ``name``, the fixed sentence and the cut, only to show the sinks and the counts. T110's richer-payload cases are section 5, at the end:
+the payload's validator cases, then Section 1's Remediation Timeline, Section 3's leads and subsections, the category summaries of a run of more than 30,
+the pattern subsections, the roadmap's intro and group rows, the appendix, Section 9's tables, every kind of slot, and the drift tests. Its readings are
+RD-22 to RD-27, in that section's header.
 
 How they run (ADR-050 D16, H15): the entry is loaded lazily through ``tests/conftest.py``'s ``_load_hyphenated_script``
 and driven in-process through ``main(argv)``, so pytest-cov counts it. Nothing here starts a subprocess: the one thing a
@@ -54,7 +56,7 @@ lane's results file, "For the code halves", for the architect and for T092's pla
   takes the number after Cross-Layer Attack Chains and the later sections move up by one. Section 6 is on every run.
 * **RD-12, the unit rows of a findings batch** carry the reference set's row keys (``finding_id``, ``component``,
   ``threat``, ``risk_level``, ``mitigation``, ``agentic_pattern``, ``delta_status``), as the planner's ``_unit_row``
-  does, with ``section``. No test here asserts a lead, so only ``section`` and ``finding_id`` are load-bearing.
+  does, with ``section``, and the category-table row under ``category_row`` (RD-22, where the leads' cells come from).
 * **RD-13, the stage record** lists the merged manifest (``trees``) or ``threat-report.md`` (``report``) among its
   ``outputs``, with the digest of the file in place, and holds exactly the stage's closed ``counts`` keys.
 * **RD-14, Section 5** prints ``### {ID}: {threat}``, then the metadata line, the ``tree_summary``, the fenced tree and
@@ -137,6 +139,9 @@ FINDINGS = [
 ]
 RESOLVED = [("R-9", "Legacy Cache", "Stale cache poisoning", "High", "Component removed")]
 RISK_RANK = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3, "Note": 4}
+# The OWASP Reference cell of an agentic or LLM finding (the AI tables' extra column). A finding with no entry shows the dash that the template's rows show.
+OWASP_OF = {"AG-1": "OWASP ASI02:2026", "LLM-1": "OWASP LLM01:2026, CWE-77", "OI-1": "OWASP LLM05:2026"}
+NARRATE_LIMIT = 30  # part-files.md, "Narrated or summarized": more than this many open findings summarizes the Medium, Low and Note ones
 CATEGORY_OF_PREFIX = {
     "S": "spoofing", "T": "tampering", "R": "repudiation", "I": "information_disclosure", "D": "denial_of_service",
     "E": "elevation_of_privilege", "AG": "agentic", "AGP": "agentic", "TE": "agentic", "LLM": "llm", "OI": "llm", "MI": "llm",
@@ -189,6 +194,23 @@ def findings_for(rule, patterns=False):
     return out
 
 
+def big_findings(rule="no-baseline"):
+    """The nine findings above and 25 more Medium, Low and Note ones: 34 open findings, more than 30, so that the Medium, Low and Note ones are summarized by
+    category and only the seven Critical and High ones are narrated (part-files.md, "Narrated or summarized"). They stay the run's only trees. Every category but
+    LLM has an extra one, and LLM's two findings are narrated, so LLM alone has no summary."""
+    extras = []
+    for prefix, count, first in (("S", 4, 2), ("T", 4, 3), ("R", 4, 1), ("I", 4, 2), ("D", 3, 2), ("E", 3, 2), ("AG", 3, 2)):
+        for n in range(first, first + count):
+            extras.append("%s-%d" % (prefix, n))
+    assert len(extras) == 25
+    out = list(findings_for(rule))
+    for k, finding_id in enumerate(extras):
+        status = ("NEW", "UNCHANGED", "UPDATED")[k % 3] if rule == "rule2" else ("UNCHANGED" if rule == "rule1" else "NEW")
+        out.append(F(finding_id, status, ("Medium", "Low", "Note")[k % 3], ("Gateway", "Order Service", "Admin Console")[k % 3], "Synthetic threat %s" % finding_id,
+                     "Synthetic mitigation for %s" % finding_id, DASH, "L%d" % (k % 7 + 1), "MEDIUM", "LOW"))
+    return out
+
+
 def manifest_order(findings):
     """Critical findings first, then High, each in S-2 order: the merged manifest's order (threat-model-records.md)."""
     chosen = [f for f in findings if f.risk in ("Critical", "High")]
@@ -229,7 +251,8 @@ def make_threats_md(findings, resolved=(), groups=(), baseline=None, outcome=Non
                   "|---|---|---|---|---|%s---|---|---|---|" % ("---|" if ai else "")]
         for f in by_category[key]:
             lines.append("| %s | %s | %s | %s | %s |%s %s | %s | %s | %s |" % (
-                f.id, f.status, f.component, f.layer, f.threat, (" %s |" % DASH) if ai else "", f.likelihood, f.impact, f.risk, f.mitigation))
+                f.id, f.status, f.component, f.layer, f.threat, (" %s |" % OWASP_OF.get(f.id, DASH)) if ai else "", f.likelihood, f.impact, f.risk,
+                f.mitigation))
         lines.append("")
     lines += ["## 4a. Correlated Findings", ""]
     if groups:
@@ -254,19 +277,39 @@ def make_threats_md(findings, resolved=(), groups=(), baseline=None, outcome=Non
     return "\n".join(lines) + extra
 
 
+# The members, the layers and the chain-breaking control of the chains that the harness knows. A chain that it doesn't know (a test that plants another ID) has the
+# first one's members. The control's recommendation is stored as a renderer writes it, escaped: the reader decodes it, and the report has to write it again.
+CHAIN_MEMBERS = {
+    "CHAIN-001": [("S-1", "L4", "initial_exploit", "Gateway", "Spoofing", "Critical"),
+                  ("T-1", "L3", "terminal_impact", "Order Service", "Tampering", "Critical")],
+    "CHAIN-002": [("LLM-1", "L1", "initial_exploit", "Planner Agent", "LLM", "Critical"),
+                  ("AG-1", "L3", "intermediate_cascade", "Planner Agent", "Agentic", "High"),
+                  ("OI-1", "L7", "terminal_impact", "Report Renderer", "LLM", "High")],
+}
+CHAIN_LAYERS = {"CHAIN-001": ["L4", "L3"], "CHAIN-002": ["L1", "L3", "L7"]}
+CHAIN_CONTROL = {"CHAIN-001": ("T-1", "L3", "Verify the signature of every order &#124; reject the unsigned ones"),
+                 "CHAIN-002": ("AG-1", "L3 — Agent Framework", "Allow list the tools of each task")}
+
+
 def make_attack_chains_md(chains, candidates=5):
     """A synthetic ``attack-chains.md`` (S-3(g)): every chain given is surfaced, and one more is consolidated into Section 3's table."""
     lines = ["---", 'schema_version: "1.1"', 'date: "%s"' % DATE, "chain_count: %d" % (len(chains) + 1), "surfaced_count: %d" % len(chains),
              "candidate_count: %d" % candidates, "---", "", "# Attack Chains", "", "## 1. Chain Summary", "",
              "| Chain ID | Title | Layers | Findings | Max Severity | Chain-Breaking Target | Converging Chains |", "|---|---|---|---|---|---|---|"]
     for chain_id, title in chains:
-        lines.append("| %s | %s | L3 %s L4 | S-1 %s T-1 | Critical | T-1 | 1 |" % (chain_id, title, "→", "→"))
+        members = CHAIN_MEMBERS.get(chain_id, CHAIN_MEMBERS["CHAIN-001"])
+        lines.append("| %s | %s | %s | %s | Critical | %s | 1 |" % (chain_id, title, " → ".join(CHAIN_LAYERS.get(chain_id, ["L3", "L4"])),
+                                                                 " → ".join(m[0] for m in members), CHAIN_CONTROL.get(chain_id, CHAIN_CONTROL["CHAIN-001"])[0]))
     lines += ["", "## 2. Chain Details", ""]
     for chain_id, title in chains:
-        lines += ["### %s: %s" % (chain_id, title), "", "**Layers**: L3 → L4", "**Max Severity**: Critical", "**Surfaced**: Yes",
-                  "**Converging chains**: 1", "", "#### Member Findings", "", "| Finding ID | MAESTRO Layer | Role | Component | Category | Severity |",
-                  "|---|---|---|---|---|---|", "| S-1 | L4 | Initial exploit | Gateway | Spoofing | Critical |",
-                  "| T-1 | L3 | Terminal impact | Order Service | Tampering | Critical |", ""]
+        members = CHAIN_MEMBERS.get(chain_id, CHAIN_MEMBERS["CHAIN-001"])
+        target, target_layer, recommendation = CHAIN_CONTROL.get(chain_id, CHAIN_CONTROL["CHAIN-001"])
+        lines += ["### %s: %s" % (chain_id, title), "", "**Layers**: " + " → ".join(CHAIN_LAYERS.get(chain_id, ["L3", "L4"])), "**Max Severity**: Critical",
+                  "**Surfaced**: Yes", "**Converging chains**: 1", "", "#### Member Findings", "",
+                  "| Finding ID | MAESTRO Layer | Role | Component | Category | Severity |", "|---|---|---|---|---|---|"]
+        lines += ["| %s | %s | %s | %s | %s | %s |" % member for member in members]
+        lines += ["", "#### Chain-Breaking Controls", "", "**Target**: %s (%s)" % (target, target_layer),
+                  "**Rationale**: Removing this finding disconnects the chain.", "**Recommendation**: " + recommendation, ""]
     lines += ["## 3. Other Consolidated Chains", "", "| Chain ID | Layers | Findings | Max Severity | Chain-Breaking Target |", "|---|---|---|---|---|",
               "| CHAIN-007 | L2 \u2192 L3 \u2192 L7 | T-2 \u2192 I-1 \u2192 S-1 | High | I-1 |", "", "**Consolidated chains not listed**: 0", ""]
     return "\n".join(lines) + "\n"
@@ -509,15 +552,19 @@ class World(object):
 
     def __init__(self, root, rule="no-baseline", per_batch=4, patterns=False, outcome=OUTCOME_ZERO, planned_chains=False, groups=(),
                  findings=None, resolved=None, no_baseline_tree=None, rule3=None, compliance=False, themes=1, threats_extra="",
-                 ticks_for=None, drop_units=(), extra_units=(), baseline_source="baseline/threats.md", trees_id=TREES_ID, report_id=REPORT_ID):
+                 ticks_for=None, drop_units=(), extra_units=(), baseline_source="baseline/threats.md", trees_id=TREES_ID, report_id=REPORT_ID,
+                 pattern_of=None, overview=False, per_report_batch=None, drop_row_keys=(), flaws=()):
         self.root, self.rule, self.per_batch = Path(root), rule, per_batch
         self.out, self.baseline = self.root / "run", self.root / "baseline"
         self.patterns, self.outcome, self.planned_chains = patterns, outcome, planned_chains
         self.groups, self.compliance, self.themes, self.threats_extra = list(groups), compliance, themes, threats_extra
+        self.overview, self.per_report_batch, self.drop_row_keys = overview, per_report_batch, tuple(drop_row_keys)
+        self.flaws = set(flaws)   # a planner that planned differently from the contract: ``no-item:<ID>``, ``no-summary:<category>``, ``extra-summary:<category>``, ...
         self.baseline_source = baseline_source
         self.ticks_for = dict(ticks_for or {})
         self.ids = {"trees": trees_id, "report": report_id}
         self.findings = list(findings) if findings is not None else findings_for(rule, patterns)
+        self.findings = [f._replace(pattern=pattern_of[f.id]) if f.id in (pattern_of or {}) else f for f in self.findings]
         self.resolved = list(RESOLVED if (resolved is None and rule == "rule2") else (resolved or []))
         self.has_baseline = rule in ("rule1", "rule2")
         self.status_of = {f.id: f.status for f in self.findings}
@@ -723,26 +770,71 @@ class World(object):
         peers = {m for g in groups for m in g["members"][1:]}
         return [i for i in self.open_ids() if i not in peers]
 
-    def finding_row(self, section, finding_id, **extra):
+    def section7_row(self, finding_id):
+        """Section 7's row of a finding as ``tachi-stage.py``'s ``_unit_row`` has it (RD-12): the reference set's keys, decoded."""
         f = next(f for f in self.findings if f.id == finding_id)
-        row = {"section": section, "finding_id": f.id, "component": f.component, "threat": f.threat, "risk_level": f.risk,
-               "mitigation": f.mitigation, "agentic_pattern": "none" if f.pattern == DASH else f.pattern, "delta_status": f.status}
-        row.update(extra)
-        return row
+        return {"finding_id": f.id, "component": tachi_parsers.decode_references(f.component), "threat": tachi_parsers.decode_references(f.threat),
+                "risk_level": f.risk, "mitigation": tachi_parsers.decode_references(f.mitigation), "agentic_pattern": "none" if f.pattern == DASH else f.pattern,
+                "delta_status": f.status}
+
+    def category_row(self, finding_id):
+        """A finding's row of its category table (Section 3 or 4) as the planner's ``_category_rows`` has it (RD-22): decoded, under ``tachi_parts``' item keys and
+        without the ID, in the table's order. The two AI tables have ``owasp_reference``, and a STRIDE table has none. ``drop_row_keys`` blanks some, as a table that
+        lacks the column gives ``""`` there."""
+        f = next(f for f in self.findings if f.id == finding_id)
+        cells = collections.OrderedDict([("status", f.status), ("component", f.component), ("maestro_layer", f.layer), ("threat", f.threat)])
+        if category_of(f.id) in ("agentic", "llm"):
+            cells["owasp_reference"] = OWASP_OF.get(f.id, DASH)
+        cells.update([("likelihood", f.likelihood), ("impact", f.impact), ("risk_level", f.risk), ("mitigation", f.mitigation)])
+        return {name: ("" if name in self.drop_row_keys else tachi_parsers.decode_references(value)) for name, value in cells.items()}
+
+    def finding_row(self, section, finding_id, **extra):
+        """A findings batch's unit row, as ``tachi-stage.py plan --stage report`` writes it (T092): Section 7's row, ``section``, and the category-table row under
+        ``category_row`` (RD-22), then what the section adds (``tree``; for a group's primary ``group_id`` and ``members``)."""
+        return dict(self.section7_row(finding_id), section=section, category_row=self.category_row(finding_id), **extra)
+
+    def group_primaries(self):
+        """``{primary ID: group}`` for the groups of Section 4a, by D8 (``parse_correlation_groups`` with the open IDs)."""
+        groups = tachi_parsers.parse_correlation_groups(self.threats_text, self.open_ids())["groups"]
+        return {group["members"][0]: group for group in groups}
+
+    def rule_narrated(self):
+        """The findings that the contract narrates one by one: every open finding of a run of at most 30, and the Critical and High ones of a larger run."""
+        risk = {f.id: f.risk for f in self.findings}
+        return [i for i in self.open_ids() if len(self.findings) <= NARRATE_LIMIT or risk[i] in ("Critical", "High")]
+
+    def narrated_ids(self):
+        """The findings that this plan's analysis parts narrate: the contract's, less the ones that a ``no-item`` flaw leaves out."""
+        return [i for i in self.rule_narrated() if "no-item:" + i not in self.flaws]
+
+    def summary_categories(self):
+        """The categories whose ``threat_categories`` units include a ``summary.<key>``, in the template's order: the ones that hold a summarized finding, with the
+        flaws applied."""
+        narrated = set(self.rule_narrated())
+        wanted = [c for c in CATEGORY_ORDER if any(category_of(f.id) == c and f.id not in narrated for f in self.findings) and "no-summary:" + c not in self.flaws]
+        return wanted + [c for c in CATEGORY_ORDER if "extra-summary:" + c in self.flaws and c not in wanted]
 
     def section_plan(self):
         """``[(section, [(key, required)])]`` for the section parts this run plans, in the template's order (part-files.md)."""
         categories = [c for c in CATEGORY_ORDER if any(category_of(f.id) == c for f in self.findings)]
         out = [("exec_summary", [("risk_posture", True), ("top_threats", True), ("key_recommendations", True), ("compliance", False)]),
                ("architecture_overview", [("system_context", True), ("trust_boundaries", True)]),
-               ("threat_categories", [("overview", False)] + [("category." + c, True) for c in categories]),
+               ("threat_categories", [("overview", False)] + [("category." + c, True) for c in categories]
+                + [("summary." + c, True) for c in self.summary_categories()]),
                ("cross_cutting_themes", [("themes", False)])]
         if self.planned_chains:
             out.append(("attack_chains", [("chain." + chain_id, True) for chain_id, _ in CHAINS]))
         values = sorted({f.pattern for f in self.findings if f.pattern != DASH})
-        if values:
-            out.append(("agentic_patterns", [("pattern." + value, True) for value in values]))
-        if self.has_baseline:
+        units = [("pattern." + v, True) for v in values if v != "multiple"] + ([("multi", True)] if "multiple" in values else [])   # `multi`, never `pattern.multiple`
+        if "no-multi" in self.flaws:
+            units = [unit for unit in units if unit[0] != "multi"]
+        if "extra-multi" in self.flaws and "multiple" not in values:
+            units.append(("multi", True))
+        if "extra-patterns" in self.flaws and not units:
+            units = [("pattern.agent_collusion", True)]
+        if units and "no-patterns" not in self.flaws:
+            out.append(("agentic_patterns", units))
+        if (self.has_baseline and "no-delta" not in self.flaws) or (not self.has_baseline and "extra-delta" in self.flaws):
             out.append(("delta_summary", [("progress", True)]))
         return out
 
@@ -753,9 +845,16 @@ class World(object):
                 for n in range(1, self.themes + 1):
                     fragments.append({"slot_key": "theme.%d.title" % n, "text": "Marker for theme title %s." % digit_free(str(n))})
                     fragments.append({"slot_key": "theme.%d.body" % n, "text": "Marker for theme body %s." % digit_free(str(n))})
-            elif required or (key == "compliance" and self.compliance):
+            elif required or (key == "compliance" and self.compliance) or (key == "overview" and self.overview):
                 fragments.append({"slot_key": key, "text": marker(section, key)})
         return fragments
+
+    def section_batch(self, section):
+        """The batch ID of ``section``'s part in the report plan (its first, when the plan holds several)."""
+        for batch_id in self.batch_ids("report"):
+            if read_json(self.input_path("report", batch_id))["units"][0]["section"] == section:
+                return batch_id
+        raise AssertionError("the report plan holds no %s part" % section)
 
     def build_report(self):
         if self.planned_chains:
@@ -766,21 +865,29 @@ class World(object):
             rows = [{"section": section, "key": key} for key, _ in units]
             batches.append(self.write_batch("report", "B%03d" % number, [], rows, [], fragments=self.fragments_of(section, units)))
             units_total += len(rows)
-        narrated = self.open_ids()
-        number += 1
-        items = [{"finding_id": i, "narrative": "Marker narrative for {{finding:%s}}." % i,
-                  "tree_summary": ("Marker summary for {{finding:%s}}." % i) if i in self.ch_ids else None} for i in narrated]
-        rows = [self.finding_row("threat_analysis", i, tree=(i in self.ch_ids)) for i in narrated]
-        batches.append(self.write_batch("report", "B%03d" % number, narrated, rows, items))
-        units_total += len(rows)
+
+        def chunked(ids):
+            size = self.per_report_batch or max(len(ids), 1)
+            return [ids[start:start + size] for start in range(0, len(ids), size)]
+
+        for chunk in chunked(self.narrated_ids()):
+            number += 1
+            items = [{"finding_id": i, "narrative": "Marker narrative for {{finding:%s}}." % i,
+                      "tree_summary": ("Marker summary for {{finding:%s}}." % i) if i in self.ch_ids else None} for i in chunk]
+            rows = [self.finding_row("threat_analysis", i, tree=(i in self.ch_ids)) for i in chunk]
+            batches.append(self.write_batch("report", "B%03d" % number, chunk, rows, items))
+            units_total += len(rows)
         roadmap = self.roadmap_ids()
-        number += 1
         self.roadmap_items = {i: {"effort": ("Low", "Medium", "High")[n % 3], "dependencies": (None if n % 2 else "Marker dependency for {{finding:%s}}." % i)}
                               for n, i in enumerate(roadmap)}
-        items = [dict(finding_id=i, **self.roadmap_items[i]) for i in roadmap]
-        rows = [self.finding_row("remediation_roadmap", i) for i in roadmap]
-        batches.append(self.write_batch("report", "B%03d" % number, roadmap, rows, items))
-        units_total += len(rows)
+        primaries = self.group_primaries()
+        for chunk in chunked(roadmap):
+            number += 1
+            items = [dict(finding_id=i, **self.roadmap_items[i]) for i in chunk]
+            rows = [self.finding_row("remediation_roadmap", i, **({"group_id": primaries[i]["group_id"], "members": [self.section7_row(m) for m in primaries[i]["members"]]}
+                                                                    if i in primaries else {})) for i in chunk]
+            batches.append(self.write_batch("report", "B%03d" % number, chunk, rows, items))
+            units_total += len(rows)
         inputs = {"threats": plan_input(self.threats_path), "trees_plan": plan_input(self.plan_path("trees")), "tree_manifest": plan_input(self.manifest_path)}
         if self.planned_chains and self.chains_path.exists():
             inputs["attack_chains"] = plan_input(self.chains_path)
@@ -2431,6 +2538,24 @@ def test_report_a_forbidden_character_in_a_batch_input_row_exits_2_naming_the_fi
     assert "S-1" in res.err, res.describe()
 
 
+@pytest.mark.parametrize("where", ["the category row of an analysis unit", "the category row of a roadmap unit", "a group's member rows in a roadmap unit"])
+def test_report_a_forbidden_character_nested_in_a_unit_row_exits_2_naming_the_finding(assembler, make, where):
+    """T092's units nest the category-table cells under ``category_row`` and a group's member rows under ``members``, and the walk for step 10's set reaches them."""
+    world = make("report", rule="rule2", groups=[("CG-1", ["T-1", "T-2"])])
+    if where.startswith("the category row of an analysis"):
+        batch, finding = world.section_batch("threat_analysis"), "S-1"
+        edit = lambda unit: unit["category_row"].update(maestro_layer="L4\x1b")    # noqa: E731
+    elif where.startswith("the category row of a roadmap"):
+        batch, finding = world.section_batch("remediation_roadmap"), "S-1"
+        edit = lambda unit: unit["category_row"].update(likelihood="HI" + chr(0x202E) + "GH")   # noqa: E731
+    else:
+        batch, finding = world.section_batch("remediation_roadmap"), "T-1"
+        edit = lambda unit: unit["members"][1].update(mitigation="Sign \x00 it")   # noqa: E731
+    world.edit_input("report", batch, lambda doc: edit(next(u for u in doc["units"] if u["finding_id"] == finding)))
+    res = run_refused(world, assembler, "report", 2)
+    assert finding in res.err, res.describe()
+
+
 def rename_in_findings_batch(world, batch_id, old, new):
     """Make ``old`` read as ``new`` in one findings batch of the report: its entry in the plan, the batch input and the part, as a planner and an agent that had
     meant ``new`` would have written them."""
@@ -2614,3 +2739,996 @@ def test_report_a_staged_file_that_fails_its_check_exits_4_and_replaces_nothing(
     assert all(after.get(path) == digest for path, digest in before.items()), "the agent's report and every other file stand"
     assert {path for path in after if path not in before} == {".tachi-build/report/%s/staged/threat-report.md" % world.plan_id("report")}
     assert not world.record_path("report").exists()
+
+
+# =============================================================================
+# 5. T110, contingency O-gamma: the richer `report` payload. Its validator cases, then what the assembler lays out from it (part-files.md, "Stage payload: report")
+#
+# Section 4 above holds what T109 lists: the numbering, Section 5, Section 6's outline, the roadmap's rows, the frontmatter, the sinks and the checks. This section holds the
+# payload's content: the leads, the category summaries, the pattern subsections, the roadmap's group rows, the appendix, Section 9, Section 1's timeline and the slots.
+# The readings, each pinned here and listed in the lane's results file:
+#
+# * RD-22, the unit rows. A findings batch's unit row holds Section 7's row and the category-table row, "decoded" (part-files.md), and the contract names no key for
+#   the second. T092's planner writes it under ``category_row``, with ``threats-md``'s item keys inside (``tachi_parts.THREATS_MD_SECTIONS``): ``status``,
+#   ``component``, ``maestro_layer``, ``threat``, ``likelihood``, ``impact``, ``risk_level``, ``mitigation`` and, in the two AI tables, ``owasp_reference``. The
+#   harness builds its rows that way, and the assembler reads ``category_row``'s ``maestro_layer``, ``likelihood``, ``impact`` and ``owasp_reference`` and no other
+#   cell. A column that its table lacks is ``""`` there (the planner's ``row.get(header, "")``), a finding with no row in any table has ``{}``, and the lead shows a
+#   dash for both. ``tree`` (``threat_analysis``), and ``group_id`` and ``members`` (a group's primary in ``remediation_roadmap``) are the planner's other unit keys.
+# * RD-23, the lead is ``**<ID>**: <component> | **MAESTRO Layer**: <layer> | **Likelihood**: <value> | **Impact**: <value> | **Risk Level**: <level>``, then
+#   `` | **Status**: <status>`` in a baseline run, on one line before the narrative.
+# * RD-24, a ``ref`` slot. Its argument is one of the taxonomy IDs of the item's own finding in a findings part, and of any finding that has a unit row in a section
+#   fragment. A finding's IDs are the tokens of its OWASP Reference cell that start with a letter and hold a digit, and its MAESTRO layer's code. Any other argument
+#   takes the field's fixed sentence.
+# * RD-25, the plan against the reference set. The analysis items are exactly the narrated findings, the summary units exactly the categories that hold a summarized
+#   finding, the pattern units exactly the patterns that Section 7 holds, and the delta part is there exactly when the run has a baseline, or the run is exit 2.
+# * RD-26, a group's roadmap row. Its Mitigation is ``<ID>: <mitigation>`` for each member, in member order, joined by ``; ``, each mitigation as the reference set
+#   reads it, and its Dependencies are ``Correlated: <IDs> (<group>).``, then the item's note when it has one.
+# * RD-27, the forms that the contract leaves to the assembler: Section 7's intro sentence, the appendix's rows (Section number, then the heading's text) and
+#   Section 9's tables, as the template shows them.
+# =============================================================================
+
+PATTERN_OF = {"LLM-1": "trust_exploitation", "OI-1": "communication_vulnerability", "T-2": "communication_vulnerability", "AG-1": "agent_collusion",
+              "I-1": "emergent_behavior", "D-1": "temporal_attack", "E-1": "resource_competition", "S-1": "multiple"}
+# Subsections, in the order that FR-013 gives them: LLM-1 is Critical, so Trust Exploitation is first. Communication Vulnerabilities and Agent Collusion share the
+# High band, and the first has two findings. Emergent Behavior is third in that band because Agent Collusion precedes it in the enum, with the same count.
+PATTERN_ORDER = ["trust_exploitation", "communication_vulnerability", "agent_collusion", "emergent_behavior", "temporal_attack", "resource_competition"]
+RICH = dict(rule="rule2", pattern_of=PATTERN_OF, planned_chains=True, outcome=OUTCOME_WRITTEN, compliance=True, themes=2, overview=True)
+SCENARIOS = {
+    "a run of nine": RICH,
+    "a run of thirty-four": dict(RICH, findings=big_findings("rule2")),
+    "findings parts of three": dict(RICH, per_report_batch=3),
+    "a first run": dict(RICH, rule="no-baseline"),
+}
+SECTION_OF_KEY = {"risk_posture": "exec_summary", "top_threats": "exec_summary", "key_recommendations": "exec_summary", "compliance": "exec_summary",
+                  "system_context": "architecture_overview", "trust_boundaries": "architecture_overview", "overview": "threat_categories",
+                  "multi": "agentic_patterns", "progress": "delta_summary"}
+
+
+def section_of_key(key):
+    """The section part that holds fragment ``key``."""
+    if key in SECTION_OF_KEY:
+        return SECTION_OF_KEY[key]
+    return {"category": "threat_categories", "summary": "threat_categories", "theme": "cross_cutting_themes", "chain": "attack_chains",
+            "pattern": "agentic_patterns"}[key.partition(".")[0]]
+
+
+def reword_in(world, key, text):
+    """Replace the text of fragment ``key`` in the section part that holds it."""
+    reword(world, key, text, batch=world.section_batch(section_of_key(key)))
+
+
+def reword_item(world, section, finding_id, **fields):
+    """Change fields of one finding's item in ``section``'s findings part (the part that holds it, when the section has several)."""
+    for batch_id in world.batch_ids("report"):
+        if read_json(world.input_path("report", batch_id))["units"][0]["section"] != section:
+            continue
+        part = read_json(world.part_path("report", batch_id))
+        for item in part["items"]:
+            if item["finding_id"] == finding_id:
+                item.update(fields)
+                write_json(world.part_path("report", batch_id), part)
+                return
+    raise AssertionError("no %s item for %s" % (section, finding_id))
+
+
+def validate_batch(world, batch_id):
+    """``tachi_parts.read_part`` on a report batch's part against its batch input's units: the check that D3's guard repeats for each ``done`` batch."""
+    entry = next(e for e in read_json(world.plan_path("report"))["batches"] if e["batch_id"] == batch_id)
+    units = read_json(world.input_path("report", batch_id))["units"]
+    return tp.read_part(world.part_path("report", batch_id), world.out, world.plan_id("report"), batch_id, "report", STAGE_AGENT["report"], entry["finding_ids"], units)
+
+
+# ---- the validator cases: what the shared validators hold the richer payload to (T091's key sets), shown on this module's own parts
+
+@pytest.mark.parametrize("scenario", sorted(SCENARIOS))
+def test_validator_every_part_of_the_richer_payload_passes_the_shared_validators_with_nothing_cut_or_replaced(make, scenario):
+    world = make("report", **SCENARIOS[scenario])
+    seen = set()
+    for batch_id in world.batch_ids("report"):
+        result = validate_batch(world, batch_id)
+        assert result.state == "done", (batch_id, result.detail)
+        assert result.counts == {"narrative_fallbacks": 0, "truncations": 0} and result.flags == {}, "the report prints no flag, and nothing here is cut"
+        seen.add(read_json(world.input_path("report", batch_id))["units"][0]["section"])
+    assert seen == {section for section, _ in tp.REPORT_PARTS} - (set() if world.has_baseline else {"delta_summary"}), "every part of the contract's table is planned"
+
+
+def test_validator_a_findings_part_holds_the_contracts_item_keys_and_a_section_part_holds_no_item_and_no_finding(make):
+    world = make("report", **RICH)
+    keys = {"threat_analysis": set(tp.KEY_SETS["analysis-item"][0]), "remediation_roadmap": set(tp.KEY_SETS["roadmap-item"][0])}
+    assert keys == {"threat_analysis": {"finding_id", "narrative", "tree_summary"}, "remediation_roadmap": {"finding_id", "effort", "dependencies"}}
+    for batch_id in world.batch_ids("report"):
+        part = read_json(world.part_path("report", batch_id))
+        section = read_json(world.input_path("report", batch_id))["units"][0]["section"]
+        if dict(tp.REPORT_PARTS)[section] == "findings":
+            assert part["items"] and part["fragments"] == [] and part["finding_ids"] == [item["finding_id"] for item in part["items"]]
+            assert all(set(item) == keys[section] for item in part["items"]), section
+        else:
+            assert part["items"] == [] and part["finding_ids"] == [] and part["fragments"], section
+            assert all(set(fragment) == set(tp.KEY_SETS["fragment"][0]) for fragment in part["fragments"])
+            assert all(tp.report_fragment_limit(section, fragment["slot_key"]) is not None for fragment in part["fragments"]), "each key has a limit"
+
+
+def drop_fragment(key):
+    return lambda part: part.update(fragments=[f for f in part["fragments"] if f["slot_key"] != key])
+
+
+def add_fragment(key, text="A passage of prose."):
+    return lambda part: part["fragments"].append({"slot_key": key, "text": text})
+
+
+def first_item(**fields):
+    return lambda part: part["items"][0].update(fields)
+
+
+def item_of(finding_id, **fields):
+    return lambda part: next(i for i in part["items"] if i["finding_id"] == finding_id).update(fields)
+
+
+def renumber_theme(old, new):
+    return lambda part: [f.update(slot_key=f["slot_key"].replace("theme.%d." % old, "theme.%d." % new)) for f in part["fragments"]]
+
+
+# Each case changes one thing in a part that passes, and the shared validator refuses the result. ``section`` names the part. RICH plans every part, a
+# Critical finding S-1 with a tree and a Medium finding D-1 with none, two themes, two chains and all six patterns with ``multi``.
+VALIDATOR_CASES = {
+    "a required paragraph is missing": ("exec_summary", drop_fragment("top_threats")),
+    "a paragraph that the batch did not plan": ("exec_summary", add_fragment("system_context")),
+    "a key twice": ("exec_summary", add_fragment("risk_posture")),
+    "a fragment with another key": ("exec_summary", lambda part: part["fragments"][0].update(note="x")),
+    "a fragment with no text": ("exec_summary", lambda part: part["fragments"][0].pop("text")),
+    "text of whitespace": ("exec_summary", lambda part: part["fragments"][0].update(text="  \n ")),
+    "an item in a section part": ("exec_summary", lambda part: part.update(items=[{"finding_id": "S-1"}])),
+    "a finding ID in a section part": ("exec_summary", lambda part: part.update(finding_ids=["S-1"])),
+    "a category with an open finding and no paragraph": ("threat_categories", drop_fragment("category.llm")),
+    "a summary that no unit planned": ("threat_categories", add_fragment("summary.llm")),
+    "a category key that no category has": ("threat_categories", add_fragment("category.bogus")),
+    "a category key with a band": ("threat_categories", add_fragment("category.llm.high")),
+    "a theme title with no body": ("cross_cutting_themes", drop_fragment("theme.2.body")),
+    "themes numbered with a gap": ("cross_cutting_themes", renumber_theme(2, 3)),
+    "a seventh theme": ("cross_cutting_themes", lambda part: part["fragments"].extend([{"slot_key": "theme.7.title", "text": "T"}, {"slot_key": "theme.7.body", "text": "B"}])),
+    "a chain that no unit planned": ("attack_chains", add_fragment("chain.CHAIN-009")),
+    "a planned chain with no paragraph": ("attack_chains", drop_fragment("chain.CHAIN-002")),
+    "a chain key that isn't a chain ID": ("attack_chains", add_fragment("chain.chain-001")),
+    "a pattern paragraph that is missing": ("agentic_patterns", drop_fragment("pattern.temporal_attack")),
+    "a pattern key that isn't one of the six": ("agentic_patterns", add_fragment("pattern.multiple")),
+    "the multi paragraph missing": ("agentic_patterns", drop_fragment("multi")),
+    "no progress paragraph": ("delta_summary", drop_fragment("progress")),
+    "a progress paragraph twice": ("delta_summary", add_fragment("progress")),
+    "a fragment in a findings part": ("threat_analysis", lambda part: part.update(fragments=[{"slot_key": "risk_posture", "text": "x"}])),
+    "a tree summary for a finding with no tree": ("threat_analysis", item_of("D-1", tree_summary="A summary of nothing.")),
+    "no tree summary for a finding that has a tree": ("threat_analysis", item_of("S-1", tree_summary=None)),
+    "an empty narrative": ("threat_analysis", first_item(narrative="")),
+    "a narrative that isn't text": ("threat_analysis", first_item(narrative=["a", "b"])),
+    "a lead that the assembler writes": ("threat_analysis", first_item(risk_level="Critical")),
+    "an item for a finding that the batch did not plan": ("threat_analysis", lambda part: part["items"].append(dict(part["items"][0], finding_id="S-9"))),
+    "an effort that is none of the three": ("remediation_roadmap", first_item(effort="Huge")),
+    "an effort in lower case": ("remediation_roadmap", first_item(effort="low")),
+    "no dependencies key": ("remediation_roadmap", lambda part: part["items"][0].pop("dependencies")),
+    "empty dependencies": ("remediation_roadmap", first_item(dependencies="")),
+    "a narrative in a roadmap item": ("remediation_roadmap", first_item(narrative="x")),
+    "another plan's part": ("exec_summary", lambda part: part.update(plan_id=OTHER_ID)),
+    "another batch's part": ("remediation_roadmap", lambda part: part.update(batch_id="B099")),
+}
+
+
+@pytest.mark.parametrize("case", sorted(VALIDATOR_CASES))
+def test_validator_a_part_that_breaks_the_richer_payloads_closed_keys_or_values_is_invalid_and_the_assembler_exits_2(assembler, make, case):
+    section, mutate = VALIDATOR_CASES[case]
+    world = make("report", **RICH)
+    batch = world.section_batch(section)
+    world.rewrite_json(world.part_path("report", batch), mutate)
+    assert validate_batch(world, batch).state == "invalid", "premise: the shared validator refuses it"
+    res = run_refused(world, assembler, "report", 2)
+    assert "the part of batch %s is invalid" % batch in res.err, res.describe()
+
+
+def test_validator_no_findings_part_spans_two_sections_and_the_appendix_has_no_part(assembler, make):
+    """T088's ruling, O-gamma: a part holds the units of one report section. The contract's table has two findings sections, each with a part of its own, and the
+    appendix is code alone."""
+    assert [section for section, kind in tp.REPORT_PARTS if kind == "findings"] == ["threat_analysis", "remediation_roadmap"]
+    assert "appendix" not in dict(tp.REPORT_PARTS)
+    world = make("report", rule="rule2")
+    batch = world.section_batch("threat_analysis")
+    world.edit_input("report", batch, lambda doc: doc["units"][-1].update(section="remediation_roadmap"))   # one batch, units of two sections
+    assert validate_batch(world, batch).state == "invalid"
+    res = run_refused(world, assembler, "report", 2)
+    assert "the part of batch %s is invalid" % batch in res.err, res.describe()
+    other = make("report", rule="rule2")
+    batch = other.section_batch("remediation_roadmap")
+    other.edit_input("report", batch, lambda doc: [unit.update(section="appendix") for unit in doc["units"]])   # the appendix has no part
+    assert validate_batch(other, batch).state == "invalid"
+    res = run_refused(other, assembler, "report", 2)
+    assert "the part of batch %s is invalid" % batch in res.err, res.describe()
+
+
+@pytest.mark.parametrize("units", ["a unit that is not an object", "no tree flag in an analysis unit", "a tree flag that is not a boolean"])
+def test_validator_a_findings_batch_input_whose_units_do_not_fit_the_plan_makes_its_part_invalid(assembler, make, units):
+    world = make("report", rule="rule2")
+    batch = world.section_batch("threat_analysis")
+
+    def damage(doc):
+        if units == "a unit that is not an object":
+            doc["units"][0] = "S-1"
+        elif units == "no tree flag in an analysis unit":
+            doc["units"][0].pop("tree")
+        else:
+            doc["units"][0]["tree"] = 1
+
+    world.edit_input("report", batch, damage)
+    assert validate_batch(world, batch).state == "invalid"
+    run_refused(world, assembler, "report", 2)
+
+
+@pytest.mark.parametrize("text", ["There are 12 findings in all.", "{{count:bogus}}", "{{pct:spoofing}}", "{{band:severity}}", "An unterminated {{count:open"])
+def test_validator_a_narrative_that_breaks_the_slot_grammar_or_the_numeral_ban_takes_the_fixed_sentence_and_the_part_stays_done(assembler, make, text):
+    """Step 11, shown through a section fragment, a finding's narrative and a roadmap note: the part is done, the field has its fixed sentence, and the report
+    counts it."""
+    world = make("report", rule="rule2")
+    reword_in(world, "top_threats", text)
+    reword_item(world, "threat_analysis", "S-1", narrative=text)
+    reword_item(world, "remediation_roadmap", "S-1", dependencies=text)
+    for batch_id in (world.section_batch("exec_summary"), world.section_batch("threat_analysis"), world.section_batch("remediation_roadmap")):
+        result = validate_batch(world, batch_id)
+        assert result.state == "done" and result.counts["narrative_fallbacks"] == 1, (batch_id, result.detail)
+    report_ok(world, assembler)
+    sentences = tp.REPORT_FALLBACKS
+    assert sentences["fragment"] in section_text(world.report_text, 1)
+    assert sentences["narrative"] in section_text(world.report_text, 3)
+    assert next(r for r in roadmap_rows(world) if r["Finding ID"] == "S-1")["Dependencies"] == sentences["dependencies"]
+    assert world.record("report")["counts"]["narrative_fallbacks"] == 3
+
+
+# ---- helpers for what the assembler lays out
+
+PATTERN_REFERENCE = REPO_ROOT / ".claude" / "skills" / "tachi-shared" / "references" / "maestro-agentic-patterns-shared.md"
+
+
+def shared_patterns():
+    """``[(display name, definition)]`` of the six canonical patterns, from Section 1 of the shared reference, in its order (1.1 to 1.6)."""
+    text = PATTERN_REFERENCE.read_text(encoding="utf-8")
+    body = text.split("## Section 1: Six Canonical Pattern Definitions", 1)[1].split("\n## Section 2", 1)[0]
+    return [(name.strip(), definition.strip()) for name, definition in re.findall(r"(?m)^### 1\.[1-6] (.+)\n\n\*\*Definition\*\*: (.+)$", body)]
+
+
+def template_subsections():
+    """The template's eight Section 3 headings, ``3.1 Spoofing`` to ``3.8 LLM Threats``."""
+    found = re.findall(r"(?m)^### (3\.[1-8] .+)$", TEMPLATE.read_text(encoding="utf-8"))
+    assert len(found) == 8
+    return found
+
+
+def subsection_lines(text, level, title):
+    """The lines under the ATX heading of ``level`` whose title starts with ``title``, up to the next heading of that level or a higher one."""
+    lines, heads = text.split("\n"), atx_headings(text)
+    for k, (n, lvl, found) in enumerate(heads):
+        if lvl == level and found.startswith(title):
+            end = next((m for m, other, _ in heads[k + 1:] if other <= level), len(lines))
+            return lines[n + 1:end]
+    raise AssertionError("no heading %r of level %d" % (title, level))
+
+
+def nonblank(lines):
+    return [line for line in lines if line.strip()]
+
+
+def lead_line(f, baseline=True, **cells):
+    """RD-23: the lead of a narrated finding. ``cells`` overrides the category-table values (``layer``, ``likelihood``, ``impact``), as a dash does when its table lacks one."""
+    values = dict({"layer": f.layer, "likelihood": f.likelihood, "impact": f.impact}, **cells)
+    fields = ["**%s**: %s" % (f.id, f.component), "**MAESTRO Layer**: %s" % values["layer"], "**Likelihood**: %s" % values["likelihood"],
+              "**Impact**: %s" % values["impact"], "**Risk Level**: %s" % f.risk]
+    if baseline:
+        fields.append("**Status**: %s" % f.status)
+    return " | ".join(fields)
+
+
+def open_order(findings):
+    """Sections 3 and 4's order: the eight category tables in turn, and S-2 order within one."""
+    return sorted((f.id for f in findings), key=lambda i: (CATEGORY_ORDER.index(category_of(i)), s2(i)))
+
+
+# ---- Section 1: the Remediation Timeline, in the form that extract-report-data.py reads
+
+TIER_OF = (("Critical", "Immediate"), ("High", "Short-term"), ("Medium", "Medium-term"), ("Low", "Backlog"), ("Note", "Backlog"))
+
+
+def expected_timeline(findings):
+    """One line for each band that has an open finding: Immediate for Critical, Short-term for High, Medium-term for Medium, and Backlog for Low and for Note."""
+    return ["- **%s** (%d %s findings)" % (tier, count, level) for level, tier in TIER_OF for count in [sum(1 for f in findings if f.risk == level)] if count]
+
+
+@pytest.mark.parametrize("scenario", ["a run of nine", "a run of thirty-four"])
+def test_section_1_the_remediation_timeline_has_one_line_for_each_band_with_open_findings_and_the_extractor_reads_it(assembler, make, extract_report_data, scenario):
+    world = make("report", **SCENARIOS[scenario])
+    report_ok(world, assembler)
+    text = world.report_text
+    expected = expected_timeline(world.findings)
+    assert nonblank(subsection_lines(section_text(text, 1), 3, "Remediation Timeline")) == expected
+    assert len(expected) == (4 if scenario == "a run of nine" else 5), "the thirty-four hold a Note finding, which the nine don't"
+    read = extract_report_data.parse_threat_report_md(text)["remediation_timeline"]
+    assert read == [{"timeline": tier, "count": sum(1 for f in world.findings if f.risk == level), "severity": level}
+                    for level, tier in TIER_OF if any(f.risk == level for f in world.findings)], "the same lines, read as the PDF's extractor reads them"
+
+
+def test_section_1_the_timeline_is_code_and_follows_the_reference_set_whatever_the_agent_wrote(assembler, make):
+    world = make("report", rule="rule2")
+    reword_in(world, "key_recommendations", "- **Immediate** (many Critical findings)")   # an agent's own timeline line is only prose
+    report_ok(world, assembler)
+    lines = subsection_lines(section_text(world.report_text, 1), 3, "Remediation Timeline")
+    assert nonblank(lines) == expected_timeline(world.findings)
+
+
+def test_section_1_names_its_subsections_as_the_extractor_reads_them_and_in_order(assembler, make):
+    world = make("report", compliance=True)
+    report_ok(world, assembler)
+    headings = [title for _, level, title in atx_headings(section_text(world.report_text, 1)) if level == 3]
+    assert headings == ["Risk Posture", "Top 5 Threats by Business Impact", "Key Recommendations", "Compliance Relevance", "Remediation Timeline"]
+    for key, title in (("risk_posture", "Risk Posture"), ("top_threats", "Top 5 Threats by Business Impact"), ("key_recommendations", "Key Recommendations"),
+                       ("compliance", "Compliance Relevance")):
+        assert nonblank(subsection_lines(section_text(world.report_text, 1), 3, title)) == [marker("exec_summary", key)], title
+
+
+# ---- Section 3: the subsections, the leads and the narratives
+
+def test_section_3_has_the_eight_subsections_on_every_run_and_an_empty_one_says_so(assembler, make):
+    world = make("report", rule="no-op")   # D-1 and E-1 only
+    report_ok(world, assembler)
+    section = section_text(world.report_text, 3)
+    template = template_subsections()
+    assert [title for _, level, title in atx_headings(section) if level == 3] == template
+    held = {category_of(f.id) for f in world.findings}
+    assert held == {"denial_of_service", "elevation_of_privilege"}
+    for index, key in enumerate(CATEGORY_ORDER):
+        body = "\n".join(subsection_lines(section, 3, template[index]))
+        sentence = "No %s threats were identified in this threat model." % CATEGORY_TITLE[key]
+        assert (sentence in body) is (key not in held), key
+        if key in held:
+            assert "Marker narrative for" in body
+
+
+@pytest.mark.parametrize("rule,baseline", [("rule2", True), ("rule1", True), ("no-baseline", False)])
+def test_section_3_each_narrated_finding_has_a_lead_from_its_category_table_row_and_then_its_narrative(assembler, make, rule, baseline):
+    world = make("report", rule=rule)
+    report_ok(world, assembler)
+    lines = section_text(world.report_text, 3).split("\n")
+    for f in world.findings:
+        at = [n for n, line in enumerate(lines) if line == lead_line(f, baseline)]
+        assert len(at) == 1, (f.id, "the lead is one line: its ID, component, layer, likelihood, impact and risk level, and its status in a baseline run")
+        assert lines[at[0] + 1] == "" and lines[at[0] + 2] == "Marker narrative for %s." % f.id
+    assert ("**Status**" in "\n".join(lines)) is baseline
+
+
+def test_section_3_a_lead_shows_a_dash_for_a_value_that_its_category_table_lacks(assembler, make):
+    """RD-22: a table without the column gives ``""`` in ``category_row``, and the lead still has the field."""
+    world = make("report", rule="rule2", drop_row_keys=("maestro_layer", "likelihood"))
+    assert read_json(world.input_path("report", world.section_batch("threat_analysis")))["units"][0]["category_row"]["maestro_layer"] == ""
+    report_ok(world, assembler)
+    lines = section_text(world.report_text, 3).split("\n")
+    for f in world.findings:
+        assert lead_line(f, True, layer=DASH, likelihood=DASH) in lines, f.id
+    assert "**MAESTRO Layer**: %s |" % DASH in "\n".join(lines) and "**Impact**: HIGH" in "\n".join(lines), "only the missing cells are dashes"
+
+
+@pytest.mark.parametrize("how", ["no category row at all", "the cells at the top of the unit, not in category_row"])
+def test_section_3_the_lead_reads_the_category_cells_from_category_row_and_nowhere_else(assembler, make, how):
+    """A finding with no row in any category table has ``{}`` there, and a lead made of dashes. The cells are read from ``category_row`` alone, as T092 writes them, so
+    the same cells at the top of the unit are not read."""
+    world = make("report", rule="rule2")
+    batch = world.section_batch("threat_analysis")
+
+    def damage(doc):
+        unit = next(u for u in doc["units"] if u["finding_id"] == "S-1")
+        cells = unit.pop("category_row")
+        if how == "no category row at all":
+            unit["category_row"] = {}
+        else:
+            unit.update(cells)
+
+    world.edit_input("report", batch, damage)
+    report_ok(world, assembler)
+    f = next(f for f in world.findings if f.id == "S-1")
+    assert lead_line(f, True, layer=DASH, likelihood=DASH, impact=DASH) in section_text(world.report_text, 3).split("\n")
+
+
+def test_section_3_a_lead_cell_takes_the_cell_sink(assembler, make):
+    """The lead is built from cells of rendered text: the component from Section 7 (stored escaped, read decoded) and the layer from the batch input (decoded). A
+    pipe or a tag in either stays text, and can't split the line."""
+    findings = [f._replace(component="Gate &#124; &lt;b&gt;way&lt;/b&gt;") if f.id == "S-1" else f for f in findings_for("rule2")]
+    world = make("report", rule="rule2", findings=findings)
+    world.edit_input("report", world.section_batch("threat_analysis"), lambda doc: next(u for u in doc["units"] if u["finding_id"] == "S-1")["category_row"].update(
+        maestro_layer="L4 | <i>x</i>"))
+    report_ok(world, assembler)
+    lead = next(line for line in section_text(world.report_text, 3).split("\n") if line.startswith("**S-1**: "))
+    assert "<b>" not in lead and "<i>" not in lead, lead
+    assert lead.startswith("**S-1**: Gate &#124; &lt;b&gt;way&lt;/b&gt; | **MAESTRO Layer**: L4 &#124; &lt;i&gt;x&lt;/i&gt; | **Likelihood**: HIGH"), lead
+    assert lead.count(" | ") == 5, "the lead's five delimiters and no more"
+
+
+def test_section_3_a_subsection_holds_its_category_paragraph_then_its_findings_in_s2_order(assembler, make):
+    world = make("report", rule="rule2", overview=True)
+    report_ok(world, assembler)
+    section = section_text(world.report_text, 3)
+    first = section.index("### 3.1")
+    overview = marker("threat_categories", "overview")
+    assert overview in section[:first] and section.count(overview) == 1, "the overview is Section 3's, before the first subsection"
+    template, by_id = template_subsections(), {f.id: f for f in world.findings}
+    for index, key in enumerate(CATEGORY_ORDER):
+        ids = [f.id for f in sorted(world.findings, key=lambda f: s2(f.id)) if category_of(f.id) == key]
+        body = nonblank(subsection_lines(section, 3, template[index]))
+        if not ids:
+            assert body == ["No %s threats were identified in this threat model." % CATEGORY_TITLE[key]], key
+            continue
+        expected = [marker("threat_categories", "category." + key)]
+        for i in ids:
+            expected += [lead_line(by_id[i]), "Marker narrative for %s." % i]
+        assert body == expected, key
+
+
+# ---- more than 30 open findings: the Medium, Low and Note findings of a category are one summary (T088)
+
+def test_a_run_of_more_than_30_narrates_its_critical_and_high_findings_and_summarizes_the_rest_by_category(assembler, make):
+    world = make("report", **SCENARIOS["a run of thirty-four"])
+    report_ok(world, assembler)
+    section = section_text(world.report_text, 3)
+    narrated = set(world.rule_narrated())
+    assert len(world.findings) == 34 and narrated == {f.id for f in world.findings if f.risk in ("Critical", "High")} and len(narrated) == 7
+    leads = re.findall(r"(?m)^\*\*([A-Z]+-[0-9]+)\*\*: ", section)
+    assert sorted(leads, key=s2) == sorted(narrated, key=s2), "a lead for each narrated finding and for no other"
+    for f in world.findings:
+        assert ("Marker narrative for %s." % f.id in section) is (f.id in narrated), f.id
+    assert world.summary_categories() == [c for c in CATEGORY_ORDER if c != "llm"], "every category but LLM holds a summarized finding"
+    template = template_subsections()
+    for index, key in enumerate(CATEGORY_ORDER):
+        body = nonblank(subsection_lines(section, 3, template[index]))
+        summary = marker("threat_categories", "summary." + key)
+        own = [f for f in sorted(world.findings, key=lambda f: s2(f.id)) if category_of(f.id) == key and f.id in narrated]
+        expected = [marker("threat_categories", "category." + key)]
+        for f in own:
+            expected += [lead_line(f), "Marker narrative for %s." % f.id]
+        if key != "llm":
+            expected.append(summary)
+        assert body == expected, "the category paragraph, each narrated finding, then the summary: " + key
+    assert sum(section.count(marker("threat_categories", "summary." + key)) for key in CATEGORY_ORDER) == 7
+
+
+def test_a_run_of_more_than_30_still_lists_every_finding_in_the_roadmap_and_the_appendix(assembler, make):
+    world = make("report", **SCENARIOS["a run of thirty-four"])
+    report_ok(world, assembler)
+    text = world.report_text
+    by_id = {f.id: f for f in world.findings}
+    assert [row["Finding ID"] for row in roadmap_rows(world)] == sorted(
+        by_id, key=lambda i: (RISK_RANK[by_id[i].risk], by_id[i].component.casefold(), by_id[i].component, s2(i))), "one row for each of the 34, by risk, component and S-2"
+    number = title_number(text, "Appendix")
+    rows = tachi_parsers.parse_markdown_table(text, "## %d. Appendix: Finding Reference" % number)
+    template = template_subsections()
+    in_section_3 = {row["Finding ID"]: row["Heading Reference"] for row in rows if int(row["Report Section"]) == 3}
+    assert in_section_3 == {f.id: template[CATEGORY_ORDER.index(category_of(f.id))] for f in world.findings}, "the appendix puts a summarized finding in its subsection"
+    assert {row["Finding ID"] for row in rows} == {f.id for f in world.findings}, "zero finding loss"
+
+
+def named(ids, limit=5):
+    """How the assembler names a set in a message: the first few, then ``and N more``."""
+    return ", ".join(ids[:limit]) + (" and %d more" % (len(ids) - limit) if len(ids) > limit else "")
+
+
+@pytest.mark.parametrize("left_out", ["D-1", "E-1"])
+def test_a_plan_that_leaves_out_a_narrated_finding_is_exit_2_naming_both_sets(assembler, make, left_out):
+    """RD-25. The reference set says that D-1 (Medium) and E-1 (Low) are narrated in a run of at most 30, but no analysis part holds an item for one. The report
+    would print no lead and no narrative for it, and the appendix would still show its Section 3 row. (Neither has a tree, so the tree-summary check doesn't meet it first.)"""
+    world = make("report", rule="rule2", flaws=("no-item:" + left_out,))
+    held = [i for i in world.rule_narrated() if i != left_out]
+    res = run_refused(world, assembler, "report", 2)
+    assert "the analysis parts hold items for %s, and Section 7's narration rule gives %s" % (named(held), named(world.rule_narrated())) in res.err, res.describe()
+    assert "Remedy: re-run Phase 5, so that the report plan is made over this threats.md" in res.err
+
+
+def test_a_plan_that_narrates_a_finding_that_the_rule_summarizes_is_exit_2(assembler, make):
+    """A run of 34: D-1 (Medium) is summarized, so an item for it means a plan that was made over another reference set."""
+    world = make("report", **SCENARIOS["a run of thirty-four"])
+    batch = world.section_batch("threat_analysis")
+    item = {"finding_id": "D-1", "narrative": "Marker narrative for {{finding:D-1}}.", "tree_summary": None}   # as a planner that narrated D-1 would have written it
+    row = world.finding_row("threat_analysis", "D-1", tree=False)
+    world.edit_input("report", batch, lambda doc: (doc["units"].append(row), doc["finding_ids"].append("D-1")))
+    world.rewrite_plan("report", lambda doc: next(e for e in doc["batches"] if e["batch_id"] == batch)["finding_ids"].append("D-1"))
+    world.rewrite_json(world.part_path("report", batch), lambda doc: (doc["items"].append(item), doc["finding_ids"].append("D-1")))
+    assert validate_batch(world, batch).state == "done", "premise: the part is valid, so only the comparison with the reference set refuses it"
+    res = run_refused(world, assembler, "report", 2)
+    held = sorted(world.rule_narrated() + ["D-1"], key=s2)
+    assert "the analysis parts hold items for %s, and Section 7's narration rule gives %s" % (named(held), named(world.rule_narrated())) in res.err, res.describe()
+
+
+@pytest.mark.parametrize("case", ["no-summary:spoofing", "extra-summary:llm"])
+def test_a_plan_whose_category_summaries_are_not_the_categories_with_a_summarized_finding_is_exit_2(assembler, make, case):
+    world = make("report", **dict(SCENARIOS["a run of thirty-four"], flaws=(case,)))
+    wanted = [c for c in CATEGORY_ORDER if c != "llm"]
+    res = run_refused(world, assembler, "report", 2)
+    assert "the report plan holds category summaries for %s, and Section 7 has summarized findings in %s" % (
+        named(world.summary_categories()), named(wanted)) in res.err, res.describe()
+
+
+def test_a_plan_with_a_summary_in_a_run_that_summarizes_nothing_is_exit_2(assembler, make):
+    world = make("report", rule="rule2", flaws=("extra-summary:spoofing",))
+    res = run_refused(world, assembler, "report", 2)
+    assert "the report plan holds category summaries for spoofing, and Section 7 has summarized findings in no category" in res.err, res.describe()
+
+
+@pytest.mark.parametrize("flaw,kwargs", [
+    ("no-patterns", RICH), ("no-multi", RICH), ("extra-multi", dict(RICH, pattern_of={"AG-1": "agent_collusion"})), ("extra-patterns", dict(rule="rule2")),
+])
+def test_a_plan_whose_pattern_units_are_not_the_patterns_that_section_7_holds_is_exit_2(assembler, make, flaw, kwargs):
+    world = make("report", **dict(kwargs, flaws=(flaw,)))
+    res = run_refused(world, assembler, "report", 2)
+    assert "the report plan holds pattern units " in res.err and ", and Section 7 gives " in res.err, res.describe()
+    assert ("holds pattern units none," in res.err) is (flaw == "no-patterns")
+    assert ("Section 7 gives none" in res.err) is (flaw == "extra-patterns")
+
+
+@pytest.mark.parametrize("flaw,kwargs,message", [
+    ("no-delta", RICH, "the report plan holds no delta summary, and the run has a baseline"),
+    ("extra-delta", dict(rule="no-baseline"), "the report plan holds a delta summary, and the run has no baseline"),
+])
+def test_a_plan_that_holds_a_delta_summary_only_for_a_run_with_a_baseline_or_it_is_exit_2(assembler, make, flaw, kwargs, message):
+    world = make("report", **dict(kwargs, flaws=(flaw,)))
+    res = run_refused(world, assembler, "report", 2)
+    assert message in res.err, res.describe()
+
+
+@pytest.mark.parametrize("scenario", sorted(SCENARIOS))
+def test_a_plan_that_agrees_with_the_reference_set_is_never_refused(assembler, make, scenario):
+    """The comparison is not a new way to fail: each scenario of this section is one that the contract plans, and it assembles."""
+    world = make("report", **SCENARIOS[scenario])
+    report_ok(world, assembler)
+
+
+# ---- Section 4: a theme's cited findings reach the appendix
+
+def appendix_rows(world):
+    """The appendix's rows as ``[(finding ID, section number, heading)]``, read as every later reader reads a table."""
+    text = world.report_text
+    rows = tachi_parsers.parse_markdown_table(text, "## %d. Appendix: Finding Reference" % title_number(text, "Appendix"))
+    return [(row["Finding ID"], int(row["Report Section"]), row["Heading Reference"]) for row in rows]
+
+
+def test_section_4_a_theme_that_cites_findings_through_finding_slots_places_them_in_the_appendix_under_its_own_heading(assembler, make):
+    world = make("report", rule="rule2", themes=2)
+    reword_in(world, "theme.1.body", "Both {{finding:S-1}} and {{finding:T-1}} start at {{name:component:S-1}}.")
+    reword_in(world, "theme.2.body", "Here {{finding:AG-1}} meets {{finding:S-99}}.")   # S-99 isn't in the reference set, so the whole body takes the fixed sentence
+    report_ok(world, assembler)
+    section = section_text(world.report_text, 4)
+    assert "Both S-1 and T-1 start at Gateway." in section and tp.REPORT_FALLBACKS["fragment"] in section and "Here AG-1" not in world.report_text
+    assert {row for row in appendix_rows(world) if row[1] == 4} == {("S-1", 4, "Theme 1: Marker for theme title one."), ("T-1", 4, "Theme 1: Marker for theme title one.")}, \
+        "a body that shows the fixed sentence discusses no finding, so it places none"
+    assert world.record("report")["counts"]["narrative_fallbacks"] == 1
+
+
+# ---- Section 6: the chains from the chain file
+
+def test_section_6_a_chain_holds_its_facts_its_narrative_its_control_the_disclaimer_and_its_members_from_the_chain_file(assembler, make):
+    world = make("report", planned_chains=True, outcome=OUTCOME_WRITTEN)
+    report_ok(world, assembler)
+    section = section_text(world.report_text, 6)
+    disclaimer = re.search(r"(?m)^> _Disclaimer: .+_$", TEMPLATE.read_text(encoding="utf-8")).group(0)
+    for chain_id, title in CHAINS:
+        members = CHAIN_MEMBERS[chain_id]
+        target, layer, recommendation = CHAIN_CONTROL[chain_id]
+        assert nonblank(subsection_lines(section, 3, "%s: %s" % (chain_id, title))) == [
+            "**Layers**: %s | **Max Severity**: Critical | **Findings**: %d | **Converging chains**: 1" % (" → ".join(CHAIN_LAYERS[chain_id]), len(members)),
+            marker("attack_chains", "chain." + chain_id),
+            "**Chain-Breaking Control**: %s at layer %s. %s" % (target, layer, recommendation),
+            disclaimer,
+            "**Impacted Findings**: " + "; ".join("%s (%s, %s)" % (m[0], m[1], m[2]) for m in members)], chain_id
+    assert "CHAIN-007" not in section
+
+
+def test_section_6_the_control_is_the_chain_files_recommendation_verbatim_and_escaped_again(assembler, make):
+    """The file stores the recommendation escaped, as its renderer wrote it. The reader decodes it, and the report writes it again, so a pipe doesn't split a cell
+    and a tag stays text, and the control reads back as the chain file's own."""
+    world = make("report", planned_chains=True, outcome=OUTCOME_WRITTEN)
+    stored = "Verify each order &#124; reject &lt;b&gt;unsigned&lt;/b&gt; ones &amp; log them"
+    world.chains_path.write_text(world.chains_path.read_text(encoding="utf-8").replace(CHAIN_CONTROL["CHAIN-001"][2], stored), encoding="utf-8")
+    report_ok(world, assembler)
+    line = next(l for l in section_text(world.report_text, 6).split("\n") if l.startswith("**Chain-Breaking Control**: T-1"))
+    assert line.endswith(stored) and "<b>" not in line
+    assert tachi_parsers.decode_references(line).endswith("Verify each order | reject <b>unsigned</b> ones & log them")
+
+
+# ---- Agentic Pattern Analysis
+
+def test_pattern_analysis_opens_with_its_boilerplate_and_the_multi_pattern_findings_then_one_subsection_for_each_pattern_in_fr_013_order(assembler, make):
+    world = make("report", **RICH)
+    report_ok(world, assembler)
+    text = world.report_text
+    number = title_number(text, "Agentic Pattern Analysis")
+    assert number == 7, "Section 6 is on every run, so the section follows it and the roadmap, the appendix and the delta summary move up (RD-11)"
+    section = section_text(text, number)
+    shared = dict(zip(tp.REPORT_PATTERNS, shared_patterns()))
+    assert [title for _, level, title in atx_headings(section) if level == 3] == ["Multi-Pattern Findings"] + [shared[v][0] for v in PATTERN_ORDER]
+    assert section.lstrip("\n").startswith("This section enumerates threats by CSA MAESTRO canonical agentic pattern.")
+    assert nonblank(subsection_lines(section, 3, "Multi-Pattern Findings")) == [marker("agentic_patterns", "multi"), "Impacted findings: S-1"]
+    by_id = {f.id: f for f in world.findings}
+    for value in PATTERN_ORDER:
+        name, definition = shared[value]
+        ids = [i for i in open_order(world.findings) if by_id[i].pattern == value]
+        counts = " | ".join("%s: %d" % (level, sum(1 for i in ids if by_id[i].risk == level)) for level in ("Critical", "High", "Medium", "Low"))
+        assert nonblank(subsection_lines(section, 3, name)) == [definition, counts, "Impacted findings: " + ", ".join(ids), marker("agentic_patterns", "pattern." + value)], value
+    assert "Critical: 0 | High: 2 | Medium: 0 | Low: 0" in section and "Impacted findings: T-2, OI-1" in section, "two High findings, in Section 3 and 4's order"
+
+
+def test_pattern_analysis_a_multiple_finding_is_listed_under_multi_pattern_findings_only(assembler, make):
+    world = make("report", **RICH)
+    report_ok(world, assembler)
+    section = section_text(world.report_text, 7)
+    lines = [line for line in section.split("\n") if line.startswith("Impacted findings: ")]
+    assert lines.count("Impacted findings: S-1") == 1 and not any("S-1" in line for line in lines if line != "Impacted findings: S-1")
+    assert {row[2] for row in appendix_rows(world) if row[0] == "S-1" and row[1] == 7} == {"Multi-Pattern Findings"}
+
+
+def test_pattern_analysis_a_pattern_with_no_finding_has_no_subsection_and_no_multi_block_without_a_multiple_finding(assembler, make):
+    world = make("report", rule="rule2", pattern_of={"AG-1": "agent_collusion"})
+    report_ok(world, assembler)
+    section = section_text(world.report_text, 7)
+    assert [title for _, level, title in atx_headings(section) if level == 3] == ["Agent Collusion"]
+    assert nonblank(subsection_lines(section, 3, "Agent Collusion"))[1:3] == ["Critical: 0 | High: 1 | Medium: 0 | Low: 0", "Impacted findings: AG-1"]
+
+
+def test_pattern_analysis_a_run_with_only_multiple_findings_has_the_multi_block_and_no_pattern_subsection(assembler, make):
+    world = make("report", rule="rule2", pattern_of={"AG-1": "multiple", "LLM-1": "multiple"})
+    report_ok(world, assembler)
+    section = section_text(world.report_text, 7)
+    assert [title for _, level, title in atx_headings(section) if level == 3] == ["Multi-Pattern Findings"]
+    assert nonblank(subsection_lines(section, 3, "Multi-Pattern Findings")) == [marker("agentic_patterns", "multi"), "Impacted findings: AG-1, LLM-1"]
+
+
+def test_pattern_analysis_is_absent_from_a_run_where_no_finding_has_a_pattern(assembler, make):
+    world = make("report", rule="rule2")
+    report_ok(world, assembler)
+    assert "Agentic Pattern Analysis" not in world.report_text and "Multi-Pattern Findings" not in world.report_text
+
+
+# ---- Section 7, the roadmap
+
+def expected_roadmap_intro(world):
+    """RD-27: the intro's sentence, computed from the findings and the groups with none of the assembler's code."""
+    groups = tachi_parsers.parse_correlation_groups(world.threats_text, world.open_ids())["groups"]
+    group_of = {member: group for group in groups for member in group["members"]}
+    risk = {f.id: f.risk for f in world.findings}
+    tiers = dict(TIER_OF)
+    per_tier = collections.Counter()
+    for i in world.roadmap_ids():
+        members = group_of[i]["members"] if i in group_of else [i]
+        per_tier[tiers[min((risk[m] for m in members), key=RISK_RANK.get)]] += 1
+    components = collections.Counter(f.component for f in world.findings)
+    most = min(components, key=lambda name: (-components[name], name))
+    shown = ", ".join("%d %s" % (per_tier[tier], tier) for tier in ("Immediate", "Short-term", "Medium-term", "Backlog") if per_tier[tier])
+    return ("The roadmap lists %d rows, ordered by risk level and then by component: %s. The most impacted component is %s, with %d open findings."
+            % (len(world.roadmap_ids()), shown, most, components[most]))
+
+
+ALPHA = [f._replace(component="Alpha Service") if f.id in ("T-1", "T-2") else f for f in findings_for("rule2")]
+INTRO_CASES = {
+    "nine findings, three components tie for most": dict(rule="rule2"),
+    "a tie that is broken by name, not by order": dict(rule="rule2", findings=ALPHA),
+    "groups that fold some findings into one row": dict(rule="rule2", groups=A20_GROUPS),
+    "thirty-four findings": SCENARIOS["a run of thirty-four"],
+}
+
+
+@pytest.mark.parametrize("case", sorted(INTRO_CASES))
+def test_section_7_opens_with_the_row_count_the_rows_per_tier_and_the_most_impacted_component(assembler, make, case):
+    world = make("report", **INTRO_CASES[case])
+    report_ok(world, assembler)
+    text = world.report_text
+    lines = [line for line in section_text(text, title_number(text, "Remediation Roadmap")).split("\n") if line.strip()]
+    assert lines[0] == expected_roadmap_intro(world), lines[0]
+    if case.startswith("nine"):
+        assert lines[0].endswith("3 Immediate, 4 Short-term, 1 Medium-term, 1 Backlog. The most impacted component is Gateway, with 2 open findings."), "Gateway sorts first"
+    if case.startswith("a tie"):
+        assert "The most impacted component is Alpha Service, with 2 open findings." in lines[0]
+
+
+def test_section_7_ends_with_the_templates_priority_tier_and_effort_scale_tables(assembler, make):
+    world = make("report", rule="rule2")
+    report_ok(world, assembler)
+    text = world.report_text
+    section = section_text(text, title_number(text, "Remediation Roadmap"))
+    template = TEMPLATE.read_text(encoding="utf-8")
+    for label in ("Priority tiers:", "Effort scale:"):
+        block = re.search(r"(?m)^\*\*%s\*\*\n\n((?:\|.*\n)+)" % re.escape(label), template)
+        assert block is not None and "**%s**\n\n%s" % (label, block.group(1)) in section + "\n", label
+    assert section.index("**Priority tiers:**") < section.index("**Effort scale:**") and section.index("| S-1 |") < section.index("**Priority tiers:**")
+
+
+def test_section_7_a_groups_row_lists_each_members_mitigation_verbatim_in_member_order_each_led_by_its_id(assembler, make):
+    """RD-26. The mitigations are stored escaped, as the joiner writes them, and read decoded: the row writes each one again, so each reads back as it was stored."""
+    stored = {"T-1": "Sign every order &#124; reject &lt;b&gt;unsigned&lt;/b&gt; ones", "T-2": "Authenticate queue producers &amp; consumers",
+              "OI-1": "Encode all model output"}
+    findings = [f._replace(mitigation=stored[f.id]) if f.id in stored else f for f in findings_for("rule2")]
+    world = make("report", rule="rule2", findings=findings, groups=[("CG-1", ["T-1", "T-2", "OI-1"])])
+    report_ok(world, assembler)
+    rows = roadmap_rows(world)
+    assert [r["Finding ID"] for r in rows if r["Finding ID"] in stored] == ["T-1"], "the primary's row stands for the group; its peers have none"
+    row = next(r for r in rows if r["Finding ID"] == "T-1")
+    decoded = {i: tachi_parsers.decode_references(text) for i, text in stored.items()}
+    assert row["Mitigation"] == "; ".join("%s: %s" % (i, decoded[i]) for i in ("T-1", "T-2", "OI-1"))
+    assert "<b>" not in world.report_text and "Authenticate queue producers &amp; consumers" in world.report_text, "written again, as it was stored"
+    assert row["Component"] == "Order Service" and row["Effort"] == world.roadmap_items["T-1"]["effort"]
+    item = world.roadmap_items["T-1"]["dependencies"]
+    note = "Correlated: T-1, T-2, OI-1 (CG-1)."
+    assert row["Dependencies"] == (note if item is None else note + " " + item.replace("{{finding:T-1}}", "T-1")), row["Dependencies"]
+
+
+def test_section_7_two_group_rows_each_take_their_highest_risk_level_and_sort_by_their_primarys_component_among_that_levels_rows(assembler, make):
+    world = make("report", rule="rule2", groups=[("CG-1", ["E-1", "OI-1"]), ("CG-2", ["D-1", "T-2"])])
+    report_ok(world, assembler)
+    assert [r["Finding ID"] for r in roadmap_rows(world)] == ["S-1", "T-1", "LLM-1", "E-1", "D-1", "I-1", "AG-1"], \
+        "E-1 (Low) stands among the High rows for OI-1, and D-1 (Medium) for T-2, which is High, so it sorts by component with them"
+
+
+def test_section_7_a_group_with_a_member_the_run_resolved_lists_only_its_open_members(assembler, make):
+    world = make("report", rule="rule2", groups=[("CG-1", ["R-9", "T-1", "T-2"])])
+    report_ok(world, assembler)
+    row = next(r for r in roadmap_rows(world) if r["Finding ID"] == "T-1")
+    assert row["Mitigation"].startswith("T-1: ") and "R-9" not in row["Mitigation"] + row["Dependencies"] and row["Dependencies"].startswith("Correlated: T-1, T-2 (CG-1).")
+
+
+# ---- Section 8, the appendix: one row for each place that the report puts a finding
+
+NUMBER_WORD = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six"}
+
+
+def section_numbers(world):
+    """Each section's number in this run: 1 to 6 are on every run (RD-11), the patterns follow when a finding has one, then the roadmap, the appendix and, in a run
+    with a baseline, the delta summary."""
+    names = ["exec", "architecture", "threats", "themes", "trees", "chains"]
+    if any(f.pattern != DASH for f in world.findings):
+        names.append("patterns")
+    names += ["roadmap", "appendix"] + (["delta"] if world.has_baseline else [])
+    return {name: n for n, name in enumerate(names, 1)}
+
+
+def expected_appendix(world, themes=None):
+    """RD-27, from the contract and not the assembler: a finding's Section 3 subsection, each theme whose body cites it, its tree, each surfaced chain it belongs to, its
+    pattern subsection, and its roadmap row, or for a peer its group's row. ``themes`` maps a theme's number to the IDs that its body cites."""
+    number, template = section_numbers(world), template_subsections()
+    shared = dict(zip(tp.REPORT_PATTERNS, shared_patterns()))
+    groups = tachi_parsers.parse_correlation_groups(world.threats_text, world.open_ids())["groups"]
+    group_of = {member: group for group in groups for member in group["members"]}
+    places = collections.defaultdict(set)
+    for f in world.findings:
+        places[f.id].add((number["threats"], template[CATEGORY_ORDER.index(category_of(f.id))]))
+        if f.id in world.ch_ids:
+            places[f.id].add((number["trees"], "%s: %s" % (f.id, f.threat)))
+        if f.pattern == "multiple":
+            places[f.id].add((number["patterns"], "Multi-Pattern Findings"))
+        elif f.pattern != DASH:
+            places[f.id].add((number["patterns"], shared[f.pattern][0]))
+    if world.planned_chains:
+        for chain_id, title in CHAINS:
+            for member in CHAIN_MEMBERS[chain_id]:
+                places[member[0]].add((number["chains"], "%s: %s" % (chain_id, title)))
+    for n, ids in (themes or {}).items():
+        for i in ids:
+            places[i].add((number["themes"], "Theme %d: Marker for theme title %s." % (n, NUMBER_WORD[n])))
+    for i in world.roadmap_ids():
+        for member in (group_of[i]["members"] if i in group_of else [i]):
+            places[member].add((number["roadmap"], "Remediation Roadmap"))
+    return [(i, n, heading) for i in world.open_ids() for n, heading in sorted(places[i])]
+
+
+APPENDIX_SCENARIOS = dict(SCENARIOS, **{"groups in a run of nine": dict(RICH, groups=A20_GROUPS)})
+
+
+@pytest.mark.parametrize("scenario", sorted(APPENDIX_SCENARIOS))
+def test_the_appendix_has_one_row_for_each_place_that_the_report_puts_a_finding(assembler, make, scenario):
+    world = make("report", **APPENDIX_SCENARIOS[scenario])
+    reword_in(world, "theme.1.body", "Cites {{finding:S-1}} and {{finding:LLM-1}}.")
+    reword_in(world, "theme.2.body", "Cites {{finding:T-2}}.")
+    report_ok(world, assembler)
+    rows = appendix_rows(world)
+    assert rows == expected_appendix(world, themes={1: ["S-1", "LLM-1"], 2: ["T-2"]})
+    number = section_numbers(world)
+    for f in world.findings:
+        mine = {(n, heading) for i, n, heading in rows if i == f.id}
+        assert any(n == number["threats"] for n, _ in mine) and (number["roadmap"], "Remediation Roadmap") in mine, "zero finding loss: %s has its Section 3 and its roadmap row" % f.id
+
+
+def test_the_appendix_names_a_peer_in_its_groups_roadmap_row(assembler, make):
+    world = make("report", **dict(RICH, groups=[("CG-1", ["T-1", "T-2"])]))
+    report_ok(world, assembler)
+    number = section_numbers(world)["roadmap"]
+    assert ("T-2", number, "Remediation Roadmap") in appendix_rows(world), "T-2 has no row of its own in the roadmap, and the appendix still sends the reader to it"
+    assert not any(row["Finding ID"] == "T-2" for row in roadmap_rows(world))
+
+
+# ---- Section 9, the delta summary
+
+def test_section_9_has_the_lifecycle_breakdown_the_progress_paragraph_and_the_baseline_reference(assembler, make):
+    world = make("report", rule="rule2")
+    reword_in(world, "progress", "The run resolved {{finding:R-9}} on {{name:component:R-9}}, so {{count:resolved}} fewer.")
+    report_ok(world, assembler)
+    text = world.report_text
+    section = section_text(text, title_number(text, "Delta Summary"))
+    assert [title for _, level, title in atx_headings(section) if level == 3] == ["Finding Lifecycle Breakdown", "Remediation Progress", "Baseline Reference"]
+    counts = collections.Counter(f.status for f in world.findings)
+    assert (counts["NEW"], counts["UNCHANGED"], counts["UPDATED"], len(world.resolved)) == (4, 4, 1, 1)
+    assert nonblank(subsection_lines(section, 3, "Finding Lifecycle Breakdown")) == [
+        "| Status | Count | Description |", "|---|---|---|",
+        "| NEW | 4 | Findings discovered in this run with no baseline match |",
+        "| UNCHANGED | 4 | Findings identical to baseline (same component, threat, assessment) |",
+        "| UPDATED | 1 | Findings with changed context since baseline |",
+        "| RESOLVED | 1 | Baseline findings no longer applicable (from Section 4c) |",
+        "| **Total** | 10 | Sum of all findings (active + resolved) |"]
+    assert nonblank(subsection_lines(section, 3, "Remediation Progress")) == ["The run resolved R-9 on Legacy Cache, so 1 fewer."]
+    reference = [line for line in nonblank(subsection_lines(section, 3, "Baseline Reference")) if not line.startswith("<!-- tachi-provenance")]   # the stamp ends the file
+    assert reference == ["| Field | Value |", "|---|---|", "| Source | baseline/threats.md |", "| Date | %s |" % BASELINE_DATE, "| Baseline Findings | 10 |",
+                         "| Run ID | 2026-11-10T09-00-00 |"]
+
+
+def test_section_9_the_breakdown_counts_come_from_section_7_and_4c_for_a_run_with_only_unchanged_findings(assembler, make):
+    world = make("report", rule="rule1")
+    report_ok(world, assembler)
+    text = world.report_text
+    lines = nonblank(subsection_lines(section_text(text, title_number(text, "Delta Summary")), 3, "Finding Lifecycle Breakdown"))
+    assert "| NEW | 0 |" in lines[2] and "| UNCHANGED | 9 |" in lines[3] and "| UPDATED | 0 |" in lines[4] and "| RESOLVED | 0 |" in lines[5] and "| **Total** | 9 |" in lines[6]
+
+
+# ---- slots: every kind of the contract's `report` table, against the reference set
+
+BANDS = ("critical", "high", "medium", "low", "note")
+
+
+def hamilton(counts):
+    """Integer shares that sum to 100 by the largest remainder, ties to the label that sorts first (D5), written here and not imported."""
+    total = sum(counts.values())
+    shares = {label: 100 * n // total for label, n in counts.items()}
+    for label in sorted(counts, key=lambda label: (-(100 * counts[label] % total), label))[:100 - sum(shares.values())]:
+        shares[label] += 1
+    return shares
+
+
+def slot_values(world):
+    """Every ``count`` slot's value, from the findings and the RESOLVED list alone."""
+    values = {"open": len(world.findings), "resolved": len(world.resolved)}
+    for status in ("new", "unchanged", "updated"):
+        values[status] = sum(1 for f in world.findings if f.status == status.upper())
+    for band in BANDS:
+        values[band] = sum(1 for f in world.findings if f.risk.lower() == band)
+    for key in CATEGORY_ORDER:
+        values[key] = sum(1 for f in world.findings if category_of(f.id) == key)
+        for band in BANDS:
+            values["%s.%s" % (key, band)] = sum(1 for f in world.findings if category_of(f.id) == key and f.risk.lower() == band)
+    return values
+
+
+@pytest.mark.parametrize("scenario", ["a run of nine", "a run of thirty-four"])
+def test_slots_count_resolves_every_argument_of_the_contracts_table_and_pct_gives_the_shares_by_largest_remainder(assembler, make, scenario):
+    world = make("report", **SCENARIOS[scenario])
+    values = slot_values(world)
+    status = ["open", "resolved", "new", "unchanged", "updated"]
+    pairs = ["%s.%s" % (key, band) for key in CATEGORY_ORDER for band in BANDS]
+    shares = hamilton({band: values[band] for band in BANDS})
+    assert sum(shares.values()) == 100
+    if scenario == "a run of nine":
+        assert shares == {"critical": 33, "high": 45, "medium": 11, "low": 11, "note": 0}, "by hand: 3, 4, 1, 1 and 0 of 9; the spare point goes to High's largest remainder"
+    reword_in(world, "risk_posture", " ".join("{{count:%s}}" % key for key in status) + " and " + " ".join("{{pct:%s}}" % band for band in BANDS))
+    reword_in(world, "top_threats", " ".join("{{count:%s}}" % key for key in list(BANDS) + list(CATEGORY_ORDER)))
+    reword_in(world, "key_recommendations", " ".join("{{count:%s}}" % key for key in pairs))
+    report_ok(world, assembler)
+    section = section_text(world.report_text, 1)
+    assert nonblank(subsection_lines(section, 3, "Risk Posture")) == [" ".join(str(values[key]) for key in status) + " and " + " ".join(str(shares[b]) for b in BANDS)]
+    assert nonblank(subsection_lines(section, 3, "Top 5 Threats")) == [" ".join(str(values[key]) for key in list(BANDS) + list(CATEGORY_ORDER))]
+    assert nonblank(subsection_lines(section, 3, "Key Recommendations")) == [" ".join(str(values[key]) for key in pairs)]
+    assert world.record("report")["counts"]["narrative_fallbacks"] == 0
+    if scenario == "a run of thirty-four":
+        assert (values["open"], values["note"], values["repudiation"], values["llm"], values["llm.high"]) == (34, 8, 4, 2, 1)
+
+
+def test_slots_finding_name_and_band_resolve_against_the_reference_set_and_a_finding_may_be_a_resolved_one(assembler, make):
+    world = make("report", rule="rule2")
+    reword_in(world, "top_threats", "{{finding:S-1}} on {{name:component:S-1}} is {{band:risk:S-1}}, and {{finding:E-1}} on {{name:component:E-1}} is {{band:risk:E-1}}.")
+    reword_in(world, "key_recommendations", "Start with {{finding:T-01}} and {{finding:AG-1}}.")
+    reword_in(world, "progress", "{{finding:R-9}} on {{name:component:R-9}} is resolved, {{count:resolved}} in all.")
+    report_ok(world, assembler)
+    text = world.report_text
+    assert nonblank(subsection_lines(section_text(text, 1), 3, "Top 5 Threats")) == ["S-1 on Gateway is Critical, and E-1 on Admin Console is Low."]
+    assert nonblank(subsection_lines(section_text(text, 1), 3, "Key Recommendations")) == ["Start with T-1 and AG-1."], "a finding slot is canonicalized"
+    assert nonblank(subsection_lines(section_text(text, title_number(text, "Delta Summary")), 3, "Remediation Progress")) == ["R-9 on Legacy Cache is resolved, 1 in all."]
+    assert world.record("report")["counts"]["narrative_fallbacks"] == 0
+
+
+@pytest.mark.parametrize("slot", ["{{band:risk:R-9}}", "{{band:risk:S-99}}", "{{finding:S-99}}", "{{name:component:S-99}}", "{{ref:CWE-89}}", "{{ref:L5}}"])
+def test_slots_one_that_does_not_resolve_gives_the_field_its_fixed_sentence_and_is_counted(assembler, make, slot):
+    """R-9 is RESOLVED, so a band is not its to give. S-99 is no finding. No finding of this run carries CWE-89, or a layer 5 (the layers are 1, 2, 3, 4 and 7)."""
+    world = make("report", rule="rule2")
+    reword_in(world, "top_threats", "Start with " + slot + " here.")
+    report_ok(world, assembler)
+    assert nonblank(subsection_lines(section_text(world.report_text, 1), 3, "Top 5 Threats")) == [tp.REPORT_FALLBACKS["fragment"]]
+    assert "Start with" not in world.report_text and world.record("report")["counts"]["narrative_fallbacks"] == 1
+
+
+# ---- the `ref` slot: a taxonomy ID of the item's own finding in a findings part, of any finding in a section fragment (RD-24)
+
+def test_slots_a_ref_in_a_findings_part_must_be_one_of_the_items_own_findings_taxonomy_ids(assembler, make):
+    findings = [f._replace(layer="L1 — Foundation Model") if f.id == "LLM-1" else f for f in findings_for("rule2")]
+    world = make("report", rule="rule2", findings=findings)
+    reword_item(world, "threat_analysis", "LLM-1", narrative="It cites {{ref:LLM01:2026}}, {{ref:CWE-77}} and {{ref:L1}}.", tree_summary="It also cites {{ref:L1}}.")
+    reword_item(world, "threat_analysis", "S-1", narrative="It cites {{ref:L4}} and {{ref:LLM01:2026}}.")   # the second is LLM-1's, and not S-1's
+    reword_item(world, "remediation_roadmap", "LLM-1", dependencies="Needs {{ref:CWE-77}}.")
+    reword_item(world, "remediation_roadmap", "S-1", dependencies="Needs {{ref:CWE-77}}.")                    # not S-1's either
+    report_ok(world, assembler)
+    text = world.report_text
+    section = section_text(text, 3)
+    assert "It cites LLM01:2026, CWE-77 and L1." in section
+    assert "It cites L4" not in section and tp.REPORT_FALLBACKS["narrative"] in section, "one cited ID that S-1 doesn't carry takes the whole field's fixed sentence"
+    assert "It also cites L1." in section_text(text, 5)
+    rows = {row["Finding ID"]: row for row in roadmap_rows(world)}
+    assert rows["LLM-1"]["Dependencies"] == "Needs CWE-77." and rows["S-1"]["Dependencies"] == tp.REPORT_FALLBACKS["dependencies"]
+    assert world.record("report")["counts"]["narrative_fallbacks"] == 2
+
+
+def test_slots_a_ref_in_a_section_fragment_may_be_any_findings_taxonomy_id_that_has_a_unit_row(assembler, make):
+    world = make("report", rule="rule2")
+    reword_in(world, "top_threats", "Across the run {{ref:LLM01:2026}}, {{ref:ASI02:2026}}, {{ref:CWE-77}}, {{ref:LLM05:2026}} and {{ref:L7}} are cited.")
+    reword_in(world, "key_recommendations", "Only {{ref:CWE-89}} is cited.")   # no finding carries it
+    report_ok(world, assembler)
+    section = section_text(world.report_text, 1)
+    assert nonblank(subsection_lines(section, 3, "Top 5 Threats")) == ["Across the run LLM01:2026, ASI02:2026, CWE-77, LLM05:2026 and L7 are cited."]
+    assert nonblank(subsection_lines(section, 3, "Key Recommendations")) == [tp.REPORT_FALLBACKS["fragment"]]
+
+
+def test_slots_a_cell_that_its_table_lacks_gives_no_taxonomy_id(assembler, make):
+    """RD-22. A unit row with no ``owasp_reference`` carries its layer alone, and one with no ``maestro_layer`` carries what its reference cell lists."""
+    world = make("report", rule="rule2", drop_row_keys=("owasp_reference",))
+    reword_item(world, "threat_analysis", "LLM-1", narrative="It cites {{ref:LLM01:2026}}.")
+    reword_item(world, "threat_analysis", "AG-1", narrative="It cites {{ref:L3}}.")
+    report_ok(world, assembler)
+    section = section_text(world.report_text, 3)
+    assert "It cites L3." in section and "It cites LLM01:2026." not in section and tp.REPORT_FALLBACKS["narrative"] in section
+    other = make("report", rule="rule2", drop_row_keys=("maestro_layer",))
+    reword_item(other, "threat_analysis", "LLM-1", narrative="It cites {{ref:LLM01:2026}} and {{ref:CWE-77}}.")
+    reword_item(other, "threat_analysis", "S-1", narrative="It cites {{ref:L4}}.")
+    report_ok(other, assembler)
+    section = section_text(other.report_text, 3)
+    assert "It cites LLM01:2026 and CWE-77." in section and "It cites L4." not in section and tp.REPORT_FALLBACKS["narrative"] in section
+
+
+# ---- drift: the assembler's copies of fixed text are the shared reference's and the template's
+
+def test_drift_the_six_pattern_names_and_definitions_are_the_shared_references(assembler):
+    module, shared = assembler.load(), shared_patterns()
+    assert len(shared) == 6
+    assert [(display, definition) for _, display, definition in module.PATTERNS] == shared
+    assert tuple(value for value, _, _ in module.PATTERNS) == tp.REPORT_PATTERNS, "the enum's order is the reference's order (FR-013's tertiary key)"
+    assert [display for _, display, _ in module.PATTERNS] == ["Agent Collusion", "Emergent Behavior", "Temporal Attacks", "Trust Exploitation", "Communication Vulnerabilities",
+                                                           "Resource Competition"]
+
+
+def test_drift_the_fixed_sentences_and_tables_are_the_templates(assembler):
+    module, template = assembler.load(), TEMPLATE.read_text(encoding="utf-8")
+    assert module.TITLES == template_titles()
+    assert module.NO_TREE_NOTE in template and module.NO_THEMES_NOTE in template and module.CHAIN_DISCLAIMER in template
+    assert "\n".join(module.TIER_TABLE) in template and "\n".join(module.EFFORT_TABLE) in template
+    assert all(description in template for _, description in module.LIFECYCLE) and [status for status, _ in module.LIFECYCLE] == ["NEW", "UNCHANGED", "UPDATED", "RESOLVED"]
+    assert [level for level, _ in module.TIERS] == list(tp.RISK_LEVELS) and dict(module.TIERS) == dict(TIER_OF)
+    assert [key for key, _, _ in module.CATEGORIES] == list(CATEGORY_ORDER) == list(tp.REPORT_CATEGORY_KEYS)
+    assert ["3.%d %s" % (n, heading) for n, (_, heading, _) in enumerate(module.CATEGORIES, 1)] == template_subsections()
+
+
+# ---- the plan's batching is not in the report
+
+def test_findings_parts_split_over_batches_give_the_same_report_bytes_as_one_part_each(assembler, make):
+    """The input digest follows the units' content in plan order, never how they were batched (NFR-2), and the file holds no plan ID."""
+    whole = make("report", **RICH)
+    split = make("report", **dict(RICH, per_report_batch=3, trees_id=OTHER_ID, report_id="20261124T130000Z-dddddddddddd"))
+    report_ok(whole, assembler)
+    report_ok(split, assembler)
+    assert len(split.batch_ids("report")) == len(whole.batch_ids("report")) + 2 + 2, "nine narrated findings in three parts, and nine roadmap rows in three"
+    assert whole.report_path.read_bytes() == split.report_path.read_bytes()
+
+
+@pytest.mark.parametrize("scenario", sorted(SCENARIOS))
+def test_every_planned_unit_of_the_rich_scenarios_has_its_content_in_the_file(assembler, make, scenario):
+    """``rendered`` counts the units whose content the file holds: here all of them, the optional overview, the compliance paragraph and the themes included."""
+    world = make("report", **SCENARIOS[scenario])
+    report_ok(world, assembler)
+    counts = world.record("report")["counts"]
+    assert counts["rendered"] == counts["units"] == read_json(world.plan_path("report"))["unit_count"] > 20, counts
